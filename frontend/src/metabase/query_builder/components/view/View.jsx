@@ -138,7 +138,7 @@ export default class View extends React.Component {
               {ModeFooter && (
                 <ModeFooter {...this.props} className="flex-no-shrink" />
               )}
-              {question.query().breakouts().length > 0 && (
+              {query instanceof StructuredQuery && question.query().breakouts().length > 0 && (
                 <div className="flex py2">
                   <div className="ml-auto mr-auto">
                     <PopoverWithTrigger

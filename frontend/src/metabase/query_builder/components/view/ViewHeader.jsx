@@ -26,8 +26,6 @@ import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbed
 
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
 export const ViewTitleHeader = ({
   className,
   question,
@@ -38,7 +36,6 @@ export const ViewTitleHeader = ({
   queryBuilderMode,
   onSetQueryBuilderMode,
 }) => {
-  const isNative = question.query() instanceof NativeQuery;
   const isCustomQuestion = queryBuilderMode === "notebook";
 
   return (
@@ -65,15 +62,16 @@ export const ViewTitleHeader = ({
       ) : (
         <div>
           <ViewHeading>
-            {isNative ? (
+            {question.isNative() ? (
               t`New question`
             ) : (
               <QuestionDescription question={question} />
             )}
           </ViewHeading>
-          {question.query().aggregations().length > 0 && (
-            <QuestionDataSource question={question} subHead />
-          )}
+          {question.isStructured() &&
+            question.query().aggregations().length > 0 && (
+              <QuestionDataSource question={question} subHead />
+            )}
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
             <div className="mt1">
               <ViewSubHeading>
@@ -90,7 +88,7 @@ export const ViewTitleHeader = ({
         {isDirty ? (
           <Button medium onClick={() => onOpenModal("save")}>{t`Save`}</Button>
         ) : null}
-        {!isNative && (
+        {!question.isNative() && (
           <Button
             icon="list"
             medium
@@ -272,35 +270,39 @@ export class ViewSubHeader extends React.Component {
             </div>
           </ViewSection>
         )}
-        {question.query().aggregations().length > 0 && (
-          <ViewSection className="borderless">
-            {question
-              .query()
-              .aggregations()
-              .map((agg, index) => (
-                <div className="flex align-center hover-parent hover--visibility mr1">
-                  <AggregationName aggregation={agg} query={question.query()} />
-                  <Icon
-                    className="hover-child"
-                    ml={1}
-                    name="close"
-                    onClick={() => {
-                      question
-                        .query()
-                        .removeAggregation(index)
-                        .update();
-                      runQuestionQuery();
-                    }}
-                  />
-                </div>
-              ))}
-            <QuestionSummaries
-              triggerElement={<Icon name="add" ml={1} />}
-              question={question}
-              onRun={() => runQuestionQuery()}
-            />
-          </ViewSection>
-        )}
+        {question.isStructured() &&
+          question.query().aggregations().length > 0 && (
+            <ViewSection className="borderless">
+              {question
+                .query()
+                .aggregations()
+                .map((agg, index) => (
+                  <div className="flex align-center hover-parent hover--visibility mr1">
+                    <AggregationName
+                      aggregation={agg}
+                      query={question.query()}
+                    />
+                    <Icon
+                      className="hover-child"
+                      ml={1}
+                      name="close"
+                      onClick={() => {
+                        question
+                          .query()
+                          .removeAggregation(index)
+                          .update();
+                        runQuestionQuery();
+                      }}
+                    />
+                  </div>
+                ))}
+              <QuestionSummaries
+                triggerElement={<Icon name="add" ml={1} />}
+                question={question}
+                onRun={() => runQuestionQuery()}
+              />
+            </ViewSection>
+          )}
       </div>
     );
   }

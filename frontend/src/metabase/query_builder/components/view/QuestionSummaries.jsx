@@ -24,6 +24,6 @@ const QuestionSummaries = ({ question, onRun, triggerElement }) => (
 );
 
 QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
-  question.query().aggregations().length === 0;
+  question.isStructured() && question.query().aggregations().length === 0;
 
 export default QuestionSummaries;

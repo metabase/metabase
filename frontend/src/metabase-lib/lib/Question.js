@@ -210,6 +210,10 @@ export default class Question {
     return this.query() instanceof NativeQuery;
   }
 
+  isStructured(): boolean {
+    return this.query() instanceof StructuredQuery;
+  }
+
   /**
    * Returns a new Question object with an updated query.
    * The query is saved to the `dataset_query` field of the Card object.
