@@ -83,7 +83,7 @@
         (if-not query-id
           (log/warn interrupted-ex "Client closed connection, no queryId found, can't cancel query")
           (ssh/with-ssh-tunnel [details-with-tunnel details]
-            (log/warnf "Client closed connection, cancelling Druid queryId '%s'" query-id)
+            (log/warnf "Client closed connection, canceling Druid queryId '%s'" query-id)
             (try
               ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
               ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation

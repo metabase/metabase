@@ -300,7 +300,10 @@
     (throw (ex-info (str (tru "Invalid response from database driver. No :status provided."))
              query-result)))
   (when (= :failed (:status query-result))
-    (log/warn (u/pprint-to-str 'red query-result))
+    (if (= InterruptedException (:class query-result))
+      (log/info (trs "Query canceled"))
+      (log/warn (trs "Query failure")
+                (u/pprint-to-str 'red query-result)))
     (throw (ex-info (str (get query-result :error (tru "General error")))
              query-result))))
 
@@ -341,11 +344,8 @@
       (let [result (process-query query)]
         (assert-query-status-successful result)
         (save-and-return-successful-query! query-execution result))
+      ;; canceled query
       (catch Throwable e
-        (log/warn (u/format-color 'red (trs "Query failure")
-                    (.getMessage e)
-                    "\n"
-                    (u/pprint-to-str (u/filtered-stacktrace e))))
         (save-and-return-failed-query! query-execution e)))))
 
 (s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]

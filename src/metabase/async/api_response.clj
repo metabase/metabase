@@ -51,7 +51,7 @@
     (.flush out)
     true
     (catch EofException e
-      (log/debug e (u/format-color 'yellow (trs "connection closed, canceling request")))
+      (log/debug (u/format-color 'yellow (trs "connection closed, canceling request")))
       false)
     (catch Throwable e
       (log/error e (trs "Unexpected error writing keepalive characters"))
