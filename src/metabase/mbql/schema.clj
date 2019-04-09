@@ -656,7 +656,7 @@
           :question
           :xlsx-download))
 
-;; TODO - this schema is somewhat misleading because if you use a function like `qp/process-query-and-save-with-max!`
+;; TODO - this schema is somewhat misleading because if you use a function like `qp/process-query-and-save-with-max-results-constraints!`
 ;; some of these keys (e.g. `:context`) are in fact required
 (def Info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query

@@ -47,7 +47,7 @@
   (let [source-card-id (query->source-card-id query)
         options        {:executed-by api/*current-user-id*, :context :ad-hoc,
                         :card-id     source-card-id,        :nested? (boolean source-card-id)}]
-    (qp.async/process-query-and-save-with-max! query options)))
+    (qp.async/process-query-and-save-with-max-results-constraints! query options)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
