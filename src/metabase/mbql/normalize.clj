@@ -367,6 +367,9 @@
     [(ag-type :guard #{:share :count-where}) pred]
     [ag-type (canonicalize-filter pred)]
 
+    [:sum-where field pred]
+    [:sum-where (wrap-implicit-field-id field) (canonicalize-filter pred)]
+
     ;; something with an arg like [:sum [:field-id 41]]
     [ag-type field]
     [ag-type (wrap-implicit-field-id field)]))

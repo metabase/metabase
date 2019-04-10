@@ -407,6 +407,7 @@
 (defclause ^{:requires-features #{:basic-aggregations}} sum,         field-or-expression FieldOrExpressionDef)
 (defclause ^{:requires-features #{:basic-aggregations}} min,         field-or-expression FieldOrExpressionDef)
 (defclause ^{:requires-features #{:basic-aggregations}} max,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum-where,   field-or-expression FieldOrExpressionDef, pred Filter)
 (defclause ^{:requires-features #{:basic-aggregations}} count-where, pred Filter)
 (defclause ^{:requires-features #{:basic-aggregations}} share,       pred Filter)
 
@@ -442,7 +443,7 @@
 ;; ag:/ isn't a valid token
 
 (def ^:private UnnamedAggregation
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where))
+  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where sum-where))
 
 ;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
 ;; a `:named`
