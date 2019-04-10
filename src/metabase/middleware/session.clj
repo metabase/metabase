@@ -32,7 +32,7 @@
 (def ^:private ^String metabase-session-header        "x-metabase-session")
 
 (defn- clear-cookie [response cookie-name]
-  (resp/set-cookie response cookie-name nil {:expires (DateTime. 0)}))
+  (resp/set-cookie response cookie-name nil {:expires (DateTime. 0), :path "/"}))
 
 (defn- wrap-body-if-needed
   "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
@@ -77,13 +77,14 @@
   (-> response
       wrap-body-if-needed
       (clear-cookie metabase-legacy-session-cookie)
-      ;; See also https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
+      ;; See also https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie and `ring.middleware.cookies`
       (resp/set-cookie
        metabase-session-cookie
        (str session-id)
        (merge
         {:same-site :lax
          :http-only true
+         :path      "/"
          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
          :max-age   (* 60 (config/config-int :max-session-age))}
         ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
