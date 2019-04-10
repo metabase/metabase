@@ -584,10 +584,13 @@ cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.dashboard = dashboard => cleanup.fn(() => deleteDashboard(dashboard));
 cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
+export const deleteDashboard = dashboard =>
+  DashboardApi.delete({ dashId: getId(dashboard) });
 export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>

@@ -140,7 +140,7 @@
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
-                      (log/error e (trs "Error cancelling query with ID {0}" id))))
+                      (log/error e (trs "Error canceling query with ID {0}" id))))
                   (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
                 ;; Propogate the error so that any finalizers can still run
                 (throw e)))))))))

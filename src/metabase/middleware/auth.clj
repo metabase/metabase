@@ -28,7 +28,7 @@
 
 
 (defn enforce-api-key
-  "Middleware that enforces validation of the client via API Key, cancelling the request processing if the check fails.
+  "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
 
   Validation is handled by first checking for the presence of the `:metabase-api-key` on the request.  If the api key
   is available then we validate it by checking it against the configured `:mb-api-key` value set in our global config.

@@ -41,6 +41,14 @@ const Collections = createEntity({
     delete: null,
   },
 
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection =>
+      collection &&
+      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
+    getIcon: collection => "all",
+  },
+
   selectors: {
     getExpandedCollectionsById: createSelector(
       [
@@ -72,14 +80,6 @@ const Collections = createEntity({
         return null;
       },
     ),
-  },
-
-  objectSelectors: {
-    getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "all",
   },
 
   form: {
@@ -118,7 +118,7 @@ const Collections = createEntity({
     ],
   },
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },

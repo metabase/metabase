@@ -11,8 +11,8 @@
   like.
 
   Returns a channel that will send a single message when such early-closing cancelation occurs. You can listen for
-  this message to implement special cancelation behavior, such as canceling async jobs. This channel automatically
-  closes when either `in-chan` or `out-chan` closes."
+  this message to implement special cancelation/close behavior, such as canceling async jobs. This channel
+  automatically closes when either `in-chan` or `out-chan` closes."
   [in-chan :- ManyToManyChannel, out-chan :- ManyToManyChannel]
   (let [canceled-chan (a/chan 1)]
     ;; fire off a block that will wait for either in-chan to produce a result or out-chan to be closed

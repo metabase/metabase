@@ -20,7 +20,7 @@ const EntityCopyModal = ({
         ...dissoc(entityObject, "id"),
         name: entityObject.name + " - " + t`Duplicate`,
       }}
-      create={copy}
+      onSubmit={copy}
       onClose={onClose}
       onSaved={onSaved}
       submitTitle={t`Duplicate`}
