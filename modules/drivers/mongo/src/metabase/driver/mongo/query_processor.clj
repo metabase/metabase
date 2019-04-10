@@ -408,7 +408,7 @@
                      {$sum {$cond {:if   (parse-cond pred)
                                    :then (->rvalue arg)
                                    :else 0}}})
-      :count-where (recur [:sum-where 1 arg]))))
+      :count-where (recur [:sum-where [:value 1] arg]))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)

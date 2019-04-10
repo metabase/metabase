@@ -10,22 +10,24 @@
             [toucan.util.test :as tt]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0M
+  179.0
   (->> {:aggregation [[:sum-where [:field-id (data/id :venues :price)] [:< [:field-id (data/id :venues :price)] 4]]]}
        (data/run-mbql-query venues)
        rows
-       ffirst))
+       ffirst
+       double))
 
 ;; Test normalization
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0M
+  179.0
   (->> {:aggregation [["sum-where" ["field-id" (data/id :venues :price)] ["<" ["field-id" (data/id :venues :price)] 4]]]}
        (data/run-mbql-query venues)
        rows
-       ffirst))
+       ffirst
+       double))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  34.0M
+  34.0
   (->> {:aggregation [[:sum-where
                        [:field-id (data/id :venues :price)]
                        [:and [:< [:field-id (data/id :venues :price)] 4]
@@ -33,7 +35,8 @@
                          [:ends-with [:field-id (data/id :venues :name)] "t"]]]]]}
        (data/run-mbql-query venues)
        rows
-       ffirst))
+       ffirst
+       double))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   nil
@@ -55,14 +58,15 @@
        (tu/round-all-decimals 2)
        rows
        (map (fn [[k v]]
-              [(long k) v]))))
+              [(long k) (double v)]))))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
   90.5M
   (->> {:aggregation [[:+ [:/ [:sum-where [:field-id (data/id :venues :price)] [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
        (data/run-mbql-query venues)
        rows
-       ffirst))
+       ffirst
+       double))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   179.0M
@@ -72,7 +76,8 @@
     (->> {:aggregation [[:sum-where [:field-id (data/id :venues :price)] [:segment segment-id]]]}
          (data/run-mbql-query venues)
          rows
-         ffirst)))
+         ffirst
+         double)))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   179.0M
@@ -82,4 +87,5 @@
     (->> {:aggregation [[:metric metric-id]]}
          (data/run-mbql-query venues)
          rows
-         ffirst)))
+         ffirst
+         double)))
