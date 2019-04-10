@@ -77,13 +77,15 @@
   (-> response
       wrap-body-if-needed
       (clear-cookie metabase-legacy-session-cookie)
+      ;; See also https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie
       (resp/set-cookie
        metabase-session-cookie
        (str session-id)
        (merge
         {:same-site :lax
          :http-only true
-         :max-age   (config/config-int :max-session-age)}
+         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+         :max-age   (* 60 (config/config-int :max-session-age))}
         ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
         ;; add `Secure` attribute so the cookie is only sent over HTTPS.
         (when (https-request? request)
