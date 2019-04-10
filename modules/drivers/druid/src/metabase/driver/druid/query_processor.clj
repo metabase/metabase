@@ -480,7 +480,7 @@
 
 (defn- ag:sumWhere
   ([field pred output-name] (ag:filtered (parse-filter pred)
-                                         (ag:sum field output-name))))
+                                         (ag:doubleSum field output-name))))
 
 (defn- create-aggregation-clause
   [output-name ag-type ag-field args]
