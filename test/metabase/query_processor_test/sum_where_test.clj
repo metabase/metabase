@@ -61,7 +61,7 @@
               [(long k) (double v)]))))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
-  90.5M
+  90.5
   (->> {:aggregation [[:+ [:/ [:sum-where [:field-id (data/id :venues :price)] [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
        (data/run-mbql-query venues)
        rows
@@ -69,7 +69,7 @@
        double))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0M
+  179.0
   (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
                                              :definition {:source-table (data/id :venues)
                                                           :filter       [:< [:field-id (data/id :venues :price)] 4]}}]]
@@ -80,7 +80,7 @@
          double)))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0M
+  179.0
   (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
                                            :definition {:source-table (data/id :venues)
                                                         :aggregation  [:sum-where [:field-id (data/id :venues :price)] [:< [:field-id (data/id :venues :price)] 4]]}}]]
