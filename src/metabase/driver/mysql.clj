@@ -280,10 +280,7 @@
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true
-   ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer versions of MySQL,
-   ;; but we still want to test that we can handle it correctly for older ones
-   :sessionVariables     "sql_mode='ALLOW_INVALID_DATES'"})
+   :useCompression       true})
 
 (defmethod sql-jdbc.conn/connection-details->spec :mysql [_ {ssl? :ssl, :keys [additional-options], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked

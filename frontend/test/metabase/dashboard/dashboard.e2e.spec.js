@@ -1,8 +1,12 @@
 import "__support__/mocks";
+// requried to get dashboard to render
+jest.mock("metabase/components/ExplicitSize");
+
 import {
   BROWSER_HISTORY_PUSH,
   createTestStore,
   useSharedAdminLogin,
+  cleanup,
 } from "__support__/e2e_tests";
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
@@ -19,7 +23,12 @@ import {
   SET_EDITING_DASHBOARD,
   SET_EDITING_PARAMETER_ID,
   FETCH_REVISIONS,
+  FETCH_CARD_DATA,
 } from "metabase/dashboard/dashboard";
+
+import Question from "metabase/entities/questions";
+import Search from "metabase/entities/search";
+
 import EditBar from "metabase/components/EditBar";
 
 import { delay } from "metabase/lib/promise";
@@ -86,9 +95,29 @@ PublicApi.dashboard = async () => {
 };
 
 describe("Dashboard", () => {
+  let question;
+
   beforeAll(async () => {
     useSharedAdminLogin();
+
+    question = await Question.api.create({
+      name: "Example Question",
+      display: "scalar",
+      visualization_settings: {},
+      dataset_query: {
+        type: "query",
+        database: 1,
+        query: {
+          "source-table": 1,
+          aggregation: [["count"]],
+        },
+      },
+    });
+
+    cleanup.question(question);
   });
+
+  afterAll(cleanup);
 
   describe("redux actions", () => {
     describe("fetchDashboard(...)", () => {
@@ -134,6 +163,7 @@ describe("Dashboard", () => {
 
       // Create a dashboard programmatically
       const dashboard = await DashboardApi.create({ name, description });
+      cleanup.dashboard(dashboard);
       dashboardId = dashboard.id;
 
       const store = await createTestStore();
@@ -271,13 +301,59 @@ describe("Dashboard", () => {
       expect(store.getPath()).toBe(`/dashboard/${dashboardId}`);
     });
 
-    afterAll(async () => {
-      if (dashboardId) {
-        await DashboardApi.update({
-          id: dashboardId,
-          archived: true,
-        });
-      }
+    it("lets you add a question", async () => {
+      const store = await createTestStore();
+      store.pushPath(Urls.dashboard(dashboardId));
+      const app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".DashCard")).toHaveLength(0);
+
+      click(app.find(".Dashboard .Icon.Icon-add"));
+
+      await store.waitForActions([Search.actionTypes.FETCH_LIST]);
+
+      expect(question.name).toBe("Example Question");
+      await delay(100);
+
+      click(app.find(`h4[children=\"${question.name}\"]`));
+
+      await store.waitForActions([FETCH_CARD_DATA]);
+      expect(app.find(".DashCard")).toHaveLength(1);
+
+      clickButton(app.find(EditBar).find(".Button--primary.Button"));
+      await store.waitForActions([SAVE_DASHBOARD_AND_CARDS, FETCH_DASHBOARD]);
+    });
+
+    it("should have added card", async () => {
+      const store = await createTestStore();
+      store.pushPath(Urls.dashboard(dashboardId));
+      const app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".DashCard")).toHaveLength(1);
+    });
+
+    it("lets you duplicate a dashboard", async () => {
+      const store = await createTestStore();
+      store.pushPath(Urls.dashboard(dashboardId));
+      const app = mount(store.getAppContainer());
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".DashCard")).toHaveLength(1);
+
+      // click copy button
+      click(app.find(".Icon.Icon-clone"));
+      // click duplicate button
+      clickButton(app.find('.Button [children="Duplicate"]'));
+      await delay(100);
+
+      await store.waitForActions([BROWSER_HISTORY_PUSH]);
+      // NOTE: assumes incrementing dashboardId
+      expect(store.getPath()).toBe(`/dashboard/${dashboardId + 1}`);
+
+      await store.waitForActions([FETCH_DASHBOARD]);
+      expect(app.find(".DashCard")).toHaveLength(1);
     });
   });
 });

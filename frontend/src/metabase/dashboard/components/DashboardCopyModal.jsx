@@ -38,12 +38,12 @@ class DashboardCopyModal extends React.Component {
       <EntityCopyModal
         entityType="dashboards"
         entityObject={dashboard}
-        copy={async values => {
-          return await copyDashboard(
+        copy={object =>
+          copyDashboard(
             { id: this.props.params.dashboardId },
-            dissoc(values, "id"),
-          );
-        }}
+            dissoc(object, "id"),
+          )
+        }
         onClose={onClose}
         onSaved={dashboard => onReplaceLocation(Urls.dashboard(dashboard.id))}
         {...props}
