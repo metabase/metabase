@@ -202,13 +202,13 @@
 
 ;; count-where
 (expect-with-driver :druid
-  [[17.0]]
+  [[951]]
   (druid-query-returning-rows
    {:aggregation [[:count-where [:< $venue_price 4]]]}))
 
 ;; sum-where
 (expect-with-driver :druid
-  [[179.0]]
+  [[1796.0]]
   (druid-query-returning-rows
    {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))
 
