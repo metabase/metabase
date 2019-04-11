@@ -6,7 +6,11 @@
   The most appropriate way to initialize tasks in any `metabase.task.*` namespace is to implement the `task-init`
   function which accepts zero arguments. This function is dynamically resolved and called exactly once when the
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
-  task to the scheduler as usual via `schedule-task!`."
+  task to the scheduler as usual via `schedule-task!`.
+
+  ## Quartz JavaDoc
+
+  Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -18,7 +22,7 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [org.quartz JobDetail JobKey Scheduler Trigger TriggerKey]))
+  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -202,7 +206,12 @@
    :durable?                           (.isDurable job-detail)
    :requests-recovery?                 (.requestsRecovery job-detail)})
 
-(defn- trigger->info [^Trigger trigger]
+(defmulti ^:private trigger->info
+  {:arglists '([trigger])}
+  class)
+
+(defmethod trigger->info Trigger
+  [^Trigger trigger]
   {:description        (.getDescription trigger)
    :end-time           (.getEndTime trigger)
    :final-fire-time    (.getFinalFireTime trigger)
@@ -213,6 +222,19 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)})
+
+(defmethod trigger->info CronTrigger
+  [^CronTrigger trigger]
+  (merge
+   ((get-method trigger->info Trigger) trigger)
+   {:misfire-instruction
+    ;; not 100% sure why `case` doesn't work here...
+    (condp = (.getMisfireInstruction trigger)
+      CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY "IGNORE_MISFIRE_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_SMART_POLICY          "SMART_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_FIRE_ONCE_NOW         "FIRE_ONCE_NOW"
+      CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING            "DO_NOTHING"
+      (format "UNKNOWN: %d" (.getMisfireInstruction trigger)))}))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging
