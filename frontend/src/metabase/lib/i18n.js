@@ -26,7 +26,7 @@ export function setLocalization(translationsObject) {
 }
 
 // we delete msgid property since it's redundant, but have to add it back in to
-// make c-3po happy
+// make ttag happy
 function addMsgIds(translationsObject) {
   const msgs = translationsObject.translations[""];
   for (const msgid in msgs) {
