@@ -459,7 +459,8 @@
 
 (defn- ag:filtered  [filtr aggregator] {:type :filtered, :filter filtr, :aggregator aggregator})
 
-(defn- ag:distinct [field output-name]
+(defn- ag:distinct
+  [field output-name]
   (if (isa? (:base-type field) :type/DruidHyperUnique)
     {:type      :hyperUnique
      :name      output-name
@@ -477,7 +478,12 @@
   ([pred output-name] (ag:filtered (parse-filter pred)
                                    (ag:count output-name))))
 
-(defn- create-aggregation-clause [output-name ag-type ag-field]
+(defn- ag:sumWhere
+  ([field pred output-name] (ag:filtered (parse-filter pred)
+                                         (ag:doubleSum field output-name))))
+
+(defn- create-aggregation-clause
+  [output-name ag-type ag-field args]
   (let [output-name-kwd (keyword output-name)]
     (match [ag-type ag-field]
       ;; For 'distinct values' queries (queries with a breakout by no aggregation) just aggregate by count, but name
@@ -498,6 +504,10 @@
                                                :fn     :/
                                                :fields [{:type :fieldAccess, :fieldName sum-name}
                                                         {:type :fieldAccess, :fieldName count-name}]}]}])
+
+      [:sum-where _]   (let [[pred] args]
+                         [[(or output-name-kwd :sum-where)]
+                          {:aggregations [(ag:sumWhere ag-field pred output-name-kwd)]}])
 
       [:count-where _] [[(or output-name-kwd :count-where)]
                         {:aggregations [(ag:countWhere ag-field output-name-kwd)]}]
@@ -524,12 +534,12 @@
 
 (defn- handle-aggregation [query-type ag-clause updated-query]
   (let [output-name        (annotate/aggregation-name ag-clause)
-        [ag-type ag-field] (mbql.u/match-one ag-clause
-                             [:named ag _] (recur ag)
-                             [_ _]         &match)]
+        [ag-type ag-field & args] (mbql.u/match-one ag-clause
+                                                    [:named ag _] (recur ag)
+                                                    [_ _ & _]     &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
-      (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field)]
+      (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
         (-> updated-query
             (update :projections #(vec (concat % projections)))
             (update :query #(merge-with concat % ag-clauses)))))))
