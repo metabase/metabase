@@ -123,10 +123,8 @@ export default class View extends React.Component {
               <ViewSubHeader {...this.props} />
 
               <div
-                ref="viz"
-                id="react_qb_viz"
                 className="flex-full flex z1"
-                style={{ transition: "opacity 0.25s ease-in-out" }}
+                style={{ "flexGrow": 1, transition: "opacity 0.25s ease-in-out" }}
               >
                 <QueryVisualization
                   {...this.props}

@@ -2,29 +2,17 @@
 
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t } from "c-3po";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import Tooltip from "metabase/components/Tooltip";
-import Icon from "metabase/components/Icon";
-import ShrinkableList from "metabase/components/ShrinkableList";
-
-import RunButtonWithTooltip from "./RunButtonWithTooltip";
-import VisualizationSettings from "./VisualizationSettings.jsx";
 
 import VisualizationError from "./VisualizationError.jsx";
 import VisualizationResult from "./VisualizationResult.jsx";
 
-import Warnings from "./Warnings.jsx";
-import QueryDownloadWidget from "./QueryDownloadWidget.jsx";
-import QuestionEmbedWidget from "../containers/QuestionEmbedWidget";
-
-import { formatNumber } from "metabase/lib/formatting";
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 import _ from "underscore";
-import moment from "moment";
 
 import Question from "metabase-lib/lib/Question";
 import type { Database } from "metabase/meta/types/Database";
@@ -89,116 +77,9 @@ export default class QueryVisualization extends Component {
     }
   }
 
-  isChartDisplay(display) {
-    return display !== "table" && display !== "scalar";
-  }
-
   runQuery = () => {
     this.props.runQuestionQuery({ ignoreCache: true });
   };
-
-  renderHeader() {
-    const {
-      question,
-      isObjectDetail,
-      isRunnable,
-      isRunning,
-      isResultDirty,
-      isAdmin,
-      result,
-      cancelQuery,
-    } = this.props;
-
-    const messages = [];
-    if (result && result.cached) {
-      messages.push({
-        icon: "clock",
-        message: <div>{t`Updated ${moment(result.updated_at).fromNow()}`}</div>,
-      });
-    }
-    if (
-      result &&
-      result.data &&
-      !isObjectDetail &&
-      question.display() === "table"
-    ) {
-      const countString = formatNumber(result.row_count);
-      const rowsString = ngettext(msgid`row`, `rows`, result.row_count);
-      messages.push({
-        icon: "table2",
-        message: (
-          // class name is included for the sake of making targeting the element in tests easier
-          <div className="ShownRowCount">
-            {result.data.rows_truncated != null
-              ? jt`Showing first ${(
-                  <strong>{countString}</strong>
-                )} ${rowsString}`
-              : jt`Showing ${<strong>{countString}</strong>} ${rowsString}`}
-          </div>
-        ),
-      });
-    }
-    return (
-      <div className="relative flex align-center flex-no-shrink mt2 mb1 px2 sm-py3">
-        <div className="z4 absolute left hide sm-show">
-          {!isObjectDetail && (
-            <VisualizationSettings ref="settings" {...this.props} />
-          )}
-        </div>
-        <div className="z3 sm-absolute left right">
-          <RunButtonWithTooltip
-            className="block ml-auto mr-auto"
-            result={result}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isDirty={isResultDirty}
-            onRun={this.runQuery}
-            onCancel={cancelQuery}
-          />
-        </div>
-        <div
-          className="z4 absolute right flex align-center justify-end"
-          style={{ lineHeight: 0 /* needed to align icons :-/ */ }}
-        >
-          <ShrinkableList
-            className="flex"
-            items={messages}
-            renderItem={item => (
-              <div className="flex-no-shrink flex align-center mx2 h5 text-medium">
-                <Icon className="mr1" name={item.icon} size={12} />
-                {item.message}
-              </div>
-            )}
-            renderItemSmall={item => (
-              <Tooltip tooltip={<div className="p1">{item.message}</div>}>
-                <Icon className="mx1" name={item.icon} size={16} />
-              </Tooltip>
-            )}
-          />
-          {!isObjectDetail && (
-            <Warnings
-              warnings={this.state.warnings}
-              className="mx1"
-              size={18}
-            />
-          )}
-          {QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
-            <QueryDownloadWidget
-              className="mx1 hide sm-show"
-              card={question.card()}
-              result={result}
-            />
-          )}
-          {QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
-            <QuestionEmbedWidget
-              className="mx1 hide sm-show"
-              card={question.card()}
-            />
-          )}
-        </div>
-      </div>
-    );
-  }
 
   render() {
     const {
@@ -254,7 +135,6 @@ export default class QueryVisualization extends Component {
 
     return (
       <div className={wrapperClasses}>
-        {!this.props.noHeader && this.renderHeader()}
         {isRunning && (
           <div className="Loading spread flex flex-column layout-centered text-brand z2">
             <LoadingSpinner />

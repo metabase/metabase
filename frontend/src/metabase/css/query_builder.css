@@ -668,7 +668,7 @@
 }
 
 /* need to do this ugliness to override the locally scoped font size from Scalar.css */
-#react_qb_viz .ScalarValue {
+.QueryBuilder .ScalarValue {
   font-size: 5em;
 }
 
