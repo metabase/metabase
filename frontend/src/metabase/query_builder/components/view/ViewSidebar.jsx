@@ -15,13 +15,22 @@ const ViewSideBar = ({ left, right, width = 420, isOpen, children }) => (
   >
     {motionStyle => (
       <div
-        className={cx("bg-light relative", {
+        className={cx("bg-light relative overflow-x-hidden", {
           "border-right": left,
           "border-left": right,
         })}
         style={motionStyle}
       >
-        <div className="spread scroll-y">{children}</div>
+        <div
+          className="absolute top bottom scroll-y"
+          style={{
+            width: width,
+            right: left ? 0 : undefined,
+            left: right ? 0 : undefined
+          }}
+        >
+          {children}
+        </div>
       </div>
     )}
   </Motion>
