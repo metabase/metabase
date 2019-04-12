@@ -98,7 +98,9 @@ export default class View extends React.Component {
           <ViewTitleHeader {...this.props} className="flex-no-shrink" />
 
           <div className="flex flex-full">
-            {leftSideBar && <ViewSidebar left>{leftSideBar}</ViewSidebar>}
+            <ViewSidebar left isOpen={!!leftSideBar}>
+              {leftSideBar}
+            </ViewSidebar>
 
             <div className="flex-full flex flex-column">
               {query instanceof NativeQuery && (
@@ -167,7 +169,9 @@ export default class View extends React.Component {
                 )}
             </div>
 
-            {rightSideBar && <ViewSidebar right>{rightSideBar}</ViewSidebar>}
+            <ViewSidebar right isOpen={!!rightSideBar}>
+              {rightSideBar}
+            </ViewSidebar>
           </div>
 
           <ViewFooter {...this.props} className="flex-no-shrink" />
