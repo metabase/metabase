@@ -225,10 +225,15 @@ export const getRawSeries = createSelector(
   ],
   (question, results, isObjectDetail, lastRunDatasetQuery, uiControls) => {
     let display = question && question.display();
+    let settings = question && question.settings();
     if (isObjectDetail) {
       display = "object";
     } else if (uiControls.isShowingTable && display !== "scalar") {
       display = "table";
+      settings = {
+        ...settings,
+        "table.pivot": false
+      };
     }
 
     // we want to provide the visualization with a card containing the latest
@@ -240,6 +245,7 @@ export const getRawSeries = createSelector(
         card: {
           ...question.card(),
           display: display,
+          visualization_settings: settings,
           dataset_query: lastRunDatasetQuery,
         },
         data: results[index] && results[index].data,
