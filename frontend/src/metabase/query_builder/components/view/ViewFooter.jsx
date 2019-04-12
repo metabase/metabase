@@ -110,12 +110,18 @@ const VizSettingsButton = ({ className, selected, onClick }) => (
   />
 );
 
-const VizTableToggle = ({ className, isShowingTable, onShowTable }) => (
-  <IconToggle
-    icons={["table", "lineandbar"]}
-    value={isShowingTable ? "table" : "lineandbar"}
-    onChange={value => onShowTable(value === "table")}
-  />
+const VizTableToggle = ({ isShowingTable, onShowTable }) => (
+  // wrap in a span since we want to be able to click anywhere to toggle
+  <span
+    className="cursor-pointer"
+    onClick={() => onShowTable(!isShowingTable)}
+  >
+    <IconToggle
+      icons={["table", "lineandbar"]}
+      value={isShowingTable ? "table" : "lineandbar"}
+      onChange={value => onShowTable(value === "table")}
+    />
+  </span>
 );
 
 // TODO: move to it's own file
