@@ -7,7 +7,10 @@ import Icon from "metabase/components/Icon";
 
 import ViewSection from "./ViewSection";
 
-import { getVisualizationRaw } from "metabase/visualizations";
+import {
+  getVisualizationRaw,
+  getIconForVisualizationType,
+} from "metabase/visualizations";
 
 const ViewFooter = ({
   question,
@@ -54,6 +57,7 @@ const ViewFooter = ({
       <div className="ml-auto flex align-center">
         {question.display() !== "scalar" && (
           <VizTableToggle
+            question={question}
             isShowingTable={isShowingTable || question.display() === "table"}
             onShowTable={isShowingTable =>
               question.display() === "table" && !isShowingTable
@@ -110,19 +114,25 @@ const VizSettingsButton = ({ className, selected, onClick }) => (
   />
 );
 
-const VizTableToggle = ({ isShowingTable, onShowTable }) => (
-  // wrap in a span since we want to be able to click anywhere to toggle
-  <span
-    className="cursor-pointer"
-    onClick={() => onShowTable(!isShowingTable)}
-  >
-    <IconToggle
-      icons={["table", "lineandbar"]}
-      value={isShowingTable ? "table" : "lineandbar"}
-      onChange={value => onShowTable(value === "table")}
-    />
-  </span>
-);
+const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
+  let vizIcon = getIconForVisualizationType(question.display());
+  if (!vizIcon || vizIcon === "table") {
+    vizIcon = "lineandbar";
+  }
+  return (
+    // wrap in a span since we want to be able to click anywhere to toggle
+    <span
+      className="cursor-pointer"
+      onClick={() => onShowTable(!isShowingTable)}
+    >
+      <IconToggle
+        icons={["table", vizIcon]}
+        value={isShowingTable ? "table" : vizIcon}
+        onChange={value => onShowTable(value === "table")}
+      />
+    </span>
+  );
+};
 
 // TODO: move to it's own file
 const IconToggle = ({ className, icons, value, onChange }) => (

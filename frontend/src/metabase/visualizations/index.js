@@ -85,6 +85,10 @@ export function getVisualizationTransformed(series: Series) {
   return { series, CardVisualization };
 }
 
+export function getIconForVisualizationType(display) {
+  return visualizations.get(display).iconName;
+}
+
 export const extractRemappings = series => {
   const se = series.map(s => ({
     ...s,
