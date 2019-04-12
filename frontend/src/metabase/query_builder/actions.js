@@ -576,7 +576,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(
         settings,
         getFirstQueryResult(getState()),
       );
-      dispatch(updateUrl(updatedCard, { dirty: true }));
+      dispatch(updateUrl(updatedCard, { dirty: true, replaceState: true }));
       return updatedCard;
     };
   },
