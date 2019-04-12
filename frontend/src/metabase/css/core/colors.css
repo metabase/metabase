@@ -26,7 +26,7 @@
   --color-bg-light: #f9fbfc;
   --color-bg-white: #ffffff;
   --color-shadow: rgba(0, 0, 0, 0.08);
-  --color-border: #F0F0F0;
+  --color-border: #f0f0f0;
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   --color-saturated-blue: #2d86d4;

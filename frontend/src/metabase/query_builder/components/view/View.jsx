@@ -124,7 +124,7 @@ export default class View extends React.Component {
 
               <div
                 className="flex-full flex z1"
-                style={{ "flexGrow": 1, transition: "opacity 0.25s ease-in-out" }}
+                style={{ flexGrow: 1, transition: "opacity 0.25s ease-in-out" }}
               >
                 <QueryVisualization
                   {...this.props}
@@ -136,34 +136,35 @@ export default class View extends React.Component {
               {ModeFooter && (
                 <ModeFooter {...this.props} className="flex-no-shrink" />
               )}
-              {query instanceof StructuredQuery && question.query().breakouts().length > 0 && (
-                <div className="flex py2">
-                  <div className="ml-auto mr-auto">
-                    <PopoverWithTrigger
-                      triggerElement={
-                        <Button medium>
-                          <BreakoutName
-                            breakout={query.breakouts()[0]}
-                            query={query}
-                          />
-                        </Button>
-                      }
-                    >
-                      <BreakoutPopover
-                        query={query}
-                        breakout={query.breakouts()[0]}
-                        onChangeBreakout={newBreakout => {
-                          query
-                            .breakouts()[0]
-                            .replace(newBreakout)
-                            .update();
-                          this.props.runQuestionQuery();
-                        }}
-                      />
-                    </PopoverWithTrigger>
+              {query instanceof StructuredQuery &&
+                question.query().breakouts().length > 0 && (
+                  <div className="flex py2">
+                    <div className="ml-auto mr-auto">
+                      <PopoverWithTrigger
+                        triggerElement={
+                          <Button medium>
+                            <BreakoutName
+                              breakout={query.breakouts()[0]}
+                              query={query}
+                            />
+                          </Button>
+                        }
+                      >
+                        <BreakoutPopover
+                          query={query}
+                          breakout={query.breakouts()[0]}
+                          onChangeBreakout={newBreakout => {
+                            query
+                              .breakouts()[0]
+                              .replace(newBreakout)
+                              .update();
+                            this.props.runQuestionQuery();
+                          }}
+                        />
+                      </PopoverWithTrigger>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
 
             {rightSideBar && <ViewSidebar right>{rightSideBar}</ViewSidebar>}

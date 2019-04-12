@@ -232,7 +232,7 @@ export const getRawSeries = createSelector(
       display = "table";
       settings = {
         ...settings,
-        "table.pivot": false
+        "table.pivot": false,
       };
     }
 

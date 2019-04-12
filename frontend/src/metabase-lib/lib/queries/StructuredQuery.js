@@ -269,13 +269,13 @@ export default class StructuredQuery extends AtomicQuery {
         db: sourceQuery.database(),
         fields: sourceQuery.columns().map(
           (column, index) =>
-             new Field({
+            new Field({
               ...column,
               id: ["field-literal", column.name, column.base_type],
               source: "fields",
               // HACK: need to thread the query through to this fake Field
-              query: this
-            })
+              query: this,
+            }),
         ),
         segments: [],
         metrics: [],
@@ -601,9 +601,7 @@ export default class StructuredQuery extends AtomicQuery {
       return this.fieldOptions(field => !usedFields.has(field.id));
     } else if (this.hasValidBreakout()) {
       for (const breakout of this.breakouts()) {
-        sortOptions.dimensions.push(
-          this.parseFieldReference(breakout),
-        );
+        sortOptions.dimensions.push(this.parseFieldReference(breakout));
         sortOptions.count++;
       }
       for (const [index] of this.aggregations().entries()) {
@@ -765,15 +763,18 @@ export default class StructuredQuery extends AtomicQuery {
   expressionDimensions(): Dimension[] {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
-        return new ExpressionDimension(null, [expressionName], this._metadata, this);
+        return new ExpressionDimension(
+          null,
+          [expressionName],
+          this._metadata,
+          this,
+        );
       },
     );
   }
 
   breakoutDimensions() {
-    return this.breakouts().map(breakout =>
-      this.parseFieldReference(breakout),
-    );
+    return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   }
 
   aggregationDimensions() {
