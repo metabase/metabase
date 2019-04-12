@@ -122,7 +122,7 @@
 
 (defn- insert-entity! [target-db-conn {:keys [table], :as entity} objs]
   ;; TODO - I don't think the print+flush is working as intended :/
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) (:name entity)))
+  (print (u/format-color 'blue "Transferring %d instances of %s..." (count objs) (:name entity)))
   (flush)
   ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the
   ;;    names of these before putting into the new DB
