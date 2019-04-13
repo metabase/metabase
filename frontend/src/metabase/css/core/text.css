@@ -170,6 +170,8 @@
 }
 
 .text-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
   word-wrap: anywhere;
 }
 
