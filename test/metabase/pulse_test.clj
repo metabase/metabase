@@ -2,12 +2,11 @@
   (:require [clojure
              [string :as str]
              [walk :as walk]]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email-test :as et]
-             [pulse :refer :all]
-             [query-processor :as qp]]
+             [pulse :refer :all]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
@@ -16,6 +15,7 @@
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -124,7 +124,7 @@
      (send-pulse! (retrieve-pulse pulse-id))
      (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))
 
-;; Validate pulse queries are limited by qp/default-query-constraints
+;; Validate pulse queries are limited by `default-query-constraints`
 (expect
   31 ;; Should return 30 results (the redef'd limit) plus the header row
   (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil})]
@@ -137,8 +137,8 @@
                   PulseChannelRecipient [_             {:user_id          (rasta-id)
                                                         :pulse_channel_id pc-id}]]
     (email-test-setup
-     (with-redefs [qp/default-query-constraints {:max-results           10000
-                                                 :max-results-bare-rows 30}]
+     (with-redefs [constraints/default-query-constraints {:max-results           10000
+                                                          :max-results-bare-rows 30}]
        (send-pulse! (retrieve-pulse pulse-id))
        ;; Slurp in the generated CSV and count the lines found in the file
        (-> @et/inbox

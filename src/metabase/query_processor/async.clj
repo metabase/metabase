@@ -19,7 +19,9 @@
              [semaphore-channel :as semaphore-channel]
              [util :as async.u]]
             [metabase.models.setting :refer [defsetting]]
-            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor
+             [interface :as qpi]
+             [util :as qputil]]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
@@ -77,13 +79,6 @@
   [query options]
   (do-async (:database query) qp/process-query-and-save-with-max-results-constraints! query options))
 
-(defn process-query-without-save!
-  "Async version of `metabase.query-processor/process-query-without-save!`. Runs query asynchronously, and returns a
-  `core.async` channel that can be used to fetch the results once the query finishes running. Closing the channel will
-  cancel the query."
-  [user query]
-  (do-async (:database query) qp/process-query-without-save! user query))
-
 
 ;;; ------------------------------------------------ Result Metadata -------------------------------------------------
 
@@ -103,13 +98,20 @@
     ;; set up a pipe to get the async QP results and pipe them thru to out-chan
     (async.u/single-value-pipe
      (binding [qpi/*disable-qp-logging* true]
-       (process-query-without-save!
-        api/*current-user-id*
+       (process-query
         ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
         ;; row in the results
-        (-> query
-            (assoc-in [:constrains :max-results] 1)
-            (assoc-in [:constrains :max-results-bare-rows] 1))))
+        (let [query (-> query
+                        (assoc-in [:constraints :max-results] 1)
+                        (assoc-in [:constraints :max-results-bare-rows] 1)
+                        (assoc-in [:info :executed-by] api/*current-user-id*))]
+          ;; need add the constraints above before calculating hash because those affect the hash
+          ;;
+          ;; (normally middleware takes care of calculating query hashes for 'userland' queries but this is not
+          ;; technically a userland query -- we don't want to save a QueryExecution -- so we need to add `executed-by`
+          ;; and `query-hash` ourselves so the remark gets added)
+          (assoc-in query [:info :query-hash] (qputil/query-hash query)))
+        ))
      out-chan)
     ;; return out-chan
     out-chan))

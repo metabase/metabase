@@ -621,17 +621,36 @@
   "Additional options that can be used to toggle middleware on or off."
   {;; should we skip adding results_metadata to query results after running the query? Used by
    ;; `metabase.query-processor.middleware.results-metadata`; default `false`
-   (s/optional-key :skip-results-metadata?) s/Bool
+   (s/optional-key :skip-results-metadata?)
+   s/Bool
+
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
-   (s/optional-key :format-rows?)           s/Bool
+   (s/optional-key :format-rows?)
+   s/Bool
+
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
    ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
    ;; pre-processed query without attempting to convert it to native.
-   (s/optional-key :disable-mbql->native?)  s/Bool
+   (s/optional-key :disable-mbql->native?)
+   s/Bool
+
+   ;; Userland queries are ones ran as a result of an API call, Pulse, MetaBot query, or the like. Special handling is
+   ;; done in the `process-userland-query` middleware for such queries -- results are returned in a slightly different
+   ;; format, and QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
+   (s/optional-key :userland-query?)
+   (s/maybe s/Bool)
+
+   ;; Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
+   ;; although the functions that ultimately power most API endpoints tend to set this to `true`. See
+   ;; `add-constraints` middleware for more details.
+   (s/optional-key :add-default-userland-constraints?)
+   (s/maybe s/Bool)
+
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
-   s/Keyword                                s/Any})
+   s/Keyword
+   s/Any})
 
 
 ;;; ------------------------------------------------------ Info ------------------------------------------------------
@@ -656,8 +675,8 @@
           :question
           :xlsx-download))
 
-;; TODO - this schema is somewhat misleading because if you use a function like `qp/process-query-and-save-with-max-results-constraints!`
-;; some of these keys (e.g. `:context`) are in fact required
+;; TODO - this schema is somewhat misleading because if you use a function like
+;; `qp/process-query-and-save-with-max-results-constraints!` some of these keys (e.g. `:context`) are in fact required
 (def Info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
   was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
@@ -670,13 +689,10 @@
    (s/optional-key :dashboard-id) (s/maybe su/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe su/IntGreaterThanZero)
    (s/optional-key :nested?)      (s/maybe s/Bool)
-   ;; `:hash` and `:query-type` get added automatically by `process-query-and-save-execution!`, so don't try passing
+   ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))
-   ;; TODO - this key is pointless since we can just look at `:type`; let's normalize it out and remove it entirely
-   ;; when we get a chance
-   (s/optional-key :query-type)   (s/enum "MBQL" "native")})
+   (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))})
 
 (def SourceQueryMetadata
   "Schema for the expected keys in metadata about source query columns if it is passed in to the query."

@@ -10,10 +10,10 @@
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [date :as du]
              [export :as ex]
@@ -21,7 +21,6 @@
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
-
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -164,7 +163,7 @@
   {:average (or
              (some (comp query/average-execution-time-ms qputil/query-hash)
                    [query
-                    (assoc query :constraints qp/default-query-constraints)])
+                    (assoc query :constraints constraints/default-query-constraints)])
              0)})
 
 
