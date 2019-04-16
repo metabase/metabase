@@ -1,16 +1,10 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+  (:require [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.models
-             [query :as query]
-             [query-execution :as query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
@@ -23,6 +17,7 @@
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [check-features :as check-features]
+             [constraints :as constraints]
              [cumulative-aggregations :as cumulative-ags]
              [desugar :as desugar]
              [dev :as dev]
@@ -36,6 +31,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [process-userland-query :as process-userland-query]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
@@ -47,12 +43,8 @@
              [store :as store]
              [validate :as validate]
              [wrap-value-literals :as wrap-value-literals]]
-            [metabase.query-processor.util :as qputil]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs tru]]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -103,7 +95,6 @@
       ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
       mbql-to-native/mbql->native
       annotate/result-rows-maps->vectors
-      ;; TODO - should we log the fully preprocessed query here?
       check-features/check-features
       wrap-value-literals/wrap-value-literals
       annotate/add-column-info
@@ -147,7 +138,9 @@
       log-query/log-results-metadata
       validate/validate-query
       normalize/normalize
-      catch-exceptions/catch-exceptions))
+      catch-exceptions/catch-exceptions
+      process-userland-query/process-userland-query
+      constraints/add-default-userland-constraints))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
@@ -233,176 +226,31 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            DATASET-QUERY PUBLIC API                                            |
+;;; |                                      Userland Queries (Public Interface)                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; The only difference between `process-query` and `process-query-and-save-execution!` (below) is that the
-;; latter records a `QueryExecution` (inserts a new row) recording some stats about this Query run including
-;; execution time and type of query ran
+;; The difference between `process-query` and the versions below is that the ones below are meant to power various
+;; things like API endpoints and pulses, while `process-query` is more of a low-level internal function.
 ;;
-;; `process-query-and-save-execution!` is the function used by various things like API endpoints and pulses;
-;; `process-query` is more of an internal function
+;; Many moons ago the two sets of functions had different QP pipelines; these days the functions below are simply
+;; convenience wrappers for `process-query` that include a few options to activate appropriate middleware for userland
+;; queries. This middleware does things like saving QueryExecutions and adding max results constraints.
 
-(defn- save-query-execution!
-  "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, :as query-execution}]
-  (u/prog1 query-execution
-    (query/save-query-and-update-average-execution-time! query (:hash query-execution) (:running_time query-execution))
-    (db/insert! QueryExecution (dissoc query-execution :json_query))))
-
-(defn- save-and-return-failed-query!
-  "Save QueryExecution state and construct a failed query response"
-  [query-execution, ^Throwable e]
-  ;; record our query execution and format response
-  (-> query-execution
-      (dissoc :start_time_millis)
-      (merge {:error        (.getMessage e)
-              :running_time (- (System/currentTimeMillis) (:start_time_millis query-execution))})
-      save-query-execution!
-      (dissoc :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
-      ;; this is just for the response for client
-      (assoc :status    :failed
-             :error     (.getMessage e)
-             :row_count 0
-             :data      {:rows    []
-                         :cols    []
-                         :columns []})
-      ;; include stacktrace and preprocessed/native stages of the query if available in the response which should make
-      ;; debugging queries a bit easier
-      (merge (some-> (ex-data e)
-                     (select-keys [:stacktrace :preprocessed :native])
-                     (m/dissoc-in [:preprocessed :info])))))
-
-(defn- save-and-return-successful-query!
-  "Save QueryExecution state and construct a completed (successful) query response"
-  [query-execution query-result]
-  (let [query-execution (-> (assoc query-execution
-                              :running_time (- (System/currentTimeMillis)
-                                               (:start_time_millis query-execution))
-                              :result_rows  (get query-result :row_count 0))
-                            (dissoc :start_time_millis))]
-    ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was
-    ;; actually ran)
-    (when-not (:cached query-result)
-      (save-query-execution! query-execution))
-    ;; ok, now return the results in the normal response format
-    (merge (dissoc query-execution :error :result_rows :hash :executor_id :native :card_id :dashboard_id :pulse_id)
-           query-result
-           {:status                 :completed
-            :average_execution_time (when (:cached query-result)
-                                      (query/average-execution-time-ms (:hash query-execution)))})))
-
-
-(defn- assert-query-status-successful
-  "Make sure QUERY-RESULT `:status` is something other than `nil`or `:failed`, or throw an Exception."
-  [query-result]
-  (when-not (contains? query-result :status)
-    (throw (ex-info (str (tru "Invalid response from database driver. No :status provided."))
-             query-result)))
-  (when (= :failed (:status query-result))
-    (if (= InterruptedException (:class query-result))
-      (log/info (trs "Query canceled"))
-      (log/warn (trs "Query failure")
-                (u/pprint-to-str 'red query-result)))
-    (throw (ex-info (str (get query-result :error (tru "General error")))
-             query-result))))
-
-(def ^:dynamic ^Boolean *allow-queries-with-no-executor-id*
-  "Should we allow running queries (via `dataset-query`) without specifying the `executed-by` User ID?  By default
-  this is `false`, but this constraint can be disabled for running queries not executed by a specific user
-  (e.g., public Cards)."
-  false)
-
-(defn- query-execution-info
-  "Return the info for the `QueryExecution` entry for this QUERY."
-  {:arglists '([query])}
-  [{{:keys [executed-by query-hash query-type context card-id dashboard-id pulse-id]} :info
-    database-id                                                                       :database
-    :as                                                                               query}]
-  {:pre [(instance? (Class/forName "[B") query-hash)
-         (string? query-type)]}
-  {:database_id       database-id
-   :executor_id       executed-by
-   :card_id           card-id
-   :dashboard_id      dashboard-id
-   :pulse_id          pulse-id
-   :context           context
-   :hash              (or query-hash (throw (Exception. (str (tru "Missing query hash!")))))
-   :native            (= query-type "native")
-   :json_query        (dissoc query :info)
-   :started_at        (du/new-sql-timestamp)
-   :running_time      0
-   :result_rows       0
-   :start_time_millis (System/currentTimeMillis)})
-
-(defn- run-and-save-query!
-  "Run QUERY and save appropriate `QueryExecution` info, and then return results (or an error message) in the usual
-  format."
-  [query]
-  (let [query-execution (query-execution-info query)]
-    (try
-      (let [result (process-query query)]
-        (assert-query-status-successful result)
-        (save-and-return-successful-query! query-execution result))
-      ;; canceled query
-      (catch Throwable e
-        (save-and-return-failed-query! query-execution e)))))
-
-(s/defn ^:private assoc-query-info [query, options :- mbql.s/Info]
-  (assoc query :info (assoc options
-                       :query-hash (qputil/query-hash query)
-                       :query-type (if (qputil/mbql-query? query) "MBQL" "native"))))
-
-;; TODO - couldn't saving the query execution be done by MIDDLEWARE?
 (s/defn process-query-and-save-execution!
-  "Process and run a json based dataset query and return results.
-
-  Takes 2 arguments:
-
-  1.  the json query as a map
-  2.  query execution options (and context information) specified as a map
-
-  Depending on the database specified in the query this function will delegate to a driver specific implementation.
-  For the purposes of tracking we record each call to this function as a QueryExecution in the database.
-
-  OPTIONS must conform to the `mbql.s/Info` schema; refer to that for more details."
+  "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
+  etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
+  DB."
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (run-and-save-query! (assoc-query-info query options)))
-
-(def ^:private ^:const max-results-bare-rows
-  "Maximum number of rows to return specifically on :rows type queries via the API."
-  2000)
-
-(def ^:private ^:const max-results
-  "General maximum number of rows to return from an API query."
-  10000)
-
-(def default-query-constraints
-  "Default map of constraints that we apply on dataset queries executed by the api."
-  {:max-results           max-results
-   :max-results-bare-rows max-results-bare-rows})
-
-(defn- add-default-constraints
-  "Add default values of `:max-results` and `:max-results-bare-rows` to `:constraints` map `m`."
-  [m]
-  (merge
-   default-query-constraints
-   ;; `:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not
-   ;; `:max-results-bare-rows` use the same value for both. Otherwise the default bare rows value could end up being
-   ;; higher than the custom `:max-rows` value, causing an error
-   (when-let [max-results (:max-results m)]
-     {:max-results-bare-rows max-results})
-   m))
+  (process-query
+    (-> query
+        (update :info merge options)
+        (assoc-in [:middleware :userland-query?] true))))
 
 (s/defn process-query-and-save-with-max-results-constraints!
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
   {:style/indent 1}
   [query, options :- mbql.s/Info]
-  (process-query-and-save-execution! (update query :constraints add-default-constraints) options))
-
-(s/defn process-query-without-save!
-  "Invokes `process-query` with info needed for the included remark."
-  [user query]
-  (process-query (assoc-query-info query {:executed-by user})))
+  (let [query (assoc-in query [:middleware :add-default-userland-constraints?] true)]
+    (process-query-and-save-execution! query options)))

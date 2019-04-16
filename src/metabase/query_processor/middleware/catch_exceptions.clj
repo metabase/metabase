@@ -32,29 +32,34 @@
   "Return a nice error message to explain the schema validation error."
   [error]
   (cond
-    (instance? NamedError error)      (let [nested-error (.error ^NamedError error)]
-                                        ;; recurse until we find the innermost nested named error, which is the reason
-                                        ;; we actually failed
-                                        (if (instance? NamedError nested-error)
-                                          (recur nested-error)
-                                          (or (when (map? nested-error)
-                                                (explain-schema-validation-error nested-error))
-                                              (.name ^NamedError error))))
-    (map? error)                      (first (for [e     (vals error)
-                                                   :when (or (instance? NamedError e)
-                                                             (instance? ValidationError e))
-                                                   :let  [explanation (explain-schema-validation-error e)]
-                                                   :when explanation]
-                                               explanation))
+    (instance? NamedError error)
+    (let [nested-error (.error ^NamedError error)]
+      ;; recurse until we find the innermost nested named error, which is the reason
+      ;; we actually failed
+      (if (instance? NamedError nested-error)
+        (recur nested-error)
+        (or (when (map? nested-error)
+              (explain-schema-validation-error nested-error))
+            (.name ^NamedError error))))
+
+    (map? error)
+    (first (for [e     (vals error)
+                 :when (or (instance? NamedError e)
+                           (instance? ValidationError e))
+                 :let  [explanation (explain-schema-validation-error e)]
+                 :when explanation]
+             explanation))
+
     ;; When an exception is thrown, a ValidationError comes back like
     ;;    (throws? ("foreign-keys is not supported by this driver." 10))
     ;; Extract the message if applicable
-    (instance? ValidationError error) (let [explanation (schema.utils/validation-error-explain error)]
-                                        (or (when (list? explanation)
-                                              (let [[reason [msg]] explanation]
-                                                (when (= reason 'throws?)
-                                                  msg)))
-                                            explanation))))
+    (instance? ValidationError error)
+    (let [explanation (schema.utils/validation-error-explain error)]
+      (or (when (list? explanation)
+            (let [[reason [msg]] explanation]
+              (when (= reason 'throws?)
+                msg)))
+          explanation))))
 
 (defn catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a normal format."

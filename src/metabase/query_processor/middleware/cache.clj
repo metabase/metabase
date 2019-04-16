@@ -22,6 +22,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util.date :as du]))
 
+;; TODO - Why not make this an option in the query itself? :confused:
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
   Setting this to `true` will run the query again and will still save the updated results."
@@ -104,7 +105,7 @@
     results))
 
 (defn- run-query-with-cache [qp {:keys [cache-ttl], :as query}]
-  ;; TODO - Query should already have a `info.hash`, shouldn't it?
+  ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash.
   (let [query-hash (qputil/query-hash query)]
     (or (cached-results query-hash cache-ttl)
         (run-query-and-save-results-if-successful! query-hash qp query))))
