@@ -118,6 +118,6 @@
   (if (get *permits* semaphore-chan)
     (do
       (log/debug (trs "Current thread already has a permit for {0}, will not wait to acquire another" semaphore-chan))
-      (async.u/do-on-separate-thread f))
+      (apply async.u/do-on-separate-thread f args))
     ;; otherwise wait for a permit
     (apply do-after-waiting-for-new-permit semaphore-chan f args)))
