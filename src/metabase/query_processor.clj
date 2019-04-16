@@ -135,7 +135,6 @@
       log-query/log-initial-query
       ;; TODO - bind `*query*` here ?
       cache/maybe-return-cached-results
-      log-query/log-results-metadata
       validate/validate-query
       normalize/normalize
       catch-exceptions/catch-exceptions
