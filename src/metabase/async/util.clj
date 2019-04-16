@@ -1,9 +1,33 @@
 (ns metabase.async.util
+  "Utility functions for core.async-based async logic."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.buffers.PromiseBuffer
+           clojure.core.async.impl.channels.ManyToManyChannel))
+
+(defn promise-chan?
+  "Is core.async `chan` a `promise-chan`?"
+  [chan]
+  (and (instance? ManyToManyChannel chan)
+       (instance? PromiseBuffer (.buf ^ManyToManyChannel chan))))
+
+(def PromiseChan
+  "Schema for a core.async promise channel."
+  (s/constrained ManyToManyChannel promise-chan? "promise chan"))
+
+(s/defn promise-canceled-chan :- PromiseChan
+  "Given a `promise-chan`, return a new channel that will receive a single message if `promise-chan` is closed before
+  a message is written to it (i.e. if an API request is canceled). Automatically closes after `promise-chan` receives
+  a message or is closed."
+  [promise-chan :- PromiseChan]
+  (let [canceled-chan (a/promise-chan)]
+    (a/go
+      (when (nil? (a/<! promise-chan))
+        (a/>! canceled-chan ::canceled))
+      (a/close! canceled-chan))
+    canceled-chan))
 
 (s/defn single-value-pipe :- ManyToManyChannel
   "Pipe that will forward a single message from `in-chan` to `out-chan`, closing both afterward. If `out-chan` is closed

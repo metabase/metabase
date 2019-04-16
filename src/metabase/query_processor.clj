@@ -11,6 +11,7 @@
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
+             [async :as async]
              [auto-bucket-datetimes :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
@@ -133,13 +134,20 @@
       fetch-source-query/fetch-source-query
       store/initialize-store
       log-query/log-initial-query
-      ;; TODO - bind `*query*` here ?
+      ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲
+      ;;
+      ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in
+      ;; async 4-arg style. Eventually the entire QP middleware stack will be rewritten in the async style. But not yet
+      ;;
+      ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
+      async/async->sync
       cache/maybe-return-cached-results
       validate/validate-query
       normalize/normalize
       catch-exceptions/catch-exceptions
       process-userland-query/process-userland-query
-      constraints/add-default-userland-constraints))
+      constraints/add-default-userland-constraints
+      async/async-setup))
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
