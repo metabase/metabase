@@ -2,7 +2,6 @@
   "Middleware for logging a query before it is processed.
    (Various other middleware functions log the query as well in different stages.)"
   (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]))
 
