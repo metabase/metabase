@@ -9,6 +9,9 @@ import api from "metabase/lib/api";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 
+import moment from "moment";
+moment.locale("tr");
+
 // we shouldn't redirect these URLs because we want to handle them differently
 const WHITELIST_FORBIDDEN_URLS = [
   // on dashboards, we show permission errors for individual cards we don't have access to

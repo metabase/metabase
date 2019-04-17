@@ -27,7 +27,7 @@
   width: 480px;
 } /* TODO - why is this one px? */
 .Modal.Modal--medium {
-  width: 65%;
+  width: 45%;
 }
 .Modal.Modal--wide {
   width: 85%;

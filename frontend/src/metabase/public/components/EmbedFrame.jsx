@@ -140,9 +140,7 @@ export default class EmbedFrame extends Component {
         </div>
         {footer && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
-            {!MetabaseSettings.hideEmbedBranding() && (
-              <LogoBadge dark={theme} />
-            )}
+            {!MetabaseSettings.hideEmbedBranding()}
             {actionButtons && (
               <div className="flex-align-right text-medium">
                 {actionButtons}
