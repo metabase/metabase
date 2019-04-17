@@ -410,7 +410,7 @@ function formatTimeWithFormats(value, timeFormat, options) {
   if (!m.isValid()) {
     return String(value);
   }
-  
+
   const format = [];
   if (timeFormat && options.time_enabled) {
     format.push(timeFormat);
@@ -483,15 +483,14 @@ export function formatTime(
   if (!m.isValid()) {
     return String(value);
   } else {
-
     options = {
       time_style: DEFAULT_TIME_STYLE,
       time_enabled: hasHour(unit) ? "minutes" : null,
       ...options,
     };
-  
+
     let timeFormat = options.time_format;
-  
+
     if (!timeFormat) {
       timeFormat = getTimeFormatFromStyle(
         // $FlowFixMe: time_style default set above
@@ -500,7 +499,7 @@ export function formatTime(
         options.time_enabled,
       );
     }
-  
+
     return formatTimeWithFormats(value, timeFormat, options);
     // return m.format("LT");
   }
