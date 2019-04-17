@@ -1,5 +1,5 @@
 import generatePassword from "password-generator";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 
 const LAYOUT_PROPS = [

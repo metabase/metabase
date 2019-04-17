@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AggregationPopover from "./AggregationPopover.jsx";
 import FieldName from "./FieldName.jsx";
 import Clearable from "./Clearable.jsx";

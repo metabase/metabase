@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ActivityItem from "./ActivityItem.jsx";

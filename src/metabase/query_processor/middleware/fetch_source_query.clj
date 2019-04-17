@@ -2,13 +2,14 @@
   "Middleware responsible for 'hydrating' the source query for queries that use another query as their source."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql
+             [normalize :as normalize]
+             [schema :as mbql.s]]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.mbql.normalize :as normalize]))
+            [toucan.db :as db]))
 
 (defn- trim-query
   "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a

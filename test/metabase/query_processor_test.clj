@@ -12,13 +12,15 @@
             [metabase.test.data
              [datasets :as datasets]
              [env :as tx.env]
-             [interface :as tx]]
-            [metabase.util.date :as du]))
+             [interface :as tx]]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
+;; TODO - now that we've added Google Analytics to this, `timeseries-drivers` doesn't really make sense anymore.
+;; Perhaps we should rename it to `abnormal-drivers`
+
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private timeseries-drivers #{:druid})
+(def ^:private timeseries-drivers #{:druid :googleanalytics})
 
 (def non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
@@ -65,8 +67,8 @@
 ;; TODO - this is only used in a single place, consider removing it
 (defmacro qp-expect-with-drivers
   {:style/indent 1}
-  [datasets data query-form]
-  `(datasets/expect-with-drivers ~datasets
+  [drivers data query-form]
+  `(datasets/expect-with-drivers ~drivers
      {:status    :completed
       :row_count ~(count (:rows data))
       :data      ~data}
@@ -346,13 +348,3 @@
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
   (driver/supports? driver :set-timezone))
-
-(defmacro with-h2-db-timezone
-  "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
-  involving a database, but does need to parse dates"
-  [& body]
-  `(du/with-effective-timezone {:engine   :h2
-                                :timezone "UTC"
-                                :name     "mock_db"
-                                :id       1}
-    ~@body))

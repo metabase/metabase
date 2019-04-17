@@ -11,9 +11,9 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterType } from "metabase/meta/types/Query";
+import type { Filter as FilterT } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
@@ -24,7 +24,7 @@ export type FilterRenderer = ({
 }) => React$Element<any>;
 
 type Props = {
-  filter: FilterType,
+  filter: FilterT,
   metadata: Metadata,
   maxDisplayValues?: number,
   children?: FilterRenderer,
@@ -75,7 +75,8 @@ export const OperatorFilter = ({
   let formattedValues;
   // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
-    formattedValues = [values.length + " selections"];
+    const n = values.length;
+    formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];
   } else if (dimension.field().isDate() && !dimension.field().isTime()) {
     formattedValues = generateTimeFilterValuesDescriptions(filter);
   } else {

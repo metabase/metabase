@@ -1,20 +1,21 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
   (:require [clojure.walk :as walk]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]
              [query-processor-test :as qpt]
              [sync :as sync]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [field :refer [Field]]
+             [field-values :refer [FieldValues]]
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :as table :refer [Table]]]
@@ -36,8 +37,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "table"))
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 (format "table/%d" (data/id :users))))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "table"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 (format "table/%d" (data/id :users))))
 
 
 ;; Helper Fns
@@ -736,3 +737,28 @@
     (let [response ((user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
       (map #(dimension-options-for-field response %)
            ["latitude" "longitude"]))))
+
+;; test POST /api/table/:id/discard_values
+(defn- discard-values [user expected-status-code]
+  (tt/with-temp* [Table       [table        {}]
+                  Field       [field        {:table_id (u/get-id table)}]
+                  FieldValues [field-values {:field_id (u/get-id field), :values ["A" "B" "C"]}]]
+    {:response ((user->client user) :post expected-status-code (format "table/%d/discard_values" (u/get-id table)))
+     :deleted? (not (db/exists? FieldValues :id (u/get-id field-values)))}))
+
+;; Non-admin toucans should not be allowed to discard values
+(expect
+  {:response "You don't have permissions to do that."
+   :deleted? false}
+  (discard-values :rasta 403))
+
+;; Admins should be able to successfuly delete them
+(expect
+  {:response {:status "success"}
+   :deleted? true}
+  (discard-values :crowberto 200))
+
+;; For tables that don't exist, we should return a 404
+(expect
+  "Not found."
+  ((user->client :crowberto) :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))

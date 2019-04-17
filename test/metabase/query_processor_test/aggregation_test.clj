@@ -8,8 +8,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; ---------------------------------------------- "COUNT" AGGREGATION -----------------------------------------------
 
@@ -332,11 +331,9 @@
 (expect
   (assoc (aggregate-col :sum (Field (data/id :venues :price)))
     :settings {:is_priceless false})
-  (tt/with-temp Field [copy-of-venues-price (-> (Field (data/id :venues :price))
-                                                (dissoc :id)
-                                                (assoc :settings {:is_priceless false}))]
+  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
     (let [results (data/run-mbql-query venues
-                    {:aggregation [[:sum [:field-id (u/get-id copy-of-venues-price)]]]})]
+                    {:aggregation [[:sum [:field-id $price]]]})]
       (or (-> results :data :cols first)
           results))))
 

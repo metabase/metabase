@@ -15,11 +15,13 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
   (:import java.sql.Time
-           java.util.UUID))
+           [java.util Date UUID]))
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
@@ -145,9 +147,17 @@
         (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
         :else                               (sql.qp/->honeysql driver value)))))
 
-(defmethod sql.qp/->honeysql [:postgres Time]
-  [_ time-value]
+(defmethod sql.qp/->honeysql [:postgres Time] [_ time-value]
   (hx/->time time-value))
+
+
+(defmethod unprepare/unprepare-value [:postgres Date] [_ value]
+  (format "'%s'::timestamp" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
+
+(defmethod unprepare/unprepare-value [:postgres UUID] [_ value]
+  (format "'%s'::uuid" value))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -228,13 +238,13 @@
     "inet" :type/IPAddress
     nil))
 
-(def ^:private ^:const ssl-params
+(def ^:private ssl-params
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
    :sslmode    "require"
    :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
 
-(def ^:private ^:const disable-ssl-params
+(def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
@@ -252,7 +262,6 @@
       (rename-keys {:dbname :db})
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
-
 
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres [_]
   "SET SESSION TIMEZONE TO %s;")

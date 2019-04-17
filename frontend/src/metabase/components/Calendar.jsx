@@ -5,13 +5,12 @@ import "./Calendar.css";
 
 import cx from "classnames";
 import moment from "moment";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
-
     this.state = {
       current: moment(props.initial || undefined),
     };

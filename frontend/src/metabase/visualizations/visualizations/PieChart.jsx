@@ -3,11 +3,14 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ChartTooltip from "../components/ChartTooltip.jsx";
 import ChartWithLegend from "../components/ChartWithLegend.jsx";
 
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
+import {
+  ChartSettingsError,
+  MinRowsError,
+} from "metabase/visualizations/lib/errors";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
@@ -49,6 +52,11 @@ export default class PieChart extends Component {
   }
 
   static checkRenderable([{ data: { cols, rows } }], settings) {
+    // This prevents showing "Which columns do you want to use" when
+    // the piechart is displayed with no results in the dashboard
+    if (rows.length < 1) {
+      throw new MinRowsError(1, 0);
+    }
     if (!settings["pie.dimension"] || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
         section: `Data`,

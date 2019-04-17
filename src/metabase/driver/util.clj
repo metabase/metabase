@@ -16,21 +16,27 @@
       5000))
 
 (defn can-connect-with-details?
-  "Check whether we can connect to a database with ENGINE and DETAILS-MAP and perform a basic query
-   such as `SELECT 1`. Specify optional param RETHROW-EXCEPTIONS if you want to handle any exceptions
-   thrown yourself (e.g., so you can pass the exception message along to the user).
+  "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
+  1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
+  can pass the exception message along to the user); otherwise defaults to returning `false` if a connection cannot be
+  established.
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
-  ^Boolean [driver details-map & [rethrow-exceptions]]
+  ^Boolean [driver details-map & [throw-exceptions]]
   {:pre [(keyword? driver) (map? details-map)]}
-  (try
-    (u/with-timeout can-connect-timeout-ms
-      (driver/can-connect? driver details-map))
-    (catch Throwable e
-      (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
-      (when rethrow-exceptions
-        (throw (Exception. (driver/humanize-connection-error-message driver (.getMessage e)))))
-      false)))
+  (if throw-exceptions
+    (try
+      (u/with-timeout can-connect-timeout-ms
+        (driver/can-connect? driver details-map))
+      ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
+      ;; first
+      (catch Throwable e
+        (throw (Exception. (driver/humanize-connection-error-message driver (.getMessage e)) e))))
+    (try
+      (can-connect-with-details? driver details-map :throw-exceptions)
+      (catch Throwable e
+        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        false))))
 
 
 (defn report-timezone-if-supported
@@ -78,7 +84,7 @@
     (try
       (#'driver/load-driver-namespace-if-needed driver)
       (catch Throwable e
-        (log/error "Error loading namespace:" (.getMessage e))))))
+        (log/error e (trs "Error loading namespace"))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -107,4 +113,4 @@
              ;; TODO - maybe we should rename `connection-properties` -> `connection-properties` on the FE as well?
              [driver {:details-fields (driver/connection-properties driver)
                       :driver-name    (driver/display-name driver)
-                      :features       (features driver)}])))
+                      #_:features       #_(features driver)}])))

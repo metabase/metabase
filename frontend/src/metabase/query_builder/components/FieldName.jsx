@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";
 
-import Dimension, { AggregationDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -37,25 +37,18 @@ export default class FieldName extends Component {
   render() {
     let { field, tableMetadata, query, className } = this.props;
 
+    if (!tableMetadata && query) {
+      tableMetadata = query.tableMetadata();
+    }
+
     let parts = [];
 
     if (field) {
-      const dimension = Dimension.parseMBQL(
-        field,
-        tableMetadata && tableMetadata.metadata,
-      );
+      const dimension = query
+        ? query.parseFieldReference(field)
+        : Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
       if (dimension) {
-        if (dimension instanceof AggregationDimension) {
-          // Aggregation dimension doesn't know about its relation to the current query
-          // so we have to infer the display name of aggregation here
-          parts = (
-            <span key="field">
-              {query.aggregations()[dimension.aggregationIndex()][0]}
-            </span>
-          );
-        } else {
-          parts = <span key="field">{dimension.render()}</span>;
-        }
+        parts = <span key="field">{dimension.render()}</span>;
       } else if (Query.isFieldLiteral(field)) {
         // TODO Atte Keinänen 6/23/17: Move nested queries logic to Dimension subclasses
         // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is

@@ -4,12 +4,11 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :refer [first-row format-rows-by non-timeseries-drivers rows]]]
+             [query-processor-test :as qp.test :refer [first-row format-rows-by non-timeseries-drivers rows]]
+             [util :as u]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.date :as du]))
 
@@ -234,13 +233,13 @@
                 "FROM \"PUBLIC\".\"VENUES\" "
                 "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
    :params nil}
-  (let [query (-> (data/mbql-query venues
-                    {:aggregation [[:count]]})
-                  (assoc :parameters [{:name   "price"
-                                       :type   :category
-                                       :target [:field-id (data/id :venues :price)]
-                                       :value  [3 4]}]))]
-    (-> query qp/process-query :data :native_form)))
+  (qp/query->native
+    (-> (data/mbql-query venues
+          {:aggregation [[:count]]})
+        (assoc :parameters [{:name   "price"
+                             :type   :category
+                             :target [:field-id (data/id :venues :price)]
+                             :value  [3 4]}]))))
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
@@ -258,19 +257,41 @@
             (du/->Timestamp #inst "2014-06-30")
             (du/->Timestamp #inst "2015-06-01")
             (du/->Timestamp #inst "2015-06-30")]}
-  (let [query (-> (data/mbql-query checkins
-                    {:aggregation [[:count]]})
-                  (assoc :parameters [{:name   "date"
-                                       :type   "date/month"
-                                       :target [:field-id (data/id :checkins :date)]
-                                       :value  ["2014-06" "2015-06"]}]))]
-    (-> query qp/process-query :data :native_form)))
+  (qp/query->native
+    (-> (data/mbql-query checkins
+          {:aggregation [[:count]]})
+        (assoc :parameters [{:name   "date"
+                             :type   "date/month"
+                             :target [:field-id (data/id :checkins :date)]
+                             :value  ["2014-06" "2015-06"]}]))))
 
 ;; make sure that "ID" type params get converted to numbers when appropriate
 (expect
   [:= [:field-id (data/id :venues :id)] 1]
-  (#'mbql-params/build-filter-clause {:type   :id
-                                      :target [:dimension [:field-id (data/id :venues :id)]]
-                                      :slug   "venue_id"
-                                      :value  "1"
-                                      :name   "Venue ID"}))
+  (#'mbql-params/build-filter-clause
+   {:type   :id
+    :target [:dimension [:field-id (data/id :venues :id)]]
+    :slug   "venue_id"
+    :value  "1"
+    :name   "Venue ID"}))
+
+;; Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)
+(datasets/expect-with-drivers (filter #(driver/supports? % :foreign-keys) params-test-drivers)
+  [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
+   [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
+   [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
+   [35 "Smoke City Market" 5 34.1661 -118.448 1]
+   [37 "bigmista's barbecue" 5 34.118 -118.26 2]
+   [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
+   [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
+  (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+    (qp.test/rows
+      (qp/process-query
+        (data/$ids venues
+          {:database   (data/id)
+           :type       :query
+           :query      {:source-table $$table
+                        :order-by     [[:asc $id]]}
+           :parameters [{:type   :id
+                         :target [:dimension [:fk-> $category_id $categories.name]]
+                         :value  ["BBQ"]}]})))))

@@ -9,7 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { isSameSeries } from "metabase/visualizations/lib/utils";
+import { performDefaultAction } from "metabase/visualizations/lib/action";
 
 import Utils from "metabase/lib/utils";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
@@ -79,6 +80,7 @@ type Props = {
   // for click actions
   metadata: Metadata,
   onChangeCardAndRun: OnChangeCardAndRun,
+  dispatch: Function,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
   replacementContent: Element<any>,
@@ -272,6 +274,15 @@ export default class Visualization extends Component {
       );
     }
 
+    if (
+      performDefaultAction(this.getClickActions(clicked), {
+        dispatch: this.props.dispatch,
+        onChangeCardAndRun: this.handleOnChangeCardAndRun,
+      })
+    ) {
+      return;
+    }
+
     // needs to be delayed so we don't clear it when switching from one drill through to another
     setTimeout(() => {
       this.setState({ clicked });
@@ -300,6 +311,7 @@ export default class Visualization extends Component {
   };
 
   onRenderError = error => {
+    console.error(error);
     this.setState({ error });
   };
 
@@ -488,7 +500,7 @@ export default class Visualization extends Component {
                   </div>
                 ) : (
                   <div>
-                    {t`This is usually pretty fast but seems to be taking awhile right now.`}
+                    {t`This is usually pretty fast but seems to be taking a while right now.`}
                   </div>
                 )}
               </div>

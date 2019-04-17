@@ -3,16 +3,15 @@
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
             [clojure
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [expectations :refer :all]
+            [expectations :as expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [task :as task]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -36,12 +35,34 @@
             [metabase.test.data :as data]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as test])
-  (:import java.util.TimeZone
-           org.apache.log4j.Logger
-           org.joda.time.DateTimeZone
+  (:import org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
+
+;; record type for testing that results match a Schema
+(defrecord SchemaExpectation [schema]
+  expectations/CustomPred
+  (expect-fn [_ actual]
+    (nil? (s/check schema actual)))
+  (expected-message [_ _ _ _]
+    (str "Result did not match schema:\n"
+         (u/pprint-to-str (s/explain schema))))
+  (actual-message [_ actual _ _]
+    (str "Was:\n"
+         (u/pprint-to-str actual)))
+  (message [_ actual _ _]
+    (u/pprint-to-str (s/check schema actual))))
+
+(defmacro expect-schema
+  "Like `expect`, but checks that results match a schema."
+  {:style/indent 0}
+  [expected actual]
+  `(expect
+     (SchemaExpectation. ~expected)
+     ~actual))
+
 
 ;;; ---------------------------------------------------- match-$ -----------------------------------------------------
 
@@ -111,8 +132,8 @@
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
                            :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
-                         #(s/ends-with? % "_id")
-                         #(s/ends-with? % "_at")))
+                         #(str/ends-with? % "_id")
+                         #(str/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -306,15 +327,21 @@
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (let [original-column->value (db/select-one (vec (cons model (keys column->temp-value)))
-                                 :id (u/get-id object-or-id))]
+  ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
+  ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
+  (let [model                    (db/resolve-model model)
+        [original-column->value] (db/query {:select (keys column->temp-value)
+                                            :from   [model]
+                                            :where  [:= :id (u/get-id object-or-id)]})]
     (try
       (db/update! model (u/get-id object-or-id)
         column->temp-value)
       (f)
       (finally
-        (db/update! model (u/get-id object-or-id)
-          original-column->value)))))
+        (db/execute!
+         {:update model
+          :set    original-column->value
+          :where  [:= :id (u/get-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -443,7 +470,7 @@
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred double?
+  (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
                  data))
 
@@ -468,9 +495,10 @@
 (defn do-with-temp-scheduler [f]
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
-      (try (f)
-           (finally
-             (qs/shutdown temp-scheduler))))))
+      (try
+        (f)
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
   "Execute BODY with a temporary scheduler in place.
@@ -520,39 +548,6 @@
           .getChronology
           .getZone
           .getID))))
-
-(defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
-  it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'sql-jdbc.conn/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
-  [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
 
 (defmulti ^:private do-model-cleanup! class)
 

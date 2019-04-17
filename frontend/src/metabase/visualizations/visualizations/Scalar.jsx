@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Ellipsified from "metabase/components/Ellipsified";
 
@@ -33,6 +33,8 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .value();
 }
 
+// Scalar visualization shows a single number
+// Multiseries Scalar is transformed to a Funnel
 export default class Scalar extends Component {
   props: VisualizationProps;
 
@@ -41,6 +43,7 @@ export default class Scalar extends Component {
   static iconName = "number";
 
   static noHeader = true;
+  static supportsSeries = true;
 
   static minSize = { width: 3, height: 3 };
 

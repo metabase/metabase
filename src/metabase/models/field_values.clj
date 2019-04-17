@@ -115,6 +115,9 @@
         (db/update! 'Field (u/get-id field) :has_field_values nil)
         (db/delete! FieldValues :field_id (u/get-id field)))
 
+      (= (:values field-values) values)
+      (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
+
       ;; if the FieldValues object already exists then update values in it
       (and field-values values)
       (do

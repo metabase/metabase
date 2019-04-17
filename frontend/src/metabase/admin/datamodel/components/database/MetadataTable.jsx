@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import MetricsList from "./MetricsList.jsx";
 import ColumnsList from "./ColumnsList.jsx";
 import SegmentsList from "./SegmentsList.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 

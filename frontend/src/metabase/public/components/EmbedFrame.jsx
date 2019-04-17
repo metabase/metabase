@@ -94,7 +94,7 @@ export default class EmbedFrame extends Component {
 
     const footer = true;
 
-    const { bordered, titled, theme } = {
+    const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
@@ -127,6 +127,7 @@ export default class EmbedFrame extends Component {
                     query={location.query}
                     setParameterValue={setParameterValue}
                     syncQueryString
+                    hideParameters={hide_parameters}
                     isQB
                   />
                 </div>
@@ -139,9 +140,7 @@ export default class EmbedFrame extends Component {
         </div>
         {footer && (
           <div className="EmbedFrame-footer p1 md-p2 lg-p3 border-top flex-no-shrink flex align-center">
-            {!MetabaseSettings.hideEmbedBranding() && (
-              <LogoBadge dark={theme} />
-            )}
+            {!MetabaseSettings.hideEmbedBranding()}
             {actionButtons && (
               <div className="flex-align-right text-medium">
                 {actionButtons}

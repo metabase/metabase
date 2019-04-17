@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AggregationWidget_LEGACY from "./AggregationWidget.jsx";
 import BreakoutWidget_LEGACY from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";

@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import cxs from "cxs";
 
 // components
 import Button from "metabase/components/Button";
@@ -17,7 +16,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import RetinaImage from "react-retina-image";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import User from "metabase/entities/users";
 
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
@@ -58,9 +57,9 @@ const getScheduleFromChannel = channel =>
     "schedule_hour",
     "schedule_type",
   );
-const classes = cxs({
+const textStyle = {
   width: "162px",
-});
+};
 
 @connect(
   state => ({
@@ -225,7 +224,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-01-raw-data.png" />
             <p
-              className={`${classes} ml2 text-left`}
+              className="ml2 text-left"
+              style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
             )}`}</p>
@@ -236,7 +236,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-02-goal.png" />
             <p
-              className={`${classes} mr2 text-right`}
+              className="mr2 text-right"
+              style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
             )}`}</p>
@@ -247,7 +248,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-03-progress.png" />
             <p
-              className={`${classes} ml2 text-left`}
+              className="ml2 text-left"
+              style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
             )}`}</p>
@@ -572,7 +574,7 @@ export class AlertEditSchedule extends Component {
   }
 }
 
-@entityListLoader({ entityType: "users" })
+@User.loadList()
 @connect(
   (state, props) => ({
     user: getUser(state),

@@ -5,8 +5,8 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import java.io.InputStream
-           [javax.script Invocable ScriptEngine ScriptEngineManager]
-           [jdk.nashorn.api.scripting JSObject ScriptObjectMirror]))
+           [javax.script Invocable ScriptEngineManager]
+           jdk.nashorn.api.scripting.JSObject))
 
 (defn- make-js-engine-with-script [^String script]
   (let [engine-mgr (ScriptEngineManager.)

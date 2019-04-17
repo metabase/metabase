@@ -203,7 +203,9 @@
       (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
                                                                      :type     :native
                                                                      :native   {:query "SELECT * FROM XYZ"}}}]
-        (http/client :get 400 (card-query-url card response-format))))))
+        ;; since results are keepalive-streamed for normal queries (i.e., not CSV, JSON, or XLSX) we have to return a
+        ;; status code right away, so streaming responses always return 200
+        (http/client :get (if (seq response-format) 400 200) (card-query-url card response-format))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect-for-response-formats [response-format]
@@ -404,7 +406,7 @@
                                      :card {:dataset_query {:database (data/id)
                                                             :type     :native,
                                                             :native   {:query "SELECT * FROM XYZ"}}}}]
-        (http/client :get 400 (dashcard-url dashcard))))))
+        (http/client :get 200 (dashcard-url dashcard))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect

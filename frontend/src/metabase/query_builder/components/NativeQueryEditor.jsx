@@ -23,7 +23,7 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 

@@ -5,7 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import {
@@ -61,7 +61,7 @@ import { isStructured } from "metabase/meta/Card";
 import {
   updateDateTimeFilter,
   updateNumericFilter,
-} from "metabase/qb/lib/actions";
+} from "metabase/modes/lib/actions";
 
 import { lineAddons } from "./graph/addons";
 import { initBrush } from "./graph/brush";

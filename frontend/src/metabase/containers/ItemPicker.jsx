@@ -5,15 +5,17 @@ import cx from "classnames";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import colors from "metabase/lib/colors";
 
 import { connect } from "react-redux";
+
+// NOTE: replacing these with Collections.ListLoader etc currently fails due to circular dependency
 import EntityListLoader, {
   entityListLoader,
 } from "metabase/entities/containers/EntityListLoader";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Collections from "metabase/entities/collections";
 
 const COLLECTION_ICON_COLOR = colors["text-light"];

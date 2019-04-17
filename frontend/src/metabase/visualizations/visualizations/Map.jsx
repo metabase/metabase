@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap.jsx";
@@ -170,7 +170,6 @@ export default class Map extends Component {
     }),
     ...dimensionSetting("map.dimension", {
       title: t`Region field`,
-      widget: "select",
       getHidden: (series, vizSettings) => vizSettings["map.type"] !== "region",
     }),
     "map.colors": {

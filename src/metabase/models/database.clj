@@ -11,6 +11,7 @@
              [interface :as i]
              [permissions :as perms]
              [permissions-group :as perm-group]]
+            [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -41,39 +42,35 @@
 
 
 (defn- schedule-tasks!
-  "(Re)schedule sync operation tasks for DATABASE. (Existing scheduled tasks will be deleted first.)"
+  "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
     (require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/schedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error "Error scheduling tasks for DB:" (.getMessage e) "\n"
-                 (u/pprint-to-str (u/filtered-stacktrace e))))))
+      (log/error e (trs "Error scheduling tasks for DB")))))
 
 (defn- unschedule-tasks!
-  "Unschedule any currently pending sync operation tasks for DATABASE."
+  "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
     (require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
-      (log/error "Error unscheduling tasks for DB:" (.getMessage e) "\n"
-                 (u/pprint-to-str (u/filtered-stacktrace e))))))
+      (log/error e (trs "Error unscheduling tasks for DB.")))))
 
-(defn- post-insert [{database-id :id, :as database}]
+(defn- post-insert [database]
   (u/prog1 database
-    ;; add this database to the all users and metabot permissions groups
-    (doseq [{group-id :id} [(perm-group/all-users)
-                            (perm-group/metabot)]]
-      (perms/grant-full-db-permissions! group-id database-id))
-    ;; schedule the Database sync tasks
+    ;; add this database to the All Users permissions groups
+    (perms/grant-full-db-permissions! (perm-group/all-users) database)
+    ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
 (defn- post-select [{driver :engine, :as database}]
-  ;; TODO - this is only really needed for API responses
+  ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
   (cond-> database
-    (driver/registered? driver) (assoc :features (driver.u/features driver))))
+    (driver/initialized? driver) (assoc :features (driver.u/features driver))))
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
@@ -83,25 +80,32 @@
   (driver/notify-database-updated driver database))
 
 ;; TODO - this logic would make more sense in post-update if such a method existed
-(defn- pre-update [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
+(defn- pre-update
+  [{new-metadata-schedule :metadata_sync_schedule, new-fieldvalues-schedule :cache_field_values_schedule, :as database}]
   (u/prog1 database
     ;; if the sync operation schedules have changed, we need to reschedule this DB
     (when (or new-metadata-schedule new-fieldvalues-schedule)
       (let [{old-metadata-schedule    :metadata_sync_schedule
-             old-fieldvalues-schedule :cache_field_values_schedule} (db/select-one [Database :metadata_sync_schedule :cache_field_values_schedule]
+             old-fieldvalues-schedule :cache_field_values_schedule} (db/select-one [Database
+                                                                                    :metadata_sync_schedule
+                                                                                    :cache_field_values_schedule]
                                                                       :id (u/get-id database))
             ;; if one of the schedules wasn't passed continue using the old one
             new-metadata-schedule    (or new-metadata-schedule old-metadata-schedule)
             new-fieldvalues-schedule (or new-fieldvalues-schedule old-fieldvalues-schedule)]
-        (when (or (not= new-metadata-schedule old-metadata-schedule)
-                  (not= new-fieldvalues-schedule old-fieldvalues-schedule))
-          (log/info "DB's schedules have changed!\n"
-                    (format "Sync metadata was: '%s', is now: '%s'\n" old-metadata-schedule new-metadata-schedule)
-                    (format "Cache FieldValues was: '%s', is now: '%s'\n" old-fieldvalues-schedule new-fieldvalues-schedule))
+        (when-not (= [new-metadata-schedule new-fieldvalues-schedule]
+                     [old-metadata-schedule old-fieldvalues-schedule])
+          (log/info
+           (trs "{0} Database ''{1}'' sync/analyze schedules have changed!" (:engine database) (:name database))
+           "\n"
+           (trs "Sync metadata was: ''{0}'' is now: ''{1}''" old-metadata-schedule new-metadata-schedule)
+           "\n"
+           (trs "Cache FieldValues was: ''{0}'', is now: ''{1}''" old-fieldvalues-schedule new-fieldvalues-schedule))
           ;; reschedule the database. Make sure we're passing back the old schedule if one of the two wasn't supplied
-          (schedule-tasks! (assoc database
-                             :metadata_sync_schedule      new-metadata-schedule
-                             :cache_field_values_schedule new-fieldvalues-schedule)))))))
+          (schedule-tasks!
+           (assoc database
+             :metadata_sync_schedule      new-metadata-schedule
+             :cache_field_values_schedule new-fieldvalues-schedule)))))))
 
 
 (defn- perms-objects-set [database _]

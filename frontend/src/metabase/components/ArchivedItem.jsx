@@ -2,7 +2,7 @@
 
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import CheckBox from "metabase/components/CheckBox.jsx";
 import Icon from "metabase/components/Icon";
@@ -19,6 +19,7 @@ const ArchivedItem = ({
   color = colors["text-light"],
   isAdmin = false,
   onUnarchive,
+  onDelete,
 
   selected,
   onToggleSelected,
@@ -35,15 +36,29 @@ const ArchivedItem = ({
       />
     </IconWrapper>
     {name}
-    {isAdmin && (
-      <Tooltip tooltip={t`Unarchive this ${type}`}>
-        <Icon
-          onClick={onUnarchive}
-          className="ml-auto cursor-pointer text-brand-hover hover-child"
-          name="unarchive"
-        />
-      </Tooltip>
-    )}
+    {isAdmin &&
+      (onUnarchive || onDelete) && (
+        <span className="ml-auto mr2">
+          {onUnarchive && (
+            <Tooltip tooltip={t`Unarchive this ${type}`}>
+              <Icon
+                onClick={onUnarchive}
+                className="cursor-pointer text-brand-hover hover-child ml4"
+                name="unarchive"
+              />
+            </Tooltip>
+          )}
+          {onDelete && (
+            <Tooltip tooltip={t`Delete this ${type}`}>
+              <Icon
+                onClick={onDelete}
+                className="cursor-pointer text-brand-hover hover-child ml4"
+                name="trash"
+              />
+            </Tooltip>
+          )}
+        </span>
+      )}
   </div>
 );
 
@@ -54,6 +69,7 @@ ArchivedItem.propTypes = {
   color: PropTypes.string,
   isAdmin: PropTypes.bool,
   onUnarchive: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
 
   selected: PropTypes.bool.isRequired,
   onToggleSelected: PropTypes.func.isRequired,

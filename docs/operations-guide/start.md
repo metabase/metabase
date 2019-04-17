@@ -79,11 +79,20 @@ Step-by-step instructions on how to upgrade Metabase running on Heroku.
 
 # Configuring the Metabase Application Database
 
-The application database is where Metabase stores information about users, saved questions, dashboards, and any other data needed to run the application.  The default settings use an embedded H2 database, but this is configurable.
+The application database is where Metabase stores information about users, saved questions, dashboards, and any other
+data needed to run the application. The default settings use an embedded H2 database, but this is configurable.
 
-**NOTE:** you cannot change the application database while the application is running.  these values are read only once when the application starts up and will remain constant throughout the running of the application.
+##### Notes
 
-**NOTE:** currently Metabase does not provide automated support for migrating data from one application database to another, so if you start with H2 and then want to move to Postgres you'll have to dump the data from H2 and import it into Postgres before relaunching the application.
+*  Using Metabase with an H2 application database is not recommended for production deployments. For production
+   deployments, we highly recommend using Postgres, MySQL, or MariaDB instead. If you decide to continue to use H2,
+   please be sure to back up the database file regularly.
+*  You cannot change the application database while the application is running. Connection configuration information is
+   read only once when the application starts up and will remain constant throughout the running of the application.
+*  Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
+   production-ready database. See [Migrating from H2 to MySQL or
+   Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres) for more details.
+
 
 #### [H2](http://www.h2database.com/) (default)
 
@@ -344,33 +353,4 @@ Diagnosing performance related issues can be a challenge. Luckily the JVM ships 
 
 # Java Versions
 
-Metabase will run on Java version 8 or greater; Java 8 is the easiest and most common choice.
-
-## Running on Java 8
-
-Running on Java 8 is the easiest path to running Metabase. There are no additional parameters required, if launching from a Jar the below invocation will work:
-
-    java -jar metabase.jar
-
-## Running on Java 9 or Newer
-
-To use Metabase on Java 9 with Oracle, Vertica, SparkSQL, or other drivers that require external dependencies,
-you'll need to tweak the way you launch Metabase.
-
-Java version 9 has introduced a new module system that places some additional restrictions on class loading. To use
-Metabase drivers that require extra external dependencies, you'll need to include them as part of the classpath at
-launch time. Run Metabase as follows:
-
-```bash
-# Unix
-java -cp metabase.jar:plugins/* metabase.core
-```
-
-On Windows, use a semicolon instead:
-
-```powershell
-# Windows
-java -cp metabase.jar;plugins/* metabase.core
-```
-
-The default Docker images use Java 8 so this step is only needed when running the JAR directly.
+Metabase will run on Java version 8, 9, or 10. Java 11 support is still a work in progress, so please be patient while we get everything working.

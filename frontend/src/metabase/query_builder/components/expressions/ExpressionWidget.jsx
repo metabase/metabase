@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield.jsx";
 import { isExpression } from "metabase/lib/expressions";
 
@@ -58,7 +58,7 @@ export default class ExpressionWidget extends Component {
               &nbsp;<a
                 className="link"
                 target="_blank"
-                href="http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#creating-a-custom-field"
+                href="https://metabase.com/docs/latest/users-guide/04-asking-questions.html#creating-a-custom-field"
               >{t`Learn more`}</a>
             </p>
           </div>

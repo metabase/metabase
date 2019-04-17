@@ -1,11 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Modal from "metabase/components/Modal.jsx";
 
-import ChartSettings from "metabase/visualizations/components/ChartSettings.jsx";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings.jsx";
 
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 
@@ -109,7 +109,7 @@ export default class VisualizationSettings extends React.Component {
             </span>
           </div>
           <Modal wide tall isOpen={chartSettings} onClose={this.close}>
-            <ChartSettings
+            <ChartSettingsWithState
               question={this.props.question}
               addField={this.props.addField}
               series={[

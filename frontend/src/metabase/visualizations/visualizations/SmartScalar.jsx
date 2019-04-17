@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
@@ -87,7 +87,10 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const change = formatNumber(insight["last-change"] * 100);
+    const lastChange = insight["last-change"];
+    const previousValue = insight["previous-value"];
+
+    const change = formatNumber(lastChange * 100);
     const isNegative = (change && Math.sign(change) < 0) || false;
 
     let color = isNegative ? colors["error"] : colors["success"];
@@ -160,25 +163,32 @@ export default class Smart extends React.Component {
           />
         )}
         <Box className="SmartWrapper">
-          <Flex align="center" mt={1} flexWrap="wrap">
-            <Flex align="center" color={color}>
-              <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
-              {changeDisplay}
+          {!lastChange || !previousValue ? (
+            <Box
+              className="text-centered text-bold mt1"
+              color={colors["text-medium"]}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+          ) : (
+            <Flex align="center" mt={1} flexWrap="wrap">
+              <Flex align="center" color={color}>
+                <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
+                {changeDisplay}
+              </Flex>
+              <h4
+                id="SmartScalar-PreviousValue"
+                className="flex align-center hide lg-show"
+                style={{
+                  color: colors["text-medium"],
+                }}
+              >
+                {!isFullscreen &&
+                  jt`${separator} was ${formatValue(
+                    previousValue,
+                    settings.column(column),
+                  )} ${granularityDisplay}`}
+              </h4>
             </Flex>
-            <h4
-              id="SmartScalar-PreviousValue"
-              className="flex align-center hide lg-show"
-              style={{
-                color: colors["text-medium"],
-              }}
-            >
-              {!isFullscreen &&
-                jt`${separator} was ${formatValue(
-                  insight["previous-value"],
-                  settings.column(column),
-                )} ${granularityDisplay}`}
-            </h4>
-          </Flex>
+          )}
         </Box>
       </ScalarWrapper>
     );

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import { assoc, assocIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import RecipientPicker from "./RecipientPicker.jsx";
 
@@ -17,8 +17,6 @@ import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { channelIsValid, createChannel } from "metabase/lib/pulse";
-
-import cx from "classnames";
 
 export const CHANNEL_ICONS = {
   email: "mail",
@@ -231,7 +229,12 @@ export default class PulseEditChannels extends Component {
           <div className="pt2">
             <ActionButton
               actionFn={this.onTestPulseChannel.bind(this, channel)}
-              className={cx("Button", { disabled: !isValid })}
+              disabled={
+                !isValid ||
+                /* require at least one email recipient to allow email pulse testing */
+                (channelSpec.type === "email" &&
+                  channel.recipients.length === 0)
+              }
               normalText={
                 channelSpec.type === "email"
                   ? t`Send email now`

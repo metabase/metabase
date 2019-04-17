@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -77,7 +77,7 @@ export default class PreferencesStep extends Component {
               <a
                 className="link"
                 href={
-                  "http://www.metabase.com/docs/" +
+                  "https://metabase.com/docs/" +
                   tag +
                   "/information-collection.html"
                 }

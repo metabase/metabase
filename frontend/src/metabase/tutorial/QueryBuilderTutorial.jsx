@@ -1,7 +1,7 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Tutorial, { qs, qsWithContent } from "./Tutorial.jsx";
 
 import RetinaImage from "react-retina-image";
@@ -219,7 +219,7 @@ const QUERY_BUILDER_STEPS = [
           <a
             className="link"
             target="_blank"
-            href="http://www.metabase.com/docs/latest/users-guide/start.html"
+            href="https://metabase.com/docs/latest/users-guide/start.html"
           >{t`User's Guide`}</a>. {t`Have fun exploring your data!`}
         </p>
         <a className="Button Button--primary" onClick={props.onNext}>

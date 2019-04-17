@@ -3,25 +3,23 @@ import { connect } from "react-redux";
 import { Box, Flex } from "grid-styled";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collections from "metabase/entities/collections";
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import Collection from "metabase/entities/collections";
 
 const mapDispatchToProps = {
-  setCollectionArchived: Collections.actions.setArchived,
+  setCollectionArchived: Collection.actions.setArchived,
   push,
 };
 
 @connect(null, mapDispatchToProps)
-@entityObjectLoader({
-  entityType: "collections",
-  entityId: (state, props) => props.params.collectionId,
+@Collection.load({
+  id: (state, props) => props.params.collectionId,
 })
 @withRouter
 class ArchiveCollectionModal extends React.Component {

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -280,7 +280,7 @@ export default class FieldRemapping extends React.Component {
                 dimensions: [],
                 fks: this.getForeignKeys(),
               }}
-              tableMetadata={table}
+              table={table}
               onFieldChange={this.onForeignKeyFieldChange}
               hideSectionHeader
             />

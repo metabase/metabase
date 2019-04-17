@@ -1,0 +1,25 @@
+info:
+  name: Metabase Presto Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Presto databases.
+driver:
+  name: presto
+  display-name: Presto
+  lazy-load: true
+  parent: sql
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 8080
+    - merge:
+        - dbname
+        - name: catalog
+          placeholder: hive
+    - user
+    - password
+    - ssl
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.presto

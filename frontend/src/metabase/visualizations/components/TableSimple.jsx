@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-
+import Alert from "metabase/components/Alert.jsx";
 import styles from "./Table.css";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
@@ -24,12 +24,19 @@ import _ from "underscore";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
+import ModalContent from "metabase/components/ModalContent.jsx";
+
+import Modal from "metabase/components/Modal.jsx";
+
+import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
+
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 type Props = VisualizationProps & {
   height: number,
   className?: string,
   isPivoted: boolean,
+  myData:Array,
 };
 
 type State = {
@@ -37,6 +44,9 @@ type State = {
   pageSize: number,
   sortColumn: ?number,
   sortDescending: boolean,
+  isOpen:boolean,
+  alertMessage:string,
+  
 };
 
 @ExplicitSize()
@@ -52,6 +62,7 @@ export default class TableSimple extends Component {
       pageSize: 1,
       sortColumn: null,
       sortDescending: false,
+      isOpen:false,
     };
   }
 
@@ -61,6 +72,8 @@ export default class TableSimple extends Component {
 
   static defaultProps = {
     className: "",
+    myData:[]
+    
   };
 
   setSort(colIndex: number) {
@@ -70,7 +83,22 @@ export default class TableSimple extends Component {
       this.setState({ sortColumn: colIndex });
     }
   }
-
+  
+  handleClose() {
+    this.setState({ isOpen: false })
+  }
+  handleClick(a){
+  
+    this.props.myData=a;
+    console.log("Bütün data  :"+JSON.stringify(this.props.myData))
+    console.log("Birinci data:   "+JSON.stringify(this.props.myData[0]));
+    
+    console.log(this.props);
+    if(this.props.myData[0]!=null||this.props.myData[0]!=undefined){
+    this.setState({ isOpen: true })
+  }
+    
+  }
   componentDidUpdate() {
     let headerHeight = ReactDOM.findDOMNode(
       this.refs.header,
@@ -101,7 +129,7 @@ export default class TableSimple extends Component {
     } = this.props;
     const { rows, cols } = data;
     const getCellBackgroundColor = settings["table._cell_background_getter"];
-
+    
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 
     let start = pageSize * page;
@@ -114,6 +142,7 @@ export default class TableSimple extends Component {
         rowIndexes.reverse();
       }
     }
+   
 
     return (
       <div className={cx(this.props.className, "relative flex flex-column")}>
@@ -164,8 +193,8 @@ export default class TableSimple extends Component {
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr key={rowIndex} ref={index === 0 ? "firstRow" : null}>
-                    {rows[rowIndex].map((value, columnIndex) => {
+                  <tr style={{cursor:'grab'}} key={rowIndex} ref={index === 0 ? "firstRow" : null} onClick={()=>this.handleClick(data.rows[rowIndex])}>
+                  {rows[rowIndex].map((value, columnIndex) => {
                       const column = cols[columnIndex];
                       const clicked = getTableCellClickedObject(
                         data,
@@ -271,7 +300,46 @@ export default class TableSimple extends Component {
             </span>
           </div>
         ) : null}
+       
+
+              <Modal
+              medium
+              isOpen={this.state.isOpen}
+              onClose={() => this.setState({ isOpen: false })}
+            >
+                 <div id="custommodel" className="modal fade show" style={{display: 'block', overflowY: 'auto'}}>
+        <div className="modal-dialog modal-lg">
+          <div className="modal-content">
+            <div className="p1" style={{backgroundColor: '#509ee4'}}>
+              <h5 className="text-uppercase modal-title" style={{color: 'white',fontSize:'20px' }}>{this.props.myData[0]}</h5>
+            </div>
+            <div className="modal-body">
+              <div>
+                <form className="Grid">
+                  <div className="pl1 pt1"><img className="img-fluid" src={this.props.myData[5]} id="profileImage" style={{width: '180px'}} /></div>
+                  <div className="pl4 pt2" style={{paddingLeft:'3rem'}} >
+                    <h6 className="text-nowrap text-right PopoverBody h4" id="MyHeader">Kimlik No :</h6>
+                    <h6 className="text-nowrap text-right PopoverBody h4" id="MyHeader">Firma :</h6>
+                    <h6 className="text-nowrap text-right PopoverBody h4" id="MyHeader">Kamera No :</h6>
+                    <h6 className="text-nowrap text-right PopoverBody h4" id="MyHeader">Tarih :</h6>
+                  </div>
+                  <div className="pl4 pt2">
+                    <h6 className="text-nowrap text-left PopoverBody h4">{this.props.myData[1]}</h6>
+                    <h6 className="text-nowrap text-left PopoverBody h4">{this.props.myData[2]}</h6>
+                    <h6 className="text-nowrap text-left PopoverBody h4">{this.props.myData[3]}</h6>
+                    <h6 className="text-nowrap text-left PopoverBody h4">{this.props.myData[4]}</h6>
+                  </div>
+                </form>
+                <hr />
+                <div className="pb1 justify-center" style={{display:"flex"}}><img src={this.props.myData[6]} style={{display:"inline-block",width:'65%'}} /></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+            </Modal>                      
+      </div>
+       
     );
   }
 }

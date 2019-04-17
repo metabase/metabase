@@ -6,6 +6,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/app/assets/img/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/app/assets/img/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/app/assets/img/favicon-16x16.png">
+        <link rel="manifest" href="/app/assets/img/site.webmanifest">
+        <link rel="mask-icon" href="/app/assets/img/safari-pinned-tab.svg" color="#62a8e6">
+        <link rel="shortcut icon" href="/app/assets/img/favicon.ico">
+        <meta name="msapplication-TileColor" content="#2d89ef">
+        <meta name="msapplication-config" content="/app/assets/img/browserconfig.xml">
+        <meta name="theme-color" content="#ffffff">
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
         {{{embed_code}}}
 
@@ -70,19 +80,17 @@
         </script>
 
         <script type="text/javascript">
-            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-            })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-            // if we are not doing tracking then go ahead and disable GA now so we never even track the initial pageview
+            // if Anonymous Tracking is opt-out, then do not load script
             const tracking = window.MetabaseBootstrap.anon_tracking_enabled;
-            const ga_code = window.MetabaseBootstrap.ga_code;
-            if (!tracking) {
-                window['ga-disable-'+ga_code] = true;
-            }
+            if (tracking) {
+                (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+                (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+                m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+                })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
-            ga('create', ga_code, 'auto');
+                const ga_code = window.MetabaseBootstrap.ga_code;
+                ga('create', ga_code, 'auto');
+            }
         </script>
     </body>
 </html>

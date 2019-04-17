@@ -1,6 +1,10 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as str]
+            [expectations :refer :all]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.api.database :as database-api]
             [metabase.driver.util :as driver.u]
             [metabase.models
@@ -20,15 +24,11 @@
              [data :as data]
              [util :as tu :refer [match-$]]]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [users :refer :all]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
-            [clojure.string :as str]))
+            [toucan.util.test :as tt]))
 
 ;; HELPER FNS
 
@@ -118,6 +118,7 @@
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
+;; TODO - this test fails if we're running Postgres locally & it requires a password...
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
          (match-$ db
@@ -201,7 +202,9 @@
          :timezone           $
          :native_permissions "write"
          :features           (map name (driver.u/features :postgres))}))
-     (for [driver (conj tx.env/test-drivers :h2)]
+     (for [driver (conj tx.env/test-drivers :h2)
+           ;; GA has no test extensions impl and thus data/db doesn't work with it
+           :when  (not= driver :googleanalytics)]
        (merge
         default-db-details
         (match-$ (driver/with-driver driver (data/db))
@@ -237,6 +240,7 @@
          :tables             []
          :features           (map name (driver.u/features :postgres))}))
      (for [driver (conj tx.env/test-drivers :h2)
+           :when  (not= driver :googleanalytics)
            :let   [database (driver/with-driver driver (data/db))]]
        (merge
         default-db-details
@@ -426,15 +430,19 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(tt/expect-with-temp [Database [druid-db   {:engine :druid, :details {}}]
-                      Card     [druid-card {:name             "Druid Card"
-                                            :dataset_query    {:database (u/get-id druid-db)
-                                                               :type     :native
-                                                               :native   {:query "[DRUID QUERY GOES HERE]"}}
-                                            :result_metadata [{:name "sparrows"}]
-                                            :database_id     (u/get-id druid-db)}]
-                      Card     [ok-card (assoc (card-with-native-query "OK Card")
-                                          :result_metadata [{:name "finches"}])]]
+(driver/register! ::no-nested-query-support :parent :h2)
+
+(defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
+
+(tt/expect-with-temp [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                      Card     [bad-card {:name            "Bad Card"
+                                          :dataset_query   {:database (u/get-id bad-db)
+                                                            :type     :native
+                                                            :native   {:query "[QUERY GOES HERE]"}}
+                                          :result_metadata [{:name "sparrows"}]
+                                          :database_id     (u/get-id bad-db)}]
+                      Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                           :result_metadata [{:name "finches"}])]]
   (saved-questions-virtual-db
     (virtual-table-for-card ok-card))
   (fetch-virtual-database))

@@ -1,6 +1,6 @@
 import React from "react";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const EmbeddingLegalese = ({ onChange }) => (
   <div className="bordered rounded text-measure p4">
@@ -9,7 +9,7 @@ const EmbeddingLegalese = ({ onChange }) => (
       {t`By enabling embedding you're agreeing to the embedding license located at`}{" "}
       <a
         className="link"
-        href="http://www.metabase.com/license/embedding"
+        href="https://metabase.com/license/embedding"
         target="_blank"
       >
         metabase.com/license/embedding

@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
@@ -392,6 +392,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         series.length > 1 && card.name,
         // show column name if there are multiple metrics or sigle series
         (metricColumnIndexes.length > 1 || series.length === 1) &&
+          col &&
           getFriendlyName(col),
       ]
         .filter(n => n)
@@ -403,7 +404,9 @@ function transformSingleSeries(s, series, seriesIndex) {
           name: name,
           _transformed: true,
           _seriesIndex: seriesIndex,
-          _seriesKey: seriesIndex === 0 ? getFriendlyName(col) : name,
+          // use underlying column name as the seriesKey since it should be unique
+          // EXCEPT for dashboard multiseries, so check seriesIndex == 0
+          _seriesKey: seriesIndex === 0 && col ? col.name : name,
         },
         data: {
           rows: rows.map((row, rowIndex) => {

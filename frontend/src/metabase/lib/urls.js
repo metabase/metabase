@@ -118,11 +118,13 @@ export function publicDashboard(uuid) {
 }
 
 export function embedCard(token, type = null) {
-  return `/embed/question/${token}` + (type ? `.${type}` : ``);
+  const siteUrl = MetabaseSettings.get("site_url");
+  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function embedDashboard(token) {
-  return `/embed/dashboard/${token}`;
+  const siteUrl = MetabaseSettings.get("site_url");
+  return `${siteUrl}/embed/dashboard/${token}`;
 }
 
 export function userCollection(userCollectionId) {
@@ -131,4 +133,28 @@ export function userCollection(userCollectionId) {
 
 export function accountSettings() {
   return `/user/edit_current`;
+}
+
+export function newUser() {
+  return `/admin/people/new`;
+}
+
+export function editUser(userId) {
+  return `/admin/people/${userId}/edit`;
+}
+
+export function resetPassword(userId) {
+  return `/admin/people/${userId}/reset`;
+}
+
+export function newUserSuccess(userId) {
+  return `/admin/people/${userId}/success`;
+}
+
+export function deactivateUser(userId) {
+  return `/admin/people/${userId}/deactivate`;
+}
+
+export function reactivateUser(userId) {
+  return `/admin/people/${userId}/reactivate`;
 }

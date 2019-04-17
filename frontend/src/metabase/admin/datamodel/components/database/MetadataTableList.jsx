@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import { normal } from "metabase/lib/colors";
 

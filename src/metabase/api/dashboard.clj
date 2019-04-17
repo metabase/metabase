@@ -2,13 +2,13 @@
   "/api/dashboard endpoints."
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase
              [events :as events]
              [query-processor :as qp]
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection]
@@ -217,14 +217,14 @@
                         :collection_id       collection_id
                         :collection_position collection_position}
         dashboard      (db/transaction
-                            ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
-                            ;; position, check that and fix up if needed
-                            (api/maybe-reconcile-collection-position! dashboard-data)
-                            ;; Ok, now save the Dashboard
-                            (u/prog1 (db/insert! Dashboard dashboard-data)
-                                    ;; Get cards from existing dashboard and associate to copied dashboard
-                                    (doseq [card (:ordered_cards existing-dashboard)]
-                                      (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         ;; Ok, now save the Dashboard
+                         (u/prog1 (db/insert! Dashboard dashboard-data)
+                           ;; Get cards from existing dashboard and associate to copied dashboard
+                           (doseq [card (:ordered_cards existing-dashboard)]
+                             (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
     (events/publish-event! :dashboard-create dashboard)))
 
 
@@ -233,13 +233,7 @@
 (api/defendpoint GET "/:id"
   "Get `Dashboard` with ID."
   [id]
-  (u/prog1 (-> (Dashboard id)
-               api/check-404
-               (hydrate [:ordered_cards :card :series] :can_write)
-               api/read-check
-               api/check-not-archived
-               hide-unreadable-cards
-               add-query-average-durations)
+  (u/prog1 (get-dashboard id)
     (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
 
 

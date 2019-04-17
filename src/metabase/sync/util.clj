@@ -411,23 +411,26 @@
   [task-name :- su/NonBlankString
    database  :- i/DatabaseInstance
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
-  {:task task-name
-   :db_id (u/get-id database)
+  {:task       task-name
+   :db_id      (u/get-id database)
    :started_at (du/->Timestamp start-time)
-   :ended_at (du/->Timestamp end-time)
-   :duration (du/calculate-duration start-time end-time)})
+   :ended_at   (du/->Timestamp end-time)
+   :duration   (du/calculate-duration start-time end-time)})
 
 (s/defn ^:private store-sync-summary!
   [operation :- s/Str
    database  :- i/DatabaseInstance
    {:keys [steps] :as sync-md} :- SyncOperationMetadata]
-  (db/insert-many! TaskHistory
-    (cons (create-task-history operation database sync-md)
-          (for [[step-name step-info] steps
-                :let [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
-            (assoc (create-task-history step-name database step-info)
-              :task_details (when (seq task-details)
-                              task-details))))))
+  (try
+    (db/insert-many! TaskHistory
+      (cons (create-task-history operation database sync-md)
+            (for [[step-name step-info] steps
+                  :let                  [task-details (dissoc step-info :start-time :end-time :log-summary-fn)]]
+              (assoc (create-task-history step-name database step-info)
+                :task_details (when (seq task-details)
+                                task-details)))))
+    (catch Throwable e
+      (log/warn e (trs "Error saving task history")))))
 
 (s/defn run-sync-operation
   "Run `sync-steps` and log a summary message"
@@ -444,9 +447,28 @@
     (log-sync-summary operation database sync-metadata)))
 
 (defn sum-numbers
-  "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`"
+  "Similar to a 2-arg call to `map`, but will add all numbers that result from the invocations of `f`. Used mainly for
+  logging purposes, such as to count and log the number of Fields updated by a sync operation. See also
+  `sum-for`, a `for`-style macro version."
   [f coll]
   (reduce + (for [item coll
                   :let [result (f item)]
                   :when (number? result)]
               result)))
+
+(defn sum-for*
+  "Impl for `sum-for` macro; see its docstring;"
+  [results]
+  (reduce + (filter number? results)))
+
+(defmacro sum-for
+  "Basically the same as `for`, but sums the results of each iteration of `body` that returned a number. See also
+  `sum-numbers`.
+
+  As an added bonus, unlike normal `for`, this wraps `body` in an implicit `do`, so you can have more than one form
+  inside the loop. Nice"
+  {:style/indent 1}
+  [[item-binding coll & more-for-bindings] & body]
+  `(sum-for* (for [~item-binding ~coll
+                   ~@more-for-bindings]
+               (do ~@body))))

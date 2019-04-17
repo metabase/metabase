@@ -128,6 +128,11 @@
   (with-redefs [encrypt/default-secret-key nil]
     (#'results-metadata/metadata-checksum metadata)))
 
+;; metadata-checksum should be the same every time
+(expect
+  (metadata-checksum example-metadata)
+  (metadata-checksum example-metadata))
+
 ;; tests that the checksum is consistent when an array-map is switched to a hash-map
 (expect
   (metadata-checksum example-metadata)

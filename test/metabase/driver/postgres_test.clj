@@ -31,11 +31,12 @@
 ;; Check that SSL params get added the connection details in the way we'd like # no SSL -- this should *not* include
 ;; the key :ssl (regardless of its value) since that will cause the PG driver to use SSL anyway
 (expect
-  {:user        "camsaul"
-   :classname   "org.postgresql.Driver"
-   :subprotocol "postgresql"
-   :subname     "//localhost:5432/bird_sightings?sslmode=disable&OpenSourceSubProtocolOverride=true"
-   :sslmode     "disable"}
+  {:classname                     "org.postgresql.Driver"
+   :subprotocol                   "postgresql"
+   :subname                       "//localhost:5432/bird_sightings"
+   :OpenSourceSubProtocolOverride true
+   :user                          "camsaul"
+   :sslmode                       "disable"}
   (sql-jdbc.conn/connection-details->spec :postgres
     {:ssl    false
      :host   "localhost"
@@ -45,13 +46,14 @@
 
 ;; ## ssl - check that expected params get added
 (expect
-  {:ssl         true
-   :sslmode     "require"
-   :classname   "org.postgresql.Driver"
-   :subprotocol "postgresql"
-   :user        "camsaul"
-   :sslfactory  "org.postgresql.ssl.NonValidatingFactory"
-   :subname     "//localhost:5432/bird_sightings?ssl=true&sslmode=require&OpenSourceSubProtocolOverride=true"}
+  {:classname                     "org.postgresql.Driver"
+   :subprotocol                   "postgresql"
+   :subname                       "//localhost:5432/bird_sightings"
+   :OpenSourceSubProtocolOverride true
+   :user                          "camsaul"
+   :ssl                           true
+   :sslmode                       "require"
+   :sslfactory                    "org.postgresql.ssl.NonValidatingFactory"}
   (sql-jdbc.conn/connection-details->spec :postgres
     {:ssl    true
      :host   "localhost"
@@ -188,8 +190,8 @@
                          FROM pg_stat_activity
                         WHERE pg_stat_activity.datname = ?;" db-name])
     ;; create the DB
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS %s;
-                                  CREATE DATABASE %s;"
+    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";
+                                  CREATE DATABASE \"%s\";"
                                  db-name db-name)]
                    {:transaction? false})))
 
@@ -286,11 +288,16 @@
 
 ;; make sure connection details w/ extra params work as expected
 (expect
-  "//localhost:5432/cool?sslmode=disable&OpenSourceSubProtocolOverride=true&prepareThreshold=0"
-  (:subname (sql-jdbc.conn/connection-details->spec :postgres {:host               "localhost"
-                                                          :port               "5432"
-                                                          :dbname             "cool"
-                                                          :additional-options "prepareThreshold=0"})))
+  {:classname                     "org.postgresql.Driver"
+   :subprotocol                   "postgresql"
+   :subname                       "//localhost:5432/cool?prepareThreshold=0"
+   :OpenSourceSubProtocolOverride true
+   :sslmode                       "disable"}
+  (sql-jdbc.conn/connection-details->spec :postgres
+    {:host               "localhost"
+     :port               "5432"
+     :dbname             "cool"
+     :additional-options "prepareThreshold=0"}))
 
 (expect-with-driver :postgres
   "UTC"
@@ -406,9 +413,9 @@
                               " \"public\".\"birds\".\"status\" AS \"status\","
                               " \"public\".\"birds\".\"type\" AS \"type\" "
                               "FROM \"public\".\"birds\" "
-                              "WHERE \"public\".\"birds\".\"type\" = CAST(? AS \"bird type\") "
+                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
                               "LIMIT 10")
-                 :params ["toucan"]}}
+                 :params nil}}
   (do-with-enums-db
     (fn [db]
       (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
@@ -421,3 +428,28 @@
                           :limit        10}})
             :data
             (select-keys [:rows :native_form]))))))
+
+;; make sure schema/table/field names with hyphens in them work correctly (#8766)
+(expect-with-driver :postgres
+  [["Bird Hat"]]
+  (metabase.driver/with-driver :postgres
+    [{:name "angry_birds", :active true}]
+    (let [details (tx/dbdef->connection-details :postgres :db {:database-name "hyphen-names-test"})
+          spec    (sql-jdbc.conn/connection-details->spec :postgres details)
+          exec!   #(doseq [statement %]
+                     (jdbc/execute! spec [statement]))]
+      ;; create the postgres DB
+      (drop-if-exists-and-create-db! "hyphen-names-test")
+      ;; create the DB object
+      (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
+        (let [sync! #(sync/sync-database! database)]
+          ;; populate the DB and create a view
+          (exec! ["CREATE SCHEMA \"x-mas\";"
+                  "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
+                  "INSERT INTO \"x-mas\".\"presents-and-gifts\" (\"gift-description\") VALUES ('Bird Hat');;"])
+          (sync!)
+          (-> (qp/process-query
+                {:database (u/get-id database)
+                 :type     :query
+                 :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}})
+              rows))))))

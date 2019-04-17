@@ -53,6 +53,7 @@
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
+        " "
         (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]
@@ -108,7 +109,10 @@
   :type    :integer
   :default 1000
   :setter  (fn [new-value]
-             (when (> new-value global-max-caching-kb)
+             (when (and new-value
+                        (> (cond-> new-value
+                             (string? new-value) Integer/parseInt)
+                           global-max-caching-kb))
                (throw (IllegalArgumentException.
                        (str
                         (tru "Failed setting `query-caching-max-kb` to {0}." new-value)

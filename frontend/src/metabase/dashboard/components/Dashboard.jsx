@@ -4,12 +4,14 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box } from "grid-styled";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
+import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
 
@@ -76,6 +78,7 @@ type Props = {
     reload: boolean,
     clear: boolean,
   }) => Promise<void>,
+  cancelFetchDashboardCardData: () => Promise<void>,
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
   setEditingDashboard: (isEditing: boolean) => void,
@@ -96,6 +99,7 @@ type Props = {
   refreshElapsed: number,
   isFullscreen: boolean,
   isNightMode: boolean,
+  hideParameters: ?string,
 
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
@@ -120,6 +124,7 @@ type State = {
   error: ?ApiError,
 };
 
+// NOTE: move DashboardControls HoC to container
 @DashboardControls
 export default class Dashboard extends Component {
   props: Props;
@@ -156,6 +161,7 @@ export default class Dashboard extends Component {
     isEditable: true,
   };
 
+  // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
   }
@@ -169,6 +175,10 @@ export default class Dashboard extends Component {
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelFetchDashboardCardData();
   }
 
   async loadDashboard(dashboardId: DashboardId) {
@@ -224,6 +234,7 @@ export default class Dashboard extends Component {
       location,
       isFullscreen,
       isNightMode,
+      hideParameters,
     } = this.props;
     let { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
@@ -236,6 +247,7 @@ export default class Dashboard extends Component {
           isEditing={isEditing}
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
+          hideParameters={hideParameters}
           parameters={parameters.map(p => ({
             ...p,
             value: parameterValues[p.id],
@@ -280,15 +292,15 @@ export default class Dashboard extends Component {
               )}
             <div className="wrapper">
               {dashboard.ordered_cards.length === 0 ? (
-                <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                  <span className="QuestionCircle">?</span>
-                  <div className="text-normal mt3 mb1">
-                    {t`This dashboard is looking empty.`}
-                  </div>
-                  <div className="text-normal text-light">
-                    {t`Add a question to start making it useful!`}
-                  </div>
-                </div>
+                <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
+                  <EmptyState
+                    illustrationElement={
+                      <span className="QuestionCircle">?</span>
+                    }
+                    title={t`This dashboard is looking empty.`}
+                    message={t`Add a question to start making it useful!`}
+                  />
+                </Box>
               ) : (
                 <DashboardGrid
                   {...this.props}

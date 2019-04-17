@@ -11,12 +11,15 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
+
+  displayNameOne: t`collection`,
+  displayNameMany: t`collections`,
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -32,6 +35,18 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
+  },
+
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection =>
+      collection &&
+      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
+    getIcon: collection => "all",
   },
 
   selectors: {
@@ -65,14 +80,6 @@ const Collections = createEntity({
         return null;
       },
     ),
-  },
-
-  objectSelectors: {
-    getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "all",
   },
 
   form: {
@@ -111,7 +118,7 @@ const Collections = createEntity({
     ],
   },
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },

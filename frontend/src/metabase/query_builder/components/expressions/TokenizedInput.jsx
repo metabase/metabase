@@ -22,6 +22,10 @@ export default class TokenizedInput extends Component {
     };
   }
 
+  static defaultProps = {
+    style: {},
+  };
+
   _getValue() {
     if (this.props.value != undefined) {
       return this.props.value;
@@ -154,11 +158,11 @@ export default class TokenizedInput extends Component {
   }
 
   render() {
-    const { className, onFocus, onBlur } = this.props;
+    const { className, onFocus, onBlur, style } = this.props;
     return (
       <div
         className={className}
-        style={{ whiteSpace: "pre-wrap" }}
+        style={{ whiteSpace: "pre-wrap", ...style }}
         contentEditable
         onKeyDown={this.onKeyDown}
         onInput={this.onInput}

@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { getMode } from "metabase/qb/lib/modes";
+import { getMode } from "metabase/modes/lib/modes";
 
 import type {
   ClickAction,

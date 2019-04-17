@@ -4,11 +4,11 @@
             [medley.core :as m]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api
              [card-test :as card-api-test]
              [dashboard :as dashboard-api]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -97,8 +97,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "dashboard"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "dashboard"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import _ from "underscore";
 import { assocIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import FormMessage from "metabase/components/form/FormMessage";
 import SchedulePicker from "metabase/components/SchedulePicker";

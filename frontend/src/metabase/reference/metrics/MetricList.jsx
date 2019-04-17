@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -26,7 +26,7 @@ const emptyStateData = {
   image: "app/assets/img/metrics-list",
   adminAction: t`Learn how to create metrics`,
   adminLink:
-    "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html",
+    "https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric",
 };
 
 const mapStateToProps = (state, props) => ({

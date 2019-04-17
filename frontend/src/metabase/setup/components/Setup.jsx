@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import NewsletterForm from "metabase/components/NewsletterForm.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -46,7 +46,7 @@ export default class Setup extends Component {
         <a
           className="link"
           href={
-            "http://www.metabase.com/docs/" + tag + "/setting-up-metabase.html"
+            "https://metabase.com/docs/" + tag + "/setting-up-metabase.html"
           }
           target="_blank"
         >{t`our getting started guide`}</a>{" "}

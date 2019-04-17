@@ -5,7 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
@@ -33,7 +33,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -124,7 +124,8 @@ const getDayFormat = options =>
 const RANGE_SEPARATOR = ` – `;
 
 // for extracting number portion from a formatted currency string
-const NUMBER_REGEX = /[\+\-]?[0-9\., ]+/;
+// NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
+const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
@@ -190,7 +191,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       ) {
         const match = formatted.match(NUMBER_REGEX);
         if (match) {
-          formatted = match[0].trim();
+          formatted = (match[1] || "").trim() + (match[2] || "").trim();
         }
       }
 
@@ -260,7 +261,7 @@ function formatNumberCompact(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 
@@ -405,25 +406,7 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 }
 
 function formatDateTime(value, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
-  if (!m.isValid()) {
-    return String(value);
-  }
-
-  if (options.date_format || options.time_format) {
-    formatDateTimeWithFormats(
-      value,
-      options.date_format,
-      options.time_format,
-      options,
-    );
-  } else {
-    if (options.time_enabled === false) {
-      return m.format(options.date_abbreviate ? "ll" : "LL");
-    } else {
-      return m.format(options.date_abbreviate ? "llll" : "LLLL");
-    }
-  }
+  return formatDateTimeWithUnit(value, "minute", options);
 }
 
 export function formatDateTimeWithUnit(
@@ -734,7 +717,7 @@ export function stripId(name: string) {
 }
 
 export function slugify(name: string) {
-  return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  return name && name.toLowerCase().replace(/[^a-z\u0400-\u04ff0-9_]/g, "_");
 }
 
 export function assignUserColors(

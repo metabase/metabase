@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [sync :as sync]
              [util :as u]]
@@ -20,6 +21,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.util.timezone :as tu.tz]
             [toucan.db :as db])
   (:import [metabase.test.data.interface DatabaseDefinition TableDefinition]))
 
@@ -266,8 +268,10 @@
             (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
 
 (defn- create-database! [{:keys [database-name], :as database-definition} driver]
-  ;; Create the database
-  (tx/create-db! driver database-definition)
+  ;; Create the database and load its data
+  ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
+  (tu.tz/with-jvm-tz "UTC"
+    (tx/create-db! driver database-definition))
   ;; Add DB object to Metabase DB
   (let [db (db/insert! Database
              :name    database-name
@@ -280,6 +284,21 @@
     ;; make sure we're returing an up-to-date copy of the DB
     (Database (u/get-id db))))
 
+(defonce ^:private ^{:arglists '([driver]), :doc "We'll have a very bad time if any sort of test runs that calls
+  `data/db` for the first time calls it multiple times in parallel -- for example my Oracle test that runs 30 sync
+  calls at the same time to make sure nothing explodes and cursors aren't leaked. To make sure this doesn't happen
+  we'll keep a map of driver->lock and only allow a given driver to create one Database at a time. Because each DB has
+  its own lock we can still create different DBs for different drivers at the same time."}
+  driver->create-database-lock
+  (let [locks (atom {})]
+    (fn [driver]
+      (let [driver (driver/the-driver driver)]
+        (or
+         (@locks driver)
+         (do
+           (swap! locks update driver #(or % (Object.)))
+           (@locks driver)))))))
+
 (defn get-or-create-database!
   "Create DBMS database associated with DATABASE-DEFINITION, create corresponding Metabase
   `Databases`/`Tables`/`Fields`, and sync the `Database`. DRIVER should be an object that implements
@@ -289,8 +308,12 @@
    (get-or-create-database! (tx/driver) database-definition))
   ([driver database-definition]
    (let [driver (tx/the-driver-with-test-extensions driver)]
-     (or (tx/metabase-instance database-definition driver)
-         (create-database! database-definition driver)))))
+     (or
+      (tx/metabase-instance database-definition driver)
+      (locking (driver->create-database-lock driver)
+        (or
+         (tx/metabase-instance database-definition driver)
+         (create-database! database-definition driver)))))))
 
 
 (defn do-with-temp-db

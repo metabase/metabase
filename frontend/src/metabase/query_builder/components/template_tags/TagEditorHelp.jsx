@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import Code from "metabase/components/Code.jsx";
 
 const EXAMPLES = {
@@ -148,7 +148,7 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
 
       <p className="pt2 link">
         <a
-          href="https://www.metabase.com/docs/latest/users-guide/13-sql-parameters.html"
+          href="https://metabase.com/docs/latest/users-guide/13-sql-parameters.html"
           target="_blank"
           data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</a>
