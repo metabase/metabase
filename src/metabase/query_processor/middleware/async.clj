@@ -38,7 +38,9 @@
     (let [out-chan      (a/promise-chan)
           canceled-chan (async.u/promise-canceled-chan out-chan)
           respond       (fn [result]
-                          (a/>!! out-chan result)
+                          (if (some? result)
+                            (a/>!! out-chan result)
+                            (log/warn (trs "Warning: `respond` as passed `nil`.")))
                           (a/close! out-chan))
           raise         (fn [e]
                           (log/warn e (trs "Unhandled exception, exepected `catch-exceptions` middleware to handle it"))
@@ -47,7 +49,10 @@
         (qp query respond raise canceled-chan)
         (catch Throwable e
           (raise e)))
-      (let [result (a/<!! out-chan)]
-        (if (instance? Throwable result)
-          (throw result)
-          result)))))
+      ;; if query is `async?` return the output channel; otherwise block until output channel returns a result
+      (if async?
+        out-chan
+        (let [result (a/<!! out-chan)]
+          (if (instance? Throwable result)
+            (throw result)
+            result))))))

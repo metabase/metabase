@@ -12,6 +12,7 @@
              [add-settings :as add-settings]
              [annotate :as annotate]
              [async :as async]
+             [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
@@ -141,6 +142,7 @@
       ;;
       ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
       async/async->sync
+      async-wait/wait-for-permit
       cache/maybe-return-cached-results
       validate/validate-query
       normalize/normalize
