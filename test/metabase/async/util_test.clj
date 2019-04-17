@@ -4,6 +4,33 @@
             [metabase.async.util :as async.u]
             [metabase.test.util.async :as tu.async]))
 
+(expect true  (async.u/promise-chan? (a/promise-chan)))
+(expect false (async.u/promise-chan? (a/chan 1)))
+(expect false (async.u/promise-chan? (a/chan)))
+(expect false (async.u/promise-chan? nil))
+(expect false (async.u/promise-chan? "ABC"))
+
+;;; --------------------------------------------- promise-canceled-chan ----------------------------------------------
+
+;; make sure the canceled chan gets a message if the promise-chan it wraps closes before anything is written to it
+(expect
+  ::async.u/canceled
+  (tu.async/with-open-channels [chan (a/promise-chan)]
+    (let [canceled-chan (async.u/promise-canceled-chan chan)]
+      (a/close! chan)
+      (first (a/alts!! [canceled-chan (a/timeout 1000)])))))
+
+;; canceled-chan should close with no message if the channel it wraps gets a message before it closes
+(expect
+  {:val nil, :canceled-chan? true}
+  (tu.async/with-open-channels [chan (a/promise-chan)]
+    (let [canceled-chan (async.u/promise-canceled-chan chan)]
+      (a/>!! chan "message")
+      (a/close! chan)
+      (let [[val port] (a/alts!! [canceled-chan (a/timeout 1000)])]
+        {:val val, :canceled-chan? (= port canceled-chan)}))))
+
+
 ;;; ----------------------------------------------- single-value-pipe ------------------------------------------------
 
 ;; make sure `single-value-pipe` pipes a value from in-chan to out-chan

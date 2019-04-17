@@ -85,8 +85,12 @@
 (defn catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a normal format."
   [qp]
-  (fn [query]
-    (try
-      (qp query)
-      (catch Throwable e
-        (format-exception query e)))))
+  ;; we're not using the version of `raise` passed in on purpose here -- that one is a placeholder -- this is the
+  ;; implementation of `raise` we expect most QP middleware to ultimately use
+  (fn [query respond _ canceled-chan]
+    (let [raise (fn [e]
+                  (respond (format-exception query e)))]
+      (try
+        (qp query respond raise canceled-chan)
+        (catch Throwable e
+          (raise e))))))
