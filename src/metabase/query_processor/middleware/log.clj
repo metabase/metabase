@@ -5,13 +5,13 @@
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]))
 
-(defn- log-initial-query* [query]
+(defn- log-query* [query]
   (u/prog1 query
     (when-not i/*disable-qp-logging*
       (log/debug (u/format-color 'blue "\nQUERY: %s\n%s"  (u/emoji "😎") (u/pprint-to-str query))))))
 
 
-(defn log-initial-query
-  "Middleware for logging a query when it is very first encountered, before it is expanded."
+(defn log-query
+  "Middleware that logs the query that will be ran."
   [qp]
-  (comp qp log-initial-query*))
+  (comp qp log-query*))

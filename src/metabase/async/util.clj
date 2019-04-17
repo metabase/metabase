@@ -5,7 +5,8 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import clojure.core.async.impl.buffers.PromiseBuffer
-           clojure.core.async.impl.channels.ManyToManyChannel))
+           clojure.core.async.impl.channels.ManyToManyChannel
+           java.util.concurrent.Future))
 
 (defn promise-chan?
   "Is core.async `chan` a `promise-chan`?"
@@ -58,6 +59,31 @@
     ;; return the canceled chan in case someone wants to listen to it
     canceled-chan))
 
+(s/defn ^:private do-on-separate-thread* :- Future
+  [out-chan canceled-chan f & args]
+  (future
+    (try
+      (if (a/poll! canceled-chan)
+        (log/debug (trs "Output channel closed, will skip running {0}." f))
+        (do
+          (log/debug (trs "Running {0} on separate thread..." f))
+          (try
+            (let [result (apply f args)]
+              (cond
+                (nil? result)
+                (log/warn "Warning: {0} returned `nil`" f)
+
+                (not (a/>!! out-chan result))
+                (log/error (trs "Unexpected error writing result to output channel: already closed"))))
+            ;; if we catch an Exception (shouldn't happen in a QP query, but just in case), send it to `chan`.
+            ;; It's ok, our IMPL of Ring `StreamableResponseBody` will do the right thing with it.
+            (catch Throwable e
+              (log/error e (trs "Caught error running {0}" f))
+              (when-not (a/>!! out-chan e)
+                (log/error (trs "Unexpected error writing exception to output channel: already closed")))))))
+      (finally
+        (a/close! out-chan)))))
+
 (s/defn do-on-separate-thread :- PromiseChan
   "Run `(apply f args)` on a separate thread, returns a channel to fetch the results. Closing this channel early will
   cancel the future running the function, if possible."
@@ -66,28 +92,10 @@
         canceled-chan (promise-canceled-chan out-chan)
         ;; Run `f` on a separarate thread because it's a potentially long-running QP query and we don't want to tie
         ;; up precious core.async threads
-        futur
-        (future
-          (try
-            (if (a/poll! canceled-chan)
-              (log/debug (trs "Output channel closed, will skip running {0}." f))
-              (do
-                (log/debug (trs "Running {0} on separate thread..." f))
-                (try
-                  (let [result (apply f args)]
-                    (if (some? result)
-                      (a/put! out-chan result)
-                      (log/warn "Warning: {0} returned `nil`" f)))
-                  ;; if we catch an Exception (shouldn't happen in a QP query, but just in case), send it to `chan`.
-                  ;; It's ok, our IMPL of Ring `StreamableResponseBody` will do the right thing with it.
-                  (catch Throwable e
-                    (log/error e (trs "Caught error running {0}" f))
-                    (a/put! out-chan e)))))
-            (finally
-              (a/close! out-chan))))]
+        futur         (apply do-on-separate-thread* out-chan canceled-chan f args)]
+    ;; if output chan is closed early cancel the future
     (a/go
       (when (a/<! canceled-chan)
-        (log/debug (trs "Request canceled, canceling future"))
+        (log/debug (trs "Request canceled, canceling future."))
         (future-cancel futur)))
-
     out-chan))

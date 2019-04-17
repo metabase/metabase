@@ -2,8 +2,7 @@
   (:require [clojure.core.async :as a]
             [expectations :refer [expect]]
             [metabase.query-processor.middleware.async-wait :as async-wait]
-            [metabase.test.util.async :as tu.async])
-  (:import java.io.Closeable))
+            [metabase.test.util.async :as tu.async]))
 
 (defn- async-wait
   "Mocked version of `async-wait/wait-for-permit` middleware. Runs `f` with 3 channels:
@@ -26,56 +25,30 @@
           ((async-wait/wait-for-permit qp) query respond respond canceled-chan))
         (f {:result-chan result-chan, :semaphore-chan semaphore-chan, :canceled-chan canceled-chan})))))
 
-(defprotocol ^:private NotifyClosed
-  (^:private on-close-chan [this]
-    "Returns a channel that will get a `::closed` message when `.close` is called on the object."))
 
-(defn- permit
-  "Return a mocked permit object to passed to the mocked semaphore channel. You can check whether this was closed
-  correctly using `on-close-chan` above."
-  []
-  (let [closed-chan (a/promise-chan)]
-    (reify
-      Closeable
-      (close [_]
-        (a/>!! closed-chan ::closed)
-        (a/close! closed-chan))
-      NotifyClosed
-      (on-close-chan [_]
-        closed-chan))))
-
-(defn- wait-for-result
-  "Wait up to `timeout-ms` (default 200) for a result from `chan`, or return a `::timed-out` message."
-  ([chan]
-   (wait-for-result chan 200))
-  ([chan timeout-ms]
-   (let [[val port] (a/alts!! [chan (a/timeout timeout-ms)])]
-     (if (not= port chan)
-       ::timed-out
-       val))))
 
 ;; QP should run if semaphore-chan gets a permit. Permit should be closed after QP finishes.
 (expect
   {:result ::result, :permit-taken? true, :permit-closed? true}
   (async-wait
    (fn [{:keys [semaphore-chan result-chan]}]
-     (let [permit (permit)]
+     (let [permit (tu.async/permit)]
        ;; provide a permit async after a short delay
        (a/go
          (a/<! (a/timeout 10))
          (a/>! semaphore-chan permit))
-       {:result         (wait-for-result result-chan)
-        :permit-taken?  (= (wait-for-result semaphore-chan) ::timed-out)
-        :permit-closed? (= (wait-for-result (on-close-chan permit)) ::closed)}))))
+       {:result         (tu.async/wait-for-result result-chan)
+        :permit-taken?  (= (tu.async/wait-for-result semaphore-chan) ::tu.async/timed-out)
+        :permit-closed? (tu.async/permit-closed? permit)}))))
 
 ;; If semaphore-chan never gets a permit, then the QP should never run
 (expect
-  {:result ::timed-out, :permit-closed? false}
+  {:result ::tu.async/timed-out, :permit-closed? false}
   (async-wait
    (fn [{:keys [result-chan]}]
-     (let [permit (permit)]
-       {:result         (wait-for-result result-chan)
-        :permit-closed? (= (wait-for-result (on-close-chan permit)) ::closed)}))))
+     (let [permit (tu.async/permit)]
+       {:result         (tu.async/wait-for-result result-chan)
+        :permit-closed? (tu.async/permit-closed? permit)}))))
 
 ;; if canceled-chan gets a message before permit is provided, QP should never run
 (expect
@@ -84,12 +57,12 @@
    :permit-closed? false}
   (async-wait
    (fn [{:keys [result-chan semaphore-chan canceled-chan]}]
-     (let [permit (permit)]
+     (let [permit (tu.async/permit)]
        (a/go
          (a/<! (a/timeout 10))
          (a/>! canceled-chan :canceled)
          (a/<! (a/timeout 100))
          (a/>! semaphore-chan permit))
-       {:result         (wait-for-result result-chan)
-        :permit-taken?  (= (wait-for-result semaphore-chan) ::timed-out)
-        :permit-closed? (= (wait-for-result (on-close-chan permit)) ::closed)}))))
+       {:result         (tu.async/wait-for-result result-chan)
+        :permit-taken?  (= (tu.async/wait-for-result semaphore-chan) ::tu.async/timed-out)
+        :permit-closed? (tu.async/permit-closed? permit)}))))

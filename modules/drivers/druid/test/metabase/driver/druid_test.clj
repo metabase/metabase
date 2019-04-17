@@ -343,21 +343,17 @@
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
 (datasets/expect-with-driver :druid
-  [false ;; Ensure the query promise hasn't fired yet
-   false ;; Ensure the cancellation promise hasn't fired yet
-   true  ;; Was query called?
-   false ;; Cancel should not have been called yet
-   true  ;; Cancel should have been called now
-   true  ;; The paused query can proceed now
-   ]
+  ::tu/success
   (tu/call-with-paused-query
    (fn [query-thunk called-query? called-cancel? pause-query]
      (future
-       ;; stub out the query and delete functions so that we know when one is called vs. the other
-       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
-                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
-         (data/run-mbql-query checkins
-                              {:aggregation [[:count]]}))))))
+       (try
+         ;; stub out the query and delete functions so that we know when one is called vs. the other
+         (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
+                       druid/DELETE   (fn [url] (deliver called-cancel? true))]
+           (query-thunk))
+         (catch Throwable e
+           (println "Error running query:" e)))))))
 
 ;; Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order
 ;; (#9294)

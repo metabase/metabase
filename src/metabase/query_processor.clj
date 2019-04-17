@@ -134,7 +134,7 @@
       resolve-database/resolve-database
       fetch-source-query/fetch-source-query
       store/initialize-store
-      log-query/log-initial-query
+      log-query/log-query
       ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲
       ;;
       ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in

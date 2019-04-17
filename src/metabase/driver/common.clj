@@ -108,7 +108,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private ParseDateTimeString
-  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+  (^:private parse
+   ^DateTime [this date-time-str]
+   "Parse the `date-time-str` and return a `DateTime` instance."))
 
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
@@ -138,7 +140,7 @@
 (defn- first-successful-parse
   "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
   successful parses throws the exception that the last formatter threw."
-  [date-formatters time-str]
+  ^DateTime [date-formatters time-str]
   (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
       (doseq [formatter (reverse date-formatters)]
         (parse formatter time-str))))
@@ -163,7 +165,7 @@
   `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
   the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
   aforementioned multimethods; no default implementation is provided."
-  [driver database]
+  ^DateTime [driver database]
   {:pre [(map? database)]}
   (let [native-query    (current-db-time-native-query driver)
         date-formatters (current-db-time-date-formatters driver)

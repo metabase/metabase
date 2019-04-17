@@ -71,26 +71,27 @@
   second permit if this thread already has one."
   {})
 
-(s/defn ^:private do-f-with-permit
-  "Once a `permit` is obtained, execute `(apply f args)`, writing the results to `output-chan`, and returning the permit
-  no matter what."
-  [permit :- Closeable, out-chan :- async.u/PromiseChan, f & args]
-  (try
-    (let [canceled-chan (async.u/single-value-pipe (apply async.u/do-on-separate-thread f args) out-chan)]
-      ;; canceled-chan will be called whenever `out-chan` is closed, either because `single-value-pipe` closes it when
-      ;; it gets a result from `do-on-separate-thread`, or because someone else closed it earlier (i.e. canceled API
-      ;; request). When this happens return the permit
+(s/defn ^:private do-with-existing-permit-for-current-thread :- (s/maybe async.u/PromiseChan)
+  [semaphore-chan f & args]
+  (when (get *permits* semaphore-chan)
+    (log/debug (trs "Current thread already has a permit, will not wait to acquire another"))
+    (apply async.u/do-on-separate-thread f args)))
+
+(s/defn ^:private do-with-permit :- async.u/PromiseChan
+  [semaphore-chan, permit :- Closeable, f & args]
+  (binding [*permits* (assoc *permits* semaphore-chan permit)]
+    (let [out-chan (apply async.u/do-on-separate-thread f args)]
+      ;; whenever `out-chan` closes return the permit
       (a/go
-        (if (a/<! canceled-chan)
-          (log/debug (trs "request canceled, permit will be returned"))
-          (log/debug (trs "f finished, permit will be returned")))
-        (.close permit)))
-    (catch Throwable e
-      (log/error e (trs "Unexpected error attempting to run function after obtaining permit"))
-      (a/>! out-chan e)
-      (a/close! out-chan)
-      (.close permit)))
-  nil)
+        (a/<! out-chan)
+        (.close permit))
+      out-chan)))
+
+(s/defn ^:private do-with-immediately-available-permit :- (s/maybe async.u/PromiseChan)
+  [semaphore-chan f & args]
+  (when-let [^Closeable permit (a/poll! semaphore-chan)]
+    (log/debug (trs "Permit available without waiting, will run fn immediately"))
+    (apply do-with-permit semaphore-chan permit f args)))
 
 (s/defn ^:private do-after-waiting-for-new-permit :- async.u/PromiseChan
   [semaphore-chan f & args]
@@ -98,18 +99,21 @@
     ;; fire off a go block to wait for a permit.
     (a/go
       (let [[permit first-done] (a/alts! [semaphore-chan out-chan])]
-        ;; If out-chan closes before we get a permit, there's nothing for us to do here. Otherwise if we got our
-        ;; permit then proceed
-        (condp = first-done
-          out-chan
+        (cond
+          ;; If out-chan closes before we get a permit, there's nothing for us to do here.
+          (= first-done out-chan)
           (log/debug (trs "Not running pending function call: output channel already closed."))
 
-          ;; otherwise if channel is still open run the function
-          semaphore-chan
-          (if-not permit
+          ;; if `semaphore-chan` is closed for one reason or another we'll never get a permit so log a warning and
+          ;; close the output channel
+          (not permit)
+          (do
             (log/warn (trs "Warning: semaphore-channel is closed, will not run pending function call"))
-            (binding [*permits* (assoc *permits* semaphore-chan permit)]
-              (apply do-f-with-permit permit out-chan f args))))))
+            (a/close! out-chan))
+
+          ;; otherwise we got a permit and chan run f with it now.
+          permit
+          (async.u/single-value-pipe (apply do-with-permit semaphore-chan permit f args) out-chan))))
     ;; return `out-chan` which can be used to wait for results
     out-chan))
 
@@ -118,11 +122,7 @@
   can fetch the results. Closing this channel before results are produced will cancel the function call."
   {:style/indent 1}
   [semaphore-chan f & args]
-  ;; check and see whether we already have a permit for `semaphore-chan`, if so, go ahead and run the function right
-  ;; away instead of waiting for *another* permit
-  (if (get *permits* semaphore-chan)
-    (do
-      (log/debug (trs "Current thread already has a permit for {0}, will not wait to acquire another" semaphore-chan))
-      (apply async.u/do-on-separate-thread f args))
-    ;; otherwise wait for a permit
-    (apply do-after-waiting-for-new-permit semaphore-chan f args)))
+  (some #(apply % semaphore-chan f args)
+        [do-with-existing-permit-for-current-thread
+         do-with-immediately-available-permit
+         do-after-waiting-for-new-permit]))

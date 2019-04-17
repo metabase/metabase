@@ -79,28 +79,41 @@
   (save-successful-query-execution! query-execution result)
   (success-response query-execution result))
 
-(defn- fail [query-execution message result]
-  (save-failed-query-execution! query-execution message)
-  (failure-response query-execution message result))
+(defn- fail [query-execution result]
+  (let [message (get result :error (tru "Unknown error"))]
+    (save-failed-query-execution! query-execution message)
+    (failure-response query-execution message result)))
 
 (defn- format-userland-query-result
-  "Make sure `query-result` `:status` is something other than `nil`or `:failed`, or throw an Exception."
-  [query-execution {:keys [status], :as result}]
+  "Format QP response in the format expected by the frontend client, and save a QueryExecution entry."
+  [respond raise query-execution {:keys [status], :as result}]
   (cond
-    (not status)
-    (fail query-execution (tru "Invalid response from database driver. No :status provided.") result)
+    ;; if the result itself is invalid there's something wrong in the QP -- not just with the query. Pass an
+    ;; Exception up to the top-level handler; this is basically a 500 situation
+    (nil? result)
+    (raise (Exception. (str (trs "Unexpected nil response from query processor."))))
 
+    (not status)
+    (raise (Exception. (str (tru "Invalid response from database driver. No :status provided.") result)))
+
+    ;; if query has been cancelled no need to save QueryExecution (or should we?) and no point formatting anything to
+    ;; be returned since it won't be returned
     (and (= status :failed)
          (instance? InterruptedException (:class result)))
-    (log/info (trs "Query canceled"))
+    (do
+      (log/info (trs "Query canceled"))
+      (respond {:status :interrupted}))
 
+    ;; 'Normal' query failures are usually caused by invalid queries -- equivalent of a HTTP 400. Save QueryExecution
+    ;; & return a "status = failed" response
     (= status :failed)
     (do
       (log/warn (trs "Query failure") (u/pprint-to-str 'red result))
-      (fail query-execution (get result :error (tru "Unknown error")) result))
+      (respond (fail query-execution result)))
 
+    ;; Successful query (~= HTTP 200): save QueryExecution & return "status = completed" response
     (= status :completed)
-    (succeed query-execution result)))
+    (respond (succeed query-execution result))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,5 +151,5 @@
       (qp query respond raise canceled-chan)
       ;; add calculated hash to query
       (let [query   (assoc-in query [:info :query-hash] (qputil/query-hash query))
-            respond (comp respond (partial format-userland-query-result (query-execution-info query)))]
+            respond (partial format-userland-query-result respond raise (query-execution-info query))]
         (qp query respond raise canceled-chan)))))

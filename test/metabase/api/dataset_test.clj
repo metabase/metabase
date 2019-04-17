@@ -41,7 +41,8 @@
 
 (def ^:private query-defaults
   {:constraints constraints/default-query-constraints
-   :middleware  {:add-default-userland-constraints? true, :userland-query? true}})
+   :middleware  {:add-default-userland-constraints? true, :userland-query? true}
+   :async?      true})
 
 ;;; ## POST /api/meta/dataset
 ;; Just a basic sanity check to make sure Query Processor endpoint is still working correctly.
