@@ -94,11 +94,6 @@
     LiteralDatetimeString
     java.util.Date)))
 
-(def DateTimeValue
-  "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
-  `relative-datetime` form."
-  (one-of absolute-datetime relative-datetime time))
-
 
 ;;; ----------------------------------------------------- Fields -----------------------------------------------------
 
@@ -144,6 +139,11 @@
   (field (one-of field-id field-literal fk->)
    n     s/Int
    unit  RelativeDatetimeUnit))
+
+(def DateTimeValue
+  "Schema for a datetime value drivers will personally have to handle, either an `absolute-datetime` form or a
+  `relative-datetime` form."
+  (one-of absolute-datetime relative-datetime time))
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
 (def BinningStrategyName
