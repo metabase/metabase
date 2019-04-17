@@ -96,7 +96,7 @@
   ([_ unit amount]
    (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
   ([_ field unit amount]
-   (hx/+ (hx/->timestamp field) (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit))))))
+   (hx/+ (hx/->timestamp field) (hsql/raw (format "INTERVAL '%d' %s" (int amount) (name unit))))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
