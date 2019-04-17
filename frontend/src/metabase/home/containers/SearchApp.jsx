@@ -46,7 +46,7 @@ export default class SearchApp extends React.Component {
                       title={t`No results`}
                       message={t`Metabase couldn't find any results for your search.`}
                       illustrationElement={
-                        <img src="../app/assets/img/no_results.svg" />
+                        <img src="app/assets/img/no_results.svg" />
                       }
                     />
                   </Card>
