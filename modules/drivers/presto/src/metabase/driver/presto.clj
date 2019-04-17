@@ -162,8 +162,11 @@
                                                           " LIKE 'information_schema'"))]
     (= v "information_schema")))
 
-(defmethod driver/date-interval :presto [_ unit amount]
-  (hsql/call :date_add (hx/literal unit) amount :%now))
+(defmethod driver/date-interval :presto
+  ([_ unit amount]
+   (hsql/call :date_add (hx/literal unit) amount :%now))
+  ([_ field unit amount]
+   (hsql/call :date_add (hx/literal unit) amount (hx/->timestamp field))))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."

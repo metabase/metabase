@@ -137,16 +137,23 @@
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
 ;; e.g. (SYSDATE + NUMTODSINTERVAL(?, 'second'))
-(defmethod driver/date-interval :oracle [_ unit amount]
-  (hx/+ now (case unit
-              :second  (num-to-ds-interval :second amount)
-              :minute  (num-to-ds-interval :minute amount)
-              :hour    (num-to-ds-interval :hour   amount)
-              :day     (num-to-ds-interval :day    amount)
-              :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
-              :month   (num-to-ym-interval :month  amount)
-              :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
-              :year    (num-to-ym-interval :year   amount))))
+(defn- date-interval*
+  [datetime unit amount]
+  (hx/+ datetime (case unit
+                   :second  (num-to-ds-interval :second amount)
+                   :minute  (num-to-ds-interval :minute amount)
+                   :hour    (num-to-ds-interval :hour   amount)
+                   :day     (num-to-ds-interval :day    amount)
+                   :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
+                   :month   (num-to-ym-interval :month  amount)
+                   :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
+                   :year    (num-to-ym-interval :year   amount))))
+
+(defmethod driver/date-interval :oracle
+  ([_ unit amount]
+   (date-interval* now unit amount))
+  ([_ field unit amount]
+   (date-interval* (hx/->timestamp field) unit amount)))
 
 
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds] [_ _ field-or-value]

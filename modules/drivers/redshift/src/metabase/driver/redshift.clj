@@ -75,8 +75,11 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-interval :redshift [_ unit amount]
-  (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
+(defmethod driver/date-interval :redshift
+  ([_ unit amount]
+   (hsql/call :+ :%getdate (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit)))))
+  ([_ field unit amount]
+   (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp field))))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds] [_ _ expr]
   (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")

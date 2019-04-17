@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.match :refer [match]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
@@ -288,10 +289,11 @@
   (date driver unit (->honeysql driver value)))
 
 (defmethod ->honeysql [:sql :relative-datetime]
-  [driver [_ amount unit]]
-  (date driver unit (if (zero? amount)
-                      (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount))))
+  [driver [_ & args]]
+  (match (vec args)
+    [0 unit]            (date driver unit (current-datetime-fn driver))
+    [amount unit]       (date driver unit (driver/date-interval driver unit amount))
+    [field amount unit] (driver/date-interval driver (->honeysql driver field) unit amount)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

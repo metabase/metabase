@@ -1,6 +1,9 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [metabase
+  (:require [clj-time
+             [core :as time]
+             [format :as tformat]]
+            [metabase
              [driver :as driver]
              [query-processor-test :refer :all]
              [util :as u]]
@@ -173,3 +176,53 @@
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
   (calculate-bird-scarcity [:* 1 [:field-id $count]]))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           DATETIME EXTRACTION AND MANIPULATION                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private utc-tz     (time/time-zone-for-id "UTC"))
+
+(defn- source-date-formatter
+  "Create a date formatter, interpretting the datestring as being in `tz`"
+  [tz]
+  (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) tz))
+
+(defn- result-date-formatter
+  "Create a formatter for converting a date to `tz` and in the format that the query processor would return"
+  [tz]
+  (tformat/with-zone (tformat/formatters :date-time) tz))
+
+(def ^:private result-date-formatter-without-tz
+  (tformat/formatters :mysql))
+
+(defn- adjust-date
+  "Parses `dates` using `source-formatter` and convert them to a string via `result-formatter`"
+  [source-formatter result-formatter dates]
+  (map (comp #(tformat/unparse result-formatter %)
+             #(tformat/parse source-formatter %))
+       dates))
+
+(defn- robust-dates
+  [dates]
+  (map vector (adjust-date (source-date-formatter utc-tz) result-date-formatter-without-tz)))
+
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
+  (robust-dates ["2014-10-01T00:00:00.000"
+                 "2014-08-01T00:00:00.000"
+                 "2014-08-01T00:00:00.000"])
+  (rows (data/run-mbql-query users
+          {:expressions {:cohort [:datetime-field $last_login :month]}
+           :fields      [[:expression :cohort]]
+           :limit       3
+           :order-by    [[:asc $name]]})))
+
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
+  (robust-dates ["2014-09-03T06:45:00.000-07:00"
+                 "2014-07-02T02:30:00.000-07:00"
+                 "2014-07-01T03:30:00.000-07:00"])
+  (rows (data/run-mbql-query users
+          {:expressions {:prev_month [:relative-datetime $last_login -1 :month]}
+           :fields      [[:expression :prev_month]]
+           :limit       3
+           :order-by    [[:asc $name]]})))

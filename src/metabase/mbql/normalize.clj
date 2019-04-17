@@ -114,14 +114,17 @@
    (conj (normalize-time-interval-tokens nil field amount unit) (normalize-tokens options :ignore-path))))
 
 (defn- normalize-relative-datetime-tokens
-  "Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
+  "Normalize a `relative-datetime` clause. `relative-datetime` comes in 3 flavors:
 
      [:relative-datetime :current]
-     [:relative-datetime -10 :day] ; amount & unit"
+     [:relative-datetime -10 :day] ; amount & unit
+     [:relative-datetime [:field-id 15] -10 :day] ; field (instead of now) amount & unit"
   ([_ _]
    [:relative-datetime :current])
   ([_ amount unit]
-   [:relative-datetime amount (mbql.u/normalize-token unit)]))
+   [:relative-datetime amount (mbql.u/normalize-token unit)])
+  ([_ field amount unit]
+   [:relative-datetime (normalize-tokens field :ignore-path) amount (mbql.u/normalize-token unit)]))
 
 (def ^:private mbql-clause->special-token-normalization-fn
   "Special fns to handle token normalization for different MBQL clauses."

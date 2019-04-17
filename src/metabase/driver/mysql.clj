@@ -52,10 +52,15 @@
        :placeholder  "tinyInt1isBit=false")]))
 
 
-(defmethod driver/date-interval :mysql [_ unit amount]
-  (hsql/call :date_add
-    :%now
-    (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+(defmethod driver/date-interval :mysql
+  ([_ unit amount]
+   (hsql/call :date_add
+     :%now
+     (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+  ([_ field unit amount]
+   (hsql/call :date_add
+     (hx/->timestamp field)
+     (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))))
 
 
 (defmethod driver/humanize-connection-error-message :mysql [_ message]

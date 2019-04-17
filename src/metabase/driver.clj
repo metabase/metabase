@@ -379,7 +379,8 @@
   form to call the appropriate SQL fns:
 
     (date-interval :postgres :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))"
-  {:arglists '([driver unit amount])}
+  {:arglists '([driver unit amount]
+               [driver field unit amount])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

@@ -16,18 +16,27 @@
 (defn clause
   "Impl of `defclause` macro."
   [clause-name & arg-schemas]
-  (vec
-   (cons
-    (s/one (s/eq clause-name) clause-name)
-    (for [[arg-name arg-schema] (partition 2 arg-schemas)]
-      (clause-arg-schema arg-name arg-schema)))))
+  (into [(s/one (s/eq clause-name) clause-name)]
+        (for [[arg-name arg-schema] (partition 2 arg-schemas)]
+          (clause-arg-schema arg-name arg-schema))))
+
+(defn multiairity-clause
+  "Impl of multi-airity `defclause` macro."
+  [clause-name & arg-schemas]
+  (->> arg-schemas
+       (mapcat (fn [arg-schemas]
+                 (let [airity (inc (/ (count arg-schemas) 2))]
+                   [#(= (count %) airity) (apply clause clause-name arg-schemas)])))
+       (apply s/conditional)))
 
 (defn- stringify-names [arg-names-and-schemas]
-  (reduce concat (for [[arg-name schema] (partition 2 arg-names-and-schemas)]
-                   [(name arg-name) (if (and (list? schema)
-                                             (#{:optional :rest} (keyword (first schema))))
-                                      (vec (cons (keyword (first schema)) (rest schema)))
-                                      schema)])))
+  (->> arg-names-and-schemas
+       (partition 2)
+       (mapcat (fn [[arg-name schema]]
+                 [(name arg-name) (if (and (list? schema)
+                                           (#{:optional :rest} (keyword (first schema))))
+                                    (vec (cons (keyword (first schema)) (rest schema)))
+                                    schema)]))))
 
 (defmacro defclause
   "Define a new MBQL clause.
@@ -44,7 +53,13 @@
   `expressions` clause vs in aggregations), you can give the actual symbol produced by this macro a different name as
   follows:
 
-    (defclause [ag:+ +] ...) ; define symbol `ag:+` to be used for a `[:+ ...]` clause"
+    (defclause [ag:+ +] ...) ; define symbol `ag:+` to be used for a `[:+ ...]` clause.
+
+  If multiple airities are desired definitions can be overloaded by enclosing them in lists:
+
+    (defclause relative-datetime
+      (n s/Int unit Unit)
+      (field Field n s/Int unit Unit))"
   [clause-name & arg-names-and-schemas]
   (let [[symb-name clause-name] (if (vector? clause-name)
                                   clause-name
@@ -52,7 +67,9 @@
     `(def ~(vary-meta symb-name assoc
                       :clause-name (keyword clause-name)
                       :doc         (format "Schema for a valid %s clause." clause-name))
-       (clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas)))))
+       ~(if (seq? (first arg-names-and-schemas))
+          `(multiairity-clause ~(keyword clause-name) ~@(map (comp vec stringify-names) arg-names-and-schemas))
+          `(clause ~(keyword clause-name) ~@(stringify-names arg-names-and-schemas))))))
 
 
 ;;; ----------------------------------------------------- one-of -----------------------------------------------------
