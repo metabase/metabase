@@ -257,7 +257,7 @@ export const DATE_COLUMN_SETTINGS = {
     getProps: (column: Column, settings: ColumnSettings) => ({
       options: [
         timeStyleOption("h:mm A", "12-hour clock"),
-        timeStyleOption("k:mm", "24-hour clock"),
+        timeStyleOption("HH:mm", "24-hour clock"),
       ],
     }),
     getHidden: (column: Column, settings: ColumnSettings) =>
