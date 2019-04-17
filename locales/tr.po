@@ -6475,7 +6475,7 @@ msgstr "Ayarını kaldır"
 
 #: frontend/src/metabase/visualizations/components/TableSimple.jsx:253
 msgid "Rows {0}-{1} of {2}"
-msgstr "{0} - {1} - {2} satırda"
+msgstr "{0}-{1}/{2} satırda"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:189
 msgid "Data truncated to {0} rows."
