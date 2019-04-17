@@ -46,6 +46,14 @@ th {
   border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
+img {
+  transition: transform .2s;
+}
+
+img:hover {
+  transform: scale(7);
+}
+
 .ComparisonTable {
   border-collapse: collapse;
   border-spacing: 0;

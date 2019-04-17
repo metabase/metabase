@@ -10,6 +10,9 @@ import reducers from "./reducers-public";
 
 import { IFRAMED } from "metabase/lib/dom";
 
+import moment from "moment";
+moment.locale("tr");
+
 init(reducers, getRoutes, () => {
   if (IFRAMED) {
     document.body.style.backgroundColor = "transparent";
