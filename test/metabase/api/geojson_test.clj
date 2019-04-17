@@ -1,10 +1,12 @@
 (ns metabase.api.geojson-test
   (:require [expectations :refer [expect]]
+            [metabase
+             [http-client :as client]
+             [util :as u]]
             [metabase.api.geojson :as geojson-api]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
             [schema.core :as s]))
 
 (def ^:private ^String test-geojson-url
@@ -103,6 +105,13 @@
    :coordinates [37.77986 -122.429]}
   (tu/with-temporary-setting-values [custom-geojson test-custom-geojson]
     ((user->client :rasta) :get 200 "geojson/middle-earth")))
+
+;; should be able to fetch the GeoJSON even if you aren't logged in
+(expect
+  {:type        "Point"
+   :coordinates [37.77986 -122.429]}
+  (tu/with-temporary-setting-values [custom-geojson test-custom-geojson]
+    (client/client :get 200 "geojson/middle-earth")))
 
 ;; try fetching an invalid key; should fail
 (expect
