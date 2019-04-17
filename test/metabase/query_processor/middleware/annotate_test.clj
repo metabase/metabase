@@ -164,7 +164,7 @@
 ;; make sure custom aggregation names get included in the col info
 (defn- col-info-for-aggregation-clause [clause]
   (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause clause)))
+    (#'annotate/col-info-for-aggregation-clause clause nil)))
 
 (expect
   {:base_type    :type/Float
@@ -257,11 +257,36 @@
           :type     :query
           :query    (data/$ids [venues {:wrap-field-ids? true}]
                       {:source-table $$table
-                       :expressions  {"discount_price" [:* 0.9 [:field-id $price]]}
+                       :expressions  {:discount_price [:* 0.9 [:field-id $price]]}
                        :fields       [$name [:expression "discount_price"]]
                        :limit        10})}))
       :cols
       second))
+
+(expect
+  [{:name            "prev_month"
+    :display_name    "prev_month"
+    :base_type       :type/DateTime
+    :special_type    nil
+    :expression_name "prev_month"
+    :source          :fields}
+   {:name            "cohort"
+    :display_name    "cohort"
+    :base_type       :type/DateTime
+    :special_type    nil
+    :expression_name "cohort"
+    :source          :fields}]
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         {:database (data/id)
+          :type     :query
+          :query    (data/$ids [users {:wrap-field-ids? true}]
+                      {:source-table $$table
+                       :expressions {:prev_month [:relative-datetime $last_login -1 :month]
+                                     :cohort [:datetime-field $last_login :month]}
+                       :fields      [[:expression "prev_month"] [:expression "cohort"]]
+                       :limit       10})}))
+      :cols))
 
 ;; If a driver returns result rows as a sequence of maps, does the `result-rows-maps->vectors` convert them to a
 ;; sequence of vectors in the correct order?
@@ -356,7 +381,7 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)] nil)))
 
 ;; nested-nested fields should include grandparent name (etc)
 (tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
@@ -374,4 +399,4 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)] nil)))

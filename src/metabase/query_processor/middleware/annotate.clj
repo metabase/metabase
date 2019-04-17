@@ -104,7 +104,11 @@
             :display_name    expression-name
             ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
             :expression_name expression-name}
-           (col-info-for-aggregation-clause (expressions (keyword expression-name)) expressions))
+           (-> expression-name
+               keyword
+               expressions
+               (col-info-for-aggregation-clause expressions)
+               (select-keys [:base_type :special_type])))
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]

@@ -198,8 +198,8 @@
                  "2014-08-01T00:00:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (rows (data/run-mbql-query users
-            {:expressions {:cohort [:datetime-field $last_login :month]}
-             :fields      [[:expression :cohort]]
+            {:expressions {"cohort" [:datetime-field $last_login :month]}
+             :fields      [[:expression "cohort"]]
              :limit       3
              :order-by    [[:asc $name]]}))))
 
