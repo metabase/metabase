@@ -174,7 +174,7 @@
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
   `:fk->` or an expression reference `[:expression <name>]`."
-  (one-of field-id field-literal fk-> datetime-field expression binning-strategy))
+  (one-of field-id field-literal fk-> datetime-field expression binning-strategy relative-datetime))
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;

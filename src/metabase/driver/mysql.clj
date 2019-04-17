@@ -59,7 +59,7 @@
      (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
   ([_ field unit amount]
    (hsql/call :date_add
-     (hx/->timestamp field)
+     field
      (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))))
 
 
