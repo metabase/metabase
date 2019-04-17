@@ -467,7 +467,7 @@ export default class Visualization extends Component {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src="../app/assets/img/no_results.svg" />
+              <img src="app/assets/img/no_results.svg" />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>
