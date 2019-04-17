@@ -64,8 +64,10 @@
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
+(declare col-info-for-aggregation-clause)
+
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [clause :- mbql.s/Field, expressions :- su/Map]
+  [clause :- mbql.s/Field, expressions :- (s/maybe su/Map)]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
@@ -102,11 +104,7 @@
             :display_name    expression-name
             ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
             :expression_name expression-name}
-           (col-info-for-field-clause (expressions (keyword expression-name)) expressions))
-
-    [(operator :guard #{:+ :- :/ :*}) & args]
-    {:base_type    :type/Float
-     :special_type :type/Number}
+           (col-info-for-aggregation-clause (expressions (keyword expression-name)) expressions))
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
@@ -212,14 +210,10 @@
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
-    [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :expression :binning-strategy}) & _]
+    [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :relative-datetime :expression :binning-strategy}) & _]
     (select-keys (col-info-for-field-clause &match expressions) [:base_type :special_type :settings])
 
-    ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
-    ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
-    ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
-    ;; for the purposes of a patch release.
-    [(_ :guard #{:expression :+ :- :/ :*}) & _]
+    [(_ :guard #{:+ :- :/ :*}) & _]
     (merge {:base_type    :type/Float
             :special_type :type/Number}
            (when (mbql.preds/Aggregation? &match)
