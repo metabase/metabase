@@ -405,6 +405,19 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   return m.format(format.join(", "));
 }
 
+function formatTimeWithFormats(value, timeFormat, options) {
+  let m = parseTime(value, options.column && options.column.unit);
+  if (!m.isValid()) {
+    return String(value);
+  }
+  
+  const format = [];
+  if (timeFormat && options.time_enabled) {
+    format.push(timeFormat);
+  }
+  return m.format(format.join(", "));
+}
+
 function formatDateTime(value, options) {
   return formatDateTimeWithUnit(value, "minute", options);
 }
@@ -461,12 +474,35 @@ export function formatDateTimeWithUnit(
   return formatDateTimeWithFormats(value, dateFormat, timeFormat, options);
 }
 
-export function formatTime(value: Value) {
+export function formatTime(
+  value: Value,
+  unit: DatetimeUnit,
+  options: FormattingOptions = {},
+) {
   let m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
-    return m.format("LT");
+
+    options = {
+      time_style: DEFAULT_TIME_STYLE,
+      time_enabled: hasHour(unit) ? "minutes" : null,
+      ...options,
+    };
+  
+    let timeFormat = options.time_format;
+  
+    if (!timeFormat) {
+      timeFormat = getTimeFormatFromStyle(
+        // $FlowFixMe: time_style default set above
+        options.time_style,
+        unit,
+        options.time_enabled,
+      );
+    }
+  
+    return formatTimeWithFormats(value, timeFormat, options);
+    // return m.format("LT");
   }
 }
 
@@ -612,7 +648,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   } else if (column && isa(column.special_type, TYPE.Email)) {
     return formatEmail(value, options);
   } else if (column && isa(column.base_type, TYPE.Time)) {
-    return formatTime(value);
+    return formatTime(value, "minute", options);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(value, column.unit, options);
   } else if (

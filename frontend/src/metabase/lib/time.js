@@ -57,10 +57,12 @@ export function parseTimestamp(value, unit) {
 export function parseTime(value) {
   if (moment.isMoment(value)) {
     return value;
+  } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
+    return moment(value, ["HH:mm:SS.sssZZ"]).utc();
   } else if (typeof value === "string") {
     return moment(value, [
       "HH:mm:SS.sssZZ",
-      "HH:mm:SS.sss",
+      // "HH:mm:SS.sss", was the same as the next row
       "HH:mm:SS.sss",
       "HH:mm:SS",
       "HH:mm",
