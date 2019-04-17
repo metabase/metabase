@@ -36,7 +36,7 @@
   ([_ unit amount]
    (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
   ([_ field unit amount]
-   (hsql/raw (format "(%s + INTERVAL '%d %s')" (hx/->timestamp field) (int amount) (name unit)))))
+   (hx/+ (hx/->timestamp field) (hsql/raw (format "INTERVAL '%d %s'" (int amount) (name unit))))))
 
 (defmethod driver/humanize-connection-error-message :postgres [_ message]
   (condp re-matches message
