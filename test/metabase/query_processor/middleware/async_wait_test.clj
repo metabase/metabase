@@ -25,8 +25,6 @@
           ((async-wait/wait-for-permit qp) query respond respond canceled-chan))
         (f {:result-chan result-chan, :semaphore-chan semaphore-chan, :canceled-chan canceled-chan})))))
 
-
-
 ;; QP should run if semaphore-chan gets a permit. Permit should be closed after QP finishes.
 (expect
   {:result ::result, :permit-taken? true, :permit-closed? true}

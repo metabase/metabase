@@ -6,7 +6,7 @@
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]))
 
-(deftype FakePreparedStatement [called-cancel?]
+(defrecord ^:private FakePreparedStatement [called-cancel?]
   java.sql.PreparedStatement
   (closeOnCompletion [_]) ; no-op
   (cancel [_] (deliver called-cancel? true))
@@ -59,7 +59,7 @@
                                                     :on-fake-prepared-statement
                                                     (fn []
                                                       (deliver called-query? true)
-                                                      (deref pause-query)))]
+                                                      @pause-query))]
                (query-thunk))
              (catch Throwable e
                (throw e)))))))))

@@ -71,7 +71,7 @@
             (let [result (apply f args)]
               (cond
                 (nil? result)
-                (log/warn "Warning: {0} returned `nil`" f)
+                (log/warn (trs "Warning: {0} returned `nil`" f))
 
                 (not (a/>!! out-chan result))
                 (log/error (trs "Unexpected error writing result to output channel: already closed"))))
