@@ -107,8 +107,10 @@
 (expect
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [output-chan]} input-chan]
+      ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
+      ;; want to make sure it closes
       (a/close! input-chan)
-      (wait-for-close output-chan))))
+      (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan)))))
 
 ;; ...as should the output stream
 (expect
