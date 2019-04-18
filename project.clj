@@ -194,7 +194,8 @@
        :exclusions [expectations]]]
 
      :injections
-     [(require 'metabase.test-setup                                   ; for test setup stuff
+     [(require 'expectation-options                                   ; expectations customizations
+               'metabase.test-setup                                   ; for test setup stuff
                'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
      :resource-paths

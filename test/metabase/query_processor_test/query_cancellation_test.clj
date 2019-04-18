@@ -1,46 +1,42 @@
 (ns metabase.query-processor-test.query-cancellation-test
   "TODO - This is sql-jdbc specific, so it should go in a sql-jdbc test namespace."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [expectations :refer [expect]]
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]))
 
-(deftype FakePreparedStatement [called-cancel?]
+(defrecord ^:private FakePreparedStatement [called-cancel?]
   java.sql.PreparedStatement
   (closeOnCompletion [_]) ; no-op
   (cancel [_] (deliver called-cancel? true))
   (close [_] true))
 
 (defn- make-fake-prep-stmt
-  "Returns `fake-value` whenenver the `sql` parameter returns a truthy value when passed to `use-fake-value?`"
-  [orig-make-prep-stmt use-fake-value? faked-value]
+  "Returns `fake-value` whenenver the `sql` parameter returns a truthy value when passed to `use-fake-value?`."
+  [orig-make-prep-stmt & {:keys [use-fake-value? faked-value]
+                          :or   {use-fake-value? (constantly false)}}]
   (fn [connection sql options]
     (if (use-fake-value? sql)
       faked-value
       (orig-make-prep-stmt connection sql options))))
 
 (defn- fake-query
-  "Function to replace the `clojure.java.jdbc/query` function. Will invoke `call-on-query`, then `call-to-pause` whe
-  passed an instance of `FakePreparedStatement`"
-  [orig-jdbc-query call-on-query call-to-pause]
+  "Function to replace the `clojure.java.jdbc/query` function. Will invoke `on-fake-prepared-statement` when passed an
+  instance of `FakePreparedStatement`."
+  {:style/indent 1}
+  [orig-jdbc-query & {:keys [on-fake-prepared-statement]}]
   (fn
     ([conn stmt+params]
      (orig-jdbc-query conn stmt+params))
+
     ([conn stmt+params opts]
      (if (instance? FakePreparedStatement (first stmt+params))
-       (do
-         (call-on-query)
-         (call-to-pause))
+       (when on-fake-prepared-statement (on-fake-prepared-statement))
        (orig-jdbc-query conn stmt+params opts)))))
 
 (expect
-  [false ;; Ensure the query promise hasn't fired yet
-   false ;; Ensure the cancellation promise hasn't fired yet
-   true  ;; Was query called?
-   false ;; Cancel should not have been called yet
-   true  ;; Cancel should have been called now
-   true  ;; The paused query can proceed now
-   ]
+  ::tu/success
   ;; this might dump messages about the connection being closed; we don't need to worry about that
   (tu.log/suppress-output
     (tu/call-with-paused-query
@@ -54,6 +50,16 @@
              orig-jdbc-query jdbc/query
              orig-prep-stmt  jdbc/prepare-statement]
          (future
-           (with-redefs [jdbc/prepare-statement (make-fake-prep-stmt orig-prep-stmt (fn [table-name] (re-find #"CHECKINS" table-name)) fake-prep-stmt)
-                         jdbc/query             (fake-query orig-jdbc-query #(deliver called-query? true) #(deref pause-query))]
-             (query-thunk))))))))
+           (try
+             (with-redefs [jdbc/prepare-statement (make-fake-prep-stmt
+                                                   orig-prep-stmt
+                                                   :use-fake-value? (fn [sql] (re-find #"checkins" (str/lower-case sql)))
+                                                   :faked-value     fake-prep-stmt)
+                           jdbc/query             (fake-query orig-jdbc-query
+                                                    :on-fake-prepared-statement
+                                                    (fn []
+                                                      (deliver called-query? true)
+                                                      @pause-query))]
+               (query-thunk))
+             (catch Throwable e
+               (throw e)))))))))

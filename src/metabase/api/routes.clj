@@ -69,7 +69,7 @@
   (context "/email"                [] (+auth email/routes))
   (context "/embed"                [] (+message-only-exceptions embed/routes))
   (context "/field"                [] (+auth field/routes))
-  (context "/geojson"              [] (+auth geojson/routes))
+  (context "/geojson"              [] geojson/routes)
   (context "/ldap"                 [] (+auth ldap/routes))
   (context "/metric"               [] (+auth metric/routes))
   (context "/notify"               [] (+apikey notify/routes))

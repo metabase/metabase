@@ -321,11 +321,13 @@
               frames-before-last-mb))))})
 
 (defn deref-with-timeout
-  "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
-  [futur timeout-ms]
-  (let [result (deref futur timeout-ms ::timeout)]
+  "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
+  `timeout-ms`. If `ref` is a future it will attempt to cancel it as well."
+  [reff timeout-ms]
+  (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (future-cancel futur)
+      (when (instance? java.util.concurrent.Future reff)
+        (future-cancel reff))
       (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
     result))
 

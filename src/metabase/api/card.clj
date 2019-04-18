@@ -8,7 +8,6 @@
             [metabase
              [events :as events]
              [public-settings :as public-settings]
-             [query-processor :as qp]
              [related :as related]
              [util :as u]]
             [metabase.api
@@ -32,6 +31,7 @@
              [util :as qputil]]
             [metabase.query-processor.middleware
              [cache :as cache]
+             [constraints :as constraints]
              [results-metadata :as results-metadata]]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util
@@ -610,7 +610,7 @@
   Exception if preconditions (such as read perms) are not met before returning a channel."
   {:style/indent 1}
   [card-id & {:keys [parameters constraints context dashboard-id middleware]
-              :or   {constraints qp/default-query-constraints
+              :or   {constraints constraints/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (Card card-id))

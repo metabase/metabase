@@ -22,6 +22,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.util.date :as du]))
 
+;; TODO - Why not make this an option in the query itself? :confused:
 (def ^:dynamic ^Boolean *ignore-cached-results*
   "Should we force the query to run, ignoring cached results even if they're available?
   Setting this to `true` will run the query again and will still save the updated results."
@@ -89,25 +90,25 @@
   (boolean (and (public-settings/enable-query-caching)
                 cache-ttl)))
 
-(defn- save-results-if-successful! [query-hash results]
-  (when (= (:status results) :completed)
-    (save-results! query-hash results)))
-
-(defn- run-query-and-save-results-if-successful! [query-hash qp query]
-  (let [start-time-ms (System/currentTimeMillis)
-        results       (qp query)
-        total-time-ms (- (System/currentTimeMillis) start-time-ms)
+(defn- save-results-if-successful! [query-hash start-time-ms {:keys [status], :as results}]
+  (let [total-time-ms (- (System/currentTimeMillis) start-time-ms)
         min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
     (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
-    (when (>= total-time-ms min-ttl-ms)
-      (save-results-if-successful! query-hash results))
-    results))
+    (when (and (= status :completed)
+               (>= total-time-ms min-ttl-ms))
+      (save-results! query-hash results))))
 
-(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query}]
-  ;; TODO - Query should already have a `info.hash`, shouldn't it?
+(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query} respond raise canceled-chan]
+  ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
+  ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)]
-    (or (cached-results query-hash cache-ttl)
-        (run-query-and-save-results-if-successful! query-hash qp query))))
+    (if-let [cached-results (cached-results query-hash cache-ttl)]
+      (respond cached-results)
+      (let [start-time (System/currentTimeMillis)
+            respond    (fn [results]
+                         (save-results-if-successful! query-hash start-time results)
+                         (respond results))]
+        (qp query respond raise canceled-chan)))))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
@@ -122,13 +123,13 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn [query]
+  (fn [query respond raise canceled-chan]
     (if-not (is-cacheable? query)
-      (qp query)
+      (qp query respond raise canceled-chan)
       ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
       ;; it when the files get compiled, because that would give it the wrong version of the
       ;; `IQueryProcessorCacheBackend` protocol
       (do
         (when-not @backend-instance
           (set-backend!))
-        (run-query-with-cache qp query)))))
+        (run-query-with-cache qp query respond raise canceled-chan)))))
