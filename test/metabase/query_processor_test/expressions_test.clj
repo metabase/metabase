@@ -208,8 +208,8 @@
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   (robust-dates (if (= :sqlite driver/*driver*)
-                  :date
-                  :mysql)
+                  :mysql
+                  :date-time)
                 ["2014-09-02T13:45:00.000"
                  "2014-07-02T09:30:00.000"
                  "2014-07-01T10:30:00.000"])
