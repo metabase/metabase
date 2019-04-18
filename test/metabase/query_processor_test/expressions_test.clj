@@ -188,8 +188,14 @@
 (defn- robust-dates
   [dates]
   (map (comp vector
-             (partial tformat/unparse (tformat/with-zone (tformat/formatters :date-time) utc-tz))
-             (partial tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz)))
+             (partial tformat/unparse (tformat/with-zone
+                                        (tformat/formatters (if (= :sqlite driver/*driver*)
+                                                              :mysql
+                                                              :date-time))
+                                        utc-tz))
+             (partial tformat/parse (tformat/with-zone
+                                      (tformat/formatters :date-hour-minute-second-fraction)
+                                      utc-tz)))
        dates))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
@@ -204,12 +210,12 @@
              :order-by    [[:asc $name]]}))))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  (robust-dates ["2014-09-03T13:45:00.000"
+  (robust-dates ["2014-09-02T13:45:00.000"
                  "2014-07-02T09:30:00.000"
                  "2014-07-01T10:30:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (rows (data/run-mbql-query users
-            {:expressions {:prev_month [:relative-datetime $last_login -1 :month]}
+            {:expressions {:prev_month [:relative-datetime $last_login -31 :day]}
              :fields      [[:expression :prev_month]]
              :limit       3
              :order-by    [[:asc $name]]}))))
