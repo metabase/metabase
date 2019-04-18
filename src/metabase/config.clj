@@ -2,13 +2,13 @@
   (:require [clojure.java
              [io :as io]
              [shell :as shell]]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [environ.core :as environ])
   (:import clojure.lang.Keyword))
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
+  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
@@ -60,12 +60,13 @@
 
 (defn- version-info-from-shell-script []
   (try
-    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
+    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out str/trim (str/split #" "))]
       {:tag    (or tag "?")
        :hash   (or hash "?")
        :branch (or branch "?")
        :date   (or date "?")})
-    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
+    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't
+    ;; barf
     (catch Throwable _
       {:tag "?", :hash "?", :branch "?", :date "?"})))
 

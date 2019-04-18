@@ -34,8 +34,8 @@
       (let [{:keys [creator_id dataset_query]} card]
         {:card   card
          :result (qp/process-query-and-save-with-max-results-constraints! dataset_query
-                   (merge {:executed-by creator_id,
-                           :context     :pulse,
+                   (merge {:executed-by creator_id
+                           :context     :pulse
                            :card-id     card-id}
                           options))}))
     (catch Throwable t

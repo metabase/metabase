@@ -6,7 +6,6 @@
             [medley.core :as m]
             [metabase
              [db :as mdb]
-             [query-processor :as qp]
              [util :as u]]
             [metabase.api
              [card :as card-api]
@@ -80,9 +79,11 @@
   {:style/indent 2}
   [card-id parameters & options]
   ;; run this query with full superuser perms
-  (let [in-chan  (binding [api/*current-user-permissions-set*     (atom #{"/"})
-                           qp/*allow-queries-with-no-executor-id* true]
-                   (apply card-api/run-query-for-card-async card-id, :parameters parameters, :context :public-question, options))
+  (let [in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                   (apply card-api/run-query-for-card-async card-id
+                          :parameters parameters
+                          :context    :public-question
+                          options))
         out-chan (a/chan 1 (map transform-results))]
     (async.u/single-value-pipe in-chan out-chan)
     out-chan))
