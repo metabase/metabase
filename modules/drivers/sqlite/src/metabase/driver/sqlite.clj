@@ -148,7 +148,7 @@
   ([driver unit amount]
    (date-interval* driver (hx/literal "now") unit amount))
   ([driver field unit amount]
-   (date-interval* driver (hx/->timestamp field) unit amount)))
+   (date-interval* driver field unit amount)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds] [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))

@@ -190,7 +190,7 @@
   (map (comp vector
              (partial tformat/unparse (tformat/with-zone
                                         (tformat/formatters (if (= :sqlite driver/*driver*)
-                                                              :mysql
+                                                              :date
                                                               :date-time))
                                         utc-tz))
              (partial tformat/parse (tformat/with-zone
