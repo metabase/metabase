@@ -186,20 +186,17 @@
 (def ^:private utc-tz (time/time-zone-for-id "UTC"))
 
 (defn- robust-dates
-  [dates]
+  [output-format dates]
   (map (comp vector
-             (partial tformat/unparse (tformat/with-zone
-                                        (tformat/formatters (if (= :sqlite driver/*driver*)
-                                                              :date
-                                                              :date-time))
-                                        utc-tz))
-             (partial tformat/parse (tformat/with-zone
-                                      (tformat/formatters :date-hour-minute-second-fraction)
-                                      utc-tz)))
+             (partial tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz))
+             (partial tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz)))
        dates))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  (robust-dates ["2014-10-01T00:00:00.000"
+  (robust-dates (if (= :sqlite driver/*driver*)
+                  :date
+                  :date-time)
+                ["2014-10-01T00:00:00.000"
                  "2014-08-01T00:00:00.000"
                  "2014-08-01T00:00:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
@@ -210,7 +207,10 @@
              :order-by    [[:asc $name]]}))))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  (robust-dates ["2014-09-02T13:45:00.000"
+  (robust-dates (if (= :sqlite driver/*driver*)
+                  :date
+                  :mysql)
+                ["2014-09-02T13:45:00.000"
                  "2014-07-02T09:30:00.000"
                  "2014-07-01T10:30:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]

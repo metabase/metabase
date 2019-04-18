@@ -118,8 +118,8 @@
 (defmethod sql.qp/date [:sqlite :year] [_ _ expr]
   (hx/->integer (strftime "%Y" (ts->str expr))))
 
-(defn- date-interval*
-  [driver datetime unit amount]
+(defn- ->interval
+  [unit amount]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -129,7 +129,11 @@
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
                                    :year    [1 "years"])]
-    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month') The date bucketing will end up being
+    (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit))))
+
+(defmethod driver/date-interval :sqlite
+  ([driver unit amount]
+   ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month') The date bucketing will end up being
     ;; done twice since `date` is called on the results of `date-interval` automatically. This shouldn't be a big deal
     ;; because it's used for relative dates and only needs to be done once.
     ;;
@@ -141,14 +145,9 @@
     ;; The SQL we produce instead (for "last month") ends up looking something like:
     ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit datetime)
-                (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
-
-(defmethod driver/date-interval :sqlite
-  ([driver unit amount]
-   (date-interval* driver (hx/literal "now") unit amount))
+   (driver/date-interval driver (sql.qp/date driver unit (hx/literal "now")) unit amount))
   ([driver field unit amount]
-   (date-interval* driver field unit amount)))
+   (->datetime field (->interval unit amount))))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds] [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
