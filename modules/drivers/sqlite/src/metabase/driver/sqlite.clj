@@ -142,7 +142,7 @@
     ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
     (->datetime (sql.qp/date driver unit datetime)
-                (hx/literal (format "'%+d %s'" (* amount multiplier) sqlite-unit)))))
+                (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod driver/date-interval :sqlite
   ([driver unit amount]
