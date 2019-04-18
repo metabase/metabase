@@ -51,7 +51,7 @@
 (expect
  {:first-permit "Permit #1", :second-permit "Permit #1", :same? true}
  (tu.async/with-open-channels [semaphore-chan (semaphore-channel/semaphore-channel 1)
-                               output-chan    (a/chan 1)]
+                               output-chan    (a/promise-chan)]
    (let [existing-permit #(get @#'semaphore-channel/*permits* semaphore-chan)]
      (semaphore-channel/do-after-receiving-permit semaphore-chan
        (fn []
@@ -62,49 +62,108 @@
                  (a/>!! output-chan {:first-permit  (str first-permit)
                                      :second-permit (str second-permit)
                                      :same?         (identical? first-permit second-permit)}))))))))
-   (first (a/alts!! [output-chan (a/timeout 100)]))))
+   (tu.async/wait-for-result output-chan)))
 
-;; Make sure `do-f-with-permit` returns the permit when functions finish normally
+;; Make sure `do-with-permit` returns the permit when functions finish normally
 (expect
   {:permit-returned? true, :result ::value}
-  (let [open?  (atom false)
-        permit (reify
-                 Closeable
-                 (close [this]
-                   (reset! open? false)))]
-    (tu.async/with-open-channels [output-chan (a/chan 1)]
-      (#'semaphore-channel/do-f-with-permit permit output-chan (constantly ::value))
-      (let [[result] (a/alts!! [output-chan (a/timeout 100)])]
-        {:permit-returned? (not @open?), :result result}))))
+  (let [permit (tu.async/permit)]
+    (tu.async/with-open-channels [semaphore-chan (a/chan 1)
+                                  output-chan    (#'semaphore-channel/do-with-permit
+                                                  semaphore-chan
+                                                  permit
+                                                  (constantly ::value))]
+      {:permit-returned? (tu.async/permit-closed? permit)
+       :result           (tu.async/wait-for-result output-chan)})))
 
 ;; If `f` throws an Exception, `permit` should get returned, and Exception should get returned as the result
 (expect
   {:permit-returned? true, :result "FAIL"}
-  (let [open?  (atom false)
-        permit (reify
-                 Closeable
-                 (close [this]
-                   (reset! open? false)))]
-    (tu.async/with-open-channels [output-chan (a/chan 1)]
-      (#'semaphore-channel/do-f-with-permit permit output-chan (fn []
-                                                                 (throw (Exception. "FAIL"))))
-      (let [[result] (a/alts!! [output-chan (a/timeout 100)])]
-        {:permit-returned? (not @open?), :result (when (instance? Exception result)
-                                                   (.getMessage ^Exception result))}))))
+  (let [permit (tu.async/permit)]
+    (tu.async/with-open-channels [semaphore-chan (a/chan 1)
+                                  output-chan    (#'semaphore-channel/do-with-permit
+                                                  semaphore-chan
+                                                  permit
+                                                  (fn [] (throw (Exception. "FAIL"))))]
+      {:permit-returned? (tu.async/permit-closed? permit)
+       :result           (let [result (tu.async/wait-for-result output-chan)]
+                           (if (instance? Throwable result)
+                             (.getMessage ^Throwable result)
+                             result))})))
 
 ;; If `output-chan` is closed early, permit should still get returned, but there's nowhere to write the result to so
 ;; it should be `nil`
 (expect
   {:permit-returned? true, :result nil}
-  (let [open?  (atom false)
-        permit (reify
-                 Closeable
-                 (close [this]
-                   (reset! open? false)))]
-    (tu.async/with-open-channels [output-chan (a/chan 1)]
-      (#'semaphore-channel/do-f-with-permit permit output-chan (fn []
-                                                                 (Thread/sleep 100)
-                                                                 ::value))
+  (let [permit (tu.async/permit)]
+    (tu.async/with-open-channels [semaphore-chan (a/chan 1)
+                                  output-chan    (#'semaphore-channel/do-with-permit
+                                                  semaphore-chan
+                                                  permit
+                                                  (fn []
+                                                    (Thread/sleep 100)
+                                                    ::value))]
       (a/close! output-chan)
-      (let [[result] (a/alts!! [output-chan (a/timeout 500)])]
-        {:permit-returned? (not @open?), :result result}))))
+      {:permit-returned? (tu.async/permit-closed? permit)
+       :result           (tu.async/wait-for-result output-chan)})))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |      Tests for the new 0.32.5 optimizations that avoid async waits when permits are immediately available      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; there are basically 3 strategies that can be used by `do-after-receiving-permit`
+;; 1) run immediately, because permit is already present
+;; 2) run immediately, because permit is immediately available
+;; 3) run after waiting for permit
+
+;; to check that everything works correctly in a few different scenarios, rather than right 3 x n tests, largely
+;; repeating ourselves, we'll break things out into small functions that can be combined to pick + choose the
+;; functionality to test with a given strategy.
+
+(defn- do-semaphore-chan-fn [thunk-fn strategy-fn]
+  (tu.async/with-open-channels [semaphore-chan (a/chan 1)]
+    (strategy-fn semaphore-chan (thunk-fn (partial #'semaphore-channel/do-after-receiving-permit semaphore-chan)))))
+
+(defn- with-existing-permit [semaphore-chan thunk]
+  (binding [semaphore-channel/*permits* {semaphore-chan (tu.async/permit)}]
+    (thunk)))
+
+(defn- with-immediately-available-permit [semaphore-chan thunk]
+  (a/>!! semaphore-chan (tu.async/permit))
+  (thunk))
+
+(defn- after-waiting [semaphore-chan thunk]
+  (a/go
+    (a/<! (a/timeout 50))
+    (a/>! semaphore-chan (tu.async/permit)))
+  (thunk))
+
+;; test normal functions work correctly
+(defn- normal-fn [do-f]
+  (fn []
+    (tu.async/wait-for-result
+     (do-f (partial +) 1 2 3))))
+
+(expect 6 (do-semaphore-chan-fn normal-fn with-existing-permit))
+(expect 6 (do-semaphore-chan-fn normal-fn with-immediately-available-permit))
+(expect 6 (do-semaphore-chan-fn normal-fn after-waiting))
+
+;; Test that if output channel is closed, function gets interrupted
+(defn- check-interrupted-fn [do-f]
+  (fn []
+    (let [f (fn [chan]
+              (try
+                (Thread/sleep 1000)
+                (catch InterruptedException e
+                  (a/>!! chan ::interrupted))))]
+      (tu.async/with-open-channels [interrupted-chan (a/promise-chan)
+                                    out-chan         (do-f f interrupted-chan)]
+        (a/go
+          (a/<! (a/timeout 100))
+          (a/close! out-chan))
+        (tu.async/wait-for-result interrupted-chan 500)))))
+
+(expect ::interrupted (do-semaphore-chan-fn check-interrupted-fn with-existing-permit))
+(expect ::interrupted (do-semaphore-chan-fn check-interrupted-fn with-immediately-available-permit))
+(expect ::interrupted (do-semaphore-chan-fn check-interrupted-fn after-waiting))

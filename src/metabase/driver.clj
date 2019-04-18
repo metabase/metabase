@@ -16,7 +16,8 @@
              [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import org.joda.time.DateTime))
 
 (declare notify-database-updated)
 
@@ -672,9 +673,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti current-db-time
+(defmulti ^DateTime current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this."
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

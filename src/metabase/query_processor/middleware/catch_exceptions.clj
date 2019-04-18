@@ -85,11 +85,15 @@
 (defn catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a normal format."
   [qp]
-  ;; we're not using the version of `raise` passed in on purpose here -- that one is a placeholder -- this is the
-  ;; implementation of `raise` we expect most QP middleware to ultimately use
-  (fn [query respond _ canceled-chan]
+  ;; we're swapping out the top-level exception handler (`raise` fn) created by the `async-setup` middleware with one
+  ;; that will format the Exceptions and pipe them thru as normal QP 'failure' responses. For InterruptedExceptions
+  ;; however (caused when the query is canceled) pipe all the way thru to the top-level handler so it can close out
+  ;; the output channel instead of writing a response to it, which will cause the cancelation message we're looking for
+  (fn [query respond top-level-raise canceled-chan]
     (let [raise (fn [e]
-                  (respond (format-exception query e)))]
+                  (if (instance? InterruptedException e)
+                    (top-level-raise e)
+                    (respond (format-exception query e))))]
       (try
         (qp query respond raise canceled-chan)
         (catch Throwable e

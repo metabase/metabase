@@ -12,6 +12,7 @@
              [add-settings :as add-settings]
              [annotate :as annotate]
              [async :as async]
+             [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
              [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
@@ -133,7 +134,7 @@
       resolve-database/resolve-database
       fetch-source-query/fetch-source-query
       store/initialize-store
-      log-query/log-initial-query
+      log-query/log-query
       ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲
       ;;
       ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in
@@ -141,6 +142,7 @@
       ;;
       ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
       async/async->sync
+      async-wait/wait-for-permit
       cache/maybe-return-cached-results
       validate/validate-query
       normalize/normalize
