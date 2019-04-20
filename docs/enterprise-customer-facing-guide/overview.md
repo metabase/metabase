@@ -7,3 +7,15 @@ The problem that typically comes along with this is that you have plenty of thin
 And maybe as much as you love Metabase's UI, you'd also like to make it look more like your own company's branding so that your customers don't get all confused.
 
 If your head is nodding up and down, then great, stick around. This guide will go over solutions for all those problems.
+
+---
+
+## Next: Setting up Single Sign-On
+
+If you're already using an SSO solution, we'll show you how to connect that to Metabase so that your customers can seamlessly access it.
+
+
+Setting up SSO
+Set up data sandboxes
+White labeling
+Customizing drill-through
