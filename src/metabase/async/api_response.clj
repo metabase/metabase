@@ -186,12 +186,10 @@
     (log/debug (u/format-color 'green (trs "starting streaming response")))
     (write-chan-vals-to-writer! (async-keepalive-channel chan) (io/writer output-stream))))
 
+;; `defendpoint-async` responses
 (extend-protocol Sendable
   ManyToManyChannel
   (send* [input-chan _ respond _]
-    (respond (-> (response/response input-chan)
-                 (assoc :content-type "applicaton/json; charset=utf-8")
-                 ;; tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and
-                 ;; the entire purpose is defeated. See
-                 ;; https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache
-                 (assoc-in [:headers "X-Accel-Buffering"] "no")))))
+    (respond
+     (assoc (response/response input-chan)
+       :content-type "applicaton/json; charset=utf-8"))))

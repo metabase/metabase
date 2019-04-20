@@ -40,5 +40,6 @@
    mw.misc/bind-user-locale                ; Binds *locale* for i18n
    wrap-cookies                            ; Parses cookies in the request map and assocs as :cookies
    mw.misc/add-content-type                ; Adds a Content-Type header for any response that doesn't already have one
+   mw.misc/disable-streaming-buffering     ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes
    mw.misc/wrap-gzip))                     ; GZIP response if client can handle it
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
