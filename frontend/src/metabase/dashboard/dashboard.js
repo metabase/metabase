@@ -544,8 +544,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(datasetQuery),
-        queryOptions,
+        MetabaseApi.dataset(datasetQuery, queryOptions),
       );
     } else {
       result = await fetchDataOrError(
