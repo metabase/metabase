@@ -5,5 +5,6 @@ If you're going to have guests, you have to get your house in order first. This 
 * Overview
 * Setting up SSO
 * Set up data sandboxes
+* Embed Metabase in your own app
 * White labeling
 * Customizing drill-through
