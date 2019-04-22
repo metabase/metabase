@@ -1,5 +1,9 @@
 ## Let you customers log in with SSO using SAML or JWT
-In addition to Google auth, LDAP, and email-based sign in, the Enterprise edition of Metabase lets you connect your single sign-on solution to Metabase. This can make it easier for your customers to log in to your Metabase instance, and automatically assign the correct group and permissions to them.
+The Enterprise edition of Metabase lets you connect your SAML- or JWT-based SSO it. Integrating your SSO with Metabase allows you to:
+
+* automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
+* let your customers access Metabase embedded within your own web app
+* or log in to the Metabase instance directly if you'd like them to.
 
 There are slightly different steps to take depending on whether your SSO solution uses SAML or JWT. We'll cover SAML first.
 
@@ -138,3 +142,4 @@ These are additional settings you can fill in to pass user attributes to Metabas
 ---
 
 ## Next: Creating data sandboxes for your customers
+Data sandboxes automatically filter specific tables for your customers based on who they are. We'll show you [how to set these up](sandboxes.md) next.

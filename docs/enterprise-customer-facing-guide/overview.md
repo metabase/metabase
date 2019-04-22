@@ -1,21 +1,15 @@
 ## An overview of setting up your instance for customers
 
-Before we start, this guide presumes that your situation is that you have some customers, clients, stakeholders, or other interested parties who are outside of your own organization, and you'd like to let them log in to your Metabase instance.
+Before we start, this guide assumes that you have some customers, clients, or partners that you're trying to provide analytics for. Specifically, you're trying to put analytics in your own web app, or you're wanting to allow customers to log into a Metabase instance in a sandboxed way.
 
-The problem that typically comes along with this is that you have plenty of things that you *don't* want them to see: internal company dashboards, data tables that may contain information of *other* customers, and more.
+To get this to happen you'll need to set up your SSO to let your customers access Metabase and to provide Metabase with customer attributes in order to automatically filter the data they access based on who they are with data sandboxes. Then you'll need to embed Metabase in your web app, or set up your instance to allow customers to log in. We'll also go over customizing chart colors to match your web app or branding.
 
-And maybe as much as you love Metabase's UI, you'd also like to make it look more like your own company's branding so that your customers don't get all confused.
+### Enabling enterprise features
 
-If your head is nodding up and down, then great, stick around. This guide will go over solutions for all those problems.
+First off, make sure that you're running the Enterprise edition of Metabase (distinct from the open-source version). After going through the initial setup form, to activate all the enterprise features go to the Admin Panel by clicking the top-right menu, then the Enterprise tab. From there, enter the token that you received in your email after either signing up for the free trial or after purchasing your enterprise license.
 
 ---
 
-## Next: Setting up Single Sign-On
+## First: Setting up Single Sign-On
 
-If you're already using an SSO solution, we'll show you how to connect that to Metabase so that your customers can seamlessly access it.
-
-
-Setting up SSO
-Set up data sandboxes
-White labeling
-Customizing drill-through
+We'll show you [how to connect your SAML- or JWT-based SSO](setting-up-sso.md) to Metabase so that your customers can seamlessly authenticate.

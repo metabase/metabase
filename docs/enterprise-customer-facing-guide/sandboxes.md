@@ -1,11 +1,11 @@
-## Sandboxing your data
+## Sandboxing data for your customers
 
-Data sandboxes are a way for you to automatically filter a table when a user views it, based on who that user is. This lets you do things like make sure customers only see data in an Orders or Campaigns table that match their customer ID.
+Setting up data sandboxes allows you to automatically filter data from specific tables when customers access view tables (or charts based on them). This lets you make sure that when they view, for example, an Orders table in your database, they'll only see *their* orders. This will work whether your customers are viewing Metabase embedded in your web app, or logging into Metabase directly.
 
-The way it works is that you pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users so that Metabase will know how to filter things for them specifically.
+The way it works is that you pick a table that you want to sandbox for your customers, then customize how exactly you want to filter that table for them. For this to work in most cases you’ll first need to add attributes to your customers' accounts so that Metabase will know how to filter things for them specifically.
 
 ### Getting user attributes
-There are two ways to add attributes to your users:
+In order to identify different customers, they need to have distinct attributes attached to their accounts — something like `Customer_ID`. We'll then use these attributes as the basis for filtering the tables you choose. There are two ways to add these attributes to your users:
 
 1. Get them automatically by [connecting to your SSO](setting-up-sso.md).
 2. You can also add attributes manually to a user by going to the People section of the Admin Panel, and clicking on the “…” menu on the far right of a user’s name in the table you’ll see there. Click on Edit Details from that menu to add and edit a user’s attributes.
@@ -108,4 +108,5 @@ Currently, a user can only have one sandbox per table. I.e., if a user belongs t
 
 ---
 
-## Next: customizing Metabase's logo and colors
+## Next: embedding Metabase in your web app
+The next section will explain [how to embed](embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.
