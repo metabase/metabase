@@ -19,7 +19,7 @@ These guides cover things you can do with the [Enterprise edition of Metabase](h
 #### [Providing analytics to your customers](./enterprise-customer-facing-guide/start.md)
 This guide will show you how you can embed Metabase to power analytics in your own web app, or set up your Metabase instance to allow customers to log in and view the data you want them to.
 
-#### [Managing large-scale deployments]((./enterprise-guide/start.md))
+#### [Managing large-scale deployments](./enterprise-guide/start.md)
 Learn how to integrate your SSO with Metabase and set up data sandboxes to let your users seamlessly access Metabase with the right data permissions in place.
 
 
