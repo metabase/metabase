@@ -7,7 +7,7 @@ The way it works is that you pick a table that you want to sandbox for users in 
 ### Getting user attributes
 In order to identify different users, they need to have distinct attributes attached to their accounts — something like `User_ID`. We'll then use these attributes as the basis for filtering the tables you choose. There are two ways to add these attributes to your users:
 
-1. If you've already [connected your SSO](setting-up-sso.md) to Metabase, any user attributes you set there can be automatically passed to Metabase.
+1. If you've already [connected your SSO](authenticating-with-saml.md) to Metabase, any user attributes you set there can be automatically passed to Metabase.
 2. You can also add attributes manually to a user by going to the People section of the Admin Panel, and clicking on the “…” menu on the far right of a user’s name in the table you’ll see there. Click on Edit Details from that menu to add and edit a user’s attributes.
 
 Now that your users have attributes, you’ll be able to sandbox tables, and automatically filter them based on these user attributes.
