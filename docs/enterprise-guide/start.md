@@ -1,4 +1,4 @@
-## Managing large-scale deployments of Metabase
+## Enterprise Edition Guide
 
 The Enterprise Edition of Metabase provides added functionality and solutions for large organizations looking to scale Metabase. This guide will walk you through the extra features in this edition of Metabase:
 
