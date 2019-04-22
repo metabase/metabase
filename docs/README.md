@@ -17,10 +17,10 @@ This guide contains more detailed information about how to install Metabase for 
 These guides cover things you can do with the [Enterprise edition of Metabase](https://metabase.com/enterprise/).
 
 #### [Providing analytics to your customers](./enterprise-customer-facing-guide/start.md)
-If you'd like to embed the entire Metabase app in your own web app, or allow customers to log in to see specific dashboards and explore data, this is the guide for you.
+This guide will show you how you can embed Metabase to power analytics in your own web app, or set up your Metabase instance to allow customers to log in and view the data you want them to.
 
 #### [Managing large-scale deployments]((./enterprise-guide/start.md))
-Learn how to integrate your SSO with Metabase, set up data sandboxes for different user groups, and keep tabs on everything with the Audit tool.
+Learn how to integrate your SSO with Metabase and set up data sandboxes to let your users seamlessly access Metabase with the right data permissions in place.
 
 
 ## For Developers
