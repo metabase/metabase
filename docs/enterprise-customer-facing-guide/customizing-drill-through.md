@@ -1,7 +1,7 @@
 ## Customizing drill-through
 In the Enterprise edition of Metabase, you can change what happens when a user clicks on a part of a chart or table — i.e. what happens when they "drill through" or "drill down." This means you can make it so that clicking on a bar, point, state on a map, etc., takes the user to a custom destination instead of showing them the default Metabase drill-through menu.
 
-Using this feature, you could for example embed a very high-level overview dashboard on your default Analytics page, and customize the drill-through behavior of each of the charts in that dashboard to have them link to other dashboards, perhaps with more detailed information about that particular subject or metric. You could also have your charts link off to other sections of your web app, or another page entirely.
+Using this feature, you could for example embed a very high-level overview dashboard on the main Analytics page of your web app, and customize the drill-through behavior of each of the charts in that dashboard to have them link to other dashboards, perhaps with more detailed information about that particular subject or metric. You could also have your charts link off to other sections of your web app, or to another page entirely.
 
 We’ll walk through how to do both of these things, first for a chart, then for a table. Here’s the chart and table we’ll be using in our examples.
 

@@ -1,10 +1,10 @@
-## Provide your customers with analytics
+## Providing analytics to your customers
 
-**Here's what this guide will cover:**
+**Here's what we'll go over in this guide:**
 
-* [A quick overview](overview.md)
+* [An overview of what you'll be doing](overview.md)
 * [Authenticating your customers with SSO](setting-up-sso.md)
 * [Using sandboxes to customize data access](sandboxes.md)
-* [Embedding Metabase in your own app](embedding.md)
+* [Embedding Metabase in your own app](full-app-embedding.md)
 * [Customizing chart drill-through](customizing-drill-through.md)
 * [Changing colors and branding](white-labeling.md)
