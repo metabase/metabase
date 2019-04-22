@@ -345,6 +345,13 @@ export default class QueryBuilder extends Component {
         onOpenAddFilter={this.handleOpenAddFilter}
         onOpenEditFilter={this.handleOpenEditFilter}
         onCloseFilter={this.handleCloseFilter}
+        // chart settings
+        onOpenChartSettings={initial => {
+          this.props.setUIControls({
+            isShowingChartSettingsSidebar: true,
+            initialChartSetting: initial,
+          });
+        }}
       />
     );
   }

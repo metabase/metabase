@@ -1,6 +1,7 @@
 import React from "react";
 import cx from "classnames";
 import _ from "underscore";
+import { t } from "c-3po";
 
 import Icon from "metabase/components/Icon";
 
@@ -15,7 +16,12 @@ const FIXED_LAYOUT = [
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
-const ChartTypeSidebar = ({ question, result, setUIControls, ...props }) => {
+const ChartTypeSidebar = ({
+  question,
+  result,
+  onOpenChartSettings,
+  ...props
+}) => {
   const other = Array.from(visualizations)
     .filter(
       ([type, visualization]) =>
@@ -47,7 +53,7 @@ const ChartTypeSidebar = ({ question, result, setUIControls, ...props }) => {
                   }
                   onClick={() => {
                     question.setDisplay(type).update(null, { reload: false });
-                    setUIControls({ isShowingChartSettingsSidebar: true });
+                    onOpenChartSettings({ section: t`Data` });
                   }}
                 />
               )

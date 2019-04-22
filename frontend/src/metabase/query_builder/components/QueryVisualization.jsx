@@ -31,6 +31,7 @@ type Props = {
   setDisplayFn: any => void,
   onUpdateVisualizationSettings: any => void,
   onReplaceAllVisualizationSettings: any => void,
+  onOpenChartSettings: any => void,
   cellIsClickableFn?: any => void,
   cellClickedFn?: any => void,
   isRunning: boolean,
@@ -89,6 +90,7 @@ export default class QueryVisualization extends Component {
       isObjectDetail,
       isRunning,
       result,
+      onOpenChartSettings,
     } = this.props;
     let viz;
 
@@ -111,7 +113,7 @@ export default class QueryVisualization extends Component {
           <VisualizationResult
             lastRunDatasetQuery={this.state.lastRunDatasetQuery}
             onUpdateWarnings={warnings => this.setState({ warnings })}
-            onOpenChartSettings={initial => this.refs.settings.open(initial)}
+            onOpenChartSettings={onOpenChartSettings}
             {...this.props}
             className="spread"
             showTitle={false}

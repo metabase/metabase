@@ -308,7 +308,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
 }
 
 export function getDefaultDimensionAndMetric([{ data }]) {
-  const type = data && getChartTypeFromData(data.cols, data.rows, false);
+  const type = data && getChartTypeFromData(data.cols, data.rows, true);
   if (type === DIMENSION_METRIC) {
     return {
       dimension: data.cols[0].name,

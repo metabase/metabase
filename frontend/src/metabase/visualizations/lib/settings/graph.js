@@ -61,7 +61,7 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
 }
 
 function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
-  let type = getChartTypeFromData(cols, rows, false);
+  let type = getChartTypeFromData(cols, rows, true);
   if (type === DIMENSION_DIMENSION_METRIC) {
     let dimensions = [cols[0], cols[1]];
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {

@@ -8,6 +8,7 @@ const ChartSettingsSidebar = ({
   question,
   result,
   addField,
+  initialChartSetting,
   onReplaceAllVisualizationSettings,
   onClose,
   ...props
@@ -26,6 +27,7 @@ const ChartSettingsSidebar = ({
         onChange={onReplaceAllVisualizationSettings}
         onClose={onClose}
         noPreview
+        initial={initialChartSetting}
       />
       <Button
         medium

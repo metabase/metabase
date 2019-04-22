@@ -149,6 +149,23 @@ export default class LineAreaBarChart extends Component {
     return true;
   }
 
+  static placeholderSeries = [
+    {
+      card: {
+        display: "line",
+        visualization_settings: {},
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: _.range(0, 11).map(i => [i, i]),
+        cols: [
+          { name: "x", base_type: "type/Integer" },
+          { name: "y", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
+
   static transformSeries(series) {
     let newSeries = [].concat(
       ...series.map((s, seriesIndex) =>

@@ -326,7 +326,6 @@ export default class Visualization extends Component {
     const {
       actionButtons,
       className,
-      style,
       showTitle,
       isDashboard,
       width,
@@ -335,13 +334,17 @@ export default class Visualization extends Component {
       isSlow,
       expectedDuration,
       replacementContent,
+      onOpenChartSettings,
     } = this.props;
-    const { series, CardVisualization } = this.state;
+    const { CardVisualization } = this.state;
     const small = width < 330;
 
-    let { hovered, clicked } = this.state;
+    // these may be overridden below
+    let { series, hovered, clicked } = this.state;
+    let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
     }
@@ -356,6 +359,7 @@ export default class Visualization extends Component {
       )
     );
     let noResults = false;
+    let isPlaceholder = false;
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
@@ -373,8 +377,15 @@ export default class Visualization extends Component {
           error = e.message || t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            this.props.onOpenChartSettings
+            CardVisualization.placeholderSeries &&
+            !isDashboard
           ) {
+            // hide the error and replace series with the placeholder series
+            error = null;
+            series = CardVisualization.placeholderSeries;
+            settings = getComputedSettingsForSeries(series);
+            isPlaceholder = true;
+          } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
               <div>
                 <div>{error}</div>
@@ -424,6 +435,16 @@ export default class Visualization extends Component {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
         height: Math.round(height / (gridUnit * 3)),
+      };
+    }
+
+    if (isPlaceholder) {
+      hovered = null;
+      style = {
+        ...style,
+        opacity: 0.2,
+        filter: "grayscale()",
+        pointerEvents: "none",
       };
     }
 
