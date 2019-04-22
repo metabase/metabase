@@ -76,5 +76,5 @@ You can also optionally customize what text should be displayed in each cell of 
 
 ---
 
-## Next: creating and loading artifact dumps with serialization
-We'll go over how to dump the contents and settings of one Metabase instance and then load them into another with the [serialization feature](serialization.md).
+## Next: Copying contents of one Metabase instance to another
+Learn how to use [serialization](serialization.md) to create and load data dumps of the contents of a Metabase instance.

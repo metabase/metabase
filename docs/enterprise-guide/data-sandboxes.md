@@ -1,6 +1,6 @@
 ## Sandboxing your data
 
-As you get ready to roll out Metabase in your organization, there might be some tables in your databases that you'd like to be able to open up to more people, but you can't really let them see everything in those tables. To address that, sandboxes in Metabase's data permissions allow you to automatically filter specific tables based on the user who's viewing them.
+Say you have users who you want to be able to log into your Metabase instance, but who should only be able to view data that pertains to them. For example, you might have some customers or partners who you want to let view your Orders table, but you only want them to see their orders. Metabase has a feature called sandboxing that lets you do just that.
 
 The way it works is that you pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users so that Metabase will know how to filter things for them specifically.
 
@@ -107,5 +107,5 @@ Currently, a user can only have one sandbox per table. I.e., if a user belongs t
 
 ---
 
-## Next: white labeling
-Learn how to quickly add your own logo and customize the way Metabase looks with [white labeling](whitelabeling.md).
+## Next: embedding Metabase in your web app
+The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.

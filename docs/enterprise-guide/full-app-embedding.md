@@ -1,7 +1,7 @@
 ## Embedding all of Metabase in your web app
 The open-source edition of Metabase allows you to [embed standalone charts or dashboards](../administration-guide/13-embedding.md) in your own web applications for simple situations. But what if you want to provide your users with a more interactive, browsable experience? Metabase Enterprise Edition allows you to embed the entire Metabase app within your own web app, allowing you to provide drill-through for your embedded charts and dashboards, or even embed the graphical query builder, or collections of dashboards and charts.
 
-You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
+You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
 
 ### What you'll be doing
 To get this going, you're going to need:
@@ -52,8 +52,6 @@ The exact next steps will differ depending on your specific needs and goals, but
 
 So if you have for example a "Stats" or "Analytics" page in your web app, you could have that page display one of your Metabase dashboards. What's powerful about this type of embedding vs. standalone chart or dashboard embeds though is that your users will be able to click on the individual charts in that dashboard to see them in more detail, and further explore them using drill-through, or even Metabase's graphical query builder.
 
-You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them.
-
 ### A note on drill-through and permissions
 One of the main differences between embedding the full Metabase app vs. standalone embeds is that charts and graphs will have drill-down enabled. This lets your users click on charts to zoom in, pivot, and generally explore more.
 
@@ -78,5 +76,5 @@ When signing JWTs for either SSO (i.e., in full-app embedding) or standalone que
 
 ---
 
-## Next: customizing drill-through
-Tailor what happens when your customers click on charts or graphs by [customizing drill-through](customizing-drill-through.md).
+## Next: white labeling
+Learn how to quickly add your own logo and customize the way Metabase looks with [white labeling](whitelabeling.md).

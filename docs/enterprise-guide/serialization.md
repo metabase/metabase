@@ -58,4 +58,4 @@ Both of these flags are optional.
 
 ## That's it!
 
-If you need more help, please reach out to [support@metabase.com](mailto:support@metabase.com).
+Still need help? Feel free to reach out to us at [support@metabase.com](mailto:support@metabase.com).

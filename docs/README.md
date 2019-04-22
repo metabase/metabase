@@ -13,14 +13,10 @@ This guide is for advanced users and those who will be setting up and maintainin
 This guide contains more detailed information about how to install Metabase for production use. It covers topics like SSL termination, deploying via Docker Containers vs. Jars, as well as the tradeoffs involved.
 
 
-## Enterprise Edition Guides
-These guides cover things you can do with the [Enterprise edition of Metabase](https://metabase.com/enterprise/).
+## Enterprise Edition
 
-#### [Providing analytics to your customers](./enterprise-customer-facing-guide/start.md)
-This guide will show you how you can embed Metabase to power analytics in your own web app, or set up your Metabase instance to allow customers to log in and view the data you want them to.
-
-#### [Managing large-scale deployments]((./enterprise-guide/start.md))
-Learn how to integrate your SSO with Metabase and set up data sandboxes to let your users seamlessly access Metabase with the right data permissions in place.
+#### [Enterprise Features Guide](./enterprise-guide/start.md)
+Here’s where to go for help using the features included in the Enterprise Edition of Metabase.
 
 
 ## For Developers
