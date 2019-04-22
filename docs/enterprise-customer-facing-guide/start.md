@@ -1,10 +1,10 @@
-## Let customers log in to your white-labeled Metabase instance
+## Provide your customers with analytics
 
-If you're going to have guests, you have to get your house in order first. This guide will show you how to make sure your Metabase instance is a comfy place for your customers to go
+**Here's what this guide will cover:**
 
-* Overview
-* Setting up SSO
-* Set up data sandboxes
-* Embed Metabase in your own app
-* White labeling
-* Customizing drill-through
+* [A quick overview](overview.md)
+* [Authenticating your customers with SSO](setting-up-sso.md)
+* [Using sandboxes to customize data access](sandboxes.md)
+* [Embedding Metabase in your own app](embedding.md)
+* [Customizing chart drill-through](customizing-drill-through.md)
+* [Changing colors and branding](white-labeling.md)
