@@ -42,7 +42,13 @@ Keep in mind that your link needs to use the name you've given to the filter, bu
 
 If you want to link to a saved SQL question that has filter widgets in it, you'll follow the exact same process as for a dashboard. Your link template will just look more like this: `http://YOUR-METABASE-LOCATION.com/question/17?filter={{COLUMN}}`. You can also have your link templates go to saved questions built with the graphical editor, but you can't currently pass any variable values to them to fill filters.
 
-When you do this, it's possible you don't want the filled-in filter to be displayed on the dashboard or question, either because you don't want users to modify it directly, or maybe for aesthetic presentation reasons. If you want to hide the specified filter, use the following syntax in your custom drill-through link: [FIX ME]
+#### Hiding filter values
+
+When you do pass a filter value to a linked dashboard or question, it's possible you don't want the filled-in filter to be displayed on the dashboard or question, either because you don't want users to modify it directly, or maybe for aesthetic presentation reasons. If you want to hide the specified filter, add this to the end of your custom drill-through link:
+
+`#hide_parameters=filter_name`
+
+where `filter_name` is the name of the filter, in lowercase with underscores in place of spaces. If you want to hide multiple filters, just separate the filter names with a comma, with no space in between, e.g., `#hide_parameters=name,date`
 
 
 ### Customizing drill-through for a column in a table
