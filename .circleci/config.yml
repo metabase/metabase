@@ -42,7 +42,7 @@ commands:
           name: Download << parameters.driver >> JDBC driver JAR
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-            wget --output-document=plugins/<< parameters.dest >> << parameters.source >>
+            wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
           no_output_timeout: 5m
 
   wait-for-driver:
@@ -59,23 +59,42 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 5m
 
+  run-lein-command:
+    parameters:
+      command:
+        type: string
+      command-name:
+        type: string
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - run:
+          name: << parameters.command-name >>
+          command: lein with-profile +ci << parameters.command >>
+          no_output_timeout: 5m
+
   test-driver:
     parameters:
       driver:
         type: string
+      before-steps:
+        type: steps
+        default: []
       timeout:
         type: string
         default: 5m
     steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
       - run:
-          name: Run backend tests << parameters.driver >>
+          name: Test << parameters.driver >> driver
           environment:
             DRIVERS: h2,<< parameters.driver >>
           command: >
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
             lein with-profile +ci test
           no_output_timeout: << parameters.timeout >>
-
 
 jobs:
 
@@ -129,64 +148,46 @@ jobs:
   be-tests:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests with Java 8
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Run backend unit tests with Java 8
+          command: test
 
   be-tests-java-11:
     executor: default
     docker:
       - image: circleci/clojure:openjdk-11-lein-2.8.1
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests with Java 11
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Run backend unit tests with Java 11
+          command: test
 
   be-linter-eastwood:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run Eastwood linter
-          command: lein with-profile +ci eastwood
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Run eastwood linter
+          command: eastwood
 
   be-linter-docstring-checker:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run dockstring-checker
-          command: lein with-profile +ci docstring-checker
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Check docstrings
+          command: docstring-checker
 
   be-linter-namespace-decls:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run namespace decl checker
-          command: lein with-profile +ci check-namespace-decls
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Check namespace declarations
+          command: check-namespace-decls
 
   be-linter-bikeshed:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run Bikeshed linter
-          command: lein with-profile +ci bikeshed
-          no_output_timeout: 5m
+      - run-lein-command:
+          command-name: Run bikeshed linter
+          command: bikeshed
 
   be-linter-reflection-warnings:
     executor: default
@@ -212,8 +213,6 @@ jobs:
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: mysql
 
@@ -233,8 +232,6 @@ jobs:
       MB_DB_USER: circle_test
       MB_POSTGRESQL_TEST_USER: circle_test
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: postgres
 
@@ -244,13 +241,12 @@ jobs:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/spark:2.1.1
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - wait-for-driver:
-          driver: sparksql
-          port: 10000
       - test-driver:
           driver: sparksql
+          before-steps:
+            - wait-for-driver:
+                driver: sparksql
+                port: 10000
 
   be-tests-mongo:
     executor: default
@@ -258,8 +254,6 @@ jobs:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mongo:3.4
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: mongo
 
@@ -269,22 +263,20 @@ jobs:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: sumitchawla/vertica
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - fetch-jdbc-driver-jar:
-          driver: vertica
-          source: VERTICA_JDBC_JAR
-          dest: vertica-jdbc-7.1.2-0.jar
       - test-driver:
           driver: vertica
+          before-steps:
+            - fetch-jdbc-driver-jar:
+                driver: vertica
+                source: VERTICA_JDBC_JAR
+                dest: vertica-jdbc-7.1.2-0.jar
+
 
   be-tests-snowflake:
     executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: snowflake
           timeout: 10m
@@ -292,48 +284,36 @@ jobs:
   be-tests-sqlserver:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: sqlserver
 
   be-tests-bigquery:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: bigquery
 
   be-tests-googleanalytics:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: googleanalytics
 
   be-tests-sqlite:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: sqlite
 
   be-tests-druid:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: druid
 
   be-tests-redshift:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
       - test-driver:
           driver: redshift
           timeout: 10m
@@ -349,25 +329,23 @@ jobs:
       MB_PRESTO_TEST_HOST: localhost
       MB_PRESTO_TEST_PORT: 8080
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - wait-for-driver:
-          driver: presto
-          port: 8080
       - test-driver:
           driver: presto
+          before-steps:
+            - wait-for-driver:
+                driver: presto
+                port: 8080
 
   be-tests-oracle:
     executor: default
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - fetch-jdbc-driver-jar:
-          driver: oracle
-          source: ORACLE_JDBC_JAR
-          dest: ojdbc7.jar
       - test-driver:
           driver: oracle
+          before-steps:
+            - fetch-jdbc-driver-jar:
+                driver: oracle
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc7.jar
 
   yaml-linter:
     executor: default
