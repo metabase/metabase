@@ -2,6 +2,7 @@
 
 import React, { Component } from "react";
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import Tutorial, { qs, qsWithContent } from "./Tutorial.jsx";
 
 import RetinaImage from "react-retina-image";
@@ -219,7 +220,7 @@ const QUERY_BUILDER_STEPS = [
           <a
             className="link"
             target="_blank"
-            href="https://metabase.com/docs/latest/users-guide/start.html"
+            href={MetabaseSettings.docsUrl("users-guide/start")}
           >{t`User's Guide`}</a>. {t`Have fun exploring your data!`}
         </p>
         <a className="Button Button--primary" onClick={props.onNext}>

@@ -7,6 +7,7 @@ jest.mock("metabase/lib/settings", () => ({
     tag: 1,
     version: 1,
   }),
+  docsUrl: () => "placeholder",
 }));
 
 describe("ProfileLink", () => {

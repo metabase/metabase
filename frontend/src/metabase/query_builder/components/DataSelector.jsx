@@ -10,6 +10,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { isQueryable } from "metabase/lib/table";
 import { titleize, humanize } from "metabase/lib/formatting";
+import MetabaseSettings from "metabase/lib/settings";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -829,7 +830,10 @@ export const TablePicker = ({
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <a
-              href="https://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
+              href={MetabaseSettings.docsUrl(
+                "users-guide/04-asking-questions",
+                "source-data",
+              )}
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>
