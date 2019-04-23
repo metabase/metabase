@@ -1,19 +1,31 @@
-defaults: &defaults
-  working_directory: /home/circleci/metabase/metabase/
-  docker:
-    - image: circleci/clojure:lein-2.8.1-node-browsers
-
-restore-be-deps-cache: &restore-be-deps-cache
-  keys:
-    - be-deps-{{ checksum "project.clj" }}
-    - be-deps-
-
-restore-fe-deps-cache: &restore-fe-deps-cache
-  keys:
-    - fe-deps-{{ checksum "yarn.lock" }}
-    - fe-deps-
-
 version: 2.1
+
+executors:
+  default:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+
+commands:
+  attach-workspace:
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+
+  restore-be-deps-cache:
+    steps:
+      - restore_cache:
+          keys:
+            - be-deps-{{ checksum "project.clj" }}
+            - be-deps-
+
+  restore-fe-deps-cache:
+    steps:
+      - restore_cache:
+          keys:
+            - fe-deps-{{ checksum "yarn.lock" }}
+            - fe-deps-
+
 jobs:
 
 ########################################################################################################################
@@ -21,7 +33,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    <<: *defaults
+    executor: default
     steps:
       - restore_cache:
           keys:
@@ -53,12 +65,10 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
@@ -66,101 +76,85 @@ jobs:
             - /home/circleci/.m2
 
   be-tests:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests with Java 8
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
   be-tests-java-11:
-    <<: *defaults
+    executor: default
     docker:
       - image: circleci/clojure:openjdk-11-lein-2.8.1
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests with Java 11
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
   be-linter-eastwood:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run Eastwood linter
           command: lein with-profile +ci eastwood
           no_output_timeout: 5m
 
   be-linter-docstring-checker:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run dockstring-checker
           command: lein with-profile +ci docstring-checker
           no_output_timeout: 5m
 
   be-linter-namespace-decls:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run namespace decl checker
           command: lein with-profile +ci check-namespace-decls
           no_output_timeout: 5m
 
   be-linter-bikeshed:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run Bikeshed linter
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
   be-linter-reflection-warnings:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
   be-tests-mysql:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mysql:5.7.23
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (MySQL)
           environment:
@@ -178,7 +172,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-postgres:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/postgres:9.6-alpine
@@ -186,10 +180,8 @@ jobs:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (Postgres)
           environment:
@@ -206,15 +198,13 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sparksql:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/spark:2.1.1
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Wait for SparkSQL to be ready
           command: >
@@ -231,15 +221,13 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-mongo:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mongo:3.4
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (MongoDB 3.4)
           environment:
@@ -250,15 +238,13 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-vertica:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: sumitchawla/vertica
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -278,14 +264,12 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-snowflake:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (Snowflake)
           environment:
@@ -296,10 +280,9 @@ jobs:
           no_output_timeout: 10m
 
   yaml-linter:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
+      - attach-workspace
       - run:
           name: Install yamllint
           command: npm install yaml-lint
@@ -310,12 +293,10 @@ jobs:
           no_output_timeout: 2m
 
   be-tests-sqlserver:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQL Server)
           environment:
@@ -326,12 +307,10 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-bigquery:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (BigQuery)
           environment:
@@ -342,12 +321,10 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-googleanalytics:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (Google Analytics)
           environment:
@@ -358,12 +335,10 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-sqlite:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (SQLite)
           environment:
@@ -373,12 +348,10 @@ jobs:
             lein with-profile +ci test
 
   be-tests-druid:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (Druid)
           environment:
@@ -389,12 +362,10 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-redshift:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run backend unit tests (Redshift)
           environment:
@@ -406,17 +377,15 @@ jobs:
 
 
   be-tests-presto:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Wait for Presto to be ready
           command: >
@@ -436,12 +405,10 @@ jobs:
 
 
   be-tests-oracle:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Make plugins dir
           command: mkdir /home/circleci/metabase/metabase/plugins
@@ -460,7 +427,7 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-migrate-to-postgres:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/postgres:9.6-alpine
@@ -468,10 +435,8 @@ jobs:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Test migrating from H2 -> Postgres
           environment:
@@ -486,15 +451,13 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-migrate-to-mysql:
-    working_directory: /home/circleci/metabase/metabase/
+    executor: default
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mysql:5.7.23
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Test migrating from H2 -> MySQL
           environment:
@@ -514,12 +477,10 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run yarn if yarn.lock checksum has changed
           command: >
@@ -539,84 +500,70 @@ jobs:
             - /home/circleci/yarn.lock.checksum
 
   fe-linter-eslint:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run ESLint linter
           command: yarn lint-eslint
           no_output_timeout: 5m
 
   fe-linter-prettier:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run Prettier formatting linter
           command: yarn lint-prettier
           no_output_timeout: 5m
 
   fe-linter-flow:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run Flow type checker
           command: yarn flow
           no_output_timeout: 5m
 
   fe-tests-karma:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run frontend tests (karma)
           command: yarn run test-karma
           no_output_timeout: 5m
 
   fe-tests-unit:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run frontend unit tests
           command: yarn run test-unit
           no_output_timeout: 5m
 
   fe-tests-integration:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run frontend integration tests
           command: yarn run test-integration
           no_output_timeout: 5m
 
   build-uberjar:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}
@@ -633,12 +580,10 @@ jobs:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
   fe-tests-e2e:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}
@@ -656,10 +601,9 @@ jobs:
 ########################################################################################################################
 
   deploy-master:
-    <<: *defaults
+    executor: default
     steps:
-      - attach_workspace:
-          at: /home/circleci/
+      - attach-workspace
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
