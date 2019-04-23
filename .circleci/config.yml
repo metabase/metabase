@@ -26,6 +26,39 @@ commands:
             - fe-deps-{{ checksum "yarn.lock" }}
             - fe-deps-
 
+  fetch-jdbc-driver-jar:
+    parameters:
+      driver:
+        type: string
+      source:
+        type: string
+      dest:
+        type: string
+    steps:
+      - run:
+          name: Make plugins dir
+          command: mkdir /home/circleci/metabase/metabase/plugins
+      - run:
+          name: Download << parameters.driver >> JDBC driver JAR
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            wget --output-document=plugins/<< parameters.dest >> << parameters.source >>
+          no_output_timeout: 5m
+
+  wait-for-driver:
+    parameters:
+      driver:
+        type: string
+      port:
+        type: integer
+    steps:
+      - run:
+          name: Wait for << parameters.driver >> to be ready
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
+          no_output_timeout: 5m
+
 jobs:
 
 ########################################################################################################################
@@ -205,12 +238,9 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Wait for SparkSQL to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            while ! nc -z localhost 10000; do sleep 0.1; done
-          no_output_timeout: 5m
+      - wait-for-driver:
+          driver: sparksql
+          port: 10000
       - run:
           name: Run backend unit tests (SparkSQL)
           environment:
@@ -245,15 +275,10 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Vertica JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar $VERTICA_JDBC_JAR
-          no_output_timeout: 5m
+      - fetch-jdbc-driver-jar:
+          driver: vertica
+          source: VERTICA_JDBC_JAR
+          dest: vertica-jdbc-7.1.2-0.jar
       - run:
           name: Run backend unit tests (Vertica)
           environment:
@@ -386,12 +411,9 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Wait for Presto to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            while ! nc -z localhost 8080; do sleep 0.1; done
-          no_output_timeout: 5m
+      - wait-for-driver:
+          driver: presto
+          port: 8080
       - run:
           name: Run backend unit tests (Presto)
           environment:
@@ -409,14 +431,10 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Oracle JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            wget --output-document=/home/circleci/metabase/metabase/plugins/ojdbc7.jar $ORACLE_JDBC_JAR
+      - fetch-jdbc-driver-jar:
+          driver: oracle
+          source: ORACLE_JDBC_JAR
+          dest: ojdbc7.jar
       - run:
           name: Run backend unit tests (Oracle)
           environment:
