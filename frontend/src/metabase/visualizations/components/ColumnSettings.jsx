@@ -88,7 +88,7 @@ const ColumnSettings = ({
       ) : (
         <EmptyState
           message={t`No formatting settings`}
-          illustrationElement={<img src="../app/assets/img/no_results.svg" />}
+          illustrationElement={<img src="app/assets/img/no_results.svg" />}
         />
       )}
     </div>
