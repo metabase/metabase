@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
+import MetabaseSettings from "metabase/lib/settings";
 
 import S from "metabase/components/List.css";
 
@@ -25,8 +26,10 @@ const emptyStateData = {
   message: t`Segments will appear here once your admins have created some`,
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
-  adminLink:
-    "https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment",
+  adminLink: MetabaseSettings.docsUrl(
+    "administration-guide/07-segments-and-metrics",
+    "creating-a-segment",
+  ),
 };
 
 const mapStateToProps = (state, props) => ({

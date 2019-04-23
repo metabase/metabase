@@ -39,15 +39,12 @@ export default class Setup extends Component {
   }
 
   renderFooter() {
-    const { tag } = MetabaseSettings.get("version");
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
         {t`If you feel stuck`},{" "}
         <a
           className="link"
-          href={
-            "https://metabase.com/docs/" + tag + "/setting-up-metabase.html"
-          }
+          href={MetabaseSettings.docsUrl("setting-up-metabase")}
           target="_blank"
         >{t`our getting started guide`}</a>{" "}
         {t`is just a click away.`}

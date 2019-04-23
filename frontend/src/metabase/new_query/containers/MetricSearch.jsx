@@ -6,6 +6,7 @@ import EntitySearch from "metabase/containers/EntitySearch";
 import { getMetadata } from "metabase/selectors/metadata";
 import _ from "underscore";
 import { t } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import type { Metric } from "metabase/meta/types/Metric";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import EmptyState from "metabase/components/EmptyState";
@@ -111,7 +112,9 @@ const MetricEmptyState = fitViewPort(({ fitClassNames }) => (
       title={t`No metrics`}
       image="app/img/metrics_illustration"
       action={t`How to create metrics`}
-      link="https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html"
+      link={MetabaseSettings.docsUrl(
+        "administration-guide/07-segments-and-metrics",
+      )}
       className="mt2"
       imageClassName="mln2"
     />

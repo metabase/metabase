@@ -63,6 +63,17 @@ const MetabaseSettings = {
 
   metastoreUrl: () => mb_settings.metastore_url,
 
+  docsUrl: (page = "", anchor = "") => {
+    const { tag } = MetabaseSettings.get("version");
+    if (page) {
+      page = `/${page}.html`;
+    }
+    if (anchor) {
+      anchor = `#${anchor}`;
+    }
+    return `https://metabase.com/docs/${tag}${page}${anchor}`;
+  },
+
   newVersionAvailable: function(settings) {
     let versionInfo = _.findWhere(settings, { key: "version-info" }),
       currentVersion = MetabaseSettings.get("version").tag;
