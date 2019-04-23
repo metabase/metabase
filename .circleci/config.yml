@@ -1,10 +1,47 @@
 version: 2.1
 
+########################################################################################################################
+#                                                      EXECUTORS                                                       #
+########################################################################################################################
+
 executors:
   default:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
+
+  postgres-9-6:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+      MB_POSTGRESQL_TEST_USER: circle_test
+
+  mysql-5-7:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mysql:5.7.23
+    environment:
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+
+########################################################################################################################
+#                                                       COMMANDS                                                       #
+########################################################################################################################
 
 commands:
   attach-workspace:
@@ -95,6 +132,23 @@ commands:
             /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
             lein with-profile +ci test
           no_output_timeout: << parameters.timeout >>
+
+  test-migrate-from-h2:
+    parameters:
+      db-type:
+        type: string
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - run:
+          name: Test migrating from H2 -> << parameters.db-type >>
+          environment:
+            MB_DB_TYPE: << parameters.db-type >>
+            MB_DB_HOST: localhost
+          command: >
+            lein run load-from-h2 ./frontend/test/__runner__/test_db_fixture.db
+          no_output_timeout: 5m
+
 
 jobs:
 
@@ -200,37 +254,15 @@ jobs:
           no_output_timeout: 5m
 
   be-tests-mysql:
-    executor: default
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mysql:5.7.23
+    executor: mysql-5-7
     environment:
       MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
-      MB_DB_TYPE: mysql
-      MB_DB_HOST: localhost
-      MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
     steps:
       - test-driver:
           driver: mysql
 
   be-tests-postgres:
-    executor: default
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_PORT: 5432
-      MB_DB_HOST: localhost
-      MB_DB_DBNAME: circle_test
-      MB_DB_USER: circle_test
-      MB_POSTGRESQL_TEST_USER: circle_test
+    executor: postgres-9-6
     steps:
       - test-driver:
           driver: postgres
@@ -361,49 +393,16 @@ jobs:
           no_output_timeout: 2m
 
   be-tests-migrate-to-postgres:
-    executor: default
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
+    executor: postgres-9-6
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Test migrating from H2 -> Postgres
-          environment:
-            MB_DB_TYPE: postgres
-            MB_DB_PORT: 5432
-            MB_DB_HOST: localhost
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: circle_test
-          # Test with relative path / no file: prefix
-          command: >
-            lein run load-from-h2 ./frontend/test/__runner__/test_db_fixture.db
-          no_output_timeout: 5m
+      - test-migrate-from-h2:
+          db-type: postgres
 
   be-tests-migrate-to-mysql:
-    executor: default
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mysql:5.7.23
+    executor: mysql-5-7
     steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Test migrating from H2 -> MySQL
-          environment:
-            MB_DB_TYPE: mysql
-            MB_DB_HOST: localhost
-            MB_DB_PORT: 3306
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: root
-          # Test including file: prefix & absolute path
-          command: >
-            lein run load-from-h2 file:/home/circleci/metabase/metabase/frontend/test/__runner__/test_db_fixture.db
-          no_output_timeout: 5m
+      - test-migrate-from-h2:
+          db-type: mysql
 
 
 ########################################################################################################################
