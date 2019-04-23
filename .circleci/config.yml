@@ -59,6 +59,24 @@ commands:
             while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
           no_output_timeout: 5m
 
+  test-driver:
+    parameters:
+      driver:
+        type: string
+      timeout:
+        type: string
+        default: 5m
+    steps:
+      - run:
+          name: Run backend tests << parameters.driver >>
+          environment:
+            DRIVERS: h2,<< parameters.driver >>
+          command: >
+            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+            lein with-profile +ci test
+          no_output_timeout: << parameters.timeout >>
+
+
 jobs:
 
 ########################################################################################################################
@@ -185,24 +203,19 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: circleci/mysql:5.7.23
+    environment:
+      MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (MySQL)
-          environment:
-            DRIVERS: h2,mysql
-            MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
-            MB_DB_TYPE: mysql
-            MB_DB_HOST: localhost
-            MB_DB_PORT: 3306
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: root
-            MB_MYSQL_TEST_USER: root
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - test-driver:
+          driver: mysql
 
   be-tests-postgres:
     executor: default
@@ -212,23 +225,18 @@ jobs:
         environment:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+      MB_POSTGRESQL_TEST_USER: circle_test
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Postgres)
-          environment:
-            DRIVERS: h2,postgres
-            MB_DB_TYPE: postgres
-            MB_DB_PORT: 5432
-            MB_DB_HOST: localhost
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: circle_test
-            MB_POSTGRESQL_TEST_USER: circle_test
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh postgres ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - test-driver:
+          driver: postgres
 
   be-tests-sparksql:
     executor: default
@@ -241,14 +249,8 @@ jobs:
       - wait-for-driver:
           driver: sparksql
           port: 10000
-      - run:
-          name: Run backend unit tests (SparkSQL)
-          environment:
-            DRIVERS: h2,sparksql
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - test-driver:
+          driver: sparksql
 
   be-tests-mongo:
     executor: default
@@ -258,14 +260,8 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (MongoDB 3.4)
-          environment:
-            DRIVERS: h2,mongo
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - test-driver:
+          driver: mongo
 
   be-tests-vertica:
     executor: default
@@ -279,14 +275,8 @@ jobs:
           driver: vertica
           source: VERTICA_JDBC_JAR
           dest: vertica-jdbc-7.1.2-0.jar
-      - run:
-          name: Run backend unit tests (Vertica)
-          environment:
-            DRIVERS: h2,vertica
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
+      - test-driver:
+          driver: vertica
 
   be-tests-snowflake:
     executor: default
@@ -295,14 +285,89 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Snowflake)
-          environment:
-            DRIVERS: h2,snowflake
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
+      - test-driver:
+          driver: snowflake
+          timeout: 10m
+
+  be-tests-sqlserver:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: sqlserver
+
+  be-tests-bigquery:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: bigquery
+
+  be-tests-googleanalytics:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: googleanalytics
+
+  be-tests-sqlite:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: sqlite
+
+  be-tests-druid:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: druid
+
+  be-tests-redshift:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - test-driver:
+          driver: redshift
+          timeout: 10m
+
+  be-tests-presto:
+    executor: default
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: metabase/presto-mb-ci
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+    environment:
+      MB_PRESTO_TEST_HOST: localhost
+      MB_PRESTO_TEST_PORT: 8080
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - wait-for-driver:
+          driver: presto
+          port: 8080
+      - test-driver:
+          driver: presto
+
+  be-tests-oracle:
+    executor: default
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
+      - fetch-jdbc-driver-jar:
+          driver: oracle
+          source: ORACLE_JDBC_JAR
+          dest: ojdbc7.jar
+      - test-driver:
+          driver: oracle
 
   yaml-linter:
     executor: default
@@ -316,133 +381,6 @@ jobs:
           name: Lint YAML files
           command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
           no_output_timeout: 2m
-
-  be-tests-sqlserver:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQL Server)
-          environment:
-            DRIVERS: h2,sqlserver
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-bigquery:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (BigQuery)
-          environment:
-            DRIVERS: h2,bigquery
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-googleanalytics:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Google Analytics)
-          environment:
-            DRIVERS: h2,googleanalytics
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-sqlite:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQLite)
-          environment:
-            DRIVERS: h2,sqlite
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
-            lein with-profile +ci test
-
-  be-tests-druid:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Druid)
-          environment:
-            DRIVERS: h2,druid
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-redshift:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Redshift)
-          environment:
-            DRIVERS: h2,redshift
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
-
-
-  be-tests-presto:
-    executor: default
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/presto-mb-ci
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - wait-for-driver:
-          driver: presto
-          port: 8080
-      - run:
-          name: Run backend unit tests (Presto)
-          environment:
-            DRIVERS: h2,presto
-            MB_PRESTO_TEST_HOST: localhost
-            MB_PRESTO_TEST_PORT: 8080
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-
-  be-tests-oracle:
-    executor: default
-    steps:
-      - attach-workspace
-      - restore-be-deps-cache
-      - fetch-jdbc-driver-jar:
-          driver: oracle
-          source: ORACLE_JDBC_JAR
-          dest: ojdbc7.jar
-      - run:
-          name: Run backend unit tests (Oracle)
-          environment:
-            DRIVERS: h2,oracle
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
 
   be-tests-migrate-to-postgres:
     executor: default
