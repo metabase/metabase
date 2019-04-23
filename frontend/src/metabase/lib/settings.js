@@ -64,7 +64,10 @@ const MetabaseSettings = {
   metastoreUrl: () => mb_settings.metastore_url,
 
   docsUrl: (page = "", anchor = "") => {
-    const { tag } = MetabaseSettings.get("version");
+    let { tag } = MetabaseSettings.get("version", {});
+    if (!tag) {
+      tag = "latest";
+    }
     if (page) {
       page = `/${page}.html`;
     }
