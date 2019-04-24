@@ -183,7 +183,7 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        underlined
+        bubble
       />
     );
 
@@ -213,7 +213,7 @@ class ChartSettings extends Component {
     return (
       <div>
         {sectionNames.length > 1 && (
-          <div className="border-bottom flex flex-no-shrink pl4">
+          <div className="flex flex-no-shrink pl4 pt2 pb1">
             {sectionPicker}
           </div>
         )}

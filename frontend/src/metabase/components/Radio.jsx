@@ -26,6 +26,7 @@ export default class Radio extends Component {
     optionKeyFn: option => option.value,
     vertical: false,
     underlined: false,
+    bubble: false,
   };
 
   constructor(props, context) {
@@ -43,6 +44,7 @@ export default class Radio extends Component {
       optionKeyFn,
       vertical,
       underlined,
+      bubble,
       className,
       py,
     } = this.props;
@@ -51,10 +53,15 @@ export default class Radio extends Component {
       this.props.showButtons != undefined ? this.props.showButtons : vertical;
     return (
       <ul
-        className={cx(className, "flex", {
-          "flex-column": vertical,
-          "text-bold h3": !showButtons,
-        })}
+        className={cx(
+          className,
+          "flex",
+          {
+            "flex-column": vertical,
+            "text-bold": !showButtons,
+          },
+          bubble ? undefined : "h3",
+        )}
       >
         {options.map(option => {
           const selected = value === optionValueFn(option);
@@ -63,14 +70,20 @@ export default class Radio extends Component {
             <li
               key={optionKeyFn(option)}
               className={cx(
-                "flex align-center cursor-pointer mr3",
-                { "text-brand-hover": !showButtons },
-                py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
+                "flex align-center cursor-pointer",
+                { "text-brand-hover": !showButtons && !selected},
+                py != undefined ? `py${py}` : underlined ? "py2" : bubble ? "py1" : "pt1",
+                bubble ? "px3" : undefined,
+                bubble ? "mr1" : "mr3",
+                bubble && selected ? "text-white" : undefined,
               )}
               style={{
                 borderBottom: underlined ? `3px solid transparent` : undefined,
                 borderColor:
                   selected && underlined ? colors["brand"] : "transparent",
+                borderRadius: bubble ? `99px` : undefined,
+                backgroundColor:
+                  selected && bubble ? colors["brand"] : bubble ? colors["bg-medium"] : "transparent",
               }}
               onClick={e => onChange(optionValueFn(option))}
             >
@@ -85,7 +98,7 @@ export default class Radio extends Component {
               {showButtons && (
                 <label htmlFor={this._id + "-" + optionKeyFn(option)} />
               )}
-              <span className={cx({ "text-brand": selected })}>
+              <span>
                 {optionNameFn(option)}
               </span>
             </li>
