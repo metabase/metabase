@@ -37,7 +37,7 @@ const ChartTypeSidebar = ({
   return (
     <div>
       {layout.map(row => (
-        <div className="flex border-row-divider p1">
+        <div className="flex justify-between border-row-divider py1 pl2 pr3">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
