@@ -2,6 +2,7 @@
 
 The Enterprise Edition of Metabase provides added functionality and solutions for large organizations looking to scale Metabase. This guide will walk you through the extra features in this edition of Metabase:
 
+* [Getting and activating the Enterprise edition](activating-the-enterprise-edition.md)
 * [Authenticating with SAML](authenticating-with-saml.md)
 * [Authenticating with JWT](authenticating-with-jwt.md)
 * [Sandboxing data based on user attributes](data-sandboxes.md)
