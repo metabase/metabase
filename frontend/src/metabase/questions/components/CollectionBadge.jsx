@@ -31,10 +31,10 @@ class CollectionBadge extends React.Component {
     }
     const backgroundStyle = hasBackground
       ? {
-          backgroundColor: lighten(colors["brand"], 0.5),
-          paddingTop: "0.4em",
-          paddingBottom: "0.4em",
-          borderRadius: "0.5em",
+          backgroundColor: lighten(colors["brand"], 0.55),
+          paddingTop: "0.3em",
+          paddingBottom: "0.3em",
+          borderRadius: "0.4em",
         }
       : {};
 
@@ -53,9 +53,9 @@ class CollectionBadge extends React.Component {
       >
         <Flex align="center">
           <Icon name={object.getIcon()} mr={1} />
-          <h5 className="text-uppercase" style={{ fontWeight: 900 }}>
+          <h4 style={{ fontWeight: 900 }}>
             {object.name}
-          </h5>
+          </h4>
         </Flex>
       </Link>
     );

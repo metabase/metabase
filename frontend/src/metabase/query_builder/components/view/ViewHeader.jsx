@@ -43,11 +43,6 @@ export const ViewTitleHeader = ({
       {question.isSaved() ? (
         <div>
           <div className="flex align-center">
-            <CollectionBadge
-              hasBackground
-              collectionId={question.collectionId()}
-              className="mr2"
-            />
             <ViewHeading>{question.displayName()}</ViewHeading>
             <QuestionEntityMenu
               className="ml1"
@@ -55,7 +50,12 @@ export const ViewTitleHeader = ({
               onOpenModal={onOpenModal}
             />
           </div>
-          <ViewSubHeading>
+          <ViewSubHeading className="flex align-center">
+            <CollectionBadge
+              hasBackground
+              collectionId={question.collectionId()}
+              className="mr2"
+            />
             <QuestionDataSource question={question} subHead />
           </ViewSubHeading>
         </div>
