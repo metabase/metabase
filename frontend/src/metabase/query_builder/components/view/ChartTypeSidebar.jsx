@@ -36,6 +36,7 @@ const ChartTypeSidebar = ({
 
   return (
     <div>
+      <h3 className="px4 pt3 pb2">How do you want to view this data?</h3>
       {layout.map(row => (
         <div className="flex justify-between border-row-divider py1 pl2 pr3">
           {row.map(type => {
@@ -75,17 +76,17 @@ const ChartTypeOption = ({
     onClick={onClick}
     className={cx("m1 flex flex-column layout-centered", {
       "text-white bg-brand": isSelected,
-      "text-medium cursor-pointer bg-medium-hover": !isSelected,
+      "text-dark cursor-pointer bg-medium-hover": !isSelected,
     })}
     style={{
       width: 60,
       height: 60,
       borderRadius: 8,
-      opacity: !isSensible ? 0.25 : 1,
+      opacity: !isSensible ? 0.35 : 1,
     }}
   >
     <Icon
-      className={isSelected ? "text-white" : "text-light"}
+      className={isSelected ? "text-white" : "text-medium"}
       name={visualization.iconName}
       size={20}
     />
