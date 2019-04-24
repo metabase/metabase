@@ -6,12 +6,8 @@ The open source edition of Metabase includes the option to [set up SSO with Goog
 
 There are slightly different steps to take depending on whether your SSO solution uses SAML or JWT. We'll cover SAML first.
 
-
-## Authenticating with SAML
-
-Connecting Metabase to your SAML identity provider lets your team access Metabase with ease through SSO.
-
 ### Enabling SAML authentication
+
 First, head over to the Settings section of the Admin Panel, then click on the Authentication tab. Click the `Configure` button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
