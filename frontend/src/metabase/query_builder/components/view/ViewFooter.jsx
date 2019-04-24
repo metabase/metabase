@@ -82,7 +82,7 @@ const VizTypeButton = ({ className, question, result, selected, onClick }) => {
 
   return (
     <span
-      className="h3 flex align-center bg-light rounded p1 cursor-pointer"
+      className="h3 flex align-center bg-medium rounded px2 py1 cursor-pointer"
       onClick={onClick}
     >
       {`Visualization`}:
@@ -92,13 +92,6 @@ const VizTypeButton = ({ className, question, result, selected, onClick }) => {
         })}
       >
         {CardVisualization ? CardVisualization.uiName : `[${t`Unknown`}]`}
-        {onClick && (
-          <Icon
-            name={selected ? "chevronup" : "chevrondown"}
-            ml={1}
-            size={12}
-          />
-        )}
       </span>
     </span>
   );
