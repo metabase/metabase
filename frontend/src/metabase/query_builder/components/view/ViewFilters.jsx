@@ -151,6 +151,8 @@ export default class ViewFilters extends Component {
             table={query.table()}
             onFieldChange={this.setField}
             onFilterChange={this.commitFilter}
+            width={410}
+            className="text-purple"
           />
         </div>
       );
