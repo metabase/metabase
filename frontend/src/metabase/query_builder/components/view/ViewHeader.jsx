@@ -153,6 +153,7 @@ export class ViewSubHeader extends React.Component {
               medium
               icon="insight"
               color="#84BB4C"
+              className="mr2"
             >{t`Summarize`}</Button>
           }
           key="summaries"
