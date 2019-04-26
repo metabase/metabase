@@ -34,7 +34,7 @@ const STEP_UI = {
     component: FilterStep,
   },
   aggregate: {
-    title: t`Aggregate`,
+    title: t`Summarize`,
     color: colors["accent1"],
     icon: "sum",
     component: AggregateStep,
