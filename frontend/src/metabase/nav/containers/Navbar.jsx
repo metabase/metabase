@@ -293,7 +293,7 @@ export default class Navbar extends Component {
           {hasDataAccess && (
             <Link
               to={Urls.newQuestion()}
-              mx={2}
+              mx={3}
               className="hide sm-show"
               data-metabase-event={`NavBar;New Question`}
             >
@@ -321,17 +321,17 @@ export default class Navbar extends Component {
           />
           {hasDataAccess && (
             <Tooltip tooltip={t`Reference`}>
-              <Link to="reference" data-metabase-event={`NavBar;Reference`}>
+              <Link ml={2} to="reference" data-metabase-event={`NavBar;Reference`}>
                 <IconWrapper>
-                  <Icon name="reference" />
+                  <Icon size={18} name="reference" />
                 </IconWrapper>
               </Link>
             </Tooltip>
           )}
           <Tooltip tooltip={t`Activity`}>
-            <Link to="activity" data-metabase-event={`NavBar;Activity`}>
+            <Link mx={2} to="activity" data-metabase-event={`NavBar;Activity`}>
               <IconWrapper>
-                <Icon name="bell" />
+                <Icon size={20} name="bell" />
               </IconWrapper>
             </Link>
           </Tooltip>
