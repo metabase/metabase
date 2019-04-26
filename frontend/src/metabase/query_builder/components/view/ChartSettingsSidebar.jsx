@@ -33,8 +33,7 @@ const ChartSettingsSidebar = ({
         medium
         primary
         onClick={onClose}
-        className="absolute bottom right"
-        m={1}
+        className="ml4 mb3"
       >
         {t`Done`}
       </Button>
