@@ -74,7 +74,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
  */
 export default class StructuredQuery extends AtomicQuery {
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
-    return datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
+    return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
 
   // For Flow type completion

@@ -792,6 +792,8 @@ export default function lineAreaBar(
   const parent = dc.compositeChart(element);
   initChart(parent, element);
 
+  // add these convienence aliases so we don't have to pass a bunch of things around
+  parent.props = props;
   parent.settings = settings;
   parent.series = props.series;
 

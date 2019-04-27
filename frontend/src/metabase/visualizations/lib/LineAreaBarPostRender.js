@@ -359,6 +359,17 @@ function onRenderRotateAxis(chart) {
   }
 }
 
+function onRenderAddExtraClickHandlers(chart) {
+  const { onEditBreakout } = chart.props;
+  if (onEditBreakout) {
+    chart
+      .svg()
+      .select(".x-axis-label")
+      .on("click", () => onEditBreakout(0))
+      .classed("cursor-pointer", true);
+  }
+}
+
 // the various steps that get called
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
@@ -376,6 +387,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
+  onRenderAddExtraClickHandlers(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+

@@ -288,27 +288,6 @@ export default class QueryBuilder extends Component {
     }
   };
 
-  handleOpenAddFilter = () => {
-    this.props.setUIControls({
-      isAddingFilter: true,
-      isEditingFilterIndex: null,
-    });
-  };
-
-  handleOpenEditFilter = index => {
-    this.props.setUIControls({
-      isAddingFilter: false,
-      isEditingFilterIndex: index,
-    });
-  };
-
-  handleCloseFilter = index => {
-    this.props.setUIControls({
-      isAddingFilter: false,
-      isEditingFilterIndex: null,
-    });
-  };
-
   resetStateOnTimeout = () => {
     // clear any previously set timeouts then start a new one
     clearTimeout(this.timeout);
@@ -341,17 +320,6 @@ export default class QueryBuilder extends Component {
         // save/create actions
         onSave={this.handleSave}
         onCreate={this.handleCreate}
-        // filter sidebar
-        onOpenAddFilter={this.handleOpenAddFilter}
-        onOpenEditFilter={this.handleOpenEditFilter}
-        onCloseFilter={this.handleCloseFilter}
-        // chart settings
-        onOpenChartSettings={initial => {
-          this.props.setUIControls({
-            isShowingChartSettingsSidebar: true,
-            initialChartSetting: initial,
-          });
-        }}
       />
     );
   }

@@ -1,27 +1,27 @@
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-import ViewFilters from "./ViewFilters";
+import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
+import ViewFilters from "../ViewFilters";
 
 const FilterSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <div>
-      <Icon name="close" onClick={() => onClose()} />
+    <SidebarContent onClose={onClose}>
       <ViewFilters
+        key={index}
         query={question.query()}
         filter={index != null ? query.filters()[index] : null}
         onChangeFilter={filter => {
           if (index != null) {
-            query.updateFilter(index, filter).update();
+            query.updateFilter(index, filter).update(null, { run: true });
           } else {
-            query.addFilter(filter).update();
+            query.addFilter(filter).update(null, { run: true });
           }
           onClose();
         }}
         onClose={onClose}
       />
-    </div>
+    </SidebarContent>
   );
 };
 

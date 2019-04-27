@@ -253,12 +253,15 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
       onVisualizationClick,
       visualizationIsClickable,
+      onAddSeries,
+      onEditSeries,
+      onRemoveSeries,
     } = this.props;
 
     const settings = this.getSettings();
 
     let multiseriesHeaderSeries;
-    if (series.length > 1) {
+    if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
       multiseriesHeaderSeries = series;
     }
 
@@ -291,6 +294,9 @@ export default class LineAreaBarChart extends Component {
             onChangeCardAndRun={onChangeCardAndRun}
             onVisualizationClick={onVisualizationClick}
             visualizationIsClickable={visualizationIsClickable}
+            onAddSeries={onAddSeries}
+            onEditSeries={onEditSeries}
+            onRemoveSeries={onRemoveSeries}
           />
         ) : null}
         <CardRenderer

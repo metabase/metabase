@@ -271,39 +271,6 @@ export class ViewSubHeader extends React.Component {
             </div>
           </ViewSection>
         )}
-        {question.isStructured() &&
-          question.query().aggregations().length > 0 && (
-            <ViewSection className="borderless">
-              {question
-                .query()
-                .aggregations()
-                .map((agg, index) => (
-                  <div className="flex align-center hover-parent hover--visibility mr1">
-                    <AggregationName
-                      aggregation={agg}
-                      query={question.query()}
-                    />
-                    <Icon
-                      className="hover-child"
-                      ml={1}
-                      name="close"
-                      onClick={() => {
-                        question
-                          .query()
-                          .removeAggregation(index)
-                          .update();
-                        runQuestionQuery();
-                      }}
-                    />
-                  </div>
-                ))}
-              <QuestionSummaries
-                triggerElement={<Icon name="add" ml={1} />}
-                question={question}
-                onRun={() => runQuestionQuery()}
-              />
-            </ViewSection>
-          )}
       </div>
     );
   }

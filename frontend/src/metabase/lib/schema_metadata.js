@@ -448,6 +448,7 @@ function dimensionFields(fields) {
 
 let Aggregators = [
   {
+    // DEPRECATED: "rows" is equivalent to no aggregations
     name: t`Raw data`,
     short: "rows",
     description: t`Just a table with the rows in the answer, no additional operations.`,

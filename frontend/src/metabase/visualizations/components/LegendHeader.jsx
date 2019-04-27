@@ -3,8 +3,8 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
-import Icon from "metabase/components/Icon.jsx";
-import LegendItem from "./LegendItem.jsx";
+import Icon from "metabase/components/Icon";
+import LegendItem from "./LegendItem";
 
 import cx from "classnames";
 
@@ -24,6 +24,8 @@ export default class LegendHeader extends Component {
     series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
     onHoverChange: PropTypes.func,
+    onAddSeries: PropTypes.func,
+    onEditSeries: PropTypes.func,
     onRemoveSeries: PropTypes.func,
     onChangeCardAndRun: PropTypes.func,
     actionButtons: PropTypes.node,
@@ -52,6 +54,8 @@ export default class LegendHeader extends Component {
     const {
       series,
       hovered,
+      onAddSeries,
+      onEditSeries,
       onRemoveSeries,
       actionButtons,
       onHoverChange,
@@ -62,15 +66,10 @@ export default class LegendHeader extends Component {
       visualizationIsClickable,
       classNameWidgets,
     } = this.props;
-    const showDots = series.length > 1;
+
+    const showDots = !!onAddSeries || series.length > 1;
     const isNarrow = this.state.width < 150;
     const showTitles = !showDots || !isNarrow;
-    // const colors = settings["graph.colors"] || DEFAULT_COLORS;
-    // const customTitles = settings["graph.series_labels"];
-    // const titles =
-    //   customTitles && customTitles.length === series.length
-    //     ? customTitles
-    //     : series.map(thisSeries => thisSeries.card.name);
 
     const seriesSettings =
       settings.series && series.map(single => settings.series(single));
@@ -103,33 +102,42 @@ export default class LegendHeader extends Component {
             onMouseEnter={() => onHoverChange && onHoverChange({ index })}
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
-              s.clicked && visualizationIsClickable(s.clicked)
-                ? e =>
-                    onVisualizationClick({
-                      ...s.clicked,
-                      element: e.currentTarget,
-                    })
-                : onChangeCardAndRun
-                  ? () =>
-                      onChangeCardAndRun({
-                        nextCard: s.card,
-                        seriesIndex: index,
+              onEditSeries
+                ? () => onEditSeries(s.card, index)
+                : s.clicked && visualizationIsClickable(s.clicked)
+                  ? e =>
+                      onVisualizationClick({
+                        ...s.clicked,
+                        element: e.currentTarget,
                       })
-                  : null
+                  : onChangeCardAndRun
+                    ? () =>
+                        onChangeCardAndRun({
+                          nextCard: s.card,
+                          seriesIndex: index,
+                        })
+                    : null
             }
             infoClassName={classNameWidgets}
           />,
-          onRemoveSeries &&
-            index > 0 && (
-              <Icon
-                name="close"
-                className="text-light flex-no-shrink mr1 cursor-pointer"
-                width={12}
-                height={12}
-                onClick={() => onRemoveSeries(s.card)}
-              />
-            ),
+          onRemoveSeries && (
+            <Icon
+              name="close"
+              className="text-light text-medium-hover flex-no-shrink mr1 cursor-pointer"
+              width={12}
+              height={12}
+              onClick={() => onRemoveSeries(s.card, index)}
+            />
+          ),
         ])}
+        {onAddSeries && (
+          <Icon
+            name="add"
+            className="mx1 p1 flex-no-shrink text-medium bg-medium rounded cursor-pointer"
+            height={14}
+            onClick={onAddSeries}
+          />
+        )}
         {actionButtons && (
           <span
             className={cx(
