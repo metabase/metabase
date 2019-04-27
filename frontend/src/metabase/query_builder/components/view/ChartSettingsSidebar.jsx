@@ -3,6 +3,8 @@ import { t } from "c-3po";
 import Button from "metabase/components/Button";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
+import visualizations, {getIconForVisualizationType} from "metabase/visualizations";
+import Icon from "metabase/components/Icon";
 
 const ChartSettingsSidebar = ({
   question,
@@ -15,6 +17,14 @@ const ChartSettingsSidebar = ({
 }) =>
   result && (
     <div className="full-height">
+      <div className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer">
+        <Icon name="chevronleft" className="text-medium text-brand-hover" />
+        <Icon
+            name={getIconForVisualizationType(question.display())}
+            className="ml2 mr1"
+        />
+        <h3 className="text-heavy">{visualizations.get(question.display()).uiName} {t`options`}</h3>
+      </div>
       <ChartSettings
         question={question}
         addField={addField}
