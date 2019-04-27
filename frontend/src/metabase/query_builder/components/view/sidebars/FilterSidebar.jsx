@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "c-3po";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import ViewFilters from "../ViewFilters";
@@ -6,7 +7,7 @@ import ViewFilters from "../ViewFilters";
 const FilterSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <SidebarContent onClose={onClose}>
+    <SidebarContent icon="filter" title={t`Filter`} onClose={onClose}>
       <ViewFilters
         key={index}
         query={question.query()}

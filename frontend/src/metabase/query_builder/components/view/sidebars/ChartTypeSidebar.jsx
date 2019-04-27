@@ -36,7 +36,7 @@ const ChartTypeSidebar = ({
 
   return (
     <div>
-      <h3 className="px4 pt3 pb2">How do you want to view this data?</h3>
+      <h3 className="text-heavy px4 pt3 pb2">{t`How do you want to view this data?`}</h3>
       {layout.map(row => (
         <div className="flex justify-between border-row-divider py1 pl2 pr3">
           {row.map(type => {

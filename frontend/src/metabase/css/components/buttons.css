@@ -89,7 +89,7 @@
 
 .Button--white {
   background-color: white;
-  color: var(--color-text-medium);
+  color: var(--color-text-dark);
   border-color: var(--color-border);
 }
 

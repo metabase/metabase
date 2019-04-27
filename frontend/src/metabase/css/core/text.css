@@ -118,6 +118,10 @@
   font-weight: 700;
 }
 
+.text-heavy {
+  font-weight: 900;
+}
+
 /* text style */
 
 .text-italic {

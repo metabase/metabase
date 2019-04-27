@@ -46,6 +46,7 @@ type State = {
   filter: Filter,
 };
 
+// NOTE: this is duplicated from FilterPopover. Consider merging them
 export default class ViewFilters extends Component {
   props: Props;
   state: State;
@@ -151,6 +152,8 @@ export default class ViewFilters extends Component {
             table={query.table()}
             onFieldChange={this.setField}
             onFilterChange={this.commitFilter}
+            width={410}
+            className="text-purple"
           />
         </div>
       );

@@ -29,15 +29,16 @@ const ChartSettingsSidebar = ({
         noPreview
         initial={initialChartSetting}
       />
-      <Button
-        medium
-        primary
-        onClick={onClose}
-        className="absolute bottom right"
-        m={1}
-      >
-        {t`Done`}
-      </Button>
+    <div className="flex">
+        <Button
+          medium
+          primary
+          onClick={onClose}
+          className="mx4 mb3 flex-full"
+        >
+          {t`Done`}
+        </Button>
+      </div>
     </div>
   );
 

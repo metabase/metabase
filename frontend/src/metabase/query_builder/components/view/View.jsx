@@ -290,14 +290,13 @@ export default class View extends React.Component {
                     </div>
                   </div>
                 )}
+              <ViewFooter {...this.props} className="flex-no-shrink" />
             </div>
 
             <ViewSidebar right isOpen={!!rightSideBar}>
               {rightSideBar}
             </ViewSidebar>
           </div>
-
-          <ViewFooter {...propsWithExtras} className="flex-no-shrink" />
         </div>
 
         {isShowingTutorial && (
