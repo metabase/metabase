@@ -46,6 +46,7 @@ type State = {
   filter: Filter,
 };
 
+// NOTE: this is duplicated from FilterPopover. Consider merging them
 export default class ViewFilters extends Component {
   props: Props;
   state: State;

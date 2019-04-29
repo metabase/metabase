@@ -50,7 +50,7 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
-    return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
+    return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
   /* Query superclass methods */
