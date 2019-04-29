@@ -13,12 +13,21 @@ const ChartSettingsSidebar = ({
   initialChartSetting,
   onReplaceAllVisualizationSettings,
   onClose,
+  setUIControls,
   ...props
 }) =>
   result && (
     <div className="full-height">
-      <div className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer">
-        <Icon name="chevronleft" className="text-medium text-brand-hover" />
+      <div
+        className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer"
+        onClick={
+          () => setUIControls ({
+            isShowingChartSettingsSidebar: false,
+            isShowingChartTypeSidebar: true,
+          })
+        }
+      >
+        <Icon name="chevronleft" className="text-medium" />
         <Icon
             name={getIconForVisualizationType(question.display())}
             className="ml2 mr1"

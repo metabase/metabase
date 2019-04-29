@@ -20,6 +20,8 @@ const ChartTypeSidebar = ({
   question,
   result,
   onOpenChartSettings,
+  setUIControls,
+  isShowingChartTypeSidebar,
   ...props
 }) => {
   const other = Array.from(visualizations)
@@ -36,7 +38,19 @@ const ChartTypeSidebar = ({
 
   return (
     <div>
-      <h3 className="text-heavy px4 pt3 pb2">{t`How do you want to view this data?`}</h3>
+      <div className="flex px4 pt3 pb2">
+        <h3 className="text-heavy ">{t`How do you want to view this data?`}</h3>
+        <Icon
+          name="close"
+          className="flex-align-right text-medium text-brand-hover cursor-pointer"
+          onClick={() =>
+            setUIControls({
+              isShowingChartTypeSidebar: false, // TODO: move to reducer?
+            })
+          }
+          size={20}
+        />
+      </div>
       {layout.map(row => (
         <div className="flex justify-between border-row-divider py1 pl2 pr3">
           {row.map(type => {
@@ -74,9 +88,9 @@ const ChartTypeOption = ({
 }) => (
   <div
     onClick={onClick}
-    className={cx("m1 flex flex-column layout-centered", {
+    className={cx("m1 flex flex-column layout-centered cursor-pointer", {
       "text-white bg-brand": isSelected,
-      "text-dark cursor-pointer bg-medium-hover": !isSelected,
+      "text-dark bg-medium-hover": !isSelected,
     })}
     style={{
       width: 60,
