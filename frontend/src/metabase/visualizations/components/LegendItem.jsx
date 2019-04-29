@@ -74,7 +74,7 @@ export default class LegendItem extends Component {
         )}
         {showTitle && (
           <div className="flex align-center">
-            <span className="mr1">
+            <span>
               <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             </span>
             {description && (

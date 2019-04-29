@@ -123,7 +123,7 @@ export default class LegendHeader extends Component {
           onRemoveSeries && (
             <Icon
               name="close"
-              className="text-light text-medium-hover flex-no-shrink mr1 cursor-pointer"
+              className="text-light text-medium-hover flex-no-shrink mr2 cursor-pointer"
               width={12}
               height={12}
               onClick={() => onRemoveSeries(s.card, index)}
@@ -133,7 +133,7 @@ export default class LegendHeader extends Component {
         {onAddSeries && (
           <Icon
             name="add"
-            className="mx1 p1 flex-no-shrink text-medium bg-medium rounded cursor-pointer"
+            className="mx1 p1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
             height={14}
             onClick={onAddSeries}
           />
