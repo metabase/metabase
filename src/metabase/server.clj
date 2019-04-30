@@ -53,16 +53,17 @@
   creating one-off web servers for tests and REPL usage."
   ^Server [handler options]
   (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-    (.setHandler (#'ring-jetty/async-proxy-handler
-                  handler
-                  ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results
-                  ;; later after 10 minutes we're in serious trouble. (Almost everything 'slow' should be returning a
-                  ;; channel before then, but some things like CSV downloads don't currently return channels at this
-                  ;; time)
-                  ;;
-                  ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
-                  (or (config/config-int :mb-jetty-async-response-timeout)
-                      (* 10 60 1000))))))
+    (.setHandler
+     (#'ring-jetty/async-proxy-handler
+      handler
+      ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results
+      ;; later after 10 minutes we're in serious trouble. (Almost everything 'slow' should be returning a
+      ;; channel before then, but some things like CSV downloads don't currently return channels at this
+      ;; time)
+      ;;
+      ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
+      (or (config/config-int :mb-jetty-async-response-timeout)
+          (* 10 60 1000))))))
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
