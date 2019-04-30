@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
@@ -147,6 +148,7 @@
       (qp.async/process-query-and-save-execution!
        (-> query
            (dissoc :constraints)
+           (m/dissoc-in [:middleware :add-default-userland-constraints?])
            (assoc-in [:middleware :skip-results-metadata?] true))
        {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 

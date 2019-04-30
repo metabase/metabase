@@ -595,11 +595,13 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [card parameters constraints middleware]
-  (let [query (assoc (:dataset_query card)
-                :constraints constraints
-                :parameters  parameters
-                :middleware  middleware)
+(defn- query-for-card [{query :dataset_query, :as card} parameters constraints middleware]
+  (let [query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  parameters
+                         :middleware  middleware))
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]
