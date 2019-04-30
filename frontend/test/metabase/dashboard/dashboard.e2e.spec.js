@@ -346,7 +346,7 @@ describe("Dashboard", () => {
       click(app.find(".Icon.Icon-clone"));
       // click duplicate button
       clickButton(app.find('.Button [children="Duplicate"]'));
-      await delay(100);
+      await delay(250);
 
       await store.waitForActions([BROWSER_HISTORY_PUSH]);
       // NOTE: assumes incrementing dashboardId
