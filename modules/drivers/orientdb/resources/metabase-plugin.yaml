@@ -1,0 +1,19 @@
+info:
+  name: Metabase OrientDB Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to OrientDB databases.
+driver:
+  name: orientdb
+  display-name: OrientDB
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+  - host
+  - dbname
+  - user
+  - password
+init:
+- step: load-namespace
+  namespace: metabase.driver.orientdb
+- step: register-jdbc-driver
+  class: com.orientechnologies.orient.jdbc.OrientJdbcDriver
