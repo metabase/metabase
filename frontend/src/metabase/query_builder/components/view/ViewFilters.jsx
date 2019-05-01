@@ -3,33 +3,22 @@
 import React, { Component } from "react";
 import { t } from "c-3po";
 
-import FieldList from "../FieldList.jsx";
-import OperatorSelector from "../filters/OperatorSelector.jsx";
+import FieldList from "../FieldList";
+import OperatorSelector from "../filters/OperatorSelector";
 import FilterOptions from "../filters/FilterOptions";
-import DatePicker, { getOperator } from "../filters/pickers/DatePicker.jsx";
-import TimePicker from "../filters/pickers/TimePicker.jsx";
-import NumberPicker from "../filters/pickers/NumberPicker.jsx";
-import SelectPicker from "../filters/pickers/SelectPicker.jsx";
-import TextPicker from "../filters/pickers/TextPicker.jsx";
-import FieldValuesWidget from "metabase/components/FieldValuesWidget.jsx";
+import DatePicker, { getOperator } from "../filters/pickers/DatePicker";
+import TimePicker from "../filters/pickers/TimePicker";
+import DefaultPicker from "../filters/pickers/DefaultPicker";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import Query from "metabase/lib/query";
-import {
-  isDate,
-  isTime,
-  getFilterArgumentFormatOptions,
-} from "metabase/lib/schema_metadata";
+import { isDate, isTime } from "metabase/lib/schema_metadata";
 import { formatField, singularize } from "metabase/lib/formatting";
 
 import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
-import type { FilterOperator } from "metabase/meta/types/Metadata";
-
-import Field from "metabase-lib/lib/metadata/Field";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
@@ -242,94 +231,3 @@ export default class ViewFilters extends Component {
     }
   }
 }
-
-const DefaultPicker = ({ filter, setValue, setValues, onCommit }) => {
-  const operator = filter.operator();
-  const field = filter.dimension().field();
-  let fieldWidgets =
-    operator &&
-    operator.fields.map((operatorField, index) => {
-      if (!operator) {
-        return null;
-      }
-      let values, onValuesChange;
-      let placeholder =
-        (operator && operator.placeholders && operator.placeholders[index]) ||
-        undefined;
-      if (operator.multi) {
-        values = filter.arguments();
-        onValuesChange = values => setValues(values);
-      } else {
-        // $FlowFixMe
-        values = [filter.arguments()[index]];
-        onValuesChange = values => setValue(index, values[0]);
-      }
-      if (operatorField.type === "hidden") {
-        return null;
-      } else if (operatorField.type === "select") {
-        return (
-          <SelectPicker
-            key={index}
-            options={operatorField.values}
-            // $FlowFixMe
-            values={(values: Array<string>)}
-            onValuesChange={onValuesChange}
-            placeholder={placeholder}
-            multi={operator.multi}
-            onCommit={onCommit}
-          />
-        );
-      } else if (field && field.id != null) {
-        return (
-          <FieldValuesWidget
-            value={(values: Array<string>)}
-            onChange={onValuesChange}
-            multi={operator.multi}
-            placeholder={placeholder}
-            field={field}
-            searchField={field.filterSearchField()}
-            autoFocus={index === 0}
-            alwaysShowOptions={operator.fields.length === 1}
-            formatOptions={getFilterArgumentFormatOptions(operator, index)}
-            minWidth={440}
-            maxWidth={440}
-          />
-        );
-      } else if (operatorField.type === "text") {
-        return (
-          <TextPicker
-            key={index}
-            // $FlowFixMe
-            values={(values: Array<string>)}
-            onValuesChange={onValuesChange}
-            placeholder={placeholder}
-            multi={operator.multi}
-            onCommit={onCommit}
-          />
-        );
-      } else if (operatorField.type === "number") {
-        return (
-          <NumberPicker
-            key={index}
-            // $FlowFixMe
-            values={(values: Array<number | null>)}
-            onValuesChange={onValuesChange}
-            placeholder={placeholder}
-            multi={operator.multi}
-            onCommit={onCommit}
-          />
-        );
-      }
-      return (
-        <span key={index}>
-          {t`not implemented ${operatorField.type}`}{" "}
-          {operator.multi ? t`true` : t`false`}
-        </span>
-      );
-    });
-  if (fieldWidgets && fieldWidgets.filter(f => f).length > 0) {
-    return <div>{fieldWidgets}</div>;
-  } else {
-    return <div className="mb1" />;
-  }
-};
