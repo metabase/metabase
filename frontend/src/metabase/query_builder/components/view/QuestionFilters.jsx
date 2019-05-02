@@ -14,7 +14,7 @@ const QuestionFilters = ({
   onCloseFilter,
   onExpand,
 }) => {
-  const filters = question.query().filters();
+  const filters = question.query().topLevelFilters();
   return filters.length === 0 ? (
     <FilterContainer>
       <Button medium icon="filter" color="#7172AD" onClick={onOpenAddFilter}>
@@ -67,7 +67,7 @@ QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
 export const questionHasFilters = question =>
   question &&
   question.query() instanceof StructuredQuery &&
-  question.query().filters().length > 0;
+  question.query().topLevelFilters().length > 0;
 
 const FilterContainer = ({ children }) => (
   <div className="flex align-stretch scroll-x">{children}</div>

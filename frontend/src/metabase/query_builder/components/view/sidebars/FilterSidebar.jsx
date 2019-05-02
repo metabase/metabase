@@ -4,19 +4,21 @@ import { t } from "c-3po";
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import ViewFilters from "../ViewFilters";
 
+/** FilterSidebar operates on filters from topLevelFilters */
 const FilterSidebar = ({ question, index, onClose }) => {
   const query = question.query();
+  const filter = index != null ? query.topLevelFilters()[index] : null;
   return (
     <SidebarContent icon="filter" title={t`Filter`} onClose={onClose}>
       <ViewFilters
         key={index}
         query={question.query()}
-        filter={index != null ? query.filters()[index] : null}
-        onChangeFilter={filter => {
-          if (index != null) {
-            query.updateFilter(index, filter).update(null, { run: true });
+        filter={filter}
+        onChangeFilter={(newFilter, query) => {
+          if (filter) {
+            filter.replace(newFilter).update(null, { run: true });
           } else {
-            query.addFilter(filter).update(null, { run: true });
+            query.addFilter(newFilter).update(null, { run: true });
           }
           onClose();
         }}

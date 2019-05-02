@@ -513,6 +513,14 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * @returns An array of MBQL @type {Filter}s from the last two query stages
+   */
+  topLevelFilters(stages = 2): Filter[] {
+    const queries = this.queries().slice(-stages);
+    return [].concat(...queries.map(q => q.filters()));
+  }
+
+  /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
   filterFieldOptions(): DimensionOptions {

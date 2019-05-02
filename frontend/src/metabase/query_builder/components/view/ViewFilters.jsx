@@ -47,29 +47,30 @@ export default class ViewFilters extends Component {
   }
 
   handleCommit = () => {
-    this.handleCommitFilter(this.state.filter);
+    this.handleCommitFilter(this.state.filter, this.state.query);
   };
 
   handleCommitOnEnter = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.handleCommitFilter(this.state.filter);
+      this.handleCommitFilter(this.state.filter, this.state.query);
     }
   };
 
-  handleCommitFilter = (filter: FieldFilter) => {
+  handleCommitFilter = (filter: FieldFilter, query) => {
     if (filter.isValid()) {
-      this.props.onChangeFilter(filter);
+      this.props.onChangeFilter(filter, query);
       if (this.props.onClose) {
         this.props.onClose();
       }
     }
   };
 
-  handleFieldChange = (fieldRef: ConcreteField) => {
+  handleFieldChange = (fieldRef: ConcreteField, query) => {
+    const { filter } = this.state;
+    filter._query = query;
     this.setState({
-      filter: this.state.filter.setDimension(fieldRef, {
-        useDefaultOperator: true,
-      }),
+      query: query,
+      filter: filter.setDimension(fieldRef, { useDefaultOperator: true }),
     });
   };
 
@@ -81,24 +82,37 @@ export default class ViewFilters extends Component {
     this.setState({ filter: this.state.filter.setDimension(null) });
   };
 
+  _queries() {
+    const queries = this.props.query.queries().slice(-2);
+    if (queries.length === 1 && queries[0].breakouts().length > 0) {
+      queries.push(queries[0].nest());
+    }
+    return queries.reverse();
+  }
+
   render() {
-    const { query } = this.props;
     const { filter } = this.state;
 
     const dimension = filter.dimension();
     if (filter.isSegmentFilter() || !dimension) {
+      const queries = this.props.filter
+        ? [this.props.filter.query()]
+        : this._queries();
       return (
-        <div className="full p1">
-          <FieldList
-            className="text-purple"
-            width={410}
-            field={dimension && dimension.mbql()}
-            fieldOptions={query.filterFieldOptions(filter)}
-            segmentOptions={query.filterSegmentOptions(filter)}
-            table={query.table()}
-            onFieldChange={this.handleFieldChange}
-            onFilterChange={this.handleCommitFilter}
-          />
+        <div className="full p1 scroll-y">
+          {queries.map(query => (
+            <FieldList
+              className="text-purple"
+              width={410}
+              maxHeight={Infinity} // just implement scrolling ourselves
+              field={dimension && dimension.mbql()}
+              fieldOptions={query.filterFieldOptions(filter)}
+              segmentOptions={query.filterSegmentOptions(filter)}
+              table={query.table()}
+              onFieldChange={field => this.handleFieldChange(field, query)}
+              onFilterChange={filter => this.handleCommitFilter(filter, query)}
+            />
+          ))}
         </div>
       );
     } else {
