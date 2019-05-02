@@ -14,12 +14,10 @@ import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {
-  maxHeight?: number,
   query: StructuredQuery,
   filter?: Filter,
   onChangeFilter: (filter: Filter) => void,
   onClose: () => void,
-  showFieldPicker?: boolean,
 };
 
 type State = {
@@ -30,10 +28,6 @@ type State = {
 export default class ViewFilters extends Component {
   props: Props;
   state: State;
-
-  static defaultProps = {
-    showFieldPicker: true,
-  };
 
   constructor(props: Props) {
     super(props);
@@ -88,7 +82,7 @@ export default class ViewFilters extends Component {
   };
 
   render() {
-    const { query, showFieldPicker } = this.props;
+    const { query } = this.props;
     const { filter } = this.state;
 
     const dimension = filter.dimension();
@@ -96,14 +90,14 @@ export default class ViewFilters extends Component {
       return (
         <div className="full p1">
           <FieldList
+            className="text-purple"
+            width={410}
             field={dimension && dimension.mbql()}
             fieldOptions={query.filterFieldOptions(filter)}
             segmentOptions={query.filterSegmentOptions(filter)}
             table={query.table()}
             onFieldChange={this.handleFieldChange}
             onFilterChange={this.handleCommitFilter}
-            width={410}
-            className="text-purple"
           />
         </div>
       );
@@ -112,9 +106,9 @@ export default class ViewFilters extends Component {
         <div className="full p1">
           <FilterPopoverHeader
             filter={filter}
-            showFieldPicker={showFieldPicker}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
+            showFieldPicker
           />
           <FilterPopoverPicker
             filter={filter}

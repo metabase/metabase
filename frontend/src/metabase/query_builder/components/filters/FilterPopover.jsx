@@ -96,14 +96,14 @@ export default class ViewFilters extends Component {
       return (
         <div className="full p1">
           <FieldList
+            className="text-purple"
+            maxHeight={this.props.maxHeight}
             field={dimension && dimension.mbql()}
             fieldOptions={query.filterFieldOptions(filter)}
             segmentOptions={query.filterSegmentOptions(filter)}
             table={query.table()}
             onFieldChange={this.handleFieldChange}
             onFilterChange={this.handleCommitFilter}
-            width={410}
-            className="text-purple"
           />
         </div>
       );
