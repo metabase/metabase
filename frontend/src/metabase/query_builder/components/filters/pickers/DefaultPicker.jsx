@@ -11,7 +11,12 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-const DefaultPicker = ({ filter, setValue, setValues, onCommit }) => {
+export default function DefaultPicker({
+  filter,
+  setValue,
+  setValues,
+  onCommit,
+}) {
   const operator = filter.operator();
   const field = filter.dimension().field();
   let fieldWidgets =
@@ -100,6 +105,4 @@ const DefaultPicker = ({ filter, setValue, setValues, onCommit }) => {
   } else {
     return <div className="mb1" />;
   }
-};
-
-export default DefaultPicker;
+}

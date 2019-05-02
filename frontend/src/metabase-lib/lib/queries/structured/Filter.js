@@ -109,17 +109,26 @@ export default class Filter extends MBQLClause {
     return this.set(filter);
   }
 
-  setDimension(fieldRef) {
+  setDimension(fieldRef, { useDefaultOperator = false } = {}) {
     if (!fieldRef) {
       return this.set([]);
     }
     const dimension = this._query.parseFieldReference(fieldRef);
     if (!this.isFieldFilter() || !dimension.isEqual(this.dimension())) {
-      const op = this.isFieldFilter() && this.operator();
-      const filter = op
-        ? [this.operator(), dimension.mbql(), ...this.arguments()]
-        : [null, dimension.mbql()];
-      return this.set(filter);
+      // see if the new dimension supports the existing operator
+      const operator = dimension.operator(this.operatorName());
+      const operatorName =
+        (operator && operator.name) ||
+        // otherwise use the default operator, if enabled
+        (useDefaultOperator && dimension.defaultOperator()) ||
+        null;
+
+      const filter = this.set([this[0], dimension.mbql(), ...this.slice(2)]);
+      if (filter.operatorName() !== operatorName) {
+        return filter.setOperator(operatorName);
+      } else {
+        return filter;
+      }
     }
     return this;
   }
