@@ -94,7 +94,7 @@ export default class VisualizationSettings extends React.Component {
 
   render() {
     if (this.props.result && this.props.result.error === undefined) {
-      const { chartSettings } = this.props.uiControls;
+      const { initialChartSettings } = this.props.uiControls;
       return (
         <div className="VisualizationSettings">
           <div className="pl0 Query-label">{t`Visualization`}</div>
@@ -108,7 +108,7 @@ export default class VisualizationSettings extends React.Component {
               <Icon name="gear" />
             </span>
           </div>
-          <Modal wide tall isOpen={chartSettings} onClose={this.close}>
+          <Modal wide tall isOpen={initialChartSettings} onClose={this.close}>
             <ChartSettingsWithState
               question={this.props.question}
               addField={this.props.addField}
@@ -120,7 +120,7 @@ export default class VisualizationSettings extends React.Component {
               ]}
               onChange={this.props.onReplaceAllVisualizationSettings}
               onClose={this.close}
-              initial={chartSettings}
+              initial={initialChartSettings}
             />
           </Modal>
         </div>

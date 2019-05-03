@@ -46,8 +46,8 @@ const DEFAULT_UI_CONTROLS = {
   isShowingNewbModal: false,
   isEditing: false,
   isRunning: false,
-  chartSettings: null,
   isShowingChartSettingsSidebar: false,
+  initialChartSetting: null,
   isShowingChartTypeSidebar: false,
 };
 
@@ -113,7 +113,11 @@ export const uiControls = handleActions(
     },
 
     [SHOW_CHART_SETTINGS]: {
-      next: (state, { payload }) => ({ ...state, chartSettings: payload }),
+      next: (state, { payload }) => ({
+        ...state,
+        isShowingChartSettingsSidebar: true,
+        initialChartSetting: payload,
+      }),
     },
   },
   DEFAULT_UI_CONTROLS,
