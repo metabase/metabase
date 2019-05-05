@@ -88,12 +88,19 @@
   (when s
     (s/replace s #"-" "_")))
 
+(defn- valid-describe-table-row [row]
+  (not(or
+       (s/blank? (:col_name row))
+       (s/starts-with? (:col_name row) "#") ;; Hive describe table result has commented rows to distinguish partitions
+       (s/blank? (:data_type row))
+       (s/starts-with? (:data_type row) "#"))))
+
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql [_ {:keys [details] :as database}]
   {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
              (set (for [result (jdbc/query {:connection conn}
                                            ["show tables"])]
-                    {:name   (:tablename result)
+                    {:name   (if (contains? result :tablename) (:tablename result) (:tab_name result)) ;; column name differ depending on server (SparkSQL, hive, Impala)
                      :schema (when (> (count (:database result)) 0)
                                (:database result))})))})
 
@@ -107,7 +114,8 @@
                                               (format "describe `%s`.`%s`"
                                                       (dash-to-underscore (:schema table))
                                                       (dash-to-underscore (:name table)))
-                                              (str "describe " (dash-to-underscore (:name table))))])]
+                                              (str "describe " (dash-to-underscore (:name table))))])
+                        :when (valid-describe-table-row result)]
                     {:name          (:col_name result)
                      :database-type (:data_type result)
                      :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword (:data_type result)))}))}))
