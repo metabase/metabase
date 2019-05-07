@@ -15,7 +15,7 @@
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
   (:import [java.io BufferedReader Reader]
-           [java.net InetAddress InetSocketAddress Socket URL]
+           [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
            java.util.Locale
