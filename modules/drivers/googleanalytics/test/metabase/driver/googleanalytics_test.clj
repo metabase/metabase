@@ -17,8 +17,7 @@
             [metabase.test.util :as tu]
             [metabase.util.date :as du]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [clj-time.core :as t]))
+            [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        MBQL->NATIVE (QUERY -> GA QUERY)                                        |
@@ -88,7 +87,7 @@
   (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
   (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
 
-;; tests day-off correction for gt/lt operators (GA doesn't support exclusive ranges)
+;; tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)
 (expect
   (ga-query {:start-date "2016-11-09", :end-date "today"})
   (mbql->native {:query {:filter [:> (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
@@ -154,6 +153,7 @@
              :end-date   "today"})
   (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))
 
+;; last year excluding the first day of the range
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-dd" (du/relative-date :day 1 (du/date-trunc :year (du/relative-date :year -1))))
              :end-date   "today"})
