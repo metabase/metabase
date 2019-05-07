@@ -146,11 +146,14 @@ export default class ChoroplethMap extends Component {
     let { geoJson, minimalBounds } = this.state;
 
     // special case builtin maps to use legacy choropleth map
-    let projection;
+    let projection, projectionFrame;
+    // projectionFrame is the lng/lat of the top left and bottom right corners
     if (settings["map.region"] === "us_states") {
       projection = d3.geo.albersUsa();
+      projectionFrame = [[-135.0, 46.6], [-69.1, 21.7]];
     } else if (settings["map.region"] === "world_countries") {
       projection = d3.geo.mercator();
+      projectionFrame = [[-170, 78], [180, -60]];
     } else {
       projection = null;
     }
@@ -264,10 +267,8 @@ export default class ChoroplethMap extends Component {
 
     let aspectRatio;
     if (projection) {
-      let translate = projection.translate();
-      let width = translate[0] * 2;
-      let height = translate[1] * 2;
-      aspectRatio = width / height;
+      const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
+      aspectRatio = (maxX - minX) / (maxY - minY);
     } else {
       aspectRatio =
         (minimalBounds.getEast() - minimalBounds.getWest()) /
@@ -292,6 +293,7 @@ export default class ChoroplethMap extends Component {
             onHoverFeature={onHoverFeature}
             onClickFeature={onClickFeature}
             projection={projection}
+            projectionFrame={projectionFrame}
           />
         ) : (
           <LeafletChoropleth
