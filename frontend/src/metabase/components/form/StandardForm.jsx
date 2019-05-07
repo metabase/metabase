@@ -6,7 +6,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import Button from "metabase/components/Button";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import { getIn } from "icepick";
 

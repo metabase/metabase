@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "metabase/reference/Reference.css";
 
 import List from "metabase/components/List.jsx";

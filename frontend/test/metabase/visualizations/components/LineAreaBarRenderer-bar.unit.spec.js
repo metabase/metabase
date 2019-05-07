@@ -5,6 +5,8 @@ import {
   StringColumn,
   dispatchUIEvent,
   renderLineAreaBar,
+  createFixture,
+  cleanupFixture,
 } from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
@@ -62,15 +64,11 @@ describe("LineAreaBarRenderer-bar", () => {
   const qsa = selector => [...element.querySelectorAll(selector)];
 
   beforeEach(function() {
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      '<div id="fixture" style="height: 800px; width: 1200px;">',
-    );
-    element = document.getElementById("fixture");
+    element = createFixture();
   });
 
   afterEach(function() {
-    document.body.removeChild(document.getElementById("fixture"));
+    cleanupFixture(element);
   });
 
   it(`should render an bar chart with 1 series`, () => {

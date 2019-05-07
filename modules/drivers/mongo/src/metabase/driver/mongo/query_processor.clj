@@ -48,12 +48,13 @@
 ;; this is just a very limited schema to make sure we're generating valid queries. We should expand it more in the
 ;; future
 
-(def ^:private $ProjectStage {(s/eq $project) {su/NonBlankString s/Any}})
-(def ^:private $SortStage    {(s/eq $sort)    {su/NonBlankString (s/enum -1 1)}})
-(def ^:private $MatchStage   {(s/eq $match)   {(s/constrained su/NonBlankString (partial not= $not)) s/Any}})
-(def ^:private $GroupStage   {(s/eq $group)   {su/NonBlankString s/Any}})
-(def ^:private $LimitStage   {(s/eq $limit)   su/IntGreaterThanZero})
-(def ^:private $SkipStage    {(s/eq $skip)    su/IntGreaterThanZero})
+(def ^:private $ProjectStage   {(s/eq $project)     {su/NonBlankString s/Any}})
+(def ^:private $SortStage      {(s/eq $sort)        {su/NonBlankString (s/enum -1 1)}})
+(def ^:private $MatchStage     {(s/eq $match)       {(s/constrained su/NonBlankString (partial not= $not)) s/Any}})
+(def ^:private $GroupStage     {(s/eq $group)       {su/NonBlankString s/Any}})
+(def ^:private $AddFieldsStage {(s/eq "$addFields") {su/NonBlankString s/Any}})
+(def ^:private $LimitStage     {(s/eq $limit)       su/IntGreaterThanZero})
+(def ^:private $SkipStage      {(s/eq $skip)        su/IntGreaterThanZero})
 
 (defn- is-stage? [stage]
   (fn [m] (= (first (keys m)) stage)))
@@ -62,12 +63,13 @@
   (s/both
    (s/constrained su/Map #(= (count (keys %)) 1) "map with a single key")
    (s/conditional
-    (is-stage? $project) $ProjectStage
-    (is-stage? $sort)    $SortStage
-    (is-stage? $group)   $GroupStage
-    (is-stage? $match)   $MatchStage
-    (is-stage? $limit)   $LimitStage
-    (is-stage? $skip)    $SkipStage)))
+    (is-stage? $project)     $ProjectStage
+    (is-stage? $sort)        $SortStage
+    (is-stage? $group)       $GroupStage
+    (is-stage? "$addFields") $AddFieldsStage
+    (is-stage? $match)       $MatchStage
+    (is-stage? $limit)       $LimitStage
+    (is-stage? $skip)        $SkipStage)))
 
 (def ^:private Pipeline [Stage])
 
@@ -304,12 +306,12 @@
 (defmethod parse-filter :starts-with [[_ field v opts]] {(->lvalue field) (str-match-pattern opts \^  v nil)})
 (defmethod parse-filter :ends-with   [[_ field v opts]] {(->lvalue field) (str-match-pattern opts nil v \$)})
 
-(defmethod parse-filter :=  [[_ field value]] {(->lvalue field) {"$eq" (->rvalue value)}})
-(defmethod parse-filter :!= [[_ field value]] {(->lvalue field) {$ne   (->rvalue value)}})
-(defmethod parse-filter :<  [[_ field value]] {(->lvalue field) {$lt   (->rvalue value)}})
-(defmethod parse-filter :>  [[_ field value]] {(->lvalue field) {$gt   (->rvalue value)}})
-(defmethod parse-filter :<= [[_ field value]] {(->lvalue field) {$lte  (->rvalue value)}})
-(defmethod parse-filter :>= [[_ field value]] {(->lvalue field) {$gte  (->rvalue value)}})
+(defmethod parse-filter :=  [[_ field value]] {(->lvalue field) {$eq  (->rvalue value)}})
+(defmethod parse-filter :!= [[_ field value]] {(->lvalue field) {$ne  (->rvalue value)}})
+(defmethod parse-filter :<  [[_ field value]] {(->lvalue field) {$lt  (->rvalue value)}})
+(defmethod parse-filter :>  [[_ field value]] {(->lvalue field) {$gt  (->rvalue value)}})
+(defmethod parse-filter :<= [[_ field value]] {(->lvalue field) {$lte (->rvalue value)}})
+(defmethod parse-filter :>= [[_ field value]] {(->lvalue field) {$gte (->rvalue value)}})
 
 (defmethod parse-filter :and [[_ & args]] {$and (mapv parse-filter args)})
 (defmethod parse-filter :or  [[_ & args]] {$or (mapv parse-filter args)})
@@ -338,34 +340,79 @@
 (defmethod parse-filter :not [[_ subclause]]
   (parse-filter (negate subclause)))
 
-
 (defn- handle-filter [{filter-clause :filter} pipeline-ctx]
   (if-not filter-clause
     pipeline-ctx
     (update pipeline-ctx :query conj {$match (parse-filter filter-clause)})))
 
+(defmulti ^:private parse-cond first)
+
+(defmethod parse-cond :between [[_ field min-val max-val]]
+  (parse-cond [:and [:>= field min-val] [:< field max-val]]))
+
+(defn- indexOfCP
+  [source needle case-sensitive?]
+  (let [source (if case-sensitive?
+                 (->rvalue source)
+                 {$toLower (->rvalue source)})
+        needle (if case-sensitive?
+                 (->rvalue needle)
+                 {$toLower (->rvalue needle)})]
+    {"$indexOfCP" [source needle]}))
+
+(defmethod parse-cond :contains    [[_ field value opts]] {$ne [(indexOfCP field value (get opts :case-sensitive true)) -1]})
+(defmethod parse-cond :starts-with [[_ field value opts]] {$eq [(indexOfCP field value (get opts :case-sensitive true)) 0]})
+(defmethod parse-cond :ends-with   [[_ field value opts]]
+  (let [strcmp (fn [a b]
+                 (if (get opts :case-sensitive true)
+                   {$eq [a b]}
+                   {$eq [{$strcasecmp [a b]} 0]}))]
+    (strcmp {"$substrCP" [(->rvalue field)
+                          {$subtract [{"$strLenCP" (->rvalue field)}
+                                      {"$strLenCP" (->rvalue value)}]}
+                          {"$strLenCP" (->rvalue value)}]}
+            (->rvalue value))))
+
+(defmethod parse-cond :=  [[_ field value]] {$eq [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :!= [[_ field value]] {$ne [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :<  [[_ field value]] {$lt [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :>  [[_ field value]] {$gt [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :<= [[_ field value]] {$lte [(->rvalue field) (->rvalue value)]})
+(defmethod parse-cond :>= [[_ field value]] {$gte [(->rvalue field) (->rvalue value)]})
+
+(defmethod parse-cond :and [[_ & args]] {$and (mapv parse-cond args)})
+(defmethod parse-cond :or  [[_ & args]] {$or (mapv parse-cond args)})
+
+(defmethod parse-cond :not [[_ subclause]]
+  (parse-cond (negate subclause)))
+
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregation->rvalue [[aggregation-type field]]
+(defn- aggregation->rvalue [[aggregation-type arg & args]]
   {:pre [(keyword? aggregation-type)]}
-  (if-not field
+  (if-not arg
     (case aggregation-type
       :count {$sum 1})
     (case aggregation-type
-      :named    (recur field)
-      :avg      {$avg (->rvalue field)}
-      :count    {$sum {$cond {:if   (->rvalue field)
-                              :then 1
-                              :else 0}}}
-      :distinct {$addToSet (->rvalue field)}
-      :sum      {$sum (->rvalue field)}
-      :min      {$min (->rvalue field)}
-      :max      {$max (->rvalue field)})))
+      :named       (recur arg)
+      :avg         {$avg (->rvalue arg)}
+      :count       {$sum {$cond {:if   (->rvalue arg)
+                                 :then 1
+                                 :else 0}}}
+      :distinct    {$addToSet (->rvalue arg)}
+      :sum         {$sum (->rvalue arg)}
+      :min         {$min (->rvalue arg)}
+      :max         {$max (->rvalue arg)}
+      :sum-where   (let [[pred] args]
+                     {$sum {$cond {:if   (parse-cond pred)
+                                   :then (->rvalue arg)
+                                   :else 0}}})
+      :count-where (recur [:sum-where [:value 1] arg]))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)
-    arg
+    (recur arg)
     ag))
 
 (s/defn ^:private breakouts-and-ags->projected-fields :- [(s/pair su/NonBlankString "projected-field-name"
@@ -381,40 +428,71 @@
                                        {$size "$count"} ; HACK
                                        true)])))
 
+(defmulti ^:private expand-aggregation (comp first unwrap-named-ag))
+
+(defmethod expand-aggregation :share
+  [[_ pred :as ag]]
+  (let [count-where-name (name (gensym "count-where"))
+        count-name    (name (gensym "count-"))
+        pred          (if (= (first pred) :share)
+                        (second pred)
+                        pred)]
+    [[[count-where-name (aggregation->rvalue [:count-where pred])]
+      [count-name (aggregation->rvalue [:count])]]
+     [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
+
+(defmethod expand-aggregation :default
+  [ag]
+  [[[(annotate/aggregation-name ag) (aggregation->rvalue ag)]]])
+
+(defn- group-and-post-aggregations
+  "Mongo is picky (and somewhat stupid) which top-level aggregations it alows with groups. Eg. even
+   though [:/ [:coun-if ...] [:count]] is a perfectly fine reduction, it's not allowed. Therefore
+   more complex aggregations are split in two: the reductions are done in `$group` stage after which
+   we do postprocessing in `$addFields` stage to arrive at the final result. The intermitent results
+   accrued in `$group` stage are discarded in the final `$project` stage."
+  [id aggregations]
+  (let [expanded-ags (map expand-aggregation aggregations)
+        group-ags    (mapcat first expanded-ags)
+        post-ags     (mapcat second expanded-ags)]
+    [{$group (into (ordered-map/ordered-map "_id" id) group-ags)}
+     (when (not-empty post-ags)
+       {"$addFields" (into (ordered-map/ordered-map) post-ags)})]))
+
+(defn- lvalue?
+  [x]
+  (try
+    (some? (->lvalue x))
+    (catch IllegalArgumentException _
+      false)))
+
 (defn- breakouts-and-ags->pipeline-stages
   "Return a sequeunce of aggregation pipeline stages needed to implement MBQL breakouts and aggregations."
   [projected-fields breakout-fields aggregations]
-  (remove
-   nil?
-   [ ;; create a totally sweet made-up column called `___group` to store the fields we'd
+  (mapcat
+   (partial remove nil?)
+   [;; create a totally sweet made-up column called `___group` to store the fields we'd
     ;; like to group by
     (when (seq breakout-fields)
-      {$project (merge {"_id"      "$_id"
-                        "___group" (into
-                                    (ordered-map/ordered-map)
-                                    (for [field breakout-fields]
-                                      [(->lvalue field) (->rvalue field)]))}
-                       (into
-                        (ordered-map/ordered-map)
-                        (for [ag    aggregations
-                              :let  [[_ ag-field] (unwrap-named-ag ag)]
-                              :when ag-field]
-                          [(->lvalue ag-field) (->rvalue ag-field)])))})
+      [{$project (into
+                  (ordered-map/ordered-map "_id"      "$_id"
+                                           "___group" (into
+                                                        (ordered-map/ordered-map)
+                                                        (for [field breakout-fields]
+                                                          [(->lvalue field) (->rvalue field)])))
+                  (comp (map (comp second unwrap-named-ag))
+                        (mapcat (fn [ag-fields]
+                                  (for [ag-field (mbql.u/match ag-fields lvalue?)]
+                                    [(->lvalue ag-field) (->rvalue ag-field)]))))
+                  aggregations)}])
     ;; Now project onto the __group and the aggregation rvalue
-    {$group (merge
-             {"_id" (when (seq breakout-fields)
-                      "$___group")}
-             (into
-              (ordered-map/ordered-map)
-              (for [ag aggregations]
-                [(annotate/aggregation-name ag) (aggregation->rvalue ag)])))}
-    ;; Sort by _id (___group)
-    {$sort {"_id" 1}}
-    ;; now project back to the fields we expect
-    {$project (merge {"_id" false}
-                     (into
-                      (ordered-map/ordered-map)
-                      projected-fields))}]))
+    (group-and-post-aggregations (when (seq breakout-fields) "$___group") aggregations)
+    [;; Sort by _id (___group)
+     {$sort {"_id" 1}}
+     ;; now project back to the fields we expect
+     {$project (into
+                (ordered-map/ordered-map "_id" false)
+                projected-fields)}]]))
 
 (defn- handle-breakout+aggregation
   "Add projections, groupings, sortings, and other things needed to the Query pipeline context (`pipeline-ctx`) for

@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import { assocIn } from "icepick";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -40,32 +40,27 @@ const Users = createEntity({
   },
 
   actionDecorators: {
-    create: {
-      // if the instance doesn't have
-      pre: user => {
-        let newUser = user;
-        if (!MetabaseSettings.isEmailConfigured()) {
-          newUser = {
-            ...newUser,
-            password: MetabaseUtils.generatePassword(),
-          };
-        }
-        return newUser;
-      },
-      post: (result, user) => ({
+    create: thunkCreator => user => async (dispatch, getState) => {
+      if (!MetabaseSettings.isEmailConfigured()) {
+        user = {
+          ...user,
+          password: MetabaseUtils.generatePassword(),
+        };
+      }
+      const result = await thunkCreator(user)(dispatch, getState);
+      return {
         // HACK: include user ID and password for temporaryPasswords reducer
         id: result.result,
         password: user.password,
         ...result,
-      }),
+      };
     },
-    update: {
-      post: (result, user, dispatch) => {
-        // HACK: reload memberships when updating a user
-        // TODO: only do this if group_ids changes
-        dispatch(require("metabase/admin/people/people").loadMemberships());
-        return result;
-      },
+    update: thunkCreator => (...args) => async (dispatch, getState) => {
+      const result = await thunkCreator(...args)(dispatch, getState);
+      // HACK: reload memberships when updating a user
+      // TODO: only do this if group_ids changes
+      dispatch(require("metabase/admin/people/people").loadMemberships());
+      return result;
     },
   },
 

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Clearable from "./Clearable.jsx";
 
 import Query from "metabase/lib/query";

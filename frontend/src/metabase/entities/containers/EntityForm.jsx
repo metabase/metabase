@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
@@ -16,6 +16,9 @@ export default class EntityForm extends React.Component {
       entityObject,
       update,
       create,
+      // defaults to `create` or `update` (if an id is present)
+      onSubmit = object =>
+        object.id != null ? update(object) : create(object),
       onClose,
       onSaved,
       modal,
@@ -27,9 +30,7 @@ export default class EntityForm extends React.Component {
         {...props}
         form={entityDef.form}
         initialValues={entityObject}
-        onSubmit={object =>
-          object.id != null ? update(object) : create(object)
-        }
+        onSubmit={onSubmit}
         onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
       />
     );

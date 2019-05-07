@@ -227,7 +227,6 @@
                          :query    {:source-table (data/id :venues)
                                     :limit        1}
                          :info     {:executed-by 1000
-                                    :query-type  "MBQL"
                                     :query-hash  (byte-array [1 2 3 4])}})
       @native-query)))
 
@@ -248,5 +247,4 @@
     :query    {:source-table (data/id :venues)
                :limit        1}
     :info     {:executed-by 1000
-               :query-type  "MBQL"
                :query-hash  (byte-array [1 2 3 4])}}))

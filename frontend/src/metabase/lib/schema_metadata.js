@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   isa,
   isFK as isTypeFK,

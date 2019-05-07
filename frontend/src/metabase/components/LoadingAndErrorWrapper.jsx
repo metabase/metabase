@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class LoadingAndErrorWrapper extends Component {
@@ -45,7 +45,7 @@ export default class LoadingAndErrorWrapper extends Component {
       error.message;
 
     if (!errorMessage || typeof errorMessage === "object") {
-      errorMessage = t`An error occured`;
+      errorMessage = t`An error occurred`;
     }
     return errorMessage;
   }

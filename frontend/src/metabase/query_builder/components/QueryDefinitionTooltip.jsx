@@ -6,7 +6,7 @@ import AggregationWidget from "./AggregationWidget.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 
 import Query from "metabase/lib/query";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class QueryDefinitionTooltip extends Component {
   static propTypes = {

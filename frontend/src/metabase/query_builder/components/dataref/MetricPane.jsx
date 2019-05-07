@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import DetailPane from "./DetailPane.jsx";
 import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";

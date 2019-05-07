@@ -1,9 +1,10 @@
 /* @flow */
 
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
+
 import AggregationWidget from "./AggregationWidget.jsx";
 import BreakoutWidget from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";
@@ -61,7 +62,7 @@ type State = {
   expanded: boolean,
 };
 
-export default class GuiQueryEditor extends Component {
+export default class GuiQueryEditor extends React.Component {
   props: Props;
   state: State = {
     expanded: true,

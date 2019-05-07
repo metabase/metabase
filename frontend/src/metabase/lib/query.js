@@ -2,7 +2,7 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";

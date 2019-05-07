@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import styled from "styled-components";
 import { space } from "styled-system";
 import { Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { capitalize, inflect } from "metabase/lib/formatting";
 
 import { normal } from "metabase/lib/colors";

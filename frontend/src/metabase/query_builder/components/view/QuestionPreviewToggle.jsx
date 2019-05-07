@@ -2,7 +2,7 @@ import React from "react";
 
 import Toggle from "metabase/components/Toggle";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 const QuestionPreviewToggle = ({

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -48,7 +48,10 @@ export default class DashCard extends Component {
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
-      ReactDOM.findDOMNode(this).scrollIntoView({ block: "nearest" });
+      const element = ReactDOM.findDOMNode(this);
+      if (element && element.scrollIntoView) {
+        element.scrollIntoView({ block: "nearest" });
+      }
       markNewCardSeen(dashcard.id);
     }
   }

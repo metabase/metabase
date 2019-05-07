@@ -2,7 +2,7 @@
 
 import _ from "underscore";
 import d3 from "d3";
-import { t } from "c-3po";
+import { t } from "ttag";
 import crossfilter from "crossfilter";
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;

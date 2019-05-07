@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 

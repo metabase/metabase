@@ -11,7 +11,7 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 // COMPONENTS
 

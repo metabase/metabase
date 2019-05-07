@@ -4,7 +4,7 @@ import FilterOptions from "./FilterOptions";
 
 import { getOperator } from "../filters/pickers/DatePicker";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default function FilterPopoverFooter({

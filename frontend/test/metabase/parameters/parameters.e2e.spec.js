@@ -11,6 +11,7 @@ import {
   waitForRequestToComplete,
   waitForAllRequestsToComplete,
   cleanup,
+  eventually,
 } from "__support__/e2e_tests";
 
 import jwt from "jsonwebtoken";
@@ -439,23 +440,25 @@ async function sharedParametersTests(getAppAndStore) {
   //   ]);
   // });
 
-  it("should have the correct values", () => {
-    const widgets = app.find(FieldValuesWidget);
-    const values = widgets.map(
-      widget =>
-        widget
-          .find("ul") // first ul is options
-          .at(0)
-          .find("li")
-          .map(li => li.text())
-          .slice(0, -1), // the last item is the input, remove it
-    );
-    expect(values).toEqual([
-      ["Hudson Borer - 1"], // remapped value
-      [],
-      [],
-      [],
-    ]);
+  it("should have the correct values", async () => {
+    await eventually(() => {
+      const widgets = app.find(FieldValuesWidget);
+      const values = widgets.map(
+        widget =>
+          widget
+            .find("ul") // first ul is options
+            .at(0)
+            .find("li")
+            .map(li => li.text())
+            .slice(0, -1), // the last item is the input, remove it
+      );
+      expect(values).toEqual([
+        ["Hudson Borer - 1"], // remapped value
+        [],
+        [],
+        [],
+      ]);
+    });
   });
 
   it("should have the correct placeholders", () => {

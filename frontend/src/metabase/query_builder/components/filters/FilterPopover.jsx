@@ -1,6 +1,7 @@
 /* @flow */
 
-import React, { Component } from "react";
+import React from "react";
+import { t } from "ttag";
 
 import FieldList from "../FieldList";
 
@@ -27,7 +28,7 @@ type State = {
 };
 
 // NOTE: this is duplicated from FilterPopover. Consider merging them
-export default class ViewFilters extends Component {
+export default class ViewFilters extends React.Component {
   props: Props;
   state: State;
 

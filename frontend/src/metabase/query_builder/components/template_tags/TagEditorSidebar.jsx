@@ -1,8 +1,11 @@
 /* @flow weak */
 
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+
+import Icon from "metabase/components/Icon.jsx";
+
+import { t } from "ttag";
 import cx from "classnames";
 
 import TagEditorParam from "./TagEditorParam";
@@ -34,7 +37,7 @@ type State = {
   section: "help" | "settings",
 };
 
-export default class TagEditorSidebar extends Component {
+export default class TagEditorSidebar extends React.Component {
   props: Props;
   state: State = {
     section: "settings",

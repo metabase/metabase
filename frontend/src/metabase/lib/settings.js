@@ -1,6 +1,6 @@
 import _ from "underscore";
 import inflection from "inflection";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 const mb_settings = _.clone(window.MetabaseBootstrap);
@@ -62,6 +62,20 @@ const MetabaseSettings = {
   hideEmbedBranding: () => mb_settings.hide_embed_branding,
 
   metastoreUrl: () => mb_settings.metastore_url,
+
+  docsUrl: (page = "", anchor = "") => {
+    let { tag } = MetabaseSettings.get("version", {});
+    if (!tag) {
+      tag = "latest";
+    }
+    if (page) {
+      page = `/${page}.html`;
+    }
+    if (anchor) {
+      anchor = `#${anchor}`;
+    }
+    return `https://metabase.com/docs/${tag}${page}${anchor}`;
+  },
 
   newVersionAvailable: function(settings) {
     let versionInfo = _.findWhere(settings, { key: "version-info" }),

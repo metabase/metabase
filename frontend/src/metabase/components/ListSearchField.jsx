@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class ListSearchField extends Component {
   static propTypes = {

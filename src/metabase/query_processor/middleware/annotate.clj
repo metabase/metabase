@@ -157,7 +157,7 @@
          (str/join (str " " (name operator) " ")
                    (map expression-ag-arg->name args)))
 
-    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
+    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` which
     ;; is called `:count` (WHY?)
     [:distinct _]
     "count"
@@ -188,6 +188,16 @@
             :special_type :type/Number}
            (ag->name-info &match))
 
+    [:count-where _]
+    (merge {:base_type    :type/Integer
+            :special_type :type/Number}
+           (ag->name-info &match))
+
+    [:share _]
+    (merge {:base_type    :type/Float
+            :special_type :type/Number}
+           (ag->name-info &match))
+
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
     [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :expression :binning-strategy}) & _]
@@ -204,7 +214,7 @@
              (ag->name-info &match)))
 
     ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg]
+    [(_ :guard keyword?) arg & args]
     (merge (col-info-for-aggregation-clause arg)
            (ag->name-info &match))))
 

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import ReactRetinaImage from "react-retina-image";
-import { t } from "c-3po";
+import { t } from "ttag";
 import SettingsInput from "./SettingInput";
 import cx from "classnames";
 

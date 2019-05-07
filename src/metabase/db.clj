@@ -97,7 +97,7 @@
      (log/warn
       (u/format-color 'red
           (str
-           (trs "WARNING: Using Metabase with an H2 application database is not recomended for production deployments.")
+           (trs "WARNING: Using Metabase with an H2 application database is not recommended for production deployments.")
            " "
            (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
            " "
@@ -341,24 +341,18 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private application-db-connection-pool-properties
-  "c3p0 connection pool properties for the application DB. See
-  https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties."
-  {"minPoolSize"     1
-   "initialPoolSize" 1
-   "maxPoolSize"     15})
-
-(defn connection-pool
-  "Create a C3P0 connection pool for the given database `spec`."
+(defn- new-connection-pool
+  "Create a C3P0 connection pool for the given database `spec`. Default c3p0 properties can be found in the
+  c3p0.properties file and are there so users may override them from the system if desired."
   [spec]
-  (connection-pool/connection-pool-spec spec application-db-connection-pool-properties))
+  (connection-pool/connection-pool-spec spec))
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (connection-pool spec)))
+  (db/set-default-db-connection! (new-connection-pool spec)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

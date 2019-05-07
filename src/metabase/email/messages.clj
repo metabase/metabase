@@ -46,12 +46,12 @@
    :callToAction (str (trs "It looks like Metabase wasn’t quite a match for you.")
                       " "
                       (trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
-   :link         "https://www.metabase.com/feedback/inactive"})
+   :link         "https://metabase.com/feedback/inactive"})
 
 (defn- follow-up-context []
   {:heading      (str (trs "We hope you''ve been enjoying Metabase."))
    :callToAction (str (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?"))
-   :link         "https://www.metabase.com/feedback/active"})
+   :link         "https://metabase.com/feedback/active"})
 
 
 ;;; ### Public Interface

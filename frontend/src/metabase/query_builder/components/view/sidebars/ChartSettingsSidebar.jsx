@@ -1,9 +1,11 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Button from "metabase/components/Button";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import visualizations, {getIconForVisualizationType} from "metabase/visualizations";
+import visualizations, {
+  getIconForVisualizationType,
+} from "metabase/visualizations";
 import Icon from "metabase/components/Icon";
 
 const ChartSettingsSidebar = ({
@@ -20,8 +22,8 @@ const ChartSettingsSidebar = ({
     <div className="full-height">
       <div
         className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer"
-        onClick={
-          () => setUIControls ({
+        onClick={() =>
+          setUIControls({
             isShowingChartSettingsSidebar: false,
             isShowingChartTypeSidebar: true,
           })
@@ -29,10 +31,12 @@ const ChartSettingsSidebar = ({
       >
         <Icon name="chevronleft" className="text-medium" />
         <Icon
-            name={getIconForVisualizationType(question.display())}
-            className="ml2 mr1"
+          name={getIconForVisualizationType(question.display())}
+          className="ml2 mr1"
         />
-        <h3 className="text-heavy">{visualizations.get(question.display()).uiName} {t`options`}</h3>
+        <h3 className="text-heavy">
+          {visualizations.get(question.display()).uiName} {t`options`}
+        </h3>
       </div>
       <ChartSettings
         question={question}
@@ -48,13 +52,8 @@ const ChartSettingsSidebar = ({
         noPreview
         initial={initialChartSetting}
       />
-    <div className="flex">
-        <Button
-          medium
-          primary
-          onClick={onClose}
-          className="mx4 mb3 flex-full"
-        >
+      <div className="flex">
+        <Button medium primary onClick={onClose} className="mx4 mb3 flex-full">
           {t`Done`}
         </Button>
       </div>

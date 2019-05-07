@@ -149,17 +149,13 @@
     [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
 
     :env      {:mb-run-mode "dev"}
-    :jvm-opts ["-Dlogfile.path=target/log"]
-    ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
-    :aot      [metabase.logger
-               metabase.task.DynamicClassLoadHelper]}
+    :jvm-opts ["-Dlogfile.path=target/log"]}
 
    :ci
    {:jvm-opts ["-Xmx2500m"]}
 
    :install
-   {:aot [metabase.logger
-          metabase.task.DynamicClassLoadHelper]}
+   {}
 
    :install-for-building-drivers
    {:auto-clean true
@@ -180,6 +176,7 @@
      :ring
      {:handler      metabase.handler/app
       :init         metabase.core/init!
+      :async?       true
       :destroy      metabase.core/destroy
       :reload-paths ["src"]}}]
 
@@ -197,7 +194,8 @@
        :exclusions [expectations]]]
 
      :injections
-     [(require 'metabase.test-setup                                   ; for test setup stuff
+     [(require 'expectation-options                                   ; expectations customizations
+               'metabase.test-setup                                   ; for test setup stuff
                'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
      :resource-paths

@@ -218,7 +218,7 @@
 (defmethod driver/current-db-time :sqlserver [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-fn :sqlserver [_] :%getutcdate)
+(defmethod sql.qp/current-datetime-fn :sqlserver [_] :%getdate)
 
 ;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the

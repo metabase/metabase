@@ -5,7 +5,7 @@ import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
 import { updateIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import {

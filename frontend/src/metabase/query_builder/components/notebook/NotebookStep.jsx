@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import colors, { lighten } from "metabase/lib/colors";
 

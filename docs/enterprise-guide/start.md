@@ -7,3 +7,4 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Customizing drill-through for charts and tables](customizing-drill-through.md)
 * [Authenticating with SAML](authenticating-with-saml.md)
 * [Authenticating with JWT](authenticating-with-jwt.md)
+* [Copying contents of one Metabase instance to another (serialization)](serialization.md)

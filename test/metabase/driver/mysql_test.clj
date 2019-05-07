@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql-test
   (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
             [metabase
@@ -8,6 +9,7 @@
              [sync :as sync]
              [util :as u]]
             [metabase.driver.mysql :as mysql]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.test
@@ -15,7 +17,7 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-driver]]
-             [interface :refer [def-database-definition]]]
+             [interface :as tx :refer [def-database-definition]]]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -23,16 +25,30 @@
 
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning
 ;; them like we asked
-(def-database-definition ^:private ^:const all-zero-dates
-  [["exciting-moments-in-history"
-     [{:field-name "moment", :base-type :type/DateTime}]
-     [["0000-00-00"]]]])
-
 (expect-with-driver :mysql
   [[1 nil]]
-  (-> (data/dataset metabase.driver.mysql-test/all-zero-dates
-        (data/run-mbql-query exciting-moments-in-history))
-      qpt/rows))
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+    (try
+      ;; Create the DB
+      (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
+                   "CREATE DATABASE all_zero_dates;"]]
+        (jdbc/execute! spec [sql]))
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+            spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                        ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                        ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                        (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+        (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                     "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
+          (jdbc/execute! spec [sql]))
+        ;; create & sync MB DB
+        (tt/with-temp Database [database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (data/with-db database
+            ;; run the query
+            (-> (data/run-mbql-query exciting-moments-in-history)
+                qpt/rows)))))))
 
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
@@ -85,8 +101,8 @@
     (tu/db-timezone-id)))
 
 
-(def before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
-(def after-daylight-savings (du/str->date-time "2018-03-12 10:00:00" du/utc))
+(def ^:private before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
+(def ^:private after-daylight-savings  (du/str->date-time "2018-03-12 10:00:00" du/utc))
 
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
@@ -155,9 +171,40 @@
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))
           (qp/process-query
-            {:database (data/id),
-             :type :native,
-             :settings {:report-timezone "UTC"}
-             :native     {:query "SELECT cast({{date}} as date)"
+            {:database   (data/id)
+             :type       :native
+             :settings   {:report-timezone "UTC"}
+             :native     {:query         "SELECT cast({{date}} as date)"
                           :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
              :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
+
+(def ^:private sample-connection-details
+  {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})
+
+(def ^:private sample-jdbc-spec
+  {:password             "bad-password"
+   :characterSetResults  "UTF8"
+   :characterEncoding    "UTF8"
+   :classname            "org.mariadb.jdbc.Driver"
+   :subprotocol          "mysql"
+   :zeroDateTimeBehavior "convertToNull"
+   :user                 "cam"
+   :subname              "//localhost:3306/my_db"
+   :useCompression       true
+   :useUnicode           true})
+
+;; Do `:ssl` connection details give us the connection spec we'd expect?
+(expect
+  (assoc sample-jdbc-spec :useSSL true)
+  (sql-jdbc.conn/connection-details->spec :mysql (assoc sample-connection-details :ssl true)))
+
+;; what about non-SSL connections?
+(expect
+  (assoc sample-jdbc-spec :useSSL false)
+  (sql-jdbc.conn/connection-details->spec :mysql sample-connection-details))
+
+;; Connections that are `:ssl false` but with `useSSL` in the additional options should be treated as SSL (see #9629)
+(expect
+  (assoc sample-jdbc-spec :useSSL true, :subname "//localhost:3306/my_db?useSSL=true&trustServerCertificate=true")
+  (sql-jdbc.conn/connection-details->spec :mysql
+    (assoc sample-connection-details :ssl false, :additional-options "useSSL=true&trustServerCertificate=true")))

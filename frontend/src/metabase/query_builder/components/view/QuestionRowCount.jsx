@@ -1,7 +1,7 @@
 import React from "react";
 
 import cx from "classnames";
-import { ngettext, msgid, t } from "c-3po";
+import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
 

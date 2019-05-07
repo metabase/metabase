@@ -9,7 +9,7 @@
             [metabase.util.i18n :refer [trs]]))
 
 (def ^:private history-rows-to-keep
-  "Maximum number of TaskHistory rows. This is not a `const` so that we can redef it in tests"
+  "Maximum number of TaskHistory rows."
   100000)
 
 (defn- task-history-cleanup! []

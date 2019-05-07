@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
@@ -86,7 +86,7 @@ class CollectionList extends React.Component {
                     id: "users",
                   }}
                   iconName="person"
-                  event={`${analyticsContext};Collection List;All user collecetions click`}
+                  event={`${analyticsContext};Collection List;All user collections click`}
                   asCard={asCards}
                 />
               </GridItem>

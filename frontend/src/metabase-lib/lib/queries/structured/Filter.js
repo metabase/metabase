@@ -15,7 +15,7 @@ import {
 } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 type FilterOperator = {

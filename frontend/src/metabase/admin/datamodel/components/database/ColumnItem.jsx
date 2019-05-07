@@ -5,7 +5,7 @@ import { Link, withRouter } from "react-router";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Select, { Option } from "metabase/components/Select.jsx";
 import Icon from "metabase/components/Icon";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { titleize, humanize } from "metabase/lib/formatting";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";

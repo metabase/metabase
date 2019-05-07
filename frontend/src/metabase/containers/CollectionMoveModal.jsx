@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { Flex } from "grid-styled";
 import Button from "metabase/components/Button";

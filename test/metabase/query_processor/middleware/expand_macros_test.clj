@@ -214,3 +214,26 @@
     (#'expand-macros/expand-metrics-and-segments
      (mbql-query {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
                   :breakout    [[:field-id 10]]}))))
+
+
+;; segments in :share clauses
+(expect
+  (mbql-query
+   {:aggregation [[:share [:and
+                           [:= [:field-id 5] "abc"]
+                           [:or
+                            [:is-null [:field-id 7]]
+                            [:> [:field-id 4] 1]]]]]})
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}     {:db_id database-id}]
+                  Segment  [{segment-1-id :id} {:table_id   table-id
+                                                :definition {:filter [:and [:= [:field-id 5] "abc"]]}}]
+                  Segment  [{segment-2-id :id} {:table_id   table-id
+                                                :definition {:filter [:and [:is-null [:field-id 7]]]}}]]
+    (#'expand-macros/expand-metrics-and-segments
+     (mbql-query
+      {:aggregation [[:share [:and
+                              [:segment segment-1-id]
+                              [:or
+                               [:segment segment-2-id]
+                               [:> [:field-id 4] 1]]]]]}))))

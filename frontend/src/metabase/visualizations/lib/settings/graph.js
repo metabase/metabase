@@ -5,7 +5,7 @@ import {
   isAny,
   isDate,
 } from "metabase/lib/schema_metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   columnsAreValid,
   getFriendlyName,

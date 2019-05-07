@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import { Flex } from "grid-styled";

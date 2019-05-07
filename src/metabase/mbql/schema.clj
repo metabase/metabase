@@ -250,92 +250,6 @@
     Field))
 
 
-;;; -------------------------------------------------- Aggregations --------------------------------------------------
-
-;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
-
-;; cum-sum and cum-count are SUGAR because they're implemented in middleware. They clauses are swapped out with
-;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
-
-;; technically aggregations besides count can also accept expressions as args, e.g.
-;;
-;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
-;;
-;; Which is equivalent to SQL:
-;;
-;;    SUM(field_1 + field_2)
-
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression FieldOrExpressionDef)
-
-(defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev, field-or-expression FieldOrExpressionDef)
-
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
-;;
-;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
-;; pass straight thru to the GA query processor.
-(defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
-
-;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
-
-(declare Aggregation)
-
-(def ^:private ExpressionAggregationArg
-  (s/if number?
-    s/Num
-    (s/recursive #'Aggregation)))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-;; ag:/ isn't a valid token
-
-(def ^:private UnnamedAggregation
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric))
-
-;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
-;; a `:named`
-
-(defclause named, aggregation UnnamedAggregation, aggregation-name su/NonBlankString)
-
-(def Aggregation
-  "Schema for anything that is a valid `:aggregation` clause."
-  (s/if (partial is-clause? :named)
-    named
-    UnnamedAggregation))
-
-
-;;; ---------------------------------------------------- Order-By ----------------------------------------------------
-
-;; order-by is just a series of `[<direction> <field>]` clauses like
-;;
-;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
-;;
-;; Field ID is implicit in these clauses
-
-(defclause asc,  field FieldOrAggregationReference)
-(defclause desc, field FieldOrAggregationReference)
-
-(def OrderBy
-  "Schema for an `order-by` clause subclause."
-  (one-of asc desc))
-
-
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
 (declare Filter)
@@ -468,6 +382,95 @@
    and or not = != < > <= >= between starts-with ends-with contains
    ;; SUGAR filters drivers do not need to implement
    does-not-contain inside is-null not-null time-interval segment))
+
+
+;;; -------------------------------------------------- Aggregations --------------------------------------------------
+
+;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
+
+;; cum-sum and cum-count are SUGAR because they're implemented in middleware. They clauses are swapped out with
+;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+
+;; technically aggregations besides count can also accept expressions as args, e.g.
+;;
+;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
+;;
+;; Which is equivalent to SQL:
+;;
+;;    SUM(field_1 + field_2)
+
+(defclause ^{:requires-features #{:basic-aggregations}} avg,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,     field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} distinct,    field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} min,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} max,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum-where,   field-or-expression FieldOrExpressionDef, pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} count-where, pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} share,       pred Filter)
+
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev, field-or-expression FieldOrExpressionDef)
+
+;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
+;; expanded to other aggregations/etc. in the expand-macros middleware
+;;
+;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
+;; pass straight thru to the GA query processor.
+(defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+
+;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
+
+(declare Aggregation)
+
+(def ^:private ExpressionAggregationArg
+  (s/if number?
+    s/Num
+    (s/recursive #'Aggregation)))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+;; ag:/ isn't a valid token
+
+(def ^:private UnnamedAggregation
+  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where sum-where))
+
+;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
+;; a `:named`
+
+(defclause named, aggregation UnnamedAggregation, aggregation-name su/NonBlankString)
+
+(def Aggregation
+  "Schema for anything that is a valid `:aggregation` clause."
+  (s/if (partial is-clause? :named)
+    named
+    UnnamedAggregation))
+
+
+;;; ---------------------------------------------------- Order-By ----------------------------------------------------
+
+;; order-by is just a series of `[<direction> <field>]` clauses like
+;;
+;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
+;;
+;; Field ID is implicit in these clauses
+
+(defclause asc,  field FieldOrAggregationReference)
+(defclause desc, field FieldOrAggregationReference)
+
+(def OrderBy
+  "Schema for an `order-by` clause subclause."
+  (one-of asc desc))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -621,17 +624,36 @@
   "Additional options that can be used to toggle middleware on or off."
   {;; should we skip adding results_metadata to query results after running the query? Used by
    ;; `metabase.query-processor.middleware.results-metadata`; default `false`
-   (s/optional-key :skip-results-metadata?) s/Bool
+   (s/optional-key :skip-results-metadata?)
+   s/Bool
+
    ;; should we skip converting datetime types to ISO-8601 strings with appropriate timezone when post-processing
    ;; results? Used by `metabase.query-processor.middleware.format-rows`; default `false`
-   (s/optional-key :format-rows?)           s/Bool
+   (s/optional-key :format-rows?)
+   s/Bool
+
    ;; disable the MBQL->native middleware. If you do this, the query will not work at all, so there are no cases where
    ;; you should set this yourself. This is only used by the `qp/query->preprocessed` function to get the fully
    ;; pre-processed query without attempting to convert it to native.
-   (s/optional-key :disable-mbql->native?)  s/Bool
+   (s/optional-key :disable-mbql->native?)
+   s/Bool
+
+   ;; Userland queries are ones ran as a result of an API call, Pulse, MetaBot query, or the like. Special handling is
+   ;; done in the `process-userland-query` middleware for such queries -- results are returned in a slightly different
+   ;; format, and QueryExecution entries are normally saved, unless you pass `:no-save` as the option.
+   (s/optional-key :userland-query?)
+   (s/maybe s/Bool)
+
+   ;; Whether to add some default `max-results` and `max-results-bare-rows` constraints. By default, none are added,
+   ;; although the functions that ultimately power most API endpoints tend to set this to `true`. See
+   ;; `add-constraints` middleware for more details.
+   (s/optional-key :add-default-userland-constraints?)
+   (s/maybe s/Bool)
+
    ;; other middleware options might be used somewhere, but I don't know about them. Add them if you come across them
    ;; for documentation purposes
-   s/Keyword                                s/Any})
+   s/Keyword
+   s/Any})
 
 
 ;;; ------------------------------------------------------ Info ------------------------------------------------------
@@ -656,8 +678,8 @@
           :question
           :xlsx-download))
 
-;; TODO - this schema is somewhat misleading because if you use a function like `qp/process-query-and-save-with-max!`
-;; some of these keys (e.g. `:context`) are in fact required
+;; TODO - this schema is somewhat misleading because if you use a function like
+;; `qp/process-query-and-save-with-max-results-constraints!` some of these keys (e.g. `:context`) are in fact required
 (def Info
   "Schema for query `:info` dictionary, which is used for informational purposes to record information about how a query
   was executed in QueryExecution and other places. It is considered bad form for middleware to change its behavior
@@ -670,13 +692,10 @@
    (s/optional-key :dashboard-id) (s/maybe su/IntGreaterThanZero)
    (s/optional-key :pulse-id)     (s/maybe su/IntGreaterThanZero)
    (s/optional-key :nested?)      (s/maybe s/Bool)
-   ;; `:hash` and `:query-type` get added automatically by `process-query-and-save-execution!`, so don't try passing
+   ;; `:hash` gets added automatically by `process-query-and-save-execution!`, so don't try passing
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
-   (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))
-   ;; TODO - this key is pointless since we can just look at `:type`; let's normalize it out and remove it entirely
-   ;; when we get a chance
-   (s/optional-key :query-type)   (s/enum "MBQL" "native")})
+   (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))})
 
 (def SourceQueryMetadata
   "Schema for the expected keys in metadata about source query columns if it is passed in to the query."

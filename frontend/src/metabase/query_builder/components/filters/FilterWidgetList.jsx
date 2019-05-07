@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { findDOMNode } from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import FilterWidget from "./FilterWidget.jsx";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";

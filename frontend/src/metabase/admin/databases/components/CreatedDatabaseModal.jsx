@@ -1,7 +1,7 @@
 /* @flow */
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 

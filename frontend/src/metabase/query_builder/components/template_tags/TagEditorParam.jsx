@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 

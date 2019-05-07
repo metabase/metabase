@@ -53,6 +53,7 @@
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
+        " "
         (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]

@@ -1,9 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+
+import Clearable from "./Clearable.jsx";
 
 import Popover from "metabase/components/Popover";
 
-import Clearable from "./Clearable";
 import AggregationName from "./AggregationName";
 import AggregationPopover from "./AggregationPopover";
 

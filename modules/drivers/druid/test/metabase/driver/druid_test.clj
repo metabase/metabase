@@ -194,6 +194,24 @@
     {:aggregation [[:avg [:* $id $venue_price]]]
      :breakout    [$venue_price]}))
 
+;; share
+(expect-with-driver :druid
+  [[0.951]]
+  (druid-query-returning-rows
+   {:aggregation [[:share [:< $venue_price 4]]]}))
+
+;; count-where
+(expect-with-driver :druid
+  [[951]]
+  (druid-query-returning-rows
+   {:aggregation [[:count-where [:< $venue_price 4]]]}))
+
+;; sum-where
+(expect-with-driver :druid
+  [[1796.0]]
+  (druid-query-returning-rows
+   {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))
+
 ;; post-aggregation math w/ 2 args: count + sum
 (expect-with-driver :druid
   [["1"  442.0]
@@ -343,21 +361,30 @@
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
 (datasets/expect-with-driver :druid
-  [false ;; Ensure the query promise hasn't fired yet
-   false ;; Ensure the cancellation promise hasn't fired yet
-   true  ;; Was query called?
-   false ;; Cancel should not have been called yet
-   true  ;; Cancel should have been called now
-   true  ;; The paused query can proceed now
-   ]
-  (tu/call-with-paused-query
-   (fn [query-thunk called-query? called-cancel? pause-query]
-     (future
-       ;; stub out the query and delete functions so that we know when one is called vs. the other
-       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
-                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
-         (data/run-mbql-query checkins
-                              {:aggregation [[:count]]}))))))
+  ::tu/success
+  ;; the `call-with-paused-query` helper is kind of wack and we need to redefine functions for the duration of the
+  ;; test, and redefine them to operate on things that don't get bound unitl `call-with-paused-query` calls its fn
+  ;;
+  ;; that's why we're doing things this way
+  (let [promises (atom nil)]
+    (with-redefs [druid/do-query (fn [details query]
+                                   (deliver (:called-query? @promises) true)
+                                   @(:pause-query @promises))
+                  druid/DELETE   (fn [url]
+                                   (deliver (:called-cancel? @promises) true))]
+      (tu/call-with-paused-query
+       (fn [query-thunk called-query? called-cancel? pause-query]
+         (reset! promises {:called-query?  called-query?
+                           :called-cancel? called-cancel?
+                           :pause-query    pause-query})
+         (future
+           (try
+             (data/run-mbql-query checkins
+               {:aggregation [[:count]]})
+             (query-thunk)
+             (catch Throwable e
+               (println "Error running query:" e)
+               (throw e)))))))))
 
 ;; Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order
 ;; (#9294)

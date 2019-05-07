@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components

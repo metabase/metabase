@@ -1,7 +1,12 @@
 (ns metabase.async.api-response-test
   (:require [cheshire.core :as json]
+            [clj-http.client :as client]
             [clojure.core.async :as a]
+            [compojure.core :as compojure]
             [expectations :refer [expect]]
+            [metabase
+             [server :as server]
+             [util :as u]]
             [metabase.async.api-response :as async-response]
             [metabase.test.util.async :as tu.async]
             [ring.core.protocols :as ring.protocols])
@@ -13,7 +18,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   New Tests                                                    |
+;;; |                                 Tests to make sure channels do the right thing                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- do-with-response [input-chan f]
@@ -25,8 +30,16 @@
                          (a/close! os-closed-chan)
                          (let [^Closeable this this]
                            (proxy-super close))))]
-        (let [{output-chan :body, :as response} (#'async-response/async-keepalive-response input-chan)]
-          (ring.protocols/write-body-to-stream output-chan response os)
+        ;; normally `write-body-to-stream` will create the `output-chan`, however we want to do it ourselves so we can
+        ;; truly enjoy the magical output channel slash see when it gets closed. Create it now...
+        (let [output-chan (#'async-response/async-keepalive-channel input-chan)
+              response    {:status       200
+                           :headers      {}
+                           :body         input-chan
+                           :content-type "applicaton/json; charset=utf-8"}]
+          ;; and keep it from getting [re]created.
+          (with-redefs [async-response/async-keepalive-channel identity]
+            (ring.protocols/write-body-to-stream output-chan response os))
           (try
             (f {:os os, :output-chan output-chan, :os-closed-chan os-closed-chan})
             (finally
@@ -63,19 +76,20 @@
 ;; when we send a single message to the input channel, it should get closed automatically by the async code
 (expect
   (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
+    (with-response [{:keys [os-closed-chan]} input-chan]
       ;; send the result to the input channel
       (a/>!! input-chan {:success true})
-      (wait-for-close output-chan)
+      (wait-for-close os-closed-chan)
       ;; now see if input-chan is closed
       (wait-for-close input-chan))))
 
 ;; when we send a message to the input channel, output-chan should *also* get closed
 (expect
   (tu.async/with-chans [input-chan]
-    (with-response [{:keys [output-chan]} input-chan]
+    (with-response [{:keys [os-closed-chan output-chan]} input-chan]
       ;; send the result to the input channel
       (a/>!! input-chan {:success true})
+      (wait-for-close os-closed-chan)
       ;; now see if output-chan is closed
       (wait-for-close output-chan))))
 
@@ -93,8 +107,10 @@
 (expect
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [output-chan]} input-chan]
+      ;; output-chan may or may not get the InterruptedException written to it -- it's a race condition -- we're just
+      ;; want to make sure it closes
       (a/close! input-chan)
-      (wait-for-close output-chan))))
+      (not= ::tu.async/timed-out (tu.async/wait-for-result output-chan)))))
 
 ;; ...as should the output stream
 (expect
@@ -186,12 +202,70 @@
 (expect
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
-      (with-response [_ input-chan]
+      (with-response [{:keys [os-closed-chan]} input-chan]
+        (wait-for-close os-closed-chan)
         (wait-for-close input-chan)))))
 
 ;; output chan should get closed
 (expect
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
-      (with-response [{:keys [output-chan]} input-chan]
+      (with-response [{:keys [output-chan os-closed-chan]} input-chan]
+        (wait-for-close os-closed-chan)
         (wait-for-close output-chan)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                            Tests to make sure keepalive bytes actually get written                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-temp-server [handler f]
+  (let [port   (+ 60000 (rand-int 5000))
+        server (server/create-server handler {:port port})]
+    (try
+      (.start server)
+      (f port)
+      (finally
+        (.stop server)))))
+
+(defmacro ^:private with-temp-server
+  "Spin up a Jetty server with `handler` with a random port between 60000 and 65000; bind the random port to `port`, and
+  execute body. Shuts down server when finished."
+  [[port-binding handler] & body]
+  `(do-with-temp-server ~handler (fn [~port-binding] ~@body)))
+
+(defn- num-keepalive-chars-in-response
+  "Make a request to `handler` and count the number of newline keepalive chars in the response."
+  [handler]
+  (with-redefs [async-response/keepalive-interval-ms 50]
+    (with-temp-server [port handler]
+      (let [{response :body} (client/get (format "http://localhost:%d/" port))]
+        (count (re-seq #"\n" response))))))
+
+(defn- output-chan-with-delayed-result
+  "Returns an output channel that receives a 'DONE' value after 400ms. "
+  []
+  (u/prog1 (a/chan 1)
+    (a/go
+      (a/<! (a/timeout 400))
+      (a/>! <> "DONE"))))
+
+;; confirm that some newlines were written as part of the response for an async API response
+(defn- async-handler [_ respond _]
+  (respond {:status 200, :headers {"Content-Type" "text/plain"}, :body (output-chan-with-delayed-result)}))
+
+(expect pos? (num-keepalive-chars-in-response async-handler))
+
+;; make sure newlines are written for sync-style compojure endpoints (e.g. `defendpoint`)
+(def ^:private compojure-sync-handler
+  (compojure/routes
+   (compojure/GET "/" [_] (output-chan-with-delayed-result))))
+
+(expect pos? (num-keepalive-chars-in-response compojure-sync-handler))
+
+;; ...and for true async compojure endpoints (e.g. `defendpoint-async`)
+(def ^:private compojure-async-handler
+  (compojure/routes
+   (compojure/GET "/" [] (fn [_ respond _] (respond (output-chan-with-delayed-result))))))
+
+(expect pos? (num-keepalive-chars-in-response compojure-async-handler))

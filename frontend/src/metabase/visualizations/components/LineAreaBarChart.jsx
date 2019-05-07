@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
@@ -428,7 +428,8 @@ function transformSingleSeries(s, series, seriesIndex) {
           _transformed: true,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
-          _seriesKey: col ? col.name : name,
+          // EXCEPT for dashboard multiseries, so check seriesIndex == 0
+          _seriesKey: seriesIndex === 0 && col ? col.name : name,
         },
         data: {
           rows: rows.map((row, rowIndex) => {

@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -107,7 +107,7 @@ export default class SettingsUpdatesForm extends Component {
                 versionInfo.latest.version
               }
               className="Button Button--white Button--medium borderless"
-              href="http://www.metabase.com/start"
+              href="https://metabase.com/start/"
               target="_blank"
             >{t`Update`}</a>
           </div>

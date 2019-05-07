@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import ViewFilters from "../ViewFilters";

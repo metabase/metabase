@@ -307,7 +307,7 @@ We are an application with lots of users all over the world. To help them use Me
 
 If you need to add new strings (try to be judicious about adding copy) do the following:
 
-1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
+1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://ttag.js.org/):
 
 ```javascript
 const someString = t`Hello ${name}!`;

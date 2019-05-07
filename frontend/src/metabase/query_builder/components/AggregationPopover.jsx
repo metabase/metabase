@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AccordianList from "metabase/components/AccordianList.jsx";
 import FieldList from "./FieldList.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";

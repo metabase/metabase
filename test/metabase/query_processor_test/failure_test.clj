@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.failure-test
   "Tests for how the query processor as a whole handles failures."
   (:require [expectations :refer [expect]]
+            [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
             [metabase.test.data :as data]))
@@ -40,13 +41,16 @@
    :native       bad-query:native}
   (-> (qp/process-query (bad-query))
       (update :error (every-pred string? seq))
-      (update :stacktrace valid-stacktrace?)))
+      (update :stacktrace valid-stacktrace?)
+      ;; don't care about query hash + type
+      (m/dissoc-in [:query :info])
+      (m/dissoc-in [:preprocessed :info])))
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (expect
   {:database_id  (data/id)
    :started_at   true
-   :json_query   (bad-query)
+   :json_query   (assoc-in (bad-query) [:middleware :userland-query?] true)
    :native       bad-query:native
    :status       :failed
    :stacktrace   true
@@ -54,10 +58,12 @@
    :error        true
    :row_count    0
    :running_time true
-   :preprocessed (bad-query:preprocessed)
+   :preprocessed (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true)
    :data         {:rows [], :cols [], :columns []}}
   (-> (qp/process-query-and-save-execution! (bad-query) {:context :question})
       (update :error (every-pred string? seq))
       (update :started_at (partial instance? java.util.Date))
       (update :stacktrace valid-stacktrace?)
-      (update :running_time (complement neg?))))
+      (update :running_time (complement neg?))
+      (m/dissoc-in [:query :info])
+      (m/dissoc-in [:preprocessed :info])))
