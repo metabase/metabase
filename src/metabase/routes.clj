@@ -16,7 +16,9 @@
              [dataset :as dataset-api]
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.util.embed :as embed]
+            [metabase.util
+             [embed :as embed]
+             [i18n :refer [trs]]]
             [puppetlabs.i18n.core :refer [*locale*]]
             [ring.util.response :as resp]
             [stencil.core :as stencil]))
@@ -30,15 +32,15 @@
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
-(defn- load-file-at-path [path]
-  (slurp (or (io/resource path)
-             (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
-
 (defn- load-template [path variables]
-  (stencil/render-string (load-file-at-path path) variables))
+  (try
+    (stencil/render-file path variables)
+    (catch IllegalArgumentException e
+      (let [message (str (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path))]
+        (log/error e message)
+        (throw (Exception. message e))))))
 
-(defn- fallback-localization
-  [locale]
+(defn- fallback-localization [locale]
   (json/generate-string
    {"headers"
     {"language"     locale
@@ -48,14 +50,20 @@
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
-(defn- load-localization []
-  (if (and *locale* (not= (str *locale*) "en"))
+(defn- load-localization* [locale]
+  (if (or (not locale)
+          (= (str locale) "en"))
+    (fallback-localization locale)
     (try
-      (load-file-at-path (str "frontend_client/app/locales/" *locale* ".json"))
-    (catch Throwable e
-      (log/warn (str "Locale " *locale* " not found."))
-      (fallback-localization *locale*)))
-    (fallback-localization *locale*)))
+      (load-file-at-path (str "frontend_client/app/locales/" locale ".json"))
+      (catch Throwable e
+        (log/warn (trs "Locale ''{0}'' not found." locale))
+        (fallback-localization locale)))))
+
+(def ^:private ^{:arglists '([])} load-localization
+  (let [memoized-load-localization (memoize load-localization*)]
+    (fn []
+      (memoized-load-localization *locale*))))
 
 (defn- load-entrypoint-template [entrypoint-name embeddable? uri]
   (load-template
