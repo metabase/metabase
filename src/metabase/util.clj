@@ -3,7 +3,7 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
@@ -14,14 +14,19 @@
             [metabase.config :as config]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
-  (:import [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.io BufferedReader Reader]
+           [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
-           java.util.Locale))
+           java.util.Locale
+           javax.xml.bind.DatatypeConverter
+           org.apache.commons.validator.routines.UrlValidator))
 
 ;; This is the very first log message that will get printed.
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+;;
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the
+;; logger It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many
+;; other namespaces need to get loaded
 (when-not *compile-files*
   (log/info (trs "Loading Metabase...")))
 
@@ -66,18 +71,18 @@
   ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
   ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
   ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
-  java.io.Reader
+  Reader
   (jdbc-clob->str [this]
-    (jdbc-clob->str (java.io.BufferedReader. this)))
+    (jdbc-clob->str (BufferedReader. this)))
 
   ;; Read all the lines for the `BufferedReader` and combine into a single `String`
-  java.io.BufferedReader
+  BufferedReader
   (jdbc-clob->str [this]
     (with-open [_ this]
       (loop [acc []]
         (if-let [line (.readLine this)]
           (recur (conj acc line))
-          (s/join "\n" acc)))))
+          (str/join "\n" acc)))))
 
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
@@ -86,10 +91,10 @@
 
 
 (defn optional
-  "Helper function for defining functions that accept optional arguments. If PRED? is true of the first item in ARGS,
-  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
+  "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
+  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[default other-args]` is returned.
 
-   If DEFAULT is not specified, `nil` will be returned when PRED? is false.
+  If `default` is not specified, `nil` will be returned when `pred?` is false.
 
     (defn
       ^{:arglists ([key? numbers])}
@@ -106,27 +111,17 @@
 
 
 (defn email?
-  "Is STRING a valid email address?"
+  "Is `s` a valid email address string?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (s/lower-case s)))))
+                         (str/lower-case s)))))
 
 
 (defn url?
-  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
-  IP addresses will return `false`.)"
+  "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [^String s]
-  (boolean (when (seq s)
-             (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
-               ;; these are both automatically downcased
-               (let [protocol (.getProtocol url)
-                     host     (.getHost url)]
-                 (and protocol
-                      host
-                      (re-matches #"^https?$" protocol)
-                      (or (re-matches #"^.+\..{2,}$" host) ; 2+ letter TLD
-                          (= host "localhost"))))))))
+  (.isValid (UrlValidator. UrlValidator/ALLOW_LOCAL_URLS) (str s)))
 
 (defn sequence-of-maps?
   "Is COLL a sequence of maps?"
@@ -145,10 +140,10 @@
 
    It can also be used to make sure a given function won't throw a `NullPointerException`:
 
-     (s/lower-case nil)            -> NullPointerException
-     (s/lower-case \"ABC\")        -> \"abc\"
-     (maybe? s/lower-case nil)     -> true
-     (maybe? s/lower-case \"ABC\") -> \"abc\"
+     (str/lower-case nil)            -> NullPointerException
+     (str/lower-case \"ABC\")        -> \"abc\"
+     (maybe? str/lower-case nil)     -> true
+     (maybe? str/lower-case \"ABC\") -> \"abc\"
 
    The latter use-case can be useful for things like sorting where some values in a collection
    might be `nil`:
@@ -181,12 +176,14 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
-(defn rpartial
+(defn ^:deprecated rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.
    Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
 
     ((partial - 5) 8)  -> (- 5 8) -> -3
-    ((rpartial - 5) 8) -> (- 8 5) -> 3"
+    ((rpartial - 5) 8) -> (- 8 5) -> 3
+
+  DEPRECATED: just use `#()` function literals instead. No need to be needlessly confusing."
   [f & bound-args]
   (fn [& args]
     (apply f (concat args bound-args))))
@@ -201,21 +198,21 @@
                 ~collection)))
 
 (defmacro prog1
-  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
-   FIRST-FORM.
+  "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
+  `first-form`.
 
-     (def numbers (atom []))
+    (def numbers (atom []))
 
-     (defn find-or-add [n]
-       (or (first-index-satisfying (partial = n) @numbers)
-           (prog1 (count @numbers)
-             (swap! numbers conj n))))
+    (defn find-or-add [n]
+      (or (first-index-satisfying (partial = n) @numbers)
+          (prog1 (count @numbers)
+            (swap! numbers conj n))))
 
-     (find-or-add 100) -> 0
-     (find-or-add 200) -> 1
-     (find-or-add 100) -> 0
+    (find-or-add 100) -> 0
+    (find-or-add 200) -> 1
+    (find-or-add 100) -> 0
 
-   The result of FIRST-FORM is bound to the anaphor `<>`, which is convenient for logging:
+   The result of `first-form` is bound to the anaphor `<>`, which is convenient for logging:
 
      (prog1 (some-expression)
        (println \"RESULTS:\" <>))
@@ -312,7 +309,7 @@
      ;; that
      (let [[frames-after-last-mb other-frames]     (split-with (complement metabase-frame?)
                                                                (map str (seq this)))
-           [last-mb-frame & frames-before-last-mb] (map #(s/replace % #"^metabase\." "")
+           [last-mb-frame & frames-before-last-mb] (map #(str/replace % #"^metabase\." "")
                                                         (filter metabase-frame? other-frames))]
        (concat
         frames-after-last-mb
@@ -332,7 +329,7 @@
     result))
 
 (defmacro with-timeout
-  "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
+  "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(deref-with-timeout (future ~@body) ~timeout-ms))
 
@@ -381,7 +378,7 @@
   "Return a version of S with diacritical marks removed."
   ^String [^String s]
   (when (seq s)
-    (s/replace
+    (str/replace
      ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER
      ;; A' + 'COMBINING ACUTE ACCENT' See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
      (Normalizer/normalize s Normalizer$Form/NFD)
@@ -414,10 +411,10 @@
    Optionally specify MAX-LENGTH which will truncate the slug after that many characters."
   (^String [^String s]
    (when (seq s)
-     (s/join (for [c (remove-diacritical-marks (s/lower-case s))]
-               (slugify-char c)))))
+     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                 (slugify-char c)))))
   (^String [s max-length]
-   (s/join (take max-length (slugify s)))))
+   (str/join (take max-length (slugify s)))))
 
 (defn do-with-auto-retries
   "Execute F, a function that takes no arguments, and return the results.
@@ -458,7 +455,7 @@
      (keyword->qualified-name :type/FK) ->  \"type/FK\""
   [k]
   (when k
-    (s/replace (str k) #"^:" "")))
+    (str/replace (str k) #"^:" "")))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -531,12 +528,12 @@
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"
   [input]
-  (new java.lang.String (javax.xml.bind.DatatypeConverter/parseBase64Binary input) "UTF-8"))
+  (new java.lang.String (DatatypeConverter/parseBase64Binary input) "UTF-8"))
 
 (defn encode-base64
   "Encodes a string to a Base64 string"
   [^String input]
-  (javax.xml.bind.DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+  (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
@@ -547,7 +544,7 @@
   ^Long [^String s, ^String substr]
   (when (and (seq s) (seq substr))
     (loop [index 0, cnt 0]
-      (if-let [^long new-index (s/index-of s substr index)]
+      (if-let [^long new-index (str/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
 
@@ -627,7 +624,7 @@
   [k]
   (if (keyword? k)
     (keyword (snake-key (name k)))
-    (s/replace k #"-" "_")))
+    (str/replace k #"-" "_")))
 
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
