@@ -41,7 +41,7 @@
                                  (when config/is-dev?
                                    "localhost:8080")
                                  ;; inline script in index.html that sets `MetabaseBootstrap` and the like
-                                 "'sha256-dPkijyoRrGWwHu+PrDIMt/5wQPFfVuvhU7vendgcUSQ='"
+                                 "'sha256-xlgrBEvjf72cXGba6bCV/PwIVp1DcbdhY74VIXN8fA4='"
                                  ;; Web Font Loader font configuration (WebFontConfig) in index.html
                                  "'sha256-6xC9z5Dcryu9jbxUZkBJ5yUmSofhJjt7Mbnp/ijPkFs='"
                                  ;; inline script in index.html that loads Google Analytics
