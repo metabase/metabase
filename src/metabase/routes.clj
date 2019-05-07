@@ -8,6 +8,7 @@
             [compojure
              [core :refer [context defroutes GET]]
              [route :as route]]
+            [hiccup.util :as h.util]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
@@ -21,12 +22,13 @@
             [stencil.core :as stencil]))
 
 (defn- base-href []
-  (str (.getPath (io/as-url (public-settings/site-url))) "/"))
+  (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
+    (str path "/")))
 
 (defn- escape-script [s]
   ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
-  (str/replace s #"</script" "</scr\\\\ipt"))
+  (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
 (defn- load-file-at-path [path]
   (slurp (or (io/resource path)
@@ -37,10 +39,14 @@
 
 (defn- fallback-localization
   [locale]
-  (json/generate-string {"headers" {"language" locale
-                                    "plural-forms" "nplurals=2; plural=(n != 1);"}
-                         "translations" {"" {"Metabase" {"msgid" "Metabase"
-                                                         "msgstr" ["Metabase"]}}}}))
+  (json/generate-string
+   {"headers"
+    {"language"     locale
+     "plural-forms" "nplurals=2; plural=(n != 1);"}
+
+    "translations"
+    {"" {"Metabase" {"msgid"  "Metabase"
+                     "msgstr" ["Metabase"]}}}}))
 
 (defn- load-localization []
   (if (and *locale* (not= (str *locale*) "en"))
@@ -54,11 +60,14 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? uri]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   {:bootstrap_json    (escape-script (json/generate-string (public-settings/public-settings)))
-    :localization_json (escape-script (load-localization))
-    :uri               (escape-script (json/generate-string uri))
-    :base_href         (escape-script (json/generate-string (base-href)))
-    :embed_code        (when embeddable? (embed/head uri))}))
+   (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
+     {:bootstrapJSON      (escape-script (json/generate-string public-settings))
+      :localizationJSON   (escape-script (load-localization))
+      :uri                (h.util/escape-html uri)
+      :baseHref           (h.util/escape-html (base-href))
+      :embedCode          (when embeddable? (embed/head uri))
+      :enableGoogleAuth   (boolean google_auth_client_id)
+      :enableAnonTracking (boolean anon_tracking_enabled)})))
 
 (defn- entrypoint
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
