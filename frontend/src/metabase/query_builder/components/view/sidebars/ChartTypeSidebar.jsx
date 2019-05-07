@@ -45,7 +45,7 @@ const ChartTypeSidebar = ({
           className="flex-align-right text-medium text-brand-hover cursor-pointer"
           onClick={() =>
             setUIControls({
-              isShowingChartTypeSidebar: false, // TODO: move to reducer?
+              isShowingChartTypeSidebar: false, // TODO: move to reducer
             })
           }
           size={20}

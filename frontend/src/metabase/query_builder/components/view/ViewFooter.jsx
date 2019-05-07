@@ -37,9 +37,10 @@ const ViewFooter = ({
           result={result}
           selected={isShowingChartTypeSidebar}
           onClick={() =>
+            // TODO: move to reducer
             setUIControls({
               isShowingChartTypeSidebar: !isShowingChartTypeSidebar,
-              isShowingChartSettingsSidebar: false, // TODO: move to reducer?
+              isShowingChartSettingsSidebar: false,
             })
           }
         />
@@ -47,9 +48,10 @@ const ViewFooter = ({
           className="ml2"
           selected={isShowingChartSettingsSidebar}
           onClick={() =>
+            // TODO: move to reducer
             setUIControls({
               isShowingChartSettingsSidebar: !isShowingChartSettingsSidebar,
-              isShowingChartTypeSidebar: false, // TODO: move to reducer?
+              isShowingChartTypeSidebar: false,
             })
           }
         />
@@ -58,15 +60,21 @@ const ViewFooter = ({
         {question.display() !== "scalar" && (
           <VizTableToggle
             question={question}
-            isShowingTable={isShowingTable || question.display() === "table"}
-            onShowTable={isShowingTable =>
-              question.display() === "table" && !isShowingTable
-                ? setUIControls({
-                    isShowingChartTypeSidebar: true,
-                    isShowingChartSettingsSidebar: false, // TODO: move to reducer?
-                  })
-                : setUIControls({ isShowingTable })
+            isShowingTable={
+              (isShowingTable || question.display() === "table") &&
+              !isShowingChartTypeSidebar
             }
+            onShowTable={isShowingTable => {
+              if (question.display() === "table" && !isShowingTable) {
+                // TODO: move to reducer
+                setUIControls({
+                  isShowingChartTypeSidebar: true,
+                  isShowingChartSettingsSidebar: false,
+                });
+              } else {
+                setUIControls({ isShowingTable });
+              }
+            }}
           />
         )}
       </div>

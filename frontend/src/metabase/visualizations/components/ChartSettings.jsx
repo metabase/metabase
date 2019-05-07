@@ -110,7 +110,7 @@ class ChartSettings extends Component {
       noPreview,
       children,
     } = this.props;
-    const { currentWidget } = this.state;
+    const { currentWidget, currentSection } = this.state;
 
     const settings = this._getSettings();
 
@@ -147,10 +147,11 @@ class ChartSettings extends Component {
     }
 
     const sectionNames = Object.keys(sections);
-    const currentSection =
-      this.state.currentSection ||
-      _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-      sectionNames[0];
+    const section =
+      currentSection && currentSection in sections
+        ? currentSection
+        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0];
 
     let widgets;
     let widget = currentWidget && widgetsById[currentWidget.id];
@@ -165,7 +166,7 @@ class ChartSettings extends Component {
       };
       widgets = [widget];
     } else {
-      widgets = sections[currentSection];
+      widgets = sections[section];
     }
 
     const extraWidgetProps = {
@@ -178,7 +179,7 @@ class ChartSettings extends Component {
 
     const sectionPicker = (
       <Radio
-        value={currentSection}
+        value={section}
         onChange={this.handleShowSection}
         options={sectionNames}
         optionNameFn={v => v}
@@ -213,9 +214,7 @@ class ChartSettings extends Component {
     return (
       <div>
         {sectionNames.length > 1 && (
-          <div className="flex flex-no-shrink pl4 pt2 pb1">
-            {sectionPicker}
-          </div>
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
           <div className="full-height relative scroll-y scroll-show py4">

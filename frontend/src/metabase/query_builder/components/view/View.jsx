@@ -11,10 +11,6 @@ import DataReference from "../dataref/DataReference";
 import TagEditorSidebar from "../template_tags/TagEditorSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 
-import Button from "metabase/components/Button";
-import BreakoutName from "metabase/query_builder/components/BreakoutName";
-import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import QueryModals from "../QueryModals";
@@ -100,7 +96,9 @@ export default class View extends React.Component {
   };
 
   handleOpenChartSettings = initial => {
+    // TODO: move to reducer
     this.props.setUIControls({
+      isShowingTable: false,
       isShowingChartSettingsSidebar: true,
       initialChartSetting: initial,
     });
@@ -144,42 +142,45 @@ export default class View extends React.Component {
     }
 
     const ModeFooter = mode && mode.ModeFooter;
+    const isStructured = query instanceof StructuredQuery;
 
     // only allow editing of series for structured queries
-    const onAddSeries =
-      query instanceof StructuredQuery ? this.handleOpenAddAggregation : null;
-    const onEditSeries =
-      query instanceof StructuredQuery
-        ? (card, index) => this.handleOpenEditAggregation(index)
-        : null;
+    const onAddSeries = isStructured ? this.handleOpenAddAggregation : null;
+    const onEditSeries = isStructured
+      ? (card, index) => this.handleOpenEditAggregation(index)
+      : null;
     const onRemoveSeries =
-      query instanceof StructuredQuery && query.aggregations().length > 1
+      isStructured && query.aggregations().length > 1
         ? (card, index) => {
             const agg = query.aggregations()[index];
             agg.remove().update(null, { run: true });
           }
         : null;
     const onEditBreakout =
-      query instanceof StructuredQuery && query.breakouts().length > 0
+      isStructured && query.breakouts().length > 0
         ? this.handleOpenEditBreakout
         : null;
 
+    const canShowStructuredQuerySidebars =
+      queryBuilderMode !== "notebook" && isStructured;
+
     const leftSideBar =
-      // NOTE: remove queryBuilderMode check once legacy query builder is removed
-      queryBuilderMode !== "notebook" &&
+      canShowStructuredQuerySidebars &&
       (isEditingFilterIndex != null || isAddingFilter ? (
         <FilterSidebar
           question={question}
           index={isEditingFilterIndex}
           onClose={this.handleCloseFilter}
         />
-      ) : isEditingAggregationIndex != null || isAddingAggregation ? (
+      ) : canShowStructuredQuerySidebars &&
+      (isEditingAggregationIndex != null || isAddingAggregation) ? (
         <AggregationSidebar
           question={question}
           index={isEditingAggregationIndex}
           onClose={this.handleCloseAggregation}
         />
-      ) : isEditingBreakoutIndex != null || isAddingBreakout ? (
+      ) : canShowStructuredQuerySidebars &&
+      (isEditingBreakoutIndex != null || isAddingBreakout) ? (
         <BreakoutSidebar
           question={question}
           index={isEditingBreakoutIndex}
