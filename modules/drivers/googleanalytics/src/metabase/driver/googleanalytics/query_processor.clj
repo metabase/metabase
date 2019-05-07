@@ -50,7 +50,9 @@
     (and (= unit :day) (= amount 0))  "today"
     (and (= unit :day) (= amount -1)) "yesterday"
     (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-    :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
+    :else                             (du/format-date
+                                        "yyyy-MM-dd"
+                                        (du/date-trunc unit (du/relative-date unit amount)))))
 
 (defmethod ->rvalue :value [[_ value _]]
   value)
@@ -257,6 +259,18 @@
     [(_ :guard #{:< :> :<= :>= :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
     nil))
 
+(defn- normalize-unit [unit]
+  (if (= unit :default) :day unit))
+
+(defn- normalize-datetime-units
+  "Replace all unsupported datetime units with the default"
+  [filter-clause]
+  (mbql.u/replace filter-clause
+
+    [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
+    [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
+    [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))
+
 (defn- add-start-end-dates [filter-clause]
   (merge {:start-date earliest-date, :end-date latest-date} filter-clause))
 
@@ -265,7 +279,10 @@
   `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
   (or (when filter-clause
-        (add-start-end-dates (parse-filter:interval (remove-non-datetime-filter-clauses filter-clause))))
+        (add-start-end-dates
+          (parse-filter:interval
+            (normalize-datetime-units
+              (remove-non-datetime-filter-clauses filter-clause)))))
       {:start-date earliest-date, :end-date latest-date}))
 
 
