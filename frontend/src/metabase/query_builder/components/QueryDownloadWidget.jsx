@@ -45,14 +45,12 @@ const QueryDownloadWidget = ({
       <Box p={1}>
         <h4>{t`Download full results`}</h4>
       </Box>
-      {result.data != null &&
-        result.data.rows_truncated != null && (
-          <Box>
-            <p
-            >{t`Your answer has a large number of rows so it could take a while to download.`}</p>
-            <p>{t`The maximum download size is 1 million rows.`}</p>
-          </Box>
-        )}
+      {result.data != null && result.data.rows_truncated != null && (
+        <Box>
+          <p>{t`Your answer has a large number of rows so it could take a while to download.`}</p>
+          <p>{t`The maximum download size is 1 million rows.`}</p>
+        </Box>
+      )}
       <Box>
         {EXPORT_FORMATS.map(type => (
           <Box w={"100%"}>

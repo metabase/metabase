@@ -114,7 +114,7 @@ function newSegment(segments) {
     : -1;
   const nextColor =
     lastColorIndex >= 0
-      ? palette[lastColorIndex + 1 % palette.length]
+      ? palette[lastColorIndex + (1 % palette.length)]
       : palette[0];
 
   return {

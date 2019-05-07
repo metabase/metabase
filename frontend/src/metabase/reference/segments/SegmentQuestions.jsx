@@ -54,7 +54,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,

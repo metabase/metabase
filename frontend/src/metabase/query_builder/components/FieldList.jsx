@@ -105,15 +105,18 @@ export default class FieldList extends Component {
   };
 
   renderItemExtra = item => {
-    const { field, enableSubDimensions, table: { metadata } } = this.props;
+    const {
+      field,
+      enableSubDimensions,
+      table: { metadata },
+    } = this.props;
 
     return (
       <div className="Field-extra flex align-center">
         {item.segment && this.renderSegmentTooltip(item.segment)}
-        {item.dimension &&
-          item.dimension.tag && (
-            <span className="h5 text-light px1">{item.dimension.tag}</span>
-          )}
+        {item.dimension && item.dimension.tag && (
+          <span className="h5 text-light px1">{item.dimension.tag}</span>
+        )}
         {enableSubDimensions &&
         item.dimension &&
         item.dimension.dimensions().length > 0 ? (
@@ -158,7 +161,10 @@ export default class FieldList extends Component {
   };
 
   renderSubDimensionTrigger(dimension) {
-    const { field, table: { metadata } } = this.props;
+    const {
+      field,
+      table: { metadata },
+    } = this.props;
     const subDimension = dimension.isSameBaseDimension(field)
       ? Dimension.parseMBQL(field, metadata)
       : dimension.defaultDimension();

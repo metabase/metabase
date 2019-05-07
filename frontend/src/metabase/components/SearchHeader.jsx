@@ -24,15 +24,14 @@ const SearchHeader = ({
       autoFocus={!!autoFocus}
       ref={inputRef || (() => {})}
     />
-    {resetSearchText &&
-      searchText !== "" && (
-        <Icon
-          name="close"
-          className="cursor-pointer text-light"
-          size={18}
-          onClick={resetSearchText}
-        />
-      )}
+    {resetSearchText && searchText !== "" && (
+      <Icon
+        name="close"
+        className="cursor-pointer text-light"
+        size={18}
+        onClick={resetSearchText}
+      />
+    )}
   </div>
 );
 

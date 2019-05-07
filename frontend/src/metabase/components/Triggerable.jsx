@@ -11,7 +11,8 @@ import cx from "classnames";
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
 export default ComposedComponent =>
   class extends Component {
-    static displayName = "Triggerable[" +
+    static displayName =
+      "Triggerable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

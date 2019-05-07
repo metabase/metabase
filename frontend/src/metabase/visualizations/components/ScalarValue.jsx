@@ -40,17 +40,16 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     >
       <Ellipsified tooltip={title}>{title}</Ellipsified>
     </h3>
-    {description &&
-      description.length > 0 && (
-        <div
-          className="hover-child cursor-pointer ml1 text-brand-hover"
-          style={{ marginTop: 5 }}
-        >
-          <Tooltip tooltip={description} maxWidth={"22em"}>
-            <Icon name="infooutlined" />
-          </Tooltip>
-        </div>
-      )}
+    {description && description.length > 0 && (
+      <div
+        className="hover-child cursor-pointer ml1 text-brand-hover"
+        style={{ marginTop: 5 }}
+      >
+        <Tooltip tooltip={description} maxWidth={"22em"}>
+          <Icon name="infooutlined" />
+        </Tooltip>
+      </div>
+    )}
   </div>
 );
 

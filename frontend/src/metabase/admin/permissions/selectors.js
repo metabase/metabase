@@ -71,20 +71,23 @@ function getTooltipForGroup(group) {
   return null;
 }
 
-export const getGroups = createSelector([Group.selectors.getList], groups => {
-  let orderedGroups = groups ? [...groups] : [];
-  for (let groupFilter of SPECIAL_GROUP_FILTERS) {
-    let index = _.findIndex(orderedGroups, groupFilter);
-    if (index >= 0) {
-      orderedGroups.unshift(...orderedGroups.splice(index, 1));
+export const getGroups = createSelector(
+  [Group.selectors.getList],
+  groups => {
+    let orderedGroups = groups ? [...groups] : [];
+    for (let groupFilter of SPECIAL_GROUP_FILTERS) {
+      let index = _.findIndex(orderedGroups, groupFilter);
+      if (index >= 0) {
+        orderedGroups.unshift(...orderedGroups.splice(index, 1));
+      }
     }
-  }
-  return orderedGroups.map(group => ({
-    ...group,
-    editable: canEditPermissions(group),
-    tooltip: getTooltipForGroup(group),
-  }));
-});
+    return orderedGroups.map(group => ({
+      ...group,
+      editable: canEditPermissions(group),
+      tooltip: getTooltipForGroup(group),
+    }));
+  },
+);
 
 export const getIsDirty = createSelector(
   getPermissions,
@@ -650,16 +653,16 @@ export const getDatabasesPermissionsGrid = createSelector(
                   url: `/admin/permissions/databases/${database.id}/tables`,
                 }
               : schemas.length === 1
-                ? {
-                    name: t`View tables`,
-                    url: `/admin/permissions/databases/${database.id}/schemas/${
-                      schemas[0]
-                    }/tables`,
-                  }
-                : {
-                    name: t`View schemas`,
-                    url: `/admin/permissions/databases/${database.id}/schemas`,
-                  },
+              ? {
+                  name: t`View tables`,
+                  url: `/admin/permissions/databases/${database.id}/schemas/${
+                    schemas[0]
+                  }/tables`,
+                }
+              : {
+                  name: t`View schemas`,
+                  url: `/admin/permissions/databases/${database.id}/schemas`,
+                },
         };
       }),
     };

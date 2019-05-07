@@ -49,15 +49,14 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
           name={t`X-ray this segment`}
         />
       )}
-      {user &&
-        user.is_superuser && (
-          <SidebarItem
-            key={`/reference/segments/${segment.id}/revisions`}
-            href={`/reference/segments/${segment.id}/revisions`}
-            icon="history"
-            name={t`Revision history`}
-          />
-        )}
+      {user && user.is_superuser && (
+        <SidebarItem
+          key={`/reference/segments/${segment.id}/revisions`}
+          href={`/reference/segments/${segment.id}/revisions`}
+          icon="history"
+          name={t`Revision history`}
+        />
+      )}
     </ul>
   </div>
 );

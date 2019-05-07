@@ -43,15 +43,14 @@ const MetricSidebar = ({ metric, user, style, className }) => (
           name={t`X-ray this metric`}
         />
       )}
-      {user &&
-        user.is_superuser && (
-          <SidebarItem
-            key={`/reference/metrics/${metric.id}/revisions`}
-            href={`/reference/metrics/${metric.id}/revisions`}
-            icon="history"
-            name={t`Revision history for ${metric.name}`}
-          />
-        )}
+      {user && user.is_superuser && (
+        <SidebarItem
+          key={`/reference/metrics/${metric.id}/revisions`}
+          href={`/reference/metrics/${metric.id}/revisions`}
+          icon="history"
+          name={t`Revision history for ${metric.name}`}
+        />
+      )}
     </ul>
   </div>
 );

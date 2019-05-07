@@ -110,25 +110,24 @@ export default class LegendHeader extends Component {
                       element: e.currentTarget,
                     })
                 : onChangeCardAndRun
-                  ? () =>
-                      onChangeCardAndRun({
-                        nextCard: s.card,
-                        seriesIndex: index,
-                      })
-                  : null
+                ? () =>
+                    onChangeCardAndRun({
+                      nextCard: s.card,
+                      seriesIndex: index,
+                    })
+                : null
             }
             infoClassName={classNameWidgets}
           />,
-          onRemoveSeries &&
-            index > 0 && (
-              <Icon
-                name="close"
-                className="text-light flex-no-shrink mr1 cursor-pointer"
-                width={12}
-                height={12}
-                onClick={() => onRemoveSeries(s.card)}
-              />
-            ),
+          onRemoveSeries && index > 0 && (
+            <Icon
+              name="close"
+              className="text-light flex-no-shrink mr1 cursor-pointer"
+              width={12}
+              height={12}
+              onClick={() => onRemoveSeries(s.card)}
+            />
+          ),
         ])}
         {actionButtons && (
           <span

@@ -190,10 +190,10 @@ class BrowserSelect extends Component {
               const child = children[index];
 
               /*
-                             * for each child we need to add props based on
-                             * the parent's onClick and the current selection
-                             * status, so we use cloneElement here
-                            * */
+               * for each child we need to add props based on
+               * the parent's onClick and the current selection
+               * status, so we use cloneElement here
+               * */
               return (
                 <div key={key} style={style} onClick={e => e.stopPropagation()}>
                   {React.cloneElement(children[index], {
@@ -323,7 +323,9 @@ class LegacySelect extends Component {
 
     let selectedName = value
       ? optionNameFn(value)
-      : options && options.length > 0 ? placeholder : emptyPlaceholder;
+      : options && options.length > 0
+      ? placeholder
+      : emptyPlaceholder;
 
     let triggerElement = (
       <div

@@ -38,7 +38,10 @@ const mapDispatchToProps = {
   onSave: savePermissions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class CollectionPermissionsModal extends Component {
   componentWillMount() {

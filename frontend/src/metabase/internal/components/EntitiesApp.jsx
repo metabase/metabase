@@ -16,7 +16,10 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 import EntityForm from "metabase/entities/containers/EntityForm";
 
 const withPush = ComposedComponent =>
-  connect(null, { push })(ComposedComponent);
+  connect(
+    null,
+    { push },
+  )(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {

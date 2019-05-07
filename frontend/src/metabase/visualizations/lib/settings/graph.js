@@ -42,7 +42,11 @@ export function getDefaultColumns(series) {
   }
 }
 
-function getDefaultScatterColumns([{ data: { cols, rows } }]) {
+function getDefaultScatterColumns([
+  {
+    data: { cols, rows },
+  },
+]) {
   let dimensions = cols.filter(isDimension);
   let metrics = cols.filter(isMetric);
   if (dimensions.length === 2 && metrics.length < 2) {
@@ -60,7 +64,11 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
   }
 }
 
-function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
+function getDefaultLineAreaBarColumns([
+  {
+    data: { cols, rows },
+  },
+]) {
   let type = getChartTypeFromData(cols, rows, false);
   if (type === DIMENSION_DIMENSION_METRIC) {
     let dimensions = [cols[0], cols[1]];
@@ -96,7 +104,14 @@ function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: ([{ data: { cols } }], settings) => cols,
+    getColumns: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      settings,
+    ) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -359,7 +374,14 @@ export const GRAPH_AXIS_SETTINGS = {
       ),
   },
   "graph.x_axis._is_histogram": {
-    getDefault: ([{ data: { cols } }], vizSettings) =>
+    getDefault: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      vizSettings,
+    ) =>
       // matches binned numeric columns
       cols[0].binning_info != null ||
       // matches certain date extracts like day-of-week, etc
@@ -380,8 +402,10 @@ export const GRAPH_AXIS_SETTINGS = {
       vizSettings["graph.x_axis._is_histogram"]
         ? "histogram"
         : vizSettings["graph.x_axis._is_timeseries"]
-          ? "timeseries"
-          : vizSettings["graph.x_axis._is_numeric"] ? "linear" : "ordinal",
+        ? "timeseries"
+        : vizSettings["graph.x_axis._is_numeric"]
+        ? "linear"
+        : "ordinal",
     getProps: (series, vizSettings) => {
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {

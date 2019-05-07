@@ -41,11 +41,10 @@ const FieldTypeDetail = ({
                   name: t`No field type`,
                   section: t`Other`,
                 })
-                .filter(
-                  type =>
-                    !isNumericBaseType(field)
-                      ? !(type.id && type.id.startsWith("timestamp_"))
-                      : true,
+                .filter(type =>
+                  !isNumericBaseType(field)
+                    ? !(type.id && type.id.startsWith("timestamp_"))
+                    : true,
                 )}
               onChange={type => fieldTypeFormField.onChange(type.id)}
             />

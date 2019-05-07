@@ -132,10 +132,10 @@ export default class AggregationWidget extends Component {
         aggregationName = NamedClause.isNamed(aggregation)
           ? NamedClause.getName(aggregation)
           : AggregationClause.isCustom(aggregation)
-            ? this.renderCustomAggregation()
-            : AggregationClause.isMetric(aggregation)
-              ? this.renderMetricAggregation()
-              : this.renderStandardAggregation();
+          ? this.renderCustomAggregation()
+          : AggregationClause.isMetric(aggregation)
+          ? this.renderMetricAggregation()
+          : this.renderStandardAggregation();
       } catch (e) {}
 
       return (
@@ -154,7 +154,9 @@ export default class AggregationWidget extends Component {
                 <span className="View-section-aggregation QueryOption py1 mx1">
                   {aggregationName == null
                     ? t`Choose an aggregation`
-                    : name ? name : aggregationName}
+                    : name
+                    ? name
+                    : aggregationName}
                 </span>
               </div>
             </Clearable>

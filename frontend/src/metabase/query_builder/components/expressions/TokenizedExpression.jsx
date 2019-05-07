@@ -22,7 +22,9 @@ const renderSyntaxTree = (node, index) => (
   >
     {node.text != null
       ? node.text
-      : node.children ? node.children.map(renderSyntaxTree) : null}
+      : node.children
+      ? node.children.map(renderSyntaxTree)
+      : null}
   </span>
 );
 

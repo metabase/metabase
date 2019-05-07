@@ -39,7 +39,10 @@ const mapDispatchToProps = {
 };
 
 @Database.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     databases: PropTypes.array,

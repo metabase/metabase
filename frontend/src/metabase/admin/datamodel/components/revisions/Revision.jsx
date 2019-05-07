@@ -41,7 +41,10 @@ export default class Revision extends Component {
   }
 
   getName() {
-    const { revision: { user }, currentUser } = this.props;
+    const {
+      revision: { user },
+      currentUser,
+    } = this.props;
     if (user.id === currentUser.id) {
       return t`You`;
     } else {

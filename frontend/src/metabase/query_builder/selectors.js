@@ -55,8 +55,9 @@ export const getDatabaseId = createSelector(
   card => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
+export const getTableId = createSelector(
+  [getCard],
+  card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;
@@ -144,8 +145,10 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
 export const getIsResultDirty = createSelector(

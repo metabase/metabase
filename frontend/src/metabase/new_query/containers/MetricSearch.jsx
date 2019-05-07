@@ -37,7 +37,10 @@ const mapDispatchToProps = {
   resetQuery,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricSearch extends Component {
   props: {
     getUrlForQuery: StructuredQuery => void,

@@ -367,16 +367,15 @@ export default class ExpressionEditorTextfield extends Component {
                   </li>,
                 ],
               )}
-              {!showAll &&
-                suggestions.length >= MAX_SUGGESTIONS && (
-                  <li
-                    style={{ paddingTop: 5, paddingBottom: 5 }}
-                    onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
-                    className="px2 text-italic text-medium cursor-pointer text-brand-hover"
-                  >
-                    and {suggestions.length - MAX_SUGGESTIONS} more
-                  </li>
-                )}
+              {!showAll && suggestions.length >= MAX_SUGGESTIONS && (
+                <li
+                  style={{ paddingTop: 5, paddingBottom: 5 }}
+                  onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
+                  className="px2 text-italic text-medium cursor-pointer text-brand-hover"
+                >
+                  and {suggestions.length - MAX_SUGGESTIONS} more
+                </li>
+              )}
             </ul>
           </Popover>
         ) : null}

@@ -18,7 +18,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class RevisionHistoryApp extends Component {
   componentWillMount() {
     let { entity, id } = this.props;

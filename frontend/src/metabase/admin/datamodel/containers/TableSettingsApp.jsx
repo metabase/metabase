@@ -28,7 +28,10 @@ const mapDispatchToProps = {
   discardTableFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableSettingsApp extends Component {
   async componentWillMount() {
     const {
