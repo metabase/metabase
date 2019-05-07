@@ -31,7 +31,6 @@
 (expect true  (u/url? "http://192.168.1.10/"))
 (expect false (u/url? "google.com"))                      ; missing protocol
 (expect false (u/url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
-(expect false (u/url? "http://metabasecom"))              ; no period / TLD
 (expect false (u/url? "http://.com"))                     ; no domain
 (expect false (u/url? "http://google."))                  ; no TLD
 (expect false (u/url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException

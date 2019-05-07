@@ -15,7 +15,7 @@
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
   (:import [java.io BufferedReader Reader]
-           [java.net InetAddress InetSocketAddress Socket]
+           [java.net InetAddress InetSocketAddress Socket URL]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
            java.util.Locale
@@ -109,6 +109,16 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
+(defmacro varargs
+  "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
+  the result.
+
+    (u/varargs String)
+    (u/varargs String [\"A\" \"B\"])"
+  {:style/indent 1}
+  [klass & [objects]]
+  (vary-meta `(into-array ~klass ~objects)
+             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
 
 (defn email?
   "Is `s` a valid email address string?"
@@ -117,17 +127,11 @@
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
                          (str/lower-case s)))))
 
-
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
-  ^Boolean [^String s]
-  (.isValid (UrlValidator. UrlValidator/ALLOW_LOCAL_URLS) (str s)))
-
-(defn sequence-of-maps?
-  "Is COLL a sequence of maps?"
-  [coll]
-  (and (sequential? coll)
-       (every? map? coll)))
+  ^Boolean [s]
+  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+    (.isValid validator (str s))))
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
@@ -403,12 +407,12 @@
     :else                             \_))                 ; otherwise replace them with underscores
 
 (defn slugify
-  "Return a version of `String` S appropriate for use as a URL slug.
+  "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
    to support languages that don't use the Latin alphabet; see issue #3818).
 
-   Optionally specify MAX-LENGTH which will truncate the slug after that many characters."
+   Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
    (when (seq s)
      (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
@@ -417,8 +421,8 @@
    (str/join (take max-length (slugify s)))))
 
 (defn do-with-auto-retries
-  "Execute F, a function that takes no arguments, and return the results.
-   If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
+  "Execute `f`, a function that takes no arguments, and return the results.
+   If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
    Consider using the `auto-retry` macro instead of calling this function directly."
   {:style/indent 1}
@@ -431,16 +435,16 @@
            (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry
-  "Execute BODY and return the results.
-   If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
+  "Execute `body` and return the results.
+   If `body` fails with an exception, retry execution up to `num-retries` times until it succeeds."
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
 
 (defn key-by
-  "Convert a sequential COLL to a map of `(f item)` -> `item`.
-  This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of
+  "Convert a sequential `coll` to a map of `(f item)` -> `item`.
+  This is similar to `group-by`, but the resultant map's values are single items from `coll` rather than sequences of
   items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
   discarded).
 
@@ -506,7 +510,7 @@
      (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:a [:b :d] :c])
      ;; -> {:a 100, :b {:d 300}}
 
-   The values of KEYSEQ can be either regular keys, which work the same way as `select-keys`,
+   The values of `keyseq` can be either regular keys, which work the same way as `select-keys`,
    or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
    on the value of `k`. "
   [m keyseq]
@@ -536,7 +540,7 @@
   (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
-  "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
+  "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
 
 (defn occurances-of-substring
@@ -582,16 +586,16 @@
                          (Math/log 10))))))
 
 (defn update-when
-  "Like clojure.core/update but does not create a new key if it does not exist.
-   Useful when you don't want to create cruft."
+  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
+  cruft."
   [m k f & args]
   (if (contains? m k)
     (apply update m k f args)
     m))
 
 (defn update-in-when
-  "Like clojure.core/update-in but does not create new keys if they do not exist.
-   Useful when you don't want to create cruft."
+  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
+  cruft."
   [m k f & args]
   (if (not= ::not-found (get-in m k ::not-found))
     (apply update-in m k f args)
@@ -652,16 +656,6 @@
   (if ((some-fn sequential? set?) arg)
     arg
     [arg]))
-
-(defmacro varargs
-  "Make a properly-tagged Java interop varargs argument.
-
-    (u/varargs String)
-    (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1}
-  [klass & [objects]]
-  (vary-meta `(into-array ~klass ~objects)
-             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
 
 (def ^:private do-with-us-locale-lock (Object.))
 
