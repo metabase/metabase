@@ -192,7 +192,7 @@
 
 (def ^:private short-timezone-name (memoize short-timezone-name*))
 
-
+;; TODO - it seems like it would be a nice performance win to cache this a little bit
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
    application."
