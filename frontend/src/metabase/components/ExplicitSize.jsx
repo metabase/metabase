@@ -28,42 +28,64 @@ export default measureClass => ComposedComponent =>
       return element;
     }
 
-    componentDidMount() {
-      // media query listener, ensure re-layout when printing
+    // ResizeObserver, ensure re-layout when container element changes size
+    _initResizeObserver() {
+      const element = this._getElement();
+      if (element !== this._currentElement) {
+        // cleanup previous, if any
+        this._teardownResizeObserver();
+        // setup new, if we have an element
+        if (element) {
+          this._ro = new ResizeObserver((entries, observer) => {
+            const element = this._getElement();
+            for (const entry of entries) {
+              if (entry.target === element) {
+                this._updateSize();
+                break;
+              }
+            }
+          });
+          this._ro.observe(element);
+        }
+        this._currentElement = element;
+      }
+    }
+    _teardownResizeObserver() {
+      if (this._ro) {
+        this._ro.disconnect();
+        this._ro = null;
+      }
+    }
+
+    // media query listener, ensure re-layout when printing
+    _initMediaQueryListener() {
       if (window.matchMedia) {
         this._mql = window.matchMedia("print");
         this._mql.addListener(this._updateSize);
       }
-
-      const element = this._getElement();
-      if (element) {
-        // resize observer, ensure re-layout when container element changes size
-        this._ro = new ResizeObserver((entries, observer) => {
-          const element = this._getElement();
-          for (const entry of entries) {
-            if (entry.target === element) {
-              this._updateSize();
-              break;
-            }
-          }
-        });
-        this._ro.observe(element);
-
-        this._updateSize();
+    }
+    _teardownQueryMediaListener() {
+      if (this._mql) {
+        this._mql.removeListener(this._updateSize);
+        this._mql = null;
       }
     }
 
+    componentDidMount() {
+      this._initMediaQueryListener();
+      this._initResizeObserver();
+      this._updateSize();
+    }
+
     componentDidUpdate() {
+      // re-init ResizeObserver if element changes
+      this._initResizeObserver();
       this._updateSize();
     }
 
     componentWillUnmount() {
-      if (this._ro) {
-        this._ro.disconnect();
-      }
-      if (this._mql) {
-        this._mql.removeListener(this._updateSize);
-      }
+      this._teardownResizeObserver();
+      this._teardownQueryMediaListener();
     }
 
     _updateSize = () => {

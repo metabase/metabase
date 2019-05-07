@@ -37,7 +37,6 @@ type Props = {
   isRunning: boolean,
   isRunnable: boolean,
   isAdmin: boolean,
-  isObjectDetail: boolean,
   isResultDirty: boolean,
   runQuestionQuery: any => void,
   cancelQuery?: any => void,
@@ -87,7 +86,6 @@ export default class QueryVisualization extends Component {
       className,
       question,
       databases,
-      isObjectDetail,
       isRunning,
       result,
       onOpenChartSettings,
@@ -122,21 +120,8 @@ export default class QueryVisualization extends Component {
       }
     }
 
-    const wrapperClasses = cx(className, "relative", {
-      flex: !isObjectDetail,
-      "flex-column": !isObjectDetail,
-    });
-
-    const visualizationClasses = cx(
-      "flex flex-full Visualization z1 relative",
-      {
-        "Visualization--errors": result && result.error,
-        "Visualization--loading": isRunning,
-      },
-    );
-
     return (
-      <div className={wrapperClasses}>
+      <div className={className || "relative"}>
         {isRunning && (
           <div className="Loading spread flex flex-column layout-centered text-brand z2">
             <LoadingSpinner />
@@ -145,7 +130,14 @@ export default class QueryVisualization extends Component {
             </h2>
           </div>
         )}
-        <div className={visualizationClasses}>{viz}</div>
+        <div
+          className={cx("spread Visualization z1", {
+            "Visualization--errors": result && result.error,
+            "Visualization--loading": isRunning,
+          })}
+        >
+          {viz}
+        </div>
       </div>
     );
   }

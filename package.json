@@ -76,7 +76,7 @@
     "redux-router": "^2.1.2",
     "redux-thunk": "^2.0.1",
     "reselect": "^3.0.0",
-    "resize-observer-polyfill": "^1.3.2",
+    "resize-observer-polyfill": "^1.5.1",
     "screenfull": "^3.0.0",
     "simple-statistics": "^3.0.0",
     "stack-source-map": "^1.0.4",

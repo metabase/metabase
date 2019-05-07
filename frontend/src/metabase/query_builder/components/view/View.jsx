@@ -15,6 +15,7 @@ import Button from "metabase/components/Button";
 import BreakoutName from "metabase/query_builder/components/BreakoutName";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
@@ -243,10 +244,7 @@ export default class View extends React.Component {
 
               <ViewSubHeader {...propsWithExtras} />
 
-              <div
-                className="flex-full flex z1"
-                style={{ flexGrow: 1, transition: "opacity 0.25s ease-in-out" }}
-              >
+              <DebouncedFrame className="flex-full" style={{ flexGrow: 1 }}>
                 <QueryVisualization
                   {...propsWithExtras}
                   onAddSeries={onAddSeries}
@@ -254,9 +252,9 @@ export default class View extends React.Component {
                   onRemoveSeries={onRemoveSeries}
                   onEditBreakout={onEditBreakout}
                   noHeader
-                  className="full mb2 z1"
+                  className="spread"
                 />
-              </div>
+              </DebouncedFrame>
 
               {ModeFooter && (
                 <ModeFooter {...propsWithExtras} className="flex-no-shrink" />
