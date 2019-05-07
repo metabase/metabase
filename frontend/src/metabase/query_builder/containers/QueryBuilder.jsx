@@ -251,7 +251,14 @@ export default class QueryBuilder extends Component {
     this.props.setUIControls({ modal: null });
   };
   setQueryBuilderMode = queryBuilderMode => {
-    this.props.setUIControls({ queryBuilderMode });
+    const { question } = this.props;
+    // TODO: move this to reducer
+    this.props.setUIControls({
+      queryBuilderMode,
+      isShowingChartSettingsSidebar: false,
+      isShowingChartTypeSidebar:
+        queryBuilderMode === "view" && question.display() === "table",
+    });
   };
 
   setRecentlySaved = recentlySaved => {

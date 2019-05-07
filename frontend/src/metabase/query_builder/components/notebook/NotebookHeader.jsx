@@ -26,7 +26,6 @@ const NotebookHeader = ({
             runQuestionQuery();
           }
           onSetQueryBuilderMode("view");
-          setUIControls({ isShowingChartTypeSidebar: true });
         }}
       >{t`Visualize`}</Button>
     )}

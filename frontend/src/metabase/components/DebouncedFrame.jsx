@@ -5,6 +5,11 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
+const DEBOUNCE_PERIOD = 100;
+const DEFAULT_TRANSITION_STYLE = {
+  opacity: 0.5,
+};
+
 @ExplicitSize()
 export default class DebouncedFrame extends React.Component {
   constructor(props) {
@@ -17,16 +22,14 @@ export default class DebouncedFrame extends React.Component {
   }
 
   static defaultProps = {
-    transitionStyle: {
-      opacity: 0.5,
-    },
+    transitionStyle: DEFAULT_TRANSITION_STYLE,
   };
 
   setSize = (width, height) => {
     this.setState({ width, height, transition: false });
   };
 
-  setSizeDebounced = _.debounce(this.setSize, 100);
+  setSizeDebounced = _.debounce(this.setSize, DEBOUNCE_PERIOD);
 
   componentWillReceiveProps(nextProps) {
     if (
