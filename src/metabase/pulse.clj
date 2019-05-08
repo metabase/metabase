@@ -24,22 +24,24 @@
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 
-;; TODO: this is probably something that could live somewhere else and just be reused
+;; TODO - this is probably something that could live somewhere else and just be reused
+;; TODO - this should be done async
 (defn execute-card
-  "Execute the query for a single card with CARD-ID. OPTIONS are passed along to `dataset-query`."
-  [card-id & {:as options}]
-  {:pre [(integer? card-id)]}
-  (try
-    (when-let [card (Card :id card-id, :archived false)]
-      (let [{:keys [creator_id dataset_query]} card]
-        {:card   card
-         :result (qp/process-query-and-save-with-max-results-constraints! dataset_query
-                   (merge {:executed-by creator_id
-                           :context     :pulse
-                           :card-id     card-id}
-                          options))}))
-    (catch Throwable t
-      (log/warn t (trs "Error running query for Card {0}" card-id)))))
+  "Execute the query for a single Card. `options` are passed along to the Query Processor."
+  [card-or-id & {:as options}]
+  (let [card-id (u/get-id card-or-id)]
+    (try
+      (when-let [card (Card :id card-id, :archived false)]
+        (let [{:keys [creator_id dataset_query]} card
+              query                              (assoc dataset_query :async? false)]
+          {:card   card
+           :result (qp/process-query-and-save-with-max-results-constraints! query
+                     (merge {:executed-by creator_id
+                             :context     :pulse
+                             :card-id     card-id}
+                            options))}))
+      (catch Throwable e
+        (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
 (defn- database-id [card]
   (or (:database_id card)

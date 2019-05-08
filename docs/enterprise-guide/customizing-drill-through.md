@@ -2,7 +2,7 @@
 
 Out of the box, Metabase comes with some handy actions that you can access when you click on parts of a table or chart: you can filter, break out, zoom in, or x-ray things you click.
 
-But the Enterprise Edition of Metabase includes a set of features which allow you to customize what happens when you click on cells in a table or parts of charts.
+But the Enterprise Edition of Metabase includes a set of features which allow you to customize what happens when users click on cells in a table or parts of charts.
 
 For example, you might have a high-level executive dashboard with a bar chart which shows your total revenue per product category, and what you’d like to do is allow your users to click on a bar in that chart to see a *different* dashboard with more detail about that product category. Or maybe you have a similar scenario, but you’d like to set things up so that clicking on a bar takes your users to a totally different app or site, like an internal company wiki page.
 
@@ -76,5 +76,5 @@ You can also optionally customize what text should be displayed in each cell of 
 
 ---
 
-## Next: SAML SSO
-Find out how to enable [SAML-based SSO](authenticating-with-saml.md).
+## Next: Copying contents of one Metabase instance to another
+Learn how to use [serialization](serialization.md) to create and load data dumps of the contents of a Metabase instance.

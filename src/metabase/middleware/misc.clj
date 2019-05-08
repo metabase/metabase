@@ -45,7 +45,10 @@
     (when-not (public-settings/site-url)
       (when-let [site-url (or origin host)]
         (log/info (trs "Setting Metabase site URL to {0}" site-url))
-        (public-settings/site-url site-url)))))
+        (try
+          (public-settings/site-url site-url)
+          (catch Throwable e
+            (log/warn e (trs "Failed to set site-url"))))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."

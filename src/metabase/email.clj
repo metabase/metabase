@@ -35,7 +35,7 @@
   (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
   :default (tru "none")
   :setter  (fn [new-value]
-             (when-not (nil? new-value)
+             (when (some? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
@@ -52,12 +52,14 @@
   (boolean (email-smtp-host)))
 
 (defn- add-ssl-settings [m ssl-setting]
-  (merge m (case (keyword ssl-setting)
-             :tls {:tls true}
-             :ssl {:ssl true}
-             :starttls {:starttls.enable true
-                        :starttls.required true}
-             {})))
+  (merge
+   m
+   (case (keyword ssl-setting)
+     :tls      {:tls true}
+     :ssl      {:ssl true}
+     :starttls {:starttls.enable   true
+                :starttls.required true}
+     {})))
 
 (defn- smtp-settings []
   (-> {:host (email-smtp-host)

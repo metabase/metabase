@@ -50,7 +50,8 @@
    [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
-   [buddy/buddy-core "1.5.0"]                                         ; various cryptograhpic functions
+   [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
+    :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
    [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
    [clj-http "3.9.1"                                                  ; HTTP client
@@ -75,6 +76,12 @@
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.3"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
+   [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
+   [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
+   [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
+    :exclusions [commons-beanutils
+                 commons-digester
+                 commons-logging]]
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export

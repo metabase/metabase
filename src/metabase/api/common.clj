@@ -260,13 +260,16 @@
 
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
       `Integer/parseInt`
+
    -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+
    -  sequentially applies specified annotation functions on args to validate them.
-   -  executes BODY inside a `try-catch` block that handles exceptions; if exception is an instance of `ExceptionInfo`
-      and includes a `:status-code`, that code will be returned
+
    -  automatically calls `wrap-response-if-needed` on the result of BODY
-   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below)
-      will automatically include the function in the generated `defroutes` form.
+
+   -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
+      the function in the generated `defroutes` form.
+
    -  Generates a super-sophisticated Markdown-formatted docstring"
   {:arglists '([method route docstr? args schemas-map? & body])}
   [method route & more]

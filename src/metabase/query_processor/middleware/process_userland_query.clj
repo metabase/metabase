@@ -94,7 +94,9 @@
     (raise (Exception. (str (trs "Unexpected nil response from query processor."))))
 
     (not status)
-    (raise (Exception. (str (tru "Invalid response from database driver. No :status provided.") result)))
+    (raise (Exception. (str (tru "Invalid response from database driver. No :status provided.")
+                            " "
+                            result)))
 
     ;; if query has been cancelled no need to save QueryExecution (or should we?) and no point formatting anything to
     ;; be returned since it won't be returned

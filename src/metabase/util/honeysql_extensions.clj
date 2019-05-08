@@ -1,6 +1,6 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [format :as hformat]])
@@ -60,7 +60,7 @@
 (defn escape-dots
   "Replace dots in a string with WHITE MEDIUM LOZENGES (⬨)."
   ^String [s]
-  (s/replace (name s) #"\." "⬨"))
+  (str/replace (name s) #"\." "⬨"))
 
 (defn qualify-and-escape-dots
   "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE
@@ -78,7 +78,7 @@
   ^String [sql-string-or-vector]
   (when sql-string-or-vector
     (if (string? sql-string-or-vector)
-      (s/replace sql-string-or-vector #"⬨" ".")
+      (str/replace sql-string-or-vector #"⬨" ".")
       (vec (cons (unescape-dots (first sql-string-or-vector))
                  (rest sql-string-or-vector))))))
 

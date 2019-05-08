@@ -1,6 +1,6 @@
 (ns metabase.api.setting-test
   (:require [expectations :refer [expect]]
-            [metabase.models.setting-test :refer [set-settings! test-sensitive-setting test-setting-1 test-setting-2]]
+            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2]]
             [metabase.test.data.users :refer [user->client]]))
 
 ;; ## Helper Fns
@@ -27,8 +27,10 @@
     :env_name       "MB_TEST_SETTING_2"
     :description    "Test setting - this only shows up in dev (2)"
     :default        "[Default Value]"}]
- (do (set-settings! nil "FANCY")
-     (fetch-test-settings)))
+  (do
+    (test-setting-1 nil)
+    (test-setting-2 "FANCY")
+    (fetch-test-settings)))
 
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."

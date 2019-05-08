@@ -33,8 +33,10 @@
             [clojure
              [core :as core]
              [string :as str]]
+            [clojure.data.csv :as csv]
             [clojure.tools.logging :as log]
             [environ.core :as env]
+            [medley.core :as m]
             [metabase
              [events :as events]
              [util :as u]]
@@ -45,7 +47,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]])
+  (:import java.io.StringWriter))
 
 (models/defmodel Setting
   "The model that underlies `defsetting`."
@@ -58,7 +61,7 @@
 
 
 (def ^:private Type
-  (s/enum :string :boolean :json :integer :double :timestamp))
+  (s/enum :string :boolean :json :integer :double :timestamp :csv))
 
 (def ^:private default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
@@ -121,7 +124,7 @@
 
 (def ^:private ^:dynamic *disable-cache* false)
 
-(defn- db-value
+(defn- db-or-cache-value
   "Get the value, if any, of `setting-or-name` from the DB (using / restoring the cache as needed)."
   ^String [setting-or-name]
   (if *disable-cache*
@@ -141,7 +144,7 @@
    If the fetched value is an empty string it is considered to be unset and this function returns `nil`."
   ^String [setting-or-name]
   (let [setting (resolve-setting setting-or-name)
-        v       (or (db-value setting)
+        v       (or (db-or-cache-value setting)
                     (env-var-value setting)
                     (str (:default setting)))]
     (when (seq v)
@@ -168,14 +171,12 @@
 (defn get-integer
   "Get integer value of (presumably `:integer`) `setting-or-name`. This is the default getter for `:integer` settings."
   ^Integer [setting-or-name]
-  (when-let [s (get-string setting-or-name)]
-    (Integer/parseInt s)))
+  (some-> (get-string setting-or-name) Integer/parseInt))
 
 (defn get-double
   "Get double value of (presumably `:double`) `setting-or-name`. This is the default getter for `:double` settings."
   ^Double [setting-or-name]
-  (when-let [s (get-string setting-or-name)]
-    (Double/parseDouble s)))
+  (some-> (get-string setting-or-name) Double/parseDouble))
 
 (defn get-json
   "Get the string value of `setting-or-name` and parse it as JSON."
@@ -187,13 +188,19 @@
   [setting-or-name]
   (du/->Timestamp (get-string setting-or-name) :no-timezone))
 
+(defn get-csv
+  "Get the string value of `setting-or-name` and parse it as CSV, returning a sequence of exploded strings."
+  [setting-or-name]
+  (some-> (get-string setting-or-name) csv/read-csv first))
+
 (def ^:private default-getter-for-type
   {:string    get-string
    :boolean   get-boolean
    :integer   get-integer
    :json      get-json
    :timestamp get-timestamp
-   :double    get-double})
+   :double    get-double
+   :csv       get-csv})
 
 (defn get
   "Fetch the value of `setting-or-name`. What this means depends on the Setting's `:getter`; by default, this looks for
@@ -258,16 +265,21 @@
         (cache/restore-cache-if-needed!)
         ;; write to DB
         (cond
-          (nil? new-value)                       (db/simple-delete! Setting :key setting-name)
+          (nil? new-value)
+          (db/simple-delete! Setting :key setting-name)
+
           ;; if there's a value in the cache then the row already exists in the DB; update that
-          (contains? (cache/cache) setting-name) (update-setting! setting-name new-value)
+          (contains? (cache/cache) setting-name)
+          (update-setting! setting-name new-value)
+
           ;; if there's nothing in the cache then the row doesn't exist, insert a new one
-          :else                                  (set-new-setting! setting-name new-value))
+          :else
+          (set-new-setting! setting-name new-value))
         ;; update cached value
         (cache/update-cache! setting-name new-value)
-        ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out about it
-        ;; (For Settings that don't use the Cache, don't update the `last-updated` value, because it will cause other
-        ;; instances to do needless reloading of the cache from the DB)
+        ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
+        ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
+        ;; cause other instances to do needless reloading of the cache from the DB)
         (when-not *disable-cache*
           (cache/update-settings-last-updated!))
         ;; Now return the `new-value`.
@@ -308,9 +320,29 @@
   (set-string! setting-or-name (some-> new-value json/generate-string)))
 
 (defn set-timestamp!
-  "Serialize `new-value` for `setting-or-name` as a ISO 8601-encoded timestamp strign and save it."
+  "Serialize `new-value` for `setting-or-name` as a ISO 8601-encoded timestamp string and save it."
   [setting-or-name new-value]
   (set-string! setting-or-name (some-> new-value du/date->iso-8601)))
+
+(defn- serialize-csv [value]
+  (cond
+    ;; if we're passed as string, assume it's already CSV-encoded
+    (string? value)
+    value
+
+    (sequential? value)
+    (let [s (with-open [writer (StringWriter.)]
+              (csv/write-csv writer [value])
+              (str writer))]
+      (first (str/split-lines s)))
+
+    :else
+    value))
+
+(defn set-csv!
+  "Serialize `new-value` for `setting-or-name` as a CSV-encoded string and save it."
+  [setting-or-name new-value]
+  (set-string! setting-or-name (serialize-csv new-value)))
 
 (def ^:private default-setter-for-type
   {:string    set-string!
@@ -318,7 +350,8 @@
    :integer   set-integer!
    :json      set-json!
    :timestamp set-timestamp!
-   :double    set-double!})
+   :double    set-double!
+   :csv       set-csv!})
 
 (defn set!
   "Set the value of `setting-or-name`. What this means depends on the Setting's `:setter`; by default, this just updates
@@ -371,23 +404,25 @@
    ;; indentation below is intentional to make it clearer what shape the generated documentation is going to take.
    ;; Turn on auto-complete-mode in Emacs and see for yourself!
    :tag tag
-   :doc (str/join "\n" [        description
-                                ""
-                        (format "`%s` is a %s Setting. You can get its value by calling:" (setting-name setting) (name setting-type))
-                                ""
-                        (format "    (%s)"                                                (setting-name setting))
-                                ""
-                                "and set its value by calling:"
-                                ""
-                        (format "    (%s <new-value>)"                                    (setting-name setting))
-                                ""
-                        (format "You can also set its value with the env var `%s`."       (env-var-name setting))
-                                ""
-                                "Clear its value by calling:"
-                                ""
-                        (format "    (%s nil)"                                            (setting-name setting))
-                                ""
-                        (format "Its default value is `%s`."                              (if (nil? default) "nil" default))])})
+   :doc (str/join
+         "\n"
+         [        description
+          ""
+          (format "`%s` is a %s Setting. You can get its value by calling:" (setting-name setting) (name setting-type))
+          ""
+          (format "    (%s)"                                                (setting-name setting))
+          ""
+          "and set its value by calling:"
+          ""
+          (format "    (%s <new-value>)"                                    (setting-name setting))
+          ""
+          (format "You can also set its value with the env var `%s`."       (env-var-name setting))
+          ""
+          "Clear its value by calling:"
+          ""
+          (format "    (%s nil)"                                            (setting-name setting))
+          ""
+          (format "Its default value is `%s`."                              (if (nil? default) "nil" default))])})
 
 
 
@@ -397,6 +432,7 @@
   (fn
     ([]
      (get setting))
+
     ([new-value]
      ;; need to qualify this or otherwise the reader gets this confused with the set! used for things like
      ;; (set! *warn-on-reflection* true)
@@ -420,7 +456,8 @@
            (every? valid-trs-or-tru? exprs-without-strs)))))
 
 (defn- validate-description
-  "Validates the description expression `desc-expr`, ensuring it contains an i18n form, or a string consisting of 1 or more i18n forms"
+  "Validates the description expression `desc-expr`, ensuring it contains an i18n form, or a string consisting of 1 or
+  more i18n forms"
   [desc]
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
@@ -444,19 +481,26 @@
    You may optionally pass any of the OPTIONS below:
 
    *  `:default`    - The default value of the setting. (default: `nil`)
-   *  `:type`       - `:string` (default), `:boolean`, `:integer`, or `:json`. Non-`:string` settings have special
-                      default getters and setters that automatically coerce values to the correct types.
+
+   *  `:type`       - `:string` (default), `:boolean`, `:integer`, `:json`, `:double`, or `:timestamp`. Non-`:string`
+                      Settings have special default getters and setters that automatically coerce values to the correct
+                      types.
+
    *  `:internal?`  - This Setting is for internal use and shouldn't be exposed in the UI (i.e., not returned by the
-                       corresponding endpoints). Default: `false`
+                      corresponding endpoints). Default: `false`
+
    *  `:getter`     - A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in
                       turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default
                       getter behavior.)
+
    *  `:setter`     - A custom setter fn, which takes a single argument. Overrides the default implementation. (This
                       can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the
                       default setter behavior. Keep in mind that the custom setter may be passed `nil`, which should
                       clear the values of the Setting.)
+
    *  `:cache?`     - Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could
                       have a very negative performance impact.
+
    *  `:sensitive?` - Is this a sensitive setting, such as a password, that we should never return in plaintext?
                       (Default: `false`). Obfuscation is not done by getter functions, but instead by functions that
                       ultimately return these values via the API, such as `all` below. (In other words, code in the
@@ -505,12 +549,20 @@
 (defn user-facing-value
   "Get the value of a Setting that should be displayed to a User (i.e. via `/api/setting/` endpoints): for Settings set
   via env vars, or Settings whose value has not been set (i.e., Settings whose value is the same as the default value)
-  no value is displayed; for sensitive Settings, the value is obfuscated."
-  [setting-or-name]
+  no value is displayed; for sensitive Settings, the value is obfuscated.
+
+  Accepts options:
+
+  * `:getter` -- the getter function to use to fetch the Setting value. By default, uses `setting/get`, which will
+    convert the setting to the appropriate type; you can use `get-string` to get all string values of Settings, for
+    example."
+  [setting-or-name & {:keys [getter], :or {getter get}}]
   (let [{:keys [sensitive? default], k :name, :as setting} (resolve-setting setting-or-name)
-        v                                                  (get k)
-        value-is-default?                                  (= v default)
-        value-is-from-env-var?                             (= v (env-var-value setting))]
+        unparsed-value                                     (get-string k)
+        parsed-value                                       (getter k)
+        ;; `default` and `env-var-value` are probably still in serialized form so compare
+        value-is-default?                                  (= unparsed-value default)
+        value-is-from-env-var?                             (= unparsed-value (env-var-value setting))]
     (cond
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
@@ -519,15 +571,16 @@
       nil
 
       sensitive?
-      (obfuscate-value v)
+      (obfuscate-value parsed-value)
 
       :else
-      v)))
+      parsed-value)))
 
-(defn- user-facing-info [{:keys [sensitive? default description], k :name, :as setting}]
+(defn- user-facing-info
+  [{:keys [sensitive? default description], k :name, :as setting} & {:as options}]
   (let [set-via-env-var? (boolean (env-var-value setting))]
     {:key            k
-     :value          (user-facing-value setting)
+     :value          (m/mapply user-facing-value setting options)
      :is_env_setting set-via-env-var?
      :env_name       (env-var-name setting)
      :description    (str description)
@@ -537,7 +590,9 @@
 
 (defn all
   "Return a sequence of Settings maps in a format suitable for consumption by the frontend.
-   (For security purposes, this doesn't return the value of a setting if it was set via env var)."
-  []
+   (For security purposes, this doesn't return the value of a Setting if it was set via env var).
+
+   `options` are passed to `user-facing-value`."
+  [& {:as options}]
   (for [setting (sort-by :name (vals @registered-settings))]
-    (user-facing-info setting)))
+    (m/mapply user-facing-info setting options)))
