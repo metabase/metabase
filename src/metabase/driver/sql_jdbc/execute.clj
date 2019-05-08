@@ -1,4 +1,3 @@
-
 (ns metabase.driver.sql-jdbc.execute
   "Code related to actually running a SQL query against a JDBC database (including setting the session timezone when
   appropriate), and for properly encoding/decoding types going in and out of the database."
@@ -175,17 +174,27 @@
         (.closeOnCompletion stmt))
       ;; Need to run the query in another thread so that this thread can cancel it if need be
       (try
-        (let [query-future (future (jdbc/query conn (into [stmt] params) opts))]
-          ;; This thread is interruptable because it's awaiting the other thread (the one actually running the
-          ;; query). Interrupting this thread means that the client has disconnected (or we're shutting down) and so
-          ;; we can give up on the query running in the future
-          @query-future)
+        ;; This thread is interruptable because it's awaiting the other thread (the one actually running the query).
+        ;; Interrupting this thread means that the client has disconnected (or we're shutting down) and so we can give
+        ;; up on the query running in the future
+        (let [query-future (future
+                             (try
+                               (jdbc/query conn (into [stmt] params) opts)
+                               (catch Throwable e
+                                 e)))
+              result       @query-future]
+          (if (instance? Throwable result)
+            (throw result)
+            result))
         (catch InterruptedException e
           (log/warn (tru "Client closed connection, canceling query"))
           ;; This is what does the real work of canceling the query. We aren't checking the result of
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
-          (throw e))))))
+          (throw e))
+        (catch Exception e
+          (.cancel stmt)
+          e)))))
 
 (defn- run-query
   "Run the query itself."
@@ -205,10 +214,12 @@
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------
 
 (defn- exception->nice-error-message ^String [^SQLException e]
-  (or (->> (.getMessage e)     ; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
-           (re-find #"^(.*);") ; the user already knows the SQL, and error code is meaningless
-           second)             ; so just return the part of the exception that is relevant
-      (.getMessage e)))
+  ;; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
+  ;; the user already knows the SQL, and error code is meaningless
+  ;; so just return the part of the exception that is relevant
+  (->> (.getMessage e)
+       (re-find #"^(.*);")
+       second))
 
 (defn do-with-try-catch
   "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,
@@ -219,7 +230,10 @@
     (f)
     (catch SQLException e
       (log/error (jdbc/print-sql-exception-chain e))
-      (throw (Exception. (exception->nice-error-message e) e)))))
+      (throw
+       (if-let [nice-error-message (exception->nice-error-message e)]
+         (Exception. nice-error-message e)
+         e)))))
 
 (defn- do-with-auto-commit-disabled
   "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the
