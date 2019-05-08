@@ -132,6 +132,7 @@ export class NewQueryOptions extends Component {
       );
     }
 
+    {/* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */}
     const NUM_ITEMS = showMetricOption + showSQLOption + 2;
     const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
 
