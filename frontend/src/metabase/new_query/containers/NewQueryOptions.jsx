@@ -49,6 +49,7 @@ type Props = {
   getUrlForQuery: StructuredQuery => void,
   metricSearchUrl: string,
   segmentSearchUrl: string,
+  dataBrowseUrl: string,
 
   // Properties injected with redux connect
   query: StructuredQuery,
@@ -105,7 +106,7 @@ export class NewQueryOptions extends Component {
   };
 
   render() {
-    const { isAdmin, metricSearchUrl, newQueryOptions } = this.props;
+    const { isAdmin, metricSearchUrl, dataBrowseUrl, newQueryOptions } = this.props;
     const {
       loaded,
       hasDatabases,
@@ -129,7 +130,7 @@ export class NewQueryOptions extends Component {
     return (
       <div className="full-height flex align-center justify-center">
         <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim ">
-          <ol className="Grid Grid--guttersXl Grid--full sm-Grid--normal">
+          <ol className="Grid Grid--guttersLg Grid--full sm-Grid--normal">
             {showMetricOption && (
               <li className="Grid-cell">
                 <NewQueryOption
@@ -140,6 +141,16 @@ export class NewQueryOptions extends Component {
                 />
               </li>
             )}
+            <li className="Grid-cell">
+              {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+              <NewQueryOption
+                image="app/img/segments_illustration"
+                title={t`Browse data`}
+                description={t`Look through the tables in the databases connected to Metabase.`}
+                width={160}
+                to={dataBrowseUrl}
+              />
+            </li>
             <li className="Grid-cell">
               {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
               <NewQueryOption
