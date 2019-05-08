@@ -163,7 +163,8 @@
   `(do-with-ensured-connection ~db (fn [~conn-binding] ~@body)))
 
 (defn- cancelable-run-query
-  "Runs `sql` in such a way that it can be interrupted via a `future-cancel`"
+  "Runs JDBC query, canceling it if an InterruptedException is caught (e.g. if there query is canceled before
+  finishing)."
   [db sql params opts]
   (with-ensured-connection [conn db]
     ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
@@ -172,20 +173,8 @@
       ;; (Not all drivers support this so ignore Exceptions if they don't)
       (u/ignore-exceptions
         (.closeOnCompletion stmt))
-      ;; Need to run the query in another thread so that this thread can cancel it if need be
       (try
-        ;; This thread is interruptable because it's awaiting the other thread (the one actually running the query).
-        ;; Interrupting this thread means that the client has disconnected (or we're shutting down) and so we can give
-        ;; up on the query running in the future
-        (let [query-future (future
-                             (try
-                               (jdbc/query conn (into [stmt] params) opts)
-                               (catch Throwable e
-                                 e)))
-              result       @query-future]
-          (if (instance? Throwable result)
-            (throw result)
-            result))
+        (jdbc/query conn (into [stmt] params) opts)
         (catch InterruptedException e
           (log/warn (tru "Client closed connection, canceling query"))
           ;; This is what does the real work of canceling the query. We aren't checking the result of
@@ -193,7 +182,7 @@
           (.cancel stmt)
           (throw e))
         (catch Exception e
-          (.cancel stmt)
+          (u/ignore-exceptions (.cancel stmt))
           e)))))
 
 (defn- run-query
