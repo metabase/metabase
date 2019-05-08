@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
 import fitViewport from "metabase/hoc/FitViewPort";
@@ -25,6 +26,9 @@ import {
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { push } from "react-router-redux";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
+
+import { Grid, GridItem } from "metabase/components/Grid";
+import Card from "metabase/components/Card";
 
 const mapStateToProps = state => ({
   query: getCurrentQuery(state),
@@ -72,6 +76,7 @@ const allOptionsVisibleState = {
   showTableOption: true,
   showSQLOption: true,
 };
+const PAGE_PADDING = [1, 2, 4];
 
 @fitViewport
 export class NewQueryOptions extends Component {
@@ -127,57 +132,57 @@ export class NewQueryOptions extends Component {
       );
     }
 
+    const NUM_ITEMS = showMetricOption + showSQLOption + 2;
+    const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
+
     return (
-      <div className="full-height flex align-center justify-center">
-        <div className="wrapper wrapper--trim lg-wrapper--trim xl-wrapper--trim ">
-          <ol className="Grid Grid--guttersLg Grid--full sm-Grid--normal">
-            {showMetricOption && (
-              <li className="Grid-cell">
-                <NewQueryOption
-                  image="app/img/questions_illustration"
-                  title={t`Metrics`}
-                  description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
-                  to={metricSearchUrl}
-                />
-              </li>
-            )}
-            <li className="Grid-cell">
-              {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+      <Box my='auto' mx={PAGE_PADDING}>
+        <Grid className="justifyCenter">
+          {showMetricOption && (
+            <GridItem w={ITEM_WIDTHS}>
               <NewQueryOption
-                image="app/img/segments_illustration"
-                title={t`Browse data`}
-                description={t`Look through the tables in the databases connected to Metabase.`}
-                width={160}
-                to={dataBrowseUrl}
+                image="app/img/questions_illustration"
+                title={t`Metrics`}
+                description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
+                to={metricSearchUrl}
               />
-            </li>
-            <li className="Grid-cell">
-              {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+            </GridItem>
+          )}
+          <GridItem w={ITEM_WIDTHS}>
+            {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
+            <NewQueryOption
+              image="app/img/segments_illustration"
+              title={t`Browse data`}
+              description={t`Look through the tables in the databases connected to Metabase.`}
+              width={170}
+              to={dataBrowseUrl}
+            />
+          </GridItem>
+          <GridItem w={ITEM_WIDTHS}>
+            <NewQueryOption
+              image="app/img/query_builder_illustration"
+              title={
+                showCustomInsteadOfNewQuestionText
+                  ? t`Custom`
+                  : t`New question`
+              }
+              description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
+              width={180}
+              to={this.getGuiQueryUrl}
+            />
+          </GridItem>
+          {showSQLOption && (
+            <GridItem w={ITEM_WIDTHS}>
               <NewQueryOption
-                image="app/img/query_builder_illustration"
-                title={
-                  showCustomInsteadOfNewQuestionText
-                    ? t`Custom`
-                    : t`New question`
-                }
-                description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
-                width={180}
-                to={this.getGuiQueryUrl}
+                image="app/img/sql_illustration"
+                title={t`Native query`}
+                description={t`For more complicated questions, you can write your own SQL or native query.`}
+                to={this.getNativeQueryUrl}
               />
-            </li>
-            {showSQLOption && (
-              <li className="Grid-cell">
-                <NewQueryOption
-                  image="app/img/sql_illustration"
-                  title={t`Native query`}
-                  description={t`For more complicated questions, you can write your own SQL or native query.`}
-                  to={this.getNativeQueryUrl}
-                />
-              </li>
-            )}
-          </ol>
-        </div>
-      </div>
+            </GridItem>
+          )}
+        </Grid>
+      </Box>
     );
   }
 }
