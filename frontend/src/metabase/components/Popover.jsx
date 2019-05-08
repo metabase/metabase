@@ -143,11 +143,11 @@ export default class Popover extends Component {
           : React.Children.count(this.props.children) === 1 &&
             // NOTE: workaround for https://github.com/facebook/react/issues/12136
             !Array.isArray(this.props.children)
-            ? React.cloneElement(
-                React.Children.only(this.props.children),
-                childProps,
-              )
-            : this.props.children}
+          ? React.cloneElement(
+              React.Children.only(this.props.children),
+              childProps,
+            )
+          : this.props.children}
       </div>
     );
     if (this.props.noOnClickOutsideWrapper) {
@@ -193,16 +193,12 @@ export default class Popover extends Component {
       attachments = this.props.verticalAttachments;
     }
 
-    const availableHeights = attachments.map(
-      attachmentY =>
-        attachmentY === "top"
-          ? window.innerHeight -
-            bottom -
-            this.props.targetOffsetY -
-            PAGE_PADDING
-          : attachmentY === "bottom"
-            ? top - this.props.targetOffsetY - PAGE_PADDING
-            : 0,
+    const availableHeights = attachments.map(attachmentY =>
+      attachmentY === "top"
+        ? window.innerHeight - bottom - this.props.targetOffsetY - PAGE_PADDING
+        : attachmentY === "bottom"
+        ? top - this.props.targetOffsetY - PAGE_PADDING
+        : 0,
     );
 
     // get the largest available height, then subtract .PopoverBody's border and padding

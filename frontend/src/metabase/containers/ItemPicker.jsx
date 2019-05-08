@@ -232,7 +232,9 @@ const Item = ({
     onClick={
       canSelect
         ? () => onChange(item)
-        : hasChildren ? () => onChangeParentId(item.id) : null
+        : hasChildren
+        ? () => onChangeParentId(item.id)
+        : null
     }
     className={cx("rounded", {
       "bg-brand text-white": selected,

@@ -64,7 +64,10 @@ type Props = {
 };
 
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(mapStateToProps, mapDispatchToProps)(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class DashboardContainer extends Component {
       props: Props;
 

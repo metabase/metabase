@@ -171,4 +171,7 @@ export class NewQueryOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(NewQueryOptions);

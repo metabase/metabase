@@ -14,7 +14,10 @@ const mapDispatchToProps = {
   archiveQuestion,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 class ArchiveQuestionModal extends Component {
   onArchive = async () => {
     try {
@@ -53,8 +56,7 @@ class ArchiveQuestionModal extends Component {
           >{t`Archive`}</Button>,
         ]}
       >
-        <div
-        >{t`This question will be removed from any dashboards or pulses using it.`}</div>
+        <div>{t`This question will be removed from any dashboards or pulses using it.`}</div>
       </ModalWithTrigger>
     );
   }

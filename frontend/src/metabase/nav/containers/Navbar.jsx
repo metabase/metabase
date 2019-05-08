@@ -63,7 +63,7 @@ const ActiveSearchColor = color(colors.brand)
 
 const SearchWrapper = Flex.extend`
   ${width} background-color: ${props =>
-      props.active ? ActiveSearchColor : DefaultSearchColor};
+  props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
   align-items: center;
   color: white;
@@ -151,7 +151,10 @@ const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class Navbar extends Component {
   state = {
     modal: null,

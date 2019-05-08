@@ -103,8 +103,8 @@ export default class PulseEditChannels extends Component {
           assoc(
             pulse,
             "channels",
-            pulse.channels.map(
-              c => (c.channel_type === type ? assoc(c, "enabled", true) : c),
+            pulse.channels.map(c =>
+              c.channel_type === type ? assoc(c, "enabled", true) : c,
             ),
           ),
         );
@@ -116,8 +116,8 @@ export default class PulseEditChannels extends Component {
         assoc(
           pulse,
           "channels",
-          pulse.channels.map(
-            c => (c.channel_type === type ? assoc(c, "enabled", false) : c),
+          pulse.channels.map(c =>
+            c.channel_type === type ? assoc(c, "enabled", false) : c,
           ),
         ),
       );
@@ -207,24 +207,23 @@ export default class PulseEditChannels extends Component {
           </div>
         )}
         {channelSpec.fields && this.renderFields(channel, index, channelSpec)}
-        {!this.props.hideSchedulePicker &&
-          channelSpec.schedules && (
-            <SchedulePicker
-              schedule={_.pick(
-                channel,
-                "schedule_day",
-                "schedule_frame",
-                "schedule_hour",
-                "schedule_type",
-              )}
-              scheduleOptions={channelSpec.schedules}
-              textBeforeInterval={t`Sent`}
-              textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
-                channelSpec && channelSpec.type
-              ] || t`Messages`} will be sent at`}
-              onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
-            />
-          )}
+        {!this.props.hideSchedulePicker && channelSpec.schedules && (
+          <SchedulePicker
+            schedule={_.pick(
+              channel,
+              "schedule_day",
+              "schedule_frame",
+              "schedule_hour",
+              "schedule_type",
+            )}
+            scheduleOptions={channelSpec.schedules}
+            textBeforeInterval={t`Sent`}
+            textBeforeSendTime={t`${CHANNEL_NOUN_PLURAL[
+              channelSpec && channelSpec.type
+            ] || t`Messages`} will be sent at`}
+            onScheduleChange={this.onChannelScheduleChange.bind(this, index)}
+          />
+        )}
         {this.props.testPulse && (
           <div className="pt2">
             <ActionButton

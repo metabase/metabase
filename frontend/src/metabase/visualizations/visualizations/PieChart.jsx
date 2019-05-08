@@ -30,7 +30,7 @@ import _ from "underscore";
 const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
-const PAD_ANGLE = Math.PI / 180 * 1; // 1 degree in radians
+const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
@@ -51,7 +51,14 @@ export default class PieChart extends Component {
     return cols.length === 2;
   }
 
-  static checkRenderable([{ data: { cols, rows } }], settings) {
+  static checkRenderable(
+    [
+      {
+        data: { cols, rows },
+      },
+    ],
+    settings,
+  ) {
     // This prevents showing "Which columns do you want to use" when
     // the piechart is displayed with no results in the dashboard
     if (rows.length < 1) {
@@ -120,17 +127,36 @@ export default class PieChart extends Component {
       readDependencies: ["pie._dimensionValues", "pie.colors"],
     },
     "pie._metricIndex": {
-      getValue: ([{ data: { cols } }], settings) =>
-        _.findIndex(cols, col => col.name === settings["pie.metric"]),
+      getValue: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => _.findIndex(cols, col => col.name === settings["pie.metric"]),
       readDependencies: ["pie.metric"],
     },
     "pie._dimensionIndex": {
-      getValue: ([{ data: { cols } }], settings) =>
-        _.findIndex(cols, col => col.name === settings["pie.dimension"]),
+      getValue: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
       readDependencies: ["pie.dimension"],
     },
     "pie._dimensionValues": {
-      getValue: ([{ data: { rows } }], settings) => {
+      getValue: (
+        [
+          {
+            data: { rows },
+          },
+        ],
+        settings,
+      ) => {
         const dimensionIndex = settings["pie._dimensionIndex"];
         return dimensionIndex >= 0
           ? // cast to string because getColorsForValues expects strings
@@ -163,7 +189,11 @@ export default class PieChart extends Component {
       settings,
     } = this.props;
 
-    const [{ data: { cols, rows } }] = series;
+    const [
+      {
+        data: { cols, rows },
+      },
+    ] = series;
     const dimensionIndex = settings["pie._dimensionIndex"];
     const metricIndex = settings["pie._metricIndex"];
 

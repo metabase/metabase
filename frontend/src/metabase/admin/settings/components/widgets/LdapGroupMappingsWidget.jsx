@@ -110,7 +110,10 @@ export default class LdapGroupMappingsWidget extends React.Component {
 
   _saveClick = (e: Event) => {
     e.preventDefault();
-    const { state: { mappings }, props: { onChangeSetting } } = this;
+    const {
+      state: { mappings },
+      props: { onChangeSetting },
+    } = this;
     SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(
       () => {
         onChangeSetting("ldap-group-mappings", mappings);

@@ -22,7 +22,8 @@ export default ({
   defaultSingleSuggestion = false,
 }) => ComposedComponent =>
   class extends Component {
-    static displayName = "Typeahead[" +
+    static displayName =
+      "Typeahead[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

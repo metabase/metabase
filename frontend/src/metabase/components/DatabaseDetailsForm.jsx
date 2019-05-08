@@ -267,8 +267,7 @@ export default class DatabaseDetailsForm extends Component {
               />
             </div>
             <div className="px2">
-              <h3
-              >{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
+              <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
                 {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.
                                 If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
@@ -325,7 +324,8 @@ export default class DatabaseDetailsForm extends Component {
                   <a
                     href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID}
                     target="_blank"
-                  >{t`with Google Drive permissions`}</a>)
+                  >{t`with Google Drive permissions`}</a>
+                  )
                 </span>
               )}
             </div>
@@ -424,7 +424,9 @@ export default class DatabaseDetailsForm extends Component {
           >
             {submitting
               ? t`Saving...`
-              : willProceedToNextDbCreationStep ? t`Next` : submitButtonText}
+              : willProceedToNextDbCreationStep
+              ? t`Next`
+              : submitButtonText}
           </button>
           <FormMessage formError={formError} formSuccess={formSuccess} />
         </div>

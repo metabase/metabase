@@ -35,9 +35,13 @@ const TICK_PERIOD = 0.25; // seconds
  * It should probably be in Redux?
  */
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(null, { replace })(
+  connect(
+    null,
+    { replace },
+  )(
     class extends Component {
-      static displayName = "DashboardControls[" +
+      static displayName =
+        "DashboardControls[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 

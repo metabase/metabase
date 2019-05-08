@@ -73,7 +73,9 @@ export class ObjectDetail extends Component {
       return null;
     }
 
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     const columnIndex = _.findIndex(cols, col => isPK(col));
     return rows[0][columnIndex];
   }
@@ -145,7 +147,9 @@ export class ObjectDetail extends Component {
   }
 
   renderDetailsTable() {
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     return cols.map((column, columnIndex) => (
       <div className="Grid Grid--1of2 mb2" key={columnIndex}>
         <div className="Grid-cell">
@@ -327,4 +331,7 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ObjectDetail);

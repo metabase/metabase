@@ -55,7 +55,10 @@ const mapDispatchToProps = {
 };
 const ICON_SIZE = 16;
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class QueryHeader extends Component {
   constructor(props, context) {
     super(props, context);
@@ -474,7 +477,9 @@ export default class QueryHeader extends Component {
             items={[
               !isNew && Object.values(questionAlerts).length > 0
                 ? updateAlertItem
-                : isNew ? createAlertAfterSavingQuestionItem : createAlertItem,
+                : isNew
+                ? createAlertAfterSavingQuestionItem
+                : createAlertItem,
             ]}
           />
         </div>,

@@ -20,7 +20,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PermissionsApp extends Component {
   static propTypes = {
     load: PropTypes.func.isRequired,

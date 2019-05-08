@@ -289,12 +289,12 @@ const RuleDescription = ({ rule }) => (
     {rule.type === "range"
       ? t`Cells in this column will be tinted based on their values.`
       : rule.type === "single"
-        ? jt`When a cell in these columns ${(
-            <span className="text-bold">
-              {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
-            </span>
-          )} it will be tinted this color.`
-        : null}
+      ? jt`When a cell in these columns ${(
+          <span className="text-bold">
+            {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
+          </span>
+        )} it will be tinted this color.`
+      : null}
   </span>
 );
 

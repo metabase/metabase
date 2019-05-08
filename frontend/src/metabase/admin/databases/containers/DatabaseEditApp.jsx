@@ -61,7 +61,10 @@ const TABS: TabOption[] = [
   { name: t`Scheduling`, value: "scheduling" },
 ];
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   state: {

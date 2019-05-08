@@ -71,8 +71,8 @@ export default class GridLayout extends Component {
     let newLayout;
     if (placeholderLayout) {
       let { x, y, w, h } = placeholderLayout;
-      newLayout = this.state.layout.map(
-        l => (l.i === i ? { ...l, x, y, w, h } : l),
+      newLayout = this.state.layout.map(l =>
+        l.i === i ? { ...l, x, y, w, h } : l,
       );
     }
     this.setState({ dragging: false, placeholderLayout: null });
@@ -124,8 +124,8 @@ export default class GridLayout extends Component {
 
   onResizeStop(i, { size }) {
     let { x, y, w, h } = this.state.placeholderLayout;
-    let newLayout = this.state.layout.map(
-      l => (l.i === i ? { ...l, x, y, w, h } : l),
+    let newLayout = this.state.layout.map(l =>
+      l.i === i ? { ...l, x, y, w, h } : l,
     );
     this.setState({ resizing: false, placeholderLayout: null }, () =>
       this.props.onLayoutChange(newLayout),

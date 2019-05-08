@@ -241,8 +241,8 @@ export const distribution = (card, column) => {
   const breakout = isDate(column)
     ? ["datetime-field", getFieldRefFromColumn(column), "month"]
     : isNumber(column)
-      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
-      : getFieldRefFromColumn(column);
+    ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+    : getFieldRefFromColumn(column);
 
   const newCard = startNewCard("query");
   newCard.dataset_query = Utils.copy(card.dataset_query);

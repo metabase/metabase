@@ -180,7 +180,9 @@ export default class LineAreaBarChart extends Component {
       let axisClasses =
         hovered.axisIndex === 0
           ? "mute-yr"
-          : hovered.axisIndex === 1 ? "mute-yl" : null;
+          : hovered.axisIndex === 1
+          ? "mute-yl"
+          : null;
       return seriesClasses.concat(axisClasses);
     } else {
       return null;

@@ -243,17 +243,16 @@ export default class SettingsBatchForm extends Component {
           <Breadcrumbs crumbs={this.props.breadcrumbs} className="ml2 mb3" />
         )}
 
-        {layout.map(
-          (section, index) =>
-            section.collapse ? (
-              <CollapsibleSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </CollapsibleSection>
-            ) : (
-              <StandardSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </StandardSection>
-            ),
+        {layout.map((section, index) =>
+          section.collapse ? (
+            <CollapsibleSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </CollapsibleSection>
+          ) : (
+            <StandardSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </StandardSection>
+          ),
         )}
 
         <div className="m2 mb4">

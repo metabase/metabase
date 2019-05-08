@@ -32,8 +32,8 @@ export default class ErrorDetails extends React.Component {
             {typeof details === "string"
               ? details
               : typeof details.message === "string"
-                ? details.message
-                : String(details)}
+              ? details.message
+              : String(details)}
           </div>
         </div>
       </div>

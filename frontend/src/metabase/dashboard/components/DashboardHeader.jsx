@@ -258,15 +258,14 @@ export default class DashboardHeader extends Component {
             </a>
           </Tooltip>
 
-          {this.state.modal &&
-            this.state.modal === "parameters" && (
-              <Popover onClose={() => this.setState({ modal: null })}>
-                <ParametersPopover
-                  onAddParameter={this.props.addParameter}
-                  onClose={() => this.setState({ modal: null })}
-                />
-              </Popover>
-            )}
+          {this.state.modal && this.state.modal === "parameters" && (
+            <Popover onClose={() => this.setState({ modal: null })}>
+              <ParametersPopover
+                onAddParameter={this.props.addParameter}
+                onClose={() => this.setState({ modal: null })}
+              />
+            </Popover>
+          )}
         </span>,
       );
 

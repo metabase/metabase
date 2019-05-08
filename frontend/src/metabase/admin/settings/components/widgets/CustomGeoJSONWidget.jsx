@@ -185,24 +185,26 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
         </tr>
       </thead>
       <tbody>
-        {maps.filter(map => !map.builtin).map(map => (
-          <tr key={map.id}>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              {map.name}
-            </td>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
-            </td>
-            <td className="Table-actions">
-              <Confirm
-                action={() => onDeleteMap(map)}
-                title={t`Delete custom map`}
-              >
-                <button className="Button Button--danger">{t`Remove`}</button>
-              </Confirm>
-            </td>
-          </tr>
-        ))}
+        {maps
+          .filter(map => !map.builtin)
+          .map(map => (
+            <tr key={map.id}>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                {map.name}
+              </td>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+              </td>
+              <td className="Table-actions">
+                <Confirm
+                  action={() => onDeleteMap(map)}
+                  title={t`Delete custom map`}
+                >
+                  <button className="Button Button--danger">{t`Remove`}</button>
+                </Confirm>
+              </td>
+            </tr>
+          ))}
       </tbody>
     </table>
   </section>

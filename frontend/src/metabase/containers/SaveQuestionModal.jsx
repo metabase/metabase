@@ -110,7 +110,9 @@ export default class SaveQuestionModal extends Component {
         description:
           details.saveType === "overwrite"
             ? originalCard.description
-            : details.description ? details.description.trim() : null,
+            : details.description
+            ? details.description.trim()
+            : null,
         collection_id:
           details.saveType === "overwrite"
             ? originalCard.collection_id

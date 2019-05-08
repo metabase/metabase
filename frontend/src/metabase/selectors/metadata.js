@@ -128,9 +128,15 @@ export const getDatabasesList = state =>
     entityQuery: { include_tables: true, include_cards: true },
   }) || [];
 
-export const getTables = createSelector([getMetadata], ({ tables }) => tables);
+export const getTables = createSelector(
+  [getMetadata],
+  ({ tables }) => tables,
+);
 
-export const getFields = createSelector([getMetadata], ({ fields }) => fields);
+export const getFields = createSelector(
+  [getMetadata],
+  ({ fields }) => fields,
+);
 export const getMetrics = createSelector(
   [getMetadata],
   ({ metrics }) => metrics,

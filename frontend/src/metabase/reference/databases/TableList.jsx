@@ -66,11 +66,12 @@ export const separateTablesBySchema = (
   createListItem,
 ) =>
   Object.values(tables)
-    .sort(
-      (table1, table2) =>
-        table1.schema > table2.schema
-          ? 1
-          : table1.schema === table2.schema ? 0 : -1,
+    .sort((table1, table2) =>
+      table1.schema > table2.schema
+        ? 1
+        : table1.schema === table2.schema
+        ? 0
+        : -1,
     )
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
@@ -84,7 +85,10 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

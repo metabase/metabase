@@ -64,7 +64,10 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ dashboard }) => dashboard && dashboard.name)
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
