@@ -151,19 +151,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- check-if-sync-processes-ran-for-db {:style/indent 0} [db-info]
-  (let [sync-db-metadata-counter    (atom 0)
-        analyze-db-counter          (atom 0)
-        update-field-values-counter (atom 0)]
-    (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (swap! sync-db-metadata-counter inc))
-                  metabase.sync.analyze/analyze-db!               (fn [& _] (swap! analyze-db-counter inc))
-                  metabase.sync.field-values/update-field-values! (fn [& _] (swap! update-field-values-counter inc))]
+  (let [sync-db-metadata-ran?    (promise)
+        analyze-db-ran?          (promise)
+        update-field-values-ran? (promise)]
+    (with-redefs [metabase.sync.sync-metadata/sync-db-metadata!   (fn [& _] (deliver sync-db-metadata-ran? true))
+                  metabase.sync.analyze/analyze-db!               (fn [& _] (deliver analyze-db-ran? true))
+                  metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
       (with-scheduler-setup
         (tt/with-temp Database [database db-info]
-          ;; give tasks some time to run
-          (Thread/sleep 2000)
-          {:ran-sync?                (not (zero? @sync-db-metadata-counter))
-           :ran-analyze?             (not (zero? @analyze-db-counter))
-           :ran-update-field-values? (not (zero? @update-field-values-counter))})))))
+          {:ran-sync?                (deref sync-db-metadata-ran? 500 false)
+           :ran-analyze?             (deref analyze-db-ran? 100 false)
+           :ran-update-field-values? (deref update-field-values-ran? 500 false)})))))
 
 (defn- cron-schedule-for-next-year []
   (format "0 15 10 * * ? %d" (inc (du/date-extract :year))))

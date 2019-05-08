@@ -1,11 +1,13 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
              [util :as u]]
-            [metabase.api.card-test :as card-api-test]
+            [metabase.api
+             [card-test :as card-api-test]
+             [pulse :as pulse-api]]
             [metabase.integrations.slack :as slack]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
@@ -912,6 +914,17 @@
             ;; Don't update the pulse, but test the pulse with the updated recipients
             {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
              :emails   (et/regex-email-bodies #"A Pulse")}))))))
+
+;; A Card saved with `:async?` true should not be ran async for a Pulse
+(expect
+  map?
+  (#'pulse-api/pulse-card-query-results
+   {:id            1
+    :dataset_query {:database (data/id)
+                    :type     :query
+                    :query    {:source-table (data/id :venues)
+                               :limit        1}
+                    :async?   true}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

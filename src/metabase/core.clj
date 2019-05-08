@@ -19,6 +19,7 @@
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
+            [metabase.query-processor.middleware.async-wait :as qp.middleware.async-wait]
             [metabase.util.i18n :refer [set-locale trs]]
             [toucan.db :as db]))
 
@@ -44,7 +45,11 @@
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
+  ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen
+  ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
+  (server/stop-web-server!)
+  (qp.middleware.async-wait/destroy-all-thread-pools!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 

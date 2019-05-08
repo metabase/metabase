@@ -33,10 +33,13 @@
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
 
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
 (defmacro with-new-secret-key {:style/indent 0} [& body]
-  `(binding [*secret-key* (random-embedding-secret-key)]
-     (tu/with-temporary-setting-values [~'embedding-secret-key *secret-key*]
-       ~@body)))
+  `(do-with-new-secret-key (fn [] ~@body)))
 
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (u/get-id card-or-id)}
