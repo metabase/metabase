@@ -16,7 +16,7 @@
     (if (a/poll! canceled-chan)
       (log/debug (trs "Request already canceled, will not run synchronous QP code."))
       (try
-        (respond (qp query))
+        (some-> (qp query) respond)
         (catch Throwable e
           (raise e))))))
 
@@ -45,11 +45,22 @@
         (log/warn e (trs "Unhandled exception, exepected `catch-exceptions` middleware to handle it."))
         (respond e)))))
 
+(def ^:private in-flight* (atom 0))
+
+(defn in-flight
+  "Return the number of queries currently in flight."
+  []
+  @in-flight*)
+
 (defn- async-args []
   (let [out-chan      (a/promise-chan)
         canceled-chan (async.u/promise-canceled-chan out-chan)
         respond       (respond-fn out-chan canceled-chan)
         raise         (raise-fn out-chan respond)]
+    (swap! in-flight* inc)
+    (a/go
+      (a/<! canceled-chan)
+      (swap! in-flight* dec))
     {:out-chan out-chan, :canceled-chan canceled-chan, :respond respond, :raise raise}))
 
 (defn- wait-for-result [out-chan]

@@ -140,9 +140,12 @@
       ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in
       ;; async 4-arg style. Eventually the entire QP middleware stack will be rewritten in the async style. But not yet
       ;;
+      ;; TODO - `async-wait` should be moved way up the stack, at least after the DB is resolved, right now for nested
+      ;; queries it creates a thread pool for the nested query placeholder DB ID
+      ;;
       ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
       async/async->sync
-      async-wait/wait-for-permit
+      async-wait/wait-for-turn
       cache/maybe-return-cached-results
       validate/validate-query
       normalize/normalize

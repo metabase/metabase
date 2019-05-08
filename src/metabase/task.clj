@@ -134,6 +134,7 @@
 (defn start-scheduler!
   "Start our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing."
   []
+  (classloader/the-classloader)
   (when-not @quartz-scheduler
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]

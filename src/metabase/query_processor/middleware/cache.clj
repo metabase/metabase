@@ -106,8 +106,9 @@
       (respond cached-results)
       (let [start-time (System/currentTimeMillis)
             respond    (fn [results]
-                         (save-results-if-successful! query-hash start-time results)
-                         (respond results))]
+                         (when results
+                           (save-results-if-successful! query-hash start-time results)
+                           (respond results)))]
         (qp query respond raise canceled-chan)))))
 
 (defn maybe-return-cached-results
