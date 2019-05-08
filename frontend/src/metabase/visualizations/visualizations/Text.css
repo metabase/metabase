@@ -7,6 +7,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 1em 0 1em 1.5em;
+  height: 100%;
 }
 :local .Text.dashboard-is-editing {
   padding: 2.8em 1.3em var(--text-card-padding) 1.3em;
@@ -26,6 +27,7 @@
   box-shadow: 0 1px 7px var(--color-shadow);
 }
 :local .Text .text-card-markdown {
+  height: 100%;
   overflow: auto;
   pointer-events: all;
 }
