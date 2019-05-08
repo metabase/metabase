@@ -142,6 +142,7 @@
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
   [driver :- (s/cond-pre s/Str s/Keyword)]
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed driver)
     driver))
