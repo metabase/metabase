@@ -528,9 +528,7 @@ export const setCardVisualization = createThunkAction(
   SET_CARD_VISUALIZATION,
   display => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
       let updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
@@ -550,9 +548,7 @@ export const updateCardVisualizationSettings = createThunkAction(
   UPDATE_CARD_VISUALIZATION_SETTINGS,
   settings => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
       let updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
@@ -572,9 +568,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(
   REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
   settings => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
       let updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
@@ -593,9 +587,7 @@ export const updateTemplateTag = createThunkAction(
   UPDATE_TEMPLATE_TAG,
   templateTag => {
     return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
 
       let updatedCard = Utils.copy(card);
 
@@ -659,10 +651,8 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
       ? // If the original card id is present, dynamically load its information for showing lineage
         await loadCard(card.original_card_id)
       : // Otherwise, use a current card as the original card if the card has been saved
-      // This is needed for checking whether the card is in dirty state or not
-      card.id
-      ? card
-      : null;
+        // This is needed for checking whether the card is in dirty state or not
+        card.id ? card : null;
 
     // Update the card and originalCard before running the actual query
     dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
@@ -845,9 +835,7 @@ export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
 export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
   return (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const {
-      qb: { card, uiControls },
-    } = getState();
+    const { qb: { card, uiControls } } = getState();
     const queryResult = getFirstQueryResult(getState());
     const tableMetadata = getTableMetadata(getState());
 
@@ -931,9 +919,7 @@ export const setQueryDatabase = createThunkAction(
   SET_QUERY_DATABASE,
   databaseId => {
     return async (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
 
       // picking the same database doesn't change anything
       if (databaseId === card.dataset_query.database) {
@@ -996,9 +982,7 @@ export const setQuerySourceTable = createThunkAction(
   SET_QUERY_SOURCE_TABLE,
   sourceTable => {
     return async (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
+      const { qb: { card, uiControls } } = getState();
 
       // this will either be the id or an object with an id
       const tableId = sourceTable.id || sourceTable;
@@ -1199,9 +1183,7 @@ export const queryErrored = createThunkAction(
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
 export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
   return async (dispatch, getState) => {
-    const {
-      qb: { uiControls, cancelQueryDeferred },
-    } = getState();
+    const { qb: { uiControls, cancelQueryDeferred } } = getState();
 
     if (uiControls.isRunning && cancelQueryDeferred) {
       cancelQueryDeferred.resolve();
@@ -1213,9 +1195,7 @@ export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
   return async (dispatch, getState) => {
     // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const {
-      qb: { card },
-    } = getState();
+    const { qb: { card } } = getState();
     const queryResult = getFirstQueryResult(getState());
 
     if (!queryResult || !fk) {
@@ -1252,9 +1232,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   () => {
     return async (dispatch, getState) => {
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-      const {
-        qb: { card, tableForeignKeys },
-      } = getState();
+      const { qb: { card, tableForeignKeys } } = getState();
       const queryResult = getFirstQueryResult(getState());
 
       function getObjectDetailIdValue(data) {
@@ -1319,9 +1297,7 @@ const ADD_FIELD = "metabase/qb/ADD_FIELD";
 export const addField = createThunkAction(
   ADD_FIELD,
   (field, run = true) => (dispatch, getState) => {
-    const {
-      qb: { card },
-    } = getState();
+    const { qb: { card } } = getState();
     const queryResult = getFirstQueryResult(getState());
     if (
       card.dataset_query.type === "query" &&
