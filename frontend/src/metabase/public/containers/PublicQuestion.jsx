@@ -197,7 +197,7 @@ export default class PublicQuestion extends Component {
           {() => (
             <Visualization
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full"
+              className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   // $FlowFixMe
