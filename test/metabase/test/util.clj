@@ -32,6 +32,7 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.test.data :as data]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
@@ -499,6 +500,7 @@
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
+  (classloader/the-classloader)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try
