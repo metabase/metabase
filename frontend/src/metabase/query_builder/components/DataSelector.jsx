@@ -129,7 +129,10 @@ export const TableTriggerContent = ({ selectedTable }) =>
     <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchTableMetadata },
+)
 export default class DataSelector extends Component {
   constructor(props) {
     super();

@@ -57,7 +57,13 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     const { onHoverChange, onVisualizationClick } = this.props;
     if (onHoverChange) {
       marker.on("mousemove", e => {
-        const { series: [{ data: { cols, rows } }] } = this.props;
+        const {
+          series: [
+            {
+              data: { cols, rows },
+            },
+          ],
+        } = this.props;
         const hover = {
           dimensions: cols.map((col, colIndex) => ({
             value: rows[rowIndex][colIndex],
@@ -73,7 +79,13 @@ export default class LeafletMarkerPinMap extends LeafletMap {
     }
     if (onVisualizationClick) {
       marker.on("click", () => {
-        const { series: [{ data: { cols, rows } }] } = this.props;
+        const {
+          series: [
+            {
+              data: { cols, rows },
+            },
+          ],
+        } = this.props;
         const pkIndex = _.findIndex(cols, isPK);
         if (pkIndex >= 0) {
           // if there's a PK just use that for now

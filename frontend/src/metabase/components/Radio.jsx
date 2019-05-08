@@ -71,8 +71,14 @@ export default class Radio extends Component {
               key={optionKeyFn(option)}
               className={cx(
                 "flex align-center cursor-pointer",
-                { "text-brand-hover": !showButtons && !selected},
-                py != undefined ? `py${py}` : underlined ? "py2" : bubble ? "py1" : "pt1",
+                { "text-brand-hover": !showButtons && !selected },
+                py != undefined
+                  ? `py${py}`
+                  : underlined
+                  ? "py2"
+                  : bubble
+                  ? "py1"
+                  : "pt1",
                 bubble ? "px3" : undefined,
                 bubble ? "mr1" : "mr3",
                 bubble && selected ? "text-white" : undefined,
@@ -83,7 +89,11 @@ export default class Radio extends Component {
                   selected && underlined ? colors["brand"] : "transparent",
                 borderRadius: bubble ? `99px` : undefined,
                 backgroundColor:
-                  selected && bubble ? colors["brand"] : bubble ? colors["bg-medium"] : "transparent",
+                  selected && bubble
+                    ? colors["brand"]
+                    : bubble
+                    ? colors["bg-medium"]
+                    : "transparent",
               }}
               onClick={e => onChange(optionValueFn(option))}
             >
@@ -98,9 +108,7 @@ export default class Radio extends Component {
               {showButtons && (
                 <label htmlFor={this._id + "-" + optionKeyFn(option)} />
               )}
-              <span>
-                {optionNameFn(option)}
-              </span>
+              <span>{optionNameFn(option)}</span>
             </li>
           );
         })}

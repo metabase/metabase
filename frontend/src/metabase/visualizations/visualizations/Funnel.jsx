@@ -45,7 +45,11 @@ export default class Funnel extends Component {
   }
 
   static checkRenderable(series, settings) {
-    const [{ data: { rows } }] = series;
+    const [
+      {
+        data: { rows },
+      },
+    ] = series;
     if (series.length > 1) {
       return;
     }
@@ -95,7 +99,12 @@ export default class Funnel extends Component {
   };
 
   static transformSeries(series) {
-    let [{ card, data: { rows, cols } }] = series;
+    let [
+      {
+        card,
+        data: { rows, cols },
+      },
+    ] = series;
 
     const settings = getComputedSettingsForSeries(series);
 

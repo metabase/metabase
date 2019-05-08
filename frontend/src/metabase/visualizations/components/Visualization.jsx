@@ -416,16 +416,15 @@ export default class Visualization extends Component {
 
     let extra = (
       <span className="flex align-center">
-        {isSlow &&
-          !loading && (
-            <LoadingSpinner
-              size={18}
-              className={cx(
-                "Visualization-slow-spinner",
-                isSlow === "usually-slow" ? "text-gold" : "text-slate",
-              )}
-            />
-          )}
+        {isSlow && !loading && (
+          <LoadingSpinner
+            size={18}
+            className={cx(
+              "Visualization-slow-spinner",
+              isSlow === "usually-slow" ? "text-gold" : "text-slate",
+            )}
+          />
+        )}
         {actionButtons}
       </span>
     );

@@ -23,7 +23,10 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class QuestionEmbedWidget extends Component {
   render() {
     const {

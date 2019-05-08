@@ -15,24 +15,24 @@ const QuestionDescription = ({ question }) => {
       aggregations.length === 0
         ? null
         : aggregations.length > 2
-          ? ngettext(
-              msgid`${aggregations.length} metric`,
-              `${aggregations.length} metrics`,
-              aggregations.length,
-            )
-          : aggregations
-              .map(aggregation => aggregation.displayName())
-              .join(t` and `);
+        ? ngettext(
+            msgid`${aggregations.length} metric`,
+            `${aggregations.length} metrics`,
+            aggregations.length,
+          )
+        : aggregations
+            .map(aggregation => aggregation.displayName())
+            .join(t` and `);
     const breakoutDescription =
       breakouts.length === 0
         ? null
         : breakouts.length > 2
-          ? ngettext(
-              msgid`${breakouts.length} metric`,
-              `${breakouts.length} metrics`,
-              breakouts.length,
-            )
-          : breakouts.map(breakout => breakout.displayName()).join(t` and `);
+        ? ngettext(
+            msgid`${breakouts.length} metric`,
+            `${breakouts.length} metrics`,
+            breakouts.length,
+          )
+        : breakouts.map(breakout => breakout.displayName()).join(t` and `);
     if (aggregationDescription && breakoutDescription) {
       return (
         <span>{t`${aggregationDescription} by ${breakoutDescription}`}</span>

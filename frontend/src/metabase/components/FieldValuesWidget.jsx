@@ -368,4 +368,7 @@ const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
-export default connect(null, mapDispatchToProps)(FieldValuesWidget);
+export default connect(
+  null,
+  mapDispatchToProps,
+)(FieldValuesWidget);

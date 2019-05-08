@@ -89,27 +89,26 @@ export class ExplorePane extends React.Component {
             <span>{description}</span>
           </div>
         )}
-        {schemaNames &&
-          schemaNames.length > 1 && (
-            <div className="flex align-center ml-auto">
-              <div className="mr1">{t`Based on the schema`}</div>
-              <Select
-                value={schemaName}
-                onChange={e =>
-                  this.setState({
-                    schemaName: e.target.value,
-                    visibleItems: DEFAULT_VISIBLE_ITEMS,
-                  })
-                }
-              >
-                {schemaNames.map(schemaName => (
-                  <Option key={schemaName} value={schemaName}>
-                    {schemaName}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-          )}
+        {schemaNames && schemaNames.length > 1 && (
+          <div className="flex align-center ml-auto">
+            <div className="mr1">{t`Based on the schema`}</div>
+            <Select
+              value={schemaName}
+              onChange={e =>
+                this.setState({
+                  schemaName: e.target.value,
+                  visibleItems: DEFAULT_VISIBLE_ITEMS,
+                })
+              }
+            >
+              {schemaNames.map(schemaName => (
+                <Option key={schemaName} value={schemaName}>
+                  {schemaName}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        )}
         {tables && (
           <ExploreList
             candidates={tables}

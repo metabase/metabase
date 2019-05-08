@@ -173,14 +173,14 @@ export default class View extends React.Component {
           onClose={this.handleCloseFilter}
         />
       ) : canShowStructuredQuerySidebars &&
-      (isEditingAggregationIndex != null || isAddingAggregation) ? (
+        (isEditingAggregationIndex != null || isAddingAggregation) ? (
         <AggregationSidebar
           question={question}
           index={isEditingAggregationIndex}
           onClose={this.handleCloseAggregation}
         />
       ) : canShowStructuredQuerySidebars &&
-      (isEditingBreakoutIndex != null || isAddingBreakout) ? (
+        (isEditingBreakoutIndex != null || isAddingBreakout) ? (
         <BreakoutSidebar
           question={question}
           index={isEditingBreakoutIndex}

@@ -5,7 +5,8 @@ import ResizeObserver from "resize-observer-polyfill";
 
 export default measureClass => ComposedComponent =>
   class extends Component {
-    static displayName = "ExplicitSize[" +
+    static displayName =
+      "ExplicitSize[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

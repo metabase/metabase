@@ -134,7 +134,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ card }) => (card && card.name) || t`Question`)
 @fitViewport
 export default class QueryBuilder extends Component {

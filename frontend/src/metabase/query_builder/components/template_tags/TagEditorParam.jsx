@@ -29,7 +29,10 @@ type Props = {
   fetchField: FieldId => void,
 };
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchField },
+)
 export default class TagEditorParam extends Component {
   props: Props;
 
@@ -173,29 +176,28 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        {widgetOptions &&
-          widgetOptions.length > 0 && (
-            <div className="pb1">
-              <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
-              <Select
-                className="border-med bg-white block"
-                value={tag["widget-type"]}
-                onChange={e =>
-                  this.setParameterAttribute("widget-type", e.target.value)
-                }
-                isInitiallyOpen={!tag["widget-type"]}
-                placeholder={t`Select…`}
-              >
-                {[{ name: "None", type: undefined }]
-                  .concat(widgetOptions)
-                  .map(widgetOption => (
-                    <Option key={widgetOption.type} value={widgetOption.type}>
-                      {widgetOption.name}
-                    </Option>
-                  ))}
-              </Select>
-            </div>
-          )}
+        {widgetOptions && widgetOptions.length > 0 && (
+          <div className="pb1">
+            <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
+            <Select
+              className="border-med bg-white block"
+              value={tag["widget-type"]}
+              onChange={e =>
+                this.setParameterAttribute("widget-type", e.target.value)
+              }
+              isInitiallyOpen={!tag["widget-type"]}
+              placeholder={t`Select…`}
+            >
+              {[{ name: "None", type: undefined }]
+                .concat(widgetOptions)
+                .map(widgetOption => (
+                  <Option key={widgetOption.type} value={widgetOption.type}>
+                    {widgetOption.name}
+                  </Option>
+                ))}
+            </Select>
+          </div>
+        )}
 
         <div className="flex align-center pb1">
           <h5 className="text-normal mr1">{t`Required?`}</h5>

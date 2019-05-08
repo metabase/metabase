@@ -21,7 +21,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class CreateDashboardModal extends Component {
   static propTypes = {
     onClose: PropTypes.func,

@@ -310,10 +310,10 @@ const Query = {
       return isExpressionReference(obj)
         ? null
         : obj.constructor === Array
-          ? _.map(obj, removeExpressionReferences)
-          : typeof obj === "object"
-            ? _.mapObject(obj, removeExpressionReferences)
-            : obj;
+        ? _.map(obj, removeExpressionReferences)
+        : typeof obj === "object"
+        ? _.mapObject(obj, removeExpressionReferences)
+        : obj;
     }
 
     return this.cleanQuery(removeExpressionReferences(query));

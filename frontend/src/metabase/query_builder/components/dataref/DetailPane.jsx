@@ -16,25 +16,24 @@ const DetailPane = ({ name, description, extra, values }) => (
       {description || t`No description`}
     </p>
     {extra}
-    {values &&
-      values.length > 0 && (
-        <div>
-          <h5 className="text-uppercase mt4 mb2">Sample values</h5>
-          <Card>
-            <ul>
-              {values.map((value, i) => (
-                <li
-                  className={cx("p1", {
-                    "border-bottom": i < values.length - 1,
-                  })}
-                >
-                  {value[0]}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </div>
-      )}
+    {values && values.length > 0 && (
+      <div>
+        <h5 className="text-uppercase mt4 mb2">Sample values</h5>
+        <Card>
+          <ul>
+            {values.map((value, i) => (
+              <li
+                className={cx("p1", {
+                  "border-bottom": i < values.length - 1,
+                })}
+              >
+                {value[0]}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </div>
+    )}
   </div>
 );
 

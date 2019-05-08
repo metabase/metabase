@@ -105,18 +105,18 @@ export default class LegendHeader extends Component {
               onEditSeries
                 ? () => onEditSeries(s.card, index)
                 : s.clicked && visualizationIsClickable(s.clicked)
-                  ? e =>
-                      onVisualizationClick({
-                        ...s.clicked,
-                        element: e.currentTarget,
-                      })
-                  : onChangeCardAndRun
-                    ? () =>
-                        onChangeCardAndRun({
-                          nextCard: s.card,
-                          seriesIndex: index,
-                        })
-                    : null
+                ? e =>
+                    onVisualizationClick({
+                      ...s.clicked,
+                      element: e.currentTarget,
+                    })
+                : onChangeCardAndRun
+                ? () =>
+                    onChangeCardAndRun({
+                      nextCard: s.card,
+                      seriesIndex: index,
+                    })
+                : null
             }
             infoClassName={classNameWidgets}
           />,

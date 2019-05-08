@@ -112,11 +112,10 @@ function onRenderEnableDots(chart) {
   if (hasAuto) {
     // get all enabled or auto dots
     const dots = [].concat(
-      ...markerEnabledByIndex.map(
-        (markerEnabled, index) =>
-          markerEnabled === false
-            ? []
-            : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
+      ...markerEnabledByIndex.map((markerEnabled, index) =>
+        markerEnabled === false
+          ? []
+          : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
       ),
     );
     if (dots.length > 500) {
@@ -351,10 +350,12 @@ function onRenderRotateAxis(chart) {
   if (degrees !== 0) {
     chart.selectAll("g.x text").attr("transform", function() {
       const { width, height } = this.getBBox();
-      return (// translate left half the width so the right edge is at the tick
+      return (
+        // translate left half the width so the right edge is at the tick
         `translate(-${width / 2},${-height / 2}) ` +
         // rotate counter-clockwise around the right edge
-        `rotate(${-degrees}, ${width / 2}, ${height})` );
+        `rotate(${-degrees}, ${width / 2}, ${height})`
+      );
     });
   }
 }

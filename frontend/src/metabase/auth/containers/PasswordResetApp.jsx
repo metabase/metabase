@@ -30,7 +30,10 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PasswordResetApp extends Component {
   constructor(props, context) {
     super(props, context);

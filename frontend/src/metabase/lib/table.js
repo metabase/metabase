@@ -44,12 +44,14 @@ export function augmentDatabase(database) {
 async function loadForeignKeyTables(table) {
   // Load joinable tables
   await Promise.all(
-    table.fields.filter(f => f.target != null).map(async field => {
-      let targetTable = await MetabaseApi.table_query_metadata({
-        tableId: field.target.table_id,
-      });
-      field.target.table = populateQueryOptions(targetTable);
-    }),
+    table.fields
+      .filter(f => f.target != null)
+      .map(async field => {
+        let targetTable = await MetabaseApi.table_query_metadata({
+          tableId: field.target.table_id,
+        });
+        field.target.table = populateQueryOptions(targetTable);
+      }),
   );
   return table;
 }

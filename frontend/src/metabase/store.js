@@ -45,6 +45,10 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
   return createStore(
     reducer,
     intialState,
-    compose(applyMiddleware(...middleware), devToolsExtension, enhancer),
+    compose(
+      applyMiddleware(...middleware),
+      devToolsExtension,
+      enhancer,
+    ),
   );
 }

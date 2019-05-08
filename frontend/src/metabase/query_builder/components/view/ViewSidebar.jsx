@@ -26,7 +26,7 @@ const ViewSideBar = ({ left, right, width = 420, isOpen, children }) => (
           style={{
             width: width,
             right: left ? 0 : undefined,
-            left: right ? 0 : undefined
+            left: right ? 0 : undefined,
           }}
         >
           {children}

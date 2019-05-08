@@ -252,20 +252,17 @@ class DefaultLanding extends React.Component {
             </Box>
 
             <Flex ml="auto">
-              {isAdmin &&
-                !collection.personal_owner_id && (
-                  <Tooltip
-                    tooltip={t`Edit the permissions for this collection`}
+              {isAdmin && !collection.personal_owner_id && (
+                <Tooltip tooltip={t`Edit the permissions for this collection`}>
+                  <Link
+                    to={Urls.collectionPermissions(this.props.collectionId)}
                   >
-                    <Link
-                      to={Urls.collectionPermissions(this.props.collectionId)}
-                    >
-                      <IconWrapper>
-                        <Icon name="lock" />
-                      </IconWrapper>
-                    </Link>
-                  </Tooltip>
-                )}
+                    <IconWrapper>
+                      <Icon name="lock" />
+                    </IconWrapper>
+                  </Link>
+                </Tooltip>
+              )}
               {collection &&
                 collection.can_write &&
                 !collection.personal_owner_id && (
@@ -500,33 +497,31 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) &&
-          selectedAction == "copy" && (
-            <Modal onClose={this.handleCloseModal}>
-              <CollectionCopyEntityModal
-                entityObject={selectedItems[0]}
-                onClose={this.handleCloseModal}
-                onSaved={newEntityObject => {
-                  this.handleCloseModal();
-                  this.handleBulkActionSuccess();
-                }}
-              />
-            </Modal>
-          )}
-        {!_.isEmpty(selectedItems) &&
-          selectedAction == "move" && (
-            <Modal onClose={this.handleCloseModal}>
-              <CollectionMoveModal
-                title={
-                  selectedItems.length > 1
-                    ? t`Move ${selectedItems.length} items?`
-                    : t`Move "${selectedItems[0].getName()}"?`
-                }
-                onClose={this.handleCloseModal}
-                onMove={this.handleBulkMove}
-              />
-            </Modal>
-          )}
+        {!_.isEmpty(selectedItems) && selectedAction == "copy" && (
+          <Modal onClose={this.handleCloseModal}>
+            <CollectionCopyEntityModal
+              entityObject={selectedItems[0]}
+              onClose={this.handleCloseModal}
+              onSaved={newEntityObject => {
+                this.handleCloseModal();
+                this.handleBulkActionSuccess();
+              }}
+            />
+          </Modal>
+        )}
+        {!_.isEmpty(selectedItems) && selectedAction == "move" && (
+          <Modal onClose={this.handleCloseModal}>
+            <CollectionMoveModal
+              title={
+                selectedItems.length > 1
+                  ? t`Move ${selectedItems.length} items?`
+                  : t`Move "${selectedItems[0].getName()}"?`
+              }
+              onClose={this.handleCloseModal}
+              onMove={this.handleBulkMove}
+            />
+          </Modal>
+        )}
         <ItemsDragLayer selected={selected} />
       </Box>
     );
@@ -592,22 +587,21 @@ const PinnedItem = ({ item, index, collection }) => (
       <Icon name={item.getIcon()} color={item.getColor()} size={28} mb={2} />
       <Flex align="center">
         <h3>{item.getName()}</h3>
-        {collection.can_write &&
-          item.setPinned && (
-            <Box
-              ml="auto"
-              className="hover-child"
-              data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
-                item.model
-              }`}
-              onClick={ev => {
-                ev.preventDefault();
-                item.setPinned(false);
-              }}
-            >
-              <Icon name="pin" />
-            </Box>
-          )}
+        {collection.can_write && item.setPinned && (
+          <Box
+            ml="auto"
+            className="hover-child"
+            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
+              item.model
+            }`}
+            onClick={ev => {
+              ev.preventDefault();
+              item.setPinned(false);
+            }}
+          >
+            <Icon name="pin" />
+          </Box>
+        )}
       </Flex>
     </Card>
   </Link>
@@ -653,7 +647,10 @@ const SelectionControls = ({
 })
 class CollectionLanding extends React.Component {
   render() {
-    const { object: currentCollection, params: { collectionId } } = this.props;
+    const {
+      object: currentCollection,
+      params: { collectionId },
+    } = this.props;
     const isRoot = collectionId === "root";
 
     const ancestors =

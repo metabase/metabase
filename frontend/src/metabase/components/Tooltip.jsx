@@ -183,19 +183,17 @@ export class TestTooltip extends Component {
           {this.props.children}
         </TestTooltipTarget>
 
-        {tooltip &&
-          isEnabled &&
-          isOpen && (
-            <TestTooltipContent>
-              <TooltipPopover
-                isOpen={true}
-                target={this}
-                {...this.props}
-                children={this.props.tooltip}
-              />
-              {this.props.tooltip}
-            </TestTooltipContent>
-          )}
+        {tooltip && isEnabled && isOpen && (
+          <TestTooltipContent>
+            <TooltipPopover
+              isOpen={true}
+              target={this}
+              {...this.props}
+              children={this.props.tooltip}
+            />
+            {this.props.tooltip}
+          </TestTooltipContent>
+        )}
       </div>
     );
   }

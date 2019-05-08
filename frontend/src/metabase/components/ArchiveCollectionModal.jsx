@@ -16,7 +16,10 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 @Collection.load({
   id: (state, props) => props.params.collectionId,
 })

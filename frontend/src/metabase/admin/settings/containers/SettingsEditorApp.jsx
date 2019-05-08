@@ -45,7 +45,10 @@ const mapDispatchToProps = {
   ...settingsActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -188,9 +191,8 @@ export default class SettingsEditorApp extends Component {
       return (
         <ul>
           {activeSection.settings
-            .filter(
-              setting =>
-                setting.getHidden ? !setting.getHidden(settingValues) : true,
+            .filter(setting =>
+              setting.getHidden ? !setting.getHidden(settingValues) : true,
             )
             .map((setting, index) => (
               <SettingsSetting

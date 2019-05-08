@@ -18,7 +18,11 @@ const TableAccessChange = ({ tables, verb, color }) => {
       {verb}
       <Tooltip
         tooltip={
-          <div className="p1">{tableNames.map(name => <div>{name}</div>)}</div>
+          <div className="p1">
+            {tableNames.map(name => (
+              <div>{name}</div>
+            ))}
+          </div>
         }
       >
         <span>

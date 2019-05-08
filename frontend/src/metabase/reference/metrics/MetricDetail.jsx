@@ -75,7 +75,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -237,18 +240,17 @@ export default class MetricDetail extends Component {
                     field={how_is_this_calculated}
                   />
                 </li>
-                {table &&
-                  !isEditing && (
-                    <li className="relative">
-                      <Formula
-                        type="metric"
-                        entity={entity}
-                        isExpanded={isFormulaExpanded}
-                        expandFormula={expandFormula}
-                        collapseFormula={collapseFormula}
-                      />
-                    </li>
-                  )}
+                {table && !isEditing && (
+                  <li className="relative">
+                    <Formula
+                      type="metric"
+                      entity={entity}
+                      isExpanded={isFormulaExpanded}
+                      expandFormula={expandFormula}
+                      collapseFormula={collapseFormula}
+                    />
+                  </li>
+                )}
                 <li className="relative">
                   <MetricImportantFieldsDetail
                     fields={

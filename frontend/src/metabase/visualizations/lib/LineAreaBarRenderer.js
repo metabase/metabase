@@ -105,7 +105,9 @@ function getDatas({ settings, series }, warn) {
         // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
         isDimensionTimeseries(series) && !isQuantitative(settings)
           ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-          : isDimensionNumeric(series) ? row[0] : String(row[0]),
+          : isDimensionNumeric(series)
+          ? row[0]
+          : String(row[0]),
         ...row.slice(1),
       ];
       // $FlowFixMe: _origin not typed
@@ -242,12 +244,12 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
   return chartType === "scatter"
     ? getDimensionsAndGroupsForScatterChart(datas)
     : isStacked(settings, datas)
-      ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
-          props,
-          datas,
-          warn,
-        )
-      : getDimensionsAndGroupsForOther(props, datas, warn);
+    ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
+        props,
+        datas,
+        warn,
+      )
+    : getDimensionsAndGroupsForOther(props, datas, warn);
 }
 
 ///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
@@ -420,12 +422,14 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     const isBubble = datas[index][0].length > 2;
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
-      chart.radiusValueAccessor(d => d.value).r(
-        d3.scale
-          .sqrt()
-          .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
-          .range([0, 1]),
-      );
+      chart
+        .radiusValueAccessor(d => d.value)
+        .r(
+          d3.scale
+            .sqrt()
+            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+            .range([0, 1]),
+        );
     } else {
       chart.radiusValueAccessor(d => 1);
       chart.MIN_RADIUS = 3;

@@ -104,13 +104,12 @@ export default class NotebookStep extends React.Component {
           />
         )}
 
-        {showPreview &&
-          canPreview && (
-            <NotebookStepPreview
-              step={step}
-              onClose={() => this.setState({ showPreview: false })}
-            />
-          )}
+        {showPreview && canPreview && (
+          <NotebookStepPreview
+            step={step}
+            onClose={() => this.setState({ showPreview: false })}
+          />
+        )}
 
         {actionButtons.length > 0 && <Box mt={2}>{actionButtons}</Box>}
       </Box>

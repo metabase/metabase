@@ -90,7 +90,9 @@ function getFieldsForEngine(engine, values) {
         validate: value => (field.required && !value ? `required` : null),
         normalize: value =>
           value == "" || value == null
-            ? "default" in field ? field.default : null
+            ? "default" in field
+              ? field.default
+              : null
             : value,
       });
     }

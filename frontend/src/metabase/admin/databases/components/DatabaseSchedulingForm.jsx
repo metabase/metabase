@@ -155,8 +155,7 @@ export default class DatabaseSchedulingForm extends Component {
                                     can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.`}</p>
 
-                <h3
-                >{t`When should Metabase automatically scan and cache field values?`}</h3>
+                <h3>{t`When should Metabase automatically scan and cache field values?`}</h3>
                 <ol className="bordered shadowed mt3">
                   <li className="border-bottom">
                     <SyncOption

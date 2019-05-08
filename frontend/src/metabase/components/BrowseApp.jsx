@@ -88,7 +88,10 @@ export class SchemaBrowser extends React.Component {
 }))
 export class TableBrowser extends React.Component {
   render() {
-    const { metadata, params: { dbId, schemaName } } = this.props;
+    const {
+      metadata,
+      params: { dbId, schemaName },
+    } = this.props;
     return (
       <Box>
         <Table.ListLoader query={{ dbId, schemaName }}>

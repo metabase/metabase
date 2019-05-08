@@ -53,7 +53,11 @@ export default class Scalar extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -92,11 +96,26 @@ export default class Scalar extends Component {
   static settings = {
     ...fieldSetting("scalar.field", {
       title: t`Field to show`,
-      getDefault: ([{ data: { cols } }]) => cols[0].name,
-      getHidden: ([{ data: { cols } }]) => cols.length < 2,
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols[0].name,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.length < 2,
     }),
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
@@ -144,7 +163,12 @@ export default class Scalar extends Component {
   render() {
     let {
       actionButtons,
-      series: [{ card, data: { cols, rows } }],
+      series: [
+        {
+          card,
+          data: { cols, rows },
+        },
+      ],
       isDashboard,
       onChangeCardAndRun,
       gridSize,

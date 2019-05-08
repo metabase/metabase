@@ -19,7 +19,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 class DashboardMoveModal extends React.Component {
   render() {
     const { onClose, setDashboardCollection } = this.props;

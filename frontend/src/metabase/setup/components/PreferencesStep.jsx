@@ -101,8 +101,7 @@ export default class PreferencesStep extends Component {
                     <span style={{ fontWeight: "bold" }}>{t`never`}</span>
                   )} collects anything about your data or question results.`}</li>
                   <li>{t`All collection is completely anonymous.`}</li>
-                  <li
-                  >{t`Collection can be turned off at any point in your admin settings.`}</li>
+                  <li>{t`Collection can be turned off at any point in your admin settings.`}</li>
                 </ul>
               </div>
             ) : null}

@@ -67,7 +67,11 @@ export default class Table extends Component {
     return true;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -89,13 +93,27 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Pivot column`,
       widget: "field",
-      getDefault: ([{ data: { cols, rows } }], settings) => {
+      getDefault: (
+        [
+          {
+            data: { cols, rows },
+          },
+        ],
+        settings,
+      ) => {
         const col = _.min(cols.filter(isDimension), col =>
           getColumnCardinality(cols, rows, cols.indexOf(col)),
         );
         return col && col.name;
       },
-      getProps: ([{ data: { cols } }], settings) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
         options: cols.filter(isDimension).map(getOptionFromColumn),
       }),
       getHidden: (series, settings) => !settings["table.pivot"],
@@ -106,15 +124,35 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Cell column`,
       widget: "field",
-      getDefault: ([{ data: { cols, rows } }], settings) => {
+      getDefault: (
+        [
+          {
+            data: { cols, rows },
+          },
+        ],
+        settings,
+      ) => {
         const col = cols.filter(isMetric)[0];
         return col && col.name;
       },
-      getProps: ([{ data: { cols } }], settings) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
         options: cols.filter(isMetric).map(getOptionFromColumn),
       }),
-      getHidden: ([{ data: { cols } }], settings) =>
-        !settings["table.pivot"] || cols.filter(isMetric).length < 2,
+      getHidden: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => !settings["table.pivot"] || cols.filter(isMetric).length < 2,
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
@@ -129,12 +167,20 @@ export default class Table extends Component {
           card.visualization_settings["table.columns"].map(x => x.name),
           data,
         ),
-      getDefault: ([{ data: { cols } }]) =>
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) =>
         cols.map(col => ({
           name: col.name,
           enabled: col.visibility_type !== "details-only",
         })),
-      getProps: ([{ data: { cols } }]) => ({
+      getProps: ([
+        {
+          data: { cols },
+        },
+      ]) => ({
         columns: cols,
       }),
     },
@@ -143,16 +189,36 @@ export default class Table extends Component {
       section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
-      getProps: ([{ data: { cols } }], settings) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
         cols: cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
       }),
-      getHidden: ([{ data: { cols } }], settings) =>
-        cols.filter(isFormattable).length === 0,
+      getHidden: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => cols.filter(isFormattable).length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
-      getValue([{ data: { rows, cols } }], settings) {
+      getValue(
+        [
+          {
+            data: { rows, cols },
+          },
+        ],
+        settings,
+      ) {
         return makeCellBackgroundGetter(rows, cols, settings);
       },
       readDependencies: ["table.column_formatting", "table.pivot"],

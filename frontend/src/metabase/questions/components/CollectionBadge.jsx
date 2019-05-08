@@ -53,9 +53,7 @@ class CollectionBadge extends React.Component {
       >
         <Flex align="center">
           <Icon name={object.getIcon()} mr={1} />
-          <h4 style={{ fontWeight: 900 }}>
-            {object.name}
-          </h4>
+          <h4 style={{ fontWeight: 900 }}>{object.name}</h4>
         </Flex>
       </Link>
     );
