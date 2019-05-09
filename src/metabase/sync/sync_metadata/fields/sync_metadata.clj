@@ -27,6 +27,7 @@
         {new-database-type :database-type
          new-base-type     :base-type
          new-field-comment :field-comment} field-metadata
+        new-database-type                  (or new-database-type "NULL")
         new-special-type                   (common/special-type field-metadata)
 
         new-db-type?
