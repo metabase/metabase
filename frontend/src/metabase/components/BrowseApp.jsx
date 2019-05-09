@@ -203,10 +203,16 @@ export class DatabaseBrowser extends React.Component {
                     <Link
                       to={`browse/${database.id}`}
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                      hover={{ color: normal.blue }}
                     >
-                      <Card p={3} hover={{ color: normal.blue }}>
-                        <Icon name="database" color={normal.grey2} mb={3} />
-                        <Subhead>{database.name}</Subhead>
+                      <Card p={3}>
+                        <Icon
+                          name="database"
+                          color={normal.purple}
+                          mb={3}
+                          size={28}
+                        />
+                        <h3>{database.name}</h3>
                       </Card>
                     </Link>
                   </GridItem>
