@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
@@ -6,7 +7,7 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 const AggregationSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <SidebarContent onClose={onClose}>
+    <SidebarContent icon="insight" title={t`Pick the metric you'd like to see`} onClose={onClose}>
       <AggregationPopover
         key={index}
         query={question.query()}

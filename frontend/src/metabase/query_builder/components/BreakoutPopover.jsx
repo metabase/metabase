@@ -34,8 +34,9 @@ const BreakoutPopover = ({
   }
   return (
     <FieldList
-      className="text-green"
+      className="text-green pl2"
       maxHeight={maxHeight}
+      width={416}
       field={breakout}
       fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
       onFieldChange={field => {

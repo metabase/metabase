@@ -362,7 +362,8 @@ export default class AggregationPopover extends Component {
     } else {
       return (
         <AccordianList
-          className="text-green"
+          className="text-green pl2"
+          width={416}
           maxHeight={this.props.maxHeight}
           sections={sections}
           onChange={this.onPickAggregation}

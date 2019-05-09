@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
@@ -6,7 +7,7 @@ import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 const BreakoutSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <SidebarContent onClose={onClose}>
+    <SidebarContent icon="breakout" title={t`Pick a column to group by`} onClose={onClose}>
       <BreakoutPopover
         key={index}
         query={question.query()}
