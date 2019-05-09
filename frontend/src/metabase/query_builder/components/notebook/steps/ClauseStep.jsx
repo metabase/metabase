@@ -20,7 +20,7 @@ export default function ClauseStep({
         <PopoverWithTrigger
           triggerElement={
             <NotebookCellItem color={color}>
-              {renderName(item)}
+              {renderName(item, index)}
               {onRemove && (
                 <Icon
                   ml={1}

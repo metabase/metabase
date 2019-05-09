@@ -60,7 +60,11 @@ function getQuestionSteps(question, openSteps) {
     }
 
     const last = steps[steps.length - 1];
-    if (last.type === "breakout" || last.type === "sort") {
+    if (
+      last.type === "breakout" ||
+      last.type === "sort" ||
+      last.type === "limit"
+    ) {
       last.actions.push({
         type: "filter",
         action: ({ query, openStep }) => {
@@ -79,6 +83,12 @@ const STEPS = [
     type: "data",
     valid: query => !query.sourceQuery(),
     visible: query => true,
+    revert: query => query,
+  },
+  {
+    type: "join",
+    valid: query => true,
+    visible: query => false,
     revert: query => query,
   },
   {
@@ -105,14 +115,20 @@ const STEPS = [
     visible: query => query.breakouts().length > 0,
     revert: query => query.clearBreakouts(),
   },
-  // {
-  //   type: "sort",
-  //   valid: query =>
-  //     !!query.table() &&
-  //     (query.aggregations().length === 0 || query.breakouts().length > 0),
-  //   visible: query => query.sorts().length > 0,
-  //   revert: query => query.clearSort(),
-  // },
+  {
+    type: "sort",
+    valid: query =>
+      !!query.table() &&
+      (query.aggregations().length === 0 || query.breakouts().length > 0),
+    visible: query => query.sorts().length > 0,
+    revert: query => query.clearSort(),
+  },
+  {
+    type: "limit",
+    valid: query => true,
+    visible: query => query.limit() != null,
+    revert: query => query.clearLimit(),
+  },
 ];
 
 function getStageSteps(query, stageIndex, openSteps) {
@@ -131,7 +147,7 @@ function getStageSteps(query, stageIndex, openSteps) {
   }));
 
   // sort/limit not currently covered by steps so revert them manually
-  let previewQuery = query.clearSort().clearLimit();
+  let previewQuery = query; //.clearSort().clearLimit();
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions

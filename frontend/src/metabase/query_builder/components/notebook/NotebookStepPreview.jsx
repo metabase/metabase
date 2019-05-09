@@ -11,7 +11,9 @@ import Question from "metabase-lib/lib/Question";
 
 const NotebookStepPreview = ({ step, onClose, ...props }) => {
   const query = step.previewQuery;
-  const question = Question.create().setQuery(query.updateLimit(10));
+  const question = Question.create().setQuery(
+    query.limit() < 10 ? query : query.updateLimit(10),
+  );
   return (
     <Box pt={2}>
       <Flex align="center" mb={1}>

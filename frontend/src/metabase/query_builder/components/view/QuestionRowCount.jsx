@@ -1,13 +1,11 @@
 import React from "react";
 
-import cx from "classnames";
 import { ngettext, msgid, t } from "ttag";
 
 import { formatNumber } from "metabase/lib/formatting";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Input from "metabase/components/Input";
-import Radio from "metabase/components/Radio";
+import LimitPopover from "metabase/query_builder/components/LimitPopover";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -48,30 +46,18 @@ const QuestionRowCount = ({
         triggerClasses={limit != null ? "text-brand" : ""}
       >
         {({ onClose }) => (
-          <div className="p2 text-bold text-medium">
-            <Radio
-              vertical
-              value={limit == null ? "maximum" : "custom"}
-              options={[
-                { name: t`Show maximum`, value: "maximum" },
-                {
-                  name: (
-                    <CustomRowLimit
-                      key={limit == null ? "a" : "b"}
-                      query={query}
-                      onClose={onClose}
-                    />
-                  ),
-                  value: "custom",
-                },
-              ]}
-              onChange={value =>
-                value === "maximum"
-                  ? query.clearLimit().update()
-                  : query.updateLimit(2000).update()
+          <LimitPopover
+            className="p2"
+            limit={limit}
+            onChangeLimit={limit => {
+              if (limit > 0) {
+                query.updateLimit(limit).update();
+              } else {
+                query.clearLimit().update();
               }
-            />
-          </div>
+            }}
+            onClose={onClose}
+          />
         )}
       </PopoverWithTrigger>
     );
@@ -80,30 +66,6 @@ const QuestionRowCount = ({
   }
 
   return <span className={className}>{content}</span>;
-};
-
-const CustomRowLimit = ({ query, onClose }) => {
-  const limit = query.limit();
-
-  return (
-    <Input
-      small
-      defaultValue={limit}
-      className={cx({ "text-brand border-brand": limit != null })}
-      placeholder={t`Pick a limit`}
-      onKeyPress={e => {
-        if (e.key === "Enter") {
-          const value = parseInt(e.target.value, 10);
-          if (value > 0) {
-            query.updateLimit(value).update();
-          } else {
-            query.clearLimit().update();
-          }
-          onClose();
-        }
-      }}
-    />
-  );
 };
 
 QuestionRowCount.shouldRender = ({ question, result, isObjectDetail }) =>

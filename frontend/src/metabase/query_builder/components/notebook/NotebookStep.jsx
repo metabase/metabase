@@ -11,15 +11,23 @@ import { Box } from "grid-styled";
 import NotebookStepPreview from "./NotebookStepPreview";
 
 import DataStep from "./steps/DataStep";
+import JoinStep from "./steps/JoinStep";
 import ExpressionStep from "./steps/ExpressionStep";
 import FilterStep from "./steps/FilterStep";
 import AggregateStep from "./steps/AggregateStep";
 import BreakoutStep from "./steps/BreakoutStep";
 import SortStep from "./steps/SortStep";
+import LimitStep from "./steps/LimitStep";
 
 const STEP_UI = {
   data: {
     component: DataStep,
+  },
+  join: {
+    title: t`Add data`,
+    color: colors["brand"],
+    icon: "connections",
+    component: JoinStep,
   },
   expression: {
     title: t`Custom fields`,
@@ -48,8 +56,14 @@ const STEP_UI = {
   sort: {
     title: t`Sort`,
     color: colors["text-medium"],
-    icon: "sort",
+    icon: "smartscalar",
     component: SortStep,
+  },
+  limit: {
+    title: t`Limit`,
+    color: colors["text-medium"],
+    icon: "bolt",
+    component: LimitStep,
   },
 };
 
