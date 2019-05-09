@@ -237,6 +237,9 @@ jobs:
       wait-for-port:
         type: string
         default: ""
+      auto-retry:
+        type: boolean
+        default: false
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -262,14 +265,30 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   wget --output-document=plugins/<< parameters.jdbc-driver-dest >> ${<< parameters.jdbc-driver-source >>}
                 no_output_timeout: 5m
-      - run:
-          name: Test << parameters.driver >> driver
-          environment:
-            DRIVERS: h2,<< parameters.driver >>
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-            lein with-profile +ci test
-          no_output_timeout: << parameters.timeout >>
+      - unless:
+          condition: << parameters.auto-retry >>
+          steps:
+            - run:
+                name: Test << parameters.driver >> driver
+                environment:
+                  DRIVERS: h2,<< parameters.driver >>
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  lein with-profile +ci test
+                no_output_timeout: << parameters.timeout >>
+      # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
+      - when:
+          condition: << parameters.auto-retry >>
+          steps:
+            - run:
+                name: Test << parameters.driver >> driver
+                environment:
+                  DRIVERS: h2,<< parameters.driver >>
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  lein with-profile +ci test || lein with-profile +ci test
+                no_output_timeout: << parameters.timeout >>
+
 
   test-migrate-from-h2:
     parameters:
@@ -534,7 +553,7 @@ workflows:
           requires:
             - be-tests
           driver: snowflake
-          timeout: 10m
+          timeout: 15m
 
       - test-driver:
           name: be-tests-sparksql
@@ -564,6 +583,7 @@ workflows:
           jdbc-driver-source: VERTICA_JDBC_JAR
           jdbc-driver-dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
+          auto-retry: true
 
       - test-migrate-from-h2:
           name: be-tests-migrate-to-postgres
