@@ -177,24 +177,27 @@
 
 ;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
+(defn- date-add-days
+  "Add `n-days` to a datetime clause (`:absolute-datetime` or `:relative-datetime`) Done to fix off-by-one issues with
+  GA. See #9904"
+  [[clause-name time-component unit, :as datetime-clause] n-days]
+  (case clause-name
+    :absolute-datetime
+    [:absolute-datetime (du/relative-date :day n-days (du/date-trunc unit time-component)) unit]
 
-(defn- date-sub-day [[clause time-component unit :as value]]
-  (case clause
-    :absolute-datetime [:absolute-datetime (du/relative-date :day -1 (du/date-trunc unit time-component)) :day]
-    :relative-datetime (if (= unit :day)
-                         [clause (- time-component 1) unit]
-                         [:absolute-datetime
-                          (du/relative-date :day -1 (du/date-trunc unit (du/relative-date unit time-component))) :day])
-    value))
+    :relative-datetime
+    (if (= unit :day)
+      [clause-name (+ time-component n-days) unit]
+      [:absolute-datetime
+       (du/relative-date :day n-days (du/date-trunc unit (du/relative-date unit time-component))) :day])
 
-(defn- date-add-day [[clause time-component unit :as value]]
-  (case clause
-    :absolute-datetime [:absolute-datetime (du/relative-date :day 1 (du/date-trunc unit time-component)) unit]
-    :relative-datetime (if (= unit :day)
-                         [clause (+ time-component 1) unit]
-                         [:absolute-datetime
-                          (du/relative-date :day 1 (du/date-trunc unit (du/relative-date unit time-component))) :day])
-    value))
+    datetime-clause))
+
+(defn- date-sub-day [datetime-clause]
+  (date-add-days datetime-clause -1))
+
+(defn- date-add-day [datetime-clause]
+  (date-add-days datetime-clause 1))
 
 
 (defmulti ^:private parse-filter:interval mbql.u/dispatch-by-clause-name-or-class)

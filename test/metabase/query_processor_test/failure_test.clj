@@ -4,7 +4,9 @@
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 (defn- bad-query []
   {:database (data/id)
@@ -27,12 +29,13 @@
                 "LIMIT 1048576")
    :params nil})
 
-(def ^:private ^{:arglists '([stacktrace])} valid-stacktrace? (every-pred seq (partial every? (every-pred string? seq))))
+(def ^:private ^{:arglists '([stacktrace])} valid-stacktrace?
+  (complement (partial s/check [su/NonBlankString])))
 
 ;; running a bad query via `process-query` should return stacktrace, query, preprocessed query, and native query
 (expect
   {:status       :failed
-   :class        java.util.concurrent.ExecutionException
+   :class        Exception
    :error        true
    :stacktrace   true
    ;; `:database` is removed by the catch-exceptions middleware for historical reasons
