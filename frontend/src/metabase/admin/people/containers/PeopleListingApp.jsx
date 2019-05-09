@@ -7,6 +7,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
 
+import colors from "metabase/lib/colors";
+
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
@@ -140,8 +142,10 @@ export default class PeopleListingApp extends Component {
                   <td>
                     <span className="text-white inline-block">
                       <UserAvatar
-                        background={
-                          user.is_superuser ? "bg-purple" : "bg-brand"
+                        bg={
+                          user.is_superuser
+                            ? colors["accent2"]
+                            : colors["brand"]
                         }
                         user={user}
                       />
