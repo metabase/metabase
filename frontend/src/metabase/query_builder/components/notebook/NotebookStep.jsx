@@ -26,7 +26,7 @@ const STEP_UI = {
   join: {
     title: t`Add data`,
     color: colors["brand"],
-    icon: "connections",
+    icon: "join_left_outer",
     component: JoinStep,
   },
   expression: {
