@@ -9,16 +9,23 @@
             [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
-             [query-execution :refer [QueryExecution]]]
+             [database :as database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [query-execution :refer [QueryExecution]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
@@ -263,3 +270,20 @@
             :type     :query
             :query    {:source-table (data/id :venues)}})]
       (or row-count result))))
+
+;; make sure `POST /dataset` calls check user permissions
+(tu/expect-schema
+ {:status   (s/eq "failed")
+  :error    (s/eq "You do not have permissions to run this query.")
+  s/Keyword s/Any}
+ (tt/with-temp* [Database [{db-id :id}    (select-keys (data/db) [:engine :details])]
+                 Table    [{table-id :id} {:db_id db-id, :name "VENUES"}]
+                 Field    [_              {:table_id table-id, :name "ID"}]]
+   ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
+   ;; the Database
+   (perms/revoke-permissions! (group/all-users) db-id)
+   (perms/grant-permissions! (group/all-users) db-id "schema_that_does_not_exist")
+   ((test-users/user->client :rasta) :post "dataset"
+    {:database db-id
+     :type     :query
+     :query    {:source-table table-id, :limit 1}})))

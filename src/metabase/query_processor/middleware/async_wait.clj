@@ -13,7 +13,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
-  (:import [java.util.concurrent Executors ExecutorService]))
+  (:import clojure.lang.Var
+           [java.util.concurrent Executors ExecutorService]))
 
 (defsetting max-simultaneous-queries-per-db
   (trs "Maximum number of simultaneous queries to allow per connected Database.")
@@ -60,12 +61,16 @@
 (def ^:private ^:dynamic *already-in-thread-pool?* false)
 
 (defn- runnable ^Runnable [qp query respond raise canceled-chan]
-  (fn []
-    (binding [*already-in-thread-pool?* true]
-      (try
-        (qp query respond raise canceled-chan)
-        (catch Throwable e
-          (raise e))))))
+  ;; stash & restore bound dynamic vars. This is how Clojure does it for futures and the like in `binding-conveyor-fn`
+  ;; (see source for `future` or `future-call`) which is unfortunately private
+  (let [frame (Var/cloneThreadBindingFrame)]
+    (^:once fn* []
+     (Var/resetThreadBindingFrame frame)
+     (binding [*already-in-thread-pool?* true]
+       (try
+         (qp query respond raise canceled-chan)
+         (catch Throwable e
+           (raise e)))))))
 
 (defn- run-in-thread-pool [qp {database-id :database, :as query} respond raise canceled-chan]
   (try
