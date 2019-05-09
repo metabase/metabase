@@ -152,6 +152,11 @@
   :type    :integer
   :default 10)
 
+(defsetting enable-password-login
+  (tru "Allow logging in by email and password.")
+  :type    :boolean
+  :default true)
+
 (defsetting breakout-bins-num
   (tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
   :type :integer

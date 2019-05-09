@@ -14,11 +14,11 @@
 (defn- expand-parameters*
   "Expand any `:parameters` set on the `query-dict` and apply them to the query definition. This function removes
   the `:parameters` attribute from the `query-dict` as part of its execution."
-  [{:keys [parameters], query-type :type, :as query-dict}]
+  [{:keys [parameters], query-type :type, :as outer-query}]
   ;; params in native queries are currently only supported for SQL drivers
   (if (= query-type :query)
-    (mbql-params/expand (dissoc query-dict :parameters) parameters)
-    (sql-params/expand query-dict)))
+    (mbql-params/expand (dissoc outer-query :parameters) parameters)
+    (sql-params/expand outer-query)))
 
 (defn- expand-params-in-native-source-query
   "Expand parameters in a native source query."

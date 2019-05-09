@@ -146,12 +146,12 @@
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
-    (when (contains? collection :personal_owner_id)
-      (when-not (= location "/")
-        (throw
-         (ui18n/ex-info (tru "You cannot move a Personal Collection.")
-           {:status-code 400
-            :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
+    (when (and (:personal_owner_id collection)
+               (not= location "/"))
+      (throw
+       (ui18n/ex-info (tru "You cannot move a Personal Collection.")
+         {:status-code 400
+          :errors      {:location (tru "You cannot move a Personal Collection.")}})))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
