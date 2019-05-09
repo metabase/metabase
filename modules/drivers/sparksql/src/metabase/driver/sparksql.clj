@@ -88,12 +88,11 @@
   (when s
     (s/replace s #"-" "_")))
 
-(defn- valid-describe-table-row [row]
-  (not (or
-        (s/blank? (:col_name row))
-        (s/starts-with? (:col_name row) "#") ;; Hive describe table result has commented rows to distinguish partitions
-        (s/blank? (:data_type row))
-        (s/starts-with? (:data_type row) "#"))))
+;; Hive describe table result has commented rows to distinguish partitions
+(defn- valid-describe-table-row? [{:keys [col_name data_type]}]
+  (every? (every-pred (complement s/blank?)
+                      (complement #(s/starts-with? % "#")))
+          [col_name data_type]))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql [_ {:keys [details] :as database}]
@@ -115,7 +114,7 @@
                                                       (dash-to-underscore (:schema table))
                                                       (dash-to-underscore (:name table)))
                                               (str "describe " (dash-to-underscore (:name table))))])
-                        :when (valid-describe-table-row result)]
+                        :when (valid-describe-table-row? result)]
                     {:name          (:col_name result)
                      :database-type (:data_type result)
                      :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword (:data_type result)))}))}))
