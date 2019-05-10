@@ -133,7 +133,7 @@ export class NewQueryOptions extends Component {
     }
 
     {/* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */}
-    const NUM_ITEMS = showMetricOption + showSQLOption + 2;
+    const NUM_ITEMS = showMetricOption + showSQLOption + 1;
     const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
 
     return (
@@ -149,16 +149,6 @@ export class NewQueryOptions extends Component {
               />
             </GridItem>
           )}
-          <GridItem w={ITEM_WIDTHS}>
-            {/*TODO: Move illustrations to the new location in file hierarchy. At the same time put an end to the equal-size-@2x ridicule. */}
-            <NewQueryOption
-              image="app/img/segments_illustration"
-              title={t`Browse data`}
-              description={t`Look through the tables in the databases connected to Metabase.`}
-              width={170}
-              to={dataBrowseUrl}
-            />
-          </GridItem>
           <GridItem w={ITEM_WIDTHS}>
             <NewQueryOption
               image="app/img/query_builder_illustration"

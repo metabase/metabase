@@ -295,8 +295,18 @@ export default class Navbar extends Component {
         <Flex ml="auto" align="center" className="relative z2">
           {hasDataAccess && (
             <Link
+              to={"/browse"}
+              mx={1}
+              className="hide sm-show"
+              data-metabase-event={`NavBar;Browse Data`}
+            >
+              <Button dark white>{t`Data`}</Button>
+            </Link>
+          )}
+          {hasDataAccess && (
+            <Link
               to={Urls.newQuestion()}
-              mx={3}
+              mx={2}
               className="hide sm-show"
               data-metabase-event={`NavBar;New Question`}
             >
