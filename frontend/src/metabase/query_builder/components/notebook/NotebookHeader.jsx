@@ -16,19 +16,6 @@ const NotebookHeader = ({
   setUIControls,
 }) => (
   <Flex p={2} align="center" justify="flex-end" className={className}>
-    {isRunnable && (
-      <Button
-        medium
-        primary
-        ml={1}
-        onClick={() => {
-          if (isResultDirty) {
-            runQuestionQuery();
-          }
-          onSetQueryBuilderMode("view");
-        }}
-      >{t`Visualize`}</Button>
-    )}
     {isDirty && (
       <Button
         medium
