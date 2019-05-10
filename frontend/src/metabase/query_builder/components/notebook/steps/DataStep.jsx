@@ -31,4 +31,4 @@ export default function DataStep({ query }) {
   );
 }
 
-const NewQuestionTriggerElement = () => <span>{t`New Question`}</span>;
+const NewQuestionTriggerElement = () => <span>{t`Pick your data`}</span>;

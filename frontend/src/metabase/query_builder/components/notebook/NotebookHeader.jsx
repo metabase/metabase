@@ -16,6 +16,13 @@ const NotebookHeader = ({
   setUIControls,
 }) => (
   <Flex p={2} align="center" justify="flex-end" className={className}>
+    {!isDirty && (
+      <Button
+        medium
+        ml={1}
+        onClick={() => onSetQueryBuilderMode("view")}
+      >{t`Done`}</Button>
+    )}
     {isDirty && (
       <Button
         medium
