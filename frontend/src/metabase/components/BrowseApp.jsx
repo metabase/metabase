@@ -17,7 +17,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
-import Icon from "metabase/components/Icon";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
@@ -194,6 +194,7 @@ export class DatabaseBrowser extends React.Component {
     return (
       <Box>
         <BrowseHeader crumbs={[{ title: t`Our data` }]} />
+
         <Database.ListLoader>
           {({ databases, loading, error }) => {
             return (
@@ -230,6 +231,18 @@ function BrowseHeader({ crumbs }) {
   return (
     <Box mt={3} mb={2}>
       <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+      <div className="flex">
+        <Link
+          className="flex-align-right"
+          to="reference"
+          data-metabase-event={`NavBar;Reference`}
+        >
+          <div className="flex flex-align-center">
+            <Icon className="flex flex-align-center" size={18} name="reference" />
+            <h3 className="ml1 flex flex-align-center">Learn more about our data</h3>
+          </div>
+        </Link>
+      </div>
     </Box>
   );
 }

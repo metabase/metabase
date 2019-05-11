@@ -295,16 +295,6 @@ export default class Navbar extends Component {
         <Flex ml="auto" align="center" className="relative z2">
           {hasDataAccess && (
             <Link
-              to={"/browse"}
-              mx={1}
-              className="hide sm-show"
-              data-metabase-event={`NavBar;Browse Data`}
-            >
-              <Button dark white>{t`Data`}</Button>
-            </Link>
-          )}
-          {hasDataAccess && (
-            <Link
               to={Urls.newQuestion()}
               mx={2}
               className="hide sm-show"
@@ -333,14 +323,14 @@ export default class Navbar extends Component {
             ]}
           />
           {hasDataAccess && (
-            <Tooltip tooltip={t`Reference`}>
+            <Tooltip tooltip={t`Browse data`}>
               <Link
                 ml={2}
-                to="reference"
-                data-metabase-event={`NavBar;Reference`}
+                to="browse"
+                data-metabase-event={`NavBar;Data Browse`}
               >
                 <IconWrapper>
-                  <Icon size={18} name="reference" />
+                  <Icon size={18} name="table2" />
                 </IconWrapper>
               </Link>
             </Tooltip>
