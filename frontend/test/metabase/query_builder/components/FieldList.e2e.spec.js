@@ -73,12 +73,12 @@ describe("FieldList", () => {
   });
 
   it("should show the query definition tooltip correctly for a segment", async () => {
-    const { payload: segment } = await Segments.actions.create(
-      orders_past_300_days_segment,
+    const store = await createTestStore();
+    const { payload: segment } = await store.dispatch(
+      Segments.actions.create(orders_past_300_days_segment),
     );
     cleanup.segment(segment);
 
-    const store = await createTestStore();
     await store.dispatch(fetchDatabases());
     await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
     await store.dispatch(fetchSegments());
