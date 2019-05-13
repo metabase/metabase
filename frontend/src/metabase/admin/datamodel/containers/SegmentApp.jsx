@@ -6,24 +6,18 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import SegmentForm from "./SegmentForm.jsx";
 
-// import { segmentEditSelectors } from "../selectors";
 import * as actions from "../datamodel";
-// import { clearRequestState } from "metabase/redux/requests";
 import { getMetadata } from "metabase/selectors/metadata";
-// import { fetchTableMetadata } from "metabase/redux/metadata";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 
 const mapDispatchToProps = {
   ...actions,
-  // fetchTableMetadata,
-  // clearRequestState,
   createSegment: Segments.actions.create,
   onChangeLocation: push,
 };
 
 const mapStateToProps = (state, props) => ({
-  // ...segmentEditSelectors(state, props),
   metadata: getMetadata(state, props),
 });
 
