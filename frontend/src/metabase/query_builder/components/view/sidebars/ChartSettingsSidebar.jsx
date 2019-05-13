@@ -20,23 +20,28 @@ const ChartSettingsSidebar = ({
 }) =>
   result && (
     <div className="full-height">
-      <div
-        className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer"
-        onClick={() =>
-          setUIControls({
-            isShowingChartSettingsSidebar: false,
-            isShowingChartTypeSidebar: true,
-          })
-        }
-      >
-        <Icon name="chevronleft" className="text-medium" />
-        <Icon
-          name={getIconForVisualizationType(question.display())}
-          className="ml2 mr1"
-        />
-        <h3 className="text-heavy">
-          {visualizations.get(question.display()).uiName} {t`options`}
-        </h3>
+      <div className="flex align-center px4 py2 mb1 bg-brand text-white">
+        <div
+          className="flex align-center cursor-pointer"
+          onClick={() =>
+            setUIControls({
+              isShowingChartSettingsSidebar: false,
+              isShowingChartTypeSidebar: true,
+            })
+          }
+        >
+          <Icon name="chevronleft" />
+          <h3 className="text-heavy ml1">
+            {visualizations.get(question.display()).uiName} {t`options`}
+          </h3>
+        </div>
+        <Button
+          white
+          className="flex-align-right"
+          onClick={onClose}
+        >
+          {t`Done`}
+        </Button>
       </div>
       <ChartSettings
         question={question}
@@ -52,11 +57,6 @@ const ChartSettingsSidebar = ({
         noPreview
         initial={initialChartSetting}
       />
-      <div className="flex">
-        <Button medium primary onClick={onClose} className="mx4 mb3 flex-full">
-          {t`Done`}
-        </Button>
-      </div>
     </div>
   );
 
