@@ -9,10 +9,10 @@ import Button from "metabase/components/Button";
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["table", "map"],
-  ["scalar", "smartscalar", "progress", "gauge"],
-  ["scatter", "row", "pie", "funnel"],
   ["line", "bar", "combo", "area"],
+  ["scatter", "row", "pie", "funnel"],
+  ["scalar", "smartscalar", "progress", "gauge"],
+  ["table", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -37,7 +37,21 @@ const ChartTypeSidebar = ({
   const layout = [...FIXED_LAYOUT, ...otherGrouped];
 
   return (
-    <div className="absolute bottom scroll-y" style={{width: 420}}>
+    <div className="scroll-y">
+      <div className="flex align-center px4 py2 bg-brand">
+        <h3 className="text-heavy text-white">{t`Choose a visualization`}</h3>
+        <Button
+          white
+          className="flex-align-right"
+          onClick={() =>
+            setUIControls({
+              isShowingChartTypeSidebar: false, // TODO: move to reducer
+            })
+          }
+        >
+          {t`Done`}
+        </Button>
+      </div>
       {layout.map(row => (
         <div className="flex border-row-divider py2 px4">
           {row.map(type => {
@@ -64,20 +78,6 @@ const ChartTypeSidebar = ({
           })}
         </div>
       ))}
-      <div className="flex align-center px4 py2 bg-brand">
-        <h3 className="text-heavy text-white">{t`Choose a visualization`}</h3>
-        <Button
-          white
-          className="flex-align-right"
-          onClick={() =>
-            setUIControls({
-              isShowingChartTypeSidebar: false, // TODO: move to reducer
-            })
-          }
-        >
-          {t`Done`}
-        </Button>
-      </div>
     </div>
   );
 };
