@@ -8,12 +8,25 @@ import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
 
+export function getForm(entityDef, formName = null) {
+  // 1. named form
+  // 2. default `form`
+  // 3. first of the named `forms`
+  return formName
+    ? entityDef.forms[formName]
+    : entityDef.form
+    ? entityDef.form
+    : Object.values(entityDef.forms)[0];
+}
+
 @entityType()
 export default class EntityForm extends React.Component {
   render() {
     const {
       entityDef,
       entityObject,
+      formName,
+      form = getForm(entityDef, formName),
       update,
       create,
       // defaults to `create` or `update` (if an id is present)
@@ -25,10 +38,10 @@ export default class EntityForm extends React.Component {
       title,
       ...props
     } = this.props;
-    const form = (
+    const eForm = (
       <Form
         {...props}
-        form={entityDef.form}
+        form={form}
         initialValues={entityObject}
         onSubmit={onSubmit}
         onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
@@ -45,11 +58,11 @@ export default class EntityForm extends React.Component {
           }
           onClose={onClose}
         >
-          {form}
+          {eForm}
         </ModalContent>
       );
     } else {
-      return form;
+      return eForm;
     }
   }
 }
