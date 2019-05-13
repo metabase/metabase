@@ -71,7 +71,7 @@ export class WindowModal extends Component {
     );
     return (
       <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
-        <div className={cx(className, "relative bordered bg-white rounded")}>
+        <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
             fullPageModal: false,
