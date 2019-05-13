@@ -6,7 +6,11 @@
   The most appropriate way to initialize tasks in any `metabase.task.*` namespace is to implement the `task-init`
   function which accepts zero arguments. This function is dynamically resolved and called exactly once when the
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
-  task to the scheduler as usual via `schedule-task!`."
+  task to the scheduler as usual via `schedule-task!`.
+
+  ## Quartz JavaDoc
+
+  Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -18,7 +22,7 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [org.quartz JobDetail JobKey Scheduler Trigger TriggerKey]))
+  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -27,6 +31,7 @@
 (defonce ^:private quartz-scheduler
   (atom nil))
 
+;; TODO - maybe we should make this a delay instead!
 (defn- scheduler
   "Fetch the instance of our Quartz scheduler. Call this function rather than dereffing the atom directly because there
   are a few places (e.g., in tests) where we swap the instance out."
@@ -155,6 +160,16 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private reschedule-task!
+  [job :- JobDetail, new-trigger :- Trigger]
+  (try
+    (when-let [scheduler (scheduler)]
+      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey job)))]
+        (log/debug (trs "Rescheduling job {0}" (-> job .getKey .getName)))
+        (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
+    (catch Throwable e
+      (log/error e (trs "Error rescheduling job")))))
+
 (s/defn schedule-task!
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
@@ -162,7 +177,8 @@
     (try
       (qs/schedule scheduler job trigger)
       (catch org.quartz.ObjectAlreadyExistsException _
-        (log/debug (trs "Job already exists:") (-> job .getKey .getName))))))
+        (log/debug (trs "Job already exists:") (-> job .getKey .getName))
+        (reschedule-task! job trigger)))))
 
 (s/defn delete-task!
   "delete a task from the scheduler"
@@ -202,7 +218,12 @@
    :durable?                           (.isDurable job-detail)
    :requests-recovery?                 (.requestsRecovery job-detail)})
 
-(defn- trigger->info [^Trigger trigger]
+(defmulti ^:private trigger->info
+  {:arglists '([trigger])}
+  class)
+
+(defmethod trigger->info Trigger
+  [^Trigger trigger]
   {:description        (.getDescription trigger)
    :end-time           (.getEndTime trigger)
    :final-fire-time    (.getFinalFireTime trigger)
@@ -213,6 +234,19 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)})
+
+(defmethod trigger->info CronTrigger
+  [^CronTrigger trigger]
+  (merge
+   ((get-method trigger->info Trigger) trigger)
+   {:misfire-instruction
+    ;; not 100% sure why `case` doesn't work here...
+    (condp = (.getMisfireInstruction trigger)
+      CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY "IGNORE_MISFIRE_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_SMART_POLICY          "SMART_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_FIRE_ONCE_NOW         "FIRE_ONCE_NOW"
+      CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING            "DO_NOTHING"
+      (format "UNKNOWN: %d" (.getMisfireInstruction trigger)))}))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging

@@ -22,7 +22,7 @@
   (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))
 
 (defn- replace-trailing-id-with-<id> [s]
-  (str/replace s #"\d+$" "<id>"))
+  (some-> s (str/replace #"\d+$" "<id>")))
 
 (defn- replace-ids-with-<id> [current-tasks]
   (vec (for [task current-tasks]
@@ -36,7 +36,9 @@
                                             (update-in [:data "db-id"] replace-trailing-id-with-<id>))))))))))
 
 (defn- current-tasks []
-  (replace-ids-with-<id> (tu/scheduler-current-tasks)))
+  (->> (tu/scheduler-current-tasks)
+       (filter #(#{"metabase.task.sync-and-analyze.job" "metabase.task.update-field-values.job"} (:key %)))
+       replace-ids-with-<id>))
 
 (defmacro ^:private with-scheduler-setup [& body]
   `(tu/with-temp-scheduler

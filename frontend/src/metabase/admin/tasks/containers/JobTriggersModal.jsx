@@ -24,6 +24,7 @@ const renderTriggersTable = triggers => {
           <th>{t`End Time`}</th>
           <th>{t`Final Fire Time`}</th>
           <th>{t`May Fire Again?`}</th>
+          <th>{t`Misfire Instruction`}</th>
         </tr>
       </thead>
       <tbody>
@@ -40,6 +41,7 @@ const renderTriggersTable = triggers => {
               <td>{trigger["end-time"]}</td>
               <td>{trigger["final-fire-time"]}</td>
               <td>{trigger["may-fire-again?"] ? t`Yes` : t`No`}</td>
+              <td>{trigger["misfire-instruction"]}</td>
             </tr>
           ))}
       </tbody>
