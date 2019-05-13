@@ -180,10 +180,7 @@
           ;; This is what does the real work of canceling the query. We aren't checking the result of
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
-          (throw e))
-        (catch Exception e
-          (u/ignore-exceptions (.cancel stmt))
-          e)))))
+          (throw e))))))
 
 (defn- run-query
   "Run the query itself."
@@ -248,8 +245,9 @@
 
 (defn- set-timezone!
   "Set the timezone for the current connection."
-  [driver settings connection]
-  (let [timezone      (u/prog1 (:report-timezone settings)
+  {:arglists '([driver settings connection])}
+  [driver {:keys [report-timezone]} connection]
+  (let [timezone      (u/prog1 report-timezone
                         (assert (re-matches #"[A-Za-z\/_]+" <>)))
         format-string (set-timezone-sql driver)
         sql           (format format-string (str \' timezone \'))]
