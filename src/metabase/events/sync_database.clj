@@ -19,7 +19,7 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
 
 (defn process-sync-database-event
@@ -41,9 +41,7 @@
       (log/warn e (trs "Failed to process sync-database event.") (:topic sync-database-event)))))
 
 
-
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
-
+;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
 (defn events-init
   "Automatically called during startup; start event listener for database sync events."

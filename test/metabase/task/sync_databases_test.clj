@@ -22,7 +22,7 @@
   (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))
 
 (defn- replace-trailing-id-with-<id> [s]
-  (str/replace s #"\d+$" "<id>"))
+  (some-> s (str/replace #"\d+$" "<id>")))
 
 (defn- replace-ids-with-<id> [current-tasks]
   (vec (for [task current-tasks]
@@ -36,7 +36,9 @@
                                             (update-in [:data "db-id"] replace-trailing-id-with-<id>))))))))))
 
 (defn- current-tasks []
-  (replace-ids-with-<id> (tu/scheduler-current-tasks)))
+  (->> (tu/scheduler-current-tasks)
+       (filter #(#{"metabase.task.sync-and-analyze.job" "metabase.task.update-field-values.job"} (:key %)))
+       replace-ids-with-<id>))
 
 (defmacro ^:private with-scheduler-setup [& body]
   `(tu/with-temp-scheduler
@@ -150,6 +152,8 @@
 ;;; |                                    CHECKING THAT SYNC TASKS RUN CORRECT FNS                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - it would be nice if we could rework this test so we didn't have to wait for so long to see if things
+;; happened or not
 (defn- check-if-sync-processes-ran-for-db {:style/indent 0} [db-info]
   (let [sync-db-metadata-ran?    (promise)
         analyze-db-ran?          (promise)
@@ -159,9 +163,9 @@
                   metabase.sync.field-values/update-field-values! (fn [& _] (deliver update-field-values-ran? true))]
       (with-scheduler-setup
         (tt/with-temp Database [database db-info]
-          {:ran-sync?                (deref sync-db-metadata-ran? 500 false)
-           :ran-analyze?             (deref analyze-db-ran? 100 false)
-           :ran-update-field-values? (deref update-field-values-ran? 500 false)})))))
+          {:ran-sync?                (deref sync-db-metadata-ran?    1000 false)
+           :ran-analyze?             (deref analyze-db-ran?           200 false)
+           :ran-update-field-values? (deref update-field-values-ran?  500 false)})))))
 
 (defn- cron-schedule-for-next-year []
   (format "0 15 10 * * ? %d" (inc (du/date-extract :year))))
