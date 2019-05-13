@@ -17,7 +17,10 @@ const listTablesForDatabase = async (...args) =>
      * whether they're hidden. make sure table lists only use non hidden tables
      * Ideally this should live in the API?
      */
-    t => t.visibility_type !== "hidden",
+    t =>
+      t.visibility_type !== "hidden" &&
+      t.visibility_type !== "technical" &&
+      t.visibility_type !== "cruft",
   );
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
