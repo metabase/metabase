@@ -27,19 +27,14 @@ const mapStateToProps = (state, props) => ({
 })
 @Tables.load({ id: (state, props) => props.metric.table_id, wrapped: true })
 class UpdateMetricForm extends Component {
-  constructor() {
-    super();
-    this.onSubmit = this.onSubmit.bind(this);
-  }
-
-  async onSubmit(metric) {
+  onSubmit = async metric => {
     await this.props.metric.update(metric);
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
       `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
     if (this.props.table) {
@@ -54,19 +49,14 @@ class UpdateMetricForm extends Component {
   wrapped: true,
 })
 class CreateMetricForm extends Component {
-  constructor() {
-    super();
-    this.onSubmit = this.onSubmit.bind(this);
-  }
-
-  async onSubmit(metric) {
+  onSubmit = async metric => {
     const { id: tableId, db_id: databaseId } = this.props.table;
     await this.props.createMetric({ ...metric, table_id: tableId });
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     this.props.onChangeLocation(
       `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
     if (this.props.table) {

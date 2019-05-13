@@ -27,19 +27,14 @@ const mapStateToProps = (state, props) => ({
 })
 @Tables.load({ id: (state, props) => props.segment.table_id, wrapped: true })
 class UpdateSegmentForm extends Component {
-  constructor() {
-    super();
-    this.onSubmit = this.onSubmit.bind(this);
-  }
-
-  async onSubmit(segment) {
+  onSubmit = async segment => {
     await this.props.segment.update(segment);
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
       `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
     if (this.props.table) {
@@ -54,19 +49,14 @@ class UpdateSegmentForm extends Component {
   wrapped: true,
 })
 class CreateSegmentForm extends Component {
-  constructor() {
-    super();
-    this.onSubmit = this.onSubmit.bind(this);
-  }
-
-  async onSubmit(segment) {
+  onSubmit = async segment => {
     const { id: tableId, db_id: databaseId } = this.props.table;
     await this.props.createSegment({ ...segment, table_id: tableId });
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     this.props.onChangeLocation(
       `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
     if (this.props.table) {
