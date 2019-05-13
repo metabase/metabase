@@ -7,6 +7,7 @@ import colors from "metabase/lib/colors";
 
 const Segments = createEntity({
   name: "segments",
+  nameOne: "segment",
   path: "/api/segment",
   schema: SegmentSchema,
 

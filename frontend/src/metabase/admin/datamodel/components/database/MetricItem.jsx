@@ -6,10 +6,7 @@ import ObjectActionSelect from "../ObjectActionSelect.jsx";
 import Query from "metabase/lib/query";
 
 export default class MetricItem extends Component {
-  static propTypes = {
-    metric: PropTypes.object.isRequired,
-    onRetire: PropTypes.func.isRequired,
-  };
+  static propTypes = { metric: PropTypes.object.isRequired };
 
   render() {
     let { metric, tableMetadata } = this.props;
@@ -28,7 +25,7 @@ export default class MetricItem extends Component {
           <ObjectActionSelect
             object={metric}
             objectType="metric"
-            onRetire={this.props.onRetire}
+            onRetire={() => metric.setArchived(true)}
           />
         </td>
       </tr>

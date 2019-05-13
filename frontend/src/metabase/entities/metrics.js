@@ -5,6 +5,7 @@ import colors from "metabase/lib/colors";
 
 const Metrics = createEntity({
   name: "metrics",
+  nameOne: "metric",
   path: "/api/metric",
   schema: MetricSchema,
 

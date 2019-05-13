@@ -7,6 +7,7 @@ import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
 import { GET } from "metabase/lib/api";
+import { augmentTable } from "metabase/lib/table";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -26,6 +27,7 @@ export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 
 export default createEntity({
   name: "tables",
+  nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
 
@@ -55,6 +57,7 @@ export default createEntity({
             const tableMetadata = await MetabaseApi.table_query_metadata({
               tableId: id,
             });
+            await augmentTable(tableMetadata);
             const fkTableIds = _.chain(tableMetadata.fields)
               .filter(field => field.target)
               .map(field => field.target.table_id)

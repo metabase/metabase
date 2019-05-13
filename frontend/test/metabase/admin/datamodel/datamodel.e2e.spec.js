@@ -8,8 +8,6 @@ import {
 import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import { mount } from "enzyme";
 import {
-  CREATE_METRIC,
-  CREATE_SEGMENT,
   FETCH_IDFIELDS,
   INITIALIZE_METADATA,
   SELECT_TABLE,
@@ -30,6 +28,7 @@ import SegmentItem from "metabase/admin/datamodel/components/database/SegmentIte
 import MetricsList from "metabase/admin/datamodel/components/database/MetricsList";
 import MetricItem from "metabase/admin/datamodel/components/database/MetricItem";
 import { MetabaseApi } from "metabase/services";
+import { metrics as Metrics, segments as Segments } from "metabase/entities";
 
 describe("admin/datamodel", () => {
   beforeAll(async () => useSharedAdminLogin());
@@ -144,7 +143,10 @@ describe("admin/datamodel", () => {
       // Save the segment
       click(app.find('button[children="Save changes"]'));
 
-      await store.waitForActions([CREATE_SEGMENT, INITIALIZE_METADATA]);
+      await store.waitForActions([
+        Segments.actions.create,
+        INITIALIZE_METADATA,
+      ]);
       expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2");
 
       // Validate that the segment got actually added
@@ -188,7 +190,7 @@ describe("admin/datamodel", () => {
       // Save the metric
       click(app.find('button[children="Save changes"]'));
 
-      await store.waitForActions([CREATE_METRIC, INITIALIZE_METADATA]);
+      await store.waitForActions([Metrics.actions.create, INITIALIZE_METADATA]);
       expect(store.getPath()).toBe("/admin/datamodel/database/1/table/2");
 
       // Validate that the segment got actually added

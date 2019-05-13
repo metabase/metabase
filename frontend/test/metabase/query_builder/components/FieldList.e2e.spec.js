@@ -20,7 +20,7 @@ import {
 } from "__support__/sample_dataset_fixture";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { createSegment } from "metabase/admin/datamodel/datamodel";
+import Segments from "metabase/entities/segments";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   fetchDatabases,
@@ -74,8 +74,9 @@ describe("FieldList", () => {
 
   it("should show the query definition tooltip correctly for a segment", async () => {
     // TODO Atte Keinänen 6/27/17: Check why the result is wrapped in a promise that needs to be resolved manually
-    const segment = await (await createSegment(orders_past_300_days_segment))
-      .payload;
+    const segment = await (await Segments.actions.create(
+      orders_past_300_days_segment,
+    )).payload;
     cleanup.segment(segment);
 
     const store = await createTestStore();

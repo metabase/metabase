@@ -5,21 +5,18 @@ import {
   combineReducers,
   createAction,
   createThunkAction,
-  momentifyTimestamps,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { loadTableAndForeignKeys } from "metabase/lib/table";
 
-import {
-  MetabaseApi,
-  SegmentApi,
-  MetricApi,
-  RevisionsApi,
-} from "metabase/services";
+import { MetabaseApi, RevisionsApi } from "metabase/services";
 
 import { getEditingDatabase } from "./selectors";
+
+import Metrics from "metabase/entities/metrics";
+import Segments from "metabase/entities/segments";
 
 function loadDatabaseMetadata(databaseId) {
   return MetabaseApi.db_metadata({ dbId: databaseId });
@@ -178,60 +175,6 @@ export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
   };
 });
 
-// retireSegment
-export const RETIRE_SEGMENT = "metabase/admin/datamodel/RETIRE_SEGMENT";
-export const onRetireSegment = createThunkAction(RETIRE_SEGMENT, function(
-  segment,
-) {
-  return async function(dispatch, getState) {
-    const editingDatabase = getEditingDatabase(getState());
-
-    await SegmentApi.delete(segment);
-    MetabaseAnalytics.trackEvent("Data Model", "Retire Segment");
-
-    return await loadDatabaseMetadata(editingDatabase.id);
-  };
-});
-
-// retireMetric
-export const RETIRE_METRIC = "metabase/admin/datamodel/RETIRE_METRIC";
-export const onRetireMetric = createThunkAction(RETIRE_METRIC, function(
-  metric,
-) {
-  return async function(dispatch, getState) {
-    const editingDatabase = getEditingDatabase(getState());
-
-    await MetricApi.delete(metric);
-    MetabaseAnalytics.trackEvent("Data Model", "Retire Metric");
-
-    return await loadDatabaseMetadata(editingDatabase.id);
-  };
-});
-
-// SEGMENTS
-
-export const GET_SEGMENT = "metabase/admin/datamodel/GET_SEGMENT";
-export const CREATE_SEGMENT = "metabase/admin/datamodel/CREATE_SEGMENT";
-export const UPDATE_SEGMENT = "metabase/admin/datamodel/UPDATE_SEGMENT";
-export const DELETE_SEGMENT = "metabase/admin/datamodel/DELETE_SEGMENT";
-
-export const getSegment = createAction(GET_SEGMENT, SegmentApi.get);
-export const createSegment = createAction(CREATE_SEGMENT, SegmentApi.create);
-export const updateSegment = createAction(UPDATE_SEGMENT, SegmentApi.update);
-export const deleteSegment = createAction(DELETE_SEGMENT, SegmentApi.delete);
-
-// METRICS
-
-export const GET_METRIC = "metabase/admin/datamodel/GET_METRIC";
-export const CREATE_METRIC = "metabase/admin/datamodel/CREATE_METRIC";
-export const UPDATE_METRIC = "metabase/admin/datamodel/UPDATE_METRIC";
-export const DELETE_METRIC = "metabase/admin/datamodel/DELETE_METRIC";
-
-export const getMetric = createAction(GET_METRIC, MetricApi.get);
-export const createMetric = createAction(CREATE_METRIC, MetricApi.create);
-export const updateMetric = createAction(UPDATE_METRIC, MetricApi.update);
-export const deleteMetric = createAction(DELETE_METRIC, MetricApi.delete);
-
 // SEGMENT DETAIL
 
 export const LOAD_TABLE_METADATA =
@@ -257,23 +200,14 @@ export const FETCH_REVISIONS = "metabase/admin/datamodel/FETCH_REVISIONS";
 
 export const fetchRevisions = createThunkAction(
   FETCH_REVISIONS,
-  ({ entity, id }) => async (dispatch, getState) => {
-    let action;
-    switch (entity) {
-      case "segment":
-        action = getSegment({ segmentId: id });
-        break;
-      case "metric":
-        action = getMetric({ metricId: id });
-        break;
-    }
-    let [object, revisions] = await Promise.all([
+  ({ entity: entityName, id }) => async (dispatch, getState) => {
+    const entity = { segment: Segments, metric: Metrics }[entityName];
+    const action = entity.actions.fetch({ id });
+    const [object, revisions] = await Promise.all([
       dispatch(action),
       RevisionsApi.get({ entity, id }),
     ]);
-    await dispatch(
-      loadTableMetadata(object.payload.definition["source-table"]),
-    );
+    await dispatch(loadTableMetadata(object.payload.object.table_id));
     return { object: object.payload, revisions };
   },
 );
@@ -302,8 +236,6 @@ const editingDatabase = handleActions(
     [SELECT_DATABASE]: {
       next: (state, { payload }) => (payload ? payload : state),
     },
-    [RETIRE_SEGMENT]: { next: (state, { payload }) => payload },
-    [RETIRE_METRIC]: { next: (state, { payload }) => payload },
   },
   null,
 );
@@ -316,68 +248,6 @@ const editingTable = handleActions(
     [SELECT_TABLE]: { next: (state, { payload }) => payload },
   },
   null,
-);
-
-const segments = handleActions(
-  {
-    [GET_SEGMENT]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [CREATE_SEGMENT]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [UPDATE_SEGMENT]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [DELETE_SEGMENT]: {
-      next: (state, { payload }) => {
-        state = { ...state };
-        delete state[payload.id];
-        return state;
-      },
-    },
-  },
-  {},
-);
-
-const metrics = handleActions(
-  {
-    [GET_METRIC]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [CREATE_METRIC]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [UPDATE_METRIC]: {
-      next: (state, { payload }) => ({
-        ...state,
-        [payload.id]: momentifyTimestamps(payload),
-      }),
-    },
-    [DELETE_METRIC]: {
-      next: (state, { payload }) => {
-        state = { ...state };
-        delete state[payload.id];
-        return state;
-      },
-    },
-  },
-  {},
 );
 
 const tableMetadata = handleActions(
@@ -412,8 +282,6 @@ export default combineReducers({
   idfields,
   editingDatabase,
   editingTable,
-  segments,
-  metrics,
   tableMetadata,
   previewSummary,
   revisionObject,

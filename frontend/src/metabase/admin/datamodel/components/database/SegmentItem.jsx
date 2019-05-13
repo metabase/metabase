@@ -9,7 +9,6 @@ export default class SegmentItem extends Component {
   static propTypes = {
     segment: PropTypes.object.isRequired,
     tableMetadata: PropTypes.object.isRequired,
-    onRetire: PropTypes.func.isRequired,
   };
 
   render() {
@@ -39,7 +38,7 @@ export default class SegmentItem extends Component {
           <ObjectActionSelect
             object={segment}
             objectType="segment"
-            onRetire={this.props.onRetire}
+            onRetire={() => this.props.segment.setArchived(true)}
           />
         </td>
       </tr>

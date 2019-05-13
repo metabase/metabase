@@ -131,14 +131,8 @@ export default class MetadataTable extends Component {
           </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList
-            tableMetadata={tableMetadata}
-            onRetire={this.props.onRetireSegment}
-          />
-          <MetricsList
-            tableMetadata={tableMetadata}
-            onRetire={this.props.onRetireMetric}
-          />
+          <SegmentsList tableMetadata={tableMetadata} />
+          <MetricsList tableMetadata={tableMetadata} />
           <ColumnsList
             tableMetadata={tableMetadata}
             idfields={this.props.idfields}

@@ -10,7 +10,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
-import { segmentFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
 import cx from "classnames";
@@ -58,7 +57,7 @@ import Table from "metabase-lib/lib/metadata/Table";
       revision_message: null,
     },
   },
-  (state, props) => segmentFormSelectors(state, props),
+  (state, props) => ({ ...props, initialValues: props.segment }),
 )
 export default class SegmentForm extends Component {
   updatePreviewSummary(datasetQuery) {
@@ -72,7 +71,7 @@ export default class SegmentForm extends Component {
   }
 
   renderActionButtons() {
-    const { invalid, handleSubmit, tableMetadata } = this.props;
+    const { invalid, handleSubmit, table } = this.props;
     return (
       <div>
         <button
@@ -83,12 +82,7 @@ export default class SegmentForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={
-            "/admin/datamodel/database/" +
-            tableMetadata.db_id +
-            "/table/" +
-            tableMetadata.id
-          }
+          to={"/admin/datamodel/database/" + table.db_id + "/table/" + table.id}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>
@@ -100,13 +94,13 @@ export default class SegmentForm extends Component {
       fields: { id, name, description, definition, revision_message },
       segment,
       metadata,
-      tableMetadata,
+      table,
       handleSubmit,
       previewSummary,
     } = this.props;
 
     return (
-      <LoadingAndErrorWrapper loading={!tableMetadata}>
+      <LoadingAndErrorWrapper loading={!table}>
         {() => (
           <form className="full" onSubmit={handleSubmit}>
             <div className="wrapper py4">
@@ -120,7 +114,7 @@ export default class SegmentForm extends Component {
                   segment && segment.id != null
                     ? t`Make changes to your segment and leave an explanatory note.`
                     : t`Select and add filters to create your new segment for the ${
-                        tableMetadata.display_name
+                        table.display_name
                       } table`
                 }
               >
@@ -130,15 +124,15 @@ export default class SegmentForm extends Component {
                   }}
                   metadata={
                     metadata &&
-                    tableMetadata &&
+                    table &&
                     metadata.tables &&
-                    metadata.tables[tableMetadata.id].fields &&
+                    metadata.tables[table.id].fields &&
                     Object.assign(new Metadata(), metadata, {
                       tables: {
                         ...metadata.tables,
-                        [tableMetadata.id]: Object.assign(
+                        [table.id]: Object.assign(
                           new Table(),
-                          metadata.tables[tableMetadata.id],
+                          metadata.tables[table.id],
                           {
                             segments: [],
                           },
@@ -146,7 +140,7 @@ export default class SegmentForm extends Component {
                       },
                     })
                   }
-                  tableMetadata={tableMetadata}
+                  tableMetadata={table}
                   previewSummary={
                     previewSummary == null
                       ? ""
