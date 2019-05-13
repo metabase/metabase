@@ -73,7 +73,7 @@ export default class UserSettings extends Component {
         </Flex>
         <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} pt={[1, 3]}>
           {tab === "details" ? (
-            <User.Form {...this.props} />
+            <User.Form {...this.props} formName="user" />
           ) : tab === "password" ? (
             <SetUserPassword
               submitFn={this.onUpdatePassword.bind(this)}

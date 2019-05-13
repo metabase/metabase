@@ -21,6 +21,28 @@ export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
+const BASE_FORM_FIELDS = [
+  {
+    name: "first_name",
+    placeholder: "Johnny",
+    validate: name =>
+      (!name && t`First name is required`) ||
+      (name.length > 100 && t`Must be 100 characters or less`),
+  },
+  {
+    name: "last_name",
+    placeholder: "Appleseed",
+    validate: name =>
+      (!name && t`Last name is required`) ||
+      (name.length > 100 && t`Must be 100 characters or less`),
+  },
+  {
+    name: "email",
+    placeholder: "youlooknicetoday@email.com",
+    validate: email => !email && t`Email is required`,
+  },
+];
+
 const Users = createEntity({
   name: "users",
   nameOne: "user",
@@ -111,33 +133,20 @@ const Users = createEntity({
     return state;
   },
 
-  form: {
-    fields: [
-      {
-        name: "first_name",
-        placeholder: "Johnny",
-        validate: name =>
-          (!name && t`First name is required`) ||
-          (name.length > 100 && t`Must be 100 characters or less`),
-      },
-      {
-        name: "last_name",
-        placeholder: "Appleseed",
-        validate: name =>
-          (!name && t`Last name is required`) ||
-          (name.length > 100 && t`Must be 100 characters or less`),
-      },
-      {
-        name: "email",
-        placeholder: "youlooknicetoday@email.com",
-        validate: email => !email && t`Email is required`,
-      },
-      {
-        name: "group_ids",
-        title: "Groups",
-        type: FormGroupsWidget,
-      },
-    ],
+  forms: {
+    admin: {
+      fields: [
+        ...BASE_FORM_FIELDS,
+        {
+          name: "group_ids",
+          title: "Groups",
+          type: FormGroupsWidget,
+        },
+      ],
+    },
+    user: {
+      fields: BASE_FORM_FIELDS,
+    },
   },
 });
 
