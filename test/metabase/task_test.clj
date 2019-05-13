@@ -37,12 +37,11 @@
       (cron/with-misfire-handling-instruction-ignore-misfires)))))
 
 (defn- do-with-temp-scheduler-and-cleanup [f]
-  (try
-    (tu/with-temp-scheduler
-      (f))
-    (finally
-      (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))
-      (task/delete-task! (.getKey (job)) (.getKey (trigger-2))))))
+  (tu/with-temp-scheduler
+    (try
+      (f)
+      (finally
+        (task/delete-task! (.getKey (job)) (.getKey (trigger-1)))))))
 
 (defmacro ^:private with-temp-scheduler-and-cleanup [& body]
   `(do-with-temp-scheduler-and-cleanup (fn [] ~@body)))
