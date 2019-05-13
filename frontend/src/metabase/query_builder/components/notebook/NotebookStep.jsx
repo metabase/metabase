@@ -40,18 +40,21 @@ const STEP_UI = {
     color: colors["accent7"],
     icon: "funneladd",
     component: FilterStep,
+    priority: 10,
   },
   aggregate: {
     title: t`Summarize`,
     color: colors["accent1"],
     icon: "sum",
     component: AggregateStep,
+    priority: 5,
   },
   breakout: {
     title: t`Breakout`,
     color: colors["accent4"],
     icon: "segment",
     component: BreakoutStep,
+    priority: 1,
   },
   sort: {
     title: t`Sort`,
@@ -81,26 +84,30 @@ export default class NotebookStep extends React.Component {
 
     const canPreview = step.previewQuery && step.previewQuery.canRun();
 
-    const actionButtons = [];
+    const actions = [];
+    actions.push(
+      ...step.actions.map(action => ({
+        priority: (STEP_UI[action.type] || {}).priority,
+        element: <ActionButton
+          mr={1}
+          {...STEP_UI[action.type] || {}}
+          onClick={() => action.action(this.props)}
+        />
+    })),
+    );
     if (!showPreview && canPreview) {
-      actionButtons.push(
-        <ActionButton
+      actions.push({
+        element: <ActionButton
           mr={1}
           icon="right"
           title={t`Preview`}
           onClick={() => this.setState({ showPreview: true })}
         />,
-      );
+    });
     }
-    actionButtons.push(
-      ...step.actions.map(action => (
-        <ActionButton
-          mr={1}
-          {...STEP_UI[action.type] || {}}
-          onClick={() => action.action(this.props)}
-        />
-      )),
-    );
+
+    actions.sort((a,b) => (b.priority || 0) - (a.priority || 0));
+    const actionButtons = actions.map(action => action.element)
 
     return (
       <Box mb={2} pb={2} className="border-row-divider">
