@@ -73,10 +73,9 @@ describe("FieldList", () => {
   });
 
   it("should show the query definition tooltip correctly for a segment", async () => {
-    // TODO Atte Keinänen 6/27/17: Check why the result is wrapped in a promise that needs to be resolved manually
-    const segment = await (await Segments.actions.create(
+    const { payload: segment } = await Segments.actions.create(
       orders_past_300_days_segment,
-    )).payload;
+    );
     cleanup.segment(segment);
 
     const store = await createTestStore();
