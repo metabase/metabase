@@ -4,15 +4,15 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["table"],
-  ["line", "bar", "combo", "area"],
-  ["scatter", "row", "pie", "funnel"],
+  ["table", "map"],
   ["scalar", "smartscalar", "progress", "gauge"],
-  ["map"],
+  ["scatter", "row", "pie", "funnel"],
+  ["line", "bar", "combo", "area"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -37,27 +37,15 @@ const ChartTypeSidebar = ({
   const layout = [...FIXED_LAYOUT, ...otherGrouped];
 
   return (
-    <div>
-      <div className="flex px4 pt3 pb2">
-        <h3 className="text-heavy ">{t`How do you want to view this data?`}</h3>
-        <Icon
-          name="close"
-          className="flex-align-right text-medium text-brand-hover cursor-pointer"
-          onClick={() =>
-            setUIControls({
-              isShowingChartTypeSidebar: false, // TODO: move to reducer
-            })
-          }
-          size={20}
-        />
-      </div>
+    <div className="absolute bottom scroll-y" style={{width: 420}}>
       {layout.map(row => (
-        <div className="flex justify-between border-row-divider py1 pl2 pr3">
+        <div className="flex border-row-divider py2 px4">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
               visualization && (
                 <ChartTypeOption
+                  className="mx2"
                   visualization={visualization}
                   isSelected={type === question.display()}
                   isSensible={
@@ -76,6 +64,20 @@ const ChartTypeSidebar = ({
           })}
         </div>
       ))}
+      <div className="flex align-center px4 py2 bg-brand">
+        <h3 className="text-heavy text-white">{t`Choose a visualization`}</h3>
+        <Button
+          white
+          className="flex-align-right"
+          onClick={() =>
+            setUIControls({
+              isShowingChartTypeSidebar: false, // TODO: move to reducer
+            })
+          }
+        >
+          {t`Done`}
+        </Button>
+      </div>
     </div>
   );
 };
@@ -93,8 +95,8 @@ const ChartTypeOption = ({
       "text-dark bg-medium-hover": !isSelected,
     })}
     style={{
-      width: 60,
-      height: 60,
+      width: 70,
+      height: 70,
       borderRadius: 8,
       opacity: !isSensible ? 0.35 : 1,
     }}
