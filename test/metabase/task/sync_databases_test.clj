@@ -22,7 +22,7 @@
   (.isAnnotationPresent UpdateFieldValues org.quartz.DisallowConcurrentExecution))
 
 (defn- replace-trailing-id-with-<id> [s]
-  (str/replace s #"\d+$" "<id>"))
+  (some-> s (str/replace #"\d+$" "<id>")))
 
 (defn- replace-ids-with-<id> [current-tasks]
   (vec (for [task current-tasks]

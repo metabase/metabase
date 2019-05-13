@@ -16,14 +16,30 @@
              [pulse-channel :as pulse-channel]
              [setting :as setting]
              [task-history :as task-history]]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- log-pulse-exception [pulse-id exception]
   (log/error exception (trs "Error sending Pulse {0}" pulse-id)))
 
-(defn- send-pulses!
+(def ^:private Hour
+  (s/constrained
+   s/Int
+   #(and (<= 0 %) (>= 23 %))
+   "valid hour"))
+
+(def ^:private Weekday
+  (s/pred pulse-channel/day-of-week? "valid day of week"))
+
+(def ^:private MonthDay
+  (s/enum :first :last :mid :other))
+
+(def ^:private MonthWeek
+  (s/enum :first :last :other))
+
+(s/defn ^:private send-pulses!
   "Send any `Pulses` which are scheduled to run in the current day/hour. We use the current time and determine the
   hour of the day and day of the week according to the defined reporting timezone, or UTC. We then find all `Pulses`
   that are scheduled to run and send them. The `on-error` function is called if an exception is thrown when sending
@@ -31,12 +47,8 @@
   `on-error` function makes it easier to test for when an error doesn't occur"
   ([hour weekday monthday monthweek]
    (send-pulses! hour weekday monthday monthweek log-pulse-exception))
-  ([hour weekday monthday monthweek on-error]
-   {:pre [(integer? hour)
-          (and (<= 0 hour) (>= 23 hour))
-          (pulse-channel/day-of-week? weekday)
-          (contains? #{:first :last :mid :other} monthday)
-          (contains? #{:first :last :other} monthweek)]}
+
+  ([hour :- Hour, weekday :- Weekday, monthday :- MonthDay, monthweek :- MonthWeek, on-error]
    (log/info (trs "Sending scheduled pulses..."))
    (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
      (doseq [pulse-id (keys channels-by-pulse)]
