@@ -115,9 +115,11 @@
                    (cron/schedule
                     ;; run at the top of every hour
                     (cron/cron-schedule "0 0 * * * ? *")
-                    ;; If a trigger misfires (i.e., Quartz cannot run our job for one reason or another, such as all
-                    ;; worker threads being busy), attempt to fire the triggers again ASAP. This article does a good
-                    ;; job explaining what this means:
-                    ;; https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
-                    (cron/with-misfire-handling-instruction-ignore-misfires))))]
+                    ;; If send-pulses! misfires, don't try to re-send all the misfired Pulses. Retry only the most
+                    ;; recent misfire, discarding all others. This should hopefully cover cases where a misfire
+                    ;; happens while the system is still running; if the system goes down for an extended period of
+                    ;; time we don't want to re-send tons of (possibly duplicate) Pulses.
+                    ;;
+                    ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
+                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))
