@@ -20,9 +20,9 @@ const ChartSettingsSidebar = ({
 }) =>
   result && (
     <div className="full-height">
-      <div className="flex align-center px4 py2 mb1 bg-brand text-white">
+      <div className="flex align-center px4 py2 mb1 bg-medium">
         <div
-          className="flex align-center cursor-pointer"
+          className="flex align-center cursor-pointer text-brand-hover"
           onClick={() =>
             setUIControls({
               isShowingChartSettingsSidebar: false,
@@ -36,7 +36,7 @@ const ChartSettingsSidebar = ({
           </h3>
         </div>
         <Button
-          white
+          primary
           className="flex-align-right"
           onClick={onClose}
         >

@@ -38,10 +38,10 @@ const ChartTypeSidebar = ({
 
   return (
     <div className="scroll-y">
-      <div className="flex align-center px4 py2 bg-brand">
-        <h3 className="text-heavy text-white">{t`Choose a visualization`}</h3>
+      <div className="flex align-center px4 py2 bg-medium">
+        <h3 className="text-heavy">{t`Choose a visualization`}</h3>
         <Button
-          white
+          primary
           className="flex-align-right"
           onClick={() =>
             setUIControls({
