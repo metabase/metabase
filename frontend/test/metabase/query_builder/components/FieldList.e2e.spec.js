@@ -22,11 +22,7 @@ import {
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Segments from "metabase/entities/segments";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  fetchDatabases,
-  fetchSegments,
-  fetchTableMetadata,
-} from "metabase/redux/metadata";
+import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 import { TestTooltip, TestTooltipContent } from "metabase/components/Tooltip";
 import Filter from "metabase/query_builder/components/Filter";
 
@@ -74,14 +70,16 @@ describe("FieldList", () => {
 
   it("should show the query definition tooltip correctly for a segment", async () => {
     const store = await createTestStore();
-    const { payload: segment } = await store.dispatch(
+    const {
+      payload: { segment },
+    } = await store.dispatch(
       Segments.actions.create(orders_past_300_days_segment),
     );
     cleanup.segment(segment);
 
     await store.dispatch(fetchDatabases());
     await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
-    await store.dispatch(fetchSegments());
+    await store.dispatch(Segments.actions.fetchList(null));
     const metadata = getMetadata(store.getState());
 
     const query: StructuredQuery = Question.create({
