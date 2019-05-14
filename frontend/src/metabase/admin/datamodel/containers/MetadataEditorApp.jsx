@@ -11,6 +11,7 @@ import MetadataHeader from "../components/database/MetadataHeader.jsx";
 import MetadataTablePicker from "../components/database/MetadataTablePicker.jsx";
 import MetadataTable from "../components/database/MetadataTable.jsx";
 import MetadataSchema from "../components/database/MetadataSchema.jsx";
+import { metrics as Metrics, segments as Segments } from "metabase/entities";
 
 import {
   getDatabases,
@@ -36,6 +37,8 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...metadataActions,
+  onRetireMetric: metric => Metrics.actions.setArchived(metric, true),
+  onRetireSegment: segment => Segments.actions.setArchived(segment, true),
 };
 
 @connect(
@@ -63,6 +66,8 @@ export default class MetadataEditor extends Component {
     editingTable: PropTypes.number,
     updateTable: PropTypes.func.isRequired,
     updateField: PropTypes.func.isRequired,
+    onRetireMetric: PropTypes.func.isRequired,
+    onRetireSegment: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -96,6 +101,7 @@ export default class MetadataEditor extends Component {
             idfields={this.props.idfields}
             updateTable={table => this.props.updateTable(table)}
             updateField={field => this.props.updateField(field)}
+            onRetireMetric={this.props.onRetireMetric}
             onRetireSegment={this.props.onRetireSegment}
           />
         );

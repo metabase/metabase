@@ -3,15 +3,15 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
 import SegmentItem from "./SegmentItem.jsx";
-import Segments from "metabase/entities/segments";
 
-@Segments.loadList({ wrapped: true })
 export default class SegmentsList extends Component {
-  static propTypes = { tableMetadata: PropTypes.object.isRequired };
+  static propTypes = {
+    tableMetadata: PropTypes.object.isRequired,
+    onRetire: PropTypes.func.isRequired,
+  };
 
   render() {
-    let { tableMetadata, segments: allSegments } = this.props;
-    const segments = allSegments.filter(s => s.table_id === tableMetadata.id);
+    let { onRetire, tableMetadata } = this.props;
 
     return (
       <div id="SegmentsList" className="my3">
@@ -34,16 +34,17 @@ export default class SegmentsList extends Component {
             </tr>
           </thead>
           <tbody>
-            {segments.map(segment => (
+            {tableMetadata.segments.map(segment => (
               <SegmentItem
                 key={segment.id}
+                onRetire={onRetire}
                 segment={segment}
                 tableMetadata={tableMetadata}
               />
             ))}
           </tbody>
         </table>
-        {segments.length === 0 && (
+        {tableMetadata.segments.length === 0 && (
           <div className="flex layout-centered m4 text-medium">
             {t`Create segments to add them to the Filter dropdown in the query builder`}
           </div>

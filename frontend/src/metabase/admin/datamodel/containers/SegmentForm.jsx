@@ -57,7 +57,7 @@ import Table from "metabase-lib/lib/metadata/Table";
       revision_message: null,
     },
   },
-  (state, props) => ({ ...props, initialValues: props.segment }),
+  (state, { segment }) => ({ initialValues: segment }),
 )
 export default class SegmentForm extends Component {
   updatePreviewSummary(datasetQuery) {

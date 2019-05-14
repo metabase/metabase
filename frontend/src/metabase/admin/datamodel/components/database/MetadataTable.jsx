@@ -26,6 +26,8 @@ export default class MetadataTable extends Component {
     idfields: PropTypes.array.isRequired,
     updateTable: PropTypes.func.isRequired,
     updateField: PropTypes.func.isRequired,
+    onRetireMetric: PropTypes.func.isRequired,
+    onRetireSegment: PropTypes.func.isRequired,
   };
 
   isHidden() {
@@ -95,7 +97,7 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { tableMetadata } = this.props;
+    const { tableMetadata, onRetireMetric, onRetireSegment } = this.props;
     if (!tableMetadata) {
       return false;
     }
@@ -131,8 +133,14 @@ export default class MetadataTable extends Component {
           </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList tableMetadata={tableMetadata} />
-          <MetricsList tableMetadata={tableMetadata} />
+          <SegmentsList
+            onRetire={onRetireSegment}
+            tableMetadata={tableMetadata}
+          />
+          <MetricsList
+            onRetire={onRetireMetric}
+            tableMetadata={tableMetadata}
+          />
           <ColumnsList
             tableMetadata={tableMetadata}
             idfields={this.props.idfields}

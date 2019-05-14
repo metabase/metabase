@@ -7,6 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import SegmentForm from "./SegmentForm.jsx";
 
 import * as actions from "../datamodel";
+import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
@@ -26,6 +27,7 @@ const mapStateToProps = (state, props) => ({
   wrapped: true,
 })
 @Tables.load({ id: (state, props) => props.segment.table_id, wrapped: true })
+@withTableMetadataLoaded
 class UpdateSegmentForm extends Component {
   onSubmit = async segment => {
     await this.props.segment.update(segment);
@@ -37,9 +39,6 @@ class UpdateSegmentForm extends Component {
   };
 
   render() {
-    if (this.props.table) {
-      this.props.table.fetchTableMetadata();
-    }
     return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
   }
 }
@@ -48,6 +47,7 @@ class UpdateSegmentForm extends Component {
   id: (state, props) => parseInt(props.location.query.table),
   wrapped: true,
 })
+@withTableMetadataLoaded
 class CreateSegmentForm extends Component {
   onSubmit = async segment => {
     const { id: tableId, db_id: databaseId } = this.props.table;
@@ -59,9 +59,6 @@ class CreateSegmentForm extends Component {
   };
 
   render() {
-    if (this.props.table) {
-      this.props.table.fetchTableMetadata();
-    }
     return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
   }
 }

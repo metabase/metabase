@@ -51,7 +51,7 @@ import Table from "metabase-lib/lib/metadata/Table";
       return errors;
     },
   },
-  (state, props) => ({ ...props, initialValues: props.metric }),
+  (state, { metric }) => ({ initialValues: metric }),
 )
 export default class MetricForm extends Component {
   updatePreviewSummary(datasetQuery) {

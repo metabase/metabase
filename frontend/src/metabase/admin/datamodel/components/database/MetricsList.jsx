@@ -3,15 +3,15 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
 import MetricItem from "./MetricItem.jsx";
-import Metrics from "metabase/entities/metrics";
 
-@Metrics.loadList({ wrapped: true })
 export default class MetricsList extends Component {
-  static propTypes = { tableMetadata: PropTypes.object.isRequired };
+  static propTypes = {
+    tableMetadata: PropTypes.object.isRequired,
+    onRetire: PropTypes.func.isRequired,
+  };
 
   render() {
-    const { metrics: allMetrics, tableMetadata } = this.props;
-    const metrics = allMetrics.filter(m => m.table_id === tableMetadata.id);
+    const { onRetire, tableMetadata } = this.props;
 
     return (
       <div id="MetricsList" className="my3">
@@ -34,16 +34,17 @@ export default class MetricsList extends Component {
             </tr>
           </thead>
           <tbody>
-            {metrics.map(metric => (
+            {tableMetadata.metrics.map(metric => (
               <MetricItem
                 key={metric.id}
                 metric={metric}
+                onRetire={onRetire}
                 tableMetadata={tableMetadata}
               />
             ))}
           </tbody>
         </table>
-        {metrics.length === 0 && (
+        {tableMetadata.metrics.length === 0 && (
           <div className="flex layout-centered m4 text-medium">
             {t`Create metrics to add them to the View dropdown in the query builder`}
           </div>
