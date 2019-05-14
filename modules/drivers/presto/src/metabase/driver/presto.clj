@@ -17,7 +17,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [store :as qp.store]
@@ -71,9 +73,8 @@
   (du/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
 
 (defn- parse-presto-time
-  "Parsing time from presto using a specific formatter rather than the
-  utility functions as this will be called on each row returned, so
-  performance is important"
+  "Parsing time from presto using a specific formatter rather than the utility functions as this will be called on each
+  row returned, so performance is important"
   [time-str]
   (->> time-str
        (du/parse-date :hour-minute-second-ms)
@@ -113,7 +114,9 @@
         (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
             (fetch-presto-results! details results nextUri))))))
 
-(defn- execute-presto-query! [details query]
+(defn- execute-presto-query!
+  {:style/indent 1}
+  [details query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (let [{{:keys [columns data nextUri error id]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
@@ -146,34 +149,27 @@
                 (throw e)))))))))
 
 
-;;; Generic helpers
+;;; `:sql` driver implementation
 
-(defn- quote-name [s]
-  {:pre [(string? s)]}
-  (str \" (str/replace s "\"" "\"\"") \"))
-
-(defn- quote+combine-names [& names]
-  (str/join \. (map quote-name names)))
-
-;;; IDriver implementation
-
-(s/defmethod driver/can-connect? :presto [_ {:keys [catalog] :as details} :- PrestoConnectionDetails]
-  (let [{[[v]] :rows} (execute-presto-query! details (str "SHOW SCHEMAS FROM " (quote-name catalog)
-                                                          " LIKE 'information_schema'"))]
+(s/defmethod driver/can-connect? :presto
+  [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
+  (let [{[[v]] :rows} (execute-presto-query! details
+                        (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver catalog)))]
     (= v "information_schema")))
 
-(defmethod driver/date-interval :presto [_ unit amount]
+(defmethod driver/date-interval :presto
+  [_ unit amount]
   (hsql/call :date_add (hx/literal unit) amount :%now))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
-  [{{:keys [catalog schema] :as details} :details :as database}]
-  (let [sql            (str "SHOW SCHEMAS FROM " (quote-name catalog))
+  [driver {{:keys [catalog schema] :as details} :details :as database}]
+  (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver catalog))
         {:keys [rows]} (execute-presto-query! details sql)]
     (set (map first rows))))
 
-(defn- describe-schema [{{:keys [catalog] :as details} :details} {:keys [schema]}]
-  (let [sql            (str "SHOW TABLES FROM " (quote+combine-names catalog schema))
+(defn- describe-schema [driver {{:keys [catalog] :as details} :details} {:keys [schema]}]
+  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
     (set (for [table-name tables]
@@ -181,10 +177,11 @@
 
 (def ^:private excluded-schemas #{"information_schema"})
 
-(defmethod driver/describe-database :presto [driver database]
-  (let [schemas (remove excluded-schemas (database->all-schemas database))]
+(defmethod driver/describe-database :presto
+  [driver database]
+  (let [schemas (remove excluded-schemas (database->all-schemas driver database))]
     {:tables (reduce set/union (for [schema schemas]
-                                 (describe-schema database {:schema schema})))}))
+                                 (describe-schema driver database {:schema schema})))}))
 
 (defn- presto-type->base-type [field-type]
   (condp re-matches field-type
@@ -208,8 +205,9 @@
     #"row.*"       :type/*          ; TODO - again, but this time we supposedly have a schema
     #".*"          :type/*))
 
-(defmethod driver/describe-table :presto [_ {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
-  (let [sql            (str "DESCRIBE " (quote+combine-names catalog schema table-name))
+(defmethod driver/describe-table :presto
+  [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
+  (let [sql            (str "DESCRIBE " (sql.u/quote-name driver catalog schema table-name))
         {:keys [rows]} (execute-presto-query! details sql)]
     {:schema schema
      :name   table-name

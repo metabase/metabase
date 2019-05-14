@@ -45,8 +45,9 @@
   ([_ db-name table-name]            [db-name "PUBLIC" table-name])
   ([_ db-name table-name field-name] [db-name "PUBLIC" table-name field-name]))
 
-(defmethod sql.tx/create-db-sql :snowflake [driver {:keys [database-name]}]
-  (let [db (sql.tx/qualify+quote-name driver database-name)]
+(defmethod sql.tx/create-db-sql :snowflake
+  [driver {:keys [database-name]}]
+  (let [db (sql.tx/qualify-and-quote driver database-name)]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
 (defmethod tx/expected-base-type->actual :snowflake [_ base-type]

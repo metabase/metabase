@@ -14,7 +14,6 @@
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException Types]
            [java.util Calendar Date TimeZone]))
@@ -185,7 +184,7 @@
 (defn- run-query
   "Run the query itself."
   [driver {sql :query, :keys [params remark max-rows]}, ^TimeZone timezone, connection]
-  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
+  (let [sql              (str "-- " remark "\n" sql)
         [columns & rows] (cancelable-run-query
                           connection sql params
                           {:identifiers    identity

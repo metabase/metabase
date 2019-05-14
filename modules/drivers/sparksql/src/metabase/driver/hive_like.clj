@@ -114,7 +114,7 @@
 (defn- run-query
   "Run the query itself."
   [{sql :query, :keys [params remark max-rows]} connection]
-  (let [sql     (str "-- " remark "\n" (hx/unescape-dots sql))
+  (let [sql     (str "-- " remark "\n" sql)
         options {:identifiers identity
                  :as-arrays?  true
                  :max-rows    max-rows}]

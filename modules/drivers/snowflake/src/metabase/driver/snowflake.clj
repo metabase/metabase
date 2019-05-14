@@ -145,14 +145,13 @@
   (let [table            (qp.store/table (:table_id field))
         db-name          (when-not (:alias? table)
                            (query-db-name))
-        field-identifier (keyword
-                          (hx/qualify-and-escape-dots db-name (:schema table) (:name table) (:name field)))]
+        field-identifier (sql.qp/->honeysql driver (hx/identifier db-name (:schema table) (:name table) (:name field)))]
     (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
 
 (defmethod sql.qp/->honeysql [:snowflake (class Table)]
-  [_ table]
+  [driver table]
   (let [{table-name :name, schema :schema} table]
-    (hx/qualify-and-escape-dots (query-db-name) schema table-name)))
+    (sql.qp/->honeysql driver (hx/identifier (query-db-name) schema table-name))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value unit]]
