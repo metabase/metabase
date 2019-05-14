@@ -16,7 +16,7 @@ const legacy = false;
 
 const Notebook = ({ className, ...props }) => {
   return (
-    <Box className={cx(className, "relative")}>
+    <Box className={cx(className, "relative mb4")}>
       <NotebookHeader {...props} className="absolute top right" />
       <NotebookSteps {...props} className="pt3" />
       {/* temporary mouse travel usability test */
@@ -31,7 +31,9 @@ const Notebook = ({ className, ...props }) => {
             }
             props.onSetQueryBuilderMode("view");
           }}
-        >{t`Visualize`}</Button>
+        >
+        {t`Visualize`}
+        </Button>
       )}
 
       {legacy && (

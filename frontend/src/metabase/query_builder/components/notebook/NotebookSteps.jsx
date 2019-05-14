@@ -33,12 +33,13 @@ export default class NotebookSteps extends React.Component {
 
     return (
       <div className={cx(className, "wrapper")}>
-        {steps.map(step => (
+        {steps.map((step, index) => (
           <NotebookStep
             key={step.id}
             step={step}
             query={question.query()}
             openStep={this.handleOpenStep}
+            isLastStep={index === steps.length - 1}
             isLastOpened={lastOpenedStep === step.id}
           />
         ))}

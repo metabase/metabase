@@ -1,6 +1,7 @@
 import React from "react";
 
 import { t } from "ttag";
+import cx from "classnames"
 
 import colors, { lighten } from "metabase/lib/colors";
 
@@ -76,7 +77,7 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const { step, openStep, isLastOpened } = this.props;
+    const { step, openStep, isLastStep, isLastOpened } = this.props;
     const { showPreview } = this.state;
 
     const { title, color, component: NotebookStepComponent } =
@@ -90,6 +91,7 @@ export default class NotebookStep extends React.Component {
         priority: (STEP_UI[action.type] || {}).priority,
         element: <ActionButton
           mr={1}
+          large={isLastStep}
           {...STEP_UI[action.type] || {}}
           onClick={() => action.action(this.props)}
         />
@@ -99,6 +101,7 @@ export default class NotebookStep extends React.Component {
       actions.push({
         element: <ActionButton
           mr={1}
+          large={isLastStep}
           icon="right"
           title={t`Preview`}
           onClick={() => this.setState({ showPreview: true })}
@@ -138,18 +141,25 @@ export default class NotebookStep extends React.Component {
   }
 }
 
-const ActionButton = ({ icon, title, color, onClick, ...props }) => {
-  return (
+const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
+  console.log("large", large)
+  const button =
+    <Button
+      icon={icon}
+      style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
+      small={!large}
+      borderless
+      iconVertical={large}
+      iconSize={large ? 18 : 12}
+      className="text-medium bg-medium"
+      onClick={onClick}
+      {...props}
+    >{large ? title : null}
+    </Button>
+
+  return large ? button : (
     <Tooltip tooltip={title}>
-      <Button
-        icon={icon}
-        style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
-        small
-        borderless
-        className="text-medium bg-medium"
-        onClick={onClick}
-        {...props}
-      />
+      {button}
     </Tooltip>
   );
 };
