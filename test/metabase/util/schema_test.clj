@@ -1,7 +1,7 @@
 (ns metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
   (:require [compojure.core :refer [POST]]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase.api.common :as api]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n]

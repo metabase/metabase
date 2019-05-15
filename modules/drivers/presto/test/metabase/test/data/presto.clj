@@ -5,6 +5,7 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase.driver.presto :as presto]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data
              [interface :as tx]
@@ -33,9 +34,6 @@
   ([_ db-name table-name]            [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name)])
   ([_ db-name table-name field-name] [test-catalog-name "default" (tx/db-qualified-table-name db-name table-name) field-name]))
 
-(defmethod sql.tx/qualify+quote-name :presto [driver & names]
-  (apply #'presto/quote+combine-names (apply sql.tx/qualified-name-components driver names)))
-
 (defn- field-base-type->dummy-value [field-type]
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
   (if (keyword? field-type)
@@ -53,19 +51,21 @@
     ;; we were given a native type, map it back to a base-type and try again
     (field-base-type->dummy-value (#'presto/presto-type->base-type field-type))))
 
-(defmethod sql.tx/create-table-sql :presto  [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
+(defmethod sql.tx/create-table-sql :presto
+  [driver {:keys [database-name]} {:keys [table-name], :as tabledef}]
   (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id", :base-type  :type/Integer})
         dummy-values      (map (comp field-base-type->dummy-value :base-type) field-definitions)
         columns           (map :field-name field-definitions)]
     ;; Presto won't let us use the `CREATE TABLE (...)` form, but we can still do it creatively if we select the right
     ;; types out of thin air
     (format "CREATE TABLE %s AS SELECT * FROM (VALUES (%s)) AS t (%s) WHERE 1 = 0"
-            (sql.tx/qualify+quote-name driver database-name table-name)
+            (sql.tx/qualify-and-quote driver database-name table-name)
             (str/join \, dummy-values)
-            (str/join \, (map #'presto/quote-name columns)))))
+            (str/join \, (for [column columns]
+                           (sql.u/quote-name driver (tx/format-name driver column)))))))
 
 (defmethod sql.tx/drop-table-if-exists-sql :presto [driver {:keys [database-name]} {:keys [table-name]}]
-  (str "DROP TABLE IF EXISTS " (sql.tx/qualify+quote-name driver database-name table-name)))
+  (str "DROP TABLE IF EXISTS " (sql.tx/qualify-and-quote driver database-name table-name)))
 
 (defn- insert-sql [driver {:keys [database-name]} {:keys [table-name], :as tabledef} rows]
   (let [field-definitions (conj (:field-definitions tabledef) {:field-name "id"})

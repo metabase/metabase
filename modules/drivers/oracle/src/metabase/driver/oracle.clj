@@ -3,10 +3,12 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
-             [driver :as driver]]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
@@ -17,9 +19,12 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [i18n :refer [trs]]
+             [ssh :as ssh]]
+            [schema.core :as s])
   (:import [java.sql ResultSet Types]
-           java.util.Date))
+           java.util.Date
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -156,36 +161,56 @@
   (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
 
-(defn- increment-identifier-suffix
-  "Add an appropriate suffix to a keyword IDENTIFIER to make it distinct from previous usages of the same identifier,
+(s/defn ^:private increment-identifier-string :- s/Str
+  [last-component :- s/Str]
+  (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" last-component)]
+    ;; if last-component already has an alias like col_2 then increment it to col_3
+    (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
+      (str/replace last-component (re-pattern (str existing-suffix \$)) new-suffix))
+    ;; otherwise just stick a _2 on the end so it's col_2
+    (str last-component "_2")))
+
+(s/defn ^:private increment-identifier
+  "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
   e.g.
 
-     (increment-identifier-suffix :my_col)   ; -> :my_col_2
-     (increment-identifier-suffix :my_col_2) ; -> :my_col_3"
-  [identifier]
-  (keyword
-   (let [identifier (name identifier)]
-     (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" identifier)]
-       ;; if identifier already has an alias like col_2 then increment it to col_3
-       (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
-         (clojure.string/replace identifier (re-pattern (str existing-suffix \$)) new-suffix))
-       ;; otherwise just stick a _2 on the end so it's col_2
-       (str identifier "_2")))))
+     (increment-identifier :my_col)   ; -> :my_col_2
+     (increment-identifier :my_col_2) ; -> :my_col_3"
+  [identifier :- Identifier]
+  (update
+   identifier
+   :components
+   (fn [components]
+     (conj
+      (vec (butlast components))
+      (increment-identifier-string (u/keyword->qualified-name (last components)))))))
 
 (defn- alias-everything
-  "Make sure all the columns in SELECT-CLAUSE are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
+  "Make sure all the columns in `select-clause` are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
   (This faciliates our deduplication logic.)"
   [select-clause]
   (for [col select-clause]
-    (if (sequential? col)
+    (cond
       ;; if something's already an alias form like [:table.col :col] it's g2g
+      (sequential? col)
       col
-      ;; otherwise if it's something like :table.col replace with [:table.col :col]
-      [col (keyword (last (clojure.string/split (name col) #"\.")))])))
+
+      ;; otherwise we *should* be dealing with an Identifier. If so, take the last component of the Identifier and use
+      ;; that as the alias. Because Identifiers can be nested, check if the last part is an `Identifier` and recurse
+      ;; if needed.
+      ;;
+      ;; TODO - could this be done using `->honeysql` instead?
+      (instance? Identifier col)
+      [col (hx/identifier (last (:components col)))]
+
+      :else
+      (do
+        (log/error (trs "Don't know how to alias {0}, expected an Identifer." col))
+        [col col]))))
 
 (defn- deduplicate-identifiers
-  "Make sure every column in SELECT-CLAUSE has a unique alias. This is done because Oracle can't figure out how to use a
-  query that produces duplicate columns in a subselect."
+  "Make sure every column in `select-clause` has a unique alias. This is done because Oracle can't figure out how to use
+  a query that produces duplicate columns in a subselect."
   [select-clause]
   (if (= select-clause [:*])
     ;; if we're doing `SELECT *` there's no way we can deduplicate anything so we're SOL, return as-is
@@ -194,12 +219,17 @@
     (loop [already-seen #{}, acc [], [[col alias] & more] (alias-everything select-clause)]
       (cond
         ;; if not more cols are left to deduplicate, we're done
-        (not col)                      acc
+        (not col)
+        acc
+
         ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
-        (contains? already-seen alias) (recur already-seen acc (cons [col (increment-identifier-suffix alias)]
-                                                                     more))
+        (contains? already-seen alias)
+        (recur already-seen acc (cons [col (increment-identifier alias)]
+                                      more))
+
         ;; otherwise if we haven't seen it record it as seen and move on to the next column
-        :else                          (recur (conj already-seen alias) (conj acc [col alias]) more)))))
+        :else
+        (recur (conj already-seen alias) (conj acc [col alias]) more)))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
@@ -231,8 +261,8 @@
 ;;
 ;; See issue #3568 and the Oracle documentation for more details:
 ;; http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
-(defmethod sql.qp/apply-top-level-clause [:oracle :limit] [_ _ honeysql-query {value :limit}]
-  {:pre [(integer? value)]}
+(defmethod sql.qp/apply-top-level-clause [:oracle :limit]
+  [_ _ honeysql-query {value :limit}]
   {:select [:*]
    ;; if `honeysql-query` doesn't have a `SELECT` clause yet (which might be the case when using a source query) fall
    ;; back to including a `SELECT *` just to make sure a valid query is produced
@@ -241,7 +271,8 @@
                 (update :select deduplicate-identifiers))]
    :where  [:<= (hsql/raw "rownum") value]})
 
-(defmethod sql.qp/apply-top-level-clause [:oracle :page] [driver _ honeysql-query {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:oracle :page]
+  [driver _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`

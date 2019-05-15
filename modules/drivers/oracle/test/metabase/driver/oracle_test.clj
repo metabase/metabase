@@ -7,6 +7,7 @@
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
+            [metabase.driver.oracle :as oracle]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [field :refer [Field]]
@@ -19,6 +20,7 @@
              [oracle :as oracle.tx]
              [sql :as sql.tx]]
             [metabase.test.util.log :as tu.log]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
 ;; make sure we can connect with an SID
@@ -50,9 +52,10 @@
    :subprotocol                 "oracle:thin"
    :subname                     "@localhost:1521/MyCoolService"
    :oracle.jdbc.J2EE13Compliant true}
-  (sql-jdbc.conn/connection-details->spec :oracle {:host         "localhost"
-                                                   :port         1521
-                                                   :service-name "MyCoolService"}))
+  (sql-jdbc.conn/connection-details->spec :oracle
+    {:host         "localhost"
+     :port         1521
+     :service-name "MyCoolService"}))
 
 ;; make sure you can specify a Service Name and an SID
 (expect
@@ -60,10 +63,40 @@
    :subprotocol                 "oracle:thin"
    :subname                     "@localhost:1521:ORCL/MyCoolService"
    :oracle.jdbc.J2EE13Compliant true}
-  (sql-jdbc.conn/connection-details->spec :oracle {:host         "localhost"
-                                                   :port         1521
-                                                   :service-name "MyCoolService"
-                                                   :sid          "ORCL"}))
+  (sql-jdbc.conn/connection-details->spec :oracle
+    {:host         "localhost"
+     :port         1521
+     :service-name "MyCoolService"
+     :sid          "ORCL"}))
+
+;; `deduplicate-identifiers` should use the last component of an identifier as the alias if it does not already have
+;; one
+(expect
+  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
+   [(hx/identifier "F")             (hx/identifier "G")]]
+  (#'oracle/deduplicate-identifiers
+   [(hx/identifier "A" "B" "C" "D")
+    [(hx/identifier "F")            (hx/identifier "G")]]))
+
+;; `deduplicate-identifiers` should append numeric suffixes to duplicate aliases
+(expect
+  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
+   [(hx/identifier "E" "D")         (hx/identifier "D_2")]
+   [(hx/identifier "F")             (hx/identifier "G")]]
+  (#'oracle/deduplicate-identifiers
+   [(hx/identifier "A" "B" "C" "D")
+    (hx/identifier "E" "D")
+    [(hx/identifier "F")            (hx/identifier "G")]]))
+
+;; `deduplicate-identifiers` should handle aliases that are already suffixed gracefully
+(expect
+  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
+   [(hx/identifier "E" "D")         (hx/identifier "D_2")]
+   [(hx/identifier "F")             (hx/identifier "D_3")]]
+  (#'oracle/deduplicate-identifiers
+   [(hx/identifier "A" "B" "C" "D")
+    (hx/identifier "E" "D")
+    [(hx/identifier "F")            (hx/identifier "D_2")]]))
 
 
 (expect
