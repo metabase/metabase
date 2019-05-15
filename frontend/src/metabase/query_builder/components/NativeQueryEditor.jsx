@@ -63,6 +63,8 @@ type Props = {
   question: Question,
   query: NativeQuery,
 
+  handleResize: () => void,
+
   runQuestionQuery: (options?: RunQueryParams) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
@@ -391,6 +393,7 @@ export default class NativeQueryEditor extends Component {
             minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
             axis="y"
             onResizeStop={(e, data) => {
+              this.props.handleResize();
               this._editor.resize();
             }}
           >

@@ -225,7 +225,9 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    return <LegacyQueryBuilder {...this.props} />;
+    return (
+      <LegacyQueryBuilder {...this.props} handleResize={this.handleResize} />
+    );
   }
 }
 
