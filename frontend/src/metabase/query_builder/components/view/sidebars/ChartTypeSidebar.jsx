@@ -37,47 +37,49 @@ const ChartTypeSidebar = ({
   const layout = [...FIXED_LAYOUT, ...otherGrouped];
 
   return (
-    <div className="scroll-y">
-      <div className="flex align-center px4 py2 bg-medium">
-        <h3 className="text-heavy">{t`Choose a visualization`}</h3>
-        <Button
-          primary
-          className="flex-align-right"
-          onClick={() =>
-            setUIControls({
-              isShowingChartTypeSidebar: false, // TODO: move to reducer
-            })
-          }
-        >
-          {t`Done`}
-        </Button>
-      </div>
-      {layout.map(row => (
-        <div className="flex border-row-divider py2 px4">
-          {row.map(type => {
-            const visualization = visualizations.get(type);
-            return (
-              visualization && (
-                <ChartTypeOption
-                  className="mx2"
-                  visualization={visualization}
-                  isSelected={type === question.display()}
-                  isSensible={
-                    result &&
-                    result.data &&
-                    visualization.isSensible &&
-                    visualization.isSensible(result.data)
-                  }
-                  onClick={() => {
-                    question.setDisplay(type).update(null, { reload: false });
-                    onOpenChartSettings({ section: t`Data` });
-                  }}
-                />
-              )
-            );
-          })}
+    <div className="flex flex-column full-height justify-between">
+      <div className="scroll-y">
+        <div className="flex align-center px4 py3 bg-medium">
+          <h3 className="text-heavy">{t`Choose a visualization`}</h3>
         </div>
-      ))}
+        {layout.map(row => (
+          <div className="flex border-row-divider py2 px3">
+            {row.map(type => {
+              const visualization = visualizations.get(type);
+              return (
+                visualization && (
+                  <ChartTypeOption
+                    className="mx2"
+                    visualization={visualization}
+                    isSelected={type === question.display()}
+                    isSensible={
+                      result &&
+                      result.data &&
+                      visualization.isSensible &&
+                      visualization.isSensible(result.data)
+                    }
+                    onClick={() => {
+                      question.setDisplay(type).update(null, { reload: false });
+                      onOpenChartSettings({ section: t`Data` });
+                    }}
+                  />
+                )
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <Button
+        primary
+        className="m2 text-centered"
+        onClick={() =>
+          setUIControls({
+            isShowingChartTypeSidebar: false, // TODO: move to reducer
+          })
+        }
+      >
+        {t`Done`}
+      </Button>
     </div>
   );
 };

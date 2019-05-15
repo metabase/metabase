@@ -19,44 +19,46 @@ const ChartSettingsSidebar = ({
   ...props
 }) =>
   result && (
-    <div className="full-height">
-      <div className="flex align-center px4 py2 mb1 bg-medium">
-        <div
-          className="flex align-center cursor-pointer text-brand-hover"
-          onClick={() =>
-            setUIControls({
-              isShowingChartSettingsSidebar: false,
-              isShowingChartTypeSidebar: true,
-            })
-          }
-        >
-          <Icon name="chevronleft" />
-          <h3 className="text-heavy ml1">
-            {visualizations.get(question.display()).uiName} {t`options`}
-          </h3>
+    <div className="flex flex-column full-height justify-between">
+      <div className="scroll-y">
+        <div className="flex px4 py3 mb1 bg-medium">
+          <div
+            className="flex align-center cursor-pointer text-brand-hover"
+            onClick={() =>
+              setUIControls({
+                isShowingChartSettingsSidebar: false,
+                isShowingChartTypeSidebar: true,
+              })
+            }
+          >
+            <Icon name="chevronleft" />
+            <h3 className="text-heavy ml1">
+              {visualizations.get(question.display()).uiName} {t`options`}
+            </h3>
+          </div>
         </div>
-        <Button
-          primary
-          className="flex-align-right"
-          onClick={onClose}
-        >
-          {t`Done`}
-        </Button>
+        <ChartSettings
+          question={question}
+          addField={addField}
+          series={[
+            {
+              card: question.card(),
+              data: result.data,
+            },
+          ]}
+          onChange={onReplaceAllVisualizationSettings}
+          onClose={onClose}
+          noPreview
+          initial={initialChartSetting}
+        />
       </div>
-      <ChartSettings
-        question={question}
-        addField={addField}
-        series={[
-          {
-            card: question.card(),
-            data: result.data,
-          },
-        ]}
-        onChange={onReplaceAllVisualizationSettings}
-        onClose={onClose}
-        noPreview
-        initial={initialChartSetting}
-      />
+      <Button
+        primary
+        className="m2 text-centered"
+        onClick={onClose}
+      >
+        {t`Done`}
+      </Button>
     </div>
   );
 
