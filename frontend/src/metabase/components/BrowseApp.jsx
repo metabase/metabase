@@ -229,17 +229,17 @@ export class DatabaseBrowser extends React.Component {
 
 function BrowseHeader({ crumbs }) {
   return (
-    <Box mt={3} mb={2}>
+    <Box mt={3} mb={2} className="flex align-center">
       <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
-      <div className="flex">
+      <div className="flex flex-align-right">
         <Link
-          className="flex-align-right"
+          className="flex flex-align-right"
           to="reference"
           data-metabase-event={`NavBar;Reference`}
         >
-          <div className="flex flex-align-center">
+          <div className="flex flex-align-center text-medium text-brand-hover">
             <Icon className="flex flex-align-center" size={18} name="reference" />
-            <h3 className="ml1 flex flex-align-center">Learn more about our data</h3>
+            <h3 className="ml1 flex flex-align-center">Learn about our data</h3>
           </div>
         </Link>
       </div>

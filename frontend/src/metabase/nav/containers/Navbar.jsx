@@ -330,7 +330,7 @@ export default class Navbar extends Component {
                 data-metabase-event={`NavBar;Data Browse`}
               >
                 <IconWrapper>
-                  <Icon size={18} name="table2" />
+                  <Icon size={17} name="table" />
                 </IconWrapper>
               </Link>
             </Tooltip>
