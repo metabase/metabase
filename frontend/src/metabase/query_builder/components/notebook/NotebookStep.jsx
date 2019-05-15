@@ -88,26 +88,30 @@ export default class NotebookStep extends React.Component {
     actions.push(
       ...step.actions.map(action => ({
         priority: (STEP_UI[action.type] || {}).priority,
-        element: <ActionButton
-          mr={1}
-          {...STEP_UI[action.type] || {}}
-          onClick={() => action.action(this.props)}
-        />
-    })),
+        button: (
+          <ActionButton
+            mr={1}
+            {...STEP_UI[action.type] || {}}
+            onClick={() => action.action(this.props)}
+          />
+        ),
+      })),
     );
     if (!showPreview && canPreview) {
       actions.push({
-        element: <ActionButton
-          mr={1}
-          icon="right"
-          title={t`Preview`}
-          onClick={() => this.setState({ showPreview: true })}
-        />,
-    });
+        button: (
+          <ActionButton
+            mr={1}
+            icon="right"
+            title={t`Preview`}
+            onClick={() => this.setState({ showPreview: true })}
+          />
+        ),
+      });
     }
 
-    actions.sort((a,b) => (b.priority || 0) - (a.priority || 0));
-    const actionButtons = actions.map(action => action.element)
+    actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const actionButtons = actions.map(action => action.button);
 
     return (
       <Box mb={2} pb={2} className="border-row-divider">
@@ -143,7 +147,7 @@ const ActionButton = ({ icon, title, color, onClick, ...props }) => {
     <Tooltip tooltip={title}>
       <Button
         icon={icon}
-        style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
+        style={{ color, backgroundColor: color ? lighten(color, 0.4) : null }}
         small
         borderless
         className="text-medium bg-medium"

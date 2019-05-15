@@ -11,6 +11,8 @@ import type {
   LimitClause,
   OrderBy,
   OrderByClause,
+  JoinClause,
+  Join,
   ExpressionClause,
   ExpressionName,
   Expression,
@@ -21,6 +23,7 @@ import type { TableMetadata } from "metabase/meta/types/Metadata";
 import * as A from "./aggregation";
 import * as B from "./breakout";
 import * as F from "./filter";
+import * as J from "./join";
 import * as L from "./limit";
 import * as O from "./order_by";
 import * as E from "./expression";
@@ -82,6 +85,18 @@ export const clearFilters = (query: SQ) =>
   setFilterClause(query, F.clearFilters(query.filter));
 
 export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
+
+// JOIN
+
+export const getJoins = (query: SQ) => J.getJoins(query.join);
+export const addJoin = (query: SQ, join: Join) =>
+  setJoinClause(query, J.addJoin(query.join, join));
+export const updateJoin = (query: SQ, index: number, join: Join) =>
+  setJoinClause(query, J.updateJoin(query.join, index, join));
+export const removeJoin = (query: SQ, index: number) =>
+  setJoinClause(query, J.removeJoin(query.join, index));
+export const clearJoins = (query: SQ) =>
+  setJoinClause(query, J.clearJoins(query.join));
 
 // ORDER_BY
 
@@ -169,6 +184,9 @@ function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
 }
 function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
   return setClause("filter", query, filterClause);
+}
+function setJoinClause(query: SQ, joinClause: ?JoinClause): SQ {
+  return setClause("join", query, joinClause);
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
   return setClause("order-by", query, orderByClause);

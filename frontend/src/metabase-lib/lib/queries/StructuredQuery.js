@@ -52,6 +52,7 @@ import AtomicQuery from "./AtomicQuery";
 import AggregationWrapper from "./structured/Aggregation";
 import BreakoutWrapper from "./structured/Breakout";
 import FilterWrapper from "./structured/Filter";
+import JoinWrapper from "./structured/Join";
 
 import Table from "../metadata/Table";
 import Field from "../metadata/Field";
@@ -308,6 +309,33 @@ export default class StructuredQuery extends AtomicQuery {
     } else {
       return this;
     }
+  }
+
+  // JOINS
+
+  /**
+   * @returns an array of MBQL @type {Join}s.
+   */
+  joins(): Join[] {
+    return Q.getJoins(this.query()).map(
+      (join, index) => new JoinWrapper(join, index, this),
+    );
+  }
+
+  addJoin(join) {
+    return this._updateQuery(Q.addJoin, arguments);
+  }
+
+  updateJoin(index, join) {
+    return this._updateQuery(Q.updateJoin, arguments);
+  }
+
+  removeJoin(index) {
+    return this._updateQuery(Q.removeJoin, arguments);
+  }
+
+  clearJoins() {
+    return this._updateQuery(Q.clearJoins, arguments);
   }
 
   // AGGREGATIONS
@@ -714,7 +742,18 @@ export default class StructuredQuery extends AtomicQuery {
       dimensions: [],
     };
 
-    const table = this.tableMetadata();
+    const joins = this.joins();
+    for (const join of joins) {
+      const joinedDimensions = join.joinedDimensions().filter(dimensionFilter);
+      dimensionOptions.count += joinedDimensions.length;
+      dimensionOptions.fks.push({
+        icon: "join_left_outer",
+        field: { display_name: join.displayName() },
+        dimensions: joinedDimensions,
+      });
+    }
+
+    const table = this.table();
     if (table) {
       const dimensionIsFKReference = dimension =>
         dimension.field && dimension.field() && dimension.field().isFK();

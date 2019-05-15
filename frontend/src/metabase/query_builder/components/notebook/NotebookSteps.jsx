@@ -49,6 +49,8 @@ export default class NotebookSteps extends React.Component {
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+const NEST_STEP_TYPES = ["join", "filter"];
+
 function getQuestionSteps(question, openSteps) {
   const steps = [];
 
@@ -65,13 +67,15 @@ function getQuestionSteps(question, openSteps) {
       last.type === "sort" ||
       last.type === "limit"
     ) {
-      last.actions.push({
-        type: "filter",
-        action: ({ query, openStep }) => {
-          query.nest().update();
-          openStep(`${last.stage + 1}:filter`);
-        },
-      });
+      for (const type of NEST_STEP_TYPES) {
+        last.actions.push({
+          type: type,
+          action: ({ query, openStep }) => {
+            query.nest().update();
+            openStep(`${last.stage + 1}:${type}`);
+          },
+        });
+      }
     }
   }
 
@@ -87,9 +91,9 @@ const STEPS = [
   },
   {
     type: "join",
-    valid: query => true,
-    visible: query => false,
-    revert: query => query,
+    valid: query => !!query.table(),
+    visible: query => query.joins().length > 0,
+    revert: query => query.clearJoins(),
   },
   {
     type: "expression",
@@ -125,7 +129,7 @@ const STEPS = [
   },
   {
     type: "limit",
-    valid: query => true,
+    valid: query => !!query.table(),
     visible: query => query.limit() != null,
     revert: query => query.clearLimit(),
   },

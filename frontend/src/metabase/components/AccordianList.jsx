@@ -216,6 +216,12 @@ export default class AccordianList extends Component {
           {this.props.renderSectionIcon(section, sectionIndex)}
         </span>
       );
+    } else if (section.icon) {
+      return (
+        <span className="List-section-icon mr1 flex align-center">
+          <Icon name={section.icon} size={18} />
+        </span>
+      );
     } else {
       return null;
     }
