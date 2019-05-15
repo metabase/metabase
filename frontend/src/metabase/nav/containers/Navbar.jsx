@@ -296,7 +296,7 @@ export default class Navbar extends Component {
           {hasDataAccess && (
             <Link
               to={Urls.newQuestion()}
-              mx={3}
+              mx={2}
               className="hide sm-show"
               data-metabase-event={`NavBar;New Question`}
             >
@@ -323,14 +323,14 @@ export default class Navbar extends Component {
             ]}
           />
           {hasDataAccess && (
-            <Tooltip tooltip={t`Reference`}>
+            <Tooltip tooltip={t`Browse data`}>
               <Link
                 ml={2}
-                to="reference"
-                data-metabase-event={`NavBar;Reference`}
+                to="browse"
+                data-metabase-event={`NavBar;Data Browse`}
               >
                 <IconWrapper>
-                  <Icon size={18} name="reference" />
+                  <Icon size={17} name="table" />
                 </IconWrapper>
               </Link>
             </Tooltip>
