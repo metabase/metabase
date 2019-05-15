@@ -89,7 +89,7 @@ export default class NotebookStep extends React.Component {
     actions.push(
       ...step.actions.map(action => ({
         priority: (STEP_UI[action.type] || {}).priority,
-        element: <ActionButton
+        button: <ActionButton
           mr={1}
           large={isLastStep}
           {...STEP_UI[action.type] || {}}
@@ -99,7 +99,7 @@ export default class NotebookStep extends React.Component {
     );
     if (!showPreview && canPreview) {
       actions.push({
-        element: <ActionButton
+        button: <ActionButton
           mr={1}
           large={isLastStep}
           icon="right"
@@ -142,7 +142,6 @@ export default class NotebookStep extends React.Component {
 }
 
 const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
-  console.log("large", large)
   const button =
     <Button
       icon={icon}

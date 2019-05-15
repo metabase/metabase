@@ -32,8 +32,6 @@ const BaseButton = ({
   children,
   ...props
 }) => {
-  console.log("iconVertical", iconVertical)
-
   let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
