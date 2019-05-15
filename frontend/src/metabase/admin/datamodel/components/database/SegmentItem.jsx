@@ -39,7 +39,7 @@ export default class SegmentItem extends Component {
           <ObjectActionSelect
             object={segment}
             objectType="segment"
-            onRetire={() => onRetire(segment)}
+            onRetire={onRetire}
           />
         </td>
       </tr>

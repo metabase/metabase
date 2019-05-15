@@ -6,6 +6,9 @@ import _ from "underscore";
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
+import Segments from "metabase/entities/segments";
+import Metrics from "metabase/entities/metrics";
+
 import { GET } from "metabase/lib/api";
 import { augmentTable } from "metabase/lib/table";
 
@@ -78,5 +81,59 @@ export default createEntity({
   // FORMS
   form: {
     fields: [{ name: "name" }, { name: "description", type: "text" }],
+  },
+
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === Segments.actionTypes.CREATE) {
+      const { table_id: tableId, id: segmentId } = payload.segment;
+      const table = state[tableId];
+      if (table) {
+        return {
+          ...state,
+          [tableId]: { ...table, segments: [segmentId, ...table.segments] },
+        };
+      }
+    }
+
+    if (type === Metrics.actionTypes.CREATE) {
+      const { table_id: tableId, id: metricId } = payload.metric;
+      const table = state[tableId];
+      if (table) {
+        return {
+          ...state,
+          [tableId]: { ...table, metrics: [metricId, ...table.metrics] },
+        };
+      }
+    }
+
+    if (type === Segments.actionTypes.UPDATE) {
+      const { table_id: tableId, archived, id: segmentId } = payload.segment;
+      const table = state[tableId];
+      if (archived && table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            segments: table.segments.filter(id => id !== segmentId),
+          },
+        };
+      }
+    }
+
+    if (type === Metrics.actionTypes.UPDATE) {
+      const { table_id: tableId, archived, id: metricId } = payload.metric;
+      const table = state[tableId];
+      if (archived && table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            metrics: table.metrics.filter(id => id !== metricId),
+          },
+        };
+      }
+    }
+
+    return state;
   },
 });

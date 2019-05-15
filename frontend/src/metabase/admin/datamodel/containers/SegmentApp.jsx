@@ -6,14 +6,14 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import SegmentForm from "./SegmentForm.jsx";
 
-import * as actions from "../datamodel";
+import { updatePreviewSummary } from "../datamodel";
 import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Segments from "metabase/entities/segments";
 import Tables from "metabase/entities/tables";
 
 const mapDispatchToProps = {
-  ...actions,
+  updatePreviewSummary,
   createSegment: Segments.actions.create,
   onChangeLocation: push,
 };

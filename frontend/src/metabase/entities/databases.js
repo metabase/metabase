@@ -9,10 +9,16 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
+import Fields from "metabase/entities/fields";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
+
+export const FETCH_DATABASE_IDFIELDS =
+  "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
 const Databases = createEntity({
   name: "databases",
@@ -41,11 +47,30 @@ const Databases = createEntity({
           reload,
         }),
     ),
+
+    fetchIdfields: createThunkAction(
+      FETCH_DATABASE_IDFIELDS,
+      ({ id }) => async () => {
+        console.log("called again??");
+        const idfields = await MetabaseApi.db_idfields({ dbId: id });
+        const idfieldsWithDisplayName = idfields.map(field => {
+          field.displayName =
+            field.table.display_name + " → " + field.display_name;
+          return field;
+        });
+        return normalize(idfieldsWithDisplayName, [Fields.schema]);
+      },
+    ),
   },
 
   selectors: {
     getHasSampleDataset: state =>
       _.any(Databases.selectors.getList(state), db => db.is_sample),
+    getIdfields: (state, databaseId) => {
+      const databaseMetadata = getMetadata(state).database(databaseId);
+      const idfields = databaseMetadata && databaseMetadata.idfields();
+      return idfields;
+    },
   },
 
   // FORM

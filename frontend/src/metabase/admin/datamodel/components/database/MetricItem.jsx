@@ -9,6 +9,7 @@ export default class MetricItem extends Component {
   static propTypes = {
     metric: PropTypes.object.isRequired,
     onRetire: PropTypes.func.isRequired,
+    tableMetadata: PropTypes.object.isRequired,
   };
 
   render() {
@@ -28,7 +29,7 @@ export default class MetricItem extends Component {
           <ObjectActionSelect
             object={metric}
             objectType="metric"
-            onRetire={() => onRetire(metric)}
+            onRetire={onRetire}
           />
         </td>
       </tr>

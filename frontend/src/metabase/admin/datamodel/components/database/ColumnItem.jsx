@@ -17,8 +17,10 @@ import _ from "underscore";
 import cx from "classnames";
 
 import type { Field } from "metabase/meta/types/Field";
+import Fields from "metabase/entities/fields";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+@Fields.load({ id: (state, { field: { id } }) => id, wrapped: true })
 @withRouter
 export default class Column extends Component {
   constructor(props, context) {
@@ -31,12 +33,10 @@ export default class Column extends Component {
   static propTypes = {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
-    updateField: PropTypes.func.isRequired,
   };
 
   updateProperty(name, value) {
-    this.props.field[name] = value;
-    this.props.updateField(this.props.field);
+    this.props.field.update({ [name]: value });
   }
 
   onNameChange(event) {
@@ -57,7 +57,7 @@ export default class Column extends Component {
   }
 
   render() {
-    const { field, idfields, updateField } = this.props;
+    const { field, idfields } = this.props;
 
     return (
       <li className="mt1 mb3 flex">
@@ -76,14 +76,14 @@ export default class Column extends Component {
                   <FieldVisibilityPicker
                     className="block"
                     field={field}
-                    updateField={updateField}
+                    updateField={field.update}
                   />
                 </div>
                 <div className="flex-full px1">
                   <SpecialTypeAndTargetPicker
                     className="block"
                     field={field}
-                    updateField={updateField}
+                    updateField={field.update}
                     idfields={idfields}
                   />
                 </div>
@@ -260,7 +260,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             searchCaseSensitive={false}
           >
             {Object.values(currency).map(c => (
-              <Option name={c.name} value={c.code}>
+              <Option name={c.name} value={c.code} key={c.code}>
                 <span className="flex full align-center">
                   <span>{c.name}</span>
                   <span className="text-bold text-light ml1">{c.symbol}</span>

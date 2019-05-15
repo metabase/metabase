@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
-import _ from "underscore";
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -11,32 +11,22 @@ import MetadataHeader from "../components/database/MetadataHeader.jsx";
 import MetadataTablePicker from "../components/database/MetadataTablePicker.jsx";
 import MetadataTable from "../components/database/MetadataTable.jsx";
 import MetadataSchema from "../components/database/MetadataSchema.jsx";
-import { metrics as Metrics, segments as Segments } from "metabase/entities";
-
 import {
-  getDatabases,
-  getDatabaseIdfields,
-  getEditingDatabaseWithTableMetadataStrengths,
-  getEditingTable,
-} from "../selectors";
-import * as metadataActions from "../datamodel";
+  metrics as Metrics,
+  segments as Segments,
+  databases as Databases,
+} from "metabase/entities";
 
-const mapStateToProps = (state, props) => {
-  return {
-    databaseId: parseInt(props.params.databaseId),
-    tableId: parseInt(props.params.tableId),
-    databases: getDatabases(state, props),
-    idfields: getDatabaseIdfields(state, props),
-    databaseMetadata: getEditingDatabaseWithTableMetadataStrengths(
-      state,
-      props,
-    ),
-    editingTable: getEditingTable(state, props),
-  };
-};
+const mapStateToProps = (state, { params: { tableId, databaseId } }) => ({
+  idfields: Databases.selectors.getIdfields(state, databaseId),
+  databaseId: databaseId ? parseInt(databaseId) : undefined,
+  tableId: tableId ? parseInt(tableId) : undefined,
+});
 
 const mapDispatchToProps = {
-  ...metadataActions,
+  selectDatabase: ({ id }) => push("/admin/datamodel/database/" + id),
+  selectTable: ({ id, db_id }) =>
+    push(`/admin/datamodel/database/${db_id}/table/${id}`),
   onRetireMetric: metric => Metrics.actions.setArchived(metric, true),
   onRetireSegment: segment => Segments.actions.setArchived(segment, true),
 };
@@ -58,22 +48,12 @@ export default class MetadataEditor extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
     tableId: PropTypes.number,
-    databases: PropTypes.array.isRequired,
     selectDatabase: PropTypes.func.isRequired,
-    databaseMetadata: PropTypes.object,
     selectTable: PropTypes.func.isRequired,
-    idfields: PropTypes.array.isRequired,
-    editingTable: PropTypes.number,
-    updateTable: PropTypes.func.isRequired,
-    updateField: PropTypes.func.isRequired,
+    idfields: PropTypes.array,
     onRetireMetric: PropTypes.func.isRequired,
     onRetireSegment: PropTypes.func.isRequired,
   };
-
-  componentWillMount() {
-    // if we know what database we are initialized with, include that
-    this.props.initializeMetadata(this.props.databaseId, this.props.tableId);
-  }
 
   toggleShowSchema() {
     this.setState({ isShowingSchema: !this.state.isShowingSchema });
@@ -85,44 +65,12 @@ export default class MetadataEditor extends Component {
   }
 
   render() {
-    let tableMetadata = this.props.databaseMetadata
-      ? _.findWhere(this.props.databaseMetadata.tables, {
-          id: this.props.editingTable,
-        })
-      : null;
-    let content;
-    if (tableMetadata) {
-      if (this.state.isShowingSchema) {
-        content = <MetadataSchema tableMetadata={tableMetadata} />;
-      } else {
-        content = (
-          <MetadataTable
-            tableMetadata={tableMetadata}
-            idfields={this.props.idfields}
-            updateTable={table => this.props.updateTable(table)}
-            updateField={field => this.props.updateField(field)}
-            onRetireMetric={this.props.onRetireMetric}
-            onRetireSegment={this.props.onRetireSegment}
-          />
-        );
-      }
-    } else {
-      content = (
-        <div style={{ paddingTop: "10rem" }} className="full text-centered">
-          <AdminEmptyText
-            message={t`Select any table to see its schema and add or edit metadata.`}
-          />
-        </div>
-      );
-    }
+    const { databaseId, tableId } = this.props;
     return (
       <div className="p3">
         <MetadataHeader
           ref="header"
-          databaseId={
-            this.props.databaseMetadata ? this.props.databaseMetadata.id : null
-          }
-          databases={this.props.databases}
+          databaseId={databaseId}
           selectDatabase={this.props.selectDatabase}
           isShowingSchema={this.state.isShowingSchema}
           toggleShowSchema={this.toggleShowSchema}
@@ -131,16 +79,31 @@ export default class MetadataEditor extends Component {
           style={{ minHeight: "60vh" }}
           className="flex flex-row flex-full mt2 full-height"
         >
-          <MetadataTablePicker
-            tableId={this.props.editingTable}
-            tables={
-              this.props.databaseMetadata
-                ? this.props.databaseMetadata.tables
-                : []
-            }
-            selectTable={this.props.selectTable}
-          />
-          {content}
+          {databaseId && (
+            <MetadataTablePicker
+              tableId={tableId}
+              databaseId={databaseId}
+              selectTable={this.props.selectTable}
+            />
+          )}
+          {tableId ? (
+            this.state.isShowingSchema ? (
+              <MetadataSchema tableId={tableId} />
+            ) : (
+              <MetadataTable
+                tableId={tableId}
+                idfields={this.props.idfields}
+                onRetireMetric={this.props.onRetireMetric}
+                onRetireSegment={this.props.onRetireSegment}
+              />
+            )
+          ) : (
+            <div style={{ paddingTop: "10rem" }} className="full text-centered">
+              <AdminEmptyText
+                message={t`Select any table to see its schema and add or edit metadata.`}
+              />
+            </div>
+          )}
         </div>
       </div>
     );

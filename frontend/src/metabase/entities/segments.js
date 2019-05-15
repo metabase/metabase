@@ -12,13 +12,14 @@ const Segments = createEntity({
   schema: SegmentSchema,
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
+    setArchived: ({ id, revision_message }, archived, opts) =>
       Segments.actions.update(
         { id },
         {
           archived,
           // NOTE: this is still required by the endpoint even though we don't really use it
-          revision_message: archived ? "(Archive)" : "(Unarchive)",
+          revision_message:
+            revision_message || (archived ? "(Archive)" : "(Unarchive)"),
         },
         opts,
       ),

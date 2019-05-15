@@ -7,12 +7,17 @@ import SegmentsList from "./SegmentsList.jsx";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ProgressBar from "metabase/components/ProgressBar.jsx";
-
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { normal } from "metabase/lib/colors";
+import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
 
 import _ from "underscore";
 import cx from "classnames";
 
+@Databases.load({ id: (state, { databaseId }) => databaseId, wrapped: true })
+@Tables.load({ id: (state, { tableId }) => tableId, wrapped: true })
+@withTableMetadataLoaded
 export default class MetadataTable extends Component {
   constructor(props, context) {
     super(props, context);
@@ -22,22 +27,33 @@ export default class MetadataTable extends Component {
   }
 
   static propTypes = {
-    tableMetadata: PropTypes.object,
-    idfields: PropTypes.array.isRequired,
-    updateTable: PropTypes.func.isRequired,
-    updateField: PropTypes.func.isRequired,
+    table: PropTypes.object,
+    idfields: PropTypes.array,
     onRetireMetric: PropTypes.func.isRequired,
     onRetireSegment: PropTypes.func.isRequired,
   };
 
+  componentWillMount() {
+    const { database } = this.props;
+    if (database) {
+      database.fetchIdfields();
+    }
+  }
+
+  componentDidUpdate({ database: { prevId } = {} }) {
+    const { database = {} } = this.props;
+    if (database.id !== prevId) {
+      database.fetchIdfields();
+    }
+  }
+
   isHidden() {
-    return !!this.props.tableMetadata.visibility_type;
+    return !!this.props.table.visibility_type;
   }
 
   updateProperty(name, value) {
-    this.props.tableMetadata[name] = value;
     this.setState({ saving: true });
-    this.props.updateTable(this.props.tableMetadata);
+    this.props.table.update({ [name]: value });
   }
 
   onNameChange(event) {
@@ -45,7 +61,7 @@ export default class MetadataTable extends Component {
       this.updateProperty("display_name", event.target.value);
     } else {
       // if the user set this to empty then simply reset it because that's not allowed!
-      event.target.value = this.props.tableMetadata.display_name;
+      event.target.value = this.props.table.display_name;
     }
   }
 
@@ -62,8 +78,8 @@ export default class MetadataTable extends Component {
       "text-default",
       {
         "text-brand":
-          this.props.tableMetadata.visibility_type === type ||
-          (any && this.props.tableMetadata.visibility_type),
+          this.props.table.visibility_type === type ||
+          (any && this.props.table.visibility_type),
       },
     );
     return (
@@ -78,7 +94,7 @@ export default class MetadataTable extends Component {
 
   renderVisibilityWidget() {
     let subTypes;
-    if (this.props.tableMetadata.visibility_type) {
+    if (this.props.table.visibility_type) {
       subTypes = (
         <span id="VisibilitySubTypes" className="border-left mx2">
           <span className="mx2 text-uppercase text-medium">{t`Why Hide?`}</span>
@@ -97,8 +113,8 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { tableMetadata, onRetireMetric, onRetireSegment } = this.props;
-    if (!tableMetadata) {
+    const { table, onRetireMetric, onRetireSegment } = this.props;
+    if (!table) {
       return false;
     }
 
@@ -108,13 +124,13 @@ export default class MetadataTable extends Component {
           <InputBlurChange
             className="AdminInput TableEditor-table-name text-bold border-bottom rounded-top"
             type="text"
-            value={tableMetadata.display_name || ""}
+            value={table.display_name || ""}
             onBlurChange={this.onNameChange}
           />
           <InputBlurChange
             className="AdminInput TableEditor-table-description rounded-bottom"
             type="text"
-            value={tableMetadata.description || ""}
+            value={table.description || ""}
             onBlurChange={this.onDescriptionChange}
             placeholder={t`No table description yet`}
           />
@@ -126,26 +142,18 @@ export default class MetadataTable extends Component {
             <span className="text-uppercase mr1">{t`Metadata Strength`}</span>
             <span style={{ width: 64 }}>
               <ProgressBar
-                percentage={tableMetadata.metadataStrength}
+                percentage={table.metadataStrength}
                 color={normal.grey2}
               />
             </span>
           </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
-          <SegmentsList
-            onRetire={onRetireSegment}
-            tableMetadata={tableMetadata}
-          />
-          <MetricsList
-            onRetire={onRetireMetric}
-            tableMetadata={tableMetadata}
-          />
-          <ColumnsList
-            tableMetadata={tableMetadata}
-            idfields={this.props.idfields}
-            updateField={this.props.updateField}
-          />
+          <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
+          <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
+          {this.props.idfields && (
+            <ColumnsList fields={table.fields} idfields={this.props.idfields} />
+          )}
         </div>
       </div>
     );

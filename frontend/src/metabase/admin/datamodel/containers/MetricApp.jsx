@@ -6,14 +6,14 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 import MetricForm from "./MetricForm.jsx";
 
-import * as actions from "../datamodel";
+import { updatePreviewSummary } from "../datamodel";
 import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Metrics from "metabase/entities/metrics";
 import Tables from "metabase/entities/tables";
 
 const mapDispatchToProps = {
-  ...actions,
+  updatePreviewSummary,
   createMetric: Metrics.actions.create,
   onChangeLocation: push,
 };

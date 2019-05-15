@@ -11,7 +11,8 @@ export default class SegmentsList extends Component {
   };
 
   render() {
-    let { onRetire, tableMetadata } = this.props;
+    const { onRetire, tableMetadata } = this.props;
+    const { segments = [] } = tableMetadata;
 
     return (
       <div id="SegmentsList" className="my3">
@@ -34,7 +35,7 @@ export default class SegmentsList extends Component {
             </tr>
           </thead>
           <tbody>
-            {tableMetadata.segments.map(segment => (
+            {segments.map(segment => (
               <SegmentItem
                 key={segment.id}
                 onRetire={onRetire}
@@ -44,7 +45,7 @@ export default class SegmentsList extends Component {
             ))}
           </tbody>
         </table>
-        {tableMetadata.segments.length === 0 && (
+        {segments.length === 0 && (
           <div className="flex layout-centered m4 text-medium">
             {t`Create segments to add them to the Filter dropdown in the query builder`}
           </div>
