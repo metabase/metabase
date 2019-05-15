@@ -109,8 +109,8 @@ export default class NotebookStep extends React.Component {
     });
     }
 
-    actions.sort((a,b) => (b.priority || 0) - (a.priority || 0));
-    const actionButtons = actions.map(action => action.element)
+    actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const actionButtons = actions.map(action => action.button);
 
     return (
       <Box mb={2} pb={2} className="border-row-divider">

@@ -82,11 +82,13 @@ export default class FieldList extends Component {
     let mainSection = {
       name: hideSectionHeader ? null : singularize(tableName),
       items: specialOptions.concat(getSectionItems(fieldOptions)),
+      icon: "table2",
     };
 
     let fkSections = fieldOptions.fks.map(fkOptions => ({
       name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
       items: getSectionItems(fkOptions),
+      icon: fkOptions.icon || "connections",
     }));
 
     let sections = [];
@@ -198,14 +200,6 @@ export default class FieldList extends Component {
     }
   };
 
-  renderSectionIcon = (section, sectionIndex) => {
-    if (sectionIndex > 0) {
-      return <Icon name="connections" size={18} />;
-    } else {
-      return <Icon name="table2" size={18} />;
-    }
-  };
-
   onChange = item => {
     const {
       field,
@@ -248,7 +242,6 @@ export default class FieldList extends Component {
         sections={this.state.sections}
         onChange={this.onChange}
         itemIsSelected={this.itemIsSelected}
-        renderSectionIcon={this.renderSectionIcon}
         renderItemExtra={this.renderItemExtra}
         renderItemIcon={this.renderItemIcon}
         renderItemWrapper={this.props.renderItemWrapper}

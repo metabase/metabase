@@ -48,7 +48,6 @@ const BaseButton = ({
       <div
           className={cx("flex layout-centered", {"flex-column": iconVertical })}
           style={iconVertical ? {minWidth: 60} : null }
-
         >
         {icon && (
           <Icon

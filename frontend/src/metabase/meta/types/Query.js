@@ -74,6 +74,7 @@ export type StructuredQuery = {
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
   filter?: FilterClause,
+  join?: JoinClause,
   "order-by"?: OrderByClause,
   limit?: LimitClause,
   expressions?: ExpressionClause,
@@ -208,6 +209,21 @@ export type SegmentFilter = ["segment", SegmentId];
 
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", Field];
+
+export type JoinStrategy =
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "outer-join";
+export type JoinClause = Array<OrderBy>;
+export type Join = {
+  "source-table"?: TableId,
+  "source-query"?: StructuredQuery,
+  condition: Filter,
+  alias?: string,
+  strategy?: JoinStrategy,
+  fields?: "all" | "none" | Field,
+};
 
 export type LimitClause = number;
 

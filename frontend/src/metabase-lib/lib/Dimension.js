@@ -840,6 +840,27 @@ export class AggregationDimension extends Dimension {
   }
 }
 
+/**
+ * Joined field reference, `["joined-field", alias, ConcreteField]`
+ */
+export class JoinedDimension extends FieldDimension {
+  static parseMBQL(
+    mbql: ConcreteField,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
+    if (Array.isArray(mbql) && mbql[0] === "joined-field") {
+      const parent = Dimension.parseMBQL(mbql[2], metadata, query);
+      return new JoinedDimension(parent, [mbql[1]], metadata, query);
+    }
+    return null;
+  }
+
+  mbql(): ForeignFieldReference {
+    return ["joined-field", this._args[0], this._parent.mbql()];
+  }
+}
+
 const DIMENSION_TYPES: typeof Dimension[] = [
   FieldIDDimension,
   FieldLiteralDimension,
@@ -848,4 +869,5 @@ const DIMENSION_TYPES: typeof Dimension[] = [
   ExpressionDimension,
   BinnedDimension,
   AggregationDimension,
+  JoinedDimension,
 ];
