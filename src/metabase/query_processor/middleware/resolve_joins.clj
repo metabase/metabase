@@ -16,10 +16,11 @@
 
 (s/defn ^:private all-joins :- (s/maybe mbql.s/Joins)
   [{{:keys [joins source-query]} :query, :as query} :- su/Map]
-  (concat
-   joins
-   (when source-query
-     (all-joins (assoc query :query source-query)))))
+  (seq
+   (concat
+    joins
+    (when source-query
+      (all-joins (assoc query :query source-query))))))
 
 (s/defn ^:private resolve-joined-tables
   [joins :- mbql.s/Joins]
@@ -33,7 +34,7 @@
     (doseq [field (db/select (into [Field] qp.store/field-columns-to-fetch) :id [:in field-ids])]
       (qp.store/store-field! field))))
 
-(s/defn ^:private resolve-joined-tables-and-fields :- s/Bool
+(s/defn ^:private resolve-joined-tables-and-fields :- (s/maybe s/Bool)
   "Add referenced Tables and Fields to the QP store. Returns `true` if the query has joins."
   [query :- su/Map]
   (when-let [joins (seq (all-joins query))]
