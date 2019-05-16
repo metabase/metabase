@@ -294,12 +294,10 @@
   IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
 
 (extend Throwable
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
+  IFilteredStacktrace {:filtered-stacktrace (comp filtered-stacktrace throwable-get-stack-trace)})
 
 (extend Thread
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                              (filtered-stacktrace (thread-get-stack-trace this)))})
+  IFilteredStacktrace {:filtered-stacktrace (comp filtered-stacktrace thread-get-stack-trace)})
 
 (defn- metabase-frame? [frame]
   (re-find #"metabase" (str frame)))

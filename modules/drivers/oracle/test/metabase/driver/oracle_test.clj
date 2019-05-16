@@ -72,31 +72,31 @@
 ;; `deduplicate-identifiers` should use the last component of an identifier as the alias if it does not already have
 ;; one
 (expect
-  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
-   [(hx/identifier "F")             (hx/identifier "G")]]
+  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
+   [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
   (#'oracle/deduplicate-identifiers
-   [(hx/identifier "A" "B" "C" "D")
-    [(hx/identifier "F")            (hx/identifier "G")]]))
+   [(hx/identifier :field "A" "B" "C" "D")
+    [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))
 
 ;; `deduplicate-identifiers` should append numeric suffixes to duplicate aliases
 (expect
-  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
-   [(hx/identifier "E" "D")         (hx/identifier "D_2")]
-   [(hx/identifier "F")             (hx/identifier "G")]]
+  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
+   [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
+   [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
   (#'oracle/deduplicate-identifiers
-   [(hx/identifier "A" "B" "C" "D")
-    (hx/identifier "E" "D")
-    [(hx/identifier "F")            (hx/identifier "G")]]))
+   [(hx/identifier :field "A" "B" "C" "D")
+    (hx/identifier :field "E" "D")
+    [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))
 
 ;; `deduplicate-identifiers` should handle aliases that are already suffixed gracefully
 (expect
-  [[(hx/identifier "A" "B" "C" "D") (hx/identifier "D")]
-   [(hx/identifier "E" "D")         (hx/identifier "D_2")]
-   [(hx/identifier "F")             (hx/identifier "D_3")]]
+  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
+   [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
+   [(hx/identifier :field "F")             (hx/identifier :field-alias "D_3")]]
   (#'oracle/deduplicate-identifiers
-   [(hx/identifier "A" "B" "C" "D")
-    (hx/identifier "E" "D")
-    [(hx/identifier "F")            (hx/identifier "D_2")]]))
+   [(hx/identifier :field "A" "B" "C" "D")
+    (hx/identifier :field "E" "D")
+    [(hx/identifier :field "F")            (hx/identifier :field-alias "D_2")]]))
 
 
 (expect

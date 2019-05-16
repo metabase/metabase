@@ -7,14 +7,14 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.util.pretty :refer [PrettyPrintable]])
+            [metabase.util.pretty :refer [PrettyPrintable]]
+            [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
 
-(when-not *compile-files*
-  (when config/is-dev?
-    (alter-meta! #'honeysql.core/format assoc :style/indent 1)
-    (alter-meta! #'honeysql.core/call   assoc :style/indent 1)))
+(when config/is-dev?
+  (alter-meta! #'honeysql.core/format assoc :style/indent 1)
+  (alter-meta! #'honeysql.core/call   assoc :style/indent 1))
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
@@ -55,29 +55,57 @@
   clojure.lang.Ratio
   (to-sql [x] (hformat/to-sql (double x))))
 
-(defrecord Identifier [components]
+(def IdentifierType
+  "Schema for valid Identifier types."
+  (s/enum
+   :database
+   :schema
+   :constraint
+   :index
+   ;; Suppose we have a query like:
+   ;; SELECT my_field f FROM my_table t
+   ;; then:
+   :table          ; is `my_table`
+   :table-alias    ; is `t`
+   :field          ; is `my_field`
+   :field-alias))  ; is `f`
+
+(defrecord Identifier [identifier-type components]
   :load-ns true
   ToSql
   (to-sql [_]
     (binding [hformat/*allow-dashed-names?* true]
       (str/join
        \.
-       (for [component components
-             :when     (some? component)]
+       (for [component components]
          (hformat/quote-identifier component, :split false)))))
   PrettyPrintable
   (pretty [_]
-    (cons 'identifier components)))
+    (cons 'identifier (cons identifier-type components))))
 
-(defn identifier
-  "Define an identifer with `components`. Prefer this to using keywords for identifiers, as those do not properly handle
-  identifiers with slashes in them."
-  [& components]
-  (Identifier. (for [component components
-                     component (if (instance? Identifier component)
-                                 (:components component)
-                                 [component])]
-                 (u/keyword->qualified-name component))))
+;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
+(when-not config/is-prod?
+  (alter-meta! #'->Identifier    assoc :private true)
+  (alter-meta! #'map->Identifier assoc :private true))
+
+(s/defn identifier :- Identifier
+  "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
+  properly handle identifiers with slashes in them.
+
+  `identifier-type` represents the type of identifier in question, which is important context for some drivers, such
+  as BigQuery (which needs to qualify Tables identifiers with their dataset name.)
+
+  This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
+  strings."
+  [identifier-type :- IdentifierType, & components]
+  (Identifier.
+   identifier-type
+   (for [component components
+         component (if (instance? Identifier component)
+                     (:components component)
+                     [component])
+         :when     (some? component)]
+     (u/keyword->qualified-name component))))
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
@@ -90,6 +118,11 @@
   PrettyPrintable
   (pretty [_]
     (list 'literal literal)))
+
+;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
+(when-not config/is-prod?
+  (alter-meta! #'->Literal    assoc :private true)
+  (alter-meta! #'map->Literal assoc :private true))
 
 (defn literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
@@ -107,8 +140,8 @@
 (def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (partial hsql/call :*))
 (def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (partial hsql/call :%))
 
-(defn inc "Add 1 to X."        [x] (+ x 1))
-(defn dec "Subtract 1 from X." [x] (- x 1))
+(defn inc "Add 1 to `x`."        [x] (+ x 1))
+(defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 
 (defn cast
@@ -134,13 +167,13 @@
   [x decimal-places]
   (hsql/call :round x decimal-places))
 
-(defn ->date                     "CAST X to a `date`."                     [x] (cast :date x))
-(defn ->datetime                 "CAST X to a `datetime`."                 [x] (cast :datetime x))
-(defn ->timestamp                "CAST X to a `timestamp`."                [x] (cast :timestamp x))
-(defn ->timestamp-with-time-zone "CAST X to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
-(defn ->integer                  "CAST X to a `integer`."                  [x] (cast :integer x))
-(defn ->time                     "CAST X to a `time` datatype"             [x] (cast :time x))
-(defn ->boolean                  "CAST X to a `boolean` datatype"          [x] (cast :boolean x))
+(defn ->date                     "CAST `x` to a `date`."                     [x] (cast :date x))
+(defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (cast :datetime x))
+(defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (cast :timestamp x))
+(defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
+(defn ->integer                  "CAST `x` to a `integer`."                  [x] (cast :integer x))
+(defn ->time                     "CAST `x` to a `time` datatype"             [x] (cast :time x))
+(defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))

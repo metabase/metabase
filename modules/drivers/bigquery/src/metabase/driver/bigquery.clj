@@ -126,12 +126,11 @@
   (boolean (list-tables {:details details-map})))
 
 
-(defn- ^Table get-table
+(s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
-  ([^Bigquery client, ^String project-id, ^String dataset-id, ^String table-id]
-   {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
+  ([client :- Bigquery, project-id :- su/NonBlankString, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
 (defn- bigquery-type->base-type [field-type]
@@ -148,13 +147,15 @@
     "NUMERIC"   :type/Decimal
     :type/*))
 
-(defn- table-schema->metabase-field-info [^TableSchema schema]
+(s/defn ^:private table-schema->metabase-field-info
+  [schema :- TableSchema]
   (for [^TableFieldSchema field (.getFields schema)]
     {:name          (.getName field)
      :database-type (.getType field)
      :base-type     (bigquery-type->base-type (.getType field))}))
 
-(defmethod driver/describe-table :bigquery [_ database {table-name :name}]
+(defmethod driver/describe-table :bigquery
+  [_ database {table-name :name}]
   {:schema nil
    :name   table-name
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
@@ -306,13 +307,22 @@
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; Table & Field identifiers need to be qualified with the current dataset name; this needs to be part of the table e.g.
+;;
+;; `table`.`field` -> `dataset.table`.`field`
+;;
+;; Only do this qualification if we're not currently using a Table alias.
+;;
+;; SELECT field FROM table    -> SELECT dataset.table.field FROM dataset.table (not using alias)
+;; SELECT field FROM table t1 -> SELECT t1.field FROM dataset.table t1         (using alias)
 (defmethod sql.qp/->honeysql [:bigquery Identifier]
-  [_ identifier]
-  ;; if we're currently using a `*table-alias`, we can leave `identifer` as-is; otherwise, we need to qualify it with
-  ;; the dataset name. It needs to be part of the same string because
-  (if sql.qp/*table-alias*
-    identifier
-    (update-in identifier [:components 0] (partial str (dataset-name-for-current-query) \.))))
+  [_ {:keys [identifier-type], :as identifier}]
+  (cond-> identifier
+    (and (not sql.qp/*table-alias*)
+         (#{:table :field} identifier-type))
+    (update :components (fn [[table & more]]
+                          (cons (str (dataset-name-for-current-query) \. table)
+                                more)))))
 
 (s/defn ^:private honeysql-form->sql :- s/Str
   [honeysql-form :- su/Map]
@@ -372,7 +382,7 @@
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
   (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))]
-    (hx/identifier table-name field-name)))
+    (hx/identifier :field table-name field-name)))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
   [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]

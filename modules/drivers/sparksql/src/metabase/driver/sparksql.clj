@@ -58,8 +58,8 @@
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier schema table-name))
-                           source-table-alias])))
+    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
@@ -109,7 +109,7 @@
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (let [results (jdbc/query {:connection conn} [(format
                                                     "describe %s"
-                                                    (sql.u/quote-name driver
+                                                    (sql.u/quote-name driver :table
                                                       (dash-to-underscore schema)
                                                       (dash-to-underscore table-name)))])]
        (set

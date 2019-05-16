@@ -235,19 +235,13 @@
                (.rollback (jdbc/get-connection nested-transaction-connection))
                (log/error (u/format-color 'red "[ERROR] %s" (.getMessage e)))))))))
 
-(def ^{:arglists '([])} ^DatabaseFactory database-factory
-  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
-  otherwise it adds 2 seconds to startup time."
-  (when-not *compile-files*
-    (partial deref (future (DatabaseFactory/getInstance)))))
-
 (defn- conn->liquibase
-  "Get a `Liquibase` object from JDBC CONN."
+  "Get a `Liquibase` object from JDBC `conn`."
   (^Liquibase []
    (conn->liquibase (jdbc-details)))
   (^Liquibase [conn]
    (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
-         ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
+         ^Database       database       (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
 (defn consolidate-liquibase-changesets
@@ -259,13 +253,13 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibases-table-name (if (#{:h2 :mysql} (db-type))
-                                "DATABASECHANGELOG"
-                                "databasechangelog")
-        fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
-                         (empty? (jdbc/metadata-query
-                                  (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
-        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
+  (let [liquibase-table-name (if (#{:h2 :mysql} (db-type))
+                               "DATABASECHANGELOG"
+                               "databasechangelog")
+        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+                               (empty? (jdbc/metadata-query
+                                        (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
+        query                (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
     (when-not fresh-install?
       (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
 

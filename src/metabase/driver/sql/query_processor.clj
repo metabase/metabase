@@ -181,7 +181,7 @@
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
-        identifier (->honeysql driver (apply hx/identifier (concat qualifiers [field-name])))]
+        identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
 (defmethod ->honeysql [:sql :field-id]
@@ -190,7 +190,7 @@
 
 (defmethod ->honeysql [:sql :field-literal]
   [driver [_ field-name]]
-  (->honeysql driver (hx/identifier *table-alias* field-name)))
+  (->honeysql driver (hx/identifier :field *table-alias* field-name)))
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
@@ -317,7 +317,7 @@
                        expression-name      expression-name
                        field                (field->alias driver field)
                        (string? id-or-name) id-or-name)]
-      (->honeysql driver (hx/identifier alias)))))
+      (->honeysql driver (hx/identifier :field-alias alias)))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -355,6 +355,7 @@
                 form
                 [(->honeysql driver ag)
                  (->honeysql driver (hx/identifier
+                                     :field-alias
                                      (driver/format-custom-field-name driver (annotate/aggregation-name ag))))])]
       (if-not (seq more)
         form
@@ -498,7 +499,7 @@
 (defmethod ->honeysql [:sql (class Table)]
   [driver table]
   (let [{table-name :name, schema :schema} table]
-    (->honeysql driver (hx/identifier schema table-name))))
+    (->honeysql driver (hx/identifier :table schema table-name))))
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]

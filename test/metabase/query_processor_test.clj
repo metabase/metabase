@@ -294,7 +294,8 @@
   this behavior."
   {:style/indent 1}
   ([format-fns rows]
-   (format-rows-by format-fns (not :format-nil-values?) rows))
+   (format-rows-by format-fns false rows))
+
   ([format-fns format-nil-values? rows]
    (cond
      (= (:status rows) :failed)
@@ -308,13 +309,16 @@
      (update rows :rows (partial format-rows-by format-fns))
 
      :else
-     (vec (for [row rows]
-            (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                   (when (or v format-nil-values?)
-                     (try (f v)
-                          (catch Throwable e
-                            (printf "(%s %s) failed: %s" f v (.getMessage e))
-                            (throw e)))))))))))
+     (vec
+      (for [row rows]
+        (vec
+         (for [[f v] (partition 2 (interleave format-fns row))]
+           (when (or v format-nil-values?)
+             (try
+               (f v)
+               (catch Throwable e
+                 (printf "(%s %s) failed: %s" f v (.getMessage e))
+                 (throw e)))))))))))
 
 (def ^{:arglists '([results])} formatted-venues-rows
   "Helper function to format the rows in `results` when running a 'raw data' query against the Venues test table."

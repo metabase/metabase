@@ -196,12 +196,11 @@
       col
 
       ;; otherwise we *should* be dealing with an Identifier. If so, take the last component of the Identifier and use
-      ;; that as the alias. Because Identifiers can be nested, check if the last part is an `Identifier` and recurse
-      ;; if needed.
+      ;; that as the alias.
       ;;
-      ;; TODO - could this be done using `->honeysql` instead?
+      ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
       (instance? Identifier col)
-      [col (hx/identifier (last (:components col)))]
+      [col (hx/identifier :field-alias (last (:components col)))]
 
       :else
       (do
