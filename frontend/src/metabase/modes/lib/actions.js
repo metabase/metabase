@@ -401,11 +401,11 @@ const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
     ? existingDisplay
     : defaultDisplay;
 
-const guessVisualization = (
+export function guessVisualization(
   card: CardObject,
   tableMetadata: Table,
   existingDisplay: ?string = null,
-) => {
+) {
   const query = Card.getQuery(card);
   if (!query) {
     return;
@@ -447,4 +447,4 @@ const guessVisualization = (
     console.warn("Couldn't guess visualization", card);
     card.display = "table";
   }
-};
+}

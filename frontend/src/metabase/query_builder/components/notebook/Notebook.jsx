@@ -15,6 +15,8 @@ import Button from "metabase/components/Button";
 const legacy = false;
 
 const Notebook = ({ className, ...props }) => {
+  const { question } = props;
+
   return (
     <Box className={cx(className, "relative mb4")}>
       <NotebookHeader {...props} className="absolute top right" />
@@ -25,7 +27,8 @@ const Notebook = ({ className, ...props }) => {
           medium
           primary
           ml={3}
-          onClick={() => {
+          onClick={async () => {
+            await question.setDisplayAutomatically().update();
             if (props.isResultDirty) {
               props.runQuestionQuery();
             }
