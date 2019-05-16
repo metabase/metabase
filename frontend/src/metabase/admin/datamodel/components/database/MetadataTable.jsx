@@ -40,7 +40,7 @@ export default class MetadataTable extends Component {
     }
   }
 
-  componentDidUpdate({ database: { prevId } = {} }) {
+  componentDidUpdate({ database: { id: prevId } = {} }) {
     const { database = {} } = this.props;
     if (database.id !== prevId) {
       database.fetchIdfields();

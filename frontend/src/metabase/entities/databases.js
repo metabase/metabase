@@ -66,11 +66,10 @@ const Databases = createEntity({
   selectors: {
     getHasSampleDataset: state =>
       _.any(Databases.selectors.getList(state), db => db.is_sample),
-    getIdfields: (state, databaseId) => {
-      const databaseMetadata = getMetadata(state).database(databaseId);
-      const idfields = databaseMetadata && databaseMetadata.idfields();
-      return idfields;
-    },
+    getIdfields: (state, databaseId) =>
+      Object.values(getMetadata(state).fields).filter(
+        f => f.table.db_id === databaseId && f.isPK(),
+      ),
   },
 
   // FORM

@@ -17,11 +17,17 @@ import {
   databases as Databases,
 } from "metabase/entities";
 
-const mapStateToProps = (state, { params: { tableId, databaseId } }) => ({
-  idfields: Databases.selectors.getIdfields(state, databaseId),
-  databaseId: databaseId ? parseInt(databaseId) : undefined,
-  tableId: tableId ? parseInt(tableId) : undefined,
-});
+const mapStateToProps = (state, { params }) => {
+  const databaseId = params.databaseId
+    ? parseInt(params.databaseId)
+    : undefined;
+  const tableId = params.tableId ? parseInt(params.tableId) : undefined;
+  return {
+    databaseId,
+    tableId,
+    idfields: Databases.selectors.getIdfields(state, databaseId),
+  };
+};
 
 const mapDispatchToProps = {
   selectDatabase: ({ id }) => push("/admin/datamodel/database/" + id),
@@ -92,6 +98,7 @@ export default class MetadataEditor extends Component {
             ) : (
               <MetadataTable
                 tableId={tableId}
+                databaseId={databaseId}
                 idfields={this.props.idfields}
                 onRetireMetric={this.props.onRetireMetric}
                 onRetireSegment={this.props.onRetireSegment}

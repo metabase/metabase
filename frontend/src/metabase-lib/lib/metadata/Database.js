@@ -40,16 +40,4 @@ export default class Database extends Base {
     // $FlowFixMe
     return new Question();
   }
-
-  idfields() {
-    const idfields = [];
-    for (const table of this.tables) {
-      for (const field of table.fields) {
-        if (field.isPK()) {
-          idfields.push(field);
-        }
-      }
-    }
-    return idfields;
-  }
 }
