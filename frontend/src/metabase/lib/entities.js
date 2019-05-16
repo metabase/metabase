@@ -214,6 +214,9 @@ export function createEntity(def: EntityDefinition): Entity {
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
 
+  entity.getObjectStatePath = getObjectStatePath;
+  entity.getListStatePath = getListStatePath;
+
   const getWritableProperties = object =>
     entity.writableProperties != null
       ? _.pick(object, "id", ...entity.writableProperties)
