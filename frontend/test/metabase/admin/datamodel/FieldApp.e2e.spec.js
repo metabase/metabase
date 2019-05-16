@@ -26,7 +26,6 @@ import { metadata as staticFixtureMetadata } from "__support__/sample_dataset_fi
 
 import React from "react";
 import { mount } from "enzyme";
-import { FETCH_IDFIELDS } from "metabase/admin/datamodel/datamodel";
 import { delay } from "metabase/lib/promise";
 import FieldApp, {
   FieldHeader,
@@ -46,7 +45,7 @@ import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
-
+import Databases from "metabase/entities/databases";
 import { MetabaseApi } from "metabase/services";
 
 // TODO: Should we use the metabase/lib/urls methods for constructing urls also here?
@@ -67,7 +66,7 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
   const store = await createTestStore();
   store.pushPath(`/admin/datamodel/database/1/table/${tableId}/${fieldId}`);
   const fieldApp = mount(store.connectContainer(<FieldApp />));
-  await store.waitForActions([FETCH_IDFIELDS]);
+  await store.waitForActions([Databases.actionTypes.FETCH_DATABASE_IDFIELDS]);
   return { store, fieldApp };
 };
 
