@@ -7,6 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import SegmentForm from "./SegmentForm.jsx";
 
 import { updatePreviewSummary } from "../datamodel";
+import { previewSummarySelector } from "../selectors";
 import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Segments from "metabase/entities/segments";
@@ -20,6 +21,7 @@ const mapDispatchToProps = {
 
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
+  previewSummary: previewSummarySelector(state),
 });
 
 @Segments.load({

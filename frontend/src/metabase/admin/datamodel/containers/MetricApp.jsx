@@ -7,6 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import MetricForm from "./MetricForm.jsx";
 
 import { updatePreviewSummary } from "../datamodel";
+import { previewSummarySelector } from "../selectors";
 import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Metrics from "metabase/entities/metrics";
@@ -19,7 +20,8 @@ const mapDispatchToProps = {
 };
 
 const mapStateToProps = (state, props) => ({
-  metadata: getMetadata(state, props),
+  metadata: getMetadata(state),
+  previewSummary: previewSummarySelector(state),
 });
 
 @Metrics.load({

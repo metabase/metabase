@@ -3,6 +3,8 @@ import { computeMetadataStrength } from "metabase/lib/schema_metadata";
 
 export const tableMetadataSelector = (state, props) =>
   state.admin.datamodel.tableMetadata;
+export const previewSummarySelector = (state, props) =>
+  state.admin.datamodel.previewSummary;
 const revisionObjectSelector = (state, props) =>
   state.admin.datamodel.revisionObject;
 
