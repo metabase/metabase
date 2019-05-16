@@ -133,3 +133,7 @@
 .TableInteractive-headerCellData--sorted {
   color: var(--color-brand);
 }
+
+.TableInteractive-cellWrapper--firstColumn {
+  padding-left: 1.5em;
+}
