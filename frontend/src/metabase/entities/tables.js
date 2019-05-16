@@ -16,6 +16,8 @@ import Segments from "metabase/entities/segments";
 
 import { GET } from "metabase/lib/api";
 
+import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
+
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
@@ -63,8 +65,11 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetch_query_metadata"],
       ),
       withNormalize(TableSchema),
-    )(entityObject => async (dispatch, getState) => MetabaseApi.table_query_metadata({
-        tableId: entityObject.id,
+    )(({ id }) => async (dispatch, getState) => {
+      const table = await MetabaseApi.table_query_metadata({
+        tableId: id,
+      });
+      return addValidOperatorsToFields(table);
     }),
 
     // like fetchMetadata but also loads tables linked by foreign key
