@@ -315,33 +315,35 @@
             (h/where [:> :__rownum__ offset])
             (h/limit items))))))
 
-(defmethod sql.qp/date [:presto :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:presto :minute]          [_ _ expr] (hsql/call :date_trunc (hx/literal :minute) expr))
-(defmethod sql.qp/date [:presto :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
-(defmethod sql.qp/date [:presto :hour]            [_ _ expr] (hsql/call :date_trunc (hx/literal :hour) expr))
-(defmethod sql.qp/date [:presto :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:presto :day]             [_ _ expr] (hsql/call :date_trunc (hx/literal :day) expr))
+(defmethod sql.qp/date [:presto :default]         [_ _ expr _] expr)
+(defmethod sql.qp/date [:presto :minute]          [_ _ expr _] (hsql/call :date_trunc (hx/literal :minute) expr))
+(defmethod sql.qp/date [:presto :minute-of-hour]  [_ _ expr _] (hsql/call :minute expr))
+(defmethod sql.qp/date [:presto :hour]            [_ _ expr _] (hsql/call :date_trunc (hx/literal :hour) expr))
+(defmethod sql.qp/date [:presto :hour-of-day]     [_ _ expr _] (hsql/call :hour expr))
+(defmethod sql.qp/date [:presto :day]             [_ _ expr _] (hsql/call :date_trunc (hx/literal :day) expr))
 ;; Presto is ISO compliant, so we need to offset Monday = 1 to Sunday = 1
-(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr] (hx/+ (hx/mod (hsql/call :day_of_week expr) 7) 1))
-(defmethod sql.qp/date [:presto :day-of-month]    [_ _ expr] (hsql/call :day expr))
-(defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:presto :day-of-week]     [_ _ expr _] (hx/+ (hx/mod (hsql/call :day_of_week expr) 7) 1))
+(defmethod sql.qp/date [:presto :day-of-month]    [_ _ expr _] (hsql/call :day expr))
+(defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr _] (hsql/call :day_of_year expr))
 
 ;; Similar to DoW, sicne Presto is ISO compliant the week starts on Monday, we need to shift that to Sunday
-(defmethod sql.qp/date [:presto :week]            [_ _ expr]
+(defmethod sql.qp/date [:presto :week]            [_ _ expr _]
   (hsql/call :date_add
     (hx/literal :day) -1 (hsql/call :date_trunc
                            (hx/literal :week) (hsql/call :date_add
                                                 (hx/literal :day) 1 expr))))
 
 ;; Offset by one day forward to "fake" a Sunday starting week
-(defmethod sql.qp/date [:presto :week-of-year]    [_ _ expr]
+(defmethod sql.qp/date [:presto :week-of-year]    [_ _ expr _]
   (hsql/call :week (hsql/call :date_add (hx/literal :day) 1 expr)))
 
-(defmethod sql.qp/date [:presto :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
-(defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr] (hsql/call :month expr))
-(defmethod sql.qp/date [:presto :quarter]         [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
-(defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
-(defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :year expr))
+(defmethod sql.qp/date [:presto :month]           [_ _ expr _] (hsql/call :date_trunc (hx/literal :month) expr))
+(defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr _] (hsql/call :month expr))
+(defmethod sql.qp/date [:presto :quarter]         [_ _ expr _] (hsql/call :date_trunc (hx/literal :quarter) expr))
+(defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr _] (hsql/call :quarter expr))
+
+(defmethod sql.qp/date [:presto :year] [_ _ expr padded]
+  (if padded (hsql/call :date_trunc (hx/literal :year) expr) (hsql/call :year expr)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))

@@ -150,7 +150,7 @@
     (try
       (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
       (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #inst "2019-02-08T00:00:00Z"])
-      (jdbc/query t-conn (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+      (jdbc/query t-conn (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d false) :my-date]]
                                                           :from   [:temp]}
                                               :quoting :ansi, :allow-dashed-names? true)]
                            (cons (str "SET LANGUAGE Italian; " sql) args)))

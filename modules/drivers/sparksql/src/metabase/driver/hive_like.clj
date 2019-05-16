@@ -61,25 +61,30 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] (hsql/call :minute (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :hour-of-day]     [_ _ expr] (hsql/call :hour (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day]             [_ _ expr] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr] (hsql/call :dayofmonth (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr] (hx/->integer (date-format "D" (hx/->timestamp expr))))
-(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr] (hsql/call :weekofyear (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
-(defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :year (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr _] (hx/->timestamp expr))
+(defmethod sql.qp/date [:hive-like :minute]          [_ _ expr _] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr _] (hsql/call :minute (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :hour]            [_ _ expr _] (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :hour-of-day]     [_ _ expr _] (hsql/call :hour (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day]             [_ _ expr _] (trunc-with-format "yyyy-MM-dd" (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day-of-month]    [_ _ expr _] (hsql/call :dayofmonth (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :day-of-year]     [_ _ expr _] (hx/->integer (date-format "D" (hx/->timestamp expr))))
+(defmethod sql.qp/date [:hive-like :week-of-year]    [_ _ expr _] (hsql/call :weekofyear (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :month]           [_ _ expr _] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
+(defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr _] (hsql/call :month (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr _] (hsql/call :quarter (hx/->timestamp expr)))
 
-(defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :year] [_ _ expr padded]
+  (if padded
+    (hsql/call :trunc (hx/->timestamp expr) (hx/literal :YEAR))
+    (hsql/call :year (hx/->timestamp expr))))
+
+(defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr _]
   (hx/->integer (date-format "u"
                              (hx/+ (hx/->timestamp expr)
                                    (hsql/raw "interval '1' day")))))
 
-(defmethod sql.qp/date [:hive-like :week] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :week] [_ _ expr _]
   (hsql/call :date_sub
     (hx/+ (hx/->timestamp expr)
           (hsql/raw "interval '1' day"))
@@ -87,7 +92,7 @@
                  (hx/+ (hx/->timestamp expr)
                        (hsql/raw "interval '1' day")))))
 
-(defmethod sql.qp/date [:hive-like :quarter] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :quarter] [_ _ expr _]
   (hsql/call :add_months
     (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year))
     (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))

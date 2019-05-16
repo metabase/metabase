@@ -126,20 +126,22 @@
 (defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
 (defn- trunc-with-format [format-str expr] (parse-datetime format-str (format-datetime format-str expr)))
 
-(defmethod sql.qp/date [:h2 :minute]          [_ _ expr] (trunc-with-format "yyyyMMddHHmm" expr))
-(defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr] (hx/minute expr))
-(defmethod sql.qp/date [:h2 :hour]            [_ _ expr] (trunc-with-format "yyyyMMddHH" expr))
-(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr] (hx/hour expr))
-(defmethod sql.qp/date [:h2 :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
-(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
-(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:h2 :week]            [_ _ expr] (trunc-with-format "YYYYww" expr)) ; Y = week year; w = week in year
-(defmethod sql.qp/date [:h2 :week-of-year]    [_ _ expr] (hx/week expr))
-(defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
-(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
-(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:h2 :minute]          [_ _ expr _] (trunc-with-format "yyyyMMddHHmm" expr))
+(defmethod sql.qp/date [:h2 :minute-of-hour]  [_ _ expr _] (hx/minute expr))
+(defmethod sql.qp/date [:h2 :hour]            [_ _ expr _] (trunc-with-format "yyyyMMddHH" expr))
+(defmethod sql.qp/date [:h2 :hour-of-day]     [_ _ expr _] (hx/hour expr))
+(defmethod sql.qp/date [:h2 :day]             [_ _ expr _] (hx/->date expr))
+(defmethod sql.qp/date [:h2 :day-of-week]     [_ _ expr _] (hsql/call :day_of_week expr))
+(defmethod sql.qp/date [:h2 :day-of-month]    [_ _ expr _] (hsql/call :day_of_month expr))
+(defmethod sql.qp/date [:h2 :day-of-year]     [_ _ expr _] (hsql/call :day_of_year expr))
+(defmethod sql.qp/date [:h2 :week]            [_ _ expr _] (trunc-with-format "YYYYww" expr)) ; Y = week year; w = week in year
+(defmethod sql.qp/date [:h2 :week-of-year]    [_ _ expr _] (hx/week expr))
+(defmethod sql.qp/date [:h2 :month]           [_ _ expr _] (trunc-with-format "yyyyMM" expr))
+(defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr _] (hx/month expr))
+(defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr _] (hx/quarter expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr padded] (if padded
+                                                                  (trunc-with-format "yyyy-01-01 00:00:00" expr)
+                                                                  (hx/year expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
@@ -150,7 +152,7 @@
 ;;
 ;; Postgres DATE_TRUNC('quarter', x)
 ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defmethod sql.qp/date [:h2 :quarter] [_ _ expr]
+(defmethod sql.qp/date [:h2 :quarter] [_ _ expr _]
   (parse-datetime "yyyyMM"
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)

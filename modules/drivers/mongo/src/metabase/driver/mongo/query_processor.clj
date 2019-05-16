@@ -188,7 +188,7 @@
                          {:___date {:$dateToString {:format format-string
                                                     :date   fld}}}))]
         (case unit
-          :default         column
+          :default         (stringify "%Y-%m-%dT%H:%M:%S") ;; Without formatting we'll get a bare timestamp which cannot be compared with our date values
           :minute          (stringify "%Y-%m-%dT%H:%M:00")
           :minute-of-hour  {$minute column}
           :hour            (stringify "%Y-%m-%dT%H:00:00")
@@ -236,7 +236,7 @@
     value))
 
 
-(defmethod ->rvalue :absolute-datetime [[_ ^java.sql.Timestamp value, unit]]
+(defn- absolute-datetime [^java.sql.Timestamp value, unit, padded]
   (let [stringify (fn stringify
                     ([format-string]
                      (stringify format-string value))
@@ -255,16 +255,22 @@
       :day-of-year     (extract :day-of-year)
       :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
       :week-of-year    (extract :week-of-year)
-      :month           (stringify "yyyy-MM")
+      :month           (if padded (stringify "yyyy-MM-01") (stringify "yyyy-MM"))
       :month-of-year   (extract :month)
-      :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
+      :quarter         (stringify (if padded "yyyy-MM-01" "yyyy-MM") (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (extract :year))))
+      :year            (if padded (stringify "yyyy-01-01") (extract :year)))))
+
+(defmethod ->rvalue :absolute-datetime [[_ ^java.sql.Timestamp value, unit]]
+  (absolute-datetime value unit false))
 
 
 ;; TODO - where's the part where we handle include-current?
 (defmethod ->rvalue :relative-datetime [[_ amount unit]]
-  (->rvalue [:absolute-datetime (du/relative-date (or unit :day) amount) unit]))
+  (absolute-datetime (du/relative-date (or unit :day) amount) unit false))
+
+(defmethod ->rvalue :relative-datetime-padded [[_ amount unit]]
+  (absolute-datetime (du/relative-date (or unit :day) amount) unit true))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

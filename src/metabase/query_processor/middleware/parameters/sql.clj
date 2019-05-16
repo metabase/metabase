@@ -369,7 +369,7 @@
    (honeysql->replacement-snippet-info
     (let [identifier (sql.qp/->honeysql driver/*driver* (sql.qp/field->identifier driver/*driver* field))]
       (if (date-params/date-type? param-type)
-        (sql.qp/date driver/*driver* :day identifier)
+        (sql.qp/date driver/*driver* :day identifier false)
         identifier)))))
 
 (s/defn ^:private combine-replacement-snippet-maps :- ParamSnippetInfo

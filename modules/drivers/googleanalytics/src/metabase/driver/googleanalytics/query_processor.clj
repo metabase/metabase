@@ -45,7 +45,7 @@
 (defmethod ->rvalue :absolute-datetime [[_ timestamp unit]]
   (du/format-date "yyyy-MM-dd" (du/date-trunc unit timestamp)))
 
-(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+(defn- relative-datetime [amount unit]
   (cond
     (and (= unit :day) (= amount 0))  "today"
     (and (= unit :day) (= amount -1)) "yesterday"
@@ -53,6 +53,12 @@
     :else                             (du/format-date
                                         "yyyy-MM-dd"
                                         (du/date-trunc unit (du/relative-date unit amount)))))
+
+(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+  (relative-datetime amount unit))
+
+(defmethod ->rvalue :relative-datetime-padded [[_ amount unit]]
+  (relative-datetime amount unit))
 
 (defmethod ->rvalue :value [[_ value _]]
   value)
@@ -153,10 +159,10 @@
        (ga-filter (->rvalue field) "<=" (->rvalue max-val))))
 
 (defmethod parse-filter :and [[_ & clauses]]
-  (str/join ";" (filter some? (map parse-filter clauses))))
+  (str/join ";" (remove str/blank? (map parse-filter clauses))))
 
 (defmethod parse-filter :or [[_ & clauses]]
-  (str/join "," (filter some? (map parse-filter clauses))))
+  (str/join "," (remove str/blank? (map parse-filter clauses))))
 
 (defmethod parse-filter :not [[_ clause]]
   (str "!" (parse-filter clause)))
@@ -185,7 +191,7 @@
     :absolute-datetime
     [:absolute-datetime (du/relative-date :day n-days (du/date-trunc unit time-component)) unit]
 
-    :relative-datetime
+    (:relative-datetime :relative-datetime-padded)
     (if (= unit :day)
       [clause-name (+ time-component n-days) unit]
       [:absolute-datetime
@@ -225,7 +231,7 @@
                 (cond-> value
                   ;; for relative datetimes, inc the end date so we'll get a proper date range once everything is
                   ;; bucketed
-                  (mbql.u/is-clause? :relative-datetime value)
+                (mbql.u/is-clause? #{ :relative-datetime :relative-datetime-padded } value)
                   (mbql.u/add-datetime-units 1)))})
 
 (defn- maybe-get-only-filter-or-throw [filters]
@@ -270,9 +276,10 @@
   [filter-clause]
   (mbql.u/replace filter-clause
 
-    [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
-    [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
-    [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))
+    [:datetime-field field unit]            [:datetime-field field (normalize-unit unit)]
+    [:absolute-datetime timestamp unit]     [:absolute-datetime timestamp (normalize-unit unit)]
+    [:relative-datetime amount unit]        [:relative-datetime amount (normalize-unit unit)]
+    [:relative-datetime-padded amount unit] [:relative-datetime-padded amount (normalize-unit unit)]))
 
 (defn- add-start-end-dates [filter-clause]
   (merge {:start-date earliest-date, :end-date latest-date} filter-clause))

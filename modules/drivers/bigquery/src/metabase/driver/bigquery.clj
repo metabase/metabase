@@ -272,22 +272,22 @@
   ;; implemenation of extract() in `metabase.util.honeysql-extensions` handles actual conversion to raw SQL (!)
   (hsql/call :extract unit (hx/->timestamp expr)))
 
-(defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
-(defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
-(defmethod sql.qp/date [:bigquery :hour]            [_ _ expr] (trunc   :hour      expr))
-(defmethod sql.qp/date [:bigquery :hour-of-day]     [_ _ expr] (extract :hour      expr))
-(defmethod sql.qp/date [:bigquery :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-week]     [_ _ expr] (extract :dayofweek expr))
-(defmethod sql.qp/date [:bigquery :day-of-month]    [_ _ expr] (extract :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery :week]            [_ _ expr] (trunc   :week      expr))
+(defmethod sql.qp/date [:bigquery :minute]          [_ _ expr _] (trunc   :minute    expr))
+(defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr _] (extract :minute    expr))
+(defmethod sql.qp/date [:bigquery :hour]            [_ _ expr _] (trunc   :hour      expr))
+(defmethod sql.qp/date [:bigquery :hour-of-day]     [_ _ expr _] (extract :hour      expr))
+(defmethod sql.qp/date [:bigquery :day]             [_ _ expr _] (trunc   :day       expr))
+(defmethod sql.qp/date [:bigquery :day-of-week]     [_ _ expr _] (extract :dayofweek expr))
+(defmethod sql.qp/date [:bigquery :day-of-month]    [_ _ expr _] (extract :day       expr))
+(defmethod sql.qp/date [:bigquery :day-of-year]     [_ _ expr _] (extract :dayofyear expr))
+(defmethod sql.qp/date [:bigquery :week]            [_ _ expr _] (trunc   :week      expr))
 ;; ; BigQuery's impl of `week` uses 0 for the first week; we use 1
-(defmethod sql.qp/date [:bigquery :week-of-year]    [_ _ expr] (-> (extract :week  expr) hx/inc))
-(defmethod sql.qp/date [:bigquery :month]           [_ _ expr] (trunc   :month     expr))
-(defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
-(defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
-(defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (extract :year      expr))
+(defmethod sql.qp/date [:bigquery :week-of-year]    [_ _ expr _] (-> (extract :week  expr) hx/inc))
+(defmethod sql.qp/date [:bigquery :month]           [_ _ expr _] (trunc   :month     expr))
+(defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr _] (extract :month     expr))
+(defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr _] (trunc   :quarter   expr))
+(defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr _] (extract :quarter   expr))
+(defmethod sql.qp/date [:bigquery :year]            [_ _ expr padded] (if padded (trunc :year expr) (extract :year expr)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:bigquery :seconds] [_ _ expr]
   (hsql/call :timestamp_seconds expr))
@@ -365,7 +365,7 @@
   (->> value
        (unparse-bigquery-time *bigquery-timezone*)
        (sql.qp/->honeysql driver)
-       (sql.qp/date driver unit)
+       (sql.qp/date driver unit false)
        hx/->time))
 
 (defmethod sql.qp/field->identifier :bigquery [_ {table-id :table_id, field-name :name, :as field}]

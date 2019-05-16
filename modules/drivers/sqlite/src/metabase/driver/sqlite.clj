@@ -75,23 +75,23 @@
     (hx/literal (du/date->iso-8601 expr))
     expr))
 
-(defmethod sql.qp/date [:sqlite :default]        [_ _ expr] (ts->str expr))
-(defmethod sql.qp/date [:sqlite :second]         [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:%M:%S" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :minute]         [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:%M" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :minute-of-hour] [_ _ expr] (hx/->integer (strftime "%M" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :hour]           [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:00" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :hour-of-day]    [_ _ expr] (hx/->integer (strftime "%H" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :day]            [_ _ expr] (->date (ts->str expr)))
+(defmethod sql.qp/date [:sqlite :default]        [_ _ expr _] (ts->str expr))
+(defmethod sql.qp/date [:sqlite :second]         [_ _ expr _] (->datetime (strftime "%Y-%m-%d %H:%M:%S" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :minute]         [_ _ expr _] (->datetime (strftime "%Y-%m-%d %H:%M" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :minute-of-hour] [_ _ expr _] (hx/->integer (strftime "%M" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :hour]           [_ _ expr _] (->datetime (strftime "%Y-%m-%d %H:00" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :hour-of-day]    [_ _ expr _] (hx/->integer (strftime "%H" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :day]            [_ _ expr _] (->date (ts->str expr)))
 ;; SQLite day of week (%w) is Sunday = 0 <-> Saturday = 6. We want 1 - 7 so add 1
-(defmethod sql.qp/date [:sqlite :day-of-week]    [_ _ expr] (hx/->integer (hx/inc (strftime "%w" (ts->str expr)))))
-(defmethod sql.qp/date [:sqlite :day-of-month]   [_ _ expr] (hx/->integer (strftime "%d" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :day-of-year]    [_ _ expr] (hx/->integer (strftime "%j" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :day-of-week]    [_ _ expr _] (hx/->integer (hx/inc (strftime "%w" (ts->str expr)))))
+(defmethod sql.qp/date [:sqlite :day-of-month]   [_ _ expr _] (hx/->integer (strftime "%d" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :day-of-year]    [_ _ expr _] (hx/->integer (strftime "%j" (ts->str expr))))
 ;; Move back 6 days, then forward to the next Sunday
-(defmethod sql.qp/date [:sqlite :week]           [_ _ expr] (->date (ts->str expr) (hx/literal "-6 days") (hx/literal "weekday 0")))
+(defmethod sql.qp/date [:sqlite :week]           [_ _ expr _] (->date (ts->str expr) (hx/literal "-6 days") (hx/literal "weekday 0")))
 ;; SQLite first week of year is 0, so add 1
-(defmethod sql.qp/date [:sqlite :week-of-year]   [_ _ expr] (hx/->integer (hx/inc (strftime "%W" (ts->str expr)))))
-(defmethod sql.qp/date [:sqlite :month]          [_ _ expr] (->date (ts->str expr) (hx/literal "start of month")))
-(defmethod sql.qp/date [:sqlite :month-of-year]  [_ _ expr] (hx/->integer (strftime "%m" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :week-of-year]   [_ _ expr _] (hx/->integer (hx/inc (strftime "%W" (ts->str expr)))))
+(defmethod sql.qp/date [:sqlite :month]          [_ _ expr _] (->date (ts->str expr) (hx/literal "start of month")))
+(defmethod sql.qp/date [:sqlite :month-of-year]  [_ _ expr _] (hx/->integer (strftime "%m" (ts->str expr))))
 
 ;;    DATE(DATE(%s, 'start of month'), '-' || ((STRFTIME('%m', %s) - 1) % 3) || ' months')
 ;; -> DATE(DATE('2015-11-16', 'start of month'), '-' || ((STRFTIME('%m', '2015-11-16') - 1) % 3) || ' months')
@@ -99,7 +99,7 @@
 ;; -> DATE('2015-11-01', '-' || 1 || ' months')
 ;; -> DATE('2015-11-01', '-1 months')
 ;; -> '2015-10-01'
-(defmethod sql.qp/date [:sqlite :quarter] [_ _ expr]
+(defmethod sql.qp/date [:sqlite :quarter] [_ _ expr _]
   (let [v (ts->str expr)]
     (->date
      (->date v (hx/literal "start of month"))
@@ -110,13 +110,15 @@
        (hx/literal " months")))))
 
 ;; q = (m + 2) / 3
-(defmethod sql.qp/date [:sqlite :quarter-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlite :quarter-of-year] [_ _ expr _]
   (hx// (hx/+ (strftime "%m" (ts->str expr))
               2)
         3))
 
-(defmethod sql.qp/date [:sqlite :year] [_ _ expr]
-  (hx/->integer (strftime "%Y" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :year] [_ _ expr padded]
+  (if padded
+    (->datetime (strftime "%Y-01-01 00:00:00" (ts->str expr)))
+    (hx/->integer (strftime "%Y" (ts->str expr)))))
 
 (defmethod driver/date-interval :sqlite [driver unit amount]
   (let [[multiplier sqlite-unit] (case unit
@@ -140,7 +142,7 @@
     ;; The SQL we produce instead (for "last month") ends up looking something like:
     ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit (hx/literal "now"))
+    (->datetime (sql.qp/date driver unit (hx/literal "now") false)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds] [_ _ expr]

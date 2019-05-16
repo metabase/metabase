@@ -115,27 +115,29 @@
 
 (def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
 
-(defmethod sql.qp/date [:postgres :default]        [_ _ expr] expr)
-(defmethod sql.qp/date [:postgres :minute]         [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:postgres :minute-of-hour] [_ _ expr] (extract-integer :minute expr))
-(defmethod sql.qp/date [:postgres :hour]           [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:postgres :hour-of-day]    [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:postgres :day]            [_ _ expr] (hx/->date expr))
+(defmethod sql.qp/date [:postgres :default]        [_ _ expr _] expr)
+(defmethod sql.qp/date [:postgres :minute]         [_ _ expr _] (date-trunc :minute expr))
+(defmethod sql.qp/date [:postgres :minute-of-hour] [_ _ expr _] (extract-integer :minute expr))
+(defmethod sql.qp/date [:postgres :hour]           [_ _ expr _] (date-trunc :hour expr))
+(defmethod sql.qp/date [:postgres :hour-of-day]    [_ _ expr _] (extract-integer :hour expr))
+(defmethod sql.qp/date [:postgres :day]            [_ _ expr _] (hx/->date expr))
 ;; Postgres DOW is 0 (Sun) - 6 (Sat); increment this to be consistent with Java, H2, MySQL, and Mongo (1-7)
-(defmethod sql.qp/date [:postgres :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
-(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr] (extract-integer :day expr))
-(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr] (extract-integer :doy expr))
+(defmethod sql.qp/date [:postgres :day-of-week]     [_ _ expr _] (hx/inc (extract-integer :dow expr)))
+(defmethod sql.qp/date [:postgres :day-of-month]    [_ _ expr _] (extract-integer :day expr))
+(defmethod sql.qp/date [:postgres :day-of-year]     [_ _ expr _] (extract-integer :doy expr))
 ;; Postgres weeks start on Monday, so shift this date into the proper bucket and then decrement the resulting day
-(defmethod sql.qp/date [:postgres :week]            [_ _ expr] (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr)
+(defmethod sql.qp/date [:postgres :week]            [_ _ expr _] (hx/- (date-trunc :week (hx/+ (hx/->timestamp expr)
                                                                                              one-day))
                                                                      one-day))
-(defmethod sql.qp/date [:postgres :week-of-year]    [_ _ expr] (extract-integer :week (hx/+ (hx/->timestamp expr)
+(defmethod sql.qp/date [:postgres :week-of-year]    [_ _ expr _] (extract-integer :week (hx/+ (hx/->timestamp expr)
                                                                                             one-day)))
-(defmethod sql.qp/date [:postgres :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:postgres :month]           [_ _ expr _] (date-trunc :month expr))
+(defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr _] (extract-integer :month expr))
+(defmethod sql.qp/date [:postgres :quarter]         [_ _ expr _] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr _] (extract-integer :quarter expr))
+
+(defmethod sql.qp/date [:postgres :year] [_ _ expr padded]
+  (if padded (date-trunc :year expr) (extract-integer :year expr)))
 
 
 (defmethod sql.qp/->honeysql [:postgres :value] [driver value]

@@ -51,16 +51,17 @@
 
 (defmethod current-datetime-fn :sql [_] :%now)
 
-
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
-  component."
-  {:arglists '([driver unit field-or-value])}
-  (fn [driver unit _] [(driver/dispatch-on-initialized-driver driver) unit])
+  component.
+    `padded` parameter results in dates that are always either zero-padded to the day part or to the time part depending
+  on which is appropriate for a given unit (units that don't include time will yield only the date part)"
+  {:arglists '([driver unit field-or-value padded])}
+  (fn [driver unit _ _] [(driver/dispatch-on-initialized-driver driver) unit])
   :hierarchy #'driver/hierarchy)
 
 ;; default implementation for `:default` bucketing returns expression as-is
-(defmethod date [:sql :default] [_ _ expr] expr)
+(defmethod date [:sql :default] [_ _ expr _] expr)
 
 
 (defmulti field->identifier
@@ -200,7 +201,7 @@
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
-  (date driver unit (->honeysql driver field)))
+  (date driver unit (->honeysql driver field) false))
 
 (defmethod ->honeysql [:sql :binning-strategy]
   [driver [_ field _ _ {:keys [bin-width min-value max-value]}]]
@@ -290,18 +291,23 @@
 
 (defmethod ->honeysql [:sql :absolute-datetime]
   [driver [_ timestamp unit]]
-  (date driver unit (->honeysql driver timestamp)))
+  (date driver unit (->honeysql driver timestamp) false))
 
 (defmethod ->honeysql [:sql :time]
   [driver [_ value unit]]
-  (date driver unit (->honeysql driver value)))
+  (date driver unit (->honeysql driver value) false))
 
 (defmethod ->honeysql [:sql :relative-datetime]
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount))))
+                      (driver/date-interval driver unit amount)) false))
 
+(defmethod ->honeysql [:sql :relative-datetime-padded]
+  [driver [_ amount unit]]
+  (date driver unit (if (zero? amount)
+                      (current-datetime-fn driver)
+                      (driver/date-interval driver unit amount)) true))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
@@ -411,7 +417,6 @@
 
 (defmethod ->honeysql [:sql :between] [driver [_ field min-val max-val]]
   [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
-
 
 (defmethod ->honeysql [:sql :>] [driver [_ field value]]
   [:> (->honeysql driver field) (->honeysql driver value)])

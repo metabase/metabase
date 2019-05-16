@@ -192,39 +192,40 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
+(defmethod sql.qp/date [:mysql :default]         [_ _ expr _] expr)
+(defmethod sql.qp/date [:mysql :minute]          [_ _ expr _] (trunc-with-format "%Y-%m-%d %H:%i" expr))
+(defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr _] (hx/minute expr))
+(defmethod sql.qp/date [:mysql :hour]            [_ _ expr _] (trunc-with-format "%Y-%m-%d %H" expr))
+(defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr _] (hx/hour expr))
+(defmethod sql.qp/date [:mysql :day]             [_ _ expr _] (hsql/call :date expr))
+(defmethod sql.qp/date [:mysql :day-of-week]     [_ _ expr _] (hsql/call :dayofweek expr))
+(defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr _] (hsql/call :dayofmonth expr))
+(defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr _] (hsql/call :dayofyear expr))
+(defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr _] (hx/month expr))
+(defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr _] (hx/quarter expr))
 
-(defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))
-(defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (hx/minute expr))
-(defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
-(defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (hsql/call :date expr))
-(defmethod sql.qp/date [:mysql :day-of-week]     [_ _ expr] (hsql/call :dayofweek expr))
-(defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
-(defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
-(defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
-(defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:mysql :year] [_ _ expr padded]
+  (if padded (trunc-with-format "%Y-01-01 00:00:00" expr) (hx/year expr)))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
-(defmethod sql.qp/date [:mysql :week] [_ _ expr]
+(defmethod sql.qp/date [:mysql :week] [_ _ expr _]
   (str-to-date "%X%V %W"
                (hx/concat (hsql/call :yearweek expr)
                           (hx/literal " Sunday"))))
 
 ;; mode 6: Sunday is first day of week, first week of year is the first one with 4+ days
-(defmethod sql.qp/date [:mysql :week-of-year] [_ _ expr]
+(defmethod sql.qp/date [:mysql :week-of-year] [_ _ expr _]
   (hx/inc (hx/week expr 6)))
 
-(defmethod sql.qp/date [:mysql :month] [_ _ expr]
+(defmethod sql.qp/date [:mysql :month] [_ _ expr _]
   (str-to-date "%Y-%m-%d"
                (hx/concat (date-format "%Y-%m" expr)
                           (hx/literal "-01"))))
 
 ;; Truncating to a quarter is trickier since there aren't any format strings.
 ;; See the explanation in the H2 driver, which does the same thing but with slightly different syntax.
-(defmethod sql.qp/date [:mysql :quarter] [_ _ expr]
+(defmethod sql.qp/date [:mysql :quarter] [_ _ expr _]
   (str-to-date "%Y-%m-%d"
                (hx/concat (hx/year expr)
                           (hx/literal "-")

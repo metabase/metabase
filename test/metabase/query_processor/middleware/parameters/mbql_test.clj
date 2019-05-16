@@ -269,12 +269,12 @@
 ;; instead of all these BETWEENs
 (datasets/expect-with-driver :h2
   {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date)"
-                " OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
+                "WHERE ((\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(? AS date) AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(? AS date))"
+                " OR (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= CAST(? AS date) AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < CAST(? AS date)))")
    :params [(du/->Timestamp #inst "2014-06-01")
-            (du/->Timestamp #inst "2014-06-30")
+            (du/->Timestamp #inst "2014-07-01")
             (du/->Timestamp #inst "2015-06-01")
-            (du/->Timestamp #inst "2015-06-30")]}
+            (du/->Timestamp #inst "2015-07-01")]}
   (qp/query->native
     (data/query checkins
       {:query      {:aggregation [[:count]]}

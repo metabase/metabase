@@ -98,19 +98,19 @@
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
 
-(defmethod sql.qp/date [:sqlserver :default] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :default] [_ _ expr _]
   expr)
 
-(defmethod sql.qp/date [:sqlserver :minute] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :minute] [_ _ expr _]
   (hx/cast :smalldatetime expr))
 
-(defmethod sql.qp/date [:sqlserver :minute-of-hour] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :minute-of-hour] [_ _ expr _]
   (date-part :minute expr))
 
-(defmethod sql.qp/date [:sqlserver :hour] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :hour] [_ _ expr _]
   (hsql/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
 
-(defmethod sql.qp/date [:sqlserver :hour-of-day] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :hour-of-day] [_ _ expr _]
   (date-part :hour expr))
 
 ;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
@@ -119,49 +119,51 @@
 ;;
 ;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we can
 ;; simplify this now?
-(defmethod sql.qp/date [:sqlserver :day] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day] [_ _ expr _]
   (hx/->datetime (hx/->date expr)))
 
-(defmethod sql.qp/date [:sqlserver :day-of-week] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-week] [_ _ expr _]
   (date-part :weekday expr))
 
-(defmethod sql.qp/date [:sqlserver :day-of-month] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-month] [_ _ expr _]
   (date-part :day expr))
 
-(defmethod sql.qp/date [:sqlserver :day-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-year] [_ _ expr _]
   (date-part :dayofyear expr))
 
 ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
 ;; The equivalent SQL looks like:
 ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-(defmethod sql.qp/date [:sqlserver :week] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :week] [_ _ expr _]
   (hx/->datetime
    (date-add :day
              (hx/- 1 (date-part :weekday expr))
              (hx/->date expr))))
 
-(defmethod sql.qp/date [:sqlserver :week-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :week-of-year] [_ _ expr _]
   (date-part :iso_week expr))
 
-(defmethod sql.qp/date [:sqlserver :month] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :month] [_ _ expr _]
   (hsql/call :datefromparts (hx/year expr) (hx/month expr) 1))
 
-(defmethod sql.qp/date [:sqlserver :month-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :month-of-year] [_ _ expr _]
   (date-part :month expr))
 
 ;; Format date as yyyy-01-01 then add the appropriate number of quarter
 ;; Equivalent SQL:
 ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
-(defmethod sql.qp/date [:sqlserver :quarter] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :quarter] [_ _ expr _]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
             (hsql/call :datefromparts (hx/year expr) 1 1)))
 
-(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr _]
   (date-part :quarter expr))
 
-(defmethod sql.qp/date [:sqlserver :year] [_ _ expr]
-  (date-part :year expr))
+(defmethod sql.qp/date [:sqlserver :year] [_ _ expr padded]
+  (if padded
+    (hsql/call :datefromparts (hx/year expr) 1 1)
+    (date-part :year expr)))
 
 
 (defmethod driver/date-interval :sqlserver [_ unit amount]

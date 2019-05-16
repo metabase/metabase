@@ -67,7 +67,8 @@
    "year"  {:unit-range year-range
             :to-period  t/years}})
 
-(defn- parse-absolute-date
+(defn parse-absolute-date
+  "Parses date represented as a string into a Timestamp value"
   [date]
   (tf/parse (tf/formatters :date-opt-time) date))
 

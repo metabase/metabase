@@ -70,23 +70,25 @@
 
 (def ^:private one-day (hsql/raw "INTERVAL '1 day'"))
 
-(defmethod sql.qp/date [:vertica :default]         [_ _ expr] expr)
-(defmethod sql.qp/date [:vertica :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:vertica :minute-of-hour]  [_ _ expr] (extract-integer :minute expr))
-(defmethod sql.qp/date [:vertica :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:vertica :hour-of-day]     [_ _ expr] (extract-integer :hour expr))
-(defmethod sql.qp/date [:vertica :day]             [_ _ expr] (hx/->date expr))
-(defmethod sql.qp/date [:vertica :day-of-week]     [_ _ expr] (hx/inc (extract-integer :dow expr)))
-(defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr] (extract-integer :day expr))
-(defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr] (extract-integer :doy expr))
-(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr] (hx/week expr))
-(defmethod sql.qp/date [:vertica :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
-(defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:vertica :default]         [_ _ expr _] expr)
+(defmethod sql.qp/date [:vertica :minute]          [_ _ expr _] (date-trunc :minute expr))
+(defmethod sql.qp/date [:vertica :minute-of-hour]  [_ _ expr _] (extract-integer :minute expr))
+(defmethod sql.qp/date [:vertica :hour]            [_ _ expr _] (date-trunc :hour expr))
+(defmethod sql.qp/date [:vertica :hour-of-day]     [_ _ expr _] (extract-integer :hour expr))
+(defmethod sql.qp/date [:vertica :day]             [_ _ expr _] (hx/->date expr))
+(defmethod sql.qp/date [:vertica :day-of-week]     [_ _ expr _] (hx/inc (extract-integer :dow expr)))
+(defmethod sql.qp/date [:vertica :day-of-month]    [_ _ expr _] (extract-integer :day expr))
+(defmethod sql.qp/date [:vertica :day-of-year]     [_ _ expr _] (extract-integer :doy expr))
+(defmethod sql.qp/date [:vertica :week-of-year]    [_ _ expr _] (hx/week expr))
+(defmethod sql.qp/date [:vertica :month]           [_ _ expr _] (date-trunc :month expr))
+(defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr _] (extract-integer :month expr))
+(defmethod sql.qp/date [:vertica :quarter]         [_ _ expr _] (date-trunc :quarter expr))
+(defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr _] (extract-integer :quarter expr))
 
-(defmethod sql.qp/date [:vertica :week] [_ _ expr]
+(defmethod sql.qp/date [:vertica :year] [_ _ expr padded]
+  (if padded (date-trunc :year expr) (extract-integer :year expr)))
+
+(defmethod sql.qp/date [:vertica :week] [_ _ expr _]
   (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
                                 one-day))
         one-day))

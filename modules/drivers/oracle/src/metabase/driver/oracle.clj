@@ -90,40 +90,42 @@
   [format-template v]
   (hsql/call :trunc v (hx/literal format-template)))
 
-(defmethod sql.qp/date [:oracle :default]        [_ _ v] (some-> v hx/->date))
-(defmethod sql.qp/date [:oracle :minute]         [_ _ v] (trunc :mi v))
+(defmethod sql.qp/date [:oracle :default]        [_ _ v _] (some-> v hx/->date))
+(defmethod sql.qp/date [:oracle :minute]         [_ _ v _] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
-(defmethod sql.qp/date [:oracle :minute-of-hour] [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
-(defmethod sql.qp/date [:oracle :hour]           [_ _ v] (trunc :hh v))
-(defmethod sql.qp/date [:oracle :hour-of-day]    [_ _ v] (hsql/call :extract :hour (hx/->timestamp v)))
-(defmethod sql.qp/date [:oracle :day]            [_ _ v] (trunc :dd v))
-(defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v] (hsql/call :extract :day v))
+(defmethod sql.qp/date [:oracle :minute-of-hour] [_ _ v _] (hsql/call :extract :minute (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :hour]           [_ _ v _] (trunc :hh v))
+(defmethod sql.qp/date [:oracle :hour-of-day]    [_ _ v _] (hsql/call :extract :hour (hx/->timestamp v)))
+(defmethod sql.qp/date [:oracle :day]            [_ _ v _] (trunc :dd v))
+(defmethod sql.qp/date [:oracle :day-of-month]   [_ _ v _] (hsql/call :extract :day v))
 ;; [SIC] The format template for truncating to start of week is 'day' in Oracle #WTF
 ;; iw = same day of the week as first day of the ISO year
 ;; iy = ISO year
-(defmethod sql.qp/date [:oracle :week]           [_ _ v] (trunc :day v))
-(defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
-(defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
-(defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
-(defmethod sql.qp/date [:oracle :year]           [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :week]           [_ _ v _] (trunc :day v))
+(defmethod sql.qp/date [:oracle :month]          [_ _ v _] (trunc :month v))
+(defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v _] (hsql/call :extract :month v))
+(defmethod sql.qp/date [:oracle :quarter]        [_ _ v _] (trunc :q v))
 
-(defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
-  (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
+(defmethod sql.qp/date [:oracle :year] [_ _ v padded]
+  (if padded (trunc :year v) (hsql/call :extract :year v)))
 
-(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v]
+(defmethod sql.qp/date [:oracle :day-of-year] [driver _ v _]
+  (hx/inc (hx/- (sql.qp/date driver :day v false) (trunc :year v))))
+
+(defmethod sql.qp/date [:oracle :week-of-year] [_ _ v _]
   (hx/inc (hx// (hx/- (trunc :iw v)
                       (trunc :iy v))
                 7)))
 
-(defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v]
-  (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v))
+(defmethod sql.qp/date [:oracle :quarter-of-year] [driver _ v _]
+  (hx// (hx/+ (sql.qp/date driver :month-of-year (sql.qp/date driver :quarter v false) false)
               2)
         3))
 
 ;; subtract number of days between today and first day of week, then add one since first day of week = 1
-(defmethod sql.qp/date [:oracle :day-of-week] [driver _ v]
-  (hx/inc (hx/- (sql.qp/date driver :day v)
-                (sql.qp/date driver :week v))))
+(defmethod sql.qp/date [:oracle :day-of-week] [driver _ v _]
+  (hx/inc (hx/- (sql.qp/date driver :day v false)
+                (sql.qp/date driver :week v false))))
 
 
 (def ^:private now             (hsql/raw "SYSDATE"))
