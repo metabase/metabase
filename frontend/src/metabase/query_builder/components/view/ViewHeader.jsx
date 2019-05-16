@@ -42,7 +42,7 @@ export const ViewTitleHeader = ({
     <ViewSection className={className}>
       {question.isSaved() ? (
         <div>
-          <div className="flex align-center">
+          <div className="flex align-center mb1">
             <ViewHeading>{question.displayName()}</ViewHeading>
             <QuestionEntityMenu
               className="ml1"
@@ -70,7 +70,7 @@ export const ViewTitleHeader = ({
           </ViewHeading>
           {question.isStructured() &&
             question.query().aggregations().length > 0 && (
-              <QuestionDataSource question={question} subHead />
+              <div className="pt1"><QuestionDataSource question={question} subHead /></div>
             )}
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
             <div className="mt1">
