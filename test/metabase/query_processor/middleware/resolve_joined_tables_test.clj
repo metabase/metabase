@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-joined-tables-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.query-processor.middleware.resolve-joined-tables :as resolve-joined-tables]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]))
@@ -17,7 +17,7 @@
    :query    (data/$ids venues
                {:source-table $$table
                 :fields       [[:field-id $name]
-                               [:fk-> [:field-id $category_id] [:field-id $categories.name]]]
+                               [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
                 :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
                                 :table-id    (data/id :categories)
                                 :fk-field-id $category_id
@@ -37,7 +37,7 @@
               (data/$ids venues
                 {:source-table $$table
                  :fields       [[:field-id $name]
-                                [:fk-> [:field-id $category_id] [:field-id $categories.name]]]
+                                [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
                  :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
                                  :table-id    (data/id :categories)
                                  :fk-field-id $category_id
@@ -58,7 +58,7 @@
                (data/$ids venues
                  {:source-table $$table
                   :fields       [[:field-id $name]
-                                 [:fk-> [:field-id $category_id] [:field-id $categories.name]]]
+                                 [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
                   :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
                                   :table-id    (data/id :categories)
                                   :fk-field-id $category_id
@@ -82,8 +82,8 @@
                {:source-query {:source-table $$table
                                :filter       [:> [:field-id $date] "2014-01-01"]}
                 :aggregation  [[:count]]
-                :breakout     [[:fk-> [:field-id $venue_id] [:field-id $venues.price]]]
-                :order-by     [[:asc [:fk-> [:field-id $venue_id] [:field-id $venues.price]]]]
+                :breakout     [[:joined-field "VENUES__via__VENUE_ID" [:field-id $venues.price]]]
+                :order-by     [[:asc [:joined-field "VENUES__via__VENUE_ID" [:field-id $venues.price]]]]
                 :join-tables  [{:join-alias  "VENUES__via__VENUE_ID"
                                 :table-id    (data/id :venues)
                                 :fk-field-id $venue_id

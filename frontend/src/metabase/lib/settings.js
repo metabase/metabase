@@ -87,6 +87,7 @@ const MetabaseSettings = {
 
     return (
       versionInfo &&
+      versionInfo.latest &&
       MetabaseUtils.compareVersions(
         currentVersion,
         versionInfo.latest.version,

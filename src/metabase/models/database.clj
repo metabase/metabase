@@ -51,6 +51,9 @@
     (catch Throwable e
       (log/error e (trs "Error scheduling tasks for DB")))))
 
+;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
+;; implement behavior when an object is deleted can do it without having to put code here
+
 (defn- unschedule-tasks!
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
@@ -59,6 +62,14 @@
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
+
+(defn- destroy-qp-thread-pool!
+  [database]
+  (try
+    (require 'metabase.query-processor.middleware.async-wait)
+    ((resolve 'metabase.query-processor.middleware.async-wait/destroy-thread-pool!) database)
+    (catch Throwable e
+      (log/error e (trs "Error destroying thread pool for DB.")))))
 
 (defn- post-insert [database]
   (u/prog1 database
@@ -74,6 +85,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
+  (destroy-qp-thread-pool! database)
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
   (db/delete! 'Table       :db_id       id)

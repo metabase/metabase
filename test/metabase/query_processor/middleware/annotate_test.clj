@@ -51,6 +51,9 @@
         vec)))
 
 ;; when an `fk->` form is used, we should add in `:fk_field_id` info about the source Field
+;;
+;; TODO - this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses before the
+;; query ever makes it to the 'annotate' stage
 (expect
   [(-> (Field (data/id :categories :name))
        (dissoc :database_type)
@@ -61,6 +64,23 @@
          {:query {:fields [[:fk->
                             [:field-id (data/id :venues :category_id)]
                             [:field-id (data/id :categories :name)]]]}}
+         {:columns [:name]})
+        :cols
+        vec)))
+
+;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses
+(expect
+  [(-> (Field (data/id :categories :name))
+       (dissoc :database_type)
+       (assoc :fk_field_id (data/id :venues :category_id), :source :fields))]
+  (qp.store/with-store
+    (qp.store/store-field! (Field (data/id :categories :name)))
+    (-> (#'annotate/add-mbql-column-info
+         {:query {:fields      [[:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id (data/id :categories :name)]]]
+                  :join-tables [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
+                                 :table-id    (data/id :categories)
+                                 :fk-field-id (data/id :venues :category_id)
+                                 :pk-field-id (data/id :categories :id)}]}}
          {:columns [:name]})
         :cols
         vec)))
@@ -164,7 +184,7 @@
 ;; make sure custom aggregation names get included in the col info
 (defn- col-info-for-aggregation-clause [clause]
   (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause clause)))
+    (#'annotate/col-info-for-aggregation-clause {} clause)))
 
 (expect
   {:base_type    :type/Float
@@ -263,6 +283,11 @@
       :cols
       second))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           result-rows-maps->vectors                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;; If a driver returns result rows as a sequence of maps, does the `result-rows-maps->vectors` convert them to a
 ;; sequence of vectors in the correct order?
 (expect
@@ -280,9 +305,9 @@
          {:database (data/id)
           :type     :query
           :query    (data/$ids [venues {:wrap-field-ids? true}]
-                      {:source-table $$table
-                       :fields       [$id $name $category_id $latitude $longitude $price]
-                       :limit        1})})))))
+                               {:source-table $$table
+                                :fields       [$id $name $category_id $latitude $longitude $price]
+                                :limit        1})})))))
 
 ;; if a driver would have returned result rows as a sequence of maps, but query returned no results, middleware should
 ;; still add `:columns` info
@@ -356,7 +381,7 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
 
 ;; nested-nested fields should include grandparent name (etc)
 (tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
@@ -374,4 +399,4 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))

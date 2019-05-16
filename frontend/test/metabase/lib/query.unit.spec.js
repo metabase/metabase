@@ -315,6 +315,7 @@ describe("Legacy Query library", () => {
       expect(target.field.display_name).toEqual("foo");
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
+      expect(target.field.constructor.name).toEqual("Field");
     });
   });
 });

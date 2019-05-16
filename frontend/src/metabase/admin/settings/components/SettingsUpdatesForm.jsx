@@ -80,6 +80,7 @@ export default class SettingsUpdatesForm extends Component {
 
     if (
       !versionInfo ||
+      !versionInfo.latest ||
       MetabaseUtils.compareVersions(
         currentVersion,
         versionInfo.latest.version,

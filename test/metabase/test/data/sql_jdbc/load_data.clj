@@ -1,15 +1,10 @@
 (ns metabase.test.data.sql-jdbc.load-data
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]
-             [helpers :as h]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data
              [interface :as tx]
@@ -33,10 +28,12 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti do-insert!
-  "Low-level method used internally by `load-data!`. Insert `row-or-rows` into table named by `table-name`.
+  "Low-level method used internally by `load-data!`. Insert `row-or-rows` into table with `table-identifier`.
 
-   You usually do not need to override this, and can instead use a different implementation of `load-data!`."
-  {:arglists '([driver spec escaped-table-name row-or-rows])}
+  You usually do not need to override this, and can instead use a different implementation of `load-data!`. You can
+  also override `ddl/insert-rows-honeysql-form` or `ddl/insert-rows-ddl-statements` instead if you only need to change
+  DDL statement(s) themselves, rather than how they are executed."
+  {:arglists '([driver, spec, ^metabase.util.honeysql_extensions.Identifier table-identifier, row-or-rows])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -73,8 +70,9 @@
     (assoc row :id (inc i))))
 
 (defn load-data-add-ids
-  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel insert.
-  This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn` args."
+  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
+  insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
+  args."
   [insert!]
   (fn [rows]
     (insert! (vec (add-ids rows)))))
@@ -112,9 +110,10 @@
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
   described above."
   [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (let [escaped-table-name (apply hx/qualify-and-escape-dots
-                                  (sql.tx/qualified-name-components driver database-name table-name))]
-    (partial do-insert! driver conn escaped-table-name)))
+  (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
+                           (tx/format-name driver (u/keyword->qualified-name component)))
+        table-identifier (sql.qp/->honeysql driver (apply hx/identifier components))]
+    (partial do-insert! driver conn table-identifier)))
 
 (defn make-load-data-fn
   "Create an implementation of `load-data!`. This creates a function to actually insert a row or rows, wraps it with any
@@ -170,36 +169,17 @@
 ;;; |                                              CREATING DBS/TABLES                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- escape-field-names
-  "Escape the field-name keys in ROW-OR-ROWS."
-  [row-or-rows]
-  (if (sequential? row-or-rows)
-    (map escape-field-names row-or-rows)
-    (into {} (for [[k v] row-or-rows]
-               {(sql-jdbc.common/escape-field-name k) v}))))
-
 ;; default impl
-(defmethod do-insert! :sql-jdbc/test-extensions [driver spec table-name row-or-rows]
-  (let [prepare-key (comp keyword (partial sql.tx/prepare-identifier driver) name)
-        rows        (if (sequential? row-or-rows)
-                      row-or-rows
-                      [row-or-rows])
-        columns     (keys (first rows))
-        values      (for [row rows]
-                      (for [value (map row columns)]
-                        (sql.qp/->honeysql driver value)))
-        hsql-form   (-> (apply h/columns (for [column columns]
-                                           (hx/qualify-and-escape-dots (prepare-key column))))
-                        (h/insert-into (prepare-key table-name))
-                        (h/values values))
-        sql+args    (hx/unescape-dots (binding [hformat/*subquery?* false]
-                                        (hsql/format hsql-form
-                                          :quoting             (sql.qp/quote-style driver)
-                                          :allow-dashed-names? true)))]
-    (try (jdbc/execute! spec sql+args)
-         (catch SQLException e
-           (println (u/format-color 'red "INSERT FAILED: \n%s\n" sql+args))
-           (jdbc/print-sql-exception-chain e)))))
+(defmethod do-insert! :sql-jdbc/test-extensions
+  [driver spec table-identifier row-or-rows]
+  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
+    (try
+      ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
+      (doseq [sql+args statements]
+        (jdbc/execute! spec sql+args))
+      (catch SQLException e
+        (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
+        (jdbc/print-sql-exception-chain e)))))
 
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
@@ -211,7 +191,7 @@
   ;; next, get a set of statements for creating the DB & Tables
   (let [statements (apply ddl/create-db-ddl-statements driver dbdef options)]
     ;; exec the combined statement
-    (execute/execute-sql! driver :db dbdef (str/join ";\n" (map hx/unescape-dots statements))))
+    (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
     (du/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))

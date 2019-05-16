@@ -297,21 +297,27 @@
    (format-rows-by format-fns (not :format-nil-values?) rows))
   ([format-fns format-nil-values? rows]
    (cond
-     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
-                                    (throw (ex-info (:error rows) rows)))
+     (= (:status rows) :failed)
+     (do (println "Error running query:" (u/pprint-to-str 'red rows))
+         (throw (ex-info (:error rows) rows)))
 
-     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-     :else        (vec (for [row rows]
-                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                                (when (or v format-nil-values?)
-                                  (try (f v)
-                                       (catch Throwable e
-                                         (printf "(%s %s) failed: %s" f v (.getMessage e))
-                                         (throw e)))))))))))
+     (:data rows)
+     (update-in rows [:data :rows] (partial format-rows-by format-fns))
+
+     (:rows rows)
+     (update rows :rows (partial format-rows-by format-fns))
+
+     :else
+     (vec (for [row rows]
+            (vec (for [[f v] (partition 2 (interleave format-fns row))]
+                   (when (or v format-nil-values?)
+                     (try (f v)
+                          (catch Throwable e
+                            (printf "(%s %s) failed: %s" f v (.getMessage e))
+                            (throw e)))))))))))
 
 (def ^{:arglists '([results])} formatted-venues-rows
-  "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
+  "Helper function to format the rows in `results` when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 (defn data
@@ -327,19 +333,18 @@
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (vec (or (:rows (data results))
-           (println (u/pprint-to-str 'red results)) ; DEBUG
-           (throw (Exception. "Error!")))))
+  (or (some-> (data results) :rows vec)
+      (throw (ex-info "Query does not have any :rows in results." results))))
 
 (defn rows+column-names
-  "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   {:rows    (rows results)
    :columns (get-in results [:data :columns])})
 
 (defn first-row
-  "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."
+  "Return the first row in the `results` of a query, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   (first (rows results)))
@@ -348,3 +353,10 @@
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
   (driver/supports? driver :set-timezone))
+
+(defn cols
+  "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (or (some-> (data results) :cols vec)
+      (throw (ex-info "Query does not have any :cols in results." results))))

@@ -4,7 +4,9 @@
              [data :as data]
              [set :as set]]
             [expectations :as expectations]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [metabase.util.date :as du])
+  (:import java.util.concurrent.TimeoutException))
 
 ;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
 
@@ -49,22 +51,42 @@
                       (< (count e) (count a))             "actual is larger than expected"
                       (> (count e) (count a))             "expected is larger than actual"))))
 
-;;; ---------------------------------------------- check-for-slow-tests ----------------------------------------------
 
-(def ^:private slow-test-threshold-nanoseconds
-  "Any test that takes longer than this time should be considered slow, and we should print a little notice about it!"
-  (* 10 1000 1000 1000)) ; 10 seconds
+;;; ------------------------------------------------- log-slow-tests -------------------------------------------------
 
-(defn- check-for-slow-tests [test-fn]
-  (fn []
-    (let [start-time-ns (System/nanoTime)
-          result        (test-fn)
-          total-time    (- (System/nanoTime) start-time-ns)]
-      ;; TODO - we should also have a test timeout if it takes over 5 minutes or something like that
-      (when (> total-time slow-test-threshold-nanoseconds)
-        (println (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
-                   (format "Test %s:%s is SLOW: took %.1f seconds." file line (/ total-time (* 1000.0 1000.0 1000.0))))))
-      result)))
+(def ^:private slow-test-threshold-ms 2000)
+
+(defn- log-slow-tests
+  "Log a message about any test that takes longer than `slow-test-threshold-ms` to run. Ideally we'd keep all our tests
+  under that threshold so the test suite finishes quickly."
+  [run]
+  (fn [test-fn]
+    (let [start-time-ms (System/currentTimeMillis)]
+      (u/prog1 (run test-fn)
+        (let [duration-ms (- (System/currentTimeMillis) start-time-ms)]
+          (when (> duration-ms slow-test-threshold-ms)
+            (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
+              (println (u/format-color 'red "%s %s is a slow test! It took %s to finish."
+                         file line (du/format-milliseconds duration-ms))))))))))
+
+
+;;; ------------------------------------------------ enforce-timeout -------------------------------------------------
+
+(def ^:private test-timeout-ms (* 60 1000))
+
+(defn- enforce-timeout
+  "If any test takes longer that 60 seconds to run return a TimeoutException, effectively failing the test."
+  [run]
+  (fn [test-fn]
+    (deref
+     (future
+       (try
+         (run test-fn)
+         (catch Throwable e
+           e)))
+     test-timeout-ms
+     ;; return Exception than throwing, otherwise it will mess up our test running
+     (TimeoutException. (format "Test timed out after %s" (du/format-milliseconds test-timeout-ms))))))
 
 
 ;;; ---------------------------------------------- check-table-cleanup -----------------------------------------------
@@ -86,17 +108,17 @@
          " of '" (:name model) "' that " (if more-than-one? "were" "was")
          " not cleaned up.")))
 
-(defn- check-table-cleanup
+(def ^{:arglists '([run])} check-table-cleanup
   "Function that will run around each test. This function is usually a noop, but it useful for helping to debug stale
   data in local development. Modify the private `models-to-check` var to check if there are any rows in the given
   model's table after each expectation. If a row is found, the relevant information will be written to standard out
   and the test run will exit"
-  [test-fn]
-  (fn []
-    (let [result (test-fn)]
-      ;; The typical case is no models-to-check, this then becomes a noop
-      (when (seq models-to-check)
-        (let [{:keys [file line]} (-> test-fn meta :the-var meta)
+  (if-not (seq models-to-check)
+    identity
+    (fn [run]
+      (fn [test-fn]
+        (let [result              (run test-fn)
+              {:keys [file line]} (-> test-fn meta :the-var meta)
               error-msgs          (tables-with-data->error-msg models-to-check)]
           (when (seq error-msgs)
             (println "\n-----------------------------------------------------")
@@ -107,17 +129,23 @@
             (flush)
             ;; I found this necessary as throwing an exception would show the exception, but the test run would hang and
             ;; you'd have to Ctrl-C anyway
-            (System/exit 1))))
-      result)))
+            (System/exit 1))
+          result)))))
 
 
 ;;; -------------------------------------------- Putting it all together ---------------------------------------------
 
-(def ^:private ^{:arglists '([test-fn])} do-with-test-middleware
-  (comp check-table-cleanup check-for-slow-tests))
+(defn- log-tests [run]
+  (fn [test-fn]
+    (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
+      (println (format "Run %s %s" file line)))
+    (run test-fn)))
 
-(defn- in-context
-  "Run an expectations `test-fn` with the test middleware functions above wrapping it."
-  [test-fn]
-  {:expectations-options :in-context}
-  ((do-with-test-middleware test-fn)))
+(def ^:private ^{:expectations-options :in-context} test-middleware
+  (-> (fn [test-fn]
+        (test-fn))
+      ;; uncomment `log-tests` if you need to debug tests or see which ones are being noisy
+      #_log-tests
+      log-slow-tests
+      enforce-timeout
+      check-table-cleanup))
