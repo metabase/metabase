@@ -40,11 +40,9 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
-import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
 // ACTIONS
 import * as metadataActions from "metabase/redux/metadata";
-import * as datamodelActions from "../datamodel";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
@@ -58,14 +56,16 @@ import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/D
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { TableId } from "metabase/meta/types/Table";
 import type { FieldId } from "metabase/meta/types/Field";
+import Databases from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => {
+  const databaseId = parseInt(props.params.databaseId);
   return {
-    databaseId: parseInt(props.params.databaseId),
+    databaseId,
     tableId: parseInt(props.params.tableId),
     fieldId: parseInt(props.params.fieldId),
     metadata: getMetadata(state),
-    idfields: getDatabaseIdfields(state),
+    idfields: Databases.selectors.getIdfields(state, databaseId),
   };
 };
 
@@ -77,7 +77,6 @@ const mapDispatchToProps = {
   updateFieldValues: metadataActions.updateFieldValues,
   updateFieldDimension: metadataActions.updateFieldDimension,
   deleteFieldDimension: metadataActions.deleteFieldDimension,
-  fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields,
   rescanFieldValues,
   discardFieldValues,
 };
@@ -100,14 +99,13 @@ export default class FieldApp extends React.Component {
     metadata: Metadata,
     idfields: Object[],
 
-    fetchDatabaseMetadata: number => Promise<void>,
-    fetchTableMetadata: number => Promise<void>,
-    fetchFieldValues: number => Promise<void>,
+    // fetchDatabaseMetadata: number => Promise<void>,
+    // fetchTableMetadata: number => Promise<void>,
+    // fetchFieldValues: number => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
     updateFieldDimension: (FieldId, any) => Promise<void>,
     deleteFieldDimension: FieldId => Promise<void>,
-    fetchDatabaseIdfields: DatabaseId => Promise<void>,
 
     rescanFieldValues: FieldId => Promise<void>,
     discardFieldValues: FieldId => Promise<void>,
@@ -124,7 +122,6 @@ export default class FieldApp extends React.Component {
       fieldId,
       fetchDatabaseMetadata,
       fetchTableMetadata,
-      fetchDatabaseIdfields,
       fetchFieldValues,
     } = this.props;
 
@@ -141,9 +138,6 @@ export default class FieldApp extends React.Component {
     if (field && field.has_field_values === "list") {
       await fetchFieldValues(fieldId);
     }
-
-    // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
-    await fetchDatabaseIdfields(databaseId);
   }
 
   linkWithSaveStatus = (saveMethod: Function) => {
