@@ -3,15 +3,14 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-
-import MetricForm from "./MetricForm.jsx";
-
-import { updatePreviewSummary } from "../datamodel";
-import { previewSummarySelector } from "../selectors";
-import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
 import Metrics from "metabase/entities/metrics";
 import Tables from "metabase/entities/tables";
+
+import { updatePreviewSummary } from "../datamodel";
+import { getPreviewSummary } from "../selectors";
+import withTableMetadataLoaded from "../withTableMetadataLoaded";
+import MetricForm from "./MetricForm.jsx";
 
 const mapDispatchToProps = {
   updatePreviewSummary,
@@ -21,7 +20,7 @@ const mapDispatchToProps = {
 
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
-  previewSummary: previewSummarySelector(state),
+  previewSummary: getPreviewSummary(state),
 });
 
 @Metrics.load({
