@@ -134,10 +134,15 @@
 
 (defclause field-literal, field-name su/NonBlankString, field-type su/FieldType)
 
+(defclause joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
+
 ;; Both args in `[:fk-> <source-field> <dest-field>]` are implict `:field-ids`. E.g.
 ;;
 ;;   [:fk-> 10 20] --[NORMALIZE]--> [:fk-> [:field-id 10] [:field-id 20]]
-(defclause ^{:requires-features #{:foreign-keys}} fk->
+;;
+;; `fk->` clauses are automatically replaced by the Query Processor with appropriate `:joined-field` clauses during
+;; preprocessing. Drivers do not need to handle `:fk->` clauses themselves.
+(defclause ^{:requires-features #{:foreign-keys}} ^:sugar fk->
   source-field (one-of field-id field-literal)
   dest-field   (one-of field-id field-literal))
 
@@ -160,7 +165,7 @@
 ;;
 ;; Field is an implicit Field ID
 (defclause datetime-field
-  field (one-of field-id field-literal fk->)
+  field (one-of field-id field-literal fk-> joined-field)
   unit  DatetimeFieldUnit)
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
@@ -170,7 +175,7 @@
 
 (def BinnableField
   "Schema for any sort of field clause that can be wrapped by a `binning-strategy` clause."
-  (one-of field-id fk-> datetime-field field-literal))
+  (one-of field-id field-literal joined-field fk-> datetime-field))
 
 (def ResolvedBinningStrategyOptions
   "Schema for map of options tacked on to the end of `binning-strategy` clauses by the `binning` middleware."
@@ -189,10 +194,13 @@
   ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
 
+(def ^:private Field*
+  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy))
+
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
   `:fk->` or an expression reference `[:expression <name>]`."
-  (one-of field-id field-literal fk-> datetime-field expression binning-strategy))
+  (s/recursive #'Field*))
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;
@@ -238,9 +246,12 @@
 (defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 (defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 
+(def ^:private ArithmeticExpression*
+  (one-of + - / *))
+
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
-  (one-of + - / *))
+  (s/recursive #'ArithmeticExpression*))
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -375,13 +386,16 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
-(def Filter
-  "Schema for a valid MBQL `:filter` clause."
+(def ^:private Filter*
   (one-of
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
    ;; SUGAR filters drivers do not need to implement
    does-not-contain inside is-null not-null time-interval segment))
+
+(def Filter
+  "Schema for a valid MBQL `:filter` clause."
+  (s/recursive #'Filter*))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
@@ -442,8 +456,11 @@
   x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
 ;; ag:/ isn't a valid token
 
-(def ^:private UnnamedAggregation
+(def ^:private UnnamedAggregation*
   (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where sum-where))
+
+(def ^:private UnnamedAggregation
+  (s/recursive #'UnnamedAggregation*))
 
 ;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
 ;; a `:named`
@@ -536,6 +553,12 @@
     JoinQueryInfo
     JoinTableInfo))
 
+(def ^:private JoinInfos
+  (s/constrained
+   (su/distinct [JoinInfo])
+   #(su/empty-or-distinct? (filter some? (map :join-alias %)))
+   "all join aliases must be distinct."))
+
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
   #"^card__[1-9]\d*$")
@@ -543,9 +566,6 @@
 (def SourceTable
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
-
-(defn- distinct-non-empty [schema]
-  (s/constrained schema (every-pred (partial apply distinct?) seq) "non-empty sequence of distinct items"))
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
@@ -556,11 +576,10 @@
     (s/optional-key :breakout)     (su/non-empty [Field])
     ; TODO - expressions keys should be strings; fix this when we get a chance
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
-    ;; TODO - should this be `distinct-non-empty`?
-    (s/optional-key :fields)       (su/non-empty [Field])
+    (s/optional-key :fields)       (su/distinct (su/non-empty [Field]))
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
-    (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
+    (s/optional-key :order-by)     (su/distinct (su/non-empty [OrderBy]))
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.
     ;; {:page 1, :items 10} = items 1-10
@@ -569,7 +588,7 @@
                                     :items su/IntGreaterThanZero}
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
-    (s/optional-key :join-tables)  (s/constrained [JoinInfo] (partial apply distinct?) "distinct JoinInfo")
+    (s/optional-key :join-tables)  JoinInfos
     s/Keyword                      s/Any}
 
    (s/constrained

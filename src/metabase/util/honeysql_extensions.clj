@@ -26,10 +26,8 @@
   (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
-(let [quote-fns     @(resolve 'honeysql.format/quote-fns)
-      ansi-quote-fn (:ansi quote-fns)]
-  (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :h2 (comp english-upper-case ansi-quote-fn))))
+(let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
+  (alter-var-root #'honeysql.format/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"

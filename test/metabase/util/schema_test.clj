@@ -1,7 +1,7 @@
 (ns metabase.util.schema-test
   "Tests for utility schemas and various API helper functions."
   (:require [compojure.core :refer [POST]]
-            [expectations :refer [expect]]
+            [expectations :refer :all]
             [metabase.api.common :as api]
             [metabase.util.schema :as su]
             [puppetlabs.i18n.core :as i18n]
@@ -47,3 +47,18 @@
   (let [zz (i18n/string-as-locale "zz")]
     (i18n/with-user-locale zz
       (ex-info-msg #(s/validate su/IntGreaterThanZero -1)))))
+
+(expect
+  nil
+  (s/check (su/distinct [s/Int]) []))
+
+(expect
+  nil
+  (s/check (su/distinct [s/Int]) [1]))
+
+(expect
+  nil
+  (s/check (su/distinct [s/Int]) [1 2]))
+
+(expect
+  (some? (s/check (su/distinct [s/Int]) [1 2 1])))
