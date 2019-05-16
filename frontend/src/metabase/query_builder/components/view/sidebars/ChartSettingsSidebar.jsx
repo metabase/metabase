@@ -19,44 +19,46 @@ const ChartSettingsSidebar = ({
   ...props
 }) =>
   result && (
-    <div className="full-height">
-      <div
-        className="mx4 flex align-center mt3 mb1 text-brand-hover cursor-pointer"
-        onClick={() =>
-          setUIControls({
-            isShowingChartSettingsSidebar: false,
-            isShowingChartTypeSidebar: true,
-          })
-        }
-      >
-        <Icon name="chevronleft" className="text-medium" />
-        <Icon
-          name={getIconForVisualizationType(question.display())}
-          className="ml2 mr1"
+    <div className="flex flex-column full-height justify-between">
+      <div className="scroll-y">
+        <div className="flex px4 py3 mb1 bg-medium">
+          <div
+            className="flex align-center cursor-pointer text-brand-hover"
+            onClick={() =>
+              setUIControls({
+                isShowingChartSettingsSidebar: false,
+                isShowingChartTypeSidebar: true,
+              })
+            }
+          >
+            <Icon name="chevronleft" />
+            <h3 className="text-heavy ml1">
+              {visualizations.get(question.display()).uiName} {t`options`}
+            </h3>
+          </div>
+        </div>
+        <ChartSettings
+          question={question}
+          addField={addField}
+          series={[
+            {
+              card: question.card(),
+              data: result.data,
+            },
+          ]}
+          onChange={onReplaceAllVisualizationSettings}
+          onClose={onClose}
+          noPreview
+          initial={initialChartSetting}
         />
-        <h3 className="text-heavy">
-          {visualizations.get(question.display()).uiName} {t`options`}
-        </h3>
       </div>
-      <ChartSettings
-        question={question}
-        addField={addField}
-        series={[
-          {
-            card: question.card(),
-            data: result.data,
-          },
-        ]}
-        onChange={onReplaceAllVisualizationSettings}
-        onClose={onClose}
-        noPreview
-        initial={initialChartSetting}
-      />
-      <div className="flex">
-        <Button medium primary onClick={onClose} className="mx4 mb3 flex-full">
-          {t`Done`}
-        </Button>
-      </div>
+      <Button
+        primary
+        className="m2 text-centered"
+        onClick={onClose}
+      >
+        {t`Done`}
+      </Button>
     </div>
   );
 
