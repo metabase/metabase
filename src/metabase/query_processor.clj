@@ -102,6 +102,7 @@
       annotate/add-column-info
       perms/check-query-permissions
       cumulative-ags/handle-cumulative-aggregations
+      ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
       resolve-joined-tables/resolve-joined-tables
       dev/check-results-format
       limit/limit

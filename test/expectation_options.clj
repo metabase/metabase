@@ -51,11 +51,30 @@
                       (< (count e) (count a))             "actual is larger than expected"
                       (> (count e) (count a))             "expected is larger than actual"))))
 
-;;; ---------------------------------------------- check-for-slow-tests ----------------------------------------------
+
+;;; ------------------------------------------------- log-slow-tests -------------------------------------------------
+
+(def ^:private slow-test-threshold-ms 2000)
+
+(defn- log-slow-tests
+  "Log a message about any test that takes longer than `slow-test-threshold-ms` to run. Ideally we'd keep all our tests
+  under that threshold so the test suite finishes quickly."
+  [run]
+  (fn [test-fn]
+    (let [start-time-ms (System/currentTimeMillis)]
+      (u/prog1 (run test-fn)
+        (let [duration-ms (- (System/currentTimeMillis) start-time-ms)]
+          (when (> duration-ms slow-test-threshold-ms)
+            (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
+              (println (u/format-color 'red "%s %s is a slow test! It took %s to finish."
+                         file line (du/format-milliseconds duration-ms))))))))))
+
+
+;;; ------------------------------------------------ enforce-timeout -------------------------------------------------
 
 (def ^:private test-timeout-ms (* 60 1000))
 
-(defn- check-for-slow-tests
+(defn- enforce-timeout
   "If any test takes longer that 60 seconds to run return a TimeoutException, effectively failing the test."
   [run]
   (fn [test-fn]
@@ -127,5 +146,6 @@
         (test-fn))
       ;; uncomment `log-tests` if you need to debug tests or see which ones are being noisy
       #_log-tests
-      check-for-slow-tests
+      log-slow-tests
+      enforce-timeout
       check-table-cleanup))

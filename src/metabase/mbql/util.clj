@@ -278,14 +278,14 @@
                                  mbql.s/field-id
                                  mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
-  [[clause-name x y, :as clause] :- mbql.s/Field]
-  ;; TODO - could use `match` to do this
-  (case clause-name
-    :field-id         clause
-    :fk->             (recur y)
-    :field-literal    clause
-    :datetime-field   (recur x)
-    :binning-strategy (recur x)))
+  [clause :- mbql.s/Field]
+  (match-one clause
+    :field-id                     &match
+    :field-literal                &match
+    [:fk-> _ dest-field]          (recur dest-field)
+    [:joined-field _ field]       (recur field)
+    [:datetime-field field _]     (recur field)
+    [:binning-strategy field & _] (recur field)))
 
 (defn maybe-unwrap-field-clause
   "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or

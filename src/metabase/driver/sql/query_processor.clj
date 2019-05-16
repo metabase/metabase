@@ -168,36 +168,33 @@
   [_ identifier]
   identifier)
 
+(def ^:dynamic *table-alias*
+  "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
+  schema + Table name. Used to implement things like `:joined-field`s."
+  nil)
+
 (defmethod ->honeysql [:sql (class Field)]
-  [driver field]
-  (let [table            (qp.store/table (:table_id field))
-        field-identifier (->honeysql driver (hx/identifier (:schema table) (:name table) (:name field)))]
-    (cast-unix-timestamp-field-if-needed driver field field-identifier)))
+  [driver {field-name :name, table-id :table_id, :as field}]
+  ;; `indentifer` will automatically unnest nested calls to `identifier`
+  (let [qualifiers (if *table-alias*
+                     [*table-alias*]
+                     (let [{schema :schema, table-name :name} (qp.store/table table-id)]
+                       [schema table-name]))
+        identifier (->honeysql driver (apply hx/identifier (concat qualifiers [field-name])))]
+    (cast-unix-timestamp-field-if-needed driver field identifier)))
 
 (defmethod ->honeysql [:sql :field-id]
   [driver [_ field-id]]
   (->honeysql driver (qp.store/field field-id)))
 
-(defmethod ->honeysql [:sql :fk->]
-  [driver [_ _ dest-field-clause :as fk-clause]]
-  ;; because the dest field needs to be qualified like `categories__via_category_id.name` instead of the normal
-  ;; `public.category.name` we will temporarily swap out the `categories` Table in the QP store for the duration of
-  ;; converting this `fk->` clause to HoneySQL. We'll remove the `:schema` and swap out the `:name` with the alias so
-  ;; other `->honeysql` impls (e.g. the `(class Field` one) will do the correct thing automatically without having to
-  ;; worry about the context in which they are being called
-  (qp.store/with-pushed-store
-    (when-let [{:keys [join-alias table-id]} (mbql.u/fk-clause->join-info *query* *nested-query-level* fk-clause)]
-      (when table-id
-        (qp.store/store-table! (assoc (qp.store/table table-id)
-                                 :schema nil
-                                 :name   join-alias
-                                 ;; for drivers that need to know these things, like Snowflake
-                                 :alias? true))))
-    (->honeysql driver dest-field-clause)))
-
 (defmethod ->honeysql [:sql :field-literal]
   [driver [_ field-name]]
-  (->honeysql driver (hx/identifier field-name)))
+  (->honeysql driver (hx/identifier *table-alias* field-name)))
+
+(defmethod ->honeysql [:sql :joined-field]
+  [driver [_ alias field]]
+  (binding [*table-alias* alias]
+    (->honeysql driver field)))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]

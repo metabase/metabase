@@ -42,7 +42,8 @@
    (when (and locale (not= locale "en"))
      (try
        (slurp (or (io/resource (str "frontend_client/app/locales/" locale ".json"))
-                  (throw (FileNotFoundException. (str (trs "Locale ''{0}'' not found." locale))))))
+                  ;; don't try to i18n the Exception message below, we have no locale to translate it to!
+                  (throw (FileNotFoundException. (format "Locale '%s' not found." locale)))))
        (catch Throwable e
          (log/warn (.getMessage e)))))
    (fallback-localization locale)))
