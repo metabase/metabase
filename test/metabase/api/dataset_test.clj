@@ -9,33 +9,42 @@
             [medley.core :as m]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
-             [query-execution :refer [QueryExecution]]]
+             [database :as database :refer [Database]]
+             [field :refer [Field]]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [query-execution :refer [QueryExecution]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (defn- format-response [m]
-  (into {} (for [[k v] (-> m
-                           (m/dissoc-in [:data :results_metadata])
-                           (m/dissoc-in [:data :insights]))]
-             (cond
-               (contains? #{:id :started_at :running_time :hash} k)
-               [k (boolean v)]
+  (into
+   {}
+   (for [[k v] (-> m
+                   (m/dissoc-in [:data :results_metadata])
+                   (m/dissoc-in [:data :insights]))]
+     (cond
+       (contains? #{:id :started_at :running_time :hash} k)
+       [k (boolean v)]
 
-               (and (= :data k) (contains? v :native_form))
-               [k (update v :native_form boolean)]
+       (and (= :data k) (contains? v :native_form))
+       [k (update v :native_form boolean)]
 
-               :else
-               [k v]))))
+       :else
+       [k v]))))
 
 (defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
 
@@ -233,3 +242,48 @@
                            :type     :query
                            :query    {:source-table (str "card__" (u/get-id card))}}))]
       (count (csv/read-csv result)))))
+
+;; POST /api/dataset/:format Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
+;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+;; from one that had it -- see #9831)
+(expect
+  101
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
+                  :query (json/generate-string
+                          {:database   (data/id)
+                           :type       :query
+                           :query      {:source-table (data/id :venues)}
+                           :middleware
+                           {:add-default-userland-constraints? true
+                            :userland-query?                   true}}))]
+      (count (csv/read-csv result)))))
+
+;; non-"download" queries should still get the default constraints
+;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
+(expect
+  10
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (let [{row-count :row_count, :as result}
+          ((test-users/user->client :rasta) :post 200 "dataset"
+           {:database (data/id)
+            :type     :query
+            :query    {:source-table (data/id :venues)}})]
+      (or row-count result))))
+
+;; make sure `POST /dataset` calls check user permissions
+(tu/expect-schema
+ {:status   (s/eq "failed")
+  :error    (s/eq "You do not have permissions to run this query.")
+  s/Keyword s/Any}
+ (tt/with-temp* [Database [{db-id :id}    (select-keys (data/db) [:engine :details])]
+                 Table    [{table-id :id} {:db_id db-id, :name "VENUES"}]
+                 Field    [_              {:table_id table-id, :name "ID"}]]
+   ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
+   ;; the Database
+   (perms/revoke-permissions! (group/all-users) db-id)
+   (perms/grant-permissions! (group/all-users) db-id "schema_that_does_not_exist")
+   ((test-users/user->client :rasta) :post "dataset"
+    {:database db-id
+     :type     :query
+     :query    {:source-table table-id, :limit 1}})))

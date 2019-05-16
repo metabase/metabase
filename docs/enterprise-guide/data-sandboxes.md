@@ -5,9 +5,9 @@ Say you have users who you want to be able to log into your Metabase instance, b
 The way it works is that you pick a table that you want to sandbox for users in a certain group, then customize how exactly you want to filter that table for those users. For this to work in most cases you’ll first need to add attributes to your users so that Metabase will know how to filter things for them specifically.
 
 ### Getting user attributes
-There are two ways to add attributes to your users:
+In order to identify different users, they need to have distinct attributes attached to their accounts — something like `User_ID`. We'll then use these attributes as the basis for filtering the tables you choose. There are two ways to add these attributes to your users:
 
-1. Get them automatically by connecting to your SAML Single Sign-On (SSO) provider. For instructions on connecting SAML SSO to Metabase, [check out this article](authenticating-with-saml.md).
+1. If you've already [connected your SSO](authenticating-with-saml.md) to Metabase, any user attributes you set there can be automatically passed to Metabase.
 2. You can also add attributes manually to a user by going to the People section of the Admin Panel, and clicking on the “…” menu on the far right of a user’s name in the table you’ll see there. Click on Edit Details from that menu to add and edit a user’s attributes.
 
 Now that your users have attributes, you’ll be able to sandbox tables, and automatically filter them based on these user attributes.
@@ -19,10 +19,10 @@ Metabase gives you two options for filtering a sandboxed table:
 The simplest way to filter a sandboxed table is to pick a column in the sandboxed table and match it up with a user attribute so that any time a user with sandboxed access to this table views it, they’ll only see rows in the table where that column’s value is equal to the value that user has for that attribute.
 
 #### Option 2: create a custom view of the table with a saved question
-If you’re trying to do something more custom or complex, Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question. You can also use variables in a saved SQL/native question and map those to user attributes to do even more sophisticated filtering. As an example, you might have columns in your Orders table that you don’t want any of your customers to see, so you could create a SQL-based saved question which only returns the columns you want them to see. That question could also have a variable in its `where` clause that you could map to a user attribute, like `where orders.user_id = {user_id_attr_var}` to additionally filter the question based on each user’s user ID attribute.
+If you’re trying to do something more custom or complex, Metabase also gives you the option of creating a custom view for a sandboxed table using a saved question. You can also use variables in a saved SQL/native question and map those to user attributes to do even more sophisticated filtering. As an example, you might have columns in your Orders table that you don’t want any of your users to see, so you could create a SQL-based saved question which only returns the columns you want them to see. That question could also have a variable in its `where` clause that you could map to a user attribute, like `where orders.user_id = {user_id_attr_var}` to additionally filter the question based on each user’s user ID attribute.
 
 #### An example setup
-That was a mouthful, so here’s an example. We’ll sandbox our Orders table so that any user in our Customers group will only be able to see rows in the Orders table where the Customer ID column matches the user’s customer_id attribute.
+That was a mouthful, so here’s an example. (The example happens to use a group called "Customers" but this works the same whether you're doing this for internal or external folks.) We’ll sandbox our Orders table so that any user in our Customers group will only be able to see rows in the Orders table where the `User ID` column matches the user’s `user_id` attribute.
 
 First we’ve made sure our example user has an attribute that we’ll be able to use in our filter:
 
@@ -107,5 +107,5 @@ Currently, a user can only have one sandbox per table. I.e., if a user belongs t
 
 ---
 
-## Next: white labeling
-Learn how to quickly add your own logo and customize the way Metabase looks with [white labeling](whitelabeling.md).
+## Next: embedding Metabase in your web app
+The next section will explain [how to embed](full-app-embedding.md) interactive dashboards and charts, or even whole sections of Metabase within your app.

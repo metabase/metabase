@@ -31,6 +31,7 @@
 (defonce ^:private quartz-scheduler
   (atom nil))
 
+;; TODO - maybe we should make this a delay instead!
 (defn- scheduler
   "Fetch the instance of our Quartz scheduler. Call this function rather than dereffing the atom directly because there
   are a few places (e.g., in tests) where we swap the instance out."
@@ -138,6 +139,7 @@
 (defn start-scheduler!
   "Start our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing."
   []
+  (classloader/the-classloader)
   (when-not @quartz-scheduler
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
@@ -158,6 +160,16 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private reschedule-task!
+  [job :- JobDetail, new-trigger :- Trigger]
+  (try
+    (when-let [scheduler (scheduler)]
+      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey job)))]
+        (log/debug (trs "Rescheduling job {0}" (-> job .getKey .getName)))
+        (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
+    (catch Throwable e
+      (log/error e (trs "Error rescheduling job")))))
+
 (s/defn schedule-task!
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
@@ -165,7 +177,8 @@
     (try
       (qs/schedule scheduler job trigger)
       (catch org.quartz.ObjectAlreadyExistsException _
-        (log/debug (trs "Job already exists:") (-> job .getKey .getName))))))
+        (log/debug (trs "Job already exists:") (-> job .getKey .getName))
+        (reschedule-task! job trigger)))))
 
 (s/defn delete-task!
   "delete a task from the scheduler"

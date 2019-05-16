@@ -330,6 +330,7 @@ export default class QueryBuilder extends Component {
         // save/create actions
         onSave={this.handleSave}
         onCreate={this.handleCreate}
+        handleResize={this.handleResize}
       />
     );
   }

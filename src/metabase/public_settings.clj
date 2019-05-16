@@ -1,15 +1,17 @@
 (ns metabase.public-settings
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [types :as types]]
+             [types :as types]
+             [util :as u]]
             [metabase.driver.util :as driver.u]
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util
-             [i18n :refer [available-locales-with-names set-locale tru]]
+             [i18n :refer [available-locales-with-names set-locale trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import [java.util TimeZone UUID]))
@@ -42,14 +44,29 @@
                      (setting/set-string! :site-uuid value)
                      value))))
 
+(defn- normalize-site-url [^String s]
+  (let [ ;; remove trailing slashes
+        s (str/replace s #"/$" "")
+        ;; add protocol if missing
+        s (if (str/starts-with? s "http")
+            s
+            (str "http://" s))]
+    ;; check that the URL is valid
+    (assert (u/url? s)
+      (str (tru "Invalid site URL: {0}" s)))
+    s))
+
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
   (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  :getter (fn []
+            (try
+              (some-> (setting/get-string :site-url) normalize-site-url)
+              (catch AssertionError e
+                (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
-            (setting/set-string! :site-url (when new-value
-                                             (cond->> (str/replace new-value #"/$" "")
-                                               (not (str/starts-with? new-value "http")) (str "http://"))))))
+            (setting/set-string! :site-url (some-> new-value normalize-site-url))))
 
 (defsetting site-locale
   (str  (tru "The default language for this Metabase instance.")
@@ -175,7 +192,7 @@
 
 (def ^:private short-timezone-name (memoize short-timezone-name*))
 
-
+;; TODO - it seems like it would be a nice performance win to cache this a little bit
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
    application."

@@ -1,6 +1,9 @@
 (ns metabase.handler
   "Top-level Metabase Ring handler."
-  (:require [metabase.middleware
+  (:require [metabase
+             [config :as config]
+             [routes :as routes]]
+            [metabase.middleware
              [auth :as mw.auth]
              [exceptions :as mw.exceptions]
              [json :as mw.json]
@@ -8,7 +11,6 @@
              [misc :as mw.misc]
              [security :as mw.security]
              [session :as mw.session]]
-            [metabase.routes :as routes]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [keyword-params :refer [wrap-keyword-params]]
@@ -22,7 +24,11 @@
   "The primary entry point to the Ring HTTP server."
   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
   (->
-   #'routes/routes                         ; the #' is to allow tests to redefine endpoints
+   ;; when running TESTS use the var so we can redefine routes as needed. No need to waste time with repetitive var
+   ;; lookups when running normally
+   (if config/is-test?
+     #'routes/routes
+     routes/routes)
    mw.exceptions/catch-uncaught-exceptions ; catch any Exceptions that weren't passed to `raise`
    mw.exceptions/catch-api-exceptions      ; catch exceptions and return them in our expected format
    mw.log/log-api-call

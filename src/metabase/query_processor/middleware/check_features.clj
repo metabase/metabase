@@ -18,8 +18,11 @@
 ;; auto-generate this logic
 (defn- query->required-features [query]
   (mbql.u/match (:query query)
-    [:stddev _] :standard-deviation-aggregations
-    [:fk-> _ _] :foreign-keys))
+    :stddev
+    :standard-deviation-aggregations
+
+    :joined-field
+    :foreign-keys))
 
 (defn- check-features* [{query-type :type, :as query}]
   (if-not (= query-type :query)

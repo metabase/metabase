@@ -448,7 +448,10 @@ export default class Visualization extends Component {
     }
 
     return (
-      <div className={cx(className, "flex flex-column")} style={style}>
+      <div
+        className={cx(className, "flex flex-column full-height")}
+        style={style}
+      >
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||

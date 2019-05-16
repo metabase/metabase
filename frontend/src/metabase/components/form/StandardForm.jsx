@@ -64,7 +64,6 @@ const StandardForm = ({
           type="submit"
           primary={!(submitting || invalid)}
           disabled={submitting || invalid}
-          className="mr1"
         >
           {submitTitle || (values.id != null ? t`Update` : t`Create`)}
         </Button>
@@ -73,6 +72,7 @@ const StandardForm = ({
             type="button"
             disabled={submitting || !dirty}
             onClick={resetForm}
+            className="ml1"
           >
             {t`Reset`}
           </Button>

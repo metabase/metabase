@@ -15,8 +15,8 @@ This guide contains more detailed information about how to install Metabase for 
 
 ## Enterprise Edition
 
-#### [Enterprise Features Guide](enterprise-guide/start.md)
-Here's where to go for help using the features included in the Enterprise Edition of Metabase.
+#### [Enterprise Features Guide](./enterprise-guide/start.md)
+Here’s where to go for help using the features included in the Enterprise Edition of Metabase.
 
 
 ## For Developers

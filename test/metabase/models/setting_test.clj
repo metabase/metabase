@@ -35,6 +35,17 @@
   :internal? true
   :type :json)
 
+(defsetting ^:private test-csv-setting
+  "Test setting - this only shows up in dev (5)"
+  :internal? true
+  :type :csv)
+
+(defsetting ^:private test-csv-setting-with-default
+  "Test setting - this only shows up in dev (6)"
+  :internal? true
+  :type :csv
+  :default "A,B,C")
+
 ;; ## HELPER FUNCTIONS
 
 (defn db-fetch-setting
@@ -45,25 +56,31 @@
 (defn setting-exists-in-db? [setting-name]
   (boolean (Setting :key (name setting-name))))
 
-(defn set-settings! [setting-1-value setting-2-value]
-  (test-setting-1 setting-1-value)
-  (test-setting-2 setting-2-value))
-
-
 (expect
   String
   (:tag (meta #'test-setting-1)))
 
 ;; ## GETTERS
 ;; Test defsetting getter fn. Should return the value from env var MB_TEST_SETTING_1
-(expect "ABCDEFG"
-  (do (set-settings! nil nil)
-      (test-setting-1)))
+(expect
+  "ABCDEFG"
+  (do
+    (test-setting-1 nil)
+    (test-setting-1)))
 
-;; Test getting a default value
-(expect "[Default Value]"
-  (do (set-settings! nil nil)
-      (test-setting-2)))
+;; Test getting a default value -- if you clear the value of a Setting it should revert to returning the default value
+(expect
+  "[Default Value]"
+  (do
+    (test-setting-2 nil)
+    (test-setting-2)))
+
+;; `user-facing-value` should return `nil` for a Setting that is using the default value
+(expect
+  nil
+  (do
+    (test-setting-2 nil)
+    (setting/user-facing-value :test-setting-2)))
 
 
 ;; ## SETTERS
@@ -186,11 +203,27 @@
    :is_env_setting false
    :env_name       "MB_TEST_SETTING_2"
    :default        "[Default Value]"}
-  (do (set-settings! nil "TOUCANS")
+  (do (test-setting-1 nil)
+      (test-setting-2 "TOUCANS")
       (some (fn [setting]
               (when (re-find #"^test-setting-2$" (name (:key setting)))
                 setting))
             (setting/all))))
+
+;; all with custom getter
+(expect
+  {:key            :test-setting-2
+   :value          7
+   :description    "Test setting - this only shows up in dev (2)"
+   :is_env_setting false
+   :env_name       "MB_TEST_SETTING_2"
+   :default        "[Default Value]"}
+  (do (test-setting-1 nil)
+      (test-setting-2 "TOUCANS")
+      (some (fn [setting]
+              (when (re-find #"^test-setting-2$" (name (:key setting)))
+                setting))
+            (setting/all :getter (comp count setting/get-string)))))
 
 ;; all
 (expect
@@ -206,7 +239,8 @@
     :env_name       "MB_TEST_SETTING_2"
     :description    "Test setting - this only shows up in dev (2)"
     :default        "[Default Value]"}]
-  (do (set-settings! nil "S2")
+  (do (test-setting-1 nil)
+      (test-setting-2 "S2")
       (for [setting (setting/all)
             :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
         setting)))
@@ -235,9 +269,12 @@
   {:value nil, :is_env_setting false, :env_name "MB_TEST_BOOLEAN_SETTING", :default nil}
   (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil nil))
 
-;; boolean settings shouldn't be obfuscated when set by env var
+;; values set by env vars should never be shown to the User
 (expect
-  {:value true, :is_env_setting true, :env_name "MB_TEST_BOOLEAN_SETTING", :default "Using value of env var $MB_TEST_BOOLEAN_SETTING"}
+  {:value          nil
+   :is_env_setting true
+   :env_name       "MB_TEST_BOOLEAN_SETTING"
+   :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}
   (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "true"))
 
 ;; env var values should be case-insensitive
@@ -309,6 +346,67 @@
 (expect
   String
   (:tag (meta #'toucan-name)))
+
+
+;;; -------------------------------------------------- CSV Settings --------------------------------------------------
+
+(defn- fetch-csv-setting-value [v]
+  (with-redefs [setting/get-string (constantly v)]
+    (test-csv-setting)))
+
+;; should be able to fetch a simple CSV setting
+(expect
+  ["A" "B" "C"]
+  (fetch-csv-setting-value "A,B,C"))
+
+;; should also work if there are quoted values that include commas in them
+(expect
+  ["A" "B" "C1,C2" "ddd"]
+  (fetch-csv-setting-value "A,B,\"C1,C2\",ddd"))
+
+(defn- set-and-fetch-csv-setting-value! [v]
+  (test-csv-setting v)
+  {:db-value     (db/select-one-field :value setting/Setting :key "test-csv-setting")
+   :parsed-value (test-csv-setting)})
+
+;; should be able to correctly set a simple CSV setting
+(expect
+  {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
+  (set-and-fetch-csv-setting-value! ["A" "B" "C"]))
+
+;; should be a able to set a CSV setting with a value that includes commas
+(expect
+  {:db-value "A,B,C,\"D1,D2\"", :parsed-value ["A" "B" "C" "D1,D2"]}
+  (set-and-fetch-csv-setting-value! ["A" "B" "C" "D1,D2"]))
+
+;; should be able to set a CSV setting with a value that includes spaces
+(expect
+  {:db-value "A,B,C, D ", :parsed-value ["A" "B" "C" " D "]}
+  (set-and-fetch-csv-setting-value! ["A" "B" "C" " D "]))
+
+;; should be a able to set a CSV setting when the string is already CSV-encoded
+(expect
+  {:db-value "A,B,C", :parsed-value ["A" "B" "C"]}
+  (set-and-fetch-csv-setting-value! "A,B,C"))
+
+;; should be able to set nil CSV setting
+(expect
+  {:db-value nil, :parsed-value nil}
+  (set-and-fetch-csv-setting-value! nil))
+
+;; default values for CSV settings should work
+(expect
+  ["A" "B" "C"]
+  (do
+    (test-csv-setting-with-default nil)
+    (test-csv-setting-with-default)))
+
+;; `user-facing-value` should be `nil` for CSV Settings with default values
+(expect
+  nil
+  (do
+    (test-csv-setting-with-default nil)
+    (setting/user-facing-value :test-csv-setting-with-default)))
 
 
 ;;; ----------------------------------------------- Encrypted Settings -----------------------------------------------

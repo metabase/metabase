@@ -1,11 +1,5 @@
 (ns metabase.driver.sql-jdbc.common
-  (:require [clojure.string :as str]
-            [metabase.util.honeysql-extensions :as hx]))
-
-(defn escape-field-name
-  "Escape dots in a field name so HoneySQL doesn't get confused and separate them. Returns a keyword."
-  ^clojure.lang.Keyword [k]
-  (keyword (hx/escape-dots (name k))))
+  (:require [clojure.string :as str]))
 
 (defn handle-additional-options
   "If DETAILS contains an `:addtional-options` key, append those options to the connection string in CONNECTION-SPEC.

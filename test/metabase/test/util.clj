@@ -32,6 +32,7 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.test.data :as data]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
@@ -299,18 +300,23 @@
 
 
 (defn do-with-temporary-setting-value
-  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the
-  original value. This works much the same way as `binding`.
+  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
+  the original value. This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  (let [original-value (setting/get setting-k)]
+  ;; for saving & restoring the original values we're using `get-string` and `set-string!` to bypass the magic getters
+  ;; & setters which might have some restrictions or other unexpected behavior. We're using these functions rather
+  ;; than manipulating values in the DB directly so we don't have to worry about invalidating the Settings cache
+  ;; ourselves
+  (let [original-value     (setting/get-string setting-k)
+        value-was-default? (not (db/select-one setting/Setting :key (u/keyword->qualified-name setting-k)))]
     (try
       (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set! setting-k original-value)))))
+        (setting/set-string! setting-k (when-not value-was-default? original-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
@@ -350,9 +356,9 @@
   in the DB for 'permanent' rows (rows that live for the life of the test suite, rather than just a single test). For
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
-      ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-      (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
-        (do-something))"
+    ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
+      (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
@@ -494,6 +500,7 @@
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
+  (classloader/the-classloader)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try
