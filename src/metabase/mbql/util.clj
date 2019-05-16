@@ -354,6 +354,7 @@
    number to as optional arg `nesting-level` to make sure you reference aggregations at the right level of nesting."
   ([query index]
    (aggregation-at-index query index 0))
+
   ([query :- mbql.s/Query, index :- su/NonNegativeInt, nesting-level :- su/NonNegativeInt]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)

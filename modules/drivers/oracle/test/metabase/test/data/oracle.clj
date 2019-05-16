@@ -23,7 +23,7 @@
 ;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
 ;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.timestamp
 (defonce ^:private session-schema-number (rand-int 200))
-(defonce ^:private session-schema        (str "CAM_" session-schema-number))
+(defonce           session-schema        (str "CAM_" session-schema-number))
 (defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
 ;; Session password is only used when creating session user, not anywhere else
 

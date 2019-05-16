@@ -114,19 +114,22 @@
      (resolve-one-join-info clause pk-info))))
 
 
-;;; ---------------------------------------- Adding :join-tables to the query ----------------------------------------
+;;; ------------------------------------------- Adding :joins to the query -------------------------------------------
 
-(s/defn ^:private resolved-join-info->join-clause :- mbql.s/JoinInfo
+(s/defn ^:private resolved-join-info->join-clause :- mbql.s/Join
   [{:keys [source-table alias fk-field-id pk-field-id]} :- ResolvedJoinInfo]
-  {:table-id    source-table
-   :join-alias  alias
+  {:source-table source-table
+   :alias        alias
+   :strategy     :left-join
+   :condition    [:= [:field-id fk-field-id] [:joined-field alias [:field-id pk-field-id]]]
+
    :fk-field-id fk-field-id
-   :pk-field-id pk-field-id})
+   :fields      :none})
 
 (s/defn ^:private add-implicit-join-clauses :- mbql.s/Query
   [query, resolved-join-infos :- [ResolvedJoinInfo]]
   (let [join-clauses (map resolved-join-info->join-clause resolved-join-infos)]
-    (update-in query [:query :join-tables] (comp distinct concat) join-clauses)))
+    (update-in query [:query :joins] (comp distinct concat) join-clauses)))
 
 
 ;;; --------------------------------------------- Replacing fk-> clauses ---------------------------------------------

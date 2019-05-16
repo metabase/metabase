@@ -3,28 +3,25 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [config :as config]
-             [driver :as driver]
-             [util :as u]]
+             [driver :as driver]]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [trs]]
-             [ssh :as ssh]]
-            [schema.core :as s])
+             [ssh :as ssh]])
   (:import [java.sql ResultSet Types]
-           java.util.Date
-           metabase.util.honeysql_extensions.Identifier))
+           java.util.Date))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -160,76 +157,6 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds] [driver _ field-or-value]
   (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
-
-(s/defn ^:private increment-identifier-string :- s/Str
-  [last-component :- s/Str]
-  (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" last-component)]
-    ;; if last-component already has an alias like col_2 then increment it to col_3
-    (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
-      (str/replace last-component (re-pattern (str existing-suffix \$)) new-suffix))
-    ;; otherwise just stick a _2 on the end so it's col_2
-    (str last-component "_2")))
-
-(s/defn ^:private increment-identifier
-  "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
-  e.g.
-
-     (increment-identifier :my_col)   ; -> :my_col_2
-     (increment-identifier :my_col_2) ; -> :my_col_3"
-  [identifier :- Identifier]
-  (update
-   identifier
-   :components
-   (fn [components]
-     (conj
-      (vec (butlast components))
-      (increment-identifier-string (u/keyword->qualified-name (last components)))))))
-
-(defn- alias-everything
-  "Make sure all the columns in `select-clause` are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
-  (This faciliates our deduplication logic.)"
-  [select-clause]
-  (for [col select-clause]
-    (cond
-      ;; if something's already an alias form like [:table.col :col] it's g2g
-      (sequential? col)
-      col
-
-      ;; otherwise we *should* be dealing with an Identifier. If so, take the last component of the Identifier and use
-      ;; that as the alias.
-      ;;
-      ;; TODO - could this be done using `->honeysql` or `field->alias` instead?
-      (instance? Identifier col)
-      [col (hx/identifier :field-alias (last (:components col)))]
-
-      :else
-      (do
-        (log/error (trs "Don't know how to alias {0}, expected an Identifer." col))
-        [col col]))))
-
-(defn- deduplicate-identifiers
-  "Make sure every column in `select-clause` has a unique alias. This is done because Oracle can't figure out how to use
-  a query that produces duplicate columns in a subselect."
-  [select-clause]
-  (if (= select-clause [:*])
-    ;; if we're doing `SELECT *` there's no way we can deduplicate anything so we're SOL, return as-is
-    select-clause
-    ;; otherwise we can actually deduplicate things
-    (loop [already-seen #{}, acc [], [[col alias] & more] (alias-everything select-clause)]
-      (cond
-        ;; if not more cols are left to deduplicate, we're done
-        (not col)
-        acc
-
-        ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
-        (contains? already-seen alias)
-        (recur already-seen acc (cons [col (increment-identifier alias)]
-                                      more))
-
-        ;; otherwise if we haven't seen it record it as seen and move on to the next column
-        :else
-        (recur (conj already-seen alias) (conj acc [col alias]) more)))))
-
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
 ;;
@@ -267,7 +194,7 @@
    ;; back to including a `SELECT *` just to make sure a valid query is produced
    :from   [(-> (merge {:select [:*]}
                        honeysql-query)
-                (update :select deduplicate-identifiers))]
+                (update :select sql.u/select-clause-deduplicate-aliases))]
    :where  [:<= (hsql/raw "rownum") value]})
 
 (defmethod sql.qp/apply-top-level-clause [:oracle :page]

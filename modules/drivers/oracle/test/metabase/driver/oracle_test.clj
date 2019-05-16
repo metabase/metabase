@@ -2,16 +2,18 @@
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
             [expectations :refer [expect]]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
-            [metabase.driver.oracle :as oracle]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -68,36 +70,6 @@
      :port         1521
      :service-name "MyCoolService"
      :sid          "ORCL"}))
-
-;; `deduplicate-identifiers` should use the last component of an identifier as the alias if it does not already have
-;; one
-(expect
-  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-   [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
-  (#'oracle/deduplicate-identifiers
-   [(hx/identifier :field "A" "B" "C" "D")
-    [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))
-
-;; `deduplicate-identifiers` should append numeric suffixes to duplicate aliases
-(expect
-  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-   [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
-   [(hx/identifier :field "F")             (hx/identifier :field-alias "G")]]
-  (#'oracle/deduplicate-identifiers
-   [(hx/identifier :field "A" "B" "C" "D")
-    (hx/identifier :field "E" "D")
-    [(hx/identifier :field "F")            (hx/identifier :field-alias "G")]]))
-
-;; `deduplicate-identifiers` should handle aliases that are already suffixed gracefully
-(expect
-  [[(hx/identifier :field "A" "B" "C" "D") (hx/identifier :field-alias "D")]
-   [(hx/identifier :field "E" "D")         (hx/identifier :field-alias "D_2")]
-   [(hx/identifier :field "F")             (hx/identifier :field-alias "D_3")]]
-  (#'oracle/deduplicate-identifiers
-   [(hx/identifier :field "A" "B" "C" "D")
-    (hx/identifier :field "E" "D")
-    [(hx/identifier :field "F")            (hx/identifier :field-alias "D_2")]]))
-
 
 (expect
   com.jcraft.jsch.JSchException
@@ -157,3 +129,48 @@
             {:database (data/id)
              :type     :query
              :query    {:source-table (u/get-id table)}}))))))
+
+;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
+;; don't sit around scratching our heads wondering why the queries themselves aren't working
+
+(expect-with-driver :oracle
+  {:select [:*]
+   :from
+   [{:select
+     [[(hx/identifier :field oracle.tx/session-schema "venues" "id")          (hx/identifier :field-alias "id")]
+      [(hx/identifier :field oracle.tx/session-schema "venues" "name")        (hx/identifier :field-alias "name")]
+      [(hx/identifier :field oracle.tx/session-schema "venues" "category_id") (hx/identifier :field-alias "category_id")]
+      [(hx/identifier :field oracle.tx/session-schema "venues" "latitude")    (hx/identifier :field-alias "latitude")]
+      [(hx/identifier :field oracle.tx/session-schema "venues" "longitude")   (hx/identifier :field-alias "longitude")]
+      [(hx/identifier :field oracle.tx/session-schema "venues" "price")       (hx/identifier :field-alias "price")]]
+
+     :from      [(hx/identifier :table oracle.tx/session-schema "venues")]
+     :left-join [[(hx/identifier :table oracle.tx/session-schema "categories") "test_data_categories__via__cat"]
+                 [:=
+                  (hx/identifier :field oracle.tx/session-schema "venues" "category_id")
+                  (hx/identifier :field "test_data_categories__via__cat" "id")]]
+     :where     [:=
+                 (hx/identifier :field "test_data_categories__via__cat" "name")
+                 "BBQ"]
+     :order-by  [[(hx/identifier :field oracle.tx/session-schema "venues" "id") :asc]]}]
+
+   :where [:<= (hsql/raw "rownum") 100]}
+  (qp.test-util/with-everything-store
+    (#'sql.qp/mbql->honeysql
+     :oracle
+     (data/mbql-query venues
+       {:source-table $$venues
+        :order-by     [[:asc $id]]
+        :filter       [:=
+                       [:joined-field "test_data_categories__via__cat" $categories.name]
+                       [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
+        :fields       [$id $name $category_id $latitude $longitude $price]
+        :limit        100
+        :joins        [{:source-table $$categories
+                        :alias        "test_data_categories__via__cat",
+                        :strategy     :left-join
+                        :condition    [:=
+                                       $category_id
+                                       [:joined-field "test_data_categories__via__cat" $categories.id]]
+                        :fk-field-id  (data/id :venues :category_id)
+                        :fields       :none}]}))))

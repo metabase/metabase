@@ -10,6 +10,7 @@
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.test.data :as data]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -37,13 +38,17 @@
 ;;; |                                              add-mbql-column-info                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- info-for-field
+  ([field-id]
+   (db/select-one (into [Field] (disj (set qp.store/field-columns-to-fetch) :database_type)) :id field-id))
+  ([table-key field-key]
+   (info-for-field (data/id table-key field-key))))
+
 ;; make sure columns are comming back the way we'd expect
 (expect
-  [(-> (Field (data/id :venues :price))
-       (dissoc :database_type)
-       (assoc :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :venues :price)))
+  [(assoc (info-for-field :venues :price)
+     :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:field-id (data/id :venues :price)]]}}
          {:columns [:price]})
@@ -55,11 +60,9 @@
 ;; TODO - this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses before the
 ;; query ever makes it to the 'annotate' stage
 (expect
-  [(-> (Field (data/id :categories :name))
-       (dissoc :database_type)
-       (assoc :fk_field_id (data/id :venues :category_id), :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :categories :name)))
+  [(assoc (info-for-field :categories :name)
+     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:fk->
                             [:field-id (data/id :venues :category_id)]
@@ -70,28 +73,29 @@
 
 ;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses
 (expect
-  [(-> (Field (data/id :categories :name))
-       (dissoc :database_type)
-       (assoc :fk_field_id (data/id :venues :category_id), :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :categories :name)))
-    (-> (#'annotate/add-mbql-column-info
-         {:query {:fields      [[:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id (data/id :categories :name)]]]
-                  :join-tables [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
-                                 :table-id    (data/id :categories)
-                                 :fk-field-id (data/id :venues :category_id)
-                                 :pk-field-id (data/id :categories :id)}]}}
-         {:columns [:name]})
-        :cols
-        vec)))
+  [(assoc (info-for-field :categories :name)
+     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  (data/$ids venues
+    (qp.test-util/with-everything-store
+      (-> (#'annotate/add-mbql-column-info
+           {:query {:fields [[:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
+                    :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                              :source-table $$table
+                              :condition    [:=
+                                             [:field-id $category_id]
+                                             [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.id]]]
+                              :strategy     :left-join
+                              :fk-field-id  $category_id}]}}
+           {:columns [:name]})
+          :cols
+          vec))))
 
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
-  [(-> (Field (data/id :venues :price))
-       (dissoc :database_type)
-       (assoc :unit :month, :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :venues :price)))
+  [(assoc (info-for-field :venues :price)
+     :unit   :month
+     :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:datetime-field [:field-id (data/id :venues :price)] :month]]}}
          {:columns [:price]})
@@ -198,9 +202,8 @@
    :special_type :type/Number
    :name         "sum"
    :display_name "sum"}
-  (qp.store/with-store
+  (qp.test-util/with-everything-store
     (data/$ids venues
-      (qp.store/store-field! (Field $price))
       (col-info-for-aggregation-clause [:sum [:+ [:field-id $price] 1]]))))
 
 ;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
