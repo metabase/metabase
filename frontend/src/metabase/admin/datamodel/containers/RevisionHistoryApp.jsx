@@ -9,7 +9,7 @@ import { getRevisions, getCurrentUser } from "../selectors";
 import { fetchRevisions } from "../datamodel";
 
 const mapStateToProps = (state, props) => ({
-  entityName: props.params.entity,
+  objectType: props.params.entity,
   id: props.params.id,
   user: getCurrentUser(state),
   revisions: getRevisions(state),
@@ -22,8 +22,13 @@ const mapDispatchToProps = { fetchRevisions };
   mapDispatchToProps,
 )
 export default class RevisionHistoryApp extends Component {
+  componentWillMount() {
+    const { id, objectType } = this.props;
+    this.props.fetchRevisions({ entity: objectType, id });
+  }
+
   render() {
-    return this.props.entityName == "metric" ? (
+    return this.props.objectType == "metric" ? (
       <MetricRevisionHistory {...this.props} />
     ) : (
       <SegmentRevisionHistory {...this.props} />
@@ -33,56 +38,16 @@ export default class RevisionHistoryApp extends Component {
 
 @Metrics.load({ id: (state, { id }) => id })
 class MetricRevisionHistory extends Component {
-  componentWillMount() {
-    const { metric } = this.props;
-    if (metric) {
-      this.props.fetchRevisions({ entity: "metric", id: metric.id });
-    }
-  }
-
-  componentDidUpdate({ metric: { id: prevId } }) {
-    const { id } = this.props.metric;
-    if (id !== prevId) {
-      this.props.fetchRevisions({ entity: "metric", id });
-    }
-  }
-
   render() {
     const { metric, ...props } = this.props;
-    return (
-      <RevisionHistory
-        {...props}
-        object={metric}
-        objectType={this.props.entity}
-      />
-    );
+    return <RevisionHistory object={metric} {...props} />;
   }
 }
 
 @Segments.load({ id: (state, { id }) => id })
 class SegmentRevisionHistory extends Component {
-  componentWillMount() {
-    const { segment } = this.props;
-    if (segment) {
-      this.props.fetchRevisions({ entity: "segment", id: segment.id });
-    }
-  }
-
-  componentDidUpdate({ segment: { id: prevId } }) {
-    const { id } = this.props.segment;
-    if (id !== prevId) {
-      this.props.fetchRevisions({ entity: "segment", id });
-    }
-  }
-
   render() {
     const { segment, ...props } = this.props;
-    return (
-      <RevisionHistory
-        {...props}
-        object={segment}
-        objectType={this.props.entityName}
-      />
-    );
+    return <RevisionHistory object={segment} {...props} />;
   }
 }
