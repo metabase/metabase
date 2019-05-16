@@ -10,7 +10,7 @@
                                                              :type     :query
                                                              :query    query})))
 
-;; make sure `:join-tables` get added automatically for `:fk->` clauses
+;; make sure `:joins` get added automatically for `:fk->` clauses
 (expect
   {:database (data/id)
    :type     :query
@@ -18,17 +18,21 @@
                {:source-table $$table
                 :fields       [[:field-id $name]
                                [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
-                :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
-                                :table-id    (data/id :categories)
-                                :fk-field-id $category_id
-                                :pk-field-id $categories.id}]})}
+                :joins        [{:source-table (data/id :categories)
+                                :alias        "CATEGORIES__via__CATEGORY_ID"
+                                :condition    [:=
+                                               [:field-id $category_id]
+                                               [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.id]]]
+                                :strategy     :left-join
+                                :fields       :none
+                                :fk-field-id  $category_id}]})}
   (resolve-joined-tables
    (data/$ids venues
      {:source-table $$table
       :fields       [[:field-id $name]
                      [:fk-> [:field-id $category_id] [:field-id $categories.name]]]})))
 
-;; For FK clauses inside nested source queries, we should add the `:join-tables` info to the nested query instead of
+;; For FK clauses inside nested source queries, we should add the `:joins` info to the nested query instead of
 ;; at the top level (#8972)
 (expect
   {:database (data/id)
@@ -38,10 +42,14 @@
                 {:source-table $$table
                  :fields       [[:field-id $name]
                                 [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
-                 :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
-                                 :table-id    (data/id :categories)
-                                 :fk-field-id $category_id
-                                 :pk-field-id $categories.id}]})}}
+                 :joins        [{:source-table (data/id :categories)
+                                 :alias        "CATEGORIES__via__CATEGORY_ID"
+                                 :condition    [:=
+                                                [:field-id $category_id]
+                                                [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.id]]]
+                                 :strategy     :left-join
+                                 :fields       :none
+                                 :fk-field-id  $category_id}]})}}
   (resolve-joined-tables
    {:source-query
     (data/$ids venues
@@ -59,10 +67,14 @@
                  {:source-table $$table
                   :fields       [[:field-id $name]
                                  [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.name]]]
-                  :join-tables  [{:join-alias  "CATEGORIES__via__CATEGORY_ID"
-                                  :table-id    (data/id :categories)
-                                  :fk-field-id $category_id
-                                  :pk-field-id $categories.id}]})}}}
+                  :joins        [{:source-table (data/id :categories)
+                                  :alias        "CATEGORIES__via__CATEGORY_ID"
+                                  :condition    [:=
+                                                 [:field-id $category_id]
+                                                 [:joined-field "CATEGORIES__via__CATEGORY_ID" [:field-id $categories.id]]]
+                                  :strategy     :left-join
+                                  :fields       :none
+                                  :fk-field-id  $category_id}]})}}}
   (resolve-joined-tables
    {:source-query
     {:source-query
@@ -84,10 +96,14 @@
                 :aggregation  [[:count]]
                 :breakout     [[:joined-field "VENUES__via__VENUE_ID" [:field-id $venues.price]]]
                 :order-by     [[:asc [:joined-field "VENUES__via__VENUE_ID" [:field-id $venues.price]]]]
-                :join-tables  [{:join-alias  "VENUES__via__VENUE_ID"
-                                :table-id    (data/id :venues)
-                                :fk-field-id $venue_id
-                                :pk-field-id $venues.id}]})}
+                :joins        [{:source-table (data/id :venues)
+                                :alias        "VENUES__via__VENUE_ID"
+                                :condition    [:=
+                                               [:field-id $venue_id]
+                                               [:joined-field "VENUES__via__VENUE_ID" [:field-id $venues.id]]]
+                                :strategy     :left-join
+                                :fields       :none
+                                :fk-field-id  $venue_id}]})}
   (resolve-joined-tables
    (data/$ids [checkins {:wrap-field-ids? true}]
      {:source-query {:source-table $$table

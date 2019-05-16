@@ -445,28 +445,41 @@
 
 (declare build-honeysql-form)
 
-(defn- make-honeysql-join-clauses
-  "Returns a seq of honeysql join clauses, joining to `table-or-query-expr`. `jt-or-jq` can be either a `JoinTable` or
-  a `JoinQuery`"
-  [driver table-or-query-expr {:keys [join-alias fk-field-id pk-field-id]}]
-  (let [source-field (qp.store/field fk-field-id)
-        pk-field     (qp.store/field pk-field-id)]
-    [[table-or-query-expr (keyword join-alias)]
-     [:=
-      (->honeysql driver source-field)
-      (binding [*table-alias* join-alias]
-        (->honeysql driver pk-field))]]))
+(defmulti join->honeysql
+  "Compile a single MBQL `join` to HoneySQL."
+  {:arglists '([driver join]), :style/indent 1}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
-(s/defn ^:private join-info->honeysql
-  [driver , {:keys [query table-id], :as info} :- mbql.s/JoinInfo]
-  (if query
-    (make-honeysql-join-clauses driver (build-honeysql-form driver query) info)
-    (let [table (qp.store/table table-id)]
-      (make-honeysql-join-clauses driver (->honeysql driver table) info))))
+(defmulti join-source
+  "Generate HoneySQL for a table or query to be joined."
+  {:arglists '([driver join]), :style/indent 1}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
-(defmethod apply-top-level-clause [:sql :join-tables]
-  [driver _ honeysql-form {:keys [join-tables]}]
-  (reduce (partial apply h/merge-left-join) honeysql-form (map (partial join-info->honeysql driver) join-tables)))
+(defmethod join-source :sql
+  [driver {:keys [source-table source-query]}]
+  (if source-query
+    (build-honeysql-form driver source-query)
+    (->honeysql driver (qp.store/table source-table))))
+
+(s/defmethod join->honeysql :sql
+  [driver, {:keys [condition alias], :as join} :- mbql.s/Join]
+  [[(join-source driver join) alias] (->honeysql driver condition)])
+
+(def ^:private join-strategy->merge-fn
+  {:left-join  h/merge-left-join
+   :right-join h/merge-right-join
+   :inner-join h/merge-join
+   :full-join  h/merge-full-join})
+
+(defmethod apply-top-level-clause [:sql :joins]
+  [driver _ honeysql-form {:keys [joins]}]
+  (reduce
+   (fn [honeysql-form {:keys [strategy], :as join}]
+     (apply (join-strategy->merge-fn strategy) honeysql-form (join->honeysql driver join)))
+   honeysql-form
+   joins))
 
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------

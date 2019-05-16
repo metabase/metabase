@@ -35,15 +35,15 @@
 
 (defn- query->source-and-join-tables
   "Return a sequence of all Tables (as TableInstance maps, or IDs) referenced by `query`."
-  [{:keys [source-table join-tables source-query native], :as query}]
+  [{:keys [source-table joins source-query native], :as query}]
   (cond
     ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native
     ;; permissions to the complete set below.
     native       [::native]
     ;; if we have a source-query just recur until we hit either the native source or the MBQL source
     source-query (recur source-query)
-    ;; for root MBQL queries just return source-table + join-tables
-    :else        (cons source-table (map :table-id join-tables))))
+    ;; for root MBQL queries just return source-table + joins
+    :else        (cons source-table (map :source-table joins))))
 
 (def ^:private PermsOptions
   "Map of options to be passed to the permissions checking functions."
@@ -115,9 +115,9 @@
     (catch Throwable e
       (when throw-exceptions?
         (throw e))
-      (log/warn (tru "Error calculating permissions for query: {0}" (.getMessage e))
-                "\n"
-                (u/pprint-to-str (u/filtered-stacktrace e)))
+      (log/error (tru "Error calculating permissions for query: {0}" (.getMessage e))
+                 "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e)))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
 (s/defn ^:private perms-set* :- #{perms/ObjectPath}

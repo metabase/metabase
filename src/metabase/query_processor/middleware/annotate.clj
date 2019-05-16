@@ -62,13 +62,13 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private join-with-alias :- (s/maybe mbql.s/JoinInfo)
-  [{{:keys [join-tables]} :query} :- su/Map, join-alias :- su/NonBlankString]
+(s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
+  [{{:keys [joins]} :query} :- su/Map, join-alias :- su/NonBlankString]
   (some
-   (fn [{alias :join-alias, :as join}]
+   (fn [{:keys [alias], :as join}]
      (when (= alias join-alias)
        join))
-   join-tables))
+   joins))
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 

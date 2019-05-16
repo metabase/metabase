@@ -5,6 +5,7 @@
              [core :as core]
              [set :as set]]
             [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
+            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -526,38 +527,81 @@
     (set/rename-keys NativeQuery {:query :native})
     (s/recursive #'MBQLQuery)))
 
-(def JoinTableInfo
-  "Schema for information about a JOIN (or equivalent) that should be performed, and how to do it.. This is added
-  automatically by `resolve-joined-tables` middleware for `fk->` forms that are encountered."
-  { ;; The alias we should use for the table
-   :join-alias  su/NonBlankString
-   ;; ID of the Table to JOIN against. Table will be present in the QP store
-   :table-id    su/IntGreaterThanZero
-   ;; ID of the Field of the Query's SOURCE TABLE to use for the JOIN
-   ;; TODO - can `fk-field-id` and `pk-field-id` possibly be NAMES of FIELD LITERALS??
-   :fk-field-id su/IntGreaterThanZero
-   ;; ID of the Field on the Table we will JOIN (i.e., Table with `table-id`) to use for the JOIN
-   :pk-field-id su/IntGreaterThanZero})
+(def JoinStrategy
+  "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
+  These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
+  driver supports `:full-join` before generating a Join clause using that strategy."
+  (s/enum :left-join :right-join :inner-join :full-join))
 
-(def JoinQueryInfo
-  "Schema for information about about a JOIN (or equivalent) that should be performed using a recursive MBQL or native
-  query."
-  ;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
-  (assoc JoinTableInfo
-    :query (s/recursive #'Query)))
+(def Join
+  "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
+  specified in the incoming query, or implicitly generated when one uses a `:fk->` clause.
+  In the top-level query, you can reference Fields from the joined table or nested query by the `:fk->` clause for
+  implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
+  `:joined-field` clause, e.g.
+    [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
+    [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
+  (->
+   { ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
+    ;; JOINs this is always
+    ;;
+    ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
+    ;;
+    :condition                     Filter
+    ;;
+    ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
+    (s/optional-key :source-table) su/IntGreaterThanZero
+    (s/optional-key :source-query) (s/recursive #'Query)
+    ;;
+    ;; Defaults to `:left-join`; used for all automatically-generated JOINs
+    ;;
+    ;; Driver implementations: this is guaranteed to be present after pre-processing.
+    (s/optional-key :strategy)     JoinStrategy
+    ;;
+    ;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
+    ;; `:none`, `:all`, or a sequence of Field clauses.
+    ;;
+    ;; *  `:none`: no Fields from the joined table or nested query are included (unless indirectly included by
+    ;;    breakouts or other clauses). This is the default, and what is used for automatically-generated joins.
+    ;;
+    ;; *  `:all`: will include all of the Fields from the joined table or query
+    ;;
+    ;; *  a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
+    ;;    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
+    ;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
+    ;;
+    ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
+    ;; with appropriate aliases.
+    (s/optional-key :fields)       (s/cond-pre
+                                    (s/enum :all :none)
+                                    (su/distinct (su/non-empty [Field])))
+    ;;
+    ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
+    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
+    ;; `:joined-field` clause.
+    ;;
+    ;; Driver implementations: This is guaranteed to be present after pre-processing.
+    (s/optional-key :alias)        su/NonBlankString
+    ;;
+    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
+    ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
+    ;; used to add `fk_field_id` information to the `:cols` in the query results; I believe this is used to facilitate
+    ;; drill-thru? :shrug:
+    ;;
+    ;; Don't set this information yourself. It will have no effect.
+    (s/optional-key :fk-field-id)  (s/maybe su/IntGreaterThanZero)}
+   (s/constrained
+    (fn [{:keys [source-table source-query]}]
+      (u/xor source-table source-query))
+    "Joins can must have either a `source-table` or `source-query`, but not both.")))
 
-(def JoinInfo
-  "Schema for information about a JOIN (or equivalent) that needs to be performed, either `JoinTableInfo` or
-  `JoinQueryInfo`."
-  (s/if :query
-    JoinQueryInfo
-    JoinTableInfo))
-
-(def ^:private JoinInfos
+(def Joins
+  "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
   (s/constrained
-   (su/distinct [JoinInfo])
-   #(su/empty-or-distinct? (filter some? (map :join-alias %)))
-   "all join aliases must be distinct."))
+   (su/non-empty [Join])
+   #(su/empty-or-distinct? (filter some? (map :alias %)))
+   "All join aliases must be unique."))
 
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -574,7 +618,7 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
-    ; TODO - expressions keys should be strings; fix this when we get a chance
+    ;; TODO - expressions keys should be strings; fix this when we get a chance
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
     (s/optional-key :fields)       (su/distinct (su/non-empty [Field]))
     (s/optional-key :filter)       Filter
@@ -588,7 +632,7 @@
                                     :items su/IntGreaterThanZero}
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
-    (s/optional-key :join-tables)  JoinInfos
+    (s/optional-key :joins)        Joins
     s/Keyword                      s/Any}
 
    (s/constrained

@@ -356,25 +356,26 @@
     :else                                  (dimension-value->equals-clause-sql value)))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
-  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  "Convert `x` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
   (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
 (s/defn ^:private field->identifier :- su/NonBlankString
-  "Return an approprate snippet to represent this FIELD in SQL given its param type.
+  "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
-   the PARAM-TYPE."
+   the `param-type`."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier (sql.qp/field->identifier driver/*driver* field)]
-                                            (if (date-params/date-type? param-type)
-                                              (sql.qp/date driver/*driver* :day identifier)
-                                              identifier)))
-      :replacement-snippet))
+  (:replacement-snippet
+   (honeysql->replacement-snippet-info
+    (let [identifier (sql.qp/->honeysql driver/*driver* (sql.qp/field->identifier driver/*driver* field))]
+      (if (date-params/date-type? param-type)
+        (sql.qp/date driver/*driver* :day identifier)
+        identifier)))))
 
 (s/defn ^:private combine-replacement-snippet-maps :- ParamSnippetInfo
-  "Combine multiple REPLACEMENT-SNIPPET-MAPS into a single map using a SQL `AND` clause."
+  "Combine multiple `replacement-snippet-maps` into a single map using a SQL `AND` clause."
   [replacement-snippet-maps :- [ParamSnippetInfo]]
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
