@@ -10,7 +10,6 @@ import {
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   CLOSE_QB_TUTORIAL,
   CLOSE_QB_NEWB_MODAL,
-  LOAD_TABLE_METADATA,
   RELOAD_CARD,
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
@@ -201,17 +200,6 @@ export const originalCard = handleActions(
     },
     [API_UPDATE_QUESTION]: {
       next: (state, { payload }) => Utils.copy(payload),
-    },
-  },
-  null,
-);
-
-export const tableForeignKeys = handleActions(
-  {
-    [RESET_QB]: { next: (state, { payload }) => null },
-    [LOAD_TABLE_METADATA]: {
-      next: (state, { payload }) =>
-        payload && payload.foreignKeys ? payload.foreignKeys : state,
     },
   },
   null,

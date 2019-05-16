@@ -45,15 +45,12 @@ import {
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
+  getTableForeignKeys,
 } from "./selectors";
 
-import {
-  getTables,
-  getDatabasesList,
-  getMetadata,
-} from "metabase/selectors/metadata";
+import { getDatabasesList, getMetadata } from "metabase/selectors/metadata";
 
-import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
+import { fetchDatabases } from "metabase/redux/metadata";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
@@ -68,6 +65,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
+import Tables from "metabase/entities/tables";
 
 type UiControls = {
   isEditing?: boolean,
@@ -454,28 +452,24 @@ export const loadMetadataForCard = createThunkAction(
         return;
       }
       const query = new Question(getMetadata(getState()), card).query();
-      const sourceTable =
-        query instanceof StructuredQuery && query.sourceTable();
-      if (sourceTable) {
-        await dispatch(loadTableMetadata(sourceTable.id));
-      }
-    };
-  },
-);
-
-export const LOAD_TABLE_METADATA = "metabase/qb/LOAD_TABLE_METADATA";
-export const loadTableMetadata = createThunkAction(
-  LOAD_TABLE_METADATA,
-  tableId => {
-    return async (dispatch, getState) => {
-      try {
-        await dispatch(fetchTableMetadata(tableId));
-        // TODO: finish moving this to metadata duck:
-        const foreignKeys = await MetabaseApi.table_fks({ tableId });
-        return { foreignKeys };
-      } catch (error) {
-        console.error("error getting table metadata", error);
-        return {};
+      if (query instanceof StructuredQuery) {
+        try {
+          const sourceTable = query.sourceTable();
+          if (sourceTable) {
+            await Promise.all([
+              dispatch(Tables.actions.fetchTableMetadata(sourceTable)),
+              dispatch(Tables.actions.fetchForeignKeys(sourceTable)),
+            ]);
+          }
+          await Promise.all(
+            query
+              .dependentTableIds()
+              .map(id => dispatch(Tables.actions.fetchMetadata({ id }))),
+          );
+        } catch (e) {
+          console.error("Error loading metadata for card", e);
+          throw e;
+        }
       }
     };
   },
@@ -747,9 +741,10 @@ export const updateQuestion = (
     }
 
     if (
-      (newQuestion.databaseId() &&
-        oldQuestion.databaseId() !== newQuestion.databaseId()) ||
-      (newQuestion.tableId() && oldQuestion.tableId() !== newQuestion.tableId())
+      !_.isEqual(
+        oldQuestion.query().dependentTableIds(),
+        newQuestion.query().dependentTableIds(),
+      )
     ) {
       dispatch(loadMetadataForCard(newQuestion.card()));
     }
@@ -1008,31 +1003,41 @@ export const setQuerySourceTable = createThunkAction(
         return card;
       }
 
-      // load up all the table metadata via the api
-      dispatch(loadTableMetadata(tableId));
-
       // find the database associated with this table
       let databaseId;
       if (_.isObject(sourceTable)) {
         databaseId = sourceTable.db_id;
       } else {
-        const table = getTables(getState())[tableId];
+        const table = getMetadata(getState()).table(tableId);
         if (table) {
           databaseId = table.db_id;
         }
       }
 
+      let updatedCard;
       if (!uiControls.isEditing) {
-        return startNewCard(card.dataset_query.type, databaseId, tableId);
+        updatedCard = startNewCard(
+          card.dataset_query.type,
+          databaseId,
+          tableId,
+        );
       } else {
         // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
         // TODO: should this clear the visualization as well?
-        let query = createQuery(card.dataset_query.type, databaseId, tableId);
-
-        let updatedCard = Utils.copy(card);
-        updatedCard.dataset_query = query;
-        return updatedCard;
+        updatedCard = {
+          ...card,
+          dataset_query: createQuery(
+            card.dataset_query.type,
+            databaseId,
+            tableId,
+          ),
+        };
       }
+
+      // load up all the table metadata
+      dispatch(loadMetadataForCard(updatedCard));
+
+      return updatedCard;
     };
   },
 );
@@ -1253,9 +1258,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
     return async (dispatch, getState) => {
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
       const {
-        qb: { card, tableForeignKeys },
+        qb: { card },
       } = getState();
       const queryResult = getFirstQueryResult(getState());
+      const tableForeignKeys = getTableForeignKeys(getState());
 
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {

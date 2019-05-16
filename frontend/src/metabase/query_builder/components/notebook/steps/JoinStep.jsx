@@ -1,4 +1,5 @@
 import React from "react";
+
 import { Flex } from "grid-styled";
 import cx from "classnames";
 
@@ -62,10 +63,18 @@ function JoinClause({ join, color }) {
       </PopoverWithTrigger>
 
       <DatabaseSchemaAndTableDataSelector
-        databases={[query.database()]}
+        databases={[
+          query.database(),
+          ...query
+            .metadata()
+            .databasesList()
+            .filter(db => db.is_saved_questions),
+        ]}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={join.tableId()}
-        setSourceTableFn={tableId => join.setJoinTableId(tableId).update()}
+        setSourceTableFn={tableId => {
+          join.setJoinTableId(tableId).update();
+        }}
         isInitiallyOpen={join.tableId() == null}
         triggerElement={
           <NotebookCellItem color={color}>

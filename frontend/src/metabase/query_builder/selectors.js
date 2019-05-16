@@ -54,7 +54,6 @@ export const getTableId = createSelector(
   card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
-export const getTableForeignKeys = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
 
@@ -80,7 +79,12 @@ export const getNativeDatabases = createSelector(
 
 export const getTableMetadata = createSelector(
   [getTableId, getMetadata],
-  (tableId, metadata) => metadata.tables[tableId],
+  (tableId, metadata) => metadata.table(tableId),
+);
+
+export const getTableForeignKeys = createSelector(
+  [getTableMetadata],
+  table => table && table.fks,
 );
 
 export const getSampleDatasetId = createSelector(

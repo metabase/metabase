@@ -97,6 +97,10 @@ export default class Query {
     return this._metadata.databasesList();
   }
 
+  dependentTableIds(): TableId[] {
+    return [];
+  }
+
   /**
    * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
    */

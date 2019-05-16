@@ -3,7 +3,7 @@
 import { MBQLObjectClause } from "./MBQLClause";
 
 import StructuredQuery from "../StructuredQuery";
-import { JoinedDimension } from "metabase-lib/lib/Dimension";
+import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 
 export default class Join extends MBQLObjectClause {
   constructor(...args) {
@@ -31,12 +31,17 @@ export default class Join extends MBQLObjectClause {
     return this["source-table"];
   }
 
-  sourceTable() {
-    return this.tableId() ? this.metadata().table(this.tableId()) : null;
-  }
+  // sourceTable() {
+  //   return this.tableId() ? this.metadata().table(this.tableId()) : null;
+  // }
 
-  sourceQuery() {
-    return this["source-query"]
+  joinQuery() {
+    return this["source-table"]
+      ? new StructuredQuery(this.query().question(), {
+          type: "query",
+          query: { "source-table": this["source-table"] },
+        })
+      : this["source-query"]
       ? new StructuredQuery(this.query().question(), {
           type: "query",
           query: this["source-query"],
@@ -45,7 +50,8 @@ export default class Join extends MBQLObjectClause {
   }
 
   table() {
-    return this.sourceTable() || this.sourceQuery();
+    const joinQuery = this.joinQuery();
+    return joinQuery && joinQuery.table();
   }
 
   setJoinTableId(tableId) {
@@ -95,7 +101,7 @@ export default class Join extends MBQLObjectClause {
   joinDimension() {
     const { condition } = this;
     if (Array.isArray(condition) && condition[0] === "=" && condition[2]) {
-      return this.query().parseFieldReference(this.condition[2]);
+      return this.joinQuery().parseFieldReference(this.condition[2]);
     }
   }
   joinDimensionOptions() {
@@ -129,6 +135,11 @@ export default class Join extends MBQLObjectClause {
       this.metadata(),
       this.query(),
     );
+  }
+
+  dependentTableIds() {
+    const joinQuery = this.joinQuery();
+    return joinQuery ? joinQuery.dependentTableIds({ includeFKs: false }) : [];
   }
 
   /**

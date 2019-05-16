@@ -927,21 +927,7 @@ export default class StructuredQuery extends AtomicQuery {
     return new StructuredQuery(this._originalQuestion, datasetQuery);
   }
 
-  // INTERNAL
-
-  _updateQuery(
-    updateFunction: (
-      query: StructuredQueryObject,
-      ...args: any[]
-    ) => StructuredQueryObject,
-    args: any[] = [],
-  ): StructuredQuery {
-    return this.setDatasetQuery(
-      updateIn(this._datasetQuery, ["query"], query =>
-        updateFunction(query, ...args),
-      ),
-    );
-  }
+  // NESTING
 
   nest() {
     return this._updateQuery(query => ({ "source-query": query }));
@@ -996,6 +982,58 @@ export default class StructuredQuery extends AtomicQuery {
       queries.unshift(query);
     }
     return queries;
+  }
+
+  dependentTableIds({ includeFKs = true } = {}) {
+    const tableIds = new Set();
+
+    // source-table, if set
+    const tableId = this.tableId();
+    if (tableId) {
+      tableIds.add(tableId);
+      // implicit joins via foreign keys
+      if (includeFKs) {
+        const table = this.table();
+        for (const field of table.fields) {
+          if (field.target && field.target.table_id) {
+            tableIds.add(field.target.table_id);
+          }
+        }
+      }
+    }
+
+    // any explicitly joined tables
+    for (const join of this.joins()) {
+      for (const tableId of join.dependentTableIds()) {
+        tableIds.add(tableId);
+      }
+    }
+
+    // parent query's table IDs
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery) {
+      for (const tableId of sourceQuery.dependentTableIds({ includeFKs })) {
+        tableIds.add(tableId);
+      }
+    }
+
+    return Array.from(tableIds);
+  }
+
+  // INTERNAL
+
+  _updateQuery(
+    updateFunction: (
+      query: StructuredQueryObject,
+      ...args: any[]
+    ) => StructuredQueryObject,
+    args: any[] = [],
+  ): StructuredQuery {
+    return this.setDatasetQuery(
+      updateIn(this._datasetQuery, ["query"], query =>
+        updateFunction(query, ...args),
+      ),
+    );
   }
 }
 
