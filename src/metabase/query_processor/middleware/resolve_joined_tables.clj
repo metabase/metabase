@@ -182,15 +182,18 @@
       resolved-source-query (assoc-in [:query :source-query] resolved-source-query))))
 
 (defn- resolve-joined-tables* [{query-type :type, :as query}]
+  ;; if this is a native query, or if `driver/*driver*` is bound *and* it DOES NOT support `:foreign-keys`, return
+  ;; query as is. Otherwise add implicit joins for `fk->` clauses
   (if (or (= query-type :native)
-          (and driver/*driver*
-               (not (driver/supports? driver/*driver* :foreign-keys))))
+          (some-> driver/*driver* ((complement driver/supports?) :foreign-keys)))
     query
     (resolve-joined-tables-in-query-all-levels query)))
 
 (defn resolve-joined-tables
   "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
-  `:join-tables` key inside the MBQL inner query dictionary containing information about the `JOIN`s (or equivalent)
-  that need to be performed for these tables."
+  `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or equivalent) that need to
+  be performed for these tables.
+
+  This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
   (comp qp resolve-joined-tables*))

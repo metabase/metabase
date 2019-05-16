@@ -93,7 +93,7 @@
        (qp.test/format-rows-by [int int int])))
 
 
-;; Check that trying to use a Foreign Key fails for Mongo
+;; Check that trying to use a Foreign Key fails for Mongo and other DBs
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-without-feature :foreign-keys)
   {:status :failed
    :error  "foreign-keys is not supported by this driver."}

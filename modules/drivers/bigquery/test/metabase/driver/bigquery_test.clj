@@ -1,6 +1,6 @@
 (ns metabase.driver.bigquery-test
   (:require [clj-time.core :as time]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -170,16 +170,6 @@
                                  :aggregation  [:count]
                                  :breakout     [[:fk-> (data/id :venues :category_id) (data/id :categories :name)]]}})]
         (get-in results [:data :native_form :query] results)))))
-
-;; Make sure the BigQueryIdentifier class works as expected
-(expect
-  ["SELECT `dataset.table`.`field`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier
-                          {:dataset-name "dataset", :table-name "table", :field-name "field"})]}))
-
-(expect
-  ["SELECT `dataset.table`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query

@@ -19,9 +19,7 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
@@ -30,6 +28,7 @@
             [toucan.db :as db])
   (:import java.sql.Time
            java.util.Date
+           metabase.util.honeysql_extensions.Identifier
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
@@ -140,18 +139,13 @@
   (or (-> (qp.store/database) db-name)
       (throw (Exception. "Missing DB name"))))
 
-(defmethod sql.qp/->honeysql [:snowflake (class Field)]
-  [driver field]
-  (let [table            (qp.store/table (:table_id field))
-        db-name          (when-not (:alias? table)
-                           (query-db-name))
-        field-identifier (sql.qp/->honeysql driver (hx/identifier db-name (:schema table) (:name table) (:name field)))]
-    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
-
-(defmethod sql.qp/->honeysql [:snowflake (class Table)]
-  [driver table]
-  (let [{table-name :name, schema :schema} table]
-    (sql.qp/->honeysql driver (hx/identifier (query-db-name) schema table-name))))
+;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
+;; query
+(defmethod sql.qp/->honeysql [:snowflake Identifier]
+  [_ identifier]
+  (if sql.qp/*table-alias*
+    identifier
+    (update identifier :components (partial cons (query-db-name)))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value unit]]

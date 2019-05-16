@@ -21,7 +21,8 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            metabase.util.honeysql_extensions.Identifier))
@@ -453,7 +454,8 @@
     [[table-or-query-expr (keyword join-alias)]
      [:=
       (->honeysql driver source-field)
-      (->honeysql driver (hx/identifier join-alias (:name pk-field)))]]))
+      (binding [*table-alias* join-alias]
+        (->honeysql driver pk-field))]]))
 
 (s/defn ^:private join-info->honeysql
   [driver , {:keys [query table-id], :as info} :- mbql.s/JoinInfo]
@@ -563,13 +565,7 @@
   that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
   referring to Fields belonging to the Table in the source query work normally."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (qp.store/with-pushed-store
-    (when-let [source-table-id (:source-table source-query)]
-      (qp.store/store-table! (assoc (qp.store/table source-table-id)
-                               :schema nil
-                               :name   (name source-query-alias)
-                               ;; some drivers like Snowflake need to know this so they don't include Database name
-                               :alias? true)))
+  (binding [*table-alias* source-query-alias]
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
@@ -586,10 +582,9 @@
      inner-query)
     (apply-top-level-clauses driver honeysql-form inner-query)))
 
-(defn build-honeysql-form
+(s/defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driverr {inner-query :query}]
-  {:pre [(map? inner-query)]}
+  [driverr, {inner-query :query} :- su/Map]
   (u/prog1 (apply-clauses driverr {} inner-query)
     (when-not i/*disable-qp-logging*
       (log/debug (tru "HoneySQL Form:") (u/emoji "🍯") "\n" (u/pprint-to-str 'cyan <>)))))
@@ -599,11 +594,10 @@
 ;;; |                                                 MBQL -> Native                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn honeysql-form->sql+args
-  "Convert HONEYSQL-FORM to a vector of SQL string and params, like you'd pass to JDBC."
+(s/defn honeysql-form->sql+args
+  "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
   {:style/indent 1}
-  [driver honeysql-form]
-  {:pre [(map? honeysql-form)]}
+  [driver, honeysql-form :- su/Map]
   (let [[sql & args] (try (binding [hformat/*subquery?* false]
                             (hsql/format honeysql-form
                               :quoting             (quote-style driver)
