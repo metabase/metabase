@@ -259,8 +259,8 @@ export default class QueryBuilder extends Component {
     this.props.setUIControls({
       queryBuilderMode,
       isShowingChartSettingsSidebar: false,
-      isShowingChartTypeSidebar:
-        queryBuilderMode === "view" && question.display() === "table",
+      //isShowingChartTypeSidebar:
+      //  queryBuilderMode === "view" && question.display() === "table",
     });
   };
 
