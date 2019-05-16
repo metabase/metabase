@@ -168,6 +168,7 @@ export default class EntityListLoader extends React.Component {
         loading={!allFetched}
         error={allError}
         children={this.renderChildren}
+        noWrapper
       />
     ) : (
       this.renderChildren()

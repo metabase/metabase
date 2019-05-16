@@ -133,6 +133,7 @@ export default class EntityObjectLoader extends React.Component {
         loading={!fetched}
         error={error}
         children={this.renderChildren}
+        noWrapper
       />
     ) : (
       this.renderChildren()
