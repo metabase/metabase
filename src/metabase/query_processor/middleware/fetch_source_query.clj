@@ -51,14 +51,17 @@
                   ;; No need to include result metadata here, it can be large and will clutter the logs
                   (u/pprint-to-str 'yellow (dissoc <> :result_metadata)))))))
 
-(defn- expand-card-source-tables
+
+(declare resolve-card-id-source-tables)
+
+(defn- resolve-top-level-card-id-source-tables
   "If `source-table` is a Card reference (a string like `card__100`) then replace that with appropriate
   `:source-query` information. Does nothing if `source-table` is a normal ID. Recurses for nested-nested queries."
   [{:keys [source-table], :as inner-query}]
   (if-not (string? source-table)
     inner-query
     ;; (recursively) expand the source query
-    (let [source-query (expand-card-source-tables (source-table-str->source-query source-table))]
+    (let [source-query (resolve-card-id-source-tables (source-table-str->source-query source-table))]
       (-> inner-query
           ;; remove `source-table` `card__id` key
           (dissoc :source-table)
@@ -69,19 +72,33 @@
               :database        (:database source-query)
               :source-metadata (:source-metadata source-query))))))
 
+(s/defn ^:private resolve-joins-card-id-source-tables :- mbql.s/Joins
+  [joins :- mbql.s/Joins]
+  (for [{:keys [source-table], :as join} joins]
+    (if (string? source-table)
+      (let [source-query (resolve-card-id-source-tables (source-table-str->source-query source-table))]
+        (-> join
+            (dissoc :source-table)
+            (assoc :source-query source-query))))))
+
+(defn- resolve-card-id-source-tables [{:keys [joins], :as inner-query}]
+  (cond-> (resolve-top-level-card-id-source-tables inner-query)
+    (seq joins) (update :joins resolve-joins-card-id-source-tables)))
+
 (s/defn ^:private fetch-source-query* :- mbql.s/Query
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
     ;; for non-MBQL queries there's nothing to do since they have nested queries
     outer-query
     ;; otherwise attempt to expand any source queries as needed
-    (let [expanded-inner-query (expand-card-source-tables inner-query)]
-      (merge outer-query
-             {:query (dissoc expanded-inner-query :database :source-metadata)}
-             (when-let [database (:database expanded-inner-query)]
-               {:database database})
-             (when-let [source-metadata (:source-metadata expanded-inner-query)]
-               {:source-metadata source-metadata})))))
+    (let [expanded-inner-query (resolve-card-id-source-tables inner-query)]
+      (merge
+       outer-query
+       {:query (dissoc expanded-inner-query :database :source-metadata)}
+       (when-let [database (:database expanded-inner-query)]
+         {:database database})
+       (when-let [source-metadata (:source-metadata expanded-inner-query)]
+         {:source-metadata source-metadata})))))
 
 (defn fetch-source-query
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
