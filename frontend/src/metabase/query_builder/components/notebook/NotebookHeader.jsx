@@ -3,6 +3,8 @@ import React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
+import QueryModeButton from "metabase/query_builder/components/QueryModeButton.jsx";
+import Tooltip from "metabase/components/Tooltip.jsx";
 import { Flex } from "grid-styled";
 
 const NotebookHeader = ({
@@ -16,18 +18,23 @@ const NotebookHeader = ({
   setUIControls,
 }) => (
   <Flex p={2} align="center" justify="flex-end" className={className}>
-    <Button
-      medium
-      ml={1}
-      onClick={() => onSetQueryBuilderMode("view")}
-    >{t`Done`}</Button>
+    <Tooltip tooltip={t`FIX ME`}>
+      <QueryModeButton size={20} />
+    </Tooltip>
+
     {isDirty && (
       <Button
         medium
-        ml={1}
+        ml={3}
         onClick={() => onOpenModal("save")}
       >{t`Save`}</Button>
     )}
+    <Button
+      medium
+      primary
+      ml={1}
+      onClick={() => onSetQueryBuilderMode("view")}
+    >{t`Done`}</Button>
   </Flex>
 );
 

@@ -37,6 +37,7 @@ export default class QueryModeButton extends Component {
       mode,
       nativeForm,
       onSetMode,
+      size,
       tableMetadata,
     } = this.props;
 
@@ -73,7 +74,7 @@ export default class QueryModeButton extends Component {
             })}
             onClick={onClick}
           >
-            <Icon name="sql" size={16} />
+            <Icon name="sql" size={size} />
           </span>
         </Tooltip>
 
