@@ -77,7 +77,7 @@
                      component (if (instance? Identifier component)
                                  (:components component)
                                  [component])]
-                 component)))
+                 (u/keyword->qualified-name component))))
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]

@@ -65,9 +65,11 @@
       (u/prog1 (run test-fn)
         (let [duration-ms (- (System/currentTimeMillis) start-time-ms)]
           (when (> duration-ms slow-test-threshold-ms)
-            (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
-              (println (u/format-color 'red "%s %s is a slow test! It took %s to finish."
-                         file line (du/format-milliseconds duration-ms))))))))))
+            (println
+             (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
+               (u/format-color 'red "%s %s is a slow test! It took %s to finish."
+                 file line (du/format-milliseconds duration-ms)))
+             "(This may have been because it was loading test data.)")))))))
 
 
 ;;; ------------------------------------------------ enforce-timeout -------------------------------------------------

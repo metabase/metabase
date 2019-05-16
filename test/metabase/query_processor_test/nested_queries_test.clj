@@ -283,11 +283,13 @@
 (def ^:private ^:const ^String venues-source-sql
   (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
        "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\") \"source\""))
+       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+       "FROM \"PUBLIC\".\"VENUES\") \"source\""))
 
-;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using them
+;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using
+;; them
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT * FROM %s WHERE \"source\".\"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
    :params nil}
   (qp/query->native
     {:database (data/id)
@@ -300,7 +302,8 @@
 (expect
   {:query  (str "SELECT * "
                 (format "FROM %s " venues-source-sql)
-                "WHERE parsedatetime(formatdatetime(\"BIRD.ID\", 'YYYYww'), 'YYYYww') = parsedatetime(formatdatetime(?, 'YYYYww'), 'YYYYww') "
+                "WHERE parsedatetime(formatdatetime(\"source\".\"BIRD.ID\", 'YYYYww'), 'YYYYww')"
+                " = parsedatetime(formatdatetime(?, 'YYYYww'), 'YYYYww') "
                 "LIMIT 10")
    :params [#inst "2017-01-01T00:00:00.000000000-00:00"]}
   (qp/query->native
@@ -313,7 +316,7 @@
 ;; make sure that aggregation references match up to aggregations from the same level they're from
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
 (expect
-  {:query (str "SELECT avg(\"stddev\") AS \"avg\" FROM ("
+  {:query (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
                    "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                    "FROM \"PUBLIC\".\"VENUES\" "
                    "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
@@ -337,8 +340,11 @@
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
-  {:query  (format "SELECT \"category_id\" FROM %s GROUP BY \"category_id\" ORDER BY \"category_id\" ASC LIMIT 10"
-                   venues-source-with-category-sql)
+  {:query  (str "SELECT \"source\".\"category_id\" "
+                (format "FROM %s " venues-source-with-category-sql)
+                "GROUP BY \"source\".\"category_id\" "
+                "ORDER BY \"source\".\"category_id\" ASC "
+                "LIMIT 10")
    :params nil}
   (qp/query->native
     {:database (data/id)
@@ -349,7 +355,7 @@
 
 ;; Make sure we can filter by string fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"text\" <> ? LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT * FROM %s WHERE \"source\".\"text\" <> ? LIMIT 10" venues-source-sql)
    :params ["Coo"]}
   (qp/query->native {:database (data/id)
                      :type     :query
@@ -359,7 +365,7 @@
 
 ;; Make sure we can filter by number fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"sender_id\" > 3 LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT * FROM %s WHERE \"source\".\"sender_id\" > 3 LIMIT 10" venues-source-sql)
    :params nil}
   (qp/query->native {:database (data/id)
                      :type     :query
