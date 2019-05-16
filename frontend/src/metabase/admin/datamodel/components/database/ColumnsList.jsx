@@ -6,6 +6,7 @@ import ColumnItem from "./ColumnItem.jsx";
 export default class ColumnsList extends Component {
   static propTypes = {
     fields: PropTypes.array,
+    updateField: PropTypes.func.isRequired,
     idfields: PropTypes.array,
   };
 
@@ -29,6 +30,7 @@ export default class ColumnsList extends Component {
             <ColumnItem
               key={field.id}
               field={field}
+              updateField={this.props.updateField}
               idfields={this.props.idfields}
             />
           ))}

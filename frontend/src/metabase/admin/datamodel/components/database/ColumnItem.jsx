@@ -17,10 +17,8 @@ import _ from "underscore";
 import cx from "classnames";
 
 import type { Field } from "metabase/meta/types/Field";
-import Fields from "metabase/entities/fields";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-@Fields.load({ id: (state, { field: { id } }) => id, wrapped: true })
 @withRouter
 export default class Column extends Component {
   constructor(props, context) {
@@ -32,11 +30,12 @@ export default class Column extends Component {
 
   static propTypes = {
     field: PropTypes.object,
+    updateField: PropTypes.func.isRequired,
     idfields: PropTypes.array.isRequired,
   };
 
   updateProperty(name, value) {
-    this.props.field.update({ [name]: value });
+    this.props.updateField({ ...this.props.field, [name]: value });
   }
 
   onNameChange(event) {
@@ -57,7 +56,7 @@ export default class Column extends Component {
   }
 
   render() {
-    const { field, idfields } = this.props;
+    const { field, updateField, idfields } = this.props;
 
     return (
       <li className="mt1 mb3 flex">
@@ -76,14 +75,14 @@ export default class Column extends Component {
                   <FieldVisibilityPicker
                     className="block"
                     field={field}
-                    updateField={field.update}
+                    updateField={updateField}
                   />
                 </div>
                 <div className="flex-full px1">
                   <SpecialTypeAndTargetPicker
                     className="block"
                     field={field}
-                    updateField={field.update}
+                    updateField={updateField}
                     idfields={idfields}
                   />
                 </div>

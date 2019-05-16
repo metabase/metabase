@@ -51,7 +51,6 @@ const Databases = createEntity({
     fetchIdfields: createThunkAction(
       FETCH_DATABASE_IDFIELDS,
       ({ id }) => async () => {
-        console.log("called again??");
         const idfields = await MetabaseApi.db_idfields({ dbId: id });
         const idfieldsWithDisplayName = idfields.map(field => {
           field.displayName =

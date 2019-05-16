@@ -15,6 +15,7 @@ import {
   metrics as Metrics,
   segments as Segments,
   databases as Databases,
+  fields as Fields,
 } from "metabase/entities";
 
 const mapStateToProps = (state, { params }) => {
@@ -33,6 +34,7 @@ const mapDispatchToProps = {
   selectDatabase: ({ id }) => push("/admin/datamodel/database/" + id),
   selectTable: ({ id, db_id }) =>
     push(`/admin/datamodel/database/${db_id}/table/${id}`),
+  updateField: field => Fields.actions.update(field),
   onRetireMetric: metric => Metrics.actions.setArchived(metric, true),
   onRetireSegment: segment => Segments.actions.setArchived(segment, true),
 };
@@ -57,6 +59,7 @@ export default class MetadataEditor extends Component {
     selectDatabase: PropTypes.func.isRequired,
     selectTable: PropTypes.func.isRequired,
     idfields: PropTypes.array,
+    updateField: PropTypes.func.isRequired,
     onRetireMetric: PropTypes.func.isRequired,
     onRetireSegment: PropTypes.func.isRequired,
   };
@@ -100,6 +103,7 @@ export default class MetadataEditor extends Component {
                 tableId={tableId}
                 databaseId={databaseId}
                 idfields={this.props.idfields}
+                updateField={this.props.updateField}
                 onRetireMetric={this.props.onRetireMetric}
                 onRetireSegment={this.props.onRetireSegment}
               />

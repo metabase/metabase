@@ -29,6 +29,7 @@ export default class MetadataTable extends Component {
   static propTypes = {
     table: PropTypes.object,
     idfields: PropTypes.array,
+    updateField: PropTypes.func.isRequired,
     onRetireMetric: PropTypes.func.isRequired,
     onRetireSegment: PropTypes.func.isRequired,
   };
@@ -152,7 +153,11 @@ export default class MetadataTable extends Component {
           <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
           <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
-            <ColumnsList fields={table.fields} idfields={this.props.idfields} />
+            <ColumnsList
+              fields={table.fields}
+              updateField={this.props.updateField}
+              idfields={this.props.idfields}
+            />
           )}
         </div>
       </div>
