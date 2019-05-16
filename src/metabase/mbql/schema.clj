@@ -542,17 +542,17 @@
     [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
     [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
   (->
-   { ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
+   {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
+    (s/optional-key :source-table) su/IntGreaterThanZero
+    (s/optional-key :source-query) (s/recursive #'Query)
+    ;;
+    ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
     ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
     ;;
     :condition                     Filter
-    ;;
-    ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
-    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
-    (s/optional-key :source-table) su/IntGreaterThanZero
-    (s/optional-key :source-query) (s/recursive #'Query)
     ;;
     ;; Defaults to `:left-join`; used for all automatically-generated JOINs
     ;;

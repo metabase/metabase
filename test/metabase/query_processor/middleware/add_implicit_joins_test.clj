@@ -1,14 +1,14 @@
-(ns metabase.query-processor.middleware.resolve-joined-tables-test
+(ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.resolve-joined-tables :as resolve-joined-tables]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]))
 
-(defn- resolve-joined-tables [query]
+(defn- add-implicit-joins [query]
   (qp.test-util/with-everything-store
-    ((resolve-joined-tables/resolve-joined-tables identity) {:database (data/id)
-                                                             :type     :query
-                                                             :query    query})))
+    ((add-implicit-joins/add-implicit-joins identity) {:database (data/id)
+                                                               :type     :query
+                                                               :query    query})))
 
 ;; make sure `:joins` get added automatically for `:fk->` clauses
 (expect
@@ -26,7 +26,7 @@
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  $category_id}]})}
-  (resolve-joined-tables
+  (add-implicit-joins
    (data/$ids venues
      {:source-table $$table
       :fields       [[:field-id $name]
@@ -50,7 +50,7 @@
                                  :strategy     :left-join
                                  :fields       :none
                                  :fk-field-id  $category_id}]})}}
-  (resolve-joined-tables
+  (add-implicit-joins
    {:source-query
     (data/$ids venues
       {:source-table $$table
@@ -75,7 +75,7 @@
                                   :strategy     :left-join
                                   :fields       :none
                                   :fk-field-id  $category_id}]})}}}
-  (resolve-joined-tables
+  (add-implicit-joins
    {:source-query
     {:source-query
      (data/$ids venues
@@ -104,7 +104,7 @@
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  $venue_id}]})}
-  (resolve-joined-tables
+  (add-implicit-joins
    (data/$ids [checkins {:wrap-field-ids? true}]
      {:source-query {:source-table $$table
                      :filter       [:> $date "2014-01-01"]}

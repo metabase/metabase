@@ -101,14 +101,23 @@
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? true}}]
   (walk/postwalk
    (fn [form]
-     (or (when (symbol? form)
-           (if (= form '$$table)
-             `(id ~(keyword table-name))
-             (let [[first-char & rest-chars] (name form)]
-               (when (= first-char \$)
-                 (let [token (apply str rest-chars)]
-                   (token->id-call wrap-field-ids? table-name token))))))
-         form))
+     (cond
+       (not (symbol? form))
+       form
+
+       (= form '$$table)
+       `(id ~(keyword table-name))
+
+       (str/starts-with? form "$$")
+       (let [table-name (str/replace form #"^\$\$" "")]
+         `(id ~(keyword table-name)))
+
+       (str/starts-with? form "$")
+       (let [field-name (str/replace form #"^\$" "")]
+         (token->id-call wrap-field-ids? table-name field-name))
+
+       :else
+       form))
    body))
 
 (defmacro $ids
@@ -122,6 +131,10 @@
   Use `$$table` to refer to the table itself.
 
     $$table -> (id :venues)
+
+  You can reference other tables by using `$$` as well:
+
+    $$categories -> (id :categories)
 
   You can pass options by wrapping `table-name` in a vector:
 
