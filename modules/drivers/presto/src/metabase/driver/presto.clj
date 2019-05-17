@@ -59,6 +59,11 @@
          (when password
            {:basic-auth [user password]})))
 
+(defn ^:private create-cancel-url [cancelUri host port infoUri]
+  ;; Replace the host in the cancelUri with the host from the infoUri from the presto response- this doesn't break SSH
+  ;; tunneling as the host in the cancelUri if it's enabled
+  (str/replace cancelUri (str host ":" port) (get (str/split infoUri #"/") 2)))
+
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
   (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
@@ -139,14 +144,15 @@
                 (if id
                   ;; If we have a query id, we can cancel the query
                   (try
-                    (http/delete (details->uri details-with-tunnel (str "/v1/query/" id))
-                                 (details->request details-with-tunnel))
+                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))]
+                      (let [adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri) ]
+                    (http/delete adjustedUri(details->request details-with-tunnel))))
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
                       (log/error e (trs "Error canceling query with ID {0}" id))))
                   (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
-                ;; Propogate the error so that any finalizers can still run
+                ;; Propagate the error so that any finalizers can still run
                 (throw e)))))))))
 
 
