@@ -62,7 +62,7 @@
             (sql.tx/qualify-and-quote driver database-name table-name)
             (str/join \, dummy-values)
             (str/join \, (for [column columns]
-                           (sql.u/quote-name driver (tx/format-name driver column)))))))
+                           (sql.u/quote-name driver :field (tx/format-name driver column)))))))
 
 (defmethod sql.tx/drop-table-if-exists-sql :presto [driver {:keys [database-name]} {:keys [table-name]}]
   (str "DROP TABLE IF EXISTS " (sql.tx/qualify-and-quote driver database-name table-name)))

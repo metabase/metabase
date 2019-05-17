@@ -7,7 +7,8 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.util.pretty :refer [PrettyPrintable]])
+            [metabase.util.pretty :refer [PrettyPrintable]]
+            [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
 
@@ -54,34 +55,57 @@
   clojure.lang.Ratio
   (to-sql [x] (hformat/to-sql (double x))))
 
-(defrecord Identifier [components]
+(def IdentifierType
+  "Schema for valid Identifier types."
+  (s/enum
+   :database
+   :schema
+   :constraint
+   :index
+   ;; Suppose we have a query like:
+   ;; SELECT my_field f FROM my_table t
+   ;; then:
+   :table          ; is `my_table`
+   :table-alias    ; is `t`
+   :field          ; is `my_field`
+   :field-alias))  ; is `f`
+
+(defrecord Identifier [identifier-type components]
   :load-ns true
   ToSql
   (to-sql [_]
     (binding [hformat/*allow-dashed-names?* true]
       (str/join
        \.
-       (for [component components
-             :when     (some? component)]
+       (for [component components]
          (hformat/quote-identifier component, :split false)))))
   PrettyPrintable
   (pretty [_]
-    (cons 'identifier components)))
+    (cons 'identifier (cons identifier-type components))))
 
-(defn identifier
-  "Define an identifer with `components`. Prefer this to using keywords for identifiers, as those do not properly handle
-  identifiers with slashes in them."
-  [& components]
-  (Identifier. (for [component components
-                     component (if (instance? Identifier component)
-                                 (:components component)
-                                 [component])]
-                 component)))
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
 (when-not config/is-prod?
   (alter-meta! #'->Identifier    assoc :private true)
   (alter-meta! #'map->Identifier assoc :private true))
 
+(s/defn identifier :- Identifier
+  "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
+  properly handle identifiers with slashes in them.
+
+  `identifier-type` represents the type of identifier in question, which is important context for some drivers, such
+  as BigQuery (which needs to qualify Tables identifiers with their dataset name.)
+
+  This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
+  strings."
+  [identifier-type :- IdentifierType, & components]
+  (Identifier.
+   identifier-type
+   (for [component components
+         component (if (instance? Identifier component)
+                     (:components component)
+                     [component])
+         :when     (some? component)]
+     (u/keyword->qualified-name component))))
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
