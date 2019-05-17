@@ -1,7 +1,7 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames"
+import cx from "classnames";
 
 import colors, { lighten } from "metabase/lib/colors";
 
@@ -22,6 +22,8 @@ import LimitStep from "./steps/LimitStep";
 
 const STEP_UI = {
   data: {
+    title: t`Data`,
+    color: colors["brand"],
     component: DataStep,
   },
   join: {
@@ -89,24 +91,28 @@ export default class NotebookStep extends React.Component {
     actions.push(
       ...step.actions.map(action => ({
         priority: (STEP_UI[action.type] || {}).priority,
-        button: <ActionButton
-          mr={1}
-          large={isLastStep}
-          {...STEP_UI[action.type] || {}}
-          onClick={() => action.action(this.props)}
-        />
-    })),
+        button: (
+          <ActionButton
+            mr={1}
+            large={isLastStep}
+            {...STEP_UI[action.type] || {}}
+            onClick={() => action.action(this.props)}
+          />
+        ),
+      })),
     );
     if (!showPreview && canPreview) {
       actions.push({
-        button: <ActionButton
-          mr={1}
-          large={isLastStep}
-          icon="right"
-          title={t`Preview`}
-          onClick={() => this.setState({ showPreview: true })}
-        />,
-    });
+        button: (
+          <ActionButton
+            mr={1}
+            large={isLastStep}
+            icon="right"
+            title={t`Preview`}
+            onClick={() => this.setState({ showPreview: true })}
+          />
+        ),
+      });
     }
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -142,7 +148,7 @@ export default class NotebookStep extends React.Component {
 }
 
 const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
-  const button =
+  const button = (
     <Button
       icon={icon}
       style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
@@ -153,12 +159,10 @@ const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
       className="text-medium bg-medium"
       onClick={onClick}
       {...props}
-    >{large ? title : null}
+    >
+      {large ? title : null}
     </Button>
-
-  return large ? button : (
-    <Tooltip tooltip={title}>
-      {button}
-    </Tooltip>
   );
+
+  return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
 };

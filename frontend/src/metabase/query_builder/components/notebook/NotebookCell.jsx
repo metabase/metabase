@@ -22,12 +22,20 @@ export default function NotebookCell({ color, children, style = {} }) {
   );
 }
 
-export function NotebookCellItem({ color, children }) {
+export function NotebookCellItem({ color, inactive, children }) {
   return (
     <Flex
       align="center"
-      className="p1 text-bold mr1"
-      style={{ borderRadius: 4, backgroundColor: color, color: "white" }}
+      p={1}
+      mr={1}
+      className="text-bold"
+      style={{
+        border: "2px solid transparent",
+        borderRadius: 4,
+        color: inactive ? color : "white",
+        backgroundColor: inactive ? "transparent" : color,
+        borderColor: inactive ? alpha(color, 0.25) : "transparent",
+      }}
     >
       {children}
     </Flex>

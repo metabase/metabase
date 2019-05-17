@@ -217,24 +217,45 @@ export default class View extends React.Component {
         />
       ) : null;
 
+    const newQuestion = query instanceof StructuredQuery && !query.table();
+
     return (
       <div className={this.props.fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
-          <ViewTitleHeader
-            {...propsWithExtras}
-            className="flex-no-shrink z3 bg-white"
-          />
+          <Motion
+            defaultStyle={newQuestion ? { opacity: 0 } : { opacity: 1 }}
+            style={
+              newQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
+            }
+          >
+            {({ opacity }) => (
+              <ViewTitleHeader
+                {...propsWithExtras}
+                className="flex-no-shrink z3 bg-white"
+                style={{ opacity }}
+              />
+            )}
+          </Motion>
 
           <div className="flex flex-full relative">
             {query instanceof StructuredQuery && (
               <Motion
-                defaultStyle={{ opacity: 0, translateY: -100 }}
-                style={{
-                  opacity:
-                    queryBuilderMode === "notebook" ? spring(1) : spring(0),
-                  translateY:
-                    queryBuilderMode === "notebook" ? spring(0) : spring(-100),
-                }}
+                defaultStyle={
+                  newQuestion
+                    ? { opacity: 1, translateY: 0 }
+                    : { opacity: 0, translateY: -100 }
+                }
+                style={
+                  newQuestion === "notebook"
+                    ? {
+                        opacity: spring(1),
+                        translateY: spring(0),
+                      }
+                    : {
+                        opacity: spring(0),
+                        translateY: spring(-100),
+                      }
+                }
               >
                 {({ opacity, translateY }) => (
                   <div

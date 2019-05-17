@@ -21,7 +21,6 @@ import QuestionAlertWidget from "./QuestionAlertWidget";
 
 import QueryModeButton from "metabase/query_builder/components/QueryModeButton.jsx";
 
-import AggregationName from "metabase/query_builder/components/AggregationName";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
@@ -29,6 +28,7 @@ import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWit
 
 export const ViewTitleHeader = ({
   className,
+  style,
   question,
   onOpenModal,
   originalQuestion,
@@ -40,7 +40,7 @@ export const ViewTitleHeader = ({
   const isShowingNotebook = queryBuilderMode === "notebook";
 
   return (
-    <ViewSection className={className}>
+    <ViewSection className={className} style={style}>
       {question.isSaved() ? (
         <div>
           <div className="flex align-center mb1">

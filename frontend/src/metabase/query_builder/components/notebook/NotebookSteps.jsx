@@ -32,7 +32,7 @@ export default class NotebookSteps extends React.Component {
     const steps = getQuestionSteps(question, openSteps);
 
     return (
-      <div className={cx(className, "wrapper")}>
+      <div className={cx(className, "wrapper pt2")}>
         {steps.map((step, index) => (
           <NotebookStep
             key={step.id}
