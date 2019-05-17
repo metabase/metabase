@@ -8,7 +8,7 @@ import QuestionDataSource from "metabase/query_builder/components/view/QuestionD
 import { ViewHeading } from "metabase/query_builder/components/view/ViewSection";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-export default function DataStep({ query, showDataSelector = false }) {
+export default function DataStep({ query, showDataSelector = true }) {
   return (
     <Box mb={1}>
       <ViewHeading className="flex">
