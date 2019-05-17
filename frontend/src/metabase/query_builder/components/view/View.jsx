@@ -246,7 +246,7 @@ export default class View extends React.Component {
                     : { opacity: 0, translateY: -100 }
                 }
                 style={
-                  newQuestion === "notebook"
+                  queryBuilderMode === "notebook"
                     ? {
                         opacity: spring(1),
                         translateY: spring(0),
