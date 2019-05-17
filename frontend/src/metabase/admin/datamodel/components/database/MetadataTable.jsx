@@ -6,10 +6,8 @@ import ColumnsList from "./ColumnsList.jsx";
 import SegmentsList from "./SegmentsList.jsx";
 import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
-import { normal } from "metabase/lib/colors";
 import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
 
 import _ from "underscore";
@@ -139,15 +137,6 @@ export default class MetadataTable extends Component {
         <div className="MetadataTable-header flex align-center py2 text-medium">
           <span className="mx1 text-uppercase">{t`Visibility`}</span>
           {this.renderVisibilityWidget()}
-          <span className="flex-align-right flex align-center">
-            <span className="text-uppercase mr1">{t`Metadata Strength`}</span>
-            <span style={{ width: 64 }}>
-              <ProgressBar
-                percentage={table.metadataStrength}
-                color={normal.grey2}
-              />
-            </span>
-          </span>
         </div>
         <div className={"mt2 " + (this.isHidden() ? "disabled" : "")}>
           <SegmentsList onRetire={onRetireSegment} tableMetadata={table} />
