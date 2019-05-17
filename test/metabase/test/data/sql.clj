@@ -1,6 +1,7 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
-  (:require [metabase.driver :as driver]
+  (:require [clojure.string :as str]
+            [metabase.driver :as driver]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -199,16 +200,15 @@
         pk-field-name (quot (pk-field-name driver))]
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type field-comment]}]
-                        (format "%s %s %s"
-                                (quot field-name)
-                                (if (map? base-type)
-                                  (:native base-type)
-                                  (field-base-type->sql-type driver base-type))
-                                (or (inline-column-comment-sql driver field-comment) ""))))
-                 (interpose ", ")
-                 (apply str))
+            (str/join
+             " ,"
+             (for [{:keys [field-name base-type field-comment]} field-definitions]
+               (format "%s %s %s"
+                       (quot field-name)
+                       (if (map? base-type)
+                         (:native base-type)
+                         (field-base-type->sql-type driver base-type))
+                       (or (inline-column-comment-sql driver field-comment) ""))))
             pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))

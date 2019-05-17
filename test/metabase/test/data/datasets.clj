@@ -10,7 +10,7 @@
 ;; # Helper Macros
 
 (defn do-when-testing-driver
-  "Call function F (always with no arguments) *only* if we are currently testing against ENGINE.
+  "Call function `f` (always with no arguments) *only* if we are currently testing against `driver`.
    (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
   {:style/indent 1}
   [driver f]
@@ -25,7 +25,8 @@
   `(do-when-testing-driver ~driver (fn [] ~@body)))
 
 (defmacro with-driver-when-testing
-  "When `driver` is specified in `DRIVERS`, bins `*driver*` and executes `body`."
+  "When `driver` is specified in `DRIVERS` env var, binds `metabase.driver/*driver*` and executes `body`. The currently
+  bound driver is used for calls like `(data/db)` and `(data/id)`."
   {:style/indent 1}
   [driver & body]
   `(let [driver# ~driver]
@@ -34,8 +35,8 @@
          ~@body))))
 
 (defmacro expect-with-driver
-  "Generate a unit test that only runs if we're currently testing against ENGINE, and that binds `*driver*` to the
-  driver for ENGINE."
+  "Generate a unit test that only runs if we're currently testing against `driver`, and that binds `*driver*` when it
+  runs."
   {:style/indent 1}
   [driver expected actual]
   `(when-testing-driver ~driver
@@ -70,8 +71,8 @@
       nil)))
 
 (defmacro expect-with-drivers
-  "Generate unit tests for all drivers in `DRIVERS`; each test will only run if we're currently testing the
-  corresponding dataset. `*driver*` is bound to the current dataset inside each test."
+  "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
+  corresponding driver. `*driver*` is bound to the current driver inside each test."
   {:style/indent 1}
   [drivers expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
@@ -84,8 +85,8 @@
        (doexpect-with-drivers (get-drivers-or-fail (fn [] ~drivers)) get-e# get-a# '~expected '~actual))))
 
 (defmacro expect-with-all-drivers
-  "Generate unit tests for all drivers specified in `DRIVERS`. `*driver*` is bound to the current driver inside each
-  test."
+  "Generate unit tests for all drivers specified in env var `DRIVERS`. `*driver*` is bound to the current driver inside
+  each test."
   {:style/indent 0}
   [expected actual]
   `(expect-with-drivers tx.env/test-drivers ~expected ~actual))
