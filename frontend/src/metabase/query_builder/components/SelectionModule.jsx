@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Popover from "metabase/components/Popover.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import SearchBar from "./SearchBar.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 

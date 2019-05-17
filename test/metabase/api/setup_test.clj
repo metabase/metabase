@@ -1,29 +1,40 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [http-client :as http]
              [public-settings :as public-settings]
              [setup :as setup]]
-            [metabase.test.util :as tu]))
+            [metabase.models.user :refer [User]]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.util :as tu]
+            [toucan.db :as db]))
 
 ;; ## POST /api/setup/user
 ;; Check that we can create a new superuser via setup-token
 (let [email (tu/random-email)]
   (expect
-    [true
-     email]
-    (tu/with-temporary-setting-values [admin-email nil]
-      [(tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
-                                                                :prefs {:site_name "Metabase Test"}
-                                                                :user  {:first_name (tu/random-name)
-                                                                        :last_name  (tu/random-name)
-                                                                        :email      email
-                                                                        :password   "anythingUP12!!"}})))
-       (do
-         ;; reset our setup token
-         (setup/create-token!)
-         (public-settings/admin-email))])))
+    {:uuid? true, :admin-email email}
+    (try
+      ;; make sure the default test users are created before running this test, otherwise we're going to run into
+      ;; issues if it attempts to delete this user and it is the only admin test user
+      (test-users/create-users-if-needed!)
+      (tu/with-temporary-setting-values [admin-email nil]
+        {:uuid?
+         (tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
+                                                                  :prefs {:site_name "Metabase Test"}
+                                                                  :user  {:first_name (tu/random-name)
+                                                                          :last_name  (tu/random-name)
+                                                                          :email      email
+                                                                          :password   "anythingUP12!!"}})))
+
+         :admin-email
+         (do
+           ;; reset our setup token
+           (setup/create-token!)
+           (public-settings/admin-email))})
+      (finally
+        (db/delete! User :email email)))))
 
 
 ;; Test input validations

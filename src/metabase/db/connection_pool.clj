@@ -5,18 +5,15 @@
   The aim here is to completely encapsulate the connection pool library we use -- that way we can swap it out if we
   want to at some point without having to touch any other files. (TODO - this is currently true of everything except
   for the options, which are c3p0-specific -- consider abstracting those as well?)"
-  (:require [metabase.util :as u])
+  (:require [metabase.util :as u]
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import com.mchange.v2.c3p0.DataSources
            [java.sql Driver DriverManager]
            [java.util Map Properties]
            javax.sql.DataSource))
 
 ;;; ------------------------------------------------ Proxy DataSource ------------------------------------------------
-
-(defn- set-property! [^Properties properties, k v]
-  (if (some? k)
-    (.put properties (name k) v)
-    (.remove properties (name k))))
 
 (defn- proxy-data-source
   "Normal c3p0 DataSource classes do not properly work with our JDBC proxy drivers for whatever reason. Use our own
@@ -30,27 +27,40 @@
        (.connect driver jdbc-url properties))
      (getConnection [_ username password]
        (doseq [[k v] {"user" username, "password" password}]
-         (set-property! properties k v))
+         (if (some? k)
+           (.setProperty properties k (name v))
+           (.remove properties k)))
        (.connect driver jdbc-url properties)))))
 
 
 ;;; ------------------------------------------- Creating Connection Pools --------------------------------------------
 
-(defn- map->properties ^Properties [m]
+(defn- map->properties
+  "Create a `Properties` object from a JDBC connection spec map. Properties objects are maps of String -> String, so all
+  keys and values are converted to Strings appropriately."
+  ^Properties [m]
   (u/prog1 (Properties.)
-           (doseq [[k v] m]
-             (.setProperty <> (name k) (str v)))))
+    (doseq [[k v] m]
+      (.setProperty <> (name k) (if (keyword? v)
+                                  (name v)
+                                  (str v))))))
 
 (defn- spec->properties ^Properties [spec]
   (map->properties (dissoc spec :classname :subprotocol :subname)))
 
-(defn- unpooled-data-source ^DataSource [{:keys [subname subprotocol], :as spec}]
-  {:pre [(string? subname) (string? subprotocol)]}
+(def ^:private JDBCSpec
+  {:subname     su/NonBlankString
+   :subprotocol su/NonBlankString
+   s/Any        s/Any})
+
+(s/defn ^:private unpooled-data-source :- DataSource
+  [{:keys [subname subprotocol], :as spec} :- JDBCSpec]
   (proxy-data-source (format "jdbc:%s:%s" subprotocol subname) (spec->properties spec)))
 
 (defn- pooled-data-source ^DataSource
   ([spec]
    (DataSources/pooledDataSource (unpooled-data-source spec)))
+
   ([spec, ^Map pool-properties]
    (DataSources/pooledDataSource (unpooled-data-source spec), pool-properties)))
 

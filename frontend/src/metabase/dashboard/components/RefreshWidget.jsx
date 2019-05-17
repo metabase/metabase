@@ -6,7 +6,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ClockIcon from "metabase/components/icons/ClockIcon.jsx";
 import CountdownIcon from "metabase/components/icons/CountdownIcon.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 const OPTIONS = [

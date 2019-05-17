@@ -1436,6 +1436,13 @@ export const orders_count_by_id_card = {
   },
 };
 
+export const clickedCreatedAtHeader = {
+  column: {
+    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
+    source: "fields",
+  },
+};
+
 export const clickedFloatHeader = {
   column: {
     ...metadata.field(ORDERS_TOTAL_FIELD_ID),
@@ -1510,6 +1517,31 @@ const NoFieldsMetadata = getMetadata(
   assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "fields"], []),
 );
 export const questionNoFields = new Question(NoFieldsMetadata, card);
+
+// COUNT BY CREATED AT
+
+export const countByCreatedAtQuestion = question
+  .query()
+  .addAggregation(["count"])
+  .addBreakout(["field-id", ORDERS_CREATED_DATE_FIELD_ID])
+  .question();
+
+export const clickedCountAggregationHeader = {
+  column: {
+    name: "count",
+    display_name: "count",
+    base_type: "type/Integer",
+    special_type: "type/Number",
+    source: "aggregation",
+  },
+};
+
+export const clickedCreatedAtBreakoutHeader = {
+  column: {
+    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
+    source: "breakout",
+  },
+};
 
 export const orders_past_300_days_segment = {
   id: null,

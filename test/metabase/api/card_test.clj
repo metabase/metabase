@@ -1,16 +1,16 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [cheshire.core :as json]
+            [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
-             [middleware :as middleware]
              [util :as u]]
-            [metabase.api.card :as card-api]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -25,11 +25,14 @@
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.async :as qp.async]
+            [metabase.query-processor.middleware
+             [constraints :as constraints]
+             [results-metadata :as results-metadata]]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$ random-name]]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :as test-users :refer :all]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -161,8 +164,8 @@
        3 (card-returned? :database db        card-2)))))
 
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "card"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "card/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "card"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "card/13"))
 
 
 ;; Make sure `model_id` is required when `f` is :database
@@ -353,7 +356,7 @@
           card-name (tu/random-name)]
       (tt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (tu/throw-if-called card-api/result-metadata-for-query
+        (tu/throw-if-called qp.async/result-metadata-for-query-async
           (tu/with-model-cleanup [Card]
             ;; create a card with the metadata
             ((user->client :rasta) :post 200 "card"
@@ -1245,6 +1248,38 @@
            spreadsheet/load-workbook
            (spreadsheet/select-sheet "Query result")
            (spreadsheet/select-columns {:A :col})))))
+
+;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if the query comes
+;; in with `add-default-userland-constraints` (as will be the case if the query gets saved from one that had it -- see
+;; #9831)
+(expect
+  101
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)}
+                                              :middleware
+                                              {:add-default-userland-constraints? true
+                                               :userland-query?                   true}}}]
+      (with-cards-in-readable-collection card
+        (let [results ((user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card)))]
+          (count (csv/read-csv results)))))))
+
+;; non-"download" queries should still get the default constraints
+;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
+(expect
+  10
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)}
+                                              :middleware
+                                              {:add-default-userland-constraints? true
+                                               :userland-query?                   true}}}]
+      (with-cards-in-readable-collection card
+        (let [{row-count :row_count, :as result}
+              ((user->client :rasta) :post 200 (format "card/%d/query" (u/get-id card)))]
+          (or row-count result))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

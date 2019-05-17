@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Settings from "metabase/lib/settings";
 

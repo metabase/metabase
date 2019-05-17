@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import * as metadataActions from "metabase/redux/metadata";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { BackButton } from "metabase/admin/datamodel/containers/FieldApp";
@@ -28,7 +28,10 @@ const mapDispatchToProps = {
   discardTableFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableSettingsApp extends Component {
   async componentWillMount() {
     const {

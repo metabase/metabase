@@ -69,16 +69,6 @@
     (= :presto driver/*driver*)
     [[3 "Kaneonuskatew Eiran" "00:15:00.000-08:00"]]
 
-    ;; Best I can tell, MySQL's interpretation of this part of the
-    ;; JDBC is way off. This doesn't return results because it looks
-    ;; like it's basically double converting the time to
-    ;; America/Los_Angeles. What's getting sent to the database is
-    ;; 00:00 and 01:00 (which we have no data in that range). I think
-    ;; we'll need to switch to their new JDBC date code to get this
-    ;; fixed
-    (= :mysql driver/*driver*)
-    []
-
     ;; It looks like Snowflake is doing this conversion correctly. Snowflake's time field is stored as wall clock time
     ;; (vs. PG and others storing it without a timezone). Originally, this time is 16:15 in UTC, which is 8:15 in
     ;; pacific time. The other report timezone databases are not doing this timezone conversion.

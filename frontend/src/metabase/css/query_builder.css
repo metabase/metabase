@@ -244,25 +244,29 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/no_results.svg");
+  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
+  background-image: url("../assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/no_understand.svg");
+  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
+  background-image: url("../assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  background-image: url("../app/assets/img/blown_up.svg");
+  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
+  background-image: url("../assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  background-image: url("../app/assets/img/stopwatch.svg");
+  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
+  background-image: url("../assets/img/stopwatch.svg");
 }
 
 .QueryError-message {
@@ -536,15 +540,19 @@
   z-index: -1;
   position: absolute;
   top: 0;
-  right: 0;
+  right: -300;
   width: 300px;
   height: 100%;
   background-color: var(--color-bg-light);
   overflow: hidden;
+  opacity: 0;
 }
 
 .SideDrawer--show {
   z-index: 0;
+  right: 0;
+  opacity: 1;
+  transition: all 0.5s;
 }
 
 .DataReference-container {

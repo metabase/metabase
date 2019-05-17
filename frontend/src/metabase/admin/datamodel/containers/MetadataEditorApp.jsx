@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
@@ -38,7 +38,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetadataEditor extends Component {
   constructor(props, context) {
     super(props, context);

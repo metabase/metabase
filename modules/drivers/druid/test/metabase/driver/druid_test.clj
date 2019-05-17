@@ -20,7 +20,9 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets :refer [expect-with-driver]]
-            [metabase.test.util.log :as tu.log]
+            [metabase.test.util
+             [log :as tu.log]
+             [timezone :as tu.tz]]
             [metabase.timeseries-query-processor-test.util :as tqpt]
             [toucan.util.test :as tt]))
 
@@ -33,9 +35,9 @@
    ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
   (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                 [(Field (data/id :checkins :id))
-                                  (Field (data/id :checkins :venue_name))
-                                  (Field (data/id :checkins :timestamp))])
+         [(Field (data/id :checkins :id))
+          (Field (data/id :checkins :venue_name))
+          (Field (data/id :checkins :timestamp))])
        (sort-by first)
        (take 5)))
 
@@ -48,9 +50,9 @@
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                   [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))
-                                    (Field (data/id :checkins :timestamp))])
+           [(Field (data/id :checkins :id))
+            (Field (data/id :checkins :venue_name))
+            (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -61,11 +63,11 @@
    ["100"  "PizzaHacker"                 #inst "2014-07-26T02:00:00.000-05:00"]
    ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
    ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
-  (tu/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+  (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-                                   [(Field (data/id :checkins :id))
-                                    (Field (data/id :checkins :venue_name))
-                                    (Field (data/id :checkins :timestamp))])
+           [(Field (data/id :checkins :id))
+            (Field (data/id :checkins :venue_name))
+            (Field (data/id :checkins :timestamp))])
          (sort-by first)
          (take 5))))
 
@@ -191,6 +193,24 @@
   (druid-query-returning-rows
     {:aggregation [[:avg [:* $id $venue_price]]]
      :breakout    [$venue_price]}))
+
+;; share
+(expect-with-driver :druid
+  [[0.951]]
+  (druid-query-returning-rows
+   {:aggregation [[:share [:< $venue_price 4]]]}))
+
+;; count-where
+(expect-with-driver :druid
+  [[951]]
+  (druid-query-returning-rows
+   {:aggregation [[:count-where [:< $venue_price 4]]]}))
+
+;; sum-where
+(expect-with-driver :druid
+  [[1796.0]]
+  (druid-query-returning-rows
+   {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))
 
 ;; post-aggregation math w/ 2 args: count + sum
 (expect-with-driver :druid
@@ -341,18 +361,72 @@
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
 (datasets/expect-with-driver :druid
-  [false ;; Ensure the query promise hasn't fired yet
-   false ;; Ensure the cancellation promise hasn't fired yet
-   true  ;; Was query called?
-   false ;; Cancel should not have been called yet
-   true  ;; Cancel should have been called now
-   true  ;; The paused query can proceed now
-   ]
-  (tu/call-with-paused-query
-   (fn [query-thunk called-query? called-cancel? pause-query]
-     (future
-       ;; stub out the query and delete functions so that we know when one is called vs. the other
-       (with-redefs [druid/do-query (fn [details query] (deliver called-query? true) @pause-query)
-                     druid/DELETE   (fn [url] (deliver called-cancel? true))]
-         (data/run-mbql-query checkins
-           {:aggregation [[:count]]}))))))
+  ::tu/success
+  ;; the `call-with-paused-query` helper is kind of wack and we need to redefine functions for the duration of the
+  ;; test, and redefine them to operate on things that don't get bound unitl `call-with-paused-query` calls its fn
+  ;;
+  ;; that's why we're doing things this way
+  (let [promises (atom nil)]
+    (with-redefs [druid/do-query (fn [details query]
+                                   (deliver (:called-query? @promises) true)
+                                   @(:pause-query @promises))
+                  druid/DELETE   (fn [url]
+                                   (deliver (:called-cancel? @promises) true))]
+      (tu/call-with-paused-query
+       (fn [query-thunk called-query? called-cancel? pause-query]
+         (reset! promises {:called-query?  called-query?
+                           :called-cancel? called-cancel?
+                           :pause-query    pause-query})
+         (future
+           (try
+             (data/run-mbql-query checkins
+               {:aggregation [[:count]]})
+             (query-thunk)
+             (catch Throwable e
+               (println "Error running query:" e)
+               (throw e)))))))))
+
+;; Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order
+;; (#9294)
+(datasets/expect-with-driver :druid
+  {:columns ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :cols    ["id"
+             "timestamp"
+             "count"
+             "user_last_login"
+             "user_name"
+             "venue_category_name"
+             "venue_latitude"
+             "venue_longitude"
+             "venue_name"
+             "venue_price"]
+   :rows    [["931"
+              "2013-01-03T08:00:00.000Z"
+              1
+              "2014-01-01T08:30:00.000Z"
+              "Simcha Yan"
+              "Thai"
+              "34.094"
+              "-118.344"
+              "Kinaree Thai Bistro"
+              "1"]]}
+  (tqpt/with-flattened-dbdef
+    (let [results (qp/process-query
+                    {:database (data/id)
+                     :type     :query
+                     :query    {:source-table  (data/id :checkins)
+                                :limit         1}})]
+      (assert (= (:status results) :completed)
+        (u/pprint-to-str 'red results))
+      {:columns (-> results :data :columns)
+       :cols    (->> results :data :cols (map :name))
+       :rows    (-> results :data :rows)})))

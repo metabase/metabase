@@ -357,8 +357,18 @@
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
+(defmacro ^:private with-h2-db-timezone
+  "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
+  involving a database, but does need to parse dates"
+  [& body]
+  `(du/with-effective-timezone {:engine   :h2
+                                :timezone "UTC"
+                                :name     "mock_db"
+                                :id       1}
+    ~@body))
+
 (defn- expand* [query]
-  (qpt/with-h2-db-timezone
+  (with-h2-db-timezone
     (-> (sql/expand (assoc (normalize/normalize query) :driver :h2))
         :native
         (select-keys [:query :params :template-tags]))))
@@ -768,13 +778,14 @@
    :param {:type   :date/all-options
            :target [:dimension [:template-tag "checkin_date"]]
            :value  "past5days"}}
-  (#'sql/dimension-value-for-tag {:name         "checkin_date"
-                                  :display-name "Checkin Date"
-                                  :type         :dimension
-                                  :dimension    [:field-id (data/id :checkins :date)]
-                                  :default      "past5days"
-                                  :widget-type  :date/all-options}
-                                 nil))
+  (#'sql/dimension-value-for-tag
+   {:name         "checkin_date"
+    :display-name "Checkin Date"
+    :type         :dimension
+    :dimension    [:field-id (data/id :checkins :date)]
+    :default      "past5days"
+    :widget-type  :date/all-options}
+   nil))
 
 ;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
 ;; `:widget-type` key. Check that it works correctly with relative dates...

@@ -49,6 +49,8 @@ import AggregationWrapper from "./Aggregation";
 import AggregationOption from "metabase-lib/lib/metadata/AggregationOption";
 import Utils from "metabase/lib/utils";
 
+import { TYPE } from "metabase/lib/types";
+
 import { isSegmentFilter } from "metabase/lib/query/filter";
 
 export const STRUCTURED_QUERY_TEMPLATE = {
@@ -334,6 +336,13 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * @returns true if the query has no aggregation or breakouts
+   */
+  isRaw(): boolean {
+    return this.breakouts().length === 0 && this.aggregations().length === 0;
+  }
+
+  /**
    * @returns the formatted named of the aggregation at the provided index.
    */
   aggregationName(index: number = 0): ?string {
@@ -341,10 +350,7 @@ export default class StructuredQuery extends AtomicQuery {
     if (NamedClause.isNamed(aggregation)) {
       return NamedClause.getName(aggregation);
     } else if (AggregationClause.isCustom(aggregation)) {
-      return formatExpression(aggregation, {
-        tableMetadata: this.tableMetadata(),
-        customFields: this.expressions(),
-      });
+      return this.formatExpression(aggregation);
     } else if (AggregationClause.isMetric(aggregation)) {
       const metricId = AggregationClause.getMetric(aggregation);
       const metric = this._metadata.metrics[metricId];
@@ -368,6 +374,13 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
     return null;
+  }
+
+  formatExpression(expression) {
+    return formatExpression(expression, {
+      tableMetadata: this.tableMetadata(),
+      customFields: this.expressions(),
+    });
   }
 
   /**
@@ -569,15 +582,10 @@ export default class StructuredQuery extends AtomicQuery {
         );
         sortOptions.count++;
       }
-      for (const [index, aggregation] of this.aggregations().entries()) {
+      for (const [index] of this.aggregations().entries()) {
         if (Q_deprecated.canSortByAggregateField(this.query(), index)) {
           sortOptions.dimensions.push(
-            new AggregationDimension(
-              null,
-              [index],
-              this._metadata,
-              aggregation[0],
-            ),
+            new AggregationDimension(null, [index], this._metadata, this),
           );
           sortOptions.count++;
         }
@@ -627,6 +635,10 @@ export default class StructuredQuery extends AtomicQuery {
     return Q.getExpressions(this.query());
   }
 
+  addExpression(name, expression) {
+    return this._updateQuery(Q.addExpression, arguments);
+  }
+
   updateExpression(name, expression, oldName) {
     return this._updateQuery(Q.updateExpression, arguments);
   }
@@ -636,6 +648,12 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   // FIELDS
+
+  fields() {
+    // FIMXE: implement field functions in query lib
+    return this.query().fields || [];
+  }
+
   /**
    * Returns dimension options that can appear in the `fields` clause
    */
@@ -720,17 +738,74 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  aggregationDimensions() {
+  breakoutDimensions() {
     return this.breakouts().map(breakout =>
       Dimension.parseMBQL(breakout, this._metadata),
     );
   }
 
-  metricDimensions() {
+  aggregationDimensions() {
     return this.aggregations().map(
       (aggregation, index) =>
-        new AggregationDimension(null, [index], this._metadata, aggregation[0]),
+        new AggregationDimension(null, [index], this._metadata, this),
     );
+  }
+
+  fieldDimensions() {
+    return this.fields().map((fieldClause, index) =>
+      Dimension.parseMBQL(fieldClause, this._metadata),
+    );
+  }
+
+  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
+  // NOTE: these will not have the correct columnName() if there are duplicates
+  columnDimensions() {
+    const aggregations = this.aggregationDimensions();
+    const breakouts = this.breakoutDimensions();
+    const fields = this.fieldDimensions();
+    const expressions = this.expressionDimensions();
+    const table = this.tableDimensions();
+    let dimensions;
+    if (aggregations.length || breakouts.length || fields.length) {
+      dimensions = [...breakouts, ...aggregations, ...fields];
+    } else {
+      const sorted = _.chain(table)
+        .filter(d => d.field().visibility_type !== "hidden")
+        .sortBy(d => d.field().name)
+        .sortBy(d => {
+          const type = d.field().special_type;
+          return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
+        })
+        .sortBy(d => d.field().position)
+        .value();
+      dimensions = [...sorted, ...expressions];
+    }
+    return dimensions;
+  }
+
+  // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
+  columnNames() {
+    // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
+    const nameCounts = new Map();
+    return this.columnDimensions().map(dimension => {
+      let name = dimension.columnName();
+      if (nameCounts.has(name)) {
+        const count = nameCounts.get(name) + 1;
+        nameCounts.set(name, count);
+        return `${name}_${count}`;
+      } else {
+        nameCounts.set(name, 1);
+        return name;
+      }
+    });
+  }
+
+  columns() {
+    const names = this.columnNames();
+    return this.columnDimensions().map((dimension, index) => ({
+      ...dimension.column(),
+      name: names[index],
+    }));
   }
 
   fieldReferenceForColumn(column) {
@@ -741,20 +816,38 @@ export default class StructuredQuery extends AtomicQuery {
     } else if (column.expression_name != null) {
       return ["expression", column.expression_name];
     } else if (column.source === "aggregation") {
-      // FIXME: aggregations > 0?
-      return ["aggregation", 0];
+      // HACK: ideally column would include the aggregation index directly
+      const columnIndex = _.findIndex(
+        this.columnNames(),
+        name => name === column.name,
+      );
+      if (columnIndex >= 0) {
+        return this.columnDimensions()[columnIndex].mbql();
+      }
     }
+    return null;
   }
 
+  // TODO: better name may be parseDimension?
   parseFieldReference(fieldRef): ?Dimension {
     const dimension = Dimension.parseMBQL(fieldRef, this._metadata);
     if (dimension) {
-      // HACK
+      // HACK: we should probably pass the query into parseMBQL like we do for metadata
       if (dimension instanceof AggregationDimension) {
-        dimension._displayName = this.aggregations()[dimension._args[0]][0];
+        dimension._query = this;
       }
       return dimension;
     }
+  }
+
+  dimensionForColumn(column) {
+    if (column) {
+      const fieldRef = this.fieldReferenceForColumn(column);
+      if (fieldRef) {
+        return this.parseFieldReference(fieldRef);
+      }
+    }
+    return null;
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): StructuredQuery {

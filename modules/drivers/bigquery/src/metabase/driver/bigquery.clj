@@ -48,8 +48,8 @@
 (driver/register! :bigquery, :parent #{:google :sql})
 
 (defn- valid-bigquery-identifier?
-  "Is String `s` a valid BigQuery identifiers? Identifiers are only allowed to contain letters, numbers, and
-  underscores; cannot start with a number; and can be at most 128 characters long."
+  "Is String `s` a valid BigQuery identifier? Identifiers are only allowed to contain letters, numbers, and underscores;
+  cannot start with a number; and can be at most 128 characters long."
   [s]
   (boolean
    (and (string? s)
@@ -109,7 +109,6 @@
                      (.setPageToken <> page-token-or-nil)))))
 
 (defmethod driver/describe-database :bigquery [_ database]
-  {:pre [(map? database)]}
   ;; first page through all the 50-table pages until we stop getting "next page tokens"
   (let [tables (loop [tables [], ^TableList table-list (list-tables database)]
                  (let [tables (concat tables (.getTables table-list))]
@@ -122,18 +121,16 @@
                     {:schema nil, :name (.getTableId tableref)}))}))
 
 (defmethod driver/can-connect? :bigquery [_ details-map]
-  {:pre [(map? details-map)]}
   ;; check whether we can connect by just fetching the first page of tables for the database. If that succeeds we're
   ;; g2g
   (boolean (list-tables {:details details-map})))
 
 
-(defn- ^Table get-table
+(s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
    (get-table (database->client database) project-id dataset-id table-id))
 
-  ([^Bigquery client, ^String project-id, ^String dataset-id, ^String table-id]
-   {:pre [client (seq project-id) (seq dataset-id) (seq table-id)]}
+  ([client :- Bigquery, project-id :- su/NonBlankString, dataset-id :- su/NonBlankString, table-id :- su/NonBlankString]
    (google/execute (.get (.tables client) project-id dataset-id table-id))))
 
 (defn- bigquery-type->base-type [field-type]
@@ -147,6 +144,7 @@
     "DATETIME"  :type/DateTime
     "TIMESTAMP" :type/DateTime
     "TIME"      :type/Time
+    "NUMERIC"   :type/Decimal
     :type/*))
 
 (defn- table-schema->metabase-field-info [^TableSchema schema]
@@ -217,6 +215,7 @@
   {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
    "FLOAT"     (constantly #(Double/parseDouble %))
    "INTEGER"   (constantly #(Long/parseLong %))
+   "NUMERIC"   (constantly #(bigdec %))
    "RECORD"    (constantly identity)
    "STRING"    (constantly identity)
    "DATE"      parse-timestamp-str
@@ -372,7 +371,6 @@
 ;; parameters (`?` symbols)
 (defmethod sql.qp/->honeysql [:bigquery String]
   [_ s]
-  ;; TODO - what happens if `s` contains single-quotes? Shouldn't we be escaping them somehow?
   (hx/literal s))
 
 (defmethod sql.qp/->honeysql [:bigquery Boolean]
@@ -504,12 +502,12 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defmethod driver/execute-query :bigquery [_ {{sql :query, params :params, :keys [table-name mbql?]} :native
-                                              :as                                                    outer-query}]
+(defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
+                                                   :as                                                    outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
-                                                                     (unprepare/unprepare (cons sql params))
+                                                                     (unprepare/unprepare driver (cons sql params))
                                                                      sql))]
         (process-native* database sql)))))
 

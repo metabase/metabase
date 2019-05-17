@@ -278,31 +278,30 @@ class GroupPermissionCell extends Component {
                     : option.iconColor,
                 }}
               />
-              {confirmations &&
-                confirmations.length > 0 && (
-                  <Modal>
-                    <ConfirmContent
-                      {...confirmations[0]}
-                      onAction={() =>
-                        // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
-                        confirmations.length === 1
-                          ? this.setState(
-                              { confirmations: null, confirmAction: null },
-                              this.state.confirmAction,
-                            )
-                          : this.setState({
-                              confirmations: confirmations.slice(1),
-                            })
-                      }
-                      onCancel={() =>
-                        this.setState({
-                          confirmations: null,
-                          confirmAction: null,
-                        })
-                      }
-                    />
-                  </Modal>
-                )}
+              {confirmations && confirmations.length > 0 && (
+                <Modal>
+                  <ConfirmContent
+                    {...confirmations[0]}
+                    onAction={() =>
+                      // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
+                      confirmations.length === 1
+                        ? this.setState(
+                            { confirmations: null, confirmAction: null },
+                            this.state.confirmAction,
+                          )
+                        : this.setState({
+                            confirmations: confirmations.slice(1),
+                          })
+                    }
+                    onCancel={() =>
+                      this.setState({
+                        confirmations: null,
+                        confirmAction: null,
+                      })
+                    }
+                  />
+                </Modal>
+              )}
               {warning && (
                 <div className="absolute top right p1">
                   <Tooltip tooltip={warning} maxWidth="24em">

@@ -10,7 +10,7 @@ import Button from "metabase/components/Button";
 import CollectionSelect from "metabase/containers/CollectionSelect";
 
 import Query from "metabase/lib/query";
-import { t } from "c-3po";
+import { t } from "ttag";
 import "./SaveQuestionModal.css";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
@@ -110,7 +110,9 @@ export default class SaveQuestionModal extends Component {
         description:
           details.saveType === "overwrite"
             ? originalCard.description
-            : details.description ? details.description.trim() : null,
+            : details.description
+            ? details.description.trim()
+            : null,
         collection_id:
           details.saveType === "overwrite"
             ? originalCard.collection_id

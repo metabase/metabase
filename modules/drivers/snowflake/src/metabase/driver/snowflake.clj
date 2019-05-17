@@ -4,6 +4,7 @@
              [set :as set]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -12,19 +13,24 @@
              [common :as driver.common]
              [sql-jdbc :as sql-jdbc]]
             [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]]
             [toucan.db :as db])
-  (:import java.sql.Time))
+  (:import java.sql.Time
+           java.util.Date
+           net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
 
@@ -34,22 +40,26 @@
                account)]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
-            :subprotocol                                "snowflake"
-            :subname                                    (str "//" host ".snowflakecomputing.com/")
-            :client_metadata_request_use_connection_ctx true
-            :ssl                                        true
-            ;; other SESSION parameters
-            ;; use the same week start we use for all the other drivers
-            :week_start                                 7
-            ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
-            ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-            :timezone                                   "UTC"}
-           (-> opts
-               ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
-               ;; `db`. If we run across `dbname`, correct our behavior
-               (set/rename-keys {:dbname :db})
-               (dissoc :host :port :timezone)))))
+    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+                :subprotocol                                "snowflake"
+                :subname                                    (str "//" host ".snowflakecomputing.com/")
+                :client_metadata_request_use_connection_ctx true
+                :ssl                                        true
+                ;; keep open connections open indefinitely instead of closing them. See #9674 and
+                ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
+                :client_session_keep_alive                  true
+                ;; other SESSION parameters
+                ;; use the same week start we use for all the other drivers
+                :week_start                                 7
+                ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
+                ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
+                :timezone                                   "UTC"}
+               (-> opts
+                   ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
+                   ;; `db`. If we run across `dbname`, correct our behavior
+                   (set/rename-keys {:dbname :db})
+                   (dissoc :host :port :timezone)))
+        (sql-jdbc.common/handle-additional-options opts))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake [_ base-type]
   ({:NUMBER                     :type/Number
@@ -135,14 +145,13 @@
   (let [table            (qp.store/table (:table_id field))
         db-name          (when-not (:alias? table)
                            (query-db-name))
-        field-identifier (keyword
-                          (hx/qualify-and-escape-dots db-name (:schema table) (:name table) (:name field)))]
+        field-identifier (sql.qp/->honeysql driver (hx/identifier db-name (:schema table) (:name table) (:name field)))]
     (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
 
 (defmethod sql.qp/->honeysql [:snowflake (class Table)]
-  [_ table]
+  [driver table]
   (let [{table-name :name, schema :schema} table]
-    (hx/qualify-and-escape-dots (query-db-name) schema table-name)))
+    (sql.qp/->honeysql driver (hx/identifier (query-db-name) schema table-name))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value unit]]
@@ -196,3 +205,19 @@
 
 (defmethod sql-jdbc.sync/excluded-schemas :snowflake [_]
   #{"INFORMATION_SCHEMA"})
+
+(defmethod driver/can-connect? :snowflake [driver {:keys [db], :as details}]
+  (and ((get-method driver/can-connect? :sql-jdbc) driver details)
+       (let [spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)
+             sql  (format "SHOW OBJECTS IN DATABASE \"%s\";" db)]
+         (try
+           (jdbc/query spec sql)
+           true
+           (catch SnowflakeSQLException e
+             (log/error e (tru "Snowflake Database does not exist."))
+             false)))))
+
+(defmethod unprepare/unprepare-value [:snowflake Date] [_ value]
+  (format "timestamp '%s'" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:snowflake Date])

@@ -2,6 +2,7 @@
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require [clojure.string :as str]
             [metabase.db.spec :as dbspec]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
@@ -28,9 +29,6 @@
                                              ;; Return details with the GUEST user added so SQL queries are allowed.
                                              ";USER=GUEST;PASSWORD=guest"))})
 
-(defmethod sql.tx/prepare-identifier :h2 [_ s]
-  (str/upper-case s))
-
 (defmethod sql.tx/pk-sql-type :h2 [_] "BIGINT AUTO_INCREMENT")
 
 (defmethod sql.tx/pk-field-name :h2 [_] "ID")
@@ -55,7 +53,7 @@
    ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef tabledef)
    ";\n"
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (sql.tx/quote-name driver table-name))))
+   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver (tx/format-name driver table-name)))))
 
 (defmethod tx/has-questionable-timezone-support? :h2 [_] true)
 

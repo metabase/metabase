@@ -179,7 +179,7 @@
              [&match])
           subclauses))
 
-(s/defn simplify-compound-filter :- (s/maybe mbql.s/Filter)
+(defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
@@ -278,14 +278,14 @@
                                  mbql.s/field-id
                                  mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
-  [[clause-name x y, :as clause] :- mbql.s/Field]
-  ;; TODO - could use `match` to do this
-  (case clause-name
-    :field-id         clause
-    :fk->             (recur y)
-    :field-literal    clause
-    :datetime-field   (recur x)
-    :binning-strategy (recur x)))
+  [clause :- mbql.s/Field]
+  (match-one clause
+    :field-id                     &match
+    :field-literal                &match
+    [:fk-> _ dest-field]          (recur dest-field)
+    [:joined-field _ field]       (recur field)
+    [:datetime-field field _]     (recur field)
+    [:binning-strategy field & _] (recur field)))
 
 (defn maybe-unwrap-field-clause
   "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
@@ -476,3 +476,34 @@
   [aggregation->name-fn :- (s/pred fn?), aggregations :- [mbql.s/Aggregation]]
   (-> (pre-alias-aggregations aggregation->name-fn aggregations)
       uniquify-named-aggregations))
+
+(defn query->max-rows-limit
+  "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
+  doing the equivalent of
+
+    java.sql.Statement statement = ...;
+    statement.setMaxRows(<max-rows-limit>).
+
+  to ensure the DB cursor or equivalent doesn't fetch more rows than will be consumed.
+
+  This is calculated as follows:
+
+  *  If query is `MBQL` and has a `:limit` or `:page` clause, returns appropriate number
+  *  If query has `:constraints` with `:max-results-bare-rows` or `:max-results`, returns the appropriate number
+     *  `:max-results-bare-rows` is returned if set and Query does not have any aggregations
+     *  `:max-results` is returned otherwise
+  *  If none of the above are set, returns `nil`. In this case, you should use something like the Metabase QP's
+     `max-rows-limit`"
+  [{{:keys [max-results max-results-bare-rows]}                      :constraints
+    {limit :limit, aggregations :aggregation, {:keys [items]} :page} :query
+    query-type                                                       :type}]
+  (let [safe-min          (fn [& args]
+                            (when-let [args (seq (filter some? args))]
+                              (reduce min args)))
+        mbql-limit        (when (= query-type :query)
+                            (safe-min items limit))
+        constraints-limit (or
+                           (when-not aggregations
+                             max-results-bare-rows)
+                           max-results)]
+    (safe-min mbql-limit constraints-limit)))

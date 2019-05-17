@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ActivityItem from "./ActivityItem.jsx";
@@ -238,9 +238,9 @@ export default class Activity extends Component {
               {t`received the latest data from`}{" "}
               <span className="text-dark">
                 {/* NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
-                  * capture the name/description/engine of a Database properly in the details and so it was
-                  * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
-                  */}
+                 * capture the name/description/engine of a Database properly in the details and so it was
+                 * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
+                 */}
                 {(item.database && item.database.name) || t`Unknown`}
               </span>
             </span>

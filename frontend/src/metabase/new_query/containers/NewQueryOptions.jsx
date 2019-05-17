@@ -10,7 +10,7 @@ import {
 } from "metabase/redux/metadata";
 
 import { determineWhichOptionsToShow, resetQuery } from "../new_query";
-import { t } from "c-3po";
+import { t } from "ttag";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -171,4 +171,7 @@ export class NewQueryOptions extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(NewQueryOptions);

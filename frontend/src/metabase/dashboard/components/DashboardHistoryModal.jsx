@@ -16,7 +16,10 @@ const mapDispatchToProps = {
   ...dashboardActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @withRouter
 export class DashboardHistoryModal extends Component {
   props: {

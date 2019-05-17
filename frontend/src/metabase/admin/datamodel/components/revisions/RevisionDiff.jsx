@@ -14,7 +14,10 @@ export default class RevisionDiff extends Component {
   };
 
   render() {
-    let { diff: { before, after }, tableMetadata } = this.props;
+    let {
+      diff: { before, after },
+      tableMetadata,
+    } = this.props;
 
     let icon;
     if (before != null && after != null) {

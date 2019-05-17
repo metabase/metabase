@@ -44,7 +44,7 @@ export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
 export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
 
 export class Api extends EventEmitter {
-  basename: "";
+  basename = "";
 
   GET: APICreator;
   POST: APICreator;
@@ -103,11 +103,11 @@ export class Api extends EventEmitter {
 
         let headers: { [key: string]: string } = {
           Accept: "application/json",
+          "Content-Type": "application/json",
         };
 
         let body;
         if (options.hasBody) {
-          headers["Content-Type"] = "application/json";
           body = JSON.stringify(data);
         } else {
           let qs = querystring.stringify(data);

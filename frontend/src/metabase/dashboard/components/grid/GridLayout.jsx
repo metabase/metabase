@@ -71,8 +71,8 @@ export default class GridLayout extends Component {
     let newLayout;
     if (placeholderLayout) {
       let { x, y, w, h } = placeholderLayout;
-      newLayout = this.state.layout.map(
-        l => (l.i === i ? { ...l, x, y, w, h } : l),
+      newLayout = this.state.layout.map(l =>
+        l.i === i ? { ...l, x, y, w, h } : l,
       );
     }
     this.setState({ dragging: false, placeholderLayout: null });
@@ -124,8 +124,8 @@ export default class GridLayout extends Component {
 
   onResizeStop(i, { size }) {
     let { x, y, w, h } = this.state.placeholderLayout;
-    let newLayout = this.state.layout.map(
-      l => (l.i === i ? { ...l, x, y, w, h } : l),
+    let newLayout = this.state.layout.map(l =>
+      l.i === i ? { ...l, x, y, w, h } : l,
     );
     this.setState({ resizing: false, placeholderLayout: null }, () =>
       this.props.onLayoutChange(newLayout),
@@ -228,11 +228,12 @@ export default class GridLayout extends Component {
     }
   }
 
+  // generate one row of the grid, it will repeat because it's a background image
   getGridBackground() {
-    let { margin, cols } = this.props;
-    let cellSize = this.getCellSize();
-    return (
-      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
+    const { margin, cols } = this.props;
+    const cellSize = this.getCellSize();
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
         cols}' height='${cellSize.height}'>` +
       _(cols)
         .times(
@@ -246,8 +247,8 @@ export default class GridLayout extends Component {
             )}' height='${cellSize.height - margin - 3}'/>`,
         )
         .join("") +
-      `</svg>")`
-    );
+      `</svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
   }
 
   render() {

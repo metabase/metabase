@@ -1,8 +1,11 @@
 /* @flow */
 
 import React from "react";
+import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
+import ModalContent from "metabase/components/ModalContent";
+
 import entityType from "./EntityType";
 
 @entityType()
@@ -13,22 +16,40 @@ export default class EntityForm extends React.Component {
       entityObject,
       update,
       create,
+      // defaults to `create` or `update` (if an id is present)
+      onSubmit = object =>
+        object.id != null ? update(object) : create(object),
+      onClose,
       onSaved,
+      modal,
+      title,
       ...props
     } = this.props;
-    return (
+    const form = (
       <Form
         {...props}
         form={entityDef.form}
         initialValues={entityObject}
-        onSubmit={values =>
-          values.id != null ? update(values) : create(values)
-        }
-        onSubmitSuccess={action =>
-          // maybe eventually pass the whole object instead of just the id?
-          onSaved && onSaved({ id: action.payload.result })
-        }
+        onSubmit={onSubmit}
+        onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
       />
     );
+    if (modal) {
+      return (
+        <ModalContent
+          title={
+            title ||
+            (entityObject && entityObject.id != null
+              ? entityDef.objectSelectors.getName(entityObject)
+              : t`New ${entityDef.displayNameOne}`)
+          }
+          onClose={onClose}
+        >
+          {form}
+        </ModalContent>
+      );
+    } else {
+      return form;
+    }
   }
 }

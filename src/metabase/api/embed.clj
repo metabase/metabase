@@ -208,15 +208,15 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Card :id card-id))))))
 
-(defn run-query-for-card-with-params
-  "Run the query associated with Card with CARD-ID using JWT TOKEN-PARAMS, user-supplied URL QUERY-PARAMS,
-   an EMBEDDING-PARAMS whitelist, and additional query OPTIONS."
+(defn run-query-for-card-with-params-async
+  "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
+   an `embedding-params` whitelist, and additional query `options`. Returns channel for fetching the results."
   {:style/indent 0}
   [& {:keys [card-id embedding-params token-params query-params options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
-    (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
+    (apply public-api/run-query-for-card-with-id-async card-id parameters, :context :embedded-question, options)))
 
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
@@ -233,7 +233,7 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
 
-(defn dashcard-results
+(defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard."
   {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
@@ -242,7 +242,7 @@
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
                                                  parameter-values)]
-    (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
+    (public-api/public-dashcard-results-async dashboard-id card-id parameters, :context :embedded-dashboard)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -279,13 +279,13 @@
     (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 
-(defn- run-query-for-unsigned-token
+(defn- run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
-  for this Card."
+  for this Card. Returns core.async channel to fetch the results."
   [unsigned-token query-params & options]
   (let [card-id (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
-    (run-query-for-card-with-params
+    (run-query-for-card-with-params-async
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (db/select-one-field :embedding_params Card :id card-id)
@@ -301,15 +301,15 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token (eu/unsign token) query-params))
+  (run-query-for-unsigned-token-async (eu/unsign token) query-params))
 
 
-(api/defendpoint GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
+(api/defendpoint-async GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format & query-params]
+  [{{:keys [token export-format]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
-  (dataset-api/as-format export-format
-    (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+  (dataset-api/as-format-async export-format respond raise
+    (run-query-for-unsigned-token-async (eu/unsign token) (m/map-keys keyword query-params), :constraints nil)))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -328,7 +328,7 @@
 
 
 
-(defn- card-for-signed-token
+(defn- card-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -343,7 +343,7 @@
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
-    (dashcard-results
+    (dashcard-results-async
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
       :card-id          card-id
@@ -355,7 +355,8 @@
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`"
   [token dashcard-id card-id & query-params]
-  (card-for-signed-token token dashcard-id card-id query-params ))
+  (card-for-signed-token-async token dashcard-id card-id query-params ))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        FieldValues, Search, Remappings                                         |
@@ -427,12 +428,17 @@
     (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
 
 
-(api/defendpoint GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format",
-                      :export-format dataset-api/export-format-regex]
+(api/defendpoint-async GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+                            :export-format dataset-api/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id & query-params]
+  [{{:keys [token export-format dashcard-id card-id]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
-  (dataset-api/as-format export-format (card-for-signed-token token dashcard-id card-id query-params )))
+  (dataset-api/as-format-async export-format respond raise
+    (card-for-signed-token-async token
+      (Integer/parseUnsignedInt dashcard-id)
+      (Integer/parseUnsignedInt card-id)
+      (m/map-keys keyword query-params))))
+
 
 (api/define-routes)

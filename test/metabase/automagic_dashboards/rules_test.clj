@@ -1,6 +1,6 @@
 (ns metabase.automagic-dashboards.rules-test
   (:require [expectations :refer :all]
-            [metabase.automagic-dashboards.rules :refer :all :as rules]))
+            [metabase.automagic-dashboards.rules :as rules :refer :all]))
 
 (expect nil   (#'rules/ensure-seq nil))
 (expect [nil] (#'rules/ensure-seq [nil]))

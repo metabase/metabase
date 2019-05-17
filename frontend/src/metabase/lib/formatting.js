@@ -5,7 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
@@ -33,7 +33,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -261,7 +261,7 @@ function formatNumberCompact(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 
@@ -285,8 +285,8 @@ export function formatCoordinate(
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-      : DECIMAL_DEGREES_FORMATTER(value);
+    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+    : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 

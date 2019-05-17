@@ -62,23 +62,38 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private join-with-alias :- (s/maybe mbql.s/JoinInfo)
+  [{{:keys [join-tables]} :query} :- su/Map, join-alias :- su/NonBlankString]
+  (some
+   (fn [{alias :join-alias, :as join}]
+     (when (= alias join-alias)
+       join))
+   join-tables))
+
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [clause :- mbql.s/Field]
+  [query :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
     [:binning-strategy field strategy _ resolved-options]
-    (assoc (col-info-for-field-clause field) :binning_info (assoc (u/snake-keys resolved-options)
-                                                             :binning_strategy strategy))
+    (assoc (col-info-for-field-clause query field)
+      :binning_info (assoc (u/snake-keys resolved-options)
+                      :binning_strategy strategy))
 
     [:datetime-field field unit]
-    (assoc (col-info-for-field-clause field) :unit unit)
+    (assoc (col-info-for-field-clause query field) :unit unit)
 
+    [:joined-field alias field]
+    (let [{:keys [fk-field-id]} (join-with-alias query alias)]
+      (assoc (col-info-for-field-clause query field) :fk_field_id fk-field-id))
+
+    ;; TODO - should be able to remove this now
     [:fk-> [:field-id source-field-id] field]
-    (assoc (col-info-for-field-clause field) :fk_field_id source-field-id)
+    (assoc (col-info-for-field-clause query field) :fk_field_id source-field-id)
 
+    ;; TODO - should be able to remove this now
     ;; for FKs where source is a :field-literal don't include `:fk_field_id`
     [:fk-> _ field]
     (recur field)
@@ -97,7 +112,11 @@
      :expression_name expression-name}
 
     [:field-id id]
-    (dissoc (qp.store/field id) :database_type)
+    (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
+      (if-not parent-id
+        field
+        (let [parent (col-info-for-field-clause query [:field-id parent-id])]
+          (update field :name #(str (:name parent) \. %)))))
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
@@ -153,7 +172,7 @@
          (str/join (str " " (name operator) " ")
                    (map expression-ag-arg->name args)))
 
-    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` with
+    ;; for unnamed normal aggregations, the column alias is always the same as the ag type except for `:distinct` which
     ;; is called `:count` (WHY?)
     [:distinct _]
     "count"
@@ -167,42 +186,61 @@
     {:name         ag-name
      :display_name ag-name}))
 
-(defn- col-info-for-aggregation-clause
+(s/defn ^:private col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
-  [aggregation-clause]
-  (mbql.u/match-one aggregation-clause
+  ; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
+  ; `match` pattern for field clauses below
+  [query :- su/Map, clause]
+  (mbql.u/match-one clause
     ;; ok, if this is a named aggregation recurse so we can get information about the ag we are naming
     [:named ag _]
-    (merge (col-info-for-aggregation-clause ag)
-           (ag->name-info &match))
+    (merge
+     (col-info-for-aggregation-clause query ag)
+     (ag->name-info &match))
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
     [(_ :guard #{:count :distinct}) & args]
-    (merge (col-info-for-aggregation-clause args)
-           {:base_type    :type/Integer
-            :special_type :type/Number}
-           (ag->name-info &match))
+    (merge
+     (col-info-for-aggregation-clause query args)
+     {:base_type    :type/Integer
+      :special_type :type/Number}
+     (ag->name-info &match))
+
+    ; TODO - should we be doing this for `:sum-where` as well?
+    [:count-where _]
+    (merge
+     {:base_type    :type/Integer
+      :special_type :type/Number}
+     (ag->name-info &match))
+
+    [:share _]
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (ag->name-info &match))
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
-    [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :expression :binning-strategy}) & _]
-    (select-keys (col-info-for-field-clause &match) [:base_type :special_type :settings])
+    (_ :guard mbql.preds/Field?)
+    (select-keys (col-info-for-field-clause query &match) [:base_type :special_type :settings])
 
     ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
     ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
     ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
     ;; for the purposes of a patch release.
     [(_ :guard #{:expression :+ :- :/ :*}) & _]
-    (merge {:base_type    :type/Float
-            :special_type :type/Number}
-           (when (mbql.preds/Aggregation? &match)
-             (ag->name-info &match)))
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (when (mbql.preds/Aggregation? &match)
+       (ag->name-info &match)))
 
     ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg]
-    (merge (col-info-for-aggregation-clause arg)
-           (ag->name-info &match))))
+    [(_ :guard keyword?) arg & args]
+    (merge
+     (col-info-for-aggregation-clause query arg)
+     (ag->name-info &match))))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
@@ -222,16 +260,18 @@
                "\n"
                (tru "Actual: {0}" (vec (:columns results))))))))))
 
-(defn- cols-for-fields [{{fields-clause :fields} :query, :as query}]
+(s/defn ^:private cols-for-fields
+  [{{fields-clause :fields} :query, :as query} :- su/Map]
   (for [field fields-clause]
-    (assoc (col-info-for-field-clause field) :source :fields)))
+    (assoc (col-info-for-field-clause query field) :source :fields)))
 
-(defn- cols-for-ags-and-breakouts [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
+(s/defn ^:private cols-for-ags-and-breakouts
+  [{{aggregations :aggregation, breakouts :breakout} :query, :as query} :- su/Map]
   (concat
    (for [breakout breakouts]
-     (assoc (col-info-for-field-clause breakout) :source :breakout))
+     (assoc (col-info-for-field-clause query breakout) :source :breakout))
    (for [aggregation aggregations]
-     (assoc (col-info-for-aggregation-clause aggregation) :source :aggregation))))
+     (assoc (col-info-for-aggregation-clause query aggregation) :source :aggregation))))
 
 (declare mbql-cols)
 
@@ -259,7 +299,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ColsWithUniqueNames
-  (s/constrained [Col] #(distinct? (map :name %)) ":cols with unique names"))
+  (s/constrained [Col] #(su/empty-or-distinct? (map :name %)) ":cols with unique names"))
 
 (s/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [Col]]
@@ -270,7 +310,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               GENERAL MIDDLEWARE                                               |
+;;; |                                           add-column-info middleware                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private add-column-info* :- {:cols ColsWithUniqueNames, s/Keyword s/Any}
@@ -297,3 +337,71 @@
   [qp]
   (fn [query]
     (add-column-info* query (qp query))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     result-rows-maps-to-vectors middleware                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- uniquify-aggregations [query]
+  (update-in query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations aggregation-name)))
+
+(s/defn ^:private expected-column-sort-order :- [s/Keyword]
+  "Determine query result row column names (as keywords) sorted in the appropriate order based on a `query`."
+  [{query-type :type, :as query} {[first-row] :rows, :as results}]
+  (if (= query-type :query)
+    (map (comp keyword :name) (mbql-cols (uniquify-aggregations query) results))
+    (map keyword (keys first-row))))
+
+(defn- result-rows-maps->vectors* [query {[first-row :as rows] :rows, columns :columns, :as results}]
+  (when (or (map? first-row)
+            ;; if no rows were returned and the driver didn't return `:columns`, go ahead and calculate them so we can
+            ;; add them -- drivers that rely on this behavior still need us to do that for them for queries that
+            ;; return no results
+            (and (empty? rows)
+                 (nil? columns)))
+    (let [sorted-columns (expected-column-sort-order query results)]
+      (assoc results
+        ;; TODO - we don't really use `columns` any more and can remove this at some point
+        :columns (map u/keyword->qualified-name sorted-columns)
+        :rows    (for [row rows]
+                   (for [col sorted-columns]
+                     (get row col)))))))
+
+(defn result-rows-maps->vectors
+  "For drivers that return query result rows as a sequence of maps rather than a sequence of vectors, determine
+  appropriate column sort order and convert rows to sequences (the expected MBQL result format).
+
+  Certain databases like MongoDB and Druid always return result rows as maps, rather than something sequential (e.g.
+  vectors). Rather than require those drivers to duplicate the logic in this and other QP middleware namespaces for
+  determining expected column sort order, drivers have the option of leaving the `:rows` as a sequence of maps, and
+  this middleware will handle things for them.
+
+  Because the order of `:columns` is determined by this middleware, it adds `:columns` to the results as well as the
+  updated `:rows`; drivers relying on this middleware should return a map containing only `:rows`.
+
+  IMPORTANT NOTES:
+
+  *  Determining correct sort order only works for MBQL queries. For native queries, the sort order is the result of
+     calling `keys` on the first row. It is reccomended that you utilize Flatland `ordered-map` when possible to
+     preserve key ordering in maps.
+
+  *  For obvious reasons, drivers that returns rows as maps cannot support duplicate column names. Thus it is expected
+     that drivers that use functionality provided by this middleware return deduplicated column names, e.g. `:sum` and
+     `:sum_2` for queries with multiple `:sum` aggregations.
+
+     Call `mbql.u/pre-alias-and-uniquify-aggregations` on your query before processing it tp add appropriate aliases to
+     aggregations. Currently this assumes you are passing `annotate/aggregation-name` as the function to generate
+     aggregation names; if your driver is doing something drastically different, you may need to tweak the keys in the
+     result row maps so they match up with the keys generated by that function.
+
+  *  For *nested* Fields, this namespace assumes result row maps will come back flattened, and Field name keys will
+     come back qualified by names of their ancestors, e.g. `parent.child`, `grandparent.parent.child`, etc. This is done
+     to remove any ambiguity between nested columns with the same name (e.g. a document with both `user.id` and
+     `venue.id`). Be sure to follow this convention if your driver supports nested Fields (e.g., MongoDB)."
+  [qp]
+  (fn [query]
+    (let [results (qp query)]
+      (or
+       (result-rows-maps->vectors* query results)
+       results))))

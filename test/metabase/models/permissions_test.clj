@@ -4,7 +4,7 @@
              [collection :as collection :refer [Collection]]
              [collection-test :as collection-test]
              [database :refer [Database]]
-             [permissions :as perms]
+             [permissions :as perms :refer [Permissions]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [table :refer [Table]]]
             [metabase.test.data :as data]
@@ -580,6 +580,15 @@
     ;; now fetch the perms that have been granted
     (get-in (perms/graph) [:groups (u/get-id group) (u/get-id database) :schemas])))
 
+;; The data permissions graph should never return permissions for the MetaBot, because the MetaBot can only have
+;; collection permissions
+(expect
+  false
+  ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
+  (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
+    (tt/with-temp* [Database    [db]
+                    Permissions [perms {:group_id (u/get-id (group/metabot)), :object (perms/object-path db)}]]
+      (contains? (:groups (perms/graph)) (u/get-id (group/metabot))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

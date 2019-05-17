@@ -9,12 +9,7 @@ import TogglePropagateAction from "./containers/TogglePropagateAction";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import colors, { alpha } from "metabase/lib/colors";
 
-import { t } from "c-3po";
-import {
-  isDefaultGroup,
-  isAdminGroup,
-  isMetaBotGroup,
-} from "metabase/lib/groups";
+import { t } from "ttag";
 
 import _ from "underscore";
 import { getIn, assocIn } from "icepick";
@@ -31,13 +26,24 @@ import {
   diffPermissions,
   inferAndUpdateEntityPermissions,
 } from "metabase/lib/permissions";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  isMetaBotGroup,
+  canEditPermissions,
+} from "metabase/lib/groups";
+
+import Group from "metabase/entities/groups";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { SchemaName } from "metabase/meta/types/Table";
-import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
+import type {
+  Group as GroupType,
+  GroupsPermissions,
+} from "metabase/meta/types/Permissions";
 
 const getPermissions = state => state.admin.permissions.permissions;
 const getOriginalPermissions = state =>
@@ -66,7 +72,7 @@ function getTooltipForGroup(group) {
 }
 
 export const getGroups = createSelector(
-  state => state.admin.permissions.groups,
+  [Group.selectors.getList],
   groups => {
     let orderedGroups = groups ? [...groups] : [];
     for (let groupFilter of SPECIAL_GROUP_FILTERS) {
@@ -77,6 +83,7 @@ export const getGroups = createSelector(
     }
     return orderedGroups.map(group => ({
       ...group,
+      editable: canEditPermissions(group),
       tooltip: getTooltipForGroup(group),
     }));
   },
@@ -293,7 +300,7 @@ export const getTablesPermissionsGrid = createSelector(
   getSchemaName,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
     schemaName: SchemaName,
@@ -400,7 +407,7 @@ export const getSchemasPermissionsGrid = createSelector(
   getDatabaseId,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
   ) => {
@@ -501,7 +508,7 @@ export const getDatabasesPermissionsGrid = createSelector(
   getPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
   ) => {
     if (!groups || !permissions || !metadata) {
@@ -646,16 +653,16 @@ export const getDatabasesPermissionsGrid = createSelector(
                   url: `/admin/permissions/databases/${database.id}/tables`,
                 }
               : schemas.length === 1
-                ? {
-                    name: t`View tables`,
-                    url: `/admin/permissions/databases/${database.id}/schemas/${
-                      schemas[0]
-                    }/tables`,
-                  }
-                : {
-                    name: t`View schemas`,
-                    url: `/admin/permissions/databases/${database.id}/schemas`,
-                  },
+              ? {
+                  name: t`View tables`,
+                  url: `/admin/permissions/databases/${database.id}/schemas/${
+                    schemas[0]
+                  }/tables`,
+                }
+              : {
+                  name: t`View schemas`,
+                  url: `/admin/permissions/databases/${database.id}/schemas`,
+                },
         };
       }),
     };
@@ -708,7 +715,7 @@ export const getCollectionsPermissionsGrid = createSelector(
   getPropagatePermissions,
   (
     collections,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     propagatePermissions: boolean,
   ) => {
@@ -868,7 +875,7 @@ export const getDiff = createSelector(
   getOriginalPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
   ) => diffPermissions(permissions, originalPermissions, groups, metadata),

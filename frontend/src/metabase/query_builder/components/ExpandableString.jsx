@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Humanize from "humanize-plus";
 
 export default class ExpandableString extends Component {
@@ -14,13 +14,14 @@ export default class ExpandableString extends Component {
 
   static defaultProps = {
     length: 140,
-    expanded: false,
   };
 
   componentWillReceiveProps(newProps) {
-    this.setState({
-      expanded: newProps.expanded,
-    });
+    if (newProps.expanded !== undefined) {
+      this.setState({
+        expanded: newProps.expanded,
+      });
+    }
   }
 
   toggleExpansion() {

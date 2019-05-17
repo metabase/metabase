@@ -55,8 +55,9 @@ export const getDatabaseId = createSelector(
   card => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
+export const getTableId = createSelector(
+  [getCard],
+  card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;
@@ -101,7 +102,7 @@ export const getDatabaseFields = createSelector(
   (databaseId, databaseFields) => databaseFields[databaseId],
 );
 
-import { getMode as getMode_ } from "metabase/qb/lib/modes";
+import { getMode as getMode_ } from "metabase/modes/lib/modes";
 import { getAlerts } from "metabase/alert/selectors";
 import {
   extractRemappings,
@@ -144,8 +145,10 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
 export const getIsResultDirty = createSelector(

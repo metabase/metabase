@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -132,7 +132,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ card }) => (card && card.name) || t`Question`)
 @fitViewport
 export default class QueryBuilder extends Component {
@@ -222,7 +225,9 @@ export default class QueryBuilder extends Component {
   };
 
   render() {
-    return <LegacyQueryBuilder {...this.props} />;
+    return (
+      <LegacyQueryBuilder {...this.props} handleResize={this.handleResize} />
+    );
   }
 }
 

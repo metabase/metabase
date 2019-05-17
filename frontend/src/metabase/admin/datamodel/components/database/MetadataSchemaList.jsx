@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";

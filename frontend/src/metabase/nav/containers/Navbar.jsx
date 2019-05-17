@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 import styled from "styled-components";
 import { space, width } from "styled-system";
@@ -28,7 +28,7 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 
 import { getPath, getContext, getUser } from "../selectors";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
   path: getPath(state, props),
@@ -63,7 +63,7 @@ const ActiveSearchColor = color(colors.brand)
 
 const SearchWrapper = Flex.extend`
   ${width} background-color: ${props =>
-      props.active ? ActiveSearchColor : DefaultSearchColor};
+  props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
   align-items: center;
   color: white;
@@ -147,12 +147,14 @@ class SearchBar extends React.Component {
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
-@entityListLoader({
-  entityType: "databases",
+@Database.loadList({
   // set this to false to prevent a potential spinner on the main nav
   loadingAndErrorWrapper: false,
 })
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class Navbar extends Component {
   state = {
     modal: null,
@@ -263,7 +265,7 @@ export default class Navbar extends Component {
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
         // TODO: hide nav using state in redux instead?
-        className="Nav relative bg-brand text-white z3"
+        className="Nav relative bg-brand text-white z3 flex-no-shrink"
         align="center"
         py={1}
         pr={2}

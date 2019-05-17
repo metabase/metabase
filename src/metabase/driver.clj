@@ -8,16 +8,40 @@
   `metabase.driver.sql-jdbc` for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [trs tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import org.joda.time.DateTime))
 
-(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
+(declare notify-database-updated)
+
+(defn- notify-all-databases-updated
+  "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
+
+  Currently only used below by `report-timezone` setter (i.e., only used when report timezone changes). Reusing pooled
+  connections with the old session timezone can have weird effects, especially if report timezone is changed to nil
+  (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid by a
+  given Database (meaning subsequent queries will fail to change the session timezone)."
+  []
+  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
+    (try
+      (notify-database-updated driver database)
+      (catch Throwable e
+        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+
+(defsetting report-timezone
+  (tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :setter
+  (fn [new-value]
+    (setting/set-string! :report-timezone new-value)
+    (notify-all-databases-updated)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
@@ -57,7 +81,7 @@
   [driver]
   (not (isa? hierarchy driver ::concrete)))
 
-(defn- driver->expected-namespace [driver]
+(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
@@ -78,7 +102,10 @@
       (locking require-lock
         (log/debug
          (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+        (try
+          (apply require expected-ns require-options)
+          (catch Throwable _
+            (throw (Exception. (str (tru "Could not find {0} driver." driver))))))))))
 
 (defn- load-driver-namespace-if-needed
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -100,7 +127,7 @@
           (when-not (registered? driver)
             (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
 
-(defn the-driver
+(s/defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
   throwing an Exception if it fails or is invalid. Returns keyword.
 
@@ -117,7 +144,8 @@
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
-  [driver]
+  [driver :- (s/cond-pre s/Str s/Keyword)]
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed driver)
     driver))
@@ -560,11 +588,42 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query])}
+  {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 
+(defmulti splice-parameters-into-native-query
+  "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = ?\", :params [\"Reggae\"]}
+
+  splice the parameters in to the native query as literals so it can be executed by the user, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = 'Reggae'\"}
+
+  This is used to power features such as 'Convert this Question to SQL' in the Query Builder. Normally when executing
+  the query we'd like to leave the statement as a prepared one and pass parameters that way instead of splicing them
+  in as literals so as to avoid SQL injection vulnerabilities. Thus the results of this method are not normally
+  executed by the Query Processor when processing an MBQL query. However when people convert a
+  question to SQL they can see what they will be executing and edit the query as needed.
+
+  Input to this function follows the same shape as output of `mbql->native` -- that is, it will be a so-called 'inner'
+  native query, with `:query` and `:params` keys, as in the example code above; output should be of the same format.
+  This method might be called even if no splicing needs to take place, e.g. if `:params` is empty; implementations
+  should be sure to handle this situation correctly.
+
+  For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
+  default implementation is an identity function."
+  {:arglists '([driver query]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod splice-parameters-into-native-query ::driver [_ query]
+  query)
+
+
+;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -619,9 +678,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti current-db-time
+(defmulti ^DateTime current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this."
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

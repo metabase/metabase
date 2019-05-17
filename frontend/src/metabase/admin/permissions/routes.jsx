@@ -1,7 +1,7 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRedirect, IndexRoute } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";
 import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp.jsx";
 import SchemasPermissionsApp from "./containers/SchemasPermissionsApp.jsx";

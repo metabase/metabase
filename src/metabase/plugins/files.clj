@@ -7,14 +7,15 @@
   *file-manipulation* functions for the sorts of operations the plugin system needs to perform."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]])
   (:import java.io.FileNotFoundException
            java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path]
-           java.nio.file.attribute.FileAttribute
+           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]
+           [java.nio.file.attribute FileAttribute FileTime]
            java.util.Collections))
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
@@ -69,20 +70,25 @@
 
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
-(defn- copy! [^Path source, ^Path dest]
-  (du/profile (trs "Extract file {0} -> {1}" source dest)
-    (Files/copy source dest (u/varargs CopyOption))))
+(defn- last-modified-time ^FileTime [^Path path]
+  (Files/getLastModifiedTime path (u/varargs LinkOption)))
 
-(defn- copy-if-not-exists! [^Path source, ^Path dest]
-  (when-not (exists? dest)
-    (copy! source dest)))
+(defn- copy-file! [^Path source, ^Path dest]
+  (when (or (not (exists? dest))
+            (pos? (.compareTo (last-modified-time source) (last-modified-time dest))))
+    (du/profile (trs "Extract file {0} -> {1}" source dest)
+      (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING])))))
 
-(defn copy-files-if-not-exists!
-  "Copy all files in `source-dir` to `dest-dir`; skip files if a file of the same name already exists in `dest-dir`."
+(defn copy-files!
+  "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified date is older than that of
+  the source file."
   [^Path source-dir, ^Path dest-dir]
   (doseq [^Path source (files-seq source-dir)
           :let [target (append-to-path dest-dir (str (.getFileName source)))]]
-    (copy-if-not-exists! source target)))
+    (try
+      (copy-file! source target)
+      (catch Throwable e
+        (log/error e (trs "Failed to copy file"))))))
 
 
 ;;; ------------------------------------------ Opening filesystems for URLs ------------------------------------------
@@ -121,6 +127,13 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               JAR FILE CONTENTS                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn file-exists-in-archive?
+  "True is a file exists in an archive."
+  [^Path archive-path & path-components]
+  (with-open [fs (FileSystems/newFileSystem archive-path (ClassLoader/getSystemClassLoader))]
+    (let [file-path (apply get-path-in-filesystem fs path-components)]
+      (exists? file-path))))
 
 (defn slurp-file-from-archive
   "Read the entire contents of a file from a archive (such as a JAR)."

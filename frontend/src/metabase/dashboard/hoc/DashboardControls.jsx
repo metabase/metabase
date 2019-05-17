@@ -26,6 +26,7 @@ type State = {
   isNightMode: boolean,
   refreshPeriod: ?number,
   refreshElapsed: ?number,
+  hideParameters: ?string,
 };
 
 const TICK_PERIOD = 0.25; // seconds
@@ -34,9 +35,13 @@ const TICK_PERIOD = 0.25; // seconds
  * It should probably be in Redux?
  */
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(null, { replace })(
+  connect(
+    null,
+    { replace },
+  )(
     class extends Component {
-      static displayName = "DashboardControls[" +
+      static displayName =
+        "DashboardControls[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
@@ -47,6 +52,8 @@ export default (ComposedComponent: ReactClass<any>) =>
 
         refreshPeriod: null,
         refreshElapsed: null,
+
+        hideParameters: null,
       };
 
       _interval: ?number;
@@ -88,6 +95,7 @@ export default (ComposedComponent: ReactClass<any>) =>
         );
         this.setNightMode(options.theme === "night" || options.night); // DEPRECATED: options.night
         this.setFullscreen(options.fullscreen);
+        this.setHideParameters(options.hide_parameters);
       };
 
       updateDashboardParams = () => {
@@ -162,6 +170,10 @@ export default (ComposedComponent: ReactClass<any>) =>
           }
           this.setState({ isFullscreen });
         }
+      };
+
+      setHideParameters = parameters => {
+        this.setState({ hideParameters: parameters });
       };
 
       _tickRefreshClock = async () => {

@@ -67,7 +67,7 @@ export const BackendResource = createSharedResource("BackendResource", {
         },
       );
     }
-    if (!await isReady(server.host)) {
+    if (!(await isReady(server.host))) {
       process.stdout.write(
         "Waiting for backend (host=" +
           server.host +
@@ -75,8 +75,11 @@ export const BackendResource = createSharedResource("BackendResource", {
           server.dbKey +
           ")",
       );
-      while (!await isReady(server.host)) {
-        process.stdout.write(".");
+      while (!(await isReady(server.host))) {
+        if (!process.env["CI"]) {
+          // disable for CI since it break's CircleCI's no_output_timeout
+          process.stdout.write(".");
+        }
         await delay(500);
       }
       process.stdout.write("\n");

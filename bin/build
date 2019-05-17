@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 # Generate the resources/version.properties file
 version() {
     VERSION_INFO=$(./bin/version)
@@ -32,6 +34,7 @@ frontend-fast() {
 }
 
 translations() {
+    frontend-deps
     echo "Running './bin/i18n/build-translation-resources' to build translation resources..."
     if ! ./bin/i18n/build-translation-resources; then
       echo "Building translation resources failed, please install 'gettext', or build without translations by running './bin/build no-translations'."
@@ -50,7 +53,7 @@ sample-dataset() {
 
 drivers() {
     echo "Building Metabase drivers..."
-    ./bin/build-drivers.sh clean
+    ./bin/build-drivers.sh
 }
 
 uberjar() {
@@ -59,7 +62,7 @@ uberjar() {
 }
 
 all() {
-    version && translations && frontend && sample-dataset && drivers
+    version && translations && frontend && sample-dataset && drivers && uberjar
 }
 
 no-translations() {

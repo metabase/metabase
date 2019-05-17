@@ -14,7 +14,9 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
-            [metabase.util.cron :as cron-util]
+            [metabase.util
+             [cron :as cron-util]
+             [i18n :refer [trs]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import metabase.models.database.DatabaseInstance
@@ -148,11 +150,11 @@
    (triggers/with-schedule
      (cron/schedule
       (cron/cron-schedule (cron-schedule database task-info))
-      ;; If we miss a trigger, try again at the next opportunity, but only try it once. If we miss two triggers in a
-      ;; row (i.e. more than an hour goes by) then the job should still execute, but drop the additional occurrences
-      ;; of the same trigger (i.e. no need to run the job 3 times because it was missed three times, once is all we
-      ;; need)
-      (cron/with-misfire-handling-instruction-fire-and-proceed)))))
+      ;; if we miss a sync for one reason or another (such as system being down) do not try to run the sync again.
+      ;; Just wait until the next sync cycle.
+      ;;
+      ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
+      (cron/with-misfire-handling-instruction-do-nothing)))))
 
 (s/defn ^:private schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info`."
@@ -184,10 +186,10 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
-(defn task-init
-  "Automatically called during startup; start the jobs for syncing/analyzing and updating FieldValues for all
-  Databases."
-  []
+(defmethod task/init! ::SyncDatabases [_]
   (job-init)
   (doseq [database (db/select Database)]
-    (schedule-tasks-for-db! database)))
+    (try
+      (schedule-tasks-for-db! database)
+      (catch Throwable e
+        (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))

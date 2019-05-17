@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import RevisionDiff from "./RevisionDiff.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import UserAvatar from "metabase/components/UserAvatar.jsx";
 
 import moment from "moment";
@@ -41,7 +41,10 @@ export default class Revision extends Component {
   }
 
   getName() {
-    const { revision: { user }, currentUser } = this.props;
+    const {
+      revision: { user },
+      currentUser,
+    } = this.props;
     if (user.id === currentUser.id) {
       return t`You`;
     } else {

@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import SearchHeader from "metabase/components/SearchHeader";
 import DirectionalButton from "metabase/components/DirectionalButton";
@@ -66,7 +66,10 @@ type Props = {
   location: LocationDescriptor, // Injected by withRouter HOC
 };
 
-@connect(null, { onReplaceLocation: replace, onChangeLocation: push })
+@connect(
+  null,
+  { onReplaceLocation: replace, onChangeLocation: push },
+)
 @withRouter
 export default class EntitySearch extends Component {
   searchHeaderInput: ?HTMLButtonElement;
@@ -113,11 +116,10 @@ export default class EntitySearch extends Component {
 
   setSearchText = searchText => {
     this.setState({ searchText }, this.applyFiltersAfterFilterChange);
-    this.updateUrl(
-      currentOptions =>
-        searchText !== ""
-          ? { ...currentOptions, search: searchText }
-          : _.omit(currentOptions, "search"),
+    this.updateUrl(currentOptions =>
+      searchText !== ""
+        ? { ...currentOptions, search: searchText }
+        : _.omit(currentOptions, "search"),
     );
   };
 
@@ -145,11 +147,10 @@ export default class EntitySearch extends Component {
 
   setGrouping = grouping => {
     this.setState({ currentGrouping: grouping });
-    this.updateUrl(
-      currentOptions =>
-        grouping !== DEFAULT_SEARCH_GROUPING
-          ? { ...currentOptions, grouping: grouping.id }
-          : _.omit(currentOptions, "grouping"),
+    this.updateUrl(currentOptions =>
+      grouping !== DEFAULT_SEARCH_GROUPING
+        ? { ...currentOptions, grouping: grouping.id }
+        : _.omit(currentOptions, "grouping"),
     );
     this.searchHeaderInput.focus();
   };
@@ -491,9 +492,8 @@ class SearchResultsList extends Component {
 
     return (
       <li className="py1 px3 flex justify-end align-center">
-        <span className="text-bold">{currentEntitiesText}</span>&nbsp;{t`of`}&nbsp;<span className="text-bold">
-          {entityCount}
-        </span>
+        <span className="text-bold">{currentEntitiesText}</span>&nbsp;{t`of`}
+        &nbsp;<span className="text-bold">{entityCount}</span>
         <span
           className={cx(
             "mx1 flex align-center justify-center rounded",
@@ -553,7 +553,10 @@ class SearchResultsList extends Component {
   }
 }
 
-@connect(null, { onChangeLocation: push })
+@connect(
+  null,
+  { onChangeLocation: push },
+)
 export class SearchResultListItem extends Component {
   props: {
     entity: any,

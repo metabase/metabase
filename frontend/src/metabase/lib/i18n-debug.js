@@ -25,8 +25,8 @@ const SPECIAL_STRINGS = new Set([
   "Max",
 ]);
 
-const obfuscateString = string => {
-  if (SPECIAL_STRINGS.has(string)) {
+const obfuscateString = (original, string) => {
+  if (SPECIAL_STRINGS.has(original)) {
     return string.toUpperCase();
   } else {
     // divide by 2 because Unicode `FULL BLOCK` is quite wide
@@ -35,15 +35,15 @@ const obfuscateString = string => {
 };
 
 export function enableTranslatedStringReplacement() {
-  const c3po = require("c-3po");
+  const c3po = require("ttag");
   const _t = c3po.t;
   const _jt = c3po.jt;
   const _ngettext = c3po.ngettext;
   c3po.t = (...args) => {
-    return obfuscateString(_t(...args));
+    return obfuscateString(args[0][0], _t(...args));
   };
   c3po.ngettext = (...args) => {
-    return obfuscateString(_ngettext(...args));
+    return obfuscateString(args[0][0], _ngettext(...args));
   };
   // eslint-disable-next-line react/display-name
   c3po.jt = (...args) => {

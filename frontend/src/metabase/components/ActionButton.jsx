@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 type Props = {

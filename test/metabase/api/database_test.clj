@@ -1,6 +1,10 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.string :as str]
+            [expectations :refer :all]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.api.database :as database-api]
             [metabase.driver.util :as driver.u]
             [metabase.models
@@ -20,15 +24,11 @@
              [data :as data]
              [util :as tu :refer [match-$]]]
             [metabase.test.data
-             [datasets :as datasets]
              [env :as tx.env]
              [users :refer :all]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.driver :as driver]
-            [clojure.string :as str]))
+            [toucan.util.test :as tt]))
 
 ;; HELPER FNS
 
@@ -118,6 +118,7 @@
 
 ;; ## POST /api/database
 ;; Check that we can create a Database
+;; TODO - this test fails if we're running Postgres locally & it requires a password...
 (expect-with-temp-db-created-via-api [db {:is_full_sync false}]
   (merge default-db-details
          (match-$ db

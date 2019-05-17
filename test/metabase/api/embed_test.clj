@@ -33,10 +33,13 @@
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
 
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
 (defmacro with-new-secret-key {:style/indent 0} [& body]
-  `(binding [*secret-key* (random-embedding-secret-key)]
-     (tu/with-temporary-setting-values [~'embedding-secret-key *secret-key*]
-       ~@body)))
+  `(do-with-new-secret-key (fn [] ~@body)))
 
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (u/get-id card-or-id)}
@@ -203,7 +206,9 @@
       (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
                                                                      :type     :native
                                                                      :native   {:query "SELECT * FROM XYZ"}}}]
-        (http/client :get 400 (card-query-url card response-format))))))
+        ;; since results are keepalive-streamed for normal queries (i.e., not CSV, JSON, or XLSX) we have to return a
+        ;; status code right away, so streaming responses always return 200
+        (http/client :get (if (seq response-format) 400 200) (card-query-url card response-format))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect-for-response-formats [response-format]
@@ -404,7 +409,7 @@
                                      :card {:dataset_query {:database (data/id)
                                                             :type     :native,
                                                             :native   {:query "SELECT * FROM XYZ"}}}}]
-        (http/client :get 400 (dashcard-url dashcard))))))
+        (http/client :get 200 (dashcard-url dashcard))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect

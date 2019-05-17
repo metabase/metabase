@@ -20,6 +20,10 @@
 (defmethod sql.tx/field-base-type->sql-type [:redshift :type/Integer]    [_ _] "INTEGER")
 (defmethod sql.tx/field-base-type->sql-type [:redshift :type/Text]       [_ _] "TEXT")
 
+;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
+(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Time] [_ _]
+  (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
+
 (def ^:private db-connection-details
   (delay {:host     (tx/db-test-env-var-or-throw :redshift :host)
           :port     (Integer/parseInt (tx/db-test-env-var-or-throw :redshift :port "5439"))

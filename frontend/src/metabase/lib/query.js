@@ -2,8 +2,9 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
+import Field from "metabase-lib/lib/metadata/Field";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
@@ -341,10 +342,10 @@ const Query = {
       return isExpressionReference(obj)
         ? null
         : obj.constructor === Array
-          ? _.map(obj, removeExpressionReferences)
-          : typeof obj === "object"
-            ? _.mapObject(obj, removeExpressionReferences)
-            : obj;
+        ? _.map(obj, removeExpressionReferences)
+        : typeof obj === "object"
+        ? _.mapObject(obj, removeExpressionReferences)
+        : obj;
     }
 
     return this.cleanQuery(removeExpressionReferences(query));
@@ -430,6 +431,8 @@ const Query = {
       return Query.getFieldTargetId(field[1]);
     } else if (Query.isBinningStrategy(field)) {
       return Query.getFieldTargetId(field[1]);
+    } else if (Query.isExpressionField(field)) {
+      return field;
     } else if (Query.isFieldLiteral(field)) {
       return field;
     }
@@ -460,11 +463,14 @@ const Query = {
       return Query.getFieldTarget(field[1], tableDef, path);
     } else if (Query.isExpressionField(field)) {
       // hmmm, since this is a dynamic field we'll need to build this here
-      let fieldDef = {
+      // but base it on Field object, since some functions are used, when adding as filter
+      let fieldDef = new Field({
         display_name: field[1],
         name: field[1],
+        expression_name: field[1],
+        metadata: tableDef.metadata,
         // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-        base_type: TYPE.Integer,
+        base_type: TYPE.Float,
         operators_lookup: {},
         operators: [],
         active: true,
@@ -474,7 +480,7 @@ const Query = {
         special_type: null,
         target: null,
         visibility_type: "normal",
-      };
+      });
       fieldDef.operators = getOperators(fieldDef, tableDef);
       fieldDef.operators_lookup = createLookupByProperty(
         fieldDef.operators,

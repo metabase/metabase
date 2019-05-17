@@ -1,5 +1,5 @@
 import { TYPE } from "metabase/lib/types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export const field_special_types = [
   {

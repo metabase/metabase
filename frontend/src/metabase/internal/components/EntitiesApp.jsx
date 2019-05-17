@@ -16,15 +16,18 @@ import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader"
 import EntityForm from "metabase/entities/containers/EntityForm";
 
 const withPush = ComposedComponent =>
-  connect(null, { push })(ComposedComponent);
+  connect(
+    null,
+    { push },
+  )(ComposedComponent);
 
 export default class EntitiesApp extends React.Component {
   render() {
     return (
       <div className="p2">
         {Object.values(entityDefs).map(entityDef => (
-          <div key={entityDef.name}>
-            <Link to={`/_internal/entities/${entityDef.name}`}>
+          <div key={entityDef.name} className="mb1">
+            <Link to={`/_internal/entities/${entityDef.name}`} className="link">
               {capitalize(entityDef.name)}
             </Link>
           </div>
@@ -37,7 +40,7 @@ export default class EntitiesApp extends React.Component {
 import { List, WindowScroller } from "react-virtualized";
 
 const EntityListApp = ({ params: { entityType } }) => (
-  <EntityListLoader entityType={entityType}>
+  <EntityListLoader entityType={entityType} wrapped>
     {({ list }) => (
       <div className="p2">
         <h2 className="pb2">{capitalize(entityType)}</h2>
@@ -49,16 +52,15 @@ const EntityListApp = ({ params: { entityType } }) => (
               height={height}
               isScrolling={isScrolling}
               rowCount={list.length}
-              rowHeight={20}
+              rowHeight={22}
               width={200}
               rowRenderer={({ index, key, style }) => (
-                <div key={key} style={style}>
+                <div key={key} style={style} className="text-ellipsis">
                   <Link
+                    className="text-nowrap link"
                     to={`/_internal/entities/${entityType}/${list[index].id}`}
                   >
-                    {entityDefs[entityType].objectSelectors.getName(
-                      list[index],
-                    )}
+                    {list[index].getName()}
                   </Link>
                 </div>
               )}

@@ -21,28 +21,28 @@ When you need to share dashboards or pulses with others, we *strongly* recommend
 ## Asking questions and running queries
 
 ### Can I use SQL with Metabase?
-[Yes](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
+[Yes](https://metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
 
 ### Do I need to know SQL to use Metabase?
-[No](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html)
+[No](https://metabase.com/docs/latest/users-guide/04-asking-questions.html)
 
 ### Does Metabase support SQL Joins?
 
 Metabase does not expose a "Join" operator, but we do provide ways for non-SQL-proficient users to perform the tasks that joins are used for such as filtering or grouping by columns in other tables, etc.
 
-For more info see our [blog post on the subject](http://www.metabase.com/blog/Joins)
+For more info see our [blog post on the subject](https://metabase.com/blog/Joins)
 
 ### Why can't I do X in the Query Builder?
 
-The primary audience of the GUI querying interface is a non-technical user who doesn't SQL. Advanced users can always [use SQL](http://www.metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
+The primary audience of the GUI querying interface is a non-technical user who doesn't SQL. Advanced users can always [use SQL](https://metabase.com/docs/latest/users-guide/04-asking-questions.html#using-sql).
 
 We're constantly trying to walk the line between putting more functionality into the GUI interface and creating a confusing mess. You can expect it to improve and change with time, but in the meantime, you can always lean on SQL directly for the complicated matters.
 
 ### Why can't I seem to use drill-through or question actions?
 
-Metabase allows you to [click on your charts or tables to explore or zoom in](http://www.metabase.com/docs/latest/users-guide/03-basic-exploration.html), but these features don't currently work with SQL/native queries (this is because Metabase doesn't currently parse these kinds of queries). The same is true of the question actions menu in the bottom-right of the question detail page.
+Metabase allows you to [click on your charts or tables to explore or zoom in](https://metabase.com/docs/latest/users-guide/03-basic-exploration.html), but these features don't currently work with SQL/native queries (this is because Metabase doesn't currently parse these kinds of queries). The same is true of the question actions menu in the bottom-right of the question detail page.
 
-However, in [Metabase version 0.25 we introduced nested queries](http://www.metabase.com/blog/Metabase-0.25#nested-questions), a feature that lets you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
+However, in [Metabase version 0.25 we introduced nested queries](https://metabase.com/blog/Metabase-0.25#nested-questions), a feature that lets you use the results of SQL/native queries as the starting table for GUI-based questions. This means you'll be able to use sophisticated SQL/native queries to create the exact segments you need, and you and your team will be able to use drill-through and actions if you create GUI-based questions from those segments.
 
 ## Why are my field or table names showing up with weird spacing?
 
@@ -99,7 +99,7 @@ Metabase currently supports:
 * BigQuery
 * Druid
 * H2
-* MongoDB (version 3.0 or higher)
+* MongoDB (version 3.4 or higher)
 * MySQL (and MariaDB)
 * PostgreSQL
 * Presto
@@ -110,7 +110,7 @@ Metabase currently supports:
 
 Metabase is built by a small core team, and we have very limited engineering bandwidth. Each additional database we connect to slows down overall product development, increases the time and cost of our automated testing and requires us to learn a lot about the edge cases of the specific database driver. While writing a given driver might only take a few days, supporting it places a cost on us indefinitely.
 
-That said, we will build out additional database connectors as we are able to. We generally select additional drivers based on demand from the community and our ability to set up a test database server easily in our integrated testing environment.
+That said, we will build out additional database connectors as we are able to. We generally select additional drivers based on demand from the community and our ability to set up a test database server easily in our e2e testing environment.
 
 We welcome community contributions of database connectors. If you're able to help, we have [open issues](https://github.com/metabase/metabase/labels/Database%20Support) for a number of databases. We'd greatly appreciate your help!
 
@@ -132,18 +132,18 @@ Not exactly. Metabase provides access to data you have in an existing database y
 
 Yes, to the extent that we are able to and have time.
 
-If you're sure you've found a bug, please [open an issue](https://github.com/metabase/metabase/issues/new). Otherwise, try checking out the [troubleshooting guide](http://www.metabase.com/troubleshooting/) first to see if the answer to your problem is there.
+If you're sure you've found a bug, please [open an issue](https://github.com/metabase/metabase/issues/new). Otherwise, try checking out the [troubleshooting guide](https://metabase.com/troubleshooting/) first to see if the answer to your problem is there.
 
-If you're still having trouble, please start a conversation at our [discussion forum](http://discourse.metabase.com) and check out the other threads. Someone else might have experienced the same problem.
+If you're still having trouble, please start a conversation at our [discussion forum](https://discourse.metabase.com/) and check out the other threads. Someone else might have experienced the same problem.
 
 ### Do you offer paid support?
 
-We are experimenting with offering paid support to a limited number of companies. [Contact us](http://www.metabase.com/services/) if you want more information.
+We are experimenting with offering paid support to a limited number of companies. [Contact us](https://metabase.com/services/) if you want more information.
 
 ## Embedding
 
 ### Can I embed charts or dashboards in another application?
 
 Yes, Metabase offers two solutions for sharing charts and dashboards:
-- [Public links](http://www.metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity.
-- A powerful [application embedding](http://www.metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications.
+- [Public links](https://metabase.com/docs/latest/administration-guide/12-public-links.html) let you share or embed charts with simplicity.
+- A powerful [application embedding](https://metabase.com/docs/latest/administration-guide/13-embedding.html) let you to embed and customize charts in your own web applications.

@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
@@ -144,7 +144,7 @@ export default class SpecificDatePicker extends Component {
                 onClick={() => this.onChange(date, 12, 30)}
               >
                 <Icon className="mr1" name="clock" />
-                Add a time
+                {t`Add a time`}
               </div>
             ) : (
               <HoursMinutesInput

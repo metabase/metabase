@@ -10,6 +10,7 @@ const BUTTON_VARIANTS = [
   "small",
   "medium",
   "large",
+  "round",
   "primary",
   "danger",
   "warning",
@@ -25,12 +26,15 @@ const BaseButton = ({
   icon,
   iconRight,
   iconSize,
+  iconColor,
   children,
   ...props
 }) => {
   let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
+
+  const onlyIcon = !children;
 
   return (
     <button
@@ -40,17 +44,19 @@ const BaseButton = ({
       <div className="flex layout-centered">
         {icon && (
           <Icon
+            color={iconColor}
             name={icon}
             size={iconSize ? iconSize : 14}
-            className={cx({ mr1: !props.onlyIcon })}
+            className={cx({ mr1: !onlyIcon })}
           />
         )}
         <div>{children}</div>
         {iconRight && (
           <Icon
+            color={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 14}
-            className={cx({ ml1: !props.onlyIcon })}
+            className={cx({ ml1: !onlyIcon })}
           />
         )}
       </div>
@@ -74,7 +80,6 @@ BaseButton.propTypes = {
   purple: PropTypes.bool,
 
   borderless: PropTypes.bool,
-  onlyIcon: PropTypes.bool,
 };
 
 const Button = sys(
@@ -84,5 +89,7 @@ const Button = sys(
   "space",
   "color",
 );
+
+Button.displayName = "Button";
 
 export default Button;

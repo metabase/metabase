@@ -11,11 +11,13 @@ export default class ButtonBar extends Component {
 
     return (
       <div className="flex align-center">
-        {buttons.filter(v => v && v.length > 0).map((section, sectionIndex) => (
-          <span key={sectionIndex} className={className}>
-            {section}
-          </span>
-        ))}
+        {buttons
+          .filter(v => v && v.length > 0)
+          .map((section, sectionIndex) => (
+            <span key={sectionIndex} className={className}>
+              {section}
+            </span>
+          ))}
       </div>
     );
   }

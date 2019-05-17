@@ -3,7 +3,7 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
@@ -12,15 +12,21 @@
             [colorize.core :as colorize]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.util.i18n :refer [tru trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec])
-  (:import [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.io BufferedReader Reader]
+           [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           java.util.concurrent.TimeoutException))
+           java.util.concurrent.TimeoutException
+           java.util.Locale
+           javax.xml.bind.DatatypeConverter
+           org.apache.commons.validator.routines.UrlValidator))
 
 ;; This is the very first log message that will get printed.
-;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the logger
-;; It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
+;;
+;; It's here because this is one of the very first namespaces that gets loaded, and the first that has access to the
+;; logger It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many
+;; other namespaces need to get loaded
 (when-not *compile-files*
   (log/info (trs "Loading Metabase...")))
 
@@ -65,18 +71,18 @@
   ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
   ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
   ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
-  java.io.Reader
+  Reader
   (jdbc-clob->str [this]
-    (jdbc-clob->str (java.io.BufferedReader. this)))
+    (jdbc-clob->str (BufferedReader. this)))
 
   ;; Read all the lines for the `BufferedReader` and combine into a single `String`
-  java.io.BufferedReader
+  BufferedReader
   (jdbc-clob->str [this]
     (with-open [_ this]
       (loop [acc []]
         (if-let [line (.readLine this)]
           (recur (conj acc line))
-          (s/join "\n" acc)))))
+          (str/join "\n" acc)))))
 
   ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
   org.h2.jdbc.JdbcClob
@@ -85,10 +91,10 @@
 
 
 (defn optional
-  "Helper function for defining functions that accept optional arguments. If PRED? is true of the first item in ARGS,
-  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[DEFAULT other-args]` is returned.
+  "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
+  a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[default other-args]` is returned.
 
-   If DEFAULT is not specified, `nil` will be returned when PRED? is false.
+  If `default` is not specified, `nil` will be returned when `pred?` is false.
 
     (defn
       ^{:arglists ([key? numbers])}
@@ -103,35 +109,29 @@
   (if (pred? (first args)) [(first args) (next args)]
       [default args]))
 
+(defmacro varargs
+  "Make a properly-tagged Java interop varargs argument. This is basically the same as `into-array` but properly tags
+  the result.
+
+    (u/varargs String)
+    (u/varargs String [\"A\" \"B\"])"
+  {:style/indent 1}
+  [klass & [objects]]
+  (vary-meta `(into-array ~klass ~objects)
+             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
 
 (defn email?
-  "Is STRING a valid email address?"
+  "Is `s` a valid email address string?"
   ^Boolean [^String s]
   (boolean (when (string? s)
              (re-matches #"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?"
-                         (s/lower-case s)))))
-
+                         (str/lower-case s)))))
 
 (defn url?
-  "Is STRING a valid HTTP/HTTPS URL? (This only handles `localhost` and domains like `metabase.com`; URLs containing
-  IP addresses will return `false`.)"
-  ^Boolean [^String s]
-  (boolean (when (seq s)
-             (when-let [^java.net.URL url (ignore-exceptions (java.net.URL. s))]
-               ;; these are both automatically downcased
-               (let [protocol (.getProtocol url)
-                     host     (.getHost url)]
-                 (and protocol
-                      host
-                      (re-matches #"^https?$" protocol)
-                      (or (re-matches #"^.+\..{2,}$" host) ; 2+ letter TLD
-                          (= host "localhost"))))))))
-
-(defn sequence-of-maps?
-  "Is COLL a sequence of maps?"
-  [coll]
-  (and (sequential? coll)
-       (every? map? coll)))
+  "Is `s` a valid HTTP/HTTPS URL string?"
+  ^Boolean [s]
+  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+    (.isValid validator (str s))))
 
 (defn maybe?
   "Returns `true` if X is `nil`, otherwise calls (F X).
@@ -144,10 +144,10 @@
 
    It can also be used to make sure a given function won't throw a `NullPointerException`:
 
-     (s/lower-case nil)            -> NullPointerException
-     (s/lower-case \"ABC\")        -> \"abc\"
-     (maybe? s/lower-case nil)     -> true
-     (maybe? s/lower-case \"ABC\") -> \"abc\"
+     (str/lower-case nil)            -> NullPointerException
+     (str/lower-case \"ABC\")        -> \"abc\"
+     (maybe? str/lower-case nil)     -> true
+     (maybe? str/lower-case \"ABC\") -> \"abc\"
 
    The latter use-case can be useful for things like sorting where some values in a collection
    might be `nil`:
@@ -180,12 +180,14 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
-(defn rpartial
+(defn ^:deprecated rpartial
   "Like `partial`, but applies additional args *before* BOUND-ARGS.
    Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
 
     ((partial - 5) 8)  -> (- 5 8) -> -3
-    ((rpartial - 5) 8) -> (- 8 5) -> 3"
+    ((rpartial - 5) 8) -> (- 8 5) -> 3
+
+  DEPRECATED: just use `#()` function literals instead. No need to be needlessly confusing."
   [f & bound-args]
   (fn [& args]
     (apply f (concat args bound-args))))
@@ -200,21 +202,21 @@
                 ~collection)))
 
 (defmacro prog1
-  "Execute FIRST-FORM, then any other expressions in BODY, presumably for side-effects; return the result of
-   FIRST-FORM.
+  "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
+  `first-form`.
 
-     (def numbers (atom []))
+    (def numbers (atom []))
 
-     (defn find-or-add [n]
-       (or (first-index-satisfying (partial = n) @numbers)
-           (prog1 (count @numbers)
-             (swap! numbers conj n))))
+    (defn find-or-add [n]
+      (or (first-index-satisfying (partial = n) @numbers)
+          (prog1 (count @numbers)
+            (swap! numbers conj n))))
 
-     (find-or-add 100) -> 0
-     (find-or-add 200) -> 1
-     (find-or-add 100) -> 0
+    (find-or-add 100) -> 0
+    (find-or-add 200) -> 1
+    (find-or-add 100) -> 0
 
-   The result of FIRST-FORM is bound to the anaphor `<>`, which is convenient for logging:
+   The result of `first-form` is bound to the anaphor `<>`, which is convenient for logging:
 
      (prog1 (some-expression)
        (println \"RESULTS:\" <>))
@@ -278,57 +280,50 @@
     "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Metabase
     frame filtered out."))
 
-;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
-;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
-;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
-;; we should be able to remove this code.
-(defn- throwable-get-stack-trace [^Throwable t]
-  (.getStackTrace t))
+(extend-protocol IFilteredStacktrace
+  nil
+  (filtered-stacktrace [_] nil)
 
-(defn- thread-get-stack-trace [^Thread t]
-  (.getStackTrace t))
+  Throwable
+  (filtered-stacktrace [^Throwable this]
+    (filtered-stacktrace (.getStackTrace this)))
 
-(extend nil
-  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+  Thread
+  (filtered-stacktrace [^Thread this]
+    (filtered-stacktrace (.getStackTrace this))))
 
-(extend Throwable
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
-
-(extend Thread
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                              (filtered-stacktrace (thread-get-stack-trace this)))})
-
-(defn- metabase-frame? [frame]
-  (re-find #"metabase" (str frame)))
-
-;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
   IFilteredStacktrace
   {:filtered-stacktrace
    (fn [this]
      ;; keep all the frames before the last Metabase frame, but then filter out any other non-Metabase frames after
      ;; that
-     (let [[frames-after-last-mb other-frames]     (split-with (complement metabase-frame?)
-                                                               (map str (seq this)))
-           [last-mb-frame & frames-before-last-mb] (map #(s/replace % #"^metabase\." "")
-                                                        (filter metabase-frame? other-frames))]
+     (let [[frames-after-last-mb other-frames]     (split-with #(not (str/includes? % "metabase"))
+                                                               (seq this))
+           [last-mb-frame & frames-before-last-mb] (for [frame other-frames
+                                                         :when (str/includes? frame "metabase")]
+                                                     (str/replace frame #"^metabase\." ""))]
        (concat
-        frames-after-last-mb
+        (map str frames-after-last-mb)
         ;; add a little arrow to the frame so it stands out more
-        (cons (str "--> " last-mb-frame)
-              frames-before-last-mb))))})
+        (cons
+         (some->> last-mb-frame (str "--> "))
+         frames-before-last-mb))))})
+
 
 (defn deref-with-timeout
-  "Call `deref` on a FUTURE and throw an exception if it takes more than TIMEOUT-MS."
-  [futur timeout-ms]
-  (let [result (deref futur timeout-ms ::timeout)]
+  "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
+  `timeout-ms`. If `ref` is a future it will attempt to cancel it as well."
+  [reff timeout-ms]
+  (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (throw (TimeoutException. (format "Timed out after %d milliseconds." timeout-ms))))
+      (when (instance? java.util.concurrent.Future reff)
+        (future-cancel reff))
+      (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
     result))
 
 (defmacro with-timeout
-  "Run BODY in a `future` and throw an exception if it fails to complete after TIMEOUT-MS."
+  "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(deref-with-timeout (future ~@body) ~timeout-ms))
 
@@ -377,7 +372,7 @@
   "Return a version of S with diacritical marks removed."
   ^String [^String s]
   (when (seq s)
-    (s/replace
+    (str/replace
      ;; First, "decompose" the characters. e.g. replace 'LATIN CAPITAL LETTER A WITH ACUTE' with 'LATIN CAPITAL LETTER
      ;; A' + 'COMBINING ACUTE ACCENT' See http://docs.oracle.com/javase/8/docs/api/java/text/Normalizer.html
      (Normalizer/normalize s Normalizer$Form/NFD)
@@ -388,7 +383,7 @@
      "")))
 
 
-(def ^:private ^:const slugify-valid-chars
+(def ^:private slugify-valid-chars
   "Valid *ASCII* characters for URL slugs generated by `slugify`."
   #{\a \b \c \d \e \f \g \h \i \j \k \l \m \n \o \p \q \r \s \t \u \v \w \x \y \z
     \0 \1 \2 \3 \4 \5 \6 \7 \8 \9
@@ -402,22 +397,22 @@
     :else                             \_))                 ; otherwise replace them with underscores
 
 (defn slugify
-  "Return a version of `String` S appropriate for use as a URL slug.
+  "Return a version of String `s` appropriate for use as a URL slug.
    Downcase the name, remove diacritcal marks, and replace non-alphanumeric *ASCII* characters with underscores;
    URL-encode non-ASCII characters. (Non-ASCII characters are encoded rather than replaced with underscores in order
    to support languages that don't use the Latin alphabet; see issue #3818).
 
-   Optionally specify MAX-LENGTH which will truncate the slug after that many characters."
+   Optionally specify `max-length` which will truncate the slug after that many characters."
   (^String [^String s]
    (when (seq s)
-     (s/join (for [c (remove-diacritical-marks (s/lower-case s))]
-               (slugify-char c)))))
+     (str/join (for [c (remove-diacritical-marks (str/lower-case s))]
+                 (slugify-char c)))))
   (^String [s max-length]
-   (s/join (take max-length (slugify s)))))
+   (str/join (take max-length (slugify s)))))
 
 (defn do-with-auto-retries
-  "Execute F, a function that takes no arguments, and return the results.
-   If F fails with an exception, retry F up to NUM-RETRIES times until it succeeds.
+  "Execute `f`, a function that takes no arguments, and return the results.
+   If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
    Consider using the `auto-retry` macro instead of calling this function directly."
   {:style/indent 1}
@@ -430,16 +425,16 @@
            (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry
-  "Execute BODY and return the results.
-   If BODY fails with an exception, retry execution up to NUM-RETRIES times until it succeeds."
+  "Execute `body` and return the results.
+   If `body` fails with an exception, retry execution up to `num-retries` times until it succeeds."
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
      (fn [] ~@body)))
 
 (defn key-by
-  "Convert a sequential COLL to a map of `(f item)` -> `item`.
-  This is similar to `group-by`, but the resultant map's values are single items from COLL rather than sequences of
+  "Convert a sequential `coll` to a map of `(f item)` -> `item`.
+  This is similar to `group-by`, but the resultant map's values are single items from `coll` rather than sequences of
   items. (Because only a single item is kept for each value of `f`, items producing duplicate values will be
   discarded).
 
@@ -454,7 +449,7 @@
      (keyword->qualified-name :type/FK) ->  \"type/FK\""
   [k]
   (when k
-    (s/replace (str k) #"^:" "")))
+    (str/replace (str k) #"^:" "")))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -505,7 +500,7 @@
      (select-nested-keys {:a 100, :b {:c 200, :d 300}} [:a [:b :d] :c])
      ;; -> {:a 100, :b {:d 300}}
 
-   The values of KEYSEQ can be either regular keys, which work the same way as `select-keys`,
+   The values of `keyseq` can be either regular keys, which work the same way as `select-keys`,
    or vectors of the form `[k & nested-keys]`, which call `select-nested-keys` recursively
    on the value of `k`. "
   [m keyseq]
@@ -527,15 +522,15 @@
 (defn decode-base64
   "Decodes a Base64 string to a UTF-8 string"
   [input]
-  (new java.lang.String (javax.xml.bind.DatatypeConverter/parseBase64Binary input) "UTF-8"))
+  (new java.lang.String (DatatypeConverter/parseBase64Binary input) "UTF-8"))
 
 (defn encode-base64
   "Encodes a string to a Base64 string"
   [^String input]
-  (javax.xml.bind.DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+  (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
-  "Increment N if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
+  "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
   (fnil inc 0))
 
 (defn occurances-of-substring
@@ -543,7 +538,7 @@
   ^Long [^String s, ^String substr]
   (when (and (seq s) (seq substr))
     (loop [index 0, cnt 0]
-      (if-let [^long new-index (s/index-of s substr index)]
+      (if-let [^long new-index (str/index-of s substr index)]
         (recur (inc new-index) (inc cnt))
         cnt))))
 
@@ -567,7 +562,8 @@
        :non-nil #{:d :e :f})
      ;; -> {:a 100, :b nil, :d 200}"
   {:style/indent 1}
-  [m & {:keys [present non-nil]}]
+  [m & {:keys [present non-nil], :as options}]
+  {:pre [(every? #{:present :non-nil} (keys options))]}
   (merge (select-keys m present)
          (select-non-nil-keys m non-nil)))
 
@@ -580,16 +576,16 @@
                          (Math/log 10))))))
 
 (defn update-when
-  "Like clojure.core/update but does not create a new key if it does not exist.
-   Useful when you don't want to create cruft."
+  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
+  cruft."
   [m k f & args]
   (if (contains? m k)
     (apply update m k f args)
     m))
 
 (defn update-in-when
-  "Like clojure.core/update-in but does not create new keys if they do not exist.
-   Useful when you don't want to create cruft."
+  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
+  cruft."
   [m k f & args]
   (if (not= ::not-found (get-in m k ::not-found))
     (apply update-in m k f args)
@@ -622,7 +618,7 @@
   [k]
   (if (keyword? k)
     (keyword (snake-key (name k)))
-    (s/replace k #"-" "_")))
+    (str/replace k #"-" "_")))
 
 (defn recursive-map-keys
   "Recursively replace the keys in a map with the value of `(f key)`."
@@ -651,8 +647,47 @@
     arg
     [arg]))
 
-(defmacro varargs
-  "Make a properly-tagged Java interop varargs argument."
-  [klass & [objects]]
-  (vary-meta `(into-array ~klass ~objects)
-             assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
+(def ^:private do-with-us-locale-lock (Object.))
+
+(defn do-with-us-locale
+  "Implementation for `with-us-locale` macro; see below."
+  [f]
+  ;; Since I'm 99% sure default Locale isn't thread-local we better put a lock in place here so we don't end up with
+  ;; the following race condition:
+  ;;
+  ;; Thread 1 ....*.............................*........................*...........*
+  ;;              ^getDefault() -> Turkish      ^setDefault(US)          ^(f)        ^setDefault(Turkish)
+  ;; Thread 2 ....................................*....................*................*......*
+  ;;                                              ^getDefault() -> US  ^setDefault(US)  ^(f)   ^setDefault(US)
+  (locking do-with-us-locale-lock
+    (let [original-locale (Locale/getDefault)]
+      (try
+        (Locale/setDefault Locale/US)
+        (f)
+        (finally
+          (Locale/setDefault original-locale))))))
+
+(defmacro with-us-locale
+  "Execute `body` with the default system locale temporarily set to `locale`. Why would you want to do this? Tons of
+  code relies on `String/toUpperCase` which converts a string to uppercase based on the default locale. Normally, this
+  does what you'd expect, but when the default locale is Turkish, all hell breaks loose:
+
+    ;; Locale is Turkish / -Duser.language=tr
+    (.toUpperCase \"filename\") ;; -> \"FİLENAME\"
+
+  Rather than submit PRs to every library in the world to use `(.toUpperCase <str> Locale/US)`, it's simpler just to
+  temporarily bind the default Locale to something predicatable (i.e. US English) when doing something important that
+  tends to break like running Liquibase migrations.)
+
+  Note that because `Locale/setDefault` and `Locale/getDefault` aren't thread-local (as far as I know) I've had to put
+  a lock in place to prevent race conditions where threads simulataneously attempt to fetch and change the default
+  Locale. Thus this macro should be used sparingly, and only in places that are already single-threaded (such as the
+  launch code that runs Liquibase).
+
+  DO NOT use this macro in API endpoints or other places that are multithreaded or performance will be negatively
+  impacted. (You shouldn't have a good reason for using this there anyway. Rewrite your code to pass `Locale/US` when
+  you call `.toUpperCase` or `str/upper-case`. Only use this macro if the calls in question are part of a 3rd-party
+  library.)"
+  {:style/indent 0}
+  [& body]
+  `(do-with-us-locale (fn [] ~@body)))

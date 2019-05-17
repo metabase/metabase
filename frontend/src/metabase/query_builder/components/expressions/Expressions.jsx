@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 import IconBorder from "metabase/components/IconBorder.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";

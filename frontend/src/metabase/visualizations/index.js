@@ -16,7 +16,7 @@ import ScatterPlot from "./visualizations/ScatterPlot.jsx";
 import Funnel from "./visualizations/Funnel.jsx";
 import Gauge from "./visualizations/Gauge.jsx";
 import ObjectDetail from "./visualizations/ObjectDetail.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { Series } from "metabase/meta/types/Visualization";

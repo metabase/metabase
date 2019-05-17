@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
@@ -368,4 +368,7 @@ const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
-export default connect(null, mapDispatchToProps)(FieldValuesWidget);
+export default connect(
+  null,
+  mapDispatchToProps,
+)(FieldValuesWidget);

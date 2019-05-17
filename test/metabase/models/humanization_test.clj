@@ -1,7 +1,6 @@
 (ns metabase.models.humanization-test
   (:require [expectations :refer :all]
             [metabase.models
-             [field :refer [Field]]
              [humanization :as humanization :refer :all]
              [table :refer [Table]]]
             [metabase.test.util :as tu]
