@@ -126,7 +126,7 @@
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (let [{{:keys [columns data nextUri error id infoUri]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
                                                                      (assoc (details->request details-with-tunnel)
-                                                                       :body query, :as :json :redirect-strategy :lax))]
+                                                                       :body query, :as :json, :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -145,8 +145,8 @@
                   ;; If we have a query id, we can cancel the query
                   (try
                     (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))]
-                      (let [adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri) ]
-                    (http/delete adjustedUri(details->request details-with-tunnel))))
+                      (let [adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
+                        (http/delete adjustedUri(details->request details-with-tunnel))))
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
