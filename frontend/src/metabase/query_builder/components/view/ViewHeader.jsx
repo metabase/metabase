@@ -3,7 +3,6 @@ import React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
@@ -19,6 +18,8 @@ import QuestionLineage from "./QuestionLineage";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionAlertWidget from "./QuestionAlertWidget";
+
+import QueryModeButton from "metabase/query_builder/components/QueryModeButton.jsx";
 
 import AggregationName from "metabase/query_builder/components/AggregationName";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -36,7 +37,7 @@ export const ViewTitleHeader = ({
   queryBuilderMode,
   onSetQueryBuilderMode,
 }) => {
-  const isCustomQuestion = queryBuilderMode === "notebook";
+  const isShowingNotebook = queryBuilderMode === "notebook";
 
   return (
     <ViewSection className={className}>
@@ -85,21 +86,27 @@ export const ViewTitleHeader = ({
         </div>
       )}
       <div className="ml-auto flex align-center">
+        {!question.isNative() && <QueryModeButton size={20} />}
         {isDirty ? (
-          <Button medium onClick={() => onOpenModal("save")}>{t`Save`}</Button>
+          <Button
+            medium
+            ml={3}
+            onClick={() => onOpenModal("save")}
+          >{t`Save`}</Button>
         ) : null}
         {!question.isNative() && (
           <Button
-            icon="list"
+            icon={isShowingNotebook ? "lineandbar" : "list"}
             medium
             ml={1}
-            borderless={!isCustomQuestion}
-            primary={isCustomQuestion}
+            borderless={!isShowingNotebook}
+            primary={isShowingNotebook}
+            style={{ minWidth: 115 }}
             onClick={() =>
-              onSetQueryBuilderMode(isCustomQuestion ? "view" : "notebook")
+              onSetQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
             }
           >
-            {t`Custom question`}
+            {isShowingNotebook ? t`Visualize` : t`Notebook`}
           </Button>
         )}
       </div>

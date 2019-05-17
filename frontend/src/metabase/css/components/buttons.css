@@ -106,11 +106,12 @@
 }
 
 .Button--borderless {
-  border: none;
+  border-color: transparent;
   background: transparent;
   color: var(--color-text-medium);
 }
 .Button--borderless:hover {
+  border-color: transparent;
   color: var(--color-text-medium);
 }
 

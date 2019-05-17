@@ -14,13 +14,15 @@ import Button from "metabase/components/Button";
 
 const legacy = false;
 
-const Notebook = ({ className, ...props }) => {
+const Notebook = ({ className, showNotebookHeader = false, ...props }) => {
   const { question } = props;
 
   return (
     <Box className={cx(className, "relative mb4")}>
-      <NotebookHeader {...props} className="absolute top right" />
-      <NotebookSteps {...props} className="pt3" />
+      {showNotebookHeader && (
+        <NotebookHeader {...props} className="absolute top right" />
+      )}
+      <NotebookSteps {...props} className={cx({ pt3: showNotebookHeader })} />
       {/* temporary mouse travel usability test */
       props.isRunnable && (
         <Button
@@ -35,7 +37,7 @@ const Notebook = ({ className, ...props }) => {
             props.onSetQueryBuilderMode("view");
           }}
         >
-        {t`Visualize`}
+          {t`Visualize`}
         </Button>
       )}
 
