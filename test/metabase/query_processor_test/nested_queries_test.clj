@@ -285,7 +285,8 @@
        "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
        "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" FROM \"PUBLIC\".\"VENUES\") \"source\""))
 
-;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using them
+;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using
+;; them
 (expect
   {:query  (format "SELECT * FROM %s WHERE \"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
    :params nil}

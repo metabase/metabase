@@ -778,13 +778,14 @@
    :param {:type   :date/all-options
            :target [:dimension [:template-tag "checkin_date"]]
            :value  "past5days"}}
-  (#'sql/dimension-value-for-tag {:name         "checkin_date"
-                                  :display-name "Checkin Date"
-                                  :type         :dimension
-                                  :dimension    [:field-id (data/id :checkins :date)]
-                                  :default      "past5days"
-                                  :widget-type  :date/all-options}
-                                 nil))
+  (#'sql/dimension-value-for-tag
+   {:name         "checkin_date"
+    :display-name "Checkin Date"
+    :type         :dimension
+    :dimension    [:field-id (data/id :checkins :date)]
+    :default      "past5days"
+    :widget-type  :date/all-options}
+   nil))
 
 ;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
 ;; `:widget-type` key. Check that it works correctly with relative dates...
