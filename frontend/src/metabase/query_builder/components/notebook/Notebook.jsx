@@ -1,55 +1,41 @@
 import React from "react";
 
-import QueryModals from "../QueryModals";
-import GuiQueryEditor from "../GuiQueryEditor";
-
-import NotebookHeader from "./NotebookHeader";
-import NotebookSteps from "./NotebookSteps";
-
-import { Box } from "grid-styled";
 import { t } from "ttag";
-
 import cx from "classnames";
+import { Box } from "grid-styled";
+
 import Button from "metabase/components/Button";
 
-const legacy = false;
+import NotebookSteps from "./NotebookSteps";
 
-const Notebook = ({ className, showNotebookHeader = false, ...props }) => {
-  const { question } = props;
-
+export default function Notebook({ className, ...props }) {
+  const {
+    question,
+    isRunnable,
+    isResultDirty,
+    runQuestionQuery,
+    onSetQueryBuilderMode,
+  } = props;
   return (
-    <Box className={cx(className, "relative mb4")}>
-      {showNotebookHeader && (
-        <NotebookHeader {...props} className="absolute top right" />
-      )}
-      <NotebookSteps {...props} className={cx({ pt3: showNotebookHeader })} />
-      {/* temporary mouse travel usability test */
-      props.isRunnable && (
+    <Box className={cx(className, "relative wrapper mb4")}>
+      <NotebookSteps {...props} />
+      {isRunnable && (
         <Button
           medium
           primary
-          ml={3}
           onClick={async () => {
-            await question.setDisplayAutomatically().update();
-            if (props.isResultDirty) {
-              props.runQuestionQuery();
+            if (question.display() === "table") {
+              await question.setDisplayAutomatically().update();
             }
-            props.onSetQueryBuilderMode("view");
+            if (isResultDirty) {
+              runQuestionQuery();
+            }
+            onSetQueryBuilderMode("view");
           }}
         >
           {t`Visualize`}
         </Button>
       )}
-
-      {legacy && (
-        <div className="fixed bottom left right p2">
-          <GuiQueryEditor {...props} />
-        </div>
-      )}
-
-      <QueryModals {...props} />
     </Box>
   );
-};
-
-export default Notebook;
+}
