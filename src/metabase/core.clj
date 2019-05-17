@@ -19,7 +19,6 @@
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
-            [metabase.query-processor.middleware.async-wait :as qp.middleware.async-wait]
             [metabase.util.i18n :refer [set-locale trs]]
             [toucan.db :as db]))
 
@@ -49,7 +48,6 @@
   ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
   (server/stop-web-server!)
-  (qp.middleware.async-wait/destroy-all-thread-pools!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 

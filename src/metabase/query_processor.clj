@@ -46,7 +46,8 @@
              [validate :as validate]
              [wrap-value-literals :as wrap-value-literals]]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -231,8 +232,15 @@
 
 (def ^:private default-pipeline (qp-pipeline execute-query))
 
-(defn process-query
-  "A pipeline of various QP functions (including middleware) that are used to process MB queries."
+(def ^:private QueryResponse
+  (s/cond-pre
+   ManyToManyChannel
+   {:status (s/enum :completed :failed :canceled), s/Any s/Any}))
+
+(s/defn process-query :- QueryResponse
+  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a
+  core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
+  the core.async channel is closed, the query will be canceled."
   {:style/indent 0}
   [query]
   (default-pipeline query))
