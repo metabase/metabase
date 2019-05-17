@@ -53,7 +53,7 @@
    ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef tabledef)
    ";\n"
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver (tx/format-name driver table-name)))))
+   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (tx/format-name driver table-name)))))
 
 (defmethod tx/has-questionable-timezone-support? :h2 [_] true)
 

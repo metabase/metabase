@@ -691,3 +691,17 @@
   {:style/indent 0}
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
+
+(defn xor
+  "Exclusive or. Hopefully this is self-explanatory ;)"
+  [x y & more]
+  (loop [[x y & more] (into [x y] more)]
+    (cond
+      (and x y)
+      false
+
+      (seq more)
+      (recur (cons (or x y) more))
+
+      :else
+      (or x y))))

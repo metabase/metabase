@@ -154,7 +154,7 @@
 (s/defmethod driver/can-connect? :presto
   [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
   (let [{[[v]] :rows} (execute-presto-query! details
-                        (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver catalog)))]
+                        (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
 (defmethod driver/date-interval :presto
@@ -164,12 +164,12 @@
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog schema] :as details} :details :as database}]
-  (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver catalog))
+  (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog))
         {:keys [rows]} (execute-presto-query! details sql)]
     (set (map first rows))))
 
 (defn- describe-schema [driver {{:keys [catalog] :as details} :details} {:keys [schema]}]
-  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver catalog schema))
+  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
     (set (for [table-name tables]
@@ -207,7 +207,7 @@
 
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
-  (let [sql            (str "DESCRIBE " (sql.u/quote-name driver catalog schema table-name))
+  (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
         {:keys [rows]} (execute-presto-query! details sql)]
     {:schema schema
      :name   table-name

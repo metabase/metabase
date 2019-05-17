@@ -340,29 +340,6 @@
     (class x)))
 
 
-(s/defn fk-clause->join-info :- (s/maybe mbql.s/JoinInfo)
-  "Return the matching info about the JOINed for the 'destination' Field in an `fk->` clause, for the current level of
-  nesting (`0` meaning this `fk->` clause was found in the top-level query; `1` meaning it was found in the first
-  `source-query`, and so forth.)
-
-     (fk-clause->join-info query [:fk-> [:field-id 1] [:field-id 2]] 0)
-     ;; -> \"orders__via__order_id\""
-  [query :- mbql.s/Query, nested-query-level :- su/NonNegativeInt, [_ source-field-clause :as fk-clause] :- mbql.s/fk->]
-  ;; if we're dealing with something that's not at the top-level go ahead and recurse a level until we get to the
-  ;; query we want to work with
-  (if (pos? nested-query-level)
-    (recur {:query (or (get-in query [:query :source-query])
-                       (throw (Exception. (str (tru "Bad nested-query-level: query does not have a source query")))))}
-           (dec nested-query-level)
-           fk-clause)
-    ;; ok, when we've reached the right level of nesting, look in `:join-tables` to find the appropriate info
-    (let [source-field-id (field-clause->id-or-literal source-field-clause)]
-      (some (fn [{:keys [fk-field-id], :as info}]
-              (when (= fk-field-id source-field-id)
-                info))
-            (-> query :query :join-tables)))))
-
-
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [query :- mbql.s/Query, expression-name :- su/NonBlankString]

@@ -73,10 +73,10 @@
 
 ;;; ------------------------------------------------ enforce-timeout -------------------------------------------------
 
-(def ^:private test-timeout-ms (* 60 1000))
+(def ^:private test-timeout-ms (* 5 60 1000))
 
 (defn- enforce-timeout
-  "If any test takes longer that 60 seconds to run print a message and stop running tests. (This usually happens when
+  "If any test takes longer that 5 minutes to run print a message and stop running tests. (This usually happens when
   something is fundamentally broken, and we don't want to continue running thousands of tests that can hang for a
   minute each.)"
   [run]

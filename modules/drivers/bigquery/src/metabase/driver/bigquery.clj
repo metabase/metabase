@@ -8,7 +8,6 @@
              [string :as str]]
             [honeysql
              [core :as hsql]
-             [format :as hformat]
              [helpers :as h]]
             [metabase
              [config :as config]
@@ -22,9 +21,7 @@
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :as table]]
+            [metabase.models.table :as table]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -41,9 +38,9 @@
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
             TableList$Tables TableReference TableRow TableSchema]
-           honeysql.format.ToSql
            java.sql.Time
-           [java.util Collections Date]))
+           [java.util Collections Date]
+           metabase.util.honeysql_extensions.Identifier))
 
 (driver/register! :bigquery, :parent #{:google :sql})
 
@@ -55,7 +52,10 @@
    (and (string? s)
         (re-matches #"^([a-zA-Z_][a-zA-Z_0-9]*){1,128}$" s))))
 
-(defn- dataset-name-for-current-query
+(def ^:private BigQueryIdentifierString
+  (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
+
+(s/defn ^:private dataset-name-for-current-query :- BigQueryIdentifierString
   "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
   `BigQueryIdentifier` record type; see its definition for more details.
@@ -63,8 +63,9 @@
   This looks for the value inside the SQL QP's `*query*` dynamic var; since this won't be bound for non-MBQL queries,
   you will want to avoid this function for SQL queries."
   []
-  {:pre [(map? sql.qp/*query*)], :post [(valid-bigquery-identifier? %)]}
-  (:dataset-id sql.qp/*query*))
+  (or (some-> sql.qp/*query* :dataset-id)
+      (when (qp.store/initialized?)
+        (some-> (qp.store/database) :details :dataset-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -147,13 +148,15 @@
     "NUMERIC"   :type/Decimal
     :type/*))
 
-(defn- table-schema->metabase-field-info [^TableSchema schema]
+(s/defn ^:private table-schema->metabase-field-info
+  [schema :- TableSchema]
   (for [^TableFieldSchema field (.getFields schema)]
     {:name          (.getName field)
      :database-type (.getType field)
      :base-type     (bigquery-type->base-type (.getType field))}))
 
-(defmethod driver/describe-table :bigquery [_ database {table-name :name}]
+(defmethod driver/describe-table :bigquery
+  [_ database {table-name :name}]
   {:schema nil
    :name   table-name
    :fields (set (table-schema->metabase-field-info (.getSchema (get-table database table-name))))})
@@ -305,40 +308,39 @@
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; This record type used for BigQuery table and field identifiers, since BigQuery has some stupid rules about how to
-;; quote them (tables are like `dataset.table` and fields are like `dataset.table`.`field`)
-;; This implements HoneySql's ToSql protocol, so we can just output this directly in most of our QP code below
-;;
-;; TODO - this is totally unnecessary now, we can just override `->honeysql` for `Field` and `Table` instead. FIXME!
-(defrecord ^:private BigQueryIdentifier [dataset-name ; optional; will use (dataset-name-for-current-query) otherwise
-                                         table-name
-                                         field-name
-                                         alias?]
-  honeysql.format/ToSql
-  (to-sql [{:keys [dataset-name table-name field-name], :as bq-id}]
-    ;; Check to make sure the identifiers are valid and don't contain any sorts of escape characters since we are
-    ;; constructing raw SQL here, and would like to avoid potential SQL injection vectors (even though this is not
-    ;; direct user input, but instead would require someone to go in and purposely corrupt their Table names/Field names
-    ;; to do so)
-    (when dataset-name
-      (assert (valid-bigquery-identifier? dataset-name)
-        (tru "Invalid BigQuery identifier: ''{0}''" dataset-name)))
-    (assert (valid-bigquery-identifier? table-name)
-      (tru "Invalid BigQuery identifier: ''{0}''" table-name))
-    (when (seq field-name)
-      (assert (valid-bigquery-identifier? field-name)
-        (tru "Invalid BigQuery identifier: ''{0}''" field-name)))
-    ;; BigQuery identifiers should look like `dataset.table` or `dataset.table`.`field` (SAD!)
-    (let [dataset-name (or dataset-name (dataset-name-for-current-query))]
-      (str
-       (if alias?
-         (format "`%s`" table-name)
-         (format "`%s.%s`" dataset-name table-name))
-       (when (seq field-name)
-         (format ".`%s`" field-name))))))
+(defn- should-qualify-identifier?
+  "Should we qualify an Identifier with the dataset name?
 
-(defn- honeysql-form->sql ^String [honeysql-form]
-  {:pre [(map? honeysql-form)]}
+  Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
+  table e.g.
+
+    `table`.`field` -> `dataset.table`.`field`"
+  [{:keys [identifier-type components]}]
+  (cond
+    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
+    sql.qp/*table-alias*
+    false
+
+    ;; otherwise always qualify Table identifiers
+    (= identifier-type :table)
+    true
+
+    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
+    ;; DDL statements)
+    (and (= identifier-type :field)
+         (>= (count components) 2))
+    true))
+
+(defmethod sql.qp/->honeysql [:bigquery Identifier]
+  [_ identifier]
+  (cond-> identifier
+    (should-qualify-identifier? identifier)
+    (update :components (fn [[table & more]]
+                          (cons (str (dataset-name-for-current-query) \. table)
+                                more)))))
+
+(s/defn ^:private honeysql-form->sql :- s/Str
+  [honeysql-form :- su/Map]
   (let [[sql & args] (sql.qp/honeysql-form->sql+args :bigquery honeysql-form)]
     (when (seq args)
       (throw (Exception. (str (tru "BigQuery statements can''t be parameterized!")))))
@@ -389,27 +391,13 @@
        (sql.qp/date driver unit)
        hx/->time))
 
-(defmethod sql.qp/->honeysql [Object :datetime-field]
-  [driver [_ field unit]]
-  (sql.qp/date driver unit (sql.qp/->honeysql driver field)))
-
-(defmethod sql.qp/->honeysql [:bigquery (class Field)]
-  [driver field]
-  (let [{table-name :name, :as table} (qp.store/table (:table_id field))
-        field-identifier              (map->BigQueryIdentifier
-                                       {:table-name table-name
-                                        :field-name (:name field)
-                                        :alias?     (:alias? table)})]
-    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
-
-(defmethod sql.qp/field->identifier :bigquery [_ {table-id :table_id, :as field}]
+(defmethod sql.qp/field->identifier :bigquery [_ {table-id :table_id, field-name :name, :as field}]
   ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))
-        details    (:details (qp.store/database))]
-    (map->BigQueryIdentifier {:dataset-name (:dataset-id details), :table-name table-name, :field-name (:name field)})))
+  (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))]
+    (hx/identifier :field table-name field-name)))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
   [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
@@ -424,32 +412,6 @@
       ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
                                             :when        (not (contains? (set fields-field-clauses) field-clause))]
                                         (sql.qp/as driver field-clause)))))
-
-;; Copy of the SQL implementation, but prepends the current dataset ID to the table name.
-(defmethod sql.qp/apply-top-level-clause [:bigquery :source-table] [_ _ honeysql-form {source-table-id :source-table}]
-  (let [{table-name :name} (qp.store/table source-table-id)]
-    (h/from honeysql-form (map->BigQueryIdentifier {:table-name table-name}))))
-
-;; Copy of the SQL implementation, but prepends the current dataset ID to join-alias.
-(defmethod sql.qp/apply-top-level-clause [:bigquery :join-tables]
-  [_ _ honeysql-form {join-tables :join-tables, source-table-id :source-table}]
-  (let [{source-table-name :name} (qp.store/table source-table-id)]
-    (loop [honeysql-form honeysql-form, [{:keys [table-id pk-field-id fk-field-id join-alias]} & more] join-tables]
-      (let [{table-name :name} (qp.store/table table-id)
-            source-field       (qp.store/field fk-field-id)
-            pk-field           (qp.store/field pk-field-id)
-
-            honeysql-form
-            (h/merge-left-join honeysql-form
-              [(map->BigQueryIdentifier {:table-name table-name})
-               (map->BigQueryIdentifier {:table-name join-alias, :alias? true})]
-              [:=
-               (map->BigQueryIdentifier {:table-name source-table-name, :field-name (:name source-field)})
-               (map->BigQueryIdentifier {:table-name join-alias, :field-name (:name pk-field), :alias? true})])]
-        (if (seq more)
-          (recur honeysql-form more)
-          honeysql-form)))))
-
 (defn- ag-ref->alias [[_ index]]
   (let [{{aggregations :aggregation} :query} sql.qp/*query*
         [ag-type :as ag]                     (nth aggregations index)]

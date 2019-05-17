@@ -28,6 +28,11 @@
   "Dynamic var used as the QP store for a given query execution."
   (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
 
+(defn initialized?
+  "Is the QP store currently initialized?"
+  []
+  (not (delay? *store*)))
+
 (defn do-with-new-store
   "Execute `f` with a freshly-bound `*store*`."
   [f]
@@ -40,36 +45,6 @@
   {:style/indent 0}
   [& body]
   `(do-with-new-store (fn [] ~@body)))
-
-(defn do-with-pushed-store
-  "Execute bind a *copy* of the current store and execute `f`."
-  [f]
-  (binding [*store* (atom @*store*)]
-    (f)))
-
-(defmacro with-pushed-store
-  "Bind a temporary copy of the current store (presumably so you can make temporary changes) for the duration of `body`.
-  All changes to this 'pushed' copy will be discarded after the duration of `body`.
-
-  This is used to make it easily to write downstream clause-handling functions in driver QP implementations without
-  needing to code them in a way where they are explicitly aware of the context in which they are called. For example,
-  we use this to temporarily give Tables a different `:name` in the SQL QP when we need to use an alias for them in
-  `fk->` forms.
-
-  Pushing stores is cumulative: nesting a `with-pushed-store` form inside another will make a copy of the copy.
-
-    (with-pushed-store
-      ;; store is now a temporary copy of original
-      (store-table! (assoc (table table-id) :name \"Temporary New Name\"))
-      (with-pushed-store
-        ;; store is now a temporary copy of the copy
-        (:name (table table-id)) ; -> \"Temporary New Name\"
-        ...)
-    ...)
-    (:name (table table-id)) ; -> \"Original Name\""
-  {:style/indent 0}
-  [& body]
-  `(do-with-pushed-store (fn [] ~@body)))
 
 (def database-columns-to-fetch
   "Columns you should fetch for the Database referenced by the query before stashing in the store."

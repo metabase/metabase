@@ -82,7 +82,7 @@
                     (sql.qp/->honeysql driver value)))]
     (-> (apply h/columns (for [column columns]
                            (sql.qp/->honeysql driver
-                             (hx/identifier (tx/format-name driver (u/keyword->qualified-name column))))))
+                             (hx/identifier :field (tx/format-name driver (u/keyword->qualified-name column))))))
         (h/insert-into table-identifier)
         (h/values values))))
 
