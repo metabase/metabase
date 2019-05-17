@@ -527,6 +527,15 @@
     (set/rename-keys NativeQuery {:query :native})
     (s/recursive #'MBQLQuery)))
 
+(def ^java.util.regex.Pattern source-table-card-id-regex
+  "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
+  #"^card__[1-9]\d*$")
+
+(def SourceTable
+  "Schema for a valid value for the `:source-table` clause of an MBQL query."
+  (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
+
+
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
@@ -539,20 +548,21 @@
   In the top-level query, you can reference Fields from the joined table or nested query by the `:fk->` clause for
   implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
   `:joined-field` clause, e.g.
+
     [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
     [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
   (->
-   { ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
+   {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
+    (s/optional-key :source-table) SourceTable
+    (s/optional-key :source-query) SourceQuery
+    ;;
+    ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
     ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
     ;;
     :condition                     Filter
-    ;;
-    ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
-    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
-    (s/optional-key :source-table) su/IntGreaterThanZero
-    (s/optional-key :source-query) (s/recursive #'Query)
     ;;
     ;; Defaults to `:left-join`; used for all automatically-generated JOINs
     ;;
@@ -602,14 +612,6 @@
    (su/non-empty [Join])
    #(su/empty-or-distinct? (filter some? (map :alias %)))
    "All join aliases must be unique."))
-
-(def ^java.util.regex.Pattern source-table-card-id-regex
-  "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
-  #"^card__[1-9]\d*$")
-
-(def SourceTable
-  "Schema for a valid value for the `:source-table` clause of an MBQL query."
-  (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."

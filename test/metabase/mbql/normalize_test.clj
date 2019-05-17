@@ -288,6 +288,72 @@
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
 
 
+;;; ----------------------------------------------------- joins ------------------------------------------------------
+
+;; NOCOMMIT
+;; do entries in the `:joins` clause get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:source-table 2
+                              :alias        "my/table"
+                              :strategy     :left-join
+                              :fields       :all}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_table" 1
+               "Joins"        [{"source_table" 2
+                                "alias"        :my/table
+                                "strategy"     "left-join"
+                                "fields"       "all"}]}}))
+
+;; what about with a sequence of :fields?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:fields [[:field-id 1]
+                                       [:field-literal "MY_FIELD" :type/Integer]]}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_table" 1
+               "joins"        [{"fields" [["field_id 1"] ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
+
+;; does `:source-query` in `:joins` get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:source-query {:source-table 2}
+                              :fields       [[:field-id 1]
+                                             [:field-literal "MY_FIELD" :type/Integer]]}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {:source-table 1
+               :joins        [{"source_query" {"source_table" 2}
+                               "fields"       [["field_id 1"]
+                                               ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
+
+;; do `:joins` inside a nested query get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-query {:source-table 1
+                             :joins        [{:strategy :right-join
+                                             :fields   [[:field-id 1]
+                                                        [:field-literal "MY_FIELD" :type/Integer]]}]}}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_query" {"source_table" 1
+                               "joins"        [{"strategy" "right-join"
+                                                "fields"   [["field_id 1"] ["field_literal" :MY_FIELD "type/Integer"]]}]}}}))
+
+
 ;;; ----------------------------------------------------- other ------------------------------------------------------
 
 ;; Does the QueryExecution context get normalized?

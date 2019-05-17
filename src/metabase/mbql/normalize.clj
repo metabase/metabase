@@ -211,12 +211,26 @@
 (defn- normalize-source-query [{native? :native, :as source-query}]
   (normalize-tokens source-query [(if native? :native :query)]))
 
+(defn- normalize-join [join]
+  ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
+  (let [{:keys [strategy fields alias], :as join} (normalize-tokens join [:query])]
+    (cond-> join
+      strategy
+      (update :strategy mbql.u/normalize-token)
+
+      ((some-fn keyword? string?) fields)
+      (update :fields mbql.u/normalize-token)
+
+      alias
+      (update :alias u/keyword->qualified-name))))
+
 (defn- normalize-source-metadata [metadata]
   (-> metadata
       (update :base_type    keyword)
       (update :special_type keyword)
       (update :fingerprint  walk/keywordize-keys)))
 
+;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -228,7 +242,8 @@
    :query           {:aggregation  normalize-ag-clause-tokens
                      :expressions  normalize-expressions-tokens
                      :order-by     normalize-order-by-tokens
-                     :source-query normalize-source-query}
+                     :source-query normalize-source-query
+                     :joins        {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % mbql.u/normalize-token)
    :source-metadata {::sequence normalize-source-metadata}})

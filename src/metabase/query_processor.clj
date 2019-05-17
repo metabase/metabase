@@ -8,6 +8,7 @@
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
+             [add-implicit-joins :as add-implicit-joins]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
              [annotate :as annotate]
@@ -38,7 +39,7 @@
              [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
-             [resolve-joined-tables :as resolve-joined-tables]
+             [resolve-joins :as resolve-joins]
              [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
              [splice-params-in-response :as splice-params-in-response]
@@ -104,7 +105,8 @@
       perms/check-query-permissions
       cumulative-ags/handle-cumulative-aggregations
       ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
-      resolve-joined-tables/resolve-joined-tables
+      resolve-joins/resolve-joins
+      add-implicit-joins/add-implicit-joins
       dev/check-results-format
       limit/limit
       results-metadata/record-and-return-metadata!
