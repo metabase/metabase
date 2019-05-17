@@ -88,15 +88,15 @@ export const canAddFilter = (query: SQ) => F.canAddFilter(query.filter);
 
 // JOIN
 
-export const getJoins = (query: SQ) => J.getJoins(query.join);
+export const getJoins = (query: SQ) => J.getJoins(query.joins);
 export const addJoin = (query: SQ, join: Join) =>
-  setJoinClause(query, J.addJoin(query.join, join));
+  setJoinClause(query, J.addJoin(query.joins, join));
 export const updateJoin = (query: SQ, index: number, join: Join) =>
-  setJoinClause(query, J.updateJoin(query.join, index, join));
+  setJoinClause(query, J.updateJoin(query.joins, index, join));
 export const removeJoin = (query: SQ, index: number) =>
-  setJoinClause(query, J.removeJoin(query.join, index));
+  setJoinClause(query, J.removeJoin(query.joins, index));
 export const clearJoins = (query: SQ) =>
-  setJoinClause(query, J.clearJoins(query.join));
+  setJoinClause(query, J.clearJoins(query.joins));
 
 // ORDER_BY
 
@@ -186,7 +186,7 @@ function setFilterClause(query: SQ, filterClause: ?FilterClause): SQ {
   return setClause("filter", query, filterClause);
 }
 function setJoinClause(query: SQ, joinClause: ?JoinClause): SQ {
-  return setClause("join", query, joinClause);
+  return setClause("joins", query, joinClause);
 }
 function setOrderByClause(query: SQ, orderByClause: ?OrderByClause): SQ {
   return setClause("order-by", query, orderByClause);

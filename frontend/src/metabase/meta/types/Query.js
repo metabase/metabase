@@ -74,7 +74,7 @@ export type StructuredQuery = {
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
   filter?: FilterClause,
-  join?: JoinClause,
+  joins?: JoinClause,
   "order-by"?: OrderByClause,
   limit?: LimitClause,
   expressions?: ExpressionClause,
