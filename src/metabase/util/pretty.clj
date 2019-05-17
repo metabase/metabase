@@ -5,7 +5,9 @@
            java.util.Map))
 
 (defprotocol PrettyPrintable
-  "Implmement this protocol to return custom representations of objects when printing them."
+  "Implmement this protocol to return custom representations of objects when printing them. This only seems to work if
+  it's done as part of the type declaration (`defrecord`); it doesn't seem to be respected if you use
+  `extend-protocol` for an existing type. Not sure why this is :("
   (pretty [_]
     "Return an appropriate representation of this object to be used when printing it, such as in the REPL or in log
     messages."))

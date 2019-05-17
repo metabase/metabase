@@ -99,11 +99,11 @@
 
 ;;; ------------------------------------------------------ list ------------------------------------------------------
 
-(defn- formar-cards-list
+(defn- format-cards-list
   "Format a sequence of Cards as a nice multiline list for use in responses."
   [cards]
-  (apply str (interpose "\n" (for [{id :id, card-name :name} cards]
-                               (format "%d.  <%s|\"%s\">" id (urls/card-url id) card-name)))))
+  (str/join "\n" (for [{id :id, card-name :name} cards]
+                   (format "%d.  <%s|\"%s\">" id (urls/card-url id) card-name))))
 
 (defn- list-cards []
   (filter-metabot-readable
@@ -127,7 +127,7 @@
   (let [cards (list-cards)]
     (str (tru "Here''s your {0} most recent cards:" (count cards))
          "\n"
-          (formar-cards-list cards))))
+          (format-cards-list cards))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------
@@ -135,7 +135,9 @@
 (defn- cards-with-name [card-name]
   (db/select [Card :id :name]
     :%lower.name [:like (str \% (str/lower-case card-name) \%)]
-    :archived false))
+    :archived false
+    {:order-by [[:%lower.name :asc]]
+     :limit    10}))
 
 (defn- card-with-name [card-name]
   (let [[first-card & more, :as cards] (cards-with-name card-name)]
@@ -145,7 +147,7 @@
         (str
          (tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
          "\n"
-         (formar-cards-list cards)))))
+         (format-cards-list cards)))))
     first-card))
 
 (defn- id-or-name->card [card-id-or-name]
