@@ -3,7 +3,11 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.async.util :as async.u]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.config :as config]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs tru]]])
+  (:import java.util.concurrent.TimeoutException))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  async->sync                                                   |
@@ -63,11 +67,28 @@
       (swap! in-flight* dec))
     {:out-chan out-chan, :canceled-chan canceled-chan, :respond respond, :raise raise}))
 
+(def ^:private query-timeout-ms
+  "Maximum amount of time to wait for a running query to complete before throwing an Exception."
+  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
+  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
+  ;; code
+  (cond
+    config/is-prod? (* 20 60 1000)  ; twenty minutes
+    config/is-test? (* 30 1000)     ; 30 seconds
+    config/is-dev?  (* 5 60 1000))) ; 5 minutes
+
 (defn- wait-for-result [out-chan]
-  ;; TODO - there should probably be some sort of max timeout here for out-chan. At least for test/dev purposes
-  (let [result (a/<!! out-chan)]
-    (if (instance? Throwable result)
+  (let [[result port] (a/alts!! [out-chan (a/timeout query-timeout-ms)])]
+    (cond
+      (instance? Throwable result)
       (throw result)
+
+      (not= port out-chan)
+      (do
+        (a/close! out-chan)
+        (throw (TimeoutException. (str (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms))))))
+
+      :else
       result)))
 
 (defn async-setup

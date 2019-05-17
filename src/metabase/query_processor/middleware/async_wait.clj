@@ -14,7 +14,8 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s])
   (:import clojure.lang.Var
-           [java.util.concurrent Executors ExecutorService]))
+           [java.util.concurrent Executors ExecutorService]
+           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (defsetting max-simultaneous-queries-per-db
   (trs "Maximum number of simultaneous queries to allow per connected Database.")
@@ -27,6 +28,19 @@
 ;; thread pools that ultimately don't get used
 (defonce ^:private db-thread-pool-lock (Object.))
 
+(defn- new-thread-pool ^ExecutorService [database-id]
+  (Executors/newFixedThreadPool
+   (max-simultaneous-queries-per-db)
+   (.build
+    (doto (BasicThreadFactory$Builder.)
+      (.namingPattern (format "qp-database-%d-threadpool-%%d" database-id))
+      ;; Daemon threads do not block shutdown of the JVM
+      (.daemon true)
+      ;; TODO - what should the priority of QP threads be? It seems like servicing general API requests should be
+      ;; higher (?)
+      ;; Stuff like Pulse sending and sync should definitely by MIN_PRIORITY (!)
+      #_(.priority Thread/MIN_PRIORITY)))))
+
 (s/defn ^:private db-thread-pool :- ExecutorService
   [database-or-id]
   (let [id (u/get-id database-or-id)]
@@ -36,7 +50,7 @@
        (or
         (@db-thread-pools id)
         (log/debug (trs "Creating new query thread pool for Database {0}" id))
-        (let [new-pool (Executors/newFixedThreadPool (max-simultaneous-queries-per-db))]
+        (let [new-pool (new-thread-pool id)]
           (swap! db-thread-pools assoc id new-pool)
           new-pool))))))
 
@@ -49,14 +63,6 @@
       (when thread-pool
         (log/debug (trs "Destroying query thread pool for Database {0}" id))
         (.shutdownNow thread-pool)))))
-
-(defn destroy-all-thread-pools!
-  "Destroy all QP thread pools (done on shutdown)."
-  []
-  (locking db-thread-pool-lock
-    (let [[old] (reset-vals! db-thread-pools nil)]
-      (doseq [^ExecutorService pool (vals old)]
-        (.shutdownNow pool)))))
 
 (def ^:private ^:dynamic *already-in-thread-pool?* false)
 
