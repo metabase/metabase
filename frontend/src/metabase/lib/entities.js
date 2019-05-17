@@ -166,6 +166,9 @@ export type Entity = {
   normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
   normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
 
+  getObjectStatePath: Function,
+  getListStatePath: Function,
+
   HACK_getObjectFromAction: (action: Action) => any,
 };
 
