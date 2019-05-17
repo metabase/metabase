@@ -71,7 +71,9 @@ export const ViewTitleHeader = ({
           </ViewHeading>
           {question.isStructured() &&
             question.query().aggregations().length > 0 && (
-              <div className="pt1"><QuestionDataSource question={question} subHead /></div>
+              <div className="pt1">
+                <QuestionDataSource question={question} subHead />
+              </div>
             )}
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
             <div className="mt1">
@@ -86,7 +88,9 @@ export const ViewTitleHeader = ({
         </div>
       )}
       <div className="ml-auto flex align-center">
-        {!question.isNative() && <QueryModeButton size={20} />}
+        {!question.isNative() && isShowingNotebook && (
+          <QueryModeButton size={20} />
+        )}
         {isDirty ? (
           <Button
             medium
