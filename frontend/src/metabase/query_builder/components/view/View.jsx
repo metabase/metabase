@@ -259,7 +259,7 @@ export default class View extends React.Component {
               >
                 {({ opacity, translateY }) => (
                   <div
-                    className="spread bg-white z2"
+                    className="spread bg-light scroll-y z2 border-top border-bottom"
                     style={{
                       // opacity: opacity,
                       transform: `translateY(${translateY}%)`,
