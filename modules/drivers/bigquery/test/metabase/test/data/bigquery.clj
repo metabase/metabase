@@ -26,23 +26,25 @@
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(def ^:private ^String normalize-name (comp (u/rpartial str/replace #"-" "_") name))
+(def ^:private ^String normalize-name (comp #(str/replace % #"-" "_") name))
 
-(def ^:private ^:const details
-  (datasets/when-testing-driver :bigquery
-    (reduce (fn [acc env-var]
-              (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
-            {}
-            [:project-id :client-id :client-secret :access-token :refresh-token])))
+(def ^:private details
+  (delay
+   (datasets/when-testing-driver :bigquery
+     (reduce
+      (fn [acc env-var]
+        (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
+      {}
+      [:project-id :client-id :client-secret :access-token :refresh-token]))))
 
-(def ^:private ^:const ^String project-id (:project-id details))
+(def ^:private ^String project-id (:project-id @details))
 
 (def ^:private ^Bigquery bigquery
   (datasets/when-testing-driver :bigquery
-    (#'bigquery/database->client {:details details})))
+    (#'bigquery/database->client {:details @details})))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
-  (assoc details :dataset-id (normalize-name database-name)))
+  (assoc @details :dataset-id (normalize-name database-name)))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
