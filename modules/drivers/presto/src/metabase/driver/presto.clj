@@ -119,8 +119,9 @@
   [details query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error id]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                     (assoc (details->request details-with-tunnel) :body query, :as :json))]
+    (let [{{:keys [columns data nextUri error id infoUri]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                                     (assoc (details->request details-with-tunnel)
+                                                                       :body query, :as :json :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
