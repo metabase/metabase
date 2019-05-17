@@ -13,7 +13,8 @@ export default class NotebookSteps extends React.Component {
       openSteps: isNew
         ? {
             "0:filter": true,
-            "0:aggregate": true,
+            // "0:aggregate": true,
+            "0:summarize": true,
           }
         : {},
       lastOpenedStep: null,
@@ -114,17 +115,24 @@ const STEPS = [
     visible: query => query.filters().length > 0,
     revert: query => query.clearFilters(),
   },
+  // {
+  //   type: "aggregate",
+  //   valid: query => !!query.table(),
+  //   visible: query => query.aggregations().length > 0,
+  //   revert: query => query.clearAggregations(),
+  // },
+  // {
+  //   type: "breakout",
+  //   valid: query => !!query.table() && query.aggregations().length > 0,
+  //   visible: query => query.breakouts().length > 0,
+  //   revert: query => query.clearBreakouts(),
+  // },
   {
-    type: "aggregate",
+    type: "summarize",
     valid: query => !!query.table(),
-    visible: query => query.aggregations().length > 0,
-    revert: query => query.clearAggregations(),
-  },
-  {
-    type: "breakout",
-    valid: query => !!query.table() && query.aggregations().length > 0,
-    visible: query => query.breakouts().length > 0,
-    revert: query => query.clearBreakouts(),
+    visible: query =>
+      query.aggregations().length > 0 || query.breakouts().length > 0,
+    revert: query => query.clearBreakouts().clearAggregations(),
   },
   {
     type: "sort",

@@ -12,6 +12,7 @@ export default function ClauseStep({
   renderPopover,
   onRemove = null,
   isLastOpened = false,
+  initialAddText = null,
   ...props
 }) {
   return (
@@ -39,8 +40,15 @@ export default function ClauseStep({
       ))}
       <PopoverWithTrigger
         triggerElement={
-          <NotebookCellItem color={color}>
-            <Icon name="add" className="text-white" />
+          <NotebookCellItem
+            color={color}
+            inactive={items.length === 0 && initialAddText}
+          >
+            {items.length === 0 && initialAddText ? (
+              initialAddText
+            ) : (
+              <Icon name="add" className="text-white" />
+            )}
           </NotebookCellItem>
         }
         isInitiallyOpen={isLastOpened}

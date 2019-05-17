@@ -3,8 +3,6 @@ import React from "react";
 import { Flex } from "grid-styled";
 import { alpha } from "metabase/lib/colors";
 
-const DEFAULT_MAX_WIDTH = 780;
-
 export default function NotebookCell({ color, children, style = {} }) {
   return (
     <Flex
@@ -13,7 +11,6 @@ export default function NotebookCell({ color, children, style = {} }) {
       style={{
         borderRadius: 4,
         backgroundColor: alpha(color, 0.1),
-        maxWidth: DEFAULT_MAX_WIDTH,
         ...style,
       }}
     >

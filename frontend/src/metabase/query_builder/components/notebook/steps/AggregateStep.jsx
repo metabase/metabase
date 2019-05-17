@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import ClauseStep from "./ClauseStep";
 
@@ -13,6 +14,7 @@ export default function AggregateStep({
   return (
     <ClauseStep
       color={color}
+      initialAddText={t`Pick the metric you want to see`}
       items={query.aggregations()}
       renderPopover={aggregation => (
         <AggregationPopover

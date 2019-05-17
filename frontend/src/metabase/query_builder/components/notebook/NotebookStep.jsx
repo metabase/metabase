@@ -17,6 +17,7 @@ import ExpressionStep from "./steps/ExpressionStep";
 import FilterStep from "./steps/FilterStep";
 import AggregateStep from "./steps/AggregateStep";
 import BreakoutStep from "./steps/BreakoutStep";
+import SummarizeStep from "./steps/SummarizeStep";
 import SortStep from "./steps/SortStep";
 import LimitStep from "./steps/LimitStep";
 
@@ -45,20 +46,27 @@ const STEP_UI = {
     component: FilterStep,
     priority: 10,
   },
-  aggregate: {
+  summarize: {
     title: t`Summarize`,
     color: colors["accent1"],
     icon: "sum",
-    component: AggregateStep,
+    component: SummarizeStep,
     priority: 5,
   },
-  breakout: {
-    title: t`Breakout`,
-    color: colors["accent4"],
-    icon: "segment",
-    component: BreakoutStep,
-    priority: 1,
-  },
+  // aggregate: {
+  //   title: t`Summarize`,
+  //   color: colors["accent1"],
+  //   icon: "sum",
+  //   component: AggregateStep,
+  //   priority: 5,
+  // },
+  // breakout: {
+  //   title: t`Breakout`,
+  //   color: colors["accent4"],
+  //   icon: "segment",
+  //   component: BreakoutStep,
+  //   priority: 1,
+  // },
   sort: {
     title: t`Sort`,
     color: colors["text-medium"],
@@ -72,6 +80,8 @@ const STEP_UI = {
     component: LimitStep,
   },
 };
+
+const DEFAULT_MAX_WIDTH = 860;
 
 export default class NotebookStep extends React.Component {
   state = {
@@ -127,11 +137,13 @@ export default class NotebookStep extends React.Component {
         )}
 
         {NotebookStepComponent && (
-          <NotebookStepComponent
-            color={color}
-            query={step.query}
-            isLastOpened={isLastOpened}
-          />
+          <Box style={{ maxWidth: DEFAULT_MAX_WIDTH }}>
+            <NotebookStepComponent
+              color={color}
+              query={step.query}
+              isLastOpened={isLastOpened}
+            />
+          </Box>
         )}
 
         {showPreview && canPreview && (

@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import ClauseStep from "./ClauseStep";
 
@@ -8,6 +9,7 @@ export default function BreakoutStep({ color, query, isLastOpened, ...props }) {
   return (
     <ClauseStep
       color={color}
+      initialAddText={t`Pick a column to group by`}
       items={query.breakouts()}
       renderPopover={breakout => (
         <BreakoutPopover
