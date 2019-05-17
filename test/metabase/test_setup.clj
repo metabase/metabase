@@ -60,7 +60,7 @@
               (System/exit -2))))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db!)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)
@@ -78,7 +78,6 @@
 
     (u/deref-with-timeout start-web-server! 10000)
     nil))
-
 
 (defn test-teardown
   {:expectations-options :after-run}

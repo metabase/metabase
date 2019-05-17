@@ -1,7 +1,7 @@
 (ns metabase.db
   "Application database definition, and setup logic, and helper functions for interacting with it."
   (:require [clojure
-             [string :as s]
+             [string :as str]
              [walk :as walk]]
             [clojure.java
              [io :as io]
@@ -13,8 +13,12 @@
             [metabase.db
              [connection-pool :as connection-pool]
              [spec :as dbspec]]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [trs]]
+             [schema :as su]]
             [ring.util.codec :as codec]
+            [schema.core :as s]
             [toucan.db :as db])
   (:import java.io.StringWriter
            [liquibase Contexts Liquibase]
@@ -157,8 +161,8 @@
 
   As of 0.31.1 this is only used for printing the migrations without running or using force migrating."
   [^Liquibase liquibase]
-  (for [line  (s/split-lines (migrations-sql liquibase))
-        :when (not (or (s/blank? line)
+  (for [line  (str/split-lines (migrations-sql liquibase))
+        :when (not (or (str/blank? line)
                        (re-find #"^--" line)))]
     line))
 
@@ -242,15 +246,16 @@
     (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn- conn->liquibase
-  "Get a `Liquibase` object from JDBC CONN."
+  "Get a `Liquibase` object from JDBC `conn`."
   (^Liquibase []
    (conn->liquibase (jdbc-details)))
+
   (^Liquibase [conn]
    (let [^JdbcConnection liquibase-conn (JdbcConnection. (jdbc/get-connection conn))
          ^Database       database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
      (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))
 
-(defn consolidate-liquibase-changesets
+(defn- consolidate-liquibase-changesets!
   "Consolidate all previous DB migrations so they come from single file.
 
   Previously migrations where stored in many small files which added seconds per file to the startup time because
@@ -259,15 +264,15 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibases-table-name (if (#{:h2 :mysql} (db-type))
-                                "DATABASECHANGELOG"
-                                "databasechangelog")
-        fresh-install? (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
-                         (empty? (jdbc/metadata-query
-                                  (.getTables meta nil nil liquibases-table-name (into-array String ["TABLE"])))))
-        query (format "UPDATE %s SET FILENAME = ?" liquibases-table-name)]
+  (let [liquibase-table-name (if (#{:h2 :mysql} (db-type))
+                               "DATABASECHANGELOG"
+                               "databasechangelog")
+        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+                               (empty? (jdbc/metadata-query
+                                        (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
+        statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
     (when-not fresh-install?
-      (jdbc/execute! conn [query "migrations/000_migrations.yaml"]))))
+      (jdbc/execute! conn [statement "migrations/000_migrations.yaml"]))))
 
 (defn- release-lock-if-needed!
   "Attempts to release the liquibase lock if present. Logs but does not bubble up the exception if one occurs as it's
@@ -295,8 +300,10 @@
   `metabase.db.migrations/run-all!`. (`setup-db!`, below, calls both this function and `run-all!`)."
   ([]
    (migrate! :up))
+
   ([direction]
    (migrate! @db-connection-details direction))
+
   ([db-details direction]
    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
      ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
@@ -307,7 +314,7 @@
      (log/info (trs "Setting up Liquibase..."))
      (let [liquibase (conn->liquibase conn)]
        (try
-         (consolidate-liquibase-changesets conn)
+         (consolidate-liquibase-changesets! conn)
          (log/info (trs "Liquibase is ready."))
          (case direction
            :up            (migrate-up-if-needed! conn liquibase)
@@ -359,13 +366,13 @@
 ;;; |                                                    DB SETUP                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private setup-db-has-been-called?
+(def ^:private db-setup-finished?
   (atom false))
 
 (defn db-is-setup?
   "True if the Metabase DB is setup and ready."
   ^Boolean []
-  @setup-db-has-been-called?)
+  @db-setup-finished?)
 
 (def ^:dynamic *allow-potentailly-unsafe-connections*
   "We want to make *every* database connection made by the drivers safe -- read-only, only connect if DB file exists,
@@ -385,12 +392,12 @@
   forever after, making all other connnections \"safe\"."
   false)
 
-(defn- verify-db-connection
+(s/defn ^:private verify-db-connection
   "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
-  ([driver details]
-   {:pre [(keyword? driver) (map? details)]}
+
+  ([driver :- s/Keyword, details :- su/Map]
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
              (require 'metabase.driver.util)
@@ -451,24 +458,23 @@
     (require 'metabase.db.migrations)
     ((resolve 'metabase.db.migrations/run-all!))))
 
-(defn setup-db!
-  "Do general preparation of database by validating that we can connect.
-   Caller can specify if we should run any pending database migrations."
-  [& {:keys [db-details auto-migrate]
-      :or   {db-details   @db-connection-details
-             auto-migrate true}}]
-  (u/with-us-locale
-    (verify-db-connection db-details)
-    (run-schema-migrations! auto-migrate db-details)
-    (create-connection-pool! (jdbc-details db-details))
-    (run-data-migrations!)
-    (reset! setup-db-has-been-called? true)))
 
-(defn setup-db-if-needed!
-  "Call `setup-db!` if DB is not already setup; otherwise this does nothing."
-  [& args]
-  (when-not @setup-db-has-been-called?
-    (apply setup-db! args)))
+(defn- setup-db!* []
+  (let [db-details   @db-connection-details
+        auto-migrate (config/config-bool :mb-db-automigrate)]
+    (du/profile (trs "Application database setup")
+      (u/with-us-locale
+        (verify-db-connection db-details)
+        (run-schema-migrations! auto-migrate db-details)
+        (create-connection-pool! (du/profile (jdbc-details db-details)))
+        (run-data-migrations!)
+        (reset! db-setup-finished? true))))
+  nil)
+
+(defonce ^{:arglists '([]), :doc "Do general preparation of database by validating that we can connect. Caller can
+  specify if we should run any pending database migrations. If DB is already set up, this function will no-op."}
+  setup-db!
+  (partial deref (delay (setup-db!*))))
 
 
 ;;; Various convenience fns (experiMENTAL)
@@ -480,20 +486,15 @@
        (mdb/join [FieldValues :field_id] [Field :id])
        :active true)"
   [[source-entity fk] [dest-entity pk]]
-  {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk)
-                                                  (db/qualify dest-entity pk)]]})
+  {:left-join [(db/resolve-model dest-entity) [:= (db/qualify source-entity fk) (db/qualify dest-entity pk)]]})
 
 
-(defn- type-keyword->descendants
+(s/defn ^:private type-keyword->descendants :- (su/non-empty #{su/FieldTypeKeywordOrString})
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 
      (type-keyword->descendants :type/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
-  [type-keyword]
-  ;; make sure `type-keyword` is a valid MB type. There may be some cases where we want to use these functions for
-  ;; types outside of the `:type/` hierarchy. If and when that happens, we can reconsider this check. But since no
-  ;; such cases currently exist, adding this check to catch typos makes sense.
-  {:pre [(isa? type-keyword :type/*)]}
+  [type-keyword :- su/FieldType]
   (set (map u/keyword->qualified-name (cons type-keyword (descendants type-keyword)))))
 
 (defn isa
