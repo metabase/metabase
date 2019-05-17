@@ -23,9 +23,8 @@
             [toucan.db :as db])
   (:import [java.io File IOException]))
 
-(when-not *compile-files*
-  (when config/is-dev?
-    (alter-meta! #'stencil.core/render-file assoc :style/indent 1)))
+(when config/is-dev?
+  (alter-meta! #'stencil.core/render-file assoc :style/indent 1))
 
 ;; Dev only -- disable template caching
 (when config/is-dev?

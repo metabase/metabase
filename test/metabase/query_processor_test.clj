@@ -294,27 +294,36 @@
   this behavior."
   {:style/indent 1}
   ([format-fns rows]
-   (format-rows-by format-fns (not :format-nil-values?) rows))
-  ([format-fns format-nil-values? rows]
-   (cond
-     (= (:status rows) :failed)
-     (do (println "Error running query:" (u/pprint-to-str 'red rows))
-         (throw (ex-info (:error rows) rows)))
+   (format-rows-by format-fns false rows))
 
-     (:data rows)
-     (update-in rows [:data :rows] (partial format-rows-by format-fns))
+  ([format-fns format-nil-values? response]
+   (when (= (:status response) :failed)
+     (println "Error running query:" (u/pprint-to-str 'red response))
+     (throw (ex-info (:error response) response)))
 
-     (:rows rows)
-     (update rows :rows (partial format-rows-by format-fns))
+   (-> response
+       ((fn format-rows [rows]
+          (cond
+            (:data rows)
+            (update rows :data format-rows)
 
-     :else
-     (vec (for [row rows]
-            (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                   (when (or v format-nil-values?)
-                     (try (f v)
-                          (catch Throwable e
-                            (printf "(%s %s) failed: %s" f v (.getMessage e))
-                            (throw e)))))))))))
+            (:rows rows)
+            (update rows :rows format-rows)
+
+            (sequential? rows)
+            (vec
+             (for [row rows]
+               (vec
+                (for [[f v] (partition 2 (interleave format-fns row))]
+                  (when (or v format-nil-values?)
+                    (try
+                      (f v)
+                      (catch Throwable e
+                        (printf "(%s %s) failed: %s" f v (.getMessage e))
+                        (throw e))))))))
+
+            :else
+            (throw (ex-info "Unexpected response: rows are not sequential!" {:response response}))))))))
 
 (def ^{:arglists '([results])} formatted-venues-rows
   "Helper function to format the rows in `results` when running a 'raw data' query against the Venues test table."
