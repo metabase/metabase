@@ -6,13 +6,19 @@ import _ from "underscore";
 import cx from "classnames";
 
 export default class NotebookSteps extends React.Component {
-  state = {
-    openSteps: {
-      "0:filter": true,
-      "0:aggregate": true,
-    },
-    lastOpenedStep: null,
-  };
+  constructor(props) {
+    super(props);
+    const isNew = !props.question.table();
+    this.state = {
+      openSteps: isNew
+        ? {
+            "0:filter": true,
+            "0:aggregate": true,
+          }
+        : {},
+      lastOpenedStep: null,
+    };
+  }
 
   handleOpenStep = id => {
     this.setState({
