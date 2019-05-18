@@ -20,7 +20,7 @@ export default function DataStep({ color, query }) {
               {t`Pick your starting data`}
             </NotebookCellItem>
           ) : (
-            <NotebookCellItem color={color}>
+            <NotebookCellItem color={color} icon="table2">
               {query.table().displayName()}
             </NotebookCellItem>
           )

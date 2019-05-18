@@ -257,17 +257,19 @@ export default class View extends React.Component {
                       }
                 }
               >
-                {({ opacity, translateY }) => (
-                  <div
-                    className="spread bg-light scroll-y z2 border-top border-bottom"
-                    style={{
-                      // opacity: opacity,
-                      transform: `translateY(${translateY}%)`,
-                    }}
-                  >
-                    <Notebook {...this.props} />
-                  </div>
-                )}
+                {({ opacity, translateY }) =>
+                  opacity > 0 ? (
+                    <div
+                      className="spread bg-light scroll-y z2 border-top border-bottom"
+                      style={{
+                        // opacity: opacity,
+                        transform: `translateY(${translateY}%)`,
+                      }}
+                    >
+                      <Notebook {...this.props} />
+                    </div>
+                  ) : null
+                }
               </Motion>
             )}
 

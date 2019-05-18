@@ -1,6 +1,9 @@
 import React from "react";
 
 import { Flex } from "grid-styled";
+
+import Icon from "metabase/components/Icon";
+
 import { alpha } from "metabase/lib/colors";
 
 export default function NotebookCell({ color, children, style = {} }) {
@@ -19,7 +22,7 @@ export default function NotebookCell({ color, children, style = {} }) {
   );
 }
 
-export function NotebookCellItem({ color, inactive, children }) {
+export function NotebookCellItem({ color, icon, inactive, children }) {
   return (
     <Flex
       align="center"
@@ -34,6 +37,7 @@ export function NotebookCellItem({ color, inactive, children }) {
         borderColor: inactive ? alpha(color, 0.25) : "transparent",
       }}
     >
+      {icon && <Icon className="mr1" name={icon} size={12} />}
       {children}
     </Flex>
   );

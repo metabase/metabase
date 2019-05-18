@@ -41,8 +41,7 @@ function JoinClause({ join, color }) {
   const hasSource = join.table();
   return (
     <Flex align="center">
-      <NotebookCellItem color={color}>
-        <Icon className="mr1" name="table2" size={12} />
+      <NotebookCellItem color={color} icon="table2">
         {query.table().displayName()}
       </NotebookCellItem>
 
@@ -77,8 +76,7 @@ function JoinClause({ join, color }) {
         }}
         isInitiallyOpen={join.tableId() == null}
         triggerElement={
-          <NotebookCellItem color={color}>
-            <Icon className="mr1" name="table2" size={12} />
+          <NotebookCellItem color={color} icon="table2">
             {join.table() ? join.table().displayName() : `Pick a Table...`}
           </NotebookCellItem>
         }
@@ -151,10 +149,7 @@ function JoinDimensionPicker({ dimension, onChange, options, table, color }) {
   return (
     <PopoverWithTrigger
       triggerElement={
-        <NotebookCellItem color={color}>
-          {dimension && (
-            <Icon className="mr1" name={dimension.icon()} size={12} />
-          )}
+        <NotebookCellItem color={color} icon={dimension && dimension.icon()}>
           {dimension ? dimension.displayName() : `Pick a column...`}
         </NotebookCellItem>
       }
