@@ -135,26 +135,24 @@
 
 (expect-with-driver :oracle
   {:select [:*]
-   :from
-   [{:select
-     [[(hx/identifier :field oracle.tx/session-schema "venues" "id")          (hx/identifier :field-alias "id")]
-      [(hx/identifier :field oracle.tx/session-schema "venues" "name")        (hx/identifier :field-alias "name")]
-      [(hx/identifier :field oracle.tx/session-schema "venues" "category_id") (hx/identifier :field-alias "category_id")]
-      [(hx/identifier :field oracle.tx/session-schema "venues" "latitude")    (hx/identifier :field-alias "latitude")]
-      [(hx/identifier :field oracle.tx/session-schema "venues" "longitude")   (hx/identifier :field-alias "longitude")]
-      [(hx/identifier :field oracle.tx/session-schema "venues" "price")       (hx/identifier :field-alias "price")]]
+   :from   [{:select
+             [[(hx/identifier :field "CAM_52" "test_data_venues" "id")          (hx/identifier :field-alias "id")]
+              [(hx/identifier :field "CAM_52" "test_data_venues" "name")        (hx/identifier :field-alias "name")]
+              [(hx/identifier :field "CAM_52" "test_data_venues" "category_id") (hx/identifier :field-alias "category_id")]
+              [(hx/identifier :field "CAM_52" "test_data_venues" "latitude")    (hx/identifier :field-alias "latitude")]
+              [(hx/identifier :field "CAM_52" "test_data_venues" "longitude")   (hx/identifier :field-alias "longitude")]
+              [(hx/identifier :field "CAM_52" "test_data_venues" "price")       (hx/identifier :field-alias "price")]]
 
-     :from      [(hx/identifier :table oracle.tx/session-schema "venues")]
-     :left-join [[(hx/identifier :table oracle.tx/session-schema "categories") "test_data_categories__via__cat"]
-                 [:=
-                  (hx/identifier :field oracle.tx/session-schema "venues" "category_id")
-                  (hx/identifier :field "test_data_categories__via__cat" "id")]]
-     :where     [:=
-                 (hx/identifier :field "test_data_categories__via__cat" "name")
-                 "BBQ"]
-     :order-by  [[(hx/identifier :field oracle.tx/session-schema "venues" "id") :asc]]}]
-
-   :where [:<= (hsql/raw "rownum") 100]}
+             :from      [(hx/identifier :table "CAM_52" "test_data_venues")]
+             :left-join [[(hx/identifier :table "CAM_52" "test_data_categories") (hx/identifier :table-alias "test_data_categories__via__cat")]
+                         [:=
+                          (hx/identifier :field "CAM_52" "test_data_venues" "category_id")
+                          (hx/identifier :field "test_data_categories__via__cat" "id")]]
+             :where     [:=
+                         (hx/identifier :field "test_data_categories__via__cat" "name")
+                         "BBQ"]
+             :order-by  [[(hx/identifier :field "CAM_52" "test_data_venues" "id") :asc]]}]
+   :where [:<= {:s "rownum"} 100]}
   (qp.test-util/with-everything-store
     (#'sql.qp/mbql->honeysql
      :oracle
