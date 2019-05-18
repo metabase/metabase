@@ -57,7 +57,10 @@ export default class NotebookSteps extends React.Component {
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-const NEST_STEP_TYPES = ["join", "filter"];
+// allow nesting after these steps:
+const NEST_LAST_TYPES = new Set(["summarize", "sort", "limit"]);
+// allow these actions after nesting:
+const NEST_NEXT_TYPES = new Set(["join", "filter", "summarize"]);
 
 function getQuestionSteps(question, openSteps) {
   const steps = [];
@@ -69,20 +72,20 @@ function getQuestionSteps(question, openSteps) {
       steps.push(...stageSteps);
     }
 
-    const last = steps[steps.length - 1];
-    if (
-      last.type === "breakout" ||
-      last.type === "sort" ||
-      last.type === "limit"
-    ) {
-      for (const type of NEST_STEP_TYPES) {
-        last.actions.push({
-          type: type,
-          action: ({ query, openStep }) => {
-            query.nest().update();
-            openStep(`${last.stage + 1}:${type}`);
-          },
-        });
+    const database = question.database();
+    if (database && database.hasFeature("nested-queries")) {
+      const activeSteps = steps.filter(s => s.active);
+      const last = activeSteps[activeSteps.length - 1];
+      if (NEST_LAST_TYPES.has(last.type)) {
+        for (const type of NEST_NEXT_TYPES) {
+          last.actions.push({
+            type: type,
+            action: ({ query, openStep }) => {
+              query.nest().update();
+              openStep(`${last.stage + 1}:${type}`);
+            },
+          });
+        }
       }
     }
   }
@@ -144,7 +147,9 @@ const STEPS = [
   },
   {
     type: "limit",
-    valid: query => !!query.table(),
+    valid: query =>
+      !!query.table() &&
+      (query.aggregations().length === 0 || query.breakouts().length > 0),
     visible: query => query.limit() != null,
     revert: query => query.clearLimit(),
   },
@@ -174,8 +179,9 @@ function getStageSteps(query, stageIndex, openSteps) {
     const STEP = STEPS[i];
     const step = _.findWhere(steps, { type: STEP.type });
     if (step) {
-      // only include previewQuery if the section would be visible (i.e. excluding "defaults")
-      step.previewQuery = STEP.visible(query) ? previewQuery : null;
+      step.active = STEP.visible(query);
+      // only include previewQuery if the section would be visible (i.e. excluding "openSteps")
+      step.previewQuery = step.active ? previewQuery : null;
       // add any accumulated actions and reset
       step.actions = actions;
       actions = [];

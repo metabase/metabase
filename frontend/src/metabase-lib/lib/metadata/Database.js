@@ -9,6 +9,7 @@ import Schema from "./Schema";
 import _ from "underscore";
 
 import type { SchemaName } from "metabase/meta/types/Table";
+import type { DatabaseFeature } from "metabase/meta/types/Database";
 
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
@@ -38,6 +39,10 @@ export default class Database extends Base {
         .map(table => table.schema)
         .filter(schemaName => schemaName != null),
     );
+  }
+
+  hasFeature(feature: DatabaseFeature): boolean {
+    return this.features.indexOf(feature) >= 0;
   }
 
   newQuestion(): Question {
