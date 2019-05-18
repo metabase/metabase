@@ -27,7 +27,7 @@
             [toucan.util.test :as tt]))
 
 (defn- rows+cols
-  "Return the `:rows` and relevant parts of `:cols` from the RESULTS.
+  "Return the `:rows` and relevant parts of `:cols` from the `results`.
    (This is used to keep the output of various tests below focused and manageable.)"
   {:style/indent 0}
   [results]
@@ -710,3 +710,18 @@
                       :filter       [:=
                                      [:field-literal (db/select-one-field :name Field :id $date) "type/DateTime"]
                                      "2014-03-30"]}})))))
+
+;; make sure filters in source queries are applied correctly!
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
+  [["Fred 62"     1]
+   ["Frolic Room" 1]]
+  (qp.test/format-rows-by [str int]
+    (qp.test/rows
+      (qp/process-query
+        (data/mbql-query checkins
+          {:source-query {:source-table $$checkins
+                          :filter       [:> $date "2015-01-01"]}
+           :aggregation  [:count]
+           :order-by     [[:asc $venue_id->venues.name]]
+           :breakout     [$venue_id->venues.name]
+           :filter       [:starts-with $venue_id->venues.name "F"]})))))

@@ -101,14 +101,23 @@
   [table-name body & {:keys [wrap-field-ids?], :or {wrap-field-ids? true}}]
   (walk/postwalk
    (fn [form]
-     (or (when (symbol? form)
-           (if (= form '$$table)
-             `(id ~(keyword table-name))
-             (let [[first-char & rest-chars] (name form)]
-               (when (= first-char \$)
-                 (let [token (apply str rest-chars)]
-                   (token->id-call wrap-field-ids? table-name token))))))
-         form))
+     (cond
+       (not (symbol? form))
+       form
+
+       (= form '$$table)
+       `(id ~(keyword table-name))
+
+       (str/starts-with? form "$$")
+       (let [table-name (str/replace form #"^\$\$" "")]
+         `(id ~(keyword table-name)))
+
+       (str/starts-with? form "$")
+       (let [field-name (str/replace form #"^\$" "")]
+         (token->id-call wrap-field-ids? table-name field-name))
+
+       :else
+       form))
    body))
 
 (defmacro $ids
@@ -123,6 +132,10 @@
 
     $$table -> (id :venues)
 
+  You can reference other tables by using `$$` as well:
+
+    $$categories -> (id :categories)
+
   You can pass options by wrapping `table-name` in a vector:
 
     ($ids [venues {:wrap-field-ids? true}]
@@ -136,15 +149,22 @@
     (m/mapply $->id (keyword table-name) `(do ~@body) (merge {:wrap-field-ids? false}
                                                              options))))
 
+(declare id)
 
 (defn wrap-inner-mbql-query
   "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for
   the query's `:source-table`."
   {:style/indent 0}
   [query]
-  {:database (db/select-one-field :db_id Table, :id (:source-table query))
+  {:database (id)
    :type     :query
    :query    query})
+
+(defn add-source-table-if-needed [table query]
+  (if (and query
+           (some query #{:source-table :source-query}))
+    query
+    (assoc query :source-table (id table))))
 
 (defmacro mbql-query
   "Build a query, expands symbols like `$field` into calls to `id` and wraps them in `:field-id`. See the dox for
@@ -160,8 +180,7 @@
   {:style/indent 1}
   [table & [query]]
   `(wrap-inner-mbql-query
-     ~(merge `{:source-table (id ~(keyword table))}
-             ($->id table query))))
+     (add-source-table-if-needed ~(keyword table) ~($->id table query))))
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."

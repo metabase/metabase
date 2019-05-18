@@ -2,20 +2,33 @@
   "Utilities for writing Query Processor tests that test internal workings of the QP rather than end-to-end results,
   e.g. middleware tests."
   (:require [metabase.models
+             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test.data :as data]
+            [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]))
+
+(s/defn ^:private everything-store-database []
+  (or (:database @@#'qp.store/*store*)
+      (db/select-one (into [Database] qp.store/database-columns-to-fetch), :id (data/id))))
+
+(s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
+  (or (get-in @@#'qp.store/*store* [:tables table-id])
+      (db/select-one (into [Table] qp.store/table-columns-to-fetch), :id table-id)))
+
+(s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
+  (or (get-in @@#'qp.store/*store* [:fields field-id])
+      (db/select-one (into [Field] qp.store/field-columns-to-fetch), :id field-id)))
 
 (defn do-with-everything-store
   "Impl for `with-everything-store`."
   [f]
-  (with-redefs [qp.store/table (fn [table-id]
-                                 (or (get-in @@#'qp.store/*store* [:tables table-id])
-                                     (db/select-one (into [Table] qp.store/table-columns-to-fetch), :id table-id)))
-                qp.store/field (fn [field-id]
-                                 (or (get-in @@#'qp.store/*store* [:fields field-id])
-                                     (db/select-one (into [Field] qp.store/field-columns-to-fetch), :id field-id)))]
+  (with-redefs [qp.store/database everything-store-database
+                qp.store/table    everything-store-table
+                qp.store/field    everything-store-field]
     (qp.store/with-store
       (f))))
 

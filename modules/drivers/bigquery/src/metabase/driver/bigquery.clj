@@ -58,14 +58,10 @@
 (s/defn ^:private dataset-name-for-current-query :- BigQueryIdentifierString
   "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
   identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
-  `BigQueryIdentifier` record type; see its definition for more details.
-
-  This looks for the value inside the SQL QP's `*query*` dynamic var; since this won't be bound for non-MBQL queries,
-  you will want to avoid this function for SQL queries."
+  `BigQueryIdentifier` record type; see its definition for more details."
   []
-  (or (some-> sql.qp/*query* :dataset-id)
-      (when (qp.store/initialized?)
-        (some-> (qp.store/database) :details :dataset-id))))
+  (when (qp.store/initialized?)
+    (some-> (qp.store/database) :details :dataset-id)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -412,25 +408,17 @@
       ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
                                             :when        (not (contains? (set fields-field-clauses) field-clause))]
                                         (sql.qp/as driver field-clause)))))
-(defn- ag-ref->alias [[_ index]]
-  (let [{{aggregations :aggregation} :query} sql.qp/*query*
-        [ag-type :as ag]                     (nth aggregations index)]
-    (mbql.u/match-one ag
-      [:distinct _]              :count
-      [:expression operator & _] operator
-      [:named _ ag-name]         (keyword ag-name)
-      [ag-type & _]              ag-type)))
 
-(defmethod sql.qp/apply-top-level-clause [:bigquery :order-by]
-  [driver _ honeysql-form {subclauses :order-by, :as query}]
-  (loop [honeysql-form honeysql-form, [[direction field-clause] & more] subclauses]
-    (let [honeysql-form (h/merge-order-by honeysql-form [(if (mbql.u/is-clause? :aggregation field-clause)
-                                                           (ag-ref->alias field-clause)
-                                                           (sql.qp/field-clause->alias driver field-clause))
-                                                         direction])]
-      (if (seq more)
-        (recur honeysql-form more)
-        honeysql-form))))
+;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
+;; compiling `:asc` and `:desc` and alias the Fields if applicable
+(defn- alias-order-by-field [driver [direction field-clause]]
+  (let [field-clause (if (mbql.u/is-clause? :aggregation field-clause)
+                       field-clause
+                       (sql.qp/field-clause->alias driver field-clause))]
+    ((get-method sql.qp/->honeysql [:sql direction]) driver [direction field-clause])))
+
+(defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
+(defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
