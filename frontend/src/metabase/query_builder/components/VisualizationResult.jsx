@@ -2,6 +2,7 @@
 
 import React, { Component } from "react";
 import { t, jt } from "ttag";
+import cx from "classnames";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
@@ -12,6 +13,7 @@ import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 type Props = {
+  className?: string,
   question: Question,
   isObjectDetail: boolean,
   result: any,
@@ -43,6 +45,7 @@ export default class VisualizationResult extends Component {
       navigateToNewCardInsideQB,
       result,
       rawSeries,
+      className,
       ...props
     } = this.props;
     const { showCreateAlertModal } = this.state;
@@ -53,7 +56,7 @@ export default class VisualizationResult extends Component {
 
       // successful query but there were 0 rows returned with the result
       return (
-        <div className="flex flex-full">
+        <div className={cx(className, "flex")}>
           <ErrorMessage
             type="noRows"
             title="No results!"
@@ -95,6 +98,7 @@ export default class VisualizationResult extends Component {
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
           card={question.card()}
+          className={className}
           // Table:
           {...props}
         />
