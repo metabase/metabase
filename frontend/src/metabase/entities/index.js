@@ -18,3 +18,4 @@ export groups from "./groups";
 
 export search from "./search";
 export snippets from "./snippets";
+export recents from "./recents";

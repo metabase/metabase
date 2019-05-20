@@ -4,6 +4,9 @@ import PropTypes from "prop-types";
 
 import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
 
+import Search from "metabase/entities/search";
+import Recents from "metabase/entities/recents";
+
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -16,6 +19,8 @@ import { space } from "styled-system";
 import * as Urls from "metabase/lib/urls";
 import { color, darken, lighten } from "metabase/lib/colors";
 
+import Button from "metabase/components/Button.jsx";
+import Card from "metabase/components/Card";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
@@ -78,6 +83,7 @@ const SearchWrapper = Flex.extend`
   max-width: 50em;
   align-items: center;
   color: white;
+  position: relative;
   transition: background 300ms ease-in;
   &:hover {
     background-color: ${ActiveSearchColor};
@@ -117,6 +123,7 @@ class SearchBar extends React.Component {
   componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
       this._updateSearchTextFromUrl(nextProps);
+      this.setState({ active: false });
     }
   }
   _updateSearchTextFromUrl(props) {
@@ -166,6 +173,49 @@ class SearchBar extends React.Component {
               }
             }}
           />
+          {this.state.active && (
+            <Box className="absolute full text-normal" style={{ top: 60 }}>
+              <Card p={2} className="text-dark">
+                {searchText.length > 0 ? (
+                  <Box>
+                    <h4>Results for {searchText}</h4>
+                    <Search.ListLoader query={{ q: searchText }} wrapped reload>
+                      {({ list }) => {
+                        if (list.length === 0) {
+                          return <Box>No results</Box>;
+                        }
+                        return list.map(l => (
+                          <Box>
+                            <Link to={l.getUrl()}>
+                              <Flex align="center">
+                                <Icon name={l.getIcon()} mr={2} />
+                                <h4 className="text-brand">{l.name}</h4>
+                              </Flex>
+                            </Link>
+                          </Box>
+                        ));
+                      }}
+                    </Search.ListLoader>
+                  </Box>
+                ) : (
+                  <Box>
+                    {/*
+                    <h4>Recently viewed</h4>
+                    <Recents.ListLoader>
+                      {({ list }) => {
+                        if (list.length === 0) {
+                          return <Box>No results</Box>;
+                        }
+                        console.log(list);
+                        return list.map(l => l.name);
+                      }}
+                    </Recents.ListLoader>
+                    */}
+                  </Box>
+                )}
+              </Card>
+            </Box>
+          )}
         </SearchWrapper>
       </OnClickOutsideWrapper>
     );
