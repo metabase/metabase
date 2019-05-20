@@ -99,9 +99,9 @@ export default class FieldApp extends React.Component {
     metadata: Metadata,
     idfields: Object[],
 
-    // fetchDatabaseMetadata: number => Promise<void>,
-    // fetchTableMetadata: number => Promise<void>,
-    // fetchFieldValues: number => Promise<void>,
+    fetchDatabaseMetadata: number => Promise<void>,
+    fetchTableMetadata: number => Promise<void>,
+    fetchFieldValues: number => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
     updateFieldDimension: (FieldId, any) => Promise<void>,
@@ -125,19 +125,19 @@ export default class FieldApp extends React.Component {
       fetchFieldValues,
     } = this.props;
 
-    // A complete database metadata is needed in case that foreign key is changed
-    // and then we need to show FK remapping options for a new table
-    await fetchDatabaseMetadata(databaseId);
+    await Promise.all([
+      // A complete database metadata is needed in case that foreign key is
+      // changed and then we need to show FK remapping options for a new table
+      fetchDatabaseMetadata(databaseId),
 
-    // Only fetchTableMetadata hydrates `dimension` in the field object
-    // Force reload to ensure that we are not showing stale information
-    await fetchTableMetadata(tableId, true);
+      // Only fetchTableMetadata hydrates `dimension` in the field object
+      // Force reload to ensure that we are not showing stale information
+      fetchTableMetadata(tableId, true),
 
-    // load field values if has_field_values === "list"
-    const field = this.props.metadata.field(fieldId);
-    if (field && field.has_field_values === "list") {
-      await fetchFieldValues(fieldId);
-    }
+      // always load field values even though it's only needed if
+      // has_field_values === "list"
+      fetchFieldValues(fieldId),
+    ]);
   }
 
   linkWithSaveStatus = (saveMethod: Function) => {
@@ -149,7 +149,6 @@ export default class FieldApp extends React.Component {
     };
   };
 
-  onUpdateField = this.linkWithSaveStatus(this.props.updateField);
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { metadata, fieldId } = this.props;
     const field = metadata.fields[fieldId];
@@ -248,7 +247,6 @@ export default class FieldApp extends React.Component {
                   idfields={idfields}
                   table={table}
                   metadata={metadata}
-                  onUpdateField={this.onUpdateField}
                   onUpdateFieldValues={this.onUpdateFieldValues}
                   onUpdateFieldProperties={this.onUpdateFieldProperties}
                   onUpdateFieldDimension={this.onUpdateFieldDimension}
@@ -280,7 +278,6 @@ const FieldGeneralPane = ({
   idfields,
   table,
   metadata,
-  onUpdateField,
   onUpdateFieldValues,
   onUpdateFieldProperties,
   onUpdateFieldDimension,
@@ -306,7 +303,7 @@ const FieldGeneralPane = ({
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker
           field={field.getPlainObject()}
-          updateField={onUpdateField}
+          updateField={onUpdateFieldProperties}
         />
       </div>
     </Section>
@@ -315,7 +312,7 @@ const FieldGeneralPane = ({
       <SectionHeader title={t`Field Type`} />
       <SpecialTypeAndTargetPicker
         field={field.getPlainObject()}
-        updateField={onUpdateField}
+        updateField={onUpdateFieldProperties}
         idfields={idfields}
         selectSeparator={<SelectSeparator />}
       />

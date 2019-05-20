@@ -6,8 +6,8 @@ import ColumnItem from "./ColumnItem.jsx";
 export default class ColumnsList extends Component {
   static propTypes = {
     fields: PropTypes.array,
-    updateField: PropTypes.func.isRequired,
     idfields: PropTypes.array,
+    updateField: PropTypes.func.isRequired,
   };
 
   render() {

@@ -30,12 +30,13 @@ export default class Column extends Component {
 
   static propTypes = {
     field: PropTypes.object,
-    updateField: PropTypes.func.isRequired,
     idfields: PropTypes.array.isRequired,
+    updateField: PropTypes.func.isRequired,
   };
 
   updateProperty(name, value) {
-    this.props.updateField({ ...this.props.field, [name]: value });
+    this.props.field[name] = value;
+    this.props.updateField(this.props.field);
   }
 
   onNameChange(event) {
@@ -56,7 +57,7 @@ export default class Column extends Component {
   }
 
   render() {
-    const { field, updateField, idfields } = this.props;
+    const { field, idfields, updateField } = this.props;
 
     return (
       <li className="mt1 mb3 flex">
@@ -119,11 +120,8 @@ export class FieldVisibilityPicker extends Component {
     className?: string,
   };
 
-  onVisibilityChange = visibilityType => {
-    const { field } = this.props;
-    field.visibility_type = visibilityType.id;
-    this.props.updateField(field);
-  };
+  onVisibilityChange = ({ id: visibility_type }) =>
+    this.props.updateField({ visibility_type });
 
   render() {
     const { field, className } = this.props;
@@ -151,26 +149,24 @@ export class SpecialTypeAndTargetPicker extends Component {
     selectSeparator?: React$Element<any>,
   };
 
-  onSpecialTypeChange = async special_type => {
+  onSpecialTypeChange = async ({ id: special_type }) => {
     const { field, updateField } = this.props;
-
-    // FIXME: mutation
-    field.special_type = special_type.id;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
     if (field.target && field.target.id != null && isFK(field.special_type)) {
-      // we have something that used to be an FK and is now not an FK
-      // clean up after ourselves
-      field.target = null;
-      field.fk_target_field_id = null;
+      await updateField({
+        special_type,
+        target: null,
+        k_target_field_id: null,
+      });
+    } else {
+      await updateField({ special_type });
     }
-
-    await updateField(field);
 
     MetabaseAnalytics.trackEvent(
       "Data Model",
       "Update Field Special-Type",
-      field.special_type,
+      special_type,
     );
   };
 
@@ -191,11 +187,8 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
-  onTargetChange = async target_field => {
-    const { field, updateField } = this.props;
-    field.fk_target_field_id = target_field.id;
-
-    await updateField(field);
+  onTargetChange = async ({ id: fk_target_field_id }) => {
+    await this.props.updateField({ fk_target_field_id });
 
     MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
   };

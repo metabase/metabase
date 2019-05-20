@@ -45,6 +45,8 @@ import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";
+import Fields from "metabase/entities/fields";
+import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 import { MetabaseApi } from "metabase/services";
 
@@ -66,7 +68,11 @@ const initFieldApp = async ({ tableId = 1, fieldId }) => {
   const store = await createTestStore();
   store.pushPath(`/admin/datamodel/database/1/table/${tableId}/${fieldId}`);
   const fieldApp = mount(store.connectContainer(<FieldApp />));
-  await store.waitForActions([Databases.actionTypes.FETCH_DATABASE_IDFIELDS]);
+  await store.waitForActions([
+    Databases.actions.fetchDatabaseMetadata,
+    Tables.actions.fetchTableMetadata,
+    Fields.actions.fetchFieldValues,
+  ]);
   return { store, fieldApp };
 };
 
