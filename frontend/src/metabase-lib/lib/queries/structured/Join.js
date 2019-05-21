@@ -4,12 +4,13 @@ import { MBQLObjectClause } from "./MBQLClause";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
+import MetabaseUtils from "metabase/lib/utils";
 
 export default class Join extends MBQLObjectClause {
   constructor(...args) {
     super(...args);
     if (!this.alias) {
-      this.alias = `join${this._index || 0}`;
+      this.alias = MetabaseUtils.uuid();
     }
   }
 

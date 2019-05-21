@@ -9,11 +9,13 @@ import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
 
 import "./LineAreaBarChart.css";
 
-import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import {
-  getChartTypeFromData,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase/lib/schema_metadata";
+import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -26,8 +28,6 @@ import {
 
 import _ from "underscore";
 import cx from "classnames";
-
-const MAX_SERIES = 20;
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -83,7 +83,12 @@ export default class LineAreaBarChart extends Component {
   static minSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
-    return getChartTypeFromData(cols, rows, false) != null;
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
   }
 
   static checkRenderable(series, settings) {

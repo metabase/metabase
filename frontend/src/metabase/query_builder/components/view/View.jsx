@@ -164,26 +164,21 @@ export default class View extends React.Component {
         ? this.handleOpenEditBreakout
         : null;
 
-    const canShowStructuredQuerySidebars =
-      // queryBuilderMode !== "notebook" &&
-      isStructured;
-
     const leftSideBar =
-      canShowStructuredQuerySidebars &&
-      (isEditingFilterIndex != null || isAddingFilter ? (
+      isStructured && (isEditingFilterIndex != null || isAddingFilter) ? (
         <FilterSidebar
           question={question}
           index={isEditingFilterIndex}
           onClose={this.handleCloseFilter}
         />
-      ) : canShowStructuredQuerySidebars &&
+      ) : isStructured &&
         (isEditingAggregationIndex != null || isAddingAggregation) ? (
         <AggregationSidebar
           question={question}
           index={isEditingAggregationIndex}
           onClose={this.handleCloseAggregation}
         />
-      ) : canShowStructuredQuerySidebars &&
+      ) : isStructured &&
         (isEditingBreakoutIndex != null || isAddingBreakout) ? (
         <BreakoutSidebar
           question={question}
@@ -202,7 +197,7 @@ export default class View extends React.Component {
         />
       ) : isShowingChartTypeSidebar ? (
         <ChartTypeSidebar {...propsWithExtras} />
-      ) : null);
+      ) : null;
 
     const rightSideBar =
       isShowingTemplateTagsEditor && query instanceof NativeQuery ? (
