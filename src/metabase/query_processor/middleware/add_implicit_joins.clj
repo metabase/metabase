@@ -1,9 +1,10 @@
-(ns metabase.query-processor.middleware.resolve-joined-tables
-  "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
-  the query about what joins should be done and how they should be performed."
+(ns metabase.query-processor.middleware.add-implicit-joins
+  "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
+  with `:joined-field` clauses."
   (:require [metabase
              [db :as mdb]
-             [driver :as driver]]
+             [driver :as driver]
+             [util :as u]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -64,7 +65,9 @@
 (s/defn ^:private store-join-tables! [fk-clauses :- [FKClauseWithFieldIDArgs]]
   (let [table-ids-to-fetch (fks->dest-table-ids fk-clauses)]
     (when (seq table-ids-to-fetch)
-      (doseq [table (db/select (vec (cons Table qp.store/table-columns-to-fetch)), :id [:in table-ids-to-fetch])]
+      (doseq [table (db/select (into [Table] qp.store/table-columns-to-fetch)
+                      :db_id (u/get-id (qp.store/database))
+                      :id    [:in table-ids-to-fetch])]
         (qp.store/store-table! table)))))
 
 
@@ -74,7 +77,7 @@
   [pk-info :- [PKInfo]]
   (let [pk-field-ids (set (map :pk-id pk-info))
         pk-fields    (when (seq pk-field-ids)
-                       (db/select (vec (cons Field qp.store/field-columns-to-fetch)) :id [:in pk-field-ids]))]
+                       (db/select (into [Field] qp.store/field-columns-to-fetch) :id [:in pk-field-ids]))]
     (doseq [field pk-fields]
       (qp.store/store-field! field))))
 
@@ -152,7 +155,7 @@
 
 ;;; -------------------------------------------- PUTTING it all together ---------------------------------------------
 
-(defn- resolve-joined-tables-in-top-level-query
+(defn- add-implicit-joins-in-top-level-query
   "Resolve JOINs at the top-level of the query."
   [{mbql-query :query, :as query}]
   ;; find fk-> clauses in the query AT THE TOP LEVEL
@@ -171,32 +174,32 @@
               (add-implicit-join-clauses resolved-join-info)
               (replace-fk-clauses resolved-join-info)))))))
 
-(defn- resolve-joined-tables-in-query-all-levels
+(defn- add-implicit-joins-in-query-all-levels
   "Resolve JOINs at all levels of the query, including the top level and nested queries at any level of nesting."
   [{{source-query :source-query} :query, :as query}]
   ;; first, resolve JOINs for the top-level
-  (let [query                          (resolve-joined-tables-in-top-level-query query)
+  (let [query                          (add-implicit-joins-in-top-level-query query)
         ;; then recursively resolve JOINs for any nested queries by pulling the query up a level and then getting the
         ;; result
         {resolved-source-query :query} (when source-query
-                                         (resolve-joined-tables-in-query-all-levels (assoc query :query source-query)))]
+                                         (add-implicit-joins-in-query-all-levels (assoc query :query source-query)))]
     ;; finally, merge the resolved source-query into the top-level query as appropriate
     (cond-> query
       resolved-source-query (assoc-in [:query :source-query] resolved-source-query))))
 
-(defn- resolve-joined-tables* [{query-type :type, :as query}]
+(defn- add-implicit-joins* [{query-type :type, :as query}]
   ;; if this is a native query, or if `driver/*driver*` is bound *and* it DOES NOT support `:foreign-keys`, return
   ;; query as is. Otherwise add implicit joins for `fk->` clauses
   (if (or (= query-type :native)
           (some-> driver/*driver* ((complement driver/supports?) :foreign-keys)))
     query
-    (resolve-joined-tables-in-query-all-levels query)))
+    (add-implicit-joins-in-query-all-levels query)))
 
-(defn resolve-joined-tables
+(defn add-implicit-joins
   "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
   `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or equivalent) that need to
   be performed for these tables.
 
   This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
-  (comp qp resolve-joined-tables*))
+  (comp qp add-implicit-joins*))

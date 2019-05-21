@@ -13,6 +13,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
+(defmethod tx/sorts-nil-first? :vertica [_] false)
+
 (defmethod sql.tx/field-base-type->sql-type [:vertica :type/BigInteger] [_ _] "BIGINT")
 (defmethod sql.tx/field-base-type->sql-type [:vertica :type/Boolean]    [_ _] "BOOLEAN")
 (defmethod sql.tx/field-base-type->sql-type [:vertica :type/Char]       [_ _] "VARCHAR(254)")

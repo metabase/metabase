@@ -1,14 +1,22 @@
-(ns metabase.query-processor.middleware.resolve-joined-tables-test
+(ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.resolve-joined-tables :as resolve-joined-tables]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data :as data]))
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor
+             [store :as qp.store]
+             [test-util :as qp.test-util]]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.test.data :as data]
+            [toucan.db :as db]
+            [toucan.util.test :as tt]))
 
-(defn- resolve-joined-tables [query]
+(defn- add-implicit-joins [query]
   (qp.test-util/with-everything-store
-    ((resolve-joined-tables/resolve-joined-tables identity) {:database (data/id)
-                                                             :type     :query
-                                                             :query    query})))
+    ((add-implicit-joins/add-implicit-joins identity) {:database (data/id)
+                                                       :type     :query
+                                                       :query    query})))
 
 ;; make sure `:joins` get added automatically for `:fk->` clauses
 (expect
@@ -26,7 +34,7 @@
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  $category_id}]})}
-  (resolve-joined-tables
+  (add-implicit-joins
    (data/$ids venues
      {:source-table $$table
       :fields       [[:field-id $name]
@@ -50,7 +58,7 @@
                                  :strategy     :left-join
                                  :fields       :none
                                  :fk-field-id  $category_id}]})}}
-  (resolve-joined-tables
+  (add-implicit-joins
    {:source-query
     (data/$ids venues
       {:source-table $$table
@@ -75,7 +83,7 @@
                                   :strategy     :left-join
                                   :fields       :none
                                   :fk-field-id  $category_id}]})}}}
-  (resolve-joined-tables
+  (add-implicit-joins
    {:source-query
     {:source-query
      (data/$ids venues
@@ -104,10 +112,41 @@
                                 :strategy     :left-join
                                 :fields       :none
                                 :fk-field-id  $venue_id}]})}
-  (resolve-joined-tables
+  (add-implicit-joins
    (data/$ids [checkins {:wrap-field-ids? true}]
      {:source-query {:source-table $$table
                      :filter       [:> $date "2014-01-01"]}
       :aggregation  [[:count]]
       :breakout     [$venue_id->venues.price]
       :order-by     [[:asc $venue_id->venues.price]]})))
+
+;; Test that middleware stores joined tables in QP store
+(expect
+  {:database "test-data"
+   :tables   #{"CATEGORIES" "VENUES"}
+   :fields   #{["VENUES" "CATEGORY_ID"]
+               ["CATEGORIES" "ID"]
+               ["CATEGORIES" "NAME"]}}
+  (qp.store/with-store
+    (qp.store/store-database! (db/select-one (into [Database] qp.store/database-columns-to-fetch) :id (data/id)))
+    (qp.store/store-table!    (db/select-one (into [Table] qp.store/table-columns-to-fetch) :id (data/id :venues)))
+    (doseq [field-id [(data/id :categories :name) (data/id :venues :category_id)]]
+      (qp.store/store-field!    (db/select-one (into [Field] qp.store/field-columns-to-fetch) :id field-id)))
+    ((add-implicit-joins/add-implicit-joins identity)
+     (data/mbql-query venues
+       {:fields [$name $category_id->categories.name]}))
+    (qp.test-util/store-contents)))
+
+;; Test that joining against a table in a different DB throws and Exception
+(expect
+  Exception
+  (tt/with-temp* [Database [{database-id :id}]
+                  Table    [{table-id :id}    {:db_id database-id}]
+                  Field    [{field-id :id}    {:table_id table-id}]]
+    (add-implicit-joins
+     (data/$ids [checkins {:wrap-field-ids? true}]
+       {:source-query {:source-table $$table
+                       :filter       [:> $date "2014-01-01"]}
+        :aggregation  [[:count]]
+        :breakout     [[:fk-> $venue_id [:field-id field-id]]]
+        :order-by     [[:asc $venue_id->venues.price]]}))))

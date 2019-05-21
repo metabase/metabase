@@ -153,3 +153,13 @@
   [field-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:fields field-id])
       (throw (Exception. (str (tru "Error: Field {0} is not present in the Query Processor Store." field-id))))))
+
+(s/defn has-table?
+  "True if the store already has Table with `table-id`."
+  [table-id :- su/IntGreaterThanZero]
+  (boolean (get-in @*store* [:tables table-id])))
+
+(s/defn has-field?
+  "True if the store already has Field with `field-id`."
+  [field-id :- su/IntGreaterThanZero]
+  (boolean (get-in @*store* [:fields field-id])))

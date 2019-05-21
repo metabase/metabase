@@ -40,6 +40,8 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver/supports? [:mysql :full-join] [_ _] false)
+
 (defmethod driver/connection-properties :mysql [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details

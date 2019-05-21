@@ -174,11 +174,11 @@
     ($ids [venues {:wrap-field-ids? true}]
       $category_id->categories.name)
     ;; -> [:fk-> [:field-id (id :venues :category_id(] [:field-id (id :categories :name)]]"
-  {:arglists '([form] [table & body] [[table {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}] & body])}
-  (^{:style/indent 0} [form]
+  {:style/indent 1, :arglists '([form] [table & body] [[table {:keys [wrap-field-ids?], :or {wrap-field-ids? false}}] & body])}
+  ([form]
    `($ids nil ~form))
 
-  (^{:style/indent 1} [table-and-options & body]
+  ([table-and-options & body]
    (let [[table-name options] (if (sequential? table-and-options)
                                 table-and-options
                                 [table-and-options])]
