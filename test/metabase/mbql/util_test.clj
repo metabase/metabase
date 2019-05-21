@@ -730,3 +730,25 @@
    {:database    1
     :type        :query
     :query       {:source-table 1}}))
+
+
+;; make sure `->joined-field` works the way it is supposed to
+(expect
+  [:joined-field "a" [:field-id 10]]
+  (mbql.u/->joined-field "a" [:field-id 10]))
+
+(expect
+  [:joined-field "a" [:field-literal "ABC" :type/Integer]]
+  (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer]))
+
+(expect
+  [:datetime-field [:joined-field "a" [:field-id 1]] :month]
+  (mbql.u/->joined-field "a" [:datetime-field [:field-id 1] :month]))
+
+;; should throw an Exception if the Field already has an alias
+(expect
+  Exception
+  (mbql.u/->joined-field "a" [:joined-field "a" [:field-id 1]] :month))
+(expect
+  Exception
+  (mbql.u/->joined-field "a" [:datetime-field [:joined-field "a" [:field-id 1]] :month]))

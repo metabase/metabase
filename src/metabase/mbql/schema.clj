@@ -9,6 +9,7 @@
             [metabase.util
              [date :as du]
              [schema :as su]]
+            [metabase.mbql.util.match :as match]
             [schema.core :as s]))
 
 ;; A NOTE ABOUT METADATA:
@@ -535,6 +536,20 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
+(def JoinField
+  "Schema for any valid `Field` that is, or wraps, a `:joined-field` clause."
+  (s/constrained
+   Field
+   (fn [field-clause]
+     (seq (match/match field-clause [:joined-field true])))
+   "`:joined-field` clause or Field clause wrapping a `:joined-field` clause"))
+
+(def JoinFields
+  "Schema for valid values of a join `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [JoinField]))
+   "Distinct, non-empty sequence of `:joined-field` clauses or Field clauses wrapping `:joined-field` clauses"))
+
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
   These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
@@ -582,9 +597,13 @@
     ;;
     ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
     ;; with appropriate aliases.
-    (s/optional-key :fields)       (s/cond-pre
-                                    (s/enum :all :none)
-                                    (su/distinct (su/non-empty [joined-field])))
+    (s/optional-key :fields)       (s/named
+                                    (s/cond-pre
+                                     (s/enum :all :none)
+                                     JoinFields)
+                                    (str
+                                     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
+                                     " or clauses wrapping `:joined-field`."))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
@@ -613,8 +632,10 @@
    "All join aliases must be unique."))
 
 (def Fields
-  "Schema for valid values of the `:fields` clause."
-  (su/distinct (su/non-empty [Field])))
+  "Schema for valid values of the MBQL `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [Field]))
+   "Distinct, non-empty sequence of Field clauses"))
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."

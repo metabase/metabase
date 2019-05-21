@@ -131,8 +131,9 @@
 
 (s/defn ^:private add-implicit-join-clauses :- mbql.s/Query
   [query, resolved-join-infos :- [ResolvedJoinInfo]]
-  (let [join-clauses (map resolved-join-info->join-clause resolved-join-infos)]
-    (update-in query [:query :joins] (comp distinct concat) join-clauses)))
+  (let [implicit-joins (map resolved-join-info->join-clause resolved-join-infos)]
+    (update-in query [:query :joins] (fn [explicit-joins]
+                                       (distinct (concat implicit-joins explicit-joins))))))
 
 
 ;;; --------------------------------------------- Replacing fk-> clauses ---------------------------------------------

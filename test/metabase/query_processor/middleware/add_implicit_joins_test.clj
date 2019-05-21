@@ -150,3 +150,62 @@
         :aggregation  [[:count]]
         :breakout     [[:fk-> $venue_id [:field-id field-id]]]
         :order-by     [[:asc $venue_id->venues.price]]}))))
+
+;; Test that adding implicit joins still works correctly if the query also contains explicit joins
+(expect
+  (data/mbql-query checkins
+    {:source-table $$checkins
+     :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+     :breakout     [$id]
+     :joins        [{:source-table $$users
+                     :alias        "USERS__via__USER_ID"
+                     :strategy     :left-join
+                     :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                     :fk-field-id  (data/id :checkins :user_id)
+                     :fields       :none}
+                    {:alias        "u"
+                     :source-table $$users
+                     :condition    [:=
+                                    [:field-literal "ID" :type/BigInteger]
+                                    [:joined-field "u" $users.id]]}]
+     :limit        10})
+  (add-implicit-joins
+   (data/$ids [checkins {:wrap-field-ids? true}]
+     {:source-table $$checkins
+      :aggregation  [[:sum $user_id->users.id]]
+      :breakout     [$id]
+      :joins        [{:alias        "u"
+                      :source-table $$users
+                      :condition    [:=
+                                     [:field-literal "ID" :type/BigInteger]
+                                     [:joined-field "u" $users.id]]}]
+      :limit        10})))
+
+(expect
+  (data/mbql-query checkins
+    {:source-query {:source-table $$checkins
+                    :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+                    :breakout     [$id]
+                    :joins        [{:source-table $$users
+                                    :alias        "USERS__via__USER_ID"
+                                    :strategy     :left-join
+                                    :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                                    :fk-field-id  (data/id :checkins :user_id)
+                                    :fields       :none}]}
+     :joins        [{:alias        "u"
+                     :source-table $$users
+                     :condition    [:=
+                                    [:field-literal "ID" :type/BigInteger]
+                                    [:joined-field "u" $users.id]]}]
+     :limit        10})
+  (add-implicit-joins
+   (data/$ids [checkins {:wrap-field-ids? true}]
+     {:source-query {:source-table $$checkins
+                     :aggregation  [[:sum $user_id->users.id]]
+                     :breakout     [$id]}
+      :joins        [{:alias        "u"
+                      :source-table $$users
+                      :condition    [:=
+                                     [:field-literal "ID" :type/BigInteger]
+                                     [:joined-field "u" $users.id]]}]
+      :limit        10})))

@@ -22,12 +22,25 @@
   aliases be unique; that is not guaranteeded until `deduplicate-aliases` transforms the joins."
   (su/non-empty [mbql.s/Join]))
 
-(def ^:private MBQLQuery
-  "Schema for the parts of the 'inner' query we're transforming in this middleware that we care about validating (no
-  point in validating stuff we're not changing.)"
-  {:joins                   (s/constrained mbql.s/Joins vector?)
-   (s/optional-key :fields) (s/constrained mbql.s/Fields vector?)
+(def ^:private UnresolvedMBQLQuery
+  "Schema for the parts of the query we're modifying. For use in the various intermediate transformations in the
+  middleware."
+  {:joins                   [mbql.s/Join]
+   (s/optional-key :fields) mbql.s/Fields
    s/Keyword                s/Any})
+
+(def ^:private ResolvedMBQLQuery
+  "Schema for the final results of this middleware."
+  (s/constrained
+   mbql.s/MBQLQuery
+   (fn [{:keys [joins]}]
+     (every?
+      (fn [{:keys [fields]}]
+        (or
+         (empty? fields)
+         (sequential? fields)))
+      joins))
+   "Valid MBQL query where `:joins` `:fields` is sequence of Fields or removed"))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Resolving Tables & Fields / Saving in QP Store                                 |
@@ -85,24 +98,31 @@
   [{:keys [source-table alias fields], :as join} :- mbql.s/Join]
   (merge
    join
-   (if (= fields :all)
-     (if source-table
-       {:fields (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                  [:joined-field alias field])}
+   (when (= fields :all)
+     (when-not source-table
        (throw
         (UnsupportedOperationException.
-         "TODO - fields = all is not yet implemented for joins with source queries."))))))
+         "TODO - fields = all is not yet implemented for joins with source queries.")))
+     {:fields (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                (mbql.u/->joined-field alias field))})))
 
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
   [joins :- Joins]
   (resolve-tables! joins)
-  (let [joins (->> joins
-                   deduplicate-aliases
-                   (map merge-defaults)
-                   (mapv handle-all-fields))]
-    (resolve-fields! joins)
-    joins))
+  (u/prog1 (->> joins
+                deduplicate-aliases
+                (map merge-defaults)
+                (mapv handle-all-fields))
+    (resolve-fields! <>)))
+
+(declare resolve-joins-in-mbql-query-all-levels)
+
+(s/defn ^:private resolve-join-source-queries :- mbql.s/Joins
+  [joins :- mbql.s/Joins]
+  (for [{:keys [source-query], :as join} joins]
+    (cond-> join
+      source-query resolve-joins-in-mbql-query-all-levels)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -119,8 +139,8 @@
   (vec (for [join joins]
          (dissoc join :fields))))
 
-(s/defn ^:private merge-joins-fields :- MBQLQuery
-  [{:keys [joins], :as query} :- MBQLQuery]
+(s/defn ^:private merge-joins-fields :- UnresolvedMBQLQuery
+  [{:keys [joins], :as query} :- UnresolvedMBQLQuery]
   (let [join-fields (joins->fields joins)
         query       (update query :joins remove-joins-fields)]
     (cond-> query
@@ -135,23 +155,37 @@
           (str (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
                     alias aliases))))))))
 
-(s/defn ^:private resolve-joins-in-mbql-query :- MBQLQuery
-  [{:keys [joins], :as query} :- MBQLQuery]
+(s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
+  [{:keys [joins], :as query} :- mbql.s/MBQLQuery]
   (u/prog1 (-> query
                (update :joins resolve-references-and-deduplicate)
+               (update :joins resolve-join-source-queries)
                merge-joins-fields)
-    (check-join-aliases <>)))
+    (check-join-aliases (dissoc <> :source-query))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - this is a little hacky, we should come up with a more elegant way of recursively resolving the source
+;; queries inside joins. I actually think maybe resolving Joins source tables should be resolved by other middleware
+(defn- maybe-resolve-source-table
+  "Resolve the `source-table` of any `source-query` inside a join."
+  [{:keys [source-table], :as query}]
+  (u/prog1 query
+    (when-not (qp.store/has-table? source-table)
+      (qp.store/store-table! (db/select-one (into [Table] qp.store/table-columns-to-fetch)
+                               :id source-table, :db_id (u/get-id (qp.store/database)))))))
+
 (defn- resolve-joins-in-mbql-query-all-levels
-  [{:keys [joins source-query], :as query}]
+  [{:keys [joins source-query source-table], :as query}]
   (cond-> query
     (seq joins)
     resolve-joins-in-mbql-query
+
+    source-table
+    maybe-resolve-source-table
 
     source-query
     (update :source-query resolve-joins-in-mbql-query-all-levels)))

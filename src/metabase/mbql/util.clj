@@ -485,3 +485,13 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
+
+(s/defn ->joined-field :- mbql.s/JoinField
+  "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
+  [alias :- s/Str, field-clause :- mbql.s/Field]
+  (replace field-clause
+    :joined-field
+    (throw (Exception. (format "%s already has an alias." &match)))
+
+    #{:field-id :field-literal}
+    [:joined-field alias &match]))

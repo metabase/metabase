@@ -7,7 +7,8 @@
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :as tx]]))
+             [interface :as tx]]
+            [metabase.util :as u]))
 
 (defn- native-form [query]
   (:query (qp/query->native query)))
@@ -152,7 +153,7 @@
              [13 "Paul Pelican"     2   2   "SoMa Squadron"]
              [4  "Peter Pelican"    2   2   "SoMa Squadron"]
              [1  "Russell Crow"     4   4   "Mission Street Murder"]]}
-  (qp.test/format-rows-by [int str #(some-> % int) #(some-> % int) #(some-> % str)]
+  (qp.test/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
     (qp.test/rows+column-names
       (qp/process-query
         (data/dataset bird-flocks
@@ -216,7 +217,7 @@
              [13 "Paul Pelican"    "SoMa Squadron"]
              [4  "Peter Pelican"   "SoMa Squadron"]
              [1  "Russell Crow"    "Mission Street Murder"]]}
-  (qp.test/format-rows-by [#(some-> % int) str #(some-> % str)]
+  (qp.test/format-rows-by [#(some-> % int) str identity]
     (qp.test/rows+column-names
       (qp/process-query
         (data/dataset bird-flocks
@@ -228,9 +229,66 @@
                          :fields       [[:joined-field "f" $flock.name]]}]
              :order-by [[:asc [:field-id $name]]]}))))))
 
-;; TODO Can we join on bucketed datetimes?
+;; Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in `:datetime-field`
+;; forms?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:columns
+   (mapv data/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
 
-;; TODO Can we join against a source nested MBQL query?
+   :rows
+   [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 "2014-04-07T00:00:00.000Z" 5 12]
+    [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 "2014-09-18T00:00:00.000Z" 1 31]
+    [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 "2014-09-15T00:00:00.000Z" 8 56]]}
+  (qp.test/format-rows-by [int identity identity int identity int int]
+    (qp.test/rows+column-names
+      (qp/process-query
+        (data/mbql-query users
+          {:source-table $$users
+           :joins        [{:source-table $$checkins
+                           :alias        "c"
+                           :fields       "all"
+                           :condition    [:= $id [:joined-field "c" $checkins.id]]}]
+           :order-by     [["asc" ["joined-field" "c" $checkins.id]]]
+           :limit        3})))))
+
+;; Can we run a query that for whatever reason ends up with a `SELECT *` for the source query
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:columns [(data/format-name "id") "sum"]
+   :rows    [[1 5] [2 1] [3 8]]}
+  (qp.test/format-rows-by [int int]
+    (qp.test/rows+column-names
+      (qp/process-query
+        (data/mbql-query checkins
+          {:source-query {:source-table $$checkins
+                          :aggregation  [[:sum $user_id->users.id]]
+                          :breakout     [$id]}
+           :joins        [{:alias        "u"
+                           :source-table $$users
+                           :condition    [:=
+                                          [:field-literal "ID" :type/BigInteger]
+                                          [:joined-field "u" $users.id]]}]
+           :order-by     [[:asc [:field-literal "ID" :type/Integer]]]
+           :limit        3})))))
+
+;; Can we join against a source nested MBQL query?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  [[29 "20th Century Cafe" 12  37.775 -122.423 2]
+   [ 8 "25°"               11 34.1015 -118.342 2]
+   [93 "33 Taps"            7 34.1018 -118.326 2]]
+  (qp.test/formatted-venues-rows
+   (qp.test/rows
+     (qp/process-query
+       (data/mbql-query venues
+         {:source-table $$venues
+          :joins        [{:alias        "cat"
+                          :source-query {:source-table $$categories}
+                          :condition    [:=
+                                         $category_id
+                                         [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+          :order-by     [[:asc $name]]
+          :limit        3})))))
+
+;; TODO Can we join on bucketed datetimes?
 
 ;; TODO Can we join against a source nested native query?
 
@@ -241,17 +299,3 @@
 ;; TODO Can we join the same table twice with different conditions?
 
 ;; TODO Can we join the same table twice with the same condition?
-
-;; TODO - Can we run a wacko query that does duplicate joins against the same table?
-(defn- x []
-  (qp/process-query
-    (data/mbql-query checkins
-      {:source-query {:source-table $$checkins
-                      :aggregation  [[:sum $user_id->users.id]]
-                      :breakout     [[:field-id $id]]}
-       :joins        [{:alias        "u"
-                       :source-table $$users
-                       :condition    [:=
-                                      [:field-literal "ID" :type/BigInteger]
-                                      [:joined-field "u" $users.id]]}]
-       :limit        10})))

@@ -72,15 +72,28 @@
               :database        (:database source-query)
               :source-metadata (:source-metadata source-query))))))
 
+(s/defn ^:private resolve-join-card-id-source-tables :- mbql.s/Join
+  [{:keys [source-table source-query], :as join} :- mbql.s/Join]
+  (cond
+    (string? source-table)
+    (let [source-query (-> (source-table-str->source-query source-table)
+                           resolve-card-id-source-tables
+                           (dissoc :database :source-metadata))]
+      (-> join
+          (dissoc :source-table)
+          (assoc :source-query source-query)))
+
+    source-query
+    (update join :source-query #(-> (resolve-card-id-source-tables %)
+                                    (dissoc :database :source-metadata)))
+
+    :else
+    join))
+
 (s/defn ^:private resolve-joins-card-id-source-tables :- mbql.s/Joins
   [joins :- mbql.s/Joins]
-  (for [{:keys [source-table], :as join} joins]
-    (if (string? source-table)
-      (let [source-query (resolve-card-id-source-tables (source-table-str->source-query source-table))]
-        (-> join
-            (dissoc :source-table)
-            (assoc :source-query source-query)))
-      join)))
+  (for [join joins]
+    (resolve-join-card-id-source-tables join)))
 
 (defn- resolve-card-id-source-tables [{:keys [joins], :as inner-query}]
   (cond-> (resolve-top-level-card-id-source-tables inner-query)

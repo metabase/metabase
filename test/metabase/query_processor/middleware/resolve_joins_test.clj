@@ -141,3 +141,66 @@
        {:joins [{:source-table table-id
                  :alias        "t"
                  :condition    [:= $category_id 1]}]}))))
+
+;; test that resolving explicit joins still works if implict joins are present
+(expect
+  (data/mbql-query checkins
+    {:source-table $$checkins
+     :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+     :breakout     [$id]
+     :joins        [{:source-table $$users
+                     :alias        "USERS__via__USER_ID"
+                     :strategy     :left-join
+                     :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                     :fk-field-id  (data/id :checkins :user_id)}
+                    {:alias        "u"
+                     :source-table $$users
+                     :strategy     :left-join
+                     :condition    [:=
+                                    [:field-literal "ID" :type/BigInteger]
+                                    [:joined-field "u" $users.id]]}]
+     :limit        10})
+  (resolve-joins
+   (data/mbql-query checkins
+     {:source-table $$checkins
+      :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+      :breakout     [$id]
+      :joins        [{:source-table $$users
+                      :alias        "USERS__via__USER_ID"
+                      :strategy     :left-join
+                      :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                      :fk-field-id  (data/id :checkins :user_id)
+                      :fields       :none}
+                     {:alias        "u"
+                      :source-table $$users
+                      :condition    [:=
+                                     [:field-literal "ID" :type/BigInteger]
+                                     [:joined-field "u" $users.id]]}]
+      :limit        10})))
+
+;; Does a join using a source query get its Tables resolved?
+(expect
+  {:store
+   {:database "test-data",
+    :tables   #{"VENUES" "CATEGORIES"}
+    :fields   #{["VENUES" "CATEGORY_ID"]}}
+
+   :resolved
+   (data/mbql-query venues
+     {:joins    [{:alias        "cat"
+                  :source-query {:source-table $$categories}
+                  :strategy     :left-join
+                  :condition    [:=
+                                 $category_id
+                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+      :order-by [[:asc $name]]
+      :limit    3})}
+  (resolve-joins-and-inspect-store
+   (data/mbql-query venues
+     {:joins    [{:alias        "cat"
+                  :source-query {:source-table $$categories}
+                  :condition    [:=
+                                 $category_id
+                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+      :order-by [[:asc $name]]
+      :limit    3})))
