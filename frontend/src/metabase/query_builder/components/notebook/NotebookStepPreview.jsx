@@ -16,13 +16,15 @@ const NotebookStepPreview = ({ step, onClose, ...props }) => {
   );
   return (
     <Box pt={2}>
-      <Flex align="center" mb={1}>
+      <Flex align="center" justify="space-between" mb={1}>
         <span className="text-bold">{`Preview`}</span>
-        <Icon
-          name="close"
-          onClick={onClose}
-          className="text-light text-medium-hover cursor-pointer ml1"
-        />
+        <Flex align="right">
+          <Icon
+            name="close"
+            onClick={onClose}
+            className="text-light text-medium-hover cursor-pointer ml1"
+           />
+        </Flex>
       </Flex>
       <QuestionResultLoader question={question}>
         {props => (

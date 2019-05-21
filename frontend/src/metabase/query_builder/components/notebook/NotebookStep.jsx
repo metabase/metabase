@@ -7,7 +7,7 @@ import colors, { lighten } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Button from "metabase/components/Button";
-import { Box } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
 
@@ -81,7 +81,7 @@ const STEP_UI = {
   },
 };
 
-const DEFAULT_MAX_WIDTH = 860;
+// const DEFAULT_MAX_WIDTH = 860;
 
 export default class NotebookStep extends React.Component {
   state = {
@@ -111,19 +111,7 @@ export default class NotebookStep extends React.Component {
         ),
       })),
     );
-    if (!showPreview && canPreview) {
-      actions.push({
-        button: (
-          <ActionButton
-            mr={1}
-            large={isLastStep}
-            icon="right"
-            title={t`Preview`}
-            onClick={() => this.setState({ showPreview: true })}
-          />
-        ),
-      });
-    }
+    const showPreviewButton = !showPreview && canPreview;
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
@@ -137,13 +125,26 @@ export default class NotebookStep extends React.Component {
         )}
 
         {NotebookStepComponent && (
-          <Box style={{ maxWidth: DEFAULT_MAX_WIDTH }}>
-            <NotebookStepComponent
-              color={color}
-              query={step.query}
-              isLastOpened={isLastOpened}
-            />
-          </Box>
+          <Flex align="center">
+            <Box width={[8/12]}>
+              <NotebookStepComponent
+                color={color}
+                query={step.query}
+                isLastOpened={isLastOpened}
+              />
+            </Box>
+            <Box width={[1/12]}>
+              <ActionButton
+                ml={2}
+                className={
+                  !showPreviewButton ? "hidden disabled": null
+                }
+                icon="right"
+                title={t`Preview`}
+                onClick={() => this.setState({ showPreview: true })}
+              />
+            </Box>
+          </Flex>
         )}
 
         {showPreview && canPreview && (
