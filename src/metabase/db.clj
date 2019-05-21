@@ -466,7 +466,7 @@
       (u/with-us-locale
         (verify-db-connection db-details)
         (run-schema-migrations! auto-migrate db-details)
-        (create-connection-pool! (du/profile (jdbc-details db-details)))
+        (create-connection-pool! (jdbc-details db-details))
         (run-data-migrations!)
         (reset! db-setup-finished? true))))
   nil)

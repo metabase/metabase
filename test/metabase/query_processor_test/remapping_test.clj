@@ -2,7 +2,7 @@
   "Tests for the remapping results"
   (:require [metabase
              [query-processor :as qp]
-             [query-processor-test :refer :all]]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.models
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
@@ -16,10 +16,10 @@
             [toucan.db :as db]))
 
 (qp-expect-with-all-drivers
-  {:rows        [["20th Century Cafe" 12 "Café Sweets"]
-                 ["25°" 11 "Café"]
-                 ["33 Taps" 7 "Beer Garden"]
-                 ["800 Degrees Neapolitan Pizzeria" 58 "Ramen"]]
+  {:rows        [["20th Century Cafe"               12 "Café"]
+                 ["25°"                             11 "Burger"]
+                 ["33 Taps"                          7 "Bar"]
+                 ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
    :columns     [(data/format-name "name")
                  (data/format-name "category_id")
                  "Foo"]
@@ -33,8 +33,8 @@
            {:fields   [$name $category_id]
             :order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [str int str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [str int str])
          tu/round-fingerprint-cols)))
 
 (defn- select-columns
@@ -78,8 +78,8 @@
     (->> (data/run-mbql-query venues
            {:order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [int str int double double int str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [int str int double double int str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
          data)))
@@ -107,8 +107,8 @@
            {:fields   [$name $price $category_id]
             :order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [str int str str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [str int str str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
          :data)))

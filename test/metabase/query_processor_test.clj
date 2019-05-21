@@ -335,7 +335,8 @@
   [results]
   (when (= (:status results) :failed)
     (println "Error running query:" (u/pprint-to-str 'red results))
-    (throw (ex-info (:error results) results)))
+    (throw (ex-info (str (or (:error results) "Error running query"))
+             (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows

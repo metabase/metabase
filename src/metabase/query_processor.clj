@@ -233,9 +233,11 @@
 (def ^:private default-pipeline (qp-pipeline execute-query))
 
 (def ^:private QueryResponse
-  (s/cond-pre
-   ManyToManyChannel
-   {:status (s/enum :completed :failed :canceled), s/Any s/Any}))
+  (s/named
+   (s/cond-pre
+    ManyToManyChannel
+    {:status (s/enum :completed :failed :canceled), s/Any s/Any})
+   "Valid query response (core.async channel or map with :status)"))
 
 (s/defn process-query :- QueryResponse
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a
