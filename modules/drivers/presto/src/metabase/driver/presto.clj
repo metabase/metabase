@@ -59,10 +59,10 @@
          (when password
            {:basic-auth [user password]})))
 
-(defn ^:private create-cancel-url [cancelUri host port infoUri]
-  ;; Replace the host in the cancelUri with the host from the infoUri from the presto response- this doesn't break SSH
-  ;; tunneling as the host in the cancelUri if it's enabled
-  (str/replace cancelUri (str host ":" port) (get (str/split infoUri #"/") 2)))
+(defn ^:private create-cancel-url [cancel-uri host port info-uri]
+  ;; Replace the host in the cancel-uri with the host from the info-uri provided from the presto response- this doesn't
+  ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
+  (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
 
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
@@ -124,9 +124,10 @@
   [details query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error id infoUri]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                     (assoc (details->request details-with-tunnel)
-                                                                       :body query, :as :json, :redirect-strategy :lax))]
+    (let [{{:keys [columns data nextUri error id infoUri]} :body}
+          (http/post (details->uri details-with-tunnel "/v1/statement")
+                     (assoc (details->request details-with-tunnel)
+                             :body query, :as :json, :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -144,9 +145,9 @@
                 (if id
                   ;; If we have a query id, we can cancel the query
                   (try
-                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))]
-                      (let [adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
-                        (http/delete adjustedUri(details->request details-with-tunnel))))
+                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
+                          adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
+                      (http/delete adjustedUri(details->request details-with-tunnel)))
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
