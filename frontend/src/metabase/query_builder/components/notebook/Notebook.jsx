@@ -17,7 +17,7 @@ export default function Notebook({ className, ...props }) {
     onSetQueryBuilderMode,
   } = props;
   return (
-    <Box className={cx(className, "relative wrapper mb4")}>
+    <Box className={cx(className, "relative mb4")} px={4}>
       <NotebookSteps {...props} />
       {isRunnable && (
         <Button
