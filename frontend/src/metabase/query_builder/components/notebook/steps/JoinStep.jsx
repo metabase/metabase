@@ -27,7 +27,10 @@ export default function JoinStep({ color, query, isLastOpened, ...props }) {
         <JoinClause key={index} color={color} join={join} />
       ))}
       {joins.length === 0 && (
-        <JoinClause color={color} join={new Join({}, 0, query)} />
+        <JoinClause
+          color={color}
+          join={new Join({ fields: "all" }, 0, query)}
+        />
       )}
     </NotebookCell>
   );
