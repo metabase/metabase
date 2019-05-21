@@ -12,7 +12,7 @@ export default function NotebookCell({ color, children, style = {} }) {
       p={2}
       align="center"
       style={{
-        borderRadius: 4,
+        borderRadius: 8,
         backgroundColor: alpha(color, 0.1),
         ...style,
       }}
@@ -31,7 +31,7 @@ export function NotebookCellItem({ color, icon, inactive, children }) {
       className="text-bold"
       style={{
         border: "2px solid transparent",
-        borderRadius: 4,
+        borderRadius: 6,
         color: inactive ? color : "white",
         backgroundColor: inactive ? "transparent" : color,
         borderColor: inactive ? alpha(color, 0.25) : "transparent",
