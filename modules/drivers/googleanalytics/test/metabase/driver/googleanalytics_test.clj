@@ -169,10 +169,10 @@
 
 (defn- do-with-some-fields [f]
   (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
-                  Table    [table              {:name "98765432"}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text"}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text"}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date"}]]
+                  Table    [table              {:name "98765432", :db_id (u/get-id db)}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/get-id table)}]]
     (f {:db                 db
         :table              table
         :event-action-field event-action-field
@@ -257,6 +257,7 @@
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
+;; TODO - Saw random test failure
 (expect
   {:row_count 1
    :status    :completed

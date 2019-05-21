@@ -107,3 +107,33 @@
     (fetch-source-query
      (wrap-inner-query
       {:source-table (str "card__" (u/get-id card-2)), :limit 25}))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   JOINS 2.0                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; are `card__id` source tables resolved in `:joins`
+
+(expect
+  {:database (data/id)
+   :type     :query
+   :query    (data/$ids venues
+               {:source-table $$venues
+                :joins        [{:alias        "c",
+                                :condition    [:= [:field-id $category_id] [:joined-field "c" [:field-id $categories.id]]]
+                                :source-query {:limit           100
+                                               :source-table    $$categories
+                                               :database        (data/id)
+                                               :source-metadata nil}}]})}
+  (tt/with-temp Card [{card-id :id} {:dataset_query
+                                     (data/mbql-query categories
+                                       {:source-table $$table, :limit 100})}]
+    (fetch-source-query
+     (data/mbql-query venues
+       {:source-table $$table
+        :joins        [{:source-table (str "card__" card-id)
+                        :alias        "c"
+                        :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}))))
+
+;; TODO - are `card__id` source tables resolved in *nested* JOINs?

@@ -41,3 +41,13 @@
   you'd want to fetch."
   [& body]
   `(do-with-everything-store (fn [] ~@body)))
+
+(defn store-contents []
+  (let [store @@#'qp.store/*store*]
+    (-> store
+        (update :database :name)
+        (update :tables (comp set (partial map :name) vals))
+        (update :fields (fn [fields]
+                          (set
+                           (for [[_ {table-id :table_id, field-name :name}] fields]
+                             [(get-in store [:tables table-id :name]) field-name])))))))

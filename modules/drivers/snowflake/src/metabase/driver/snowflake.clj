@@ -136,8 +136,10 @@
       (throw (Exception. (str (tru "Invalid Snowflake connection details: missing DB name."))))))
 
 (defn- query-db-name []
-  (or (-> (qp.store/database) db-name)
-      (throw (Exception. "Missing DB name"))))
+  ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
+  ;; it won't be, *but* they should already be qualified by database name anyway
+  (when (qp.store/initialized?)
+    (db-name (qp.store/database))))
 
 ;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
 ;; query
@@ -152,6 +154,10 @@
   (cond
     ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
     sql.qp/*table-alias*
+    false
+
+    ;;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
+    (empty? (query-db-name))
     false
 
     ;; already qualified
