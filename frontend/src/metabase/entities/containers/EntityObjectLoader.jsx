@@ -127,13 +127,13 @@ export default class EntityObjectLoader extends React.Component {
   };
   render() {
     // $FlowFixMe: provided by @connect
-    const { fetched, error, loadingAndErrorWrapper } = this.props;
+    const { fetched, error, loadingAndErrorWrapper, wrapper } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
         loading={!fetched}
         error={error}
         children={this.renderChildren}
-        noWrapper
+        noWrapper={!wrapper}
       />
     ) : (
       this.renderChildren()

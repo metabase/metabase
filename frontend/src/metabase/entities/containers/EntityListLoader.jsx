@@ -162,13 +162,18 @@ export default class EntityListLoader extends React.Component {
 
   render() {
     // $FlowFixMe: provided by @connect
-    const { allFetched, allError, loadingAndErrorWrapper } = this.props;
+    const {
+      allFetched,
+      allError,
+      loadingAndErrorWrapper,
+      wrapped,
+    } = this.props;
     return loadingAndErrorWrapper ? (
       <LoadingAndErrorWrapper
         loading={!allFetched}
         error={allError}
         children={this.renderChildren}
-        noWrapper
+        noWrapper={!wrapped}
       />
     ) : (
       this.renderChildren()
