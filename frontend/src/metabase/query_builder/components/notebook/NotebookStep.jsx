@@ -104,7 +104,8 @@ export default class NotebookStep extends React.Component {
         priority: (STEP_UI[action.type] || {}).priority,
         button: (
           <ActionButton
-            mr={2}
+            mr={isLastStep ? 2 : 1}
+            mt={isLastStep ? 2 : null}
             large={isLastStep}
             {...STEP_UI[action.type] || {}}
             onClick={() => action.action(this.props)}
@@ -155,7 +156,7 @@ export default class NotebookStep extends React.Component {
           />
         )}
 
-        {actionButtons.length > 0 && <Box mt={3}>{actionButtons}</Box>}
+        {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
       </Box>
     );
   }
