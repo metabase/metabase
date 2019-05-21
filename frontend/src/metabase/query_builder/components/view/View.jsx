@@ -254,8 +254,9 @@ export default class View extends React.Component {
               >
                 {({ opacity, translateY }) =>
                   opacity > 0 ? (
+                    // note the `bg-white class here is necessary to obscure the other layer
                     <div
-                      className="spread bg-light scroll-y z2 border-top border-bottom"
+                      className="spread bg-white scroll-y z2 border-top border-bottom"
                       style={{
                         // opacity: opacity,
                         transform: `translateY(${translateY}%)`,

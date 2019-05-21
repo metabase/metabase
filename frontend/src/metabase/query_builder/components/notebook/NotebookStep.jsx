@@ -163,9 +163,12 @@ const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
   const button = (
     <Button
       icon={icon}
-      style={{ color, backgroundColor: color ? lighten(color, 0.35) : null }}
+      style={{
+        color,
+        backgroundColor: color ? lighten(color, 0.65) : null,
+        borderColor: lighten(color, 0.35),
+      }}
       small={!large}
-      borderless
       iconVertical={large}
       iconSize={large ? 18 : 12}
       className="text-medium bg-medium"
