@@ -32,6 +32,7 @@ const STEP_UI = {
     color: colors["brand"],
     icon: "join_left_outer",
     component: JoinStep,
+    priority: 1,
   },
   expression: {
     title: t`Custom fields`,
@@ -103,7 +104,7 @@ export default class NotebookStep extends React.Component {
         priority: (STEP_UI[action.type] || {}).priority,
         button: (
           <ActionButton
-            mr={1}
+            mr={2}
             large={isLastStep}
             {...STEP_UI[action.type] || {}}
             onClick={() => action.action(this.props)}
@@ -154,7 +155,7 @@ export default class NotebookStep extends React.Component {
           />
         )}
 
-        {actionButtons.length > 0 && <Box mt={2}>{actionButtons}</Box>}
+        {actionButtons.length > 0 && <Box mt={3}>{actionButtons}</Box>}
       </Box>
     );
   }
