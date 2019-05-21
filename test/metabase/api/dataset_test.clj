@@ -203,7 +203,7 @@
    ["3" "2014-09-15" "" "8" "56"]
    ["4" "2014-03-11" "" "5" "4"]
    ["5" "2013-05-05" "" "3" "49"]]
-  (data/with-db (data/get-or-create-database! defs/test-data-with-null-date-checkins)
+  (data/dataset defs/test-data-with-null-date-checkins
     (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
                   (json/generate-string (data/mbql-query checkins)))]
       (take 5 (parse-and-sort-csv result)))))

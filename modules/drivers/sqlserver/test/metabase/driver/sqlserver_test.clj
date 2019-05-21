@@ -16,16 +16,16 @@
              [util :as tu :refer [obj->json->obj]]]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :as tx :refer [def-database-definition]]]))
+             [interface :as tx]]))
 
 ;;; -------------------------------------------------- VARCHAR(MAX) --------------------------------------------------
 
 ;; Make sure something long doesn't come back as some weird type like `ClobImpl`
-(def ^:private ^:const a-gene
+(def ^:private a-gene
   "Really long string representing a gene like \"GGAGCACCTCCACAAGTGCAGGCTATCCTGTCGAGTAAGGCCT...\""
   (apply str (repeatedly 1000 (partial rand-nth [\A \G \C \T]))))
 
-(def-database-definition ^:private ^:const genetic-data
+(tx/defdataset ^:private genetic-data
   [["genetic-data"
      [{:field-name "gene", :base-type {:native "VARCHAR(MAX)"}}]
      [[a-gene]]]])

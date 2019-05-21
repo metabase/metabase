@@ -12,16 +12,10 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-drivers]]
-             [interface :as i]
              [sql :as sql.tx]]
             [toucan.db :as db]))
 
 (defn- call-with-timezones-db [f]
-  ;; Does the database exist?
-  (when-not (i/metabase-instance defs/test-data-with-timezones driver/*driver*)
-    ;; The database doesn't exist, so we need to create it
-    (data/get-or-create-database! defs/test-data-with-timezones))
-  ;; The database can now be used in tests
   (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
     (f)))
 
