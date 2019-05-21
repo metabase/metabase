@@ -18,6 +18,11 @@
 (defmethod driver/supports? [:sql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sql :binning]                         [_ _] true)
 
+(defmethod driver/supports? [:sql :left-join]  [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :right-join] [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :inner-join] [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :full-join]  [driver _] (driver/supports? driver :foreign-keys))
+
 (defmethod driver/mbql->native :sql [driver query]
   (sql.qp/mbql->native driver query))
 

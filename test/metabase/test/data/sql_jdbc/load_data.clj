@@ -112,7 +112,7 @@
   [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
                            (tx/format-name driver (u/keyword->qualified-name component)))
-        table-identifier (sql.qp/->honeysql driver (apply hx/identifier components))]
+        table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
     (partial do-insert! driver conn table-identifier)))
 
 (defn make-load-data-fn
@@ -179,7 +179,8 @@
         (jdbc/execute! spec sql+args))
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
-        (jdbc/print-sql-exception-chain e)))))
+        (jdbc/print-sql-exception-chain e)
+        (throw e)))))
 
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."

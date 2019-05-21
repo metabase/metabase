@@ -59,7 +59,7 @@
 
 ;; TODO - this is a copy of the one in the `metabase.mbql.util` namespace. We need to reorganize things a bit so we
 ;; can use the same fn and avoid circular refs
-(defn ^:deprecated is-clause?
+(defn is-clause?
   "If `x` an MBQL clause, and an instance of clauses defined by keyword(s) `k-or-ks`?
 
     (is-clause? :count [:count 10])        ; -> true

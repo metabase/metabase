@@ -17,7 +17,7 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-driver]]
-             [interface :as tx :refer [def-database-definition]]]
+             [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -54,7 +54,7 @@
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
-(def-database-definition ^:private ^:const tiny-int-ones
+(tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
       {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
@@ -71,7 +71,7 @@
   #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
+  (data/with-db-for-dataset [db tiny-int-ones]
     (db->fields db)))
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
@@ -79,7 +79,7 @@
   #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
+  (data/with-db-for-dataset [db tiny-int-ones]
     (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]

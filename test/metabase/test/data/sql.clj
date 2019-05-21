@@ -1,6 +1,7 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
-  (:require [metabase.driver :as driver]
+  (:require [clojure.string :as str]
+            [metabase.driver :as driver]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -53,7 +54,7 @@
   object can be included directly in a HoneySQL form and will automatically be converted to an appropriately quoted
   identifer when the HoneySQL form is compiled.
 
-    (qualified-identifier \"my_db\" \"my_table\") ; -> (Identifier. [\"MY_DB\" \"MY_TABLE\"]) ; for H2"
+    (qualified-identifier \"my_db\" \"my_table\") ; -> (hx/identifier :table \"MY_DB\" \"MY_TABLE\") ; for H2"
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
   (->> names
@@ -72,9 +73,13 @@
   `qualified-identifier` instead."
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
-  (->> (apply qualified-name-components driver names)
-       (map (partial tx/format-name driver))
-       (apply sql.u/quote-name driver)))
+  (let [identifier-type (condp = (count names)
+                          1 :database
+                          2 :table
+                          :field)]
+    (->> (apply qualified-name-components driver names)
+         (map (partial tx/format-name driver))
+         (apply sql.u/quote-name driver identifier-type))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -195,20 +200,19 @@
 
 (defmethod create-table-sql :sql/test-extensions
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions table-comment]}]
-  (let [quot          #(sql.u/quote-name driver (tx/format-name driver %))
+  (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quot (pk-field-name driver))]
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type field-comment]}]
-                        (format "%s %s %s"
-                                (quot field-name)
-                                (if (map? base-type)
-                                  (:native base-type)
-                                  (field-base-type->sql-type driver base-type))
-                                (or (inline-column-comment-sql driver field-comment) ""))))
-                 (interpose ", ")
-                 (apply str))
+            (str/join
+             " ,"
+             (for [{:keys [field-name base-type field-comment]} field-definitions]
+               (format "%s %s %s"
+                       (quot field-name)
+                       (if (map? base-type)
+                         (:native base-type)
+                         (field-base-type->sql-type driver base-type))
+                       (or (inline-column-comment-sql driver field-comment) ""))))
             pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
@@ -236,12 +240,12 @@
 
 (defmethod add-fk-sql :sql/test-extensions
   [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
-  (let [quot            #(sql.u/quote-name driver (tx/format-name driver %))
+  (let [quot            #(sql.u/quote-name driver %1 (tx/format-name driver %2))
         dest-table-name (name dest-table-name)]
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
-            (quot (apply str (take 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name))))
-            (quot field-name)
+            (quot :constraint (apply str (take 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name))))
+            (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
-            (quot (pk-field-name driver)))))
+            (quot :field (pk-field-name driver)))))

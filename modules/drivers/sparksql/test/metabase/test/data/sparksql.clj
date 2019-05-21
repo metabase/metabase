@@ -88,7 +88,7 @@
 
 (defmethod sql.tx/create-table-sql :sparksql
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quote-name    #(sql.u/quote-name driver (tx/format-name driver %))
+  (let [quote-name    #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quote-name (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s, %s %s)"
             (sql.tx/qualify-and-quote driver database-name table-name)

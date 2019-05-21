@@ -23,7 +23,6 @@
              [data :as data]
              [util :as tu :refer [match-$]]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets]
              [users :refer [user->client]]]
             [metabase.test.mock.util :as mutil]
@@ -204,24 +203,6 @@
             :created_at   $
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories))))
-
-
-(def ^:private user-last-login-date-strs
-  "In an effort to be really annoying, the date strings returned by the API are different on Circle than they are
-   locally. Generate strings like '2014-01-01' at runtime so we get matching values."
-  (let [format-inst (fn [^java.util.Date inst]
-                      (format "%d-%02d-%02d"
-                              (+ (.getYear inst) 1900)
-                              (+ (.getMonth inst) 1)
-                              (.getDate inst)))]
-    (->> (defs/field-values defs/test-data-map "users" "last_login")
-         (map format-inst)
-         set
-         sort
-         vec)))
-
-(def ^:private user-full-names
-  (defs/field-values defs/test-data-map "users" "name"))
 
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;; Make sure that getting the User table *does* include info about the password field, but not actual values
