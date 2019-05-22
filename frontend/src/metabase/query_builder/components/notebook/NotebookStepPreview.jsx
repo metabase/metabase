@@ -1,5 +1,7 @@
 import React from "react";
 
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 import { Box, Flex } from "grid-styled";
 import { Motion, spring } from "react-motion";
@@ -23,20 +25,23 @@ const NotebookStepPreview = ({ step, onClose, ...props }) => {
             name="close"
             onClick={onClose}
             className="text-light text-medium-hover cursor-pointer ml1"
-           />
+          />
         </Flex>
       </Flex>
       <QuestionResultLoader question={question}>
-        {props => (
+        {({ rawSeries, result }) => (
           <Motion
             defaultStyle={{ height: 36 }}
-            style={{ height: spring(getPreviewHeightForResult(props.result)) }}
+            style={{ height: spring(getPreviewHeightForResult(result)) }}
           >
             {({ height }) => (
               <Visualization
-                {...props}
-                className="bordered shadowed rounded bg-white"
-                style={{ height }}
+                rawSeries={rawSeries}
+                error={result && result.error}
+                className={cx("bordered shadowed rounded bg-white", {
+                  p2: result && result.error,
+                })}
+                style={{ minHeight: height }}
               />
             )}
           </Motion>
