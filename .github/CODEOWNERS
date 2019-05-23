@@ -2,7 +2,9 @@
 *.clj @camsaul
 *.js @tlrobinson
 *.jsx @tlrobinson
+*.css @kdoh
 /frontend/ @tlrobinson @kdoh
+/frontend/metabase/components/ @kdoh
 /frontend/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
 /frontend/metabase/entities/ @tlrobinson @paulrosenzweig
 /frontend/metabase/lib/entities/ @tlrobinson @paulrosenzweig
