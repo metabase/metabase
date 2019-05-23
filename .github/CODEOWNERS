@@ -1,0 +1,4 @@
+
+*.clj @camsaul
+/frontend/ @tlrobinson
+/frontend/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
