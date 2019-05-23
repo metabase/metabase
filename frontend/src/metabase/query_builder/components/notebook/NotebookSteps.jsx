@@ -58,7 +58,7 @@ export default class NotebookSteps extends React.Component {
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // allow nesting after these steps:
-const NEST_LAST_TYPES = new Set(["summarize", "sort", "limit"]);
+const NEST_LAST_TYPES = new Set(["join", "summarize", "sort", "limit"]);
 // allow these actions after nesting:
 const NEST_NEXT_TYPES = new Set(["join", "filter", "summarize"]);
 
