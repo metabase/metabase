@@ -1,8 +1,9 @@
 
 *.clj @camsaul
-*.js @camsaul
-*.jsx @camsaul
-/frontend/ @tlrobinson
+*.js @tlrobinson
+*.jsx @tlrobinson
+/frontend/ @tlrobinson @kdoh
 /frontend/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
 /frontend/metabase/entities/ @tlrobinson @paulrosenzweig
 /frontend/metabase/lib/entities/ @tlrobinson @paulrosenzweig
+/docs/ @mazameli
