@@ -5,7 +5,13 @@ import Table from "./Table";
 
 import _ from "underscore";
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import { FieldIDDimension } from "../Dimension";
 
 import { getFieldValues } from "metabase/lib/query/field";

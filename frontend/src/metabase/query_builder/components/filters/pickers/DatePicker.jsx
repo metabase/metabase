@@ -15,6 +15,13 @@ import Calendar from "metabase/components/Calendar";
 
 import Query from "metabase/lib/query";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import type {
   FieldFilter,
   TimeIntervalFilter,

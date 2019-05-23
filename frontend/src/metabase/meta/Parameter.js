@@ -20,7 +20,13 @@ import type { FieldId } from "metabase/meta/types/Field";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import Q from "metabase/lib/query";
 
 import { isNumericBaseType } from "metabase/lib/schema_metadata";

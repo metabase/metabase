@@ -6,6 +6,13 @@ import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import moment from "moment";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 const HoursMinutesInput = ({
   hours,
   minutes,

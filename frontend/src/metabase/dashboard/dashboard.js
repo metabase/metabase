@@ -3,7 +3,13 @@
 import { assoc, dissoc, assocIn, getIn, chain } from "icepick";
 import _ from "underscore";
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import {
   handleActions,
   combineReducers,
