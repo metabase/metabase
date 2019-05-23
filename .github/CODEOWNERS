@@ -4,8 +4,8 @@
 *.jsx @tlrobinson
 *.css @kdoh
 /frontend/ @tlrobinson @kdoh
-/frontend/metabase/components/ @kdoh
-/frontend/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
-/frontend/metabase/entities/ @tlrobinson @paulrosenzweig
-/frontend/metabase/lib/entities/ @tlrobinson @paulrosenzweig
+/frontend/src/metabase/components/ @kdoh
+/frontend/src/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
+/frontend/src/metabase/entities/ @tlrobinson @paulrosenzweig
+/frontend/src/metabase/lib/entities/ @tlrobinson @paulrosenzweig
 /docs/ @mazameli
