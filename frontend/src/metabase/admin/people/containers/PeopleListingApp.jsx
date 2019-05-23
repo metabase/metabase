@@ -6,7 +6,13 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";

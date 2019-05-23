@@ -13,6 +13,14 @@ import moment from "moment";
 //   setLocalization(translationsObject);
 // }
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
+
 export function setLocalization(translationsObject) {
   const locale = translationsObject.headers.language;
 

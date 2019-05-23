@@ -32,8 +32,8 @@
   [^DateTime start, ^DateTime end]
     ;; weeks always start on SUNDAY and end on SATURDAY
     ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
-   {:end   (.withDayOfWeek end DateTimeConstants/SATURDAY)
-    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/SUNDAY)})
+   {:end   (.withDayOfWeek end DateTimeConstants/SUNDAY)
+    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/MONDAY)})
 
 (defn- month-range
   [^DateTime start, ^DateTime end]

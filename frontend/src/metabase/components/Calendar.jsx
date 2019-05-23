@@ -7,7 +7,13 @@ import cx from "classnames";
 import moment from "moment";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
@@ -128,11 +134,18 @@ export default class Calendar extends Component {
   }
 
   renderWeeks(current) {
+    moment.locale("en");
+    moment().isoWeekday(1);
+    moment.updateLocale('en',{
+     week:{
+      dow: 1,
+      },
+    });
     let weeks = [],
       done = false,
       date = moment(current)
         .startOf("month")
-        .day("Sunday"),
+        .day("Monday"),
       monthIndex = date.month(),
       count = 0;
 
@@ -202,8 +215,8 @@ class Week extends Component {
         "Calendar-day--selected": selected && date.isSame(selected, "day"),
         "Calendar-day--selected-end":
           selectedEnd && date.isSame(selectedEnd, "day"),
-        "Calendar-day--week-start": i === 0,
-        "Calendar-day--week-end": i === 6,
+        "Calendar-day--week-start": i === 1,
+        "Calendar-day--week-end": i === 0,
         "Calendar-day--in-range":
           !(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
           (date.isSame(selected, "day") ||
