@@ -118,7 +118,7 @@
       implicit-clauses/add-implicit-clauses
       reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
       bucket-datetime/auto-bucket-datetimes
-      resolve-source-table/resolve-source-table
+      resolve-source-table/resolve-source-tables
       row-count-and-status/add-row-count-and-status
       ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
       ;;
@@ -136,7 +136,7 @@
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
       resolve-database/resolve-database
-      fetch-source-query/fetch-source-query
+      fetch-source-query/resolve-card-id-source-tables
       store/initialize-store
       log-query/log-query
       ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲

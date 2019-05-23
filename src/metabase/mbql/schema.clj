@@ -504,7 +504,7 @@
 (def ^:private TemplateTag
   s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
 
-(def ^:private NativeQuery
+(def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   {:query                          s/Any
    (s/optional-key :template-tags) {su/NonBlankString TemplateTag}
@@ -519,7 +519,7 @@
 
 (declare Query MBQLQuery)
 
-(def ^:private SourceQuery
+(def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
   (s/if :native
     ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
@@ -527,6 +527,17 @@
     ;; queries).
     (set/rename-keys NativeQuery {:query :native})
     (s/recursive #'MBQLQuery)))
+
+(def SourceQueryMetadata
+  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
+  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  {:name                          su/NonBlankString
+   :display_name                  su/NonBlankString
+   :base_type                     su/FieldType
+   (s/optional-key :special_type) (s/maybe su/FieldType)
+   ;; you'll need to provide this in order to use BINNING
+   (s/optional-key :fingerprint)  (s/maybe su/Map)
+   s/Any                          s/Any})
 
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -566,22 +577,22 @@
     [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
     [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
   (->
-   {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+   { ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
-    (s/optional-key :source-table) SourceTable
-    (s/optional-key :source-query) SourceQuery
+    (s/optional-key :source-table)    SourceTable
+    (s/optional-key :source-query)    SourceQuery
     ;;
     ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
     ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
     ;;
-    :condition                     Filter
+    :condition                        Filter
     ;;
     ;; Defaults to `:left-join`; used for all automatically-generated JOINs
     ;;
     ;; Driver implementations: this is guaranteed to be present after pre-processing.
-    (s/optional-key :strategy)     JoinStrategy
+    (s/optional-key :strategy)        JoinStrategy
     ;;
     ;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
     ;; `:none`, `:all`, or a sequence of Field clauses.
@@ -597,20 +608,20 @@
     ;;
     ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
     ;; with appropriate aliases.
-    (s/optional-key :fields)       (s/named
-                                    (s/cond-pre
-                                     (s/enum :all :none)
-                                     JoinFields)
-                                    (str
-                                     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
-                                     " or clauses wrapping `:joined-field`."))
+    (s/optional-key :fields)          (s/named
+                                       (s/cond-pre
+                                        (s/enum :all :none)
+                                        JoinFields)
+                                       (str
+                                        "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
+                                        " or clauses wrapping `:joined-field`."))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
     ;; `:joined-field` clause.
     ;;
     ;; Driver implementations: This is guaranteed to be present after pre-processing.
-    (s/optional-key :alias)        su/NonBlankString
+    (s/optional-key :alias)           su/NonBlankString
     ;;
     ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
     ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
@@ -618,7 +629,11 @@
     ;; drill-thru? :shrug:
     ;;
     ;; Don't set this information yourself. It will have no effect.
-    (s/optional-key :fk-field-id)  (s/maybe su/IntGreaterThanZero)}
+    (s/optional-key :fk-field-id)     (s/maybe su/IntGreaterThanZero)
+    ;;
+    ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
+    ;; added automatically by the `resolve-card-id-source-tables` middleware.
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])}
    (s/constrained
     (fn [{:keys [source-table source-query]}]
       (u/xor source-table source-query))
@@ -785,17 +800,6 @@
    ;; these in yourself. In fact, I would like this a lot better if we could take these keys out of `:info` entirely
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))})
-
-(def SourceQueryMetadata
-  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
-  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
-  {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
-   :base_type                     su/FieldType
-   (s/optional-key :special_type) (s/maybe su/FieldType)
-   ;; you'll need to provide this in order to use BINNING
-   (s/optional-key :fingerprint)  (s/maybe su/Map)
-   s/Any                          s/Any})
 
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------

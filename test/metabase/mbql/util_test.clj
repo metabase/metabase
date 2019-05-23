@@ -153,6 +153,31 @@
                           [:= [:field-id 2] 5000]]}
     (&match :guard #(integer? %))))
 
+;; can we use a predicate and bind the match at the same time?
+(expect
+  [2 4001 3 5001]
+  (mbql.u/match {:filter [:and
+                          [:= [:field-id 1] 4000]
+                          [:= [:field-id 2] 5000]]}
+    (i :guard #(integer? %))
+    (inc i)))
+
+;; can we match against a map?
+(expect
+  ["card__1847"]
+  (let [x {:source-table "card__1847"}]
+    (mbql.u/match x
+      (m :guard (every-pred map? (comp string? :source-table)))
+      (:source-table m))))
+
+;; how about a sequence of maps?
+(expect
+  ["card__1847"]
+  (let [x [{:source-table "card__1847"}]]
+    (mbql.u/match x
+      (m :guard (every-pred map? (comp string? :source-table)))
+      (:source-table m))))
+
 ;; can we use `recur` inside a pattern?
 (expect
   [[0 :month]]

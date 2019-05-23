@@ -204,3 +204,17 @@
                                  [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
       :order-by [[:asc $name]]
       :limit    3})))
+
+;; Can we resolve joins using a `:source-query` and `:fields` `:all`??
+;; NOCOMMIT
+(defn- x []
+  (resolve-joins-and-inspect-store
+   (data/mbql-query venues
+     {:joins    [{:alias        "cat"
+                  :source-query {:source-table $$categories}
+                  :fields       :all
+                  :condition    [:=
+                                 $category_id
+                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+      :order-by [[:asc $name]]
+      :limit    3})))
