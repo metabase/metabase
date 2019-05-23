@@ -7,6 +7,13 @@ import { isLocale24Hour } from "metabase/lib/i18n";
 import cx from "classnames";
 import moment from "moment";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 const HoursMinutesInput = ({
   hours,
   minutes,

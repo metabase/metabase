@@ -7,7 +7,13 @@ import cx from "classnames";
 import moment from "moment";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
@@ -127,6 +133,7 @@ export default class Calendar extends Component {
   }
 
   renderWeeks(current) {
+<<<<<<< HEAD
     const weeks = [];
     const date = moment(current)
       .startOf("month")
@@ -134,6 +141,22 @@ export default class Calendar extends Component {
     let done = false;
     let monthIndex = date.month();
     let count = 0;
+=======
+    moment.locale("en");
+    moment().isoWeekday(1);
+    moment.updateLocale('en',{
+     week:{
+      dow: 1,
+      },
+    });
+    let weeks = [],
+      done = false,
+      date = moment(current)
+        .startOf("month")
+        .day("Monday"),
+      monthIndex = date.month(),
+      count = 0;
+>>>>>>> - Adjusting the start of week to Monday according to ISO.
 
     while (!done) {
       weeks.push(
@@ -192,8 +215,8 @@ class Week extends Component {
         "Calendar-day--selected": selected && date.isSame(selected, "day"),
         "Calendar-day--selected-end":
           selectedEnd && date.isSame(selectedEnd, "day"),
-        "Calendar-day--week-start": i === 0,
-        "Calendar-day--week-end": i === 6,
+        "Calendar-day--week-start": i === 1,
+        "Calendar-day--week-end": i === 0,
         "Calendar-day--in-range":
           !(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
           (date.isSame(selected, "day") ||

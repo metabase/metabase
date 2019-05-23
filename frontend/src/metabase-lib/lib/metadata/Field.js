@@ -4,8 +4,19 @@ import Base from "./Base";
 import Table from "./Table";
 
 import moment from "moment";
+<<<<<<< HEAD
 
 import Dimension from "../Dimension";
+=======
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
+import { FieldIDDimension } from "../Dimension";
+>>>>>>> - Adjusting the start of week to Monday according to ISO.
 
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";

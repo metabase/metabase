@@ -1,5 +1,11 @@
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
   year: value =>

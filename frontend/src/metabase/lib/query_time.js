@@ -5,6 +5,13 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 import { t, ngettext, msgid } from "ttag";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 export const DATETIME_UNITS = [
   // "default",
   "minute",

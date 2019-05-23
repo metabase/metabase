@@ -139,10 +139,15 @@ const RANGE_SEPARATOR = ` – `;
 // for extracting number portion from a formatted currency string
 // NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
 const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
-moment.locale("en");
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 export function numberFormatterForOptions(options: FormattingOptions) {
   options = { ...getDefaultNumberOptions(options), ...options };
   // always use "en" locale so we have known number separators we can replace depending on number_separators option
@@ -440,6 +445,12 @@ export function formatDateTimeRangeWithUnit(
 function formatWeek(m: Moment, options: FormattingOptions = {}) {
   // force 'en' locale for now since our weeks currently always start on Sundays
   m = m.locale("en");
+  m().isoWeekday(1);
+  m.updateLocale('en',{
+   week:{
+    dow: 1,
+    },
+  });
   return formatMajorMinor(m.format("wo"), m.format("gggg"), options);
 }
 

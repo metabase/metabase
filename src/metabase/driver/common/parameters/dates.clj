@@ -32,6 +32,7 @@
 ;; hour/minute granularity in field parameter queries.
 
 (defn- day-range
+<<<<<<< HEAD:src/metabase/driver/common/parameters/dates.clj
   [start end]
   {:start start, :end end})
 
@@ -53,6 +54,35 @@
 (defn- year-range [start end]
   (comparison-range start end :year))
 
+=======
+  [^DateTime start, ^DateTime end]
+  {:end   end
+   :start start})
+
+(defn- week-range
+  [^DateTime start, ^DateTime end]
+    ;; weeks always start on SUNDAY and end on SATURDAY
+    ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
+   {:end   (.withDayOfWeek end DateTimeConstants/SUNDAY)
+    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/MONDAY)})
+
+(defn- month-range
+  [^DateTime start, ^DateTime end]
+  {:end   (t/last-day-of-the-month end)
+   :start (t/first-day-of-the-month start)})
+
+(defn- year-range
+  [^DateTime start, ^DateTime end]
+  {:end   (t/last-day-of-the-month  (.withMonthOfYear end DateTimeConstants/DECEMBER))
+   :start (t/first-day-of-the-month (.withMonthOfYear start DateTimeConstants/JANUARY))})
+
+(defn- start-of-quarter [quarter year]
+  (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
+                                                                   "Q1" DateTimeConstants/JANUARY
+                                                                   "Q2" DateTimeConstants/APRIL
+                                                                   "Q3" DateTimeConstants/JULY
+                                                                   "Q4" DateTimeConstants/OCTOBER))))
+>>>>>>> - Adjusting the start of week to Monday according to ISO.:src/metabase/query_processor/middleware/parameters/dates.clj
 (defn- quarter-range
   [quarter year]
   (let [year-quarter (t/year-quarter year (case quarter

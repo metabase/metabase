@@ -5,6 +5,13 @@ import d3 from "d3";
 import dc from "dc";
 import moment from "moment";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 

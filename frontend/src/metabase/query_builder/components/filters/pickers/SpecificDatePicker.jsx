@@ -11,10 +11,25 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import moment from "moment";
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 import cx from "classnames";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 const DATE_TIME_FORMAT = "YYYY-MM-DDTHH:mm:ss";
+
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 
 type Props = {
   value: ?string,

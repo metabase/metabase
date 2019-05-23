@@ -6,7 +6,13 @@ import { t } from "ttag";
 import UserAvatar from "metabase/components/UserAvatar";
 
 import moment from "moment";
-
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 // TODO: "you" for current user
 // TODO: show different color avatars for users that aren't me
 

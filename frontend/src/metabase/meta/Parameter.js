@@ -20,8 +20,19 @@ import type { FieldId } from "metabase/meta/types/Field";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
 import moment from "moment";
+<<<<<<< HEAD
 
 import * as Q_DEPRECATED from "metabase/lib/query";
+=======
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
+import Q from "metabase/lib/query";
+>>>>>>> - Adjusting the start of week to Monday according to ISO.
 
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 

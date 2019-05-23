@@ -17,6 +17,13 @@ import { compose } from "redux";
 import { createSelectorCreator } from "reselect";
 import memoize from "lodash.memoize";
 
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
 // similar to createAction but accepts a (redux-thunk style) thunk and dispatches based on whether
 // the promise returned from the thunk resolves or rejects, similar to redux-promise
 export function createThunkAction(actionType, thunkCreator) {

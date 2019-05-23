@@ -6,9 +6,19 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
+<<<<<<< HEAD
 
 import { color } from "metabase/lib/colors";
 
+=======
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
+>>>>>>> - Adjusting the start of week to Monday according to ISO.
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
