@@ -76,15 +76,18 @@ function getQuestionSteps(question, openSteps) {
     if (database && database.hasFeature("nested-queries")) {
       const activeSteps = steps.filter(s => s.active);
       const last = activeSteps[activeSteps.length - 1];
+      const lastActionTypes = new Set(last.actions.map(a => a.type));
       if (NEST_LAST_TYPES.has(last.type)) {
         for (const type of NEST_NEXT_TYPES) {
-          last.actions.push({
-            type: type,
-            action: ({ query, openStep }) => {
-              query.nest().update();
-              openStep(`${last.stage + 1}:${type}`);
-            },
-          });
+          if (!lastActionTypes.has(type)) {
+            last.actions.push({
+              type: type,
+              action: ({ query, openStep }) => {
+                query.nest().update();
+                openStep(`${last.stage + 1}:${type}`);
+              },
+            });
+          }
         }
       }
     }
