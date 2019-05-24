@@ -37,7 +37,7 @@ function JoinClause({ join, color }) {
   return (
     <Flex align="center">
       <NotebookCellItem color={color} icon="table2">
-        {query.table().displayName()}
+        {query.table().displayName() || `Previous results`}
       </NotebookCellItem>
 
       <PopoverWithTrigger
@@ -94,7 +94,7 @@ function JoinClause({ join, color }) {
 
           <JoinDimensionPicker
             color={color}
-            table={query.table()}
+            query={query}
             dimension={join.sourceDimension()}
             options={join.sourceDimensionOptions()}
             onChange={fieldRef => join.setSourceDimension(fieldRef).update()}
@@ -104,7 +104,7 @@ function JoinClause({ join, color }) {
 
           <JoinDimensionPicker
             color={color}
-            table={join.table()}
+            query={query}
             dimension={join.joinDimension()}
             options={join.joinDimensionOptions()}
             onChange={fieldRef => join.setJoinDimension(fieldRef).update()}
@@ -151,7 +151,7 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
   );
 }
 
-function JoinDimensionPicker({ dimension, onChange, options, table, color }) {
+function JoinDimensionPicker({ dimension, onChange, options, query, color }) {
   return (
     <PopoverWithTrigger
       triggerElement={
@@ -165,7 +165,8 @@ function JoinDimensionPicker({ dimension, onChange, options, table, color }) {
           className="text-brand"
           field={dimension && dimension.mbql()}
           fieldOptions={options}
-          table={table}
+          table={query.table()}
+          query={query}
           onFieldChange={field => {
             onChange(field);
             onClose();

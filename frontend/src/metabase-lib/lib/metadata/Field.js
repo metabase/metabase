@@ -8,6 +8,7 @@ import moment from "moment";
 
 import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
 
+import { formatField } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
@@ -42,8 +43,27 @@ export default class Field extends Base {
   table: Table;
   name_field: ?Field;
 
-  displayName() {
-    return this.display_name || this.name;
+  get parent() {
+    return this.metadata ? this.metadata.field(this.parent_id) : null;
+  }
+
+  path() {
+    const path = [];
+    let field = this;
+    do {
+      path.unshift(field);
+    } while ((field = field.parent));
+    return path;
+  }
+
+  displayName({ includePath = true } = {}) {
+    if (includePath) {
+      return this.path()
+        .map(formatField)
+        .join(": ");
+    } else {
+      return formatField(this);
+    }
   }
 
   fieldType() {
