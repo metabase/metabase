@@ -67,7 +67,10 @@ const Databases = createEntity({
       _.any(Databases.selectors.getList(state), db => db.is_sample),
     getIdfields: (state, databaseId) =>
       Object.values(getMetadata(state).fields)
-        .filter(f => f.table.db_id === databaseId && f.isPK())
+        .filter(f => {
+          const { db_id } = f.table || {}; // a field's table can be null
+          return db_id === databaseId && f.isPK();
+        })
         .map(field => {
           field.displayName =
             field.table.display_name + " → " + field.display_name;

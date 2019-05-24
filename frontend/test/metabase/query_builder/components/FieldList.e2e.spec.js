@@ -21,8 +21,9 @@ import {
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Segments from "metabase/entities/segments";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 import { TestTooltip, TestTooltipContent } from "metabase/components/Tooltip";
 import Filter from "metabase/query_builder/components/Filter";
 
@@ -45,8 +46,10 @@ describe("FieldList", () => {
 
   it("should allow using expression as aggregation dimension", async () => {
     const store = await createTestStore();
-    await store.dispatch(fetchDatabases());
-    await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
+    await store.dispatch(Databases.actions.fetchList());
+    await store.dispatch(
+      Tables.actions.fetchTableMetadata({ id: ORDERS_TABLE_ID }),
+    );
 
     const expressionName = "70% of subtotal";
     const metadata = getMetadata(store.getState());
@@ -77,9 +80,16 @@ describe("FieldList", () => {
     );
     cleanup.segment(segment);
 
-    await store.dispatch(fetchDatabases());
-    await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
-    await store.dispatch(Segments.actions.fetchList(null));
+    await store.dispatch(
+      Databases.actions.fetchList({
+        include_tables: true,
+        include_cards: true,
+      }),
+    );
+    await store.dispatch(
+      Tables.actions.fetchTableMetadata({ id: ORDERS_TABLE_ID }),
+    );
+    await store.dispatch(Segments.actions.fetchList());
     const metadata = getMetadata(store.getState());
 
     const query: StructuredQuery = Question.create({

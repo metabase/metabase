@@ -10,17 +10,6 @@ import {
   click,
   dispatchBrowserEvent,
 } from "__support__/enzyme_utils";
-import {
-  DELETE_FIELD_DIMENSION,
-  deleteFieldDimension,
-  FETCH_TABLE_METADATA,
-  fetchTableMetadata,
-  UPDATE_FIELD,
-  UPDATE_FIELD_DIMENSION,
-  UPDATE_FIELD_VALUES,
-  updateField,
-  updateFieldValues,
-} from "metabase/redux/metadata";
 
 import { metadata as staticFixtureMetadata } from "__support__/sample_dataset_fixture";
 
@@ -104,10 +93,10 @@ describe("FieldApp", () => {
       );
 
       setInputValue(nameInput, newTitle);
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
 
       setInputValue(descriptionInput, newDescription);
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
     });
 
     it("should show the entered values after a page reload", async () => {
@@ -154,7 +143,7 @@ describe("FieldApp", () => {
           .first(),
       );
 
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
     });
 
     it("should show the updated visibility setting after a page reload", async () => {
@@ -196,7 +185,7 @@ describe("FieldApp", () => {
         .first();
       click(noSpecialTypeButton);
 
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
       expect(picker.text()).toMatch(/Select a special type/);
     });
 
@@ -218,7 +207,7 @@ describe("FieldApp", () => {
 
       click(noSpecialTypeButton);
 
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
       expect(picker.text()).toMatch(/Number/);
     });
 
@@ -237,7 +226,7 @@ describe("FieldApp", () => {
         .children()
         .first();
       click(foreignKeyButton);
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
 
       expect(picker.text()).toMatch(/Foreign KeySelect a target/);
       const fkFieldSelect = picker.find(Select).at(1);
@@ -252,7 +241,7 @@ describe("FieldApp", () => {
         .first();
 
       click(productIdField);
-      await store.waitForActions([UPDATE_FIELD]);
+      await store.waitForActions([Fields.actions.update]);
       expect(picker.text()).toMatch(/Foreign KeyProducts → ID/);
     });
 
@@ -294,7 +283,10 @@ describe("FieldApp", () => {
         .children()
         .first();
       click(useFKButton);
-      store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
+      store.waitForActions([
+        Fields.actions.updateFieldDimension,
+        Tables.actions.fetchTableMetadata,
+      ]);
 
       let fkFieldSelect;
 
@@ -315,7 +307,7 @@ describe("FieldApp", () => {
         .first();
 
       click(sourceField);
-      store.waitForActions([FETCH_TABLE_METADATA]);
+      store.waitForActions([Tables.actions.fetchTableMetadata]);
 
       await eventually(() => {
         fkFieldSelect = section.find(SelectButton);
@@ -355,7 +347,10 @@ describe("FieldApp", () => {
         .first();
       click(useOriginalValue);
 
-      store.waitForActions([DELETE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
+      store.waitForActions([
+        Fields.actions.deleteFieldDimension,
+        Tables.actions.fetchTableMetadata,
+      ]);
     });
 
     it("forces you to choose the FK field manually if there is no field with Field Name special type", async () => {
@@ -366,7 +361,7 @@ describe("FieldApp", () => {
       // Set FK id to `Reviews -> ID`  with a direct metadata update call
       const field = getMetadata(store.getState()).fields[USER_ID_FK_ID];
       await store.dispatch(
-        updateField({
+        Fields.actions.update({
           ...field.getPlainObject(),
           fk_target_field_id: 31,
         }),
@@ -384,7 +379,10 @@ describe("FieldApp", () => {
         .children()
         .first();
       click(useFKButton);
-      store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
+      store.waitForActions([
+        Fields.actions.updateFieldDimension,
+        Tables.actions.fetchTableMetadata,
+      ]);
       // TODO: Figure out a way to avoid using delay – the use of delays may lead to occasional CI failures
       await delay(500);
 
@@ -431,7 +429,10 @@ describe("FieldApp", () => {
         .first();
       click(customMappingButton);
 
-      store.waitForActions([UPDATE_FIELD_DIMENSION, FETCH_TABLE_METADATA]);
+      store.waitForActions([
+        Fields.actions.updateFieldDimension,
+        Tables.actions.fetchTableMetadata,
+      ]);
       // TODO: Figure out a way to avoid using delay – using delays may lead to occasional CI failures
       await delay(500);
 
@@ -457,7 +458,7 @@ describe("FieldApp", () => {
       const saveButton = valueRemappingsSection.find(ButtonWithStatus);
       clickButton(saveButton);
 
-      store.waitForActions([UPDATE_FIELD_VALUES]);
+      store.waitForActions([Fields.actions.updateFieldValues]);
     });
 
     it("shows the updated values after page reload", async () => {
@@ -486,22 +487,26 @@ describe("FieldApp", () => {
 
     afterAll(async () => {
       const store = await createTestStore();
-      await store.dispatch(fetchTableMetadata(1));
+      await store.dispatch(Tables.actions.fetchTableMetadata({ id: 1 }));
 
       const field = getMetadata(store.getState()).fields[USER_ID_FK_ID];
       await store.dispatch(
-        updateField({
+        Fields.actions.update({
           ...field.getPlainObject(),
           fk_target_field_id: 13, // People -> ID
         }),
       );
 
-      await store.dispatch(deleteFieldDimension(USER_ID_FK_ID));
-      await store.dispatch(deleteFieldDimension(PRODUCT_RATING_ID));
+      await store.dispatch(
+        Fields.actions.deleteFieldDimension({ id: USER_ID_FK_ID }),
+      );
+      await store.dispatch(
+        Fields.actions.deleteFieldDimension({ id: PRODUCT_RATING_ID }),
+      );
 
       // TODO: This is a little hacky – could there be a way to simply reset the user-defined valued?
       await store.dispatch(
-        updateFieldValues(PRODUCT_RATING_ID, [
+        Fields.actions.updateFieldValues({ id: PRODUCT_RATING_ID }, [
           [1, "1"],
           [2, "2"],
           [3, "3"],

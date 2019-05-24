@@ -42,7 +42,6 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 import { getMetadata } from "metabase/selectors/metadata";
 
 // ACTIONS
-import * as metadataActions from "metabase/redux/metadata";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
@@ -57,6 +56,8 @@ import type { DatabaseId } from "metabase/meta/types/Database";
 import type { TableId } from "metabase/meta/types/Table";
 import type { FieldId } from "metabase/meta/types/Field";
 import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
 
 const mapStateToProps = (state, props) => {
   const databaseId = parseInt(props.params.databaseId);
@@ -70,13 +71,13 @@ const mapStateToProps = (state, props) => {
 };
 
 const mapDispatchToProps = {
-  fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
-  fetchTableMetadata: metadataActions.fetchTableMetadata,
-  fetchFieldValues: metadataActions.fetchFieldValues,
-  updateField: metadataActions.updateField,
-  updateFieldValues: metadataActions.updateFieldValues,
-  updateFieldDimension: metadataActions.updateFieldDimension,
-  deleteFieldDimension: metadataActions.deleteFieldDimension,
+  fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
+  fetchTableMetadata: Tables.actions.fetchTableMetadata,
+  fetchFieldValues: Fields.actions.fetchFieldValues,
+  updateField: Fields.actions.update,
+  updateFieldValues: Fields.actions.updateFieldValues,
+  updateFieldDimension: Fields.actions.updateFieldDimension,
+  deleteFieldDimension: Fields.actions.deleteFieldDimension,
   rescanFieldValues,
   discardFieldValues,
 };
@@ -99,13 +100,13 @@ export default class FieldApp extends React.Component {
     metadata: Metadata,
     idfields: Object[],
 
-    fetchDatabaseMetadata: number => Promise<void>,
-    fetchTableMetadata: number => Promise<void>,
-    fetchFieldValues: number => Promise<void>,
+    fetchDatabaseMetadata: Object => Promise<void>,
+    fetchTableMetadata: Object => Promise<void>,
+    fetchFieldValues: Object => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
-    updateFieldDimension: (FieldId, any) => Promise<void>,
-    deleteFieldDimension: FieldId => Promise<void>,
+    updateFieldDimension: (Object, any) => Promise<void>,
+    deleteFieldDimension: Object => Promise<void>,
 
     rescanFieldValues: FieldId => Promise<void>,
     discardFieldValues: FieldId => Promise<void>,
@@ -128,25 +129,22 @@ export default class FieldApp extends React.Component {
     await Promise.all([
       // A complete database metadata is needed in case that foreign key is
       // changed and then we need to show FK remapping options for a new table
-      fetchDatabaseMetadata(databaseId),
+      fetchDatabaseMetadata({ id: databaseId }),
 
       // Only fetchTableMetadata hydrates `dimension` in the field object
       // Force reload to ensure that we are not showing stale information
-      fetchTableMetadata(tableId, true),
+      fetchTableMetadata({ id: tableId }, { reload: true }),
 
       // always load field values even though it's only needed if
       // has_field_values === "list"
-      fetchFieldValues(fieldId),
+      fetchFieldValues({ id: fieldId }),
     ]);
   }
 
-  linkWithSaveStatus = (saveMethod: Function) => {
-    const self = this;
-    return async (...args: any[]) => {
-      self.saveStatus && self.saveStatus.setSaving();
-      await saveMethod(...args);
-      self.saveStatus && self.saveStatus.setSaved();
-    };
+  linkWithSaveStatus = (saveMethod: Function) => async (...args: any[]) => {
+    this.saveStatus && this.saveStatus.setSaving();
+    await saveMethod(...args);
+    this.saveStatus && this.saveStatus.setSaved();
   };
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
@@ -415,11 +413,14 @@ export class FieldHeader extends React.Component {
     // Update the dimension name if it exists
     // TODO: Have a separate input field for the dimension name?
     if (!_.isEmpty(field.dimensions)) {
-      await updateFieldDimension(field.id, {
-        type: field.dimensions.type,
-        human_readable_field_id: field.dimensions.human_readable_field_id,
-        name,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: field.dimensions.type,
+          human_readable_field_id: field.dimensions.human_readable_field_id,
+          name,
+        },
+      );
     }
 
     // todo: how to treat empty / too long strings? see how this is done in Column
