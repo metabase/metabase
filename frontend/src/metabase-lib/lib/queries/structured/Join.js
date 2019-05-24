@@ -12,7 +12,7 @@ const JOIN_STRATEGY_OPTIONS = [
   { value: "left-join", name: "Left outer join", icon: "join_left_outer" }, // default
   { value: "right-join", name: "Right outer join", icon: "join_right_outer" },
   { value: "inner-join", name: "Inner join", icon: "join_inner" },
-  { value: "outer-join", name: "Full outer join", icon: "join_full_outer" },
+  { value: "full-join", name: "Full outer join", icon: "join_full_outer" },
 ];
 
 export default class Join extends MBQLObjectClause {
