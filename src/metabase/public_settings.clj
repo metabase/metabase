@@ -88,7 +88,7 @@
 
 (defsetting map-tile-server-url
   (tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+  :default "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
   (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
