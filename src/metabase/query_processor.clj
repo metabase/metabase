@@ -126,13 +126,15 @@
       ;; `catch-exceptions`
       parameters/substitute-parameters
       expand-macros/expand-macros
-      ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
+      ;; (drivers can inject custom middleware if they implement `process-query-in-context`)
       driver-specific/process-query-in-context
       add-settings/add-settings
       splice-params-in-response/splice-params-in-response
       ;; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲
       ;; All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
-      ;; TODO - I think we should do this much earlier
+      ;;
+      ;; TODO - `resolve-driver` and `resolve-database` can be combined into a single step, so we don't need to fetch
+      ;; DB twice
       resolve-driver/resolve-driver
       bind-timezone/bind-effective-timezone
       resolve-database/resolve-database

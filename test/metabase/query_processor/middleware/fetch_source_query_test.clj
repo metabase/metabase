@@ -80,9 +80,10 @@
 (expect
   (default-result-with-inner-query
    {:limit        25
-    :source-query {:limit        50
-                   :source-query {:source-table (data/id :venues)
-                                  :limit        100}}})
+    :source-query {:limit           50
+                   :source-query    {:source-table (data/id :venues)
+                                     :limit        100}
+                   :source-metadata nil}})
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues), :limit 100}}}]

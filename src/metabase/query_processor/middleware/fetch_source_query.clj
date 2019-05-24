@@ -7,25 +7,37 @@
 
   and resolves the referenced source query, transforming the query to look like the following:
 
-    {:source-query {...} ; Query for Card 1
+    {:source-query {...}    ; Query for Card 1
+     :source-metadata [...] ; metadata about columns in Card 1
      ...}
+
+  This middleware resolves Card ID `:source-table`s at all levels of the query, but the top-level query often uses the
+  so-called `virtual-id`, because the frontend client might not know the original Database; this middleware will
+  replace that ID with the approiate ID, e.g.
+
+    {:database <virtual-id>, :type :query, :query {:source-table \"card__1\"}}
+    ->
+    {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
-             [schema :as mbql.s]]
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.interface :as i]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]
-            [metabase.util.schema :as su]
-            [metabase.mbql.util :as mbql.u]
-            [medley.core :as m]))
+            [toucan.db :as db]))
 
+;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
+;; entire query
 (def ^:private SourceQueryWithMetadata
   (s/constrained
    mbql.s/SourceQuery
@@ -40,16 +52,25 @@
    (complement :source-table)
    "`:source-table` should be removed"))
 
-(defn- has-unresolved-card-id-source-tables? [m]
-  (when m
-    (mbql.u/match-one m
+(defn- query-has-unresolved-card-id-source-tables? [{inner-mbql-query :query}]
+  (when inner-mbql-query
+    (mbql.u/match-one inner-mbql-query
       (&match :guard (every-pred map? (comp string? :source-table))))))
 
+(defn- query-has-resolved-database-id? [{:keys [database]}]
+  ((every-pred integer? pos?) database))
+
 (def ^:private FullyResolvedQuery
-  (s/constrained
-   mbql.s/Query
-   (complement (comp has-unresolved-card-id-source-tables? :query))
-   "Query where all card__id :source-tables are fully resolved"))
+  "Schema for a MBQL query where all `card__id` `:source-tables` have been removes and appropriate `:source-query`s have
+  been added instead, and where the top-level `:database` ID, if it was the 'source query placeholder`, is replaced by
+  the actual database ID of the source query.
+
+  This schema represents the way the query should look after this middleware finishes preprocessing it."
+  (-> mbql.s/Query
+      (s/constrained (complement query-has-unresolved-card-id-source-tables?)
+                     "Query where all card__id :source-tables are fully resolved")
+      (s/constrained query-has-resolved-database-id?
+                     "Query where source-query virtual `:database` has been replaced with actual Database ID")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -109,6 +130,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^{:arglists '([x])} map-with-card-id-source-table?
+  "Is `x` a map with a \"card__id\" `:source-table`, i.e., something this middleware needs to resolve?"
   (every-pred
    map?
    (comp string? :source-table)

@@ -19,7 +19,7 @@
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike `mbql.s/Joins`, this does not enforce the constraint that all join
-  aliases be unique; that is not guaranteeded until `deduplicate-aliases` transforms the joins."
+  aliases be unique; that is not guaranteeded until `mbql.u/deduplicate-join-aliases` transforms the joins."
   (su/non-empty [mbql.s/Join]))
 
 (def ^:private UnresolvedMBQLQuery
@@ -54,7 +54,8 @@
     (doseq [field (db/select (into [Field] qp.store/field-columns-to-fetch) :id [:in field-ids])]
       (qp.store/store-field! field))))
 
-(s/defn ^:private resolve-tables! :- (s/eq nil)
+(s/defn ^:private ^:deprecated resolve-tables! :- (s/eq nil)
+  "TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
   [joins :- Joins]
   (when-let [source-table-ids (->> (map :source-table joins)
                                    (filter some?)
@@ -79,17 +80,6 @@
 ;;; |                                             :joins Transformations                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private deduplicate-aliases :- mbql.s/Joins
-  [joins :- Joins]
-  (let [joins          (for [join joins]
-                         (update join :alias #(or % "source")))
-        unique-aliases (mbql.u/uniquify-names (map :alias joins))]
-    (mapv
-     (fn [join alias]
-       (assoc join :alias alias))
-     joins
-     unique-aliases)))
-
 (s/defn ^:private merge-defaults :- mbql.s/Join
   [join]
   (merge {:strategy :left-join} join))
@@ -111,7 +101,7 @@
   [joins :- Joins]
   (resolve-tables! joins)
   (u/prog1 (->> joins
-                deduplicate-aliases
+                mbql.u/deduplicate-join-aliases
                 (map merge-defaults)
                 (mapv handle-all-fields))
     (resolve-fields! <>)))
@@ -168,10 +158,10 @@
 ;;; |                                Middleware & Boring Recursive Application Stuff                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - this is a little hacky, we should come up with a more elegant way of recursively resolving the source
-;; queries inside joins. I actually think maybe resolving Joins source tables should be resolved by other middleware
-(defn- maybe-resolve-source-table
-  "Resolve the `source-table` of any `source-query` inside a join."
+(defn- ^:deprecated maybe-resolve-source-table
+  "Resolve the `source-table` of any `source-query` inside a join.
+
+  TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
   [{:keys [source-table], :as query}]
   (u/prog1 query
     (when-not (qp.store/has-table? source-table)

@@ -4,10 +4,11 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
-            [metabase.util.schema :as su]))
+            [toucan.db :as db]))
 
 (def ^:private ^{:arglists '([x])} positive-int? (every-pred integer? pos?))
 
@@ -18,8 +19,9 @@
   (mbql.u/match-one query
     (m :guard (every-pred map? :source-table (comp (complement positive-int?) :source-table)))
     (throw
-     (Exception.
-      (str (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m)))))))
+     (ex-info
+         (str (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m)))
+       {:form m}))))
 
 (s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZero}))
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
@@ -48,9 +50,9 @@
     (doseq [source-table-id source-table-ids]
       (when-not (contains? fetched-ids source-table-id)
         (throw
-         (Exception.
-          (str (tru "Cannot run query: source table {0} does not exist, or belongs to a different database."
-                    source-table-id))))))))
+         (ex-info (str (tru "Cannot run query: source table {0} does not exist, or belongs to a different database."
+                            source-table-id))
+           {:source-table source-table-id}))))))
 
 (defn- resolve-source-table*
   "Validate that all "
@@ -67,17 +69,6 @@
   "Middleware that will take any `:source-table`s (integer IDs) anywhere in the query and fetch and save the
   corresponding Table in the Query Processor Store."
   [qp]
-  (fn
-    ([query]
-     (resolve-source-tables query)
-     (qp query))
-
-    ;; async-capable version of the middleware for the future when the entire QP is fully async
-    ([query respond raise canceled-chan]
-     (when (try
-             (resolve-source-tables query)
-             true
-             (catch Throwable e
-               (raise e)
-               false))
-       (qp query respond raise canceled-chan)))))
+  (fn [query]
+    (resolve-source-tables query)
+    (qp query)))

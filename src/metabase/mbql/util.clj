@@ -495,3 +495,18 @@
 
     #{:field-id :field-literal}
     [:joined-field alias &match]))
+
+(def ^:private default-join-alias "source")
+
+(s/defn deduplicate-join-aliases :- mbql.s/Joins
+  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
+  one."
+  [joins :- [mbql.s/Join]]
+  (let [joins          (for [join joins]
+                         (update join :alias #(or % default-join-alias)))
+        unique-aliases (uniquify-names (map :alias joins))]
+    (mapv
+     (fn [join alias]
+       (assoc join :alias alias))
+     joins
+     unique-aliases)))
