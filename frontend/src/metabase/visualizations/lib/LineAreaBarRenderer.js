@@ -182,6 +182,7 @@ function addDecimalsToPercentColumn(series, decimals) {
 // Figure out how many decimal places are needed to represent the smallest
 // percentages in the chart with two significant digits.
 function computeDecimalsForNormalizedData(datas, scaleFactors) {
+  // $FlowFixMe
   const formatter = Intl.NumberFormat("en", {
     style: "percent",
     maximumSignificantDigits: 2,
