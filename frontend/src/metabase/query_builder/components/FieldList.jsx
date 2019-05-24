@@ -36,6 +36,8 @@ type Props = {
   onFilterChange?: (filter: any) => void,
 
   table: Table,
+  // query should be included otherwise FieldList may not display field-literal display name correctly
+  query?: Query,
 
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
@@ -111,6 +113,7 @@ export default class FieldList extends Component {
       field,
       enableSubDimensions,
       table: { metadata },
+      query,
     } = this.props;
 
     return (
@@ -140,7 +143,7 @@ export default class FieldList extends Component {
             }}
           >
             <DimensionPicker
-              dimension={Dimension.parseMBQL(field, metadata)}
+              dimension={Dimension.parseMBQL(field, metadata, query)}
               dimensions={item.dimension.dimensions()}
               onChangeDimension={dimension =>
                 this.props.onFieldChange(dimension.mbql())
@@ -166,9 +169,10 @@ export default class FieldList extends Component {
     const {
       field,
       table: { metadata },
+      query,
     } = this.props;
     const subDimension = dimension.isSameBaseDimension(field)
-      ? Dimension.parseMBQL(field, metadata)
+      ? Dimension.parseMBQL(field, metadata, query)
       : dimension.defaultDimension();
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (

@@ -327,7 +327,7 @@ export default class Dimension {
 
   column() {
     return {
-      name: this.displayName(),
+      name: this.columnName(),
       display_name: this.displayName(),
       ...this.baseDimension()
         .field()
@@ -384,9 +384,7 @@ export class FieldDimension extends Dimension {
   }
 
   displayName(): string {
-    return stripId(
-      Query_DEPRECATED.getFieldPathName(this.field().id, this.field().table),
-    );
+    return this.field().displayName();
   }
 
   subDisplayName(): string {
@@ -496,6 +494,8 @@ export class FieldLiteralDimension extends FieldDimension {
     return new Field({
       id: this.mbql(),
       name: this.name(),
+      // NOTE: this display_name will likely be incorrect
+      // if a `FieldLiteralDimension` isn't associated with a query then we don't know which table it belongs to
       display_name: this.name(),
       base_type: this._args[1],
       // HACK: need to thread the query through to this fake Field

@@ -10,15 +10,6 @@ import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/compo
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 
-const DEFAULT_STRATEGY = "left-join";
-
-const JOIN_TYPES = [
-  { value: "left-join", name: "Left outer join", icon: "join_left_outer" },
-  { value: "right-join", name: "Right outer join", icon: "join_left_outer" },
-  { value: "inner-join", name: "Inner join", icon: "join_left_outer" },
-  { value: "outer-join", name: "Full outer join", icon: "join_left_outer" },
-];
-
 export default function JoinStep({ color, query, isLastOpened, ...props }) {
   const joins = query.joins();
   return (
@@ -41,25 +32,37 @@ function JoinClause({ join, color }) {
   if (!query) {
     return null;
   }
-  const hasSource = join.table();
+  const table = join.table();
+  const strategyOption = join.strategyOption();
   return (
     <Flex align="center">
       <NotebookCellItem color={color} icon="table2">
-        {query.table().displayName()}
+        {query.table().displayName() || `Previous results`}
       </NotebookCellItem>
 
       <PopoverWithTrigger
         triggerElement={
-          <Icon className="text-brand mr1" name="join_left_outer" size={32} />
+          strategyOption ? (
+            <Icon
+              className="text-brand mr1"
+              name={strategyOption.icon}
+              size={32}
+            />
+          ) : (
+            <NotebookCellItem color={color}>
+              {`Choose a join type`}
+            </NotebookCellItem>
+          )
         }
       >
         {({ onClose }) => (
           <JoinTypeSelect
-            value={join.strategy || DEFAULT_STRATEGY}
+            value={strategyOption && strategyOption.value}
             onChange={strategy => {
               join.setStrategy(strategy).update();
               onClose();
             }}
+            options={join.strategyOptions()}
           />
         )}
       </PopoverWithTrigger>
@@ -85,13 +88,13 @@ function JoinClause({ join, color }) {
         }
       />
 
-      {hasSource && (
+      {table && (
         <Flex align="center">
           <span className="text-medium text-bold ml1 mr2">where</span>
 
           <JoinDimensionPicker
             color={color}
-            table={query.table()}
+            query={query}
             dimension={join.sourceDimension()}
             options={join.sourceDimensionOptions()}
             onChange={fieldRef => join.setSourceDimension(fieldRef).update()}
@@ -101,7 +104,7 @@ function JoinClause({ join, color }) {
 
           <JoinDimensionPicker
             color={color}
-            table={join.table()}
+            query={query}
             dimension={join.joinDimension()}
             options={join.joinDimensionOptions()}
             onChange={fieldRef => join.setJoinDimension(fieldRef).update()}
@@ -112,13 +115,13 @@ function JoinClause({ join, color }) {
   );
 }
 
-function JoinTypeSelect({ value, onChange }) {
+function JoinTypeSelect({ value, onChange, options }) {
   return (
     <div className="px1 pt1">
-      {JOIN_TYPES.map(joinType => (
+      {options.map(option => (
         <JoinTypeOption
-          {...joinType}
-          selected={value === joinType.value}
+          {...option}
+          selected={value === option.value}
           onChange={onChange}
         />
       ))}
@@ -148,7 +151,7 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
   );
 }
 
-function JoinDimensionPicker({ dimension, onChange, options, table, color }) {
+function JoinDimensionPicker({ dimension, onChange, options, query, color }) {
   return (
     <PopoverWithTrigger
       triggerElement={
@@ -162,7 +165,8 @@ function JoinDimensionPicker({ dimension, onChange, options, table, color }) {
           className="text-brand"
           field={dimension && dimension.mbql()}
           fieldOptions={options}
-          table={table}
+          table={query.table()}
+          query={query}
           onFieldChange={field => {
             onChange(field);
             onClose();

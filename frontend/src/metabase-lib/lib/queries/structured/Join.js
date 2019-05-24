@@ -6,6 +6,15 @@ import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 import MetabaseUtils from "metabase/lib/utils";
 
+import _ from "underscore";
+
+const JOIN_STRATEGY_OPTIONS = [
+  { value: "left-join", name: "Left outer join", icon: "join_left_outer" }, // default
+  { value: "right-join", name: "Right outer join", icon: "join_right_outer" },
+  { value: "inner-join", name: "Inner join", icon: "join_inner" },
+  { value: "full-join", name: "Full outer join", icon: "join_full_outer" },
+];
+
 export default class Join extends MBQLObjectClause {
   constructor(...args) {
     super(...args);
@@ -141,6 +150,21 @@ export default class Join extends MBQLObjectClause {
   dependentTableIds() {
     const joinQuery = this.joinQuery();
     return joinQuery ? joinQuery.dependentTableIds({ includeFKs: false }) : [];
+  }
+
+  strategyOption() {
+    return this.strategy
+      ? _.findWhere(this.strategyOptions(), { value: this.strategy })
+      : JOIN_STRATEGY_OPTIONS[0];
+  }
+  strategyOptions() {
+    const database = this.query().database();
+    if (!database) {
+      return [];
+    }
+    return JOIN_STRATEGY_OPTIONS.filter(({ value }) =>
+      database.hasFeature(value),
+    );
   }
 
   /**

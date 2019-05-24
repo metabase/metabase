@@ -214,7 +214,7 @@ export type JoinStrategy =
   | "left-join"
   | "right-join"
   | "inner-join"
-  | "outer-join";
+  | "full-join";
 export type JoinClause = Array<OrderBy>;
 export type Join = {
   "source-table"?: TableId,
