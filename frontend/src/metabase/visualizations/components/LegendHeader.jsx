@@ -1,25 +1,20 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import ReactDOM from "react-dom";
 import styles from "./Legend.css";
 
-import Icon from "metabase/components/Icon.jsx";
-import LegendItem from "./LegendItem.jsx";
+import ExplicitSize from "../../components/ExplicitSize";
+import Icon from "metabase/components/Icon";
+import LegendItem from "./LegendItem";
 
 import cx from "classnames";
 
 import { normal } from "metabase/lib/colors";
 
 const DEFAULT_COLORS = Object.values(normal);
+const MIN_WIDTH_PER_SERIES = 100;
 
+@ExplicitSize()
 export default class LegendHeader extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      width: 0,
-    };
-  }
-
   static propTypes = {
     series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
@@ -37,17 +32,6 @@ export default class LegendHeader extends Component {
     visualizationIsClickable: () => false,
   };
 
-  componentDidMount() {
-    this.componentDidUpdate();
-  }
-
-  componentDidUpdate() {
-    let width = ReactDOM.findDOMNode(this).offsetWidth;
-    if (width !== this.state.width) {
-      this.setState({ width });
-    }
-  }
-
   render() {
     const {
       series,
@@ -61,9 +45,11 @@ export default class LegendHeader extends Component {
       onVisualizationClick,
       visualizationIsClickable,
       classNameWidgets,
+      width,
     } = this.props;
+
     const showDots = series.length > 1;
-    const isNarrow = this.state.width < 150;
+    const isNarrow = width < MIN_WIDTH_PER_SERIES * series.length;
     const showTitles = !showDots || !isNarrow;
     // const colors = settings["graph.colors"] || DEFAULT_COLORS;
     // const customTitles = settings["graph.series_labels"];
