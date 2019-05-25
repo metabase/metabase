@@ -11,6 +11,8 @@ import _ from "underscore";
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { DatabaseFeature } from "metabase/meta/types/Database";
 
+type VirtualDatabaseFeature = "join";
+
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
  *
@@ -41,8 +43,18 @@ export default class Database extends Base {
     );
   }
 
-  hasFeature(feature: DatabaseFeature): boolean {
-    return this.features.indexOf(feature) >= 0;
+  hasFeature(feature: DatabaseFeature | VirtualDatabaseFeature): boolean {
+    const set = new Set(this.features);
+    if (feature === "join") {
+      return (
+        set.has("left-join") ||
+        set.has("right-join") ||
+        set.has("inner-join") ||
+        set.has("full-join")
+      );
+    } else {
+      return set.has(feature);
+    }
   }
 
   newQuestion(): Question {

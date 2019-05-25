@@ -48,6 +48,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartSettingsSidebar: false,
   initialChartSetting: null,
   isShowingChartTypeSidebar: false,
+  isPreviewing: true,
 };
 
 // various ui state options

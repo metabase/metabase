@@ -29,7 +29,6 @@ export default class RunButton extends Component {
       className,
     } = this.props;
     let buttonText = null;
-    let isSmall = false;
     if (isRunning) {
       buttonText = (
         <div className="flex align-center">
@@ -39,8 +38,7 @@ export default class RunButton extends Component {
       );
     } else if (isRunnable && isDirty) {
       if (isPreviewing) {
-        isSmall = true;
-        buttonText = <Icon name="right" />;
+        buttonText = t`Get Preview`;
       } else {
         buttonText = t`Get Answer`;
       }
@@ -65,7 +63,6 @@ export default class RunButton extends Component {
           },
           className,
         )}
-        style={isSmall ? { minWidth: "5em" } : {}}
         onClick={isRunning ? onCancel : onRun}
       >
         {buttonText}
