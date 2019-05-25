@@ -5,11 +5,11 @@
              [core :as core]
              [set :as set]]
             [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
+            [metabase.mbql.util.match :as match]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
-            [metabase.mbql.util.match :as match]
             [schema.core :as s]))
 
 ;; A NOTE ABOUT METADATA:

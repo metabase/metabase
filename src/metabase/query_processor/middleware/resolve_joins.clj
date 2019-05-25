@@ -84,17 +84,22 @@
   [join]
   (merge {:strategy :left-join} join))
 
+(defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
+  (when-not (seq source-metadata)
+    (throw (ex-info (str (tru "Cannot use :fields :all in join against source query unless it has :source-metadata."))
+             {:join join})))
+  (for [{field-name :name, base-type :base_type} source-metadata]
+    [:joined-field alias [:field-literal field-name base-type]]))
+
 (s/defn ^:private handle-all-fields :- mbql.s/Join
-  [{:keys [source-table alias fields], :as join} :- mbql.s/Join]
+  [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
   (merge
    join
    (when (= fields :all)
-     (when-not source-table
-       (throw
-        (UnsupportedOperationException.
-         "TODO - fields = all is not yet implemented for joins with source queries.")))
-     {:fields (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                (mbql.u/->joined-field alias field))})))
+     {:fields (if source-query
+                (source-metadata->fields join source-metadata)
+                (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                  (mbql.u/->joined-field alias field)))})))
 
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins

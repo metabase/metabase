@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-joins-test
   (:require [expectations :refer [expect]]
             [metabase.models
+             [card :refer [Card]]
              [database :refer [Database]]
              [table :refer [Table]]]
             [metabase.query-processor
@@ -28,6 +29,7 @@
 
 (defn- resolve-joins-and-inspect-store [query]
   (qp.store/with-store
+    (qp.store/store-database! (data/db))
     {:resolved (resolve-joins query)
      :store    (qp.test-util/store-contents)}))
 
@@ -206,15 +208,53 @@
       :limit    3})))
 
 ;; Can we resolve joins using a `:source-query` and `:fields` `:all`??
-;; NOCOMMIT
-(defn- x []
-  (resolve-joins-and-inspect-store
+(def ^:private result-metadata
+  [{:name         "ID"
+    :display_name "ID"
+    :description  nil
+    :base_type    :type/BigInteger
+    :special_type :type/PK
+    :fingerprint  nil}
+   {:name         "NAME"
+    :display_name "Name"
+    :description  nil
+    :base_type    :type/Text
+    :special_type :type/Name
+    :fingerprint  {:global {:distinct-count 75, :nil% 0.0},
+                   :type
+                   #:type  {:Text
+                            {:percent-json   0.0,
+                             :percent-url    0.0,
+                             :percent-email  0.0,
+                             :average-length 8.333333333333334}}}}])
+
+(expect
+  {:resolved
    (data/mbql-query venues
-     {:joins    [{:alias        "cat"
-                  :source-query {:source-table $$categories}
-                  :fields       :all
-                  :condition    [:=
-                                 $category_id
-                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+     {:fields   [[:joined-field "cat" [:field-literal "ID" :type/BigInteger]]
+                 [:joined-field "cat" [:field-literal "NAME" :type/Text]]]
+      :joins    [{:alias           "cat"
+                  :source-query    {:source-table $$categories}
+                  :source-metadata result-metadata
+                  :strategy        :left-join
+                  :condition       [:=
+                                    $category_id
+                                    [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
       :order-by [[:asc $name]]
-      :limit    3})))
+      :limit    3})
+   :store
+   {:database "test-data",
+    :tables   #{"CATEGORIES" "VENUES"},
+    :fields   #{["VENUES" "CATEGORY_ID"]}}
+   (tt/with-temp Card [card {:dataset_query (data/mbql-query categories)}]
+     (resolve-joins-and-inspect-store
+      (data/mbql-query venues
+        {:joins    [{:alias           "cat"
+                     :source-query    {:source-table $$categories}
+                     :source-metadata result-metadata
+                     :fields          :all
+                     :condition       [:=
+                                       $category_id
+                                       [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+         :order-by [[:asc $name]]
+         :limit    3})))})

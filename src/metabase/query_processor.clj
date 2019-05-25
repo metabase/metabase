@@ -2,7 +2,9 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
   (:require [medley.core :as m]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor.middleware
@@ -47,8 +49,7 @@
              [validate :as validate]
              [wrap-value-literals :as wrap-value-literals]]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]
-            [metabase.util :as u])
+            [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

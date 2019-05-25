@@ -5,13 +5,10 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
-            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn- add-implicit-joins [query]

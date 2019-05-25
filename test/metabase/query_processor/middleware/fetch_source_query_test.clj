@@ -1,13 +1,13 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
-  (:require [expectations :refer [expect]]
+  (:require [cheshire.core :as json]
+            [expectations :refer [expect]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test.data :as data]
             [metabase.util :as u]
-            [toucan.util.test :as tt]
             [toucan.db :as db]
-            [cheshire.core :as json]))
+            [toucan.util.test :as tt]))
 
 (def ^:private ^{:arglists '([query])} resolve-card-id-source-tables
   (fetch-source-query/resolve-card-id-source-tables identity))

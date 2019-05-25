@@ -7,8 +7,7 @@
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :as tx]]
-            [metabase.util :as u]))
+             [interface :as tx]]))
 
 (defn- native-form [query]
   (:query (qp/query->native query)))
