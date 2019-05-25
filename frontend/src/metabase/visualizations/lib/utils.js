@@ -147,24 +147,26 @@ export function getFriendlyName(column) {
 }
 
 export function getXValues(datas) {
-  let xValues = _.chain(datas)
-    .map(data => _.pluck(data, "0"))
-    .flatten(true)
-    .uniq()
-    .value();
-
+  // get all xValues
+  const xValuesSet = new Set();
   // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
   let isAscending = true;
   let isDescending = true;
-  outer: for (const rows of datas) {
-    for (let i = 1; i < rows.length; i++) {
-      isAscending = isAscending && rows[i - 1][0] <= rows[i][0];
-      isDescending = isDescending && rows[i - 1][0] >= rows[i][0];
-      if (!isAscending && !isDescending) {
-        break outer;
-      }
+  // this is fairly optimized since it iterates over every row in the results
+  for (let i = 0, datasLength = datas.length; i < datasLength; i++) {
+    const rows = datas[i];
+    let lastValue = rows[0][0];
+    xValuesSet.add(lastValue);
+    // skip the first row so we can compare
+    for (let j = 1, rowsLength = rows.length; j < rowsLength; j++) {
+      const value = rows[j][0];
+      xValuesSet.add(value);
+      isAscending = isAscending && lastValue <= value;
+      isDescending = isDescending && lastValue >= value;
+      lastValue = value;
     }
   }
+  let xValues = Array.from(xValuesSet);
   if (isDescending) {
     // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
     // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly

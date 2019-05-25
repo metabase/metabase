@@ -105,7 +105,7 @@ const STEPS = [
   },
   {
     type: "join",
-    valid: query => !!query.table(),
+    valid: query => !!query.table() && query.database().hasFeature("join"),
     visible: query => query.joins().length > 0,
     revert: query => query.clearJoins(),
   },
