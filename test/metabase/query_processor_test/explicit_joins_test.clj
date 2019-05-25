@@ -3,11 +3,14 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [util :as u]]
+            [metabase.models.card :refer [Card]]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
-             [interface :as tx]]))
+             [interface :as tx]]
+            [toucan.util.test :as tt]))
 
 (defn- native-form [query]
   (:query (qp/query->native query)))
@@ -286,6 +289,32 @@
                                          [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
           :order-by     [[:asc $name]]
           :limit        3})))))
+
+;; Can we join against a `card__id` source query and use `:fields` `:all`?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows
+   [[29 "20th Century Cafe" 12 37.775  -122.423 2 12 "Café"]
+    [8  "25°"               11 34.1015 -118.342 2 11 "Burger"]
+    [93 "33 Taps"           7  34.1018 -118.326 2  7 "Bar"]]
+
+   :columns
+   (mapv data/format-name ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "ID_2" "NAME_2"])}
+  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories)
+                                     :result_metadata (get-in (qp/process-query (data/mbql-query categories {:limit 1}))
+                                                              [:data :results_metadata :columns])}]
+    (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
+                             int identity]
+      (qp.test/rows+column-names
+        (qp/process-query
+          (data/mbql-query venues
+            {:joins    [{:alias        "cat"
+                         :source-table (str "card__" card-id)
+                         :fields       :all
+                         :condition    [:=
+                                        $category_id
+                                        [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+             :order-by [[:asc $name]]
+             :limit    3}))))))
 
 ;; TODO Can we join on bucketed datetimes?
 
