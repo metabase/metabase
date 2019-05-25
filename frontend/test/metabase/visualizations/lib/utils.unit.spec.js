@@ -163,7 +163,7 @@ describe("metabase/visualization/lib/utils", () => {
       expect(getXValues([[[1], [2], [11]]])).toEqual([1, 2, 11]);
     });
     it("should not change the order of a single series of descending numbers", () => {
-      expect(getXValues([[[1], [2], [11]]])).toEqual([1, 2, 11]);
+      expect(getXValues([[[11], [2], [1]]])).toEqual([11, 2, 1]);
     });
     it("should not change the order of a single series of non-ordered numbers", () => {
       expect(getXValues([[[2], [1], [11]]])).toEqual([2, 1, 11]);
