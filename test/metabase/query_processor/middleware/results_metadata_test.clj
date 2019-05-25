@@ -3,10 +3,10 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
-             [database :as database]
              [permissions :as perms]
              [permissions-group :as group]]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
@@ -70,7 +70,7 @@
   (tt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
                             :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
     (u/prog1
-     (qp/process-query {:database database/virtual-id
+     (qp/process-query {:database mbql.s/saved-questions-virtual-database-id
                         :type     :query
                         :query    {:source-table (str "card__" (u/get-id card))}})
      (assert (= (:status <>) :completed)))
@@ -84,7 +84,7 @@
                                     :dataset_query   (native-query "SELECT * FROM VENUES")
                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
-    ((users/user->client :rasta) :post 200 "dataset" {:database database/virtual-id
+    ((users/user->client :rasta) :post 200 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (u/get-id card))}})
     (card-metadata card)))

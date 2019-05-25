@@ -52,9 +52,12 @@
         (throw
          (ex-info (str (tru "Cannot run query: source table {0} does not exist, or belongs to a different database."
                             source-table-id))
-           {:source-table source-table-id}))))))
+           {:source-table    source-table-id
+            :referenced-ids  fetched-ids
+            :resolved-tables (vec (for [table fetched-tables]
+                                    (select-keys table [:name :schema :id])))}))))))
 
-(defn- resolve-source-table*
+(defn- resolve-source-tables*
   "Validate that all "
   [query]
   (check-all-source-table-ids-are-valid query)
@@ -70,5 +73,5 @@
   corresponding Table in the Query Processor Store."
   [qp]
   (fn [query]
-    (resolve-source-tables query)
+    (resolve-source-tables* query)
     (qp query)))

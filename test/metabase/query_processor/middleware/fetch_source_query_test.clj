@@ -1,18 +1,19 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require [expectations :refer [expect]]
-            [metabase.models
-             [card :refer [Card]]
-             [database :as database]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.fetch-source-query :as fetch-source-query]
             [metabase.test.data :as data]
             [metabase.util :as u]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [toucan.db :as db]
+            [cheshire.core :as json]))
 
 (def ^:private ^{:arglists '([query])} resolve-card-id-source-tables
   (fetch-source-query/resolve-card-id-source-tables identity))
 
 (defn- wrap-inner-query [query]
-  {:database     database/virtual-id
+  {:database     mbql.s/saved-questions-virtual-database-id
    :type         :query
    :query        query})
 
@@ -87,7 +88,7 @@
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues), :limit 100}}}]
-                  Card [card-2 {:dataset_query {:database database/virtual-id
+                  Card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                 :type     :query
                                                 :query    {:source-table (str "card__" (u/get-id card-1)), :limit 50}}}]]
     (resolve-card-id-source-tables
@@ -104,7 +105,7 @@
   (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues), :limit 100}}}]
-                  Card [card-2 {:dataset_query {:database database/virtual-id
+                  Card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                 :type     :query
                                                 :query    {:source-table (str "card__" (u/get-id card-1)), :limit 50}}}]]
     (resolve-card-id-source-tables
@@ -197,3 +198,44 @@
        {:joins [{:source-table (str "card__" card-2-id)
                  :alias        "c"
                  :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}))))
+
+;; Middleware should throw an Exception if we try to resolve a source query for a card whose source query is itself
+(expect
+  clojure.lang.ExceptionInfo
+  (tt/with-temp Card [{card-id :id}]
+    (let [circular-source-query {:database (data/id)
+                                 :type     :query
+                                 :query    {:source-table (str "card__" card-id)}}]
+      ;; Make sure save isn't the thing throwing the Exception
+      (let [save-error (try
+                         ;; `db/update!` will fail because it will try to validate the query when it saves
+                         (db/execute! {:update Card
+                                       :set    {:dataset_query (json/generate-string circular-source-query)}
+                                       :where  [:= :id card-id]})
+                         nil
+                         (catch Throwable e
+                           (str "Failed to save Card:" e)))]
+        (or save-error
+            (resolve-card-id-source-tables circular-source-query))))))
+
+;; middleware should throw an Exception if we try to resolve a source query card with a source query that refers back to the original
+(expect
+  clojure.lang.ExceptionInfo
+  (let [circular-source-query (fn [card-id]
+                                {:database (data/id)
+                                 :type     :query
+                                 :query    {:source-table (str "card__" card-id)}})]
+    ;; Card 1 refers to Card 2, and Card 2 refers to Card 1
+    (tt/with-temp* [Card [{card-1-id :id}]
+                    Card [{card-2-id :id} {:dataset_query (circular-source-query card-1-id)}]]
+      ;; Make sure save isn't the thing throwing the Exception
+      (let [save-error (try
+                         ;; `db/update!` will fail because it will try to validate the query when it saves,
+                         (db/execute! {:update Card
+                                       :set    {:dataset_query (json/generate-string (circular-source-query card-2-id))}
+                                       :where  [:= :id card-1-id]})
+                         nil
+                         (catch Throwable e
+                           (str "Failed to save Card:" e)))]
+        (or save-error
+            (resolve-card-id-source-tables (circular-source-query card-1-id)))))))

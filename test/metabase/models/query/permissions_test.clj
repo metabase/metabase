@@ -1,6 +1,7 @@
 (ns metabase.models.query.permissions-test
   (:require [expectations :refer :all]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :as card :refer :all]
              [collection :refer [Collection]]
@@ -176,7 +177,7 @@
 ;;; ------------------------------------------- MBQL w/ nested MBQL query --------------------------------------------
 
 (defn- query-with-source-card [card]
-  {:database database/virtual-id, :type "query", :query {:source-table (str "card__" (u/get-id card))}})
+  {:database mbql.s/saved-questions-virtual-database-id, :type "query", :query {:source-table (str "card__" (u/get-id card))}})
 
 ;; if source card is *not* in a Collection, we require Root Collection read perms
 (expect

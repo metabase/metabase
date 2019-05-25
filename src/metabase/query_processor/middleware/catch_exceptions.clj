@@ -35,7 +35,11 @@
          {:preprocessed (u/ignore-exceptions
                           ((resolve 'metabase.query-processor/query->preprocessed) query))
           :native       (u/ignore-exceptions
-                          ((resolve 'metabase.query-processor/query->native) query))})))))
+                          ((resolve 'metabase.query-processor/query->native) query))})))
+   ;; if the Exception has a cause, add that in as well, because a lot of times we add relevant context to Exceptions
+   ;; and rethrow
+   (when-let [cause (.getCause e)]
+     {:cause (dissoc (format-exception nil cause) :status :query :stacktrace)})))
 
 
 (defn- explain-schema-validation-error

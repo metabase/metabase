@@ -7,6 +7,7 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
@@ -238,7 +239,7 @@
                                             :native   {:query "SELECT * FROM USERS;"}}}]
     (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
-                          {:database database/virtual-id
+                          {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
                            :query    {:source-table (str "card__" (u/get-id card))}}))]
       (count (csv/read-csv result)))))

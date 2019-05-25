@@ -7,6 +7,7 @@
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -206,7 +207,7 @@
 
 
 (defn- query-with-source-card {:style/indent 1} [card & {:as additional-clauses}]
-  {:database database/virtual-id
+  {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
    :query    (merge {:source-table (str "card__" (u/get-id card))}
                     additional-clauses)})

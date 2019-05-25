@@ -197,7 +197,9 @@
    :class      (s/eq java.lang.Exception)
    :error      (s/eq "Column \"ADSASDASD\" not found")
    :stacktrace [s/Str]
-   :query      s/Any}
+   :query      s/Any
+   :cause      {:class (s/eq org.h2.jdbc.JdbcSQLException)
+                :error #"Column \"ADSASDASD\" not found; SQL statement:.*"}}
   (qp/process-query
     {:database (data/id)
      :type     :native

@@ -635,8 +635,7 @@
     ;; added automatically by the `resolve-card-id-source-tables` middleware.
     (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])}
    (s/constrained
-    (fn [{:keys [source-table source-query]}]
-      (u/xor source-table source-query))
+    (u/xor-pred :source-table :source-query)
     "Joins can must have either a `source-table` or `source-query`, but not both.")))
 
 (def Joins
@@ -671,9 +670,16 @@
     ;; {:page 2, :items 10} = items 11-20
     (s/optional-key :page)         {:page  su/IntGreaterThanZero
                                     :items su/IntGreaterThanZero}
+    ;;
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
     (s/optional-key :joins)        Joins
+    ;;
+    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
+    ;; used to let power things like binning when used with Field Literals instead of normal Fields
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
+    ;;
+    ;; Other keys are added by middleware or frontend client for various purposes
     s/Keyword                      s/Any}
 
    (s/constrained
@@ -804,13 +810,34 @@
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
 
+(def ^Integer saved-questions-virtual-database-id
+  "The ID used to signify that a database is 'virtual' rather than physical.
+
+   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
+   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
+   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
+   ID.)
+
+   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
+   this 'virtual' database and take the appropriate actions."
+  -1337)
+;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
+;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
+;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
+;; and the entire frontend can remain blissfully unaware of its value.
+
+(def DatabaseID
+  "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an
+  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the
+  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
+  actual DB for that source query.)"
+  (s/cond-pre (s/eq saved-questions-virtual-database-id) su/IntGreaterThanZero))
+
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
   `Card.dataset_query`."
-  (s/constrained
-   ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
-   ;; Something like `metabase.mbql.constants`
-   {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
+  (->
+   {:database                         DatabaseID
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
     :type                             (s/enum :query :native)
     (s/optional-key :native)          NativeQuery
@@ -831,20 +858,36 @@
     ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
     ;; User who ran it
     (s/optional-key :info)            (s/maybe Info)
-    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
-    ;; used to let power things like binning when used with Field Literals instead of normal Fields
-    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
-    #_:fk-field-ids
-    #_:table-ids
     ;;
     ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
     ;; middleware to record bits of state. Everyone else can ignore them.
     s/Keyword                         s/Any}
-   (fn [{native :native, mbql :query, query-type :type}]
-     (case query-type
-       :native (core/and native (core/not mbql))
-       :query  (core/and mbql   (core/not native))))
-   "Native queries should specify `:native` but not `:query`; MBQL queries should specify `:query` but not `:native`."))
+   ;;
+   ;; CONSTRAINTS
+   ;;
+   ;; Make sure we have the combo of query `:type` and `:native`/`:query`
+   (s/constrained
+    (u/xor-pred :native :query)
+    "Query must specify either `:native` or `:query`, but not both.")
+   (s/constrained
+    (fn [{native :native, mbql :query, query-type :type}]
+      (case query-type
+        :native native
+        :query  mbql))
+    "Native queries must specify `:native`; MBQL queries must specify `:query`.")
+   ;;
+   ;; `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+   ;; columns in the source query.
+   ;;
+   ;; Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved,
+   ;; the middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has
+   ;; been changed so it is always added at the same level the resolved `:source-query` is added.
+   ;;
+   ;; This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not
+   ;; functioning properly
+   (s/constrained
+    (complement :source-metadata)
+    "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)")))
 
 
 ;;; --------------------------------------------------- Validators ---------------------------------------------------

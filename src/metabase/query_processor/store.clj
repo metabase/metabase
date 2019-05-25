@@ -46,6 +46,8 @@
   [& body]
   `(do-with-new-store (fn [] ~@body)))
 
+;; TODO - Instead of publishing the columns to fetch we should just have the store expose functions to fetch and store
+;; various objects, that way we can decouple the rest of the QP middleware from the application database
 (def database-columns-to-fetch
   "Columns you should fetch for the Database referenced by the query before stashing in the store."
   [:id
