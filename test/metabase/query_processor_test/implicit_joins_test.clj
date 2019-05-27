@@ -1,4 +1,4 @@
-(ns metabase.query-processor-test.joins-test
+(ns metabase.query-processor-test.implicit-joins-test
   "Test for JOIN behavior."
   (:require [metabase.query-processor-test :as qp.test]
             [metabase.test.data :as data]

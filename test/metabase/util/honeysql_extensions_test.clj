@@ -4,7 +4,8 @@
              [core :as hsql]
              [format :as hformat]]
             [metabase.util.honeysql-extensions :as hx])
-  (:import java.util.Locale))
+  (:import java.util.Locale
+           metabase.util.honeysql_extensions.Identifier))
 
 ;; Basic format test not including a specific quoting option
 (expect
@@ -50,52 +51,70 @@
 ;; make sure `identifier` properly handles components with dots and both strings & keywords
 (expect
   ["`A`.`B`.`C.D`.`E.F`"]
-  (hsql/format (hx/identifier "A" :B "C.D" :E.F)
+  (hsql/format (hx/identifier :field "A" :B "C.D" :E.F)
     :quoting :mysql))
 
 ;; `identifer` should handle slashes
 (expect
   ["`A/B`.`C\\D`.`E/F`"]
-  (hsql/format (hx/identifier "A/B" "C\\D" :E/F)
+  (hsql/format (hx/identifier :field "A/B" "C\\D" :E/F)
     :quoting :mysql))
 
 ;; `identifier` should also handle strings with quotes in them (ANSI)
 (expect
   ;; two double-quotes to escape, e.g. "A""B"
   ["\"A\"\"B\""]
-  (hsql/format (hx/identifier "A\"B")
+  (hsql/format (hx/identifier :field "A\"B")
     :quoting :ansi))
 
 ;; `identifier` should also handle strings with quotes in them (MySQL)
 (expect
   ;; double-backticks to escape backticks seems to be the way to do it
   ["`A``B`"]
-  (hsql/format (hx/identifier "A`B")
+  (hsql/format (hx/identifier :field "A`B")
     :quoting :mysql))
 
 ;; `identifier` shouldn't try to change `lisp-case` to `snake-case` or vice-versa
 (expect
   ["A-B.c-d.D_E.f_g"]
-  (hsql/format (hx/identifier "A-B" :c-d "D_E" :f_g)))
+  (hsql/format (hx/identifier :field "A-B" :c-d "D_E" :f_g)))
 
 (expect
   ["\"A-B\".\"c-d\".\"D_E\".\"f_g\""]
-  (hsql/format (hx/identifier "A-B" :c-d "D_E" :f_g)
+  (hsql/format (hx/identifier :field "A-B" :c-d "D_E" :f_g)
     :quoting :ansi))
 
 ;; `identifier` should ignore `nil` or empty components.
 (expect
   ["A.B.C"]
-  (hsql/format (hx/identifier "A" "B" nil "C")))
+  (hsql/format (hx/identifier :field "A" "B" nil "C")))
 
 ;; `identifier` should handle nested identifiers
 (expect
-  (hx/identifier "A" "B" "C" "D")
-  (hx/identifier "A" (hx/identifier "B" "C") "D"))
+  (hx/identifier :field "A" "B" "C" "D")
+  (hx/identifier :field "A" (hx/identifier :field "B" "C") "D"))
 
 (expect
   ["A.B.C.D"]
-  (hsql/format (hx/identifier "A" (hx/identifier "B" "C") "D")))
+  (hsql/format (hx/identifier :field "A" (hx/identifier :field "B" "C") "D")))
+
+;; the `identifier` function should unnest identifiers for you so drivers that manipulate `:components` don't need to
+;; worry about that
+(expect
+  (Identifier. :field ["A" "B" "C" "D"])
+  (hx/identifier :field "A" (hx/identifier :field "B" "C") "D"))
+
+;; the `identifier` function should remove nils so drivers that manipulate `:components` don't need to
+;; worry about that
+(expect
+  (Identifier. :field ["table" "field"])
+  (hx/identifier :field nil "table" "field"))
+
+;; the `identifier` function should convert everything to strings so drivers that manipulate `:components` don't need
+;; to worry about that
+(expect
+  (Identifier. :field ["keyword" "qualified/keyword"])
+  (hx/identifier :field :keyword :qualified/keyword))
 
 (defn- call-with-locale
   "Sets the default locale temporarily to `locale-tag`, then invokes `f` and reverts the locale change"

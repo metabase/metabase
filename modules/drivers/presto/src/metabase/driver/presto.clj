@@ -59,6 +59,11 @@
          (when password
            {:basic-auth [user password]})))
 
+(defn ^:private create-cancel-url [cancel-uri host port info-uri]
+  ;; Replace the host in the cancel-uri with the host from the info-uri provided from the presto response- this doesn't
+  ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
+  (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
+
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
   (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
@@ -119,8 +124,10 @@
   [details query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
-    (let [{{:keys [columns data nextUri error id]} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
-                                                                     (assoc (details->request details-with-tunnel) :body query, :as :json))]
+    (let [{{:keys [columns data nextUri error id infoUri]} :body}
+          (http/post (details->uri details-with-tunnel "/v1/statement")
+                     (assoc (details->request details-with-tunnel)
+                             :body query, :as :json, :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
       (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
@@ -138,14 +145,15 @@
                 (if id
                   ;; If we have a query id, we can cancel the query
                   (try
-                    (http/delete (details->uri details-with-tunnel (str "/v1/query/" id))
-                                 (details->request details-with-tunnel))
+                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
+                          adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
+                      (http/delete adjustedUri(details->request details-with-tunnel)))
                     ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                     ;; covering it up with a failed cancel
                     (catch Exception e
                       (log/error e (trs "Error canceling query with ID {0}" id))))
                   (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
-                ;; Propogate the error so that any finalizers can still run
+                ;; Propagate the error so that any finalizers can still run
                 (throw e)))))))))
 
 
@@ -154,7 +162,7 @@
 (s/defmethod driver/can-connect? :presto
   [driver {:keys [catalog] :as details} :- PrestoConnectionDetails]
   (let [{[[v]] :rows} (execute-presto-query! details
-                        (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver catalog)))]
+                        (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
 (defmethod driver/date-interval :presto
@@ -164,12 +172,12 @@
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
   [driver {{:keys [catalog schema] :as details} :details :as database}]
-  (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver catalog))
+  (let [sql            (str "SHOW SCHEMAS FROM " (sql.u/quote-name driver :database catalog))
         {:keys [rows]} (execute-presto-query! details sql)]
     (set (map first rows))))
 
 (defn- describe-schema [driver {{:keys [catalog] :as details} :details} {:keys [schema]}]
-  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver catalog schema))
+  (let [sql            (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema))
         {:keys [rows]} (execute-presto-query! details sql)
         tables         (map first rows)]
     (set (for [table-name tables]
@@ -207,7 +215,7 @@
 
 (defmethod driver/describe-table :presto
   [driver {{:keys [catalog] :as details} :details} {schema :schema, table-name :name}]
-  (let [sql            (str "DESCRIBE " (sql.u/quote-name driver catalog schema table-name))
+  (let [sql            (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table-name))
         {:keys [rows]} (execute-presto-query! details sql)]
     {:schema schema
      :name   table-name
