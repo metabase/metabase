@@ -87,8 +87,11 @@
    join
    (if (= fields :all)
      (if source-table
-       {:fields (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                  [:joined-field alias field])}
+       {:fields (for [[op & args :as field] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                  (if (= op :datetime-field)
+                    (let [[field unit] args]
+                      [:datetime-field [:joined-field alias field] unit])
+                    [:joined-field alias field]))}
        (throw
         (UnsupportedOperationException.
          "TODO - fields = all is not yet implemented for joins with source queries."))))))

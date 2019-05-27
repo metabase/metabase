@@ -163,6 +163,18 @@
                          :fields       :all}]
              :order-by [[:asc [:field-id $name]]]}))))))
 
+;; Make sure we can pull in `:datetime-field`s via `:all`
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  ["ID" "NAME" "LAST_LOGIN" "ID_2" "DATE" "USER_ID" "VENUE_ID"]
+  (-> (qp/process-query
+        (data/mbql-query users
+          {:joins    [{:source-table $$checkins
+                       :condition    [:= [:field-id $id] [:joined-field "c" [:field-id $checkins.user_id]]]
+                       :alias        "c"
+                       :fields       :all}]
+           }))
+      :data :columns))
+
 ;; Can we include no Fields (with `:none`)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
   {:columns (mapv data/format-name ["id" "name" "flock_id"])

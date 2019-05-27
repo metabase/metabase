@@ -584,7 +584,7 @@
     ;; with appropriate aliases.
     (s/optional-key :fields)       (s/cond-pre
                                     (s/enum :all :none)
-                                    (su/distinct (su/non-empty [joined-field])))
+                                    (su/distinct (su/non-empty [(s/either joined-field datetime-field)])))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
