@@ -14,7 +14,11 @@ import _ from "underscore";
 import cx from "classnames";
 
 @Databases.load({ id: (state, { databaseId }) => databaseId, wrapped: true })
-@Tables.load({ id: (state, { tableId }) => tableId, wrapped: true })
+@Tables.load({
+  id: (state, { tableId }) => tableId,
+  wrapped: true,
+  selectorName: "getTable",
+})
 @withTableMetadataLoaded
 export default class MetadataTable extends Component {
   constructor(props, context) {

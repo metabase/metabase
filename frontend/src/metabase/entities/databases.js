@@ -11,7 +11,8 @@ import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
 import Fields from "metabase/entities/fields";
 
-import { getMetadata } from "metabase/selectors/metadata";
+import { getFields } from "metabase/selectors/metadata";
+import { createSelector } from "reselect";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -50,32 +51,23 @@ const Databases = createEntity({
 
     fetchIdfields: createThunkAction(
       FETCH_DATABASE_IDFIELDS,
-      ({ id }) => async () => {
-        const idfields = await MetabaseApi.db_idfields({ dbId: id });
-        const idfieldsWithDisplayName = idfields.map(field => {
-          field.displayName =
-            field.table.display_name + " → " + field.display_name;
-          return field;
-        });
-        return normalize(idfieldsWithDisplayName, [Fields.schema]);
-      },
+      ({ id }) => async () =>
+        normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]),
     ),
   },
 
   selectors: {
     getHasSampleDataset: state =>
       _.any(Databases.selectors.getList(state), db => db.is_sample),
-    getIdfields: (state, databaseId) =>
-      Object.values(getMetadata(state).fields)
-        .filter(f => {
+    getIdfields: createSelector(
+      // we wrap getFields to handle a circular dep issue
+      [state => getFields(state), (state, props) => props.databaseId],
+      (fields, databaseId) =>
+        Object.values(fields).filter(f => {
           const { db_id } = f.table || {}; // a field's table can be null
           return db_id === databaseId && f.isPK();
-        })
-        .map(field => {
-          field.displayName =
-            field.table.display_name + " → " + field.display_name;
-          return field;
         }),
+    ),
   },
 
   // FORM

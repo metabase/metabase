@@ -34,6 +34,7 @@ import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
+  getDatabasesList,
   getTableMetadata,
   getNativeDatabases,
   getQuestion,
@@ -46,11 +47,7 @@ import {
   getFirstQueryResult,
 } from "./selectors";
 
-import {
-  getTables,
-  getDatabasesList,
-  getMetadata,
-} from "metabase/selectors/metadata";
+import { getTables, getMetadata } from "metabase/selectors/metadata";
 
 import { fetchDatabases, fetchTableMetadata } from "metabase/redux/metadata";
 

@@ -26,7 +26,7 @@ const mapStateToProps = (state, { params }) => {
   return {
     databaseId,
     tableId,
-    idfields: Databases.selectors.getIdfields(state, databaseId),
+    idfields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 };
 

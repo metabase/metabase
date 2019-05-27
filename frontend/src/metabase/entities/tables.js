@@ -8,6 +8,8 @@ import {
 } from "metabase/lib/redux";
 import _ from "underscore";
 
+import { createSelector } from "reselect";
+
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
@@ -17,6 +19,8 @@ import Segments from "metabase/entities/segments";
 import { GET } from "metabase/lib/api";
 
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -157,6 +161,14 @@ const Tables = createEntity({
     }
 
     return state;
+  },
+
+  selectors: {
+    getTable: createSelector(
+      // we wrap getMetadata to handle a circular dep issue
+      [state => getMetadata(state), (state, props) => props.entityId],
+      (metadata, id) => metadata.table(id),
+    ),
   },
 });
 
