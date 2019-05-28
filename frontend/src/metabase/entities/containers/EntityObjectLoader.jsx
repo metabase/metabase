@@ -23,6 +23,8 @@ export type Props = {
   // Wrap the children in LoadingAndErrorWrapper to display loading and error states
   // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
+  // selectorName overrides the default getObject selector
+  selectorName: string,
   // Children render prop
   children: (props: RenderProps) => ?React$Element<any>,
 };
@@ -49,6 +51,7 @@ const CONSUMED_PROPS: string[] = [
   "wrapped",
   "properties",
   "loadingAndErrorWrapper",
+  "selectorName",
 ];
 
 @entityType()
