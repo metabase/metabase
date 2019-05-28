@@ -156,7 +156,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 
   if (options.compact) {
-    return formatNumberCompact(number);
+    return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -248,7 +248,14 @@ function formatNumberScientific(
   }
 }
 
-function formatNumberCompact(value: number) {
+function formatNumberCompact(value: number, options: FormattingOptions) {
+  if (options.number_style === "percent") {
+    return formatNumberCompactWithoutOptions(value * 100) + "%";
+  }
+  return formatNumberCompactWithoutOptions(value);
+}
+
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
