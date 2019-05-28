@@ -143,6 +143,18 @@
   [x & patterns-and-results]
   `(first (mbql.match/match ~x ~patterns-and-results)))
 
+;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
+;; e.g. with a query like
+;;
+;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
+;;
+;; it would be useful to be able to do
+;;
+;;
+;;    ;; get *all* the source tables
+;;    (mbql.u/match-all query
+;;      (&match :guard (every-pred map? :source-table))
+;;      (:source-table &match))
 
 (defmacro replace
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
@@ -488,13 +500,13 @@
 
 (s/defn ->joined-field :- mbql.s/JoinField
   "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
-  [alias :- s/Str, field-clause :- mbql.s/Field]
+  [table-alias :- s/Str, field-clause :- mbql.s/Field]
   (replace field-clause
     :joined-field
     (throw (Exception. (format "%s already has an alias." &match)))
 
     #{:field-id :field-literal}
-    [:joined-field alias &match]))
+    [:joined-field table-alias &match]))
 
 (def ^:private default-join-alias "source")
 

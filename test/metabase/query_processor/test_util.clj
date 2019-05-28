@@ -5,6 +5,7 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data :as data]
             [metabase.util.schema :as su]
@@ -51,3 +52,16 @@
                           (set
                            (for [[_ {table-id :table_id, field-name :name}] fields]
                              [(get-in store [:tables table-id :name]) field-name])))))))
+
+(defn card-with-source-metadata-for-query
+  "Given an MBQL `query`, return the relevant keys for creating a Card with that query and matching `:result_metadata`.
+
+    (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
+                              (data/mbql-query venues {:aggregation [[:count]]}))]
+      ...)"
+  [query]
+  (let [results  (qp/process-query query)
+        metadata (or (get-in results [:data :results_metadata :columns])
+                     (throw (ex-info "Query failure" results)))]
+    {:dataset_query   query
+     :result_metadata metadata}))

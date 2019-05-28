@@ -1,7 +1,8 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
-  (:require [medley.core :as m]
+  (:require [clojure.data :as data]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -271,9 +272,16 @@
       ([before-query & args]
        (let [qp (^:once fn* [after-query & args]
                  (when (not= before-query after-query)
-                   (println "Middleware" middleware-name "modified query:\n"
-                            "before" (u/pprint-to-str 'blue before-query)
-                            "after "  (u/pprint-to-str 'green after-query)))
+                   (let [[only-in-before only-in-after] (data/diff before-query after-query)]
+                     (println "Middleware" middleware-name "modified query:\n"
+                              "before" (u/pprint-to-str 'blue before-query)
+                              "after " (u/pprint-to-str 'green after-query)
+                              (if only-in-before
+                                (str "only in before: " (u/pprint-to-str 'cyan only-in-before))
+                                "")
+                              (if only-in-after
+                                (str "only in after: " (u/pprint-to-str 'magenta only-in-after))
+                                ""))))
                  (apply qp after-query args))]
          (apply (middleware qp) before-query args))))))
 

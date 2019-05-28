@@ -460,12 +460,13 @@
 
 (defmethod join-source :sql
   [driver {:keys [source-table source-query]}]
-  (if source-query
-    (build-honeysql-form driver {:query source-query})
-    (binding [*table-alias* nil]
+  (binding [*table-alias* nil]
+    (if source-query
+      (build-honeysql-form driver {:query source-query})
       (->honeysql driver (qp.store/table source-table)))))
 
 (def ^:private HoneySQLJoin
+  "Schema for HoneySQL for a single JOIN. Used to validate that our join-handling code generates correct clauses."
   [(s/one
     [(s/one (s/pred some?) "join source")
      (s/one (s/pred some?) "join alias")]

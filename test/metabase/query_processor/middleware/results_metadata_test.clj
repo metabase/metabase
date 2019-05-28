@@ -144,6 +144,7 @@
   (metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int)))
 
 ;; make sure that queries come back with metadata
+;; TODO - this test is a good candidate to rewrite to use `expect-schema`
 (expect
   {:checksum java.lang.String
    :columns  (map (fn [col]
@@ -151,9 +152,10 @@
                         (update :special_type keyword)
                         (update :base_type keyword)))
                   default-card-results-native)}
-  (-> (qp/process-query {:database (data/id)
-                         :type     :native
-                         :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :native
+         :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
       round-to-2-decimals

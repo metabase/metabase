@@ -6,6 +6,7 @@
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models.card :refer [Card]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -299,9 +300,7 @@
 
    :columns
    (mapv data/format-name ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "ID_2" "NAME_2"])}
-  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories)
-                                     :result_metadata (get-in (qp/process-query (data/mbql-query categories {:limit 1}))
-                                                              [:data :results_metadata :columns])}]
+  (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (data/mbql-query categories))]
     (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
                              int identity]
       (qp.test/rows+column-names
@@ -315,6 +314,40 @@
                                         [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
              :order-by [[:asc $name]]
              :limit    3}))))))
+
+;; Can we join on a Field literal for a source query?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows
+   [["2013-01-01T00:00:00.000Z" 8]
+    ["2013-02-01T00:00:00.000Z" 11]
+    ["2013-03-01T00:00:00.000Z" 21]
+    ["2013-04-01T00:00:00.000Z" 26]
+    ["2013-05-01T00:00:00.000Z" 23]
+    ["2013-06-01T00:00:00.000Z" 26]
+    ["2013-07-01T00:00:00.000Z" 20]
+    ["2013-08-01T00:00:00.000Z" 22]
+    ["2013-09-01T00:00:00.000Z" 13]
+    ["2013-10-01T00:00:00.000Z" 26]]
+   :columns [(data/format-name "date") "count"]}
+  (qp.test/format-rows-by [identity int]
+    (qp.test/rows+column-names
+      (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                         (data/mbql-query checkins
+                                           {:aggregation [[:count]]
+                                            :breakout    [[:datetime-field $date :month]]}))]
+        (qp/process-query
+          (data/mbql-query checkins
+            {:source-query {:source-table $$checkins
+                            :aggregation  [[:count]]
+                            :breakout     [[:datetime-field $date :month]]}
+             :joins
+             [{:fields       :all
+               :alias        "checkins_2"
+               :source-table (str "card__" card-id)
+               :condition    [:=
+                              [:field-literal "DATE" :type/DateTime]
+                              [:joined-field "checkins_2" [:field-literal "DATE" :type/DateTime]]]}]
+             :limit        10}))))))
 
 ;; TODO Can we join on bucketed datetimes?
 
