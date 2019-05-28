@@ -157,6 +157,7 @@ const UserRow = ({ user, showRemoveButton, onRemoveUserClicked }) => (
 const MembersTable = ({
   group,
   members,
+  currentUser: { id: currentUserId } = {},
   users,
   showAddUser,
   text,
@@ -169,8 +170,9 @@ const MembersTable = ({
   onRemoveUserFromSelection,
 }) => {
   // you can't remove people from Default and you can't remove the last user from Admin
-  const showRemoveMemeberButton =
-    !isDefaultGroup(group) && (!isAdminGroup(group) || members.length > 1);
+  const isCurrentUser = ({ user_id }) => user_id === currentUserId;
+  const showRemoveMemeberButton = user =>
+    !isDefaultGroup(group) && !(isAdminGroup(group) && isCurrentUser(user));
 
   return (
     <div>
@@ -192,7 +194,7 @@ const MembersTable = ({
             <UserRow
               key={index}
               user={user}
-              showRemoveButton={showRemoveMemeberButton}
+              showRemoveButton={showRemoveMemeberButton(user)}
               onRemoveUserClicked={onRemoveUserClicked}
             />
           ))}
@@ -305,7 +307,7 @@ export default class GroupDetail extends Component {
   render() {
     // users = array of all users for purposes of adding new users to group
     // [group.]members = array of users currently in the group
-    let { group, users } = this.props;
+    let { currentUser, group, users } = this.props;
     const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
     const members = this.getMembers();
 
@@ -334,6 +336,7 @@ export default class GroupDetail extends Component {
       >
         <GroupDescription group={group} />
         <MembersTable
+          currentUser={currentUser}
           group={group}
           members={members}
           users={filteredUsers}
