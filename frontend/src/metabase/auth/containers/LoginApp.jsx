@@ -39,7 +39,6 @@ export default class LoginApp extends Component {
       credentials: {},
       valid: false,
       rememberMe: true,
-      expanded: !Settings.ssoEnabled(),
     };
   }
 
@@ -114,8 +113,10 @@ export default class LoginApp extends Component {
   }
 
   render() {
-    const { loginError } = this.props;
+    const { loginError, location } = this.props;
     const ldapEnabled = Settings.ldapEnabled();
+
+    const preferUsernameAndPassword = location.query.useMBLogin;
 
     return (
       <div className="bg-white flex flex-column flex-full md-layout-centered">
@@ -131,7 +132,7 @@ export default class LoginApp extends Component {
             >
               <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
 
-              {Settings.ssoEnabled() && !this.state.expanded && (
+              {Settings.ssoEnabled() && !preferUsernameAndPassword && (
                 <div className="mx4 py3 relative my4">
                   <div className="relative border-bottom pb4">
                     <SSOLoginButton provider="google" ref="ssoLoginButton" />
@@ -144,17 +145,16 @@ export default class LoginApp extends Component {
                     </div>
                   </div>
                   <div className="py3">
-                    <Button
-                      className="EmailSignIn full"
-                      onClick={() => this.setState({ expanded: true })}
-                    >
-                      {t`Sign in with Metabase`}
-                    </Button>
+                    <Link to="/auth/login?useMBLogin=true">
+                      <Button className="EmailSignIn full">
+                        {t`Sign in with Metabase`}
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               )}
 
-              {this.state.expanded && (
+              {(!Settings.ssoEnabled() || preferUsernameAndPassword) && (
                 <div>
                   <FormMessage
                     formError={
@@ -221,7 +221,9 @@ export default class LoginApp extends Component {
                         name="remember"
                         checked={this.state.rememberMe}
                         onChange={() =>
-                          this.setState({ rememberMe: !this.state.rememberMe })
+                          this.setState({
+                            rememberMe: !this.state.rememberMe,
+                          })
                         }
                       />
                       <span className="ml1">{t`Remember Me`}</span>

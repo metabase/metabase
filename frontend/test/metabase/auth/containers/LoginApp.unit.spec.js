@@ -49,6 +49,16 @@ describe("LoginApp", () => {
         expect(wrapper.find("FormField").length).toBe(2);
         expect(wrapper.find("SSOLoginButton").length).toBe(0);
       });
+      it("should show the login form if the url param is set", () => {
+        const { wrapper } = mountWithStore(<LoginApp />);
+        const withEmail = wrapper.find(".Button.EmailSignIn");
+        expect(withEmail.length).toBe(1);
+
+        click(withEmail);
+
+        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("SSOLoginButton").length).toBe(0);
+      });
     });
   });
 });
