@@ -66,7 +66,7 @@ const mapStateToProps = (state, props) => {
     tableId: parseInt(props.params.tableId),
     fieldId: parseInt(props.params.fieldId),
     metadata: getMetadata(state),
-    idfields: Databases.selectors.getIdfields(state, databaseId),
+    idfields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 };
 
