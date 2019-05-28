@@ -10,17 +10,11 @@ const Metrics = createEntity({
   schema: MetricSchema,
 
   objectActions: {
-    setArchived: ({ id, revision_message }, archived, opts) =>
-      Metrics.actions.update(
-        { id },
-        {
-          archived,
-          // NOTE: this is still required by the endpoint even though we don't really use it
-          revision_message:
-            revision_message || (archived ? "(Archive)" : "(Unarchive)"),
-        },
-        opts,
-      ),
+    setArchived: (
+      { id },
+      archived,
+      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
+    ) => Metrics.actions.update({ id }, { archived, revision_message }),
 
     // NOTE: DELETE not currently implemented
     // $FlowFixMe: no official way to disable builtin actions yet
