@@ -24,7 +24,7 @@ export type Props = {
   // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
   // selectorName overrides the default getObject selector
-  selectorName: string,
+  selectorName?: string,
   // Children render prop
   children: (props: RenderProps) => ?React$Element<any>,
 };

@@ -16,6 +16,7 @@ export type Props = {
   reload?: boolean,
   wrapped?: boolean,
   loadingAndErrorWrapper: boolean,
+  selectorName?: string,
   children: (props: RenderProps) => ?React$Element<any>,
 };
 
@@ -34,6 +35,7 @@ const CONSUMED_PROPS: string[] = [
   // "reload", // Masked by `reload` function. Should we rename that?
   "wrapped",
   "loadingAndErrorWrapper",
+  "selectorName",
 ];
 
 const getEntityQuery = (state, props) =>
@@ -62,6 +64,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
     allLoaded,
     allFetched,
     allError,
+    selectorName = "getList",
   } = props;
   if (typeof entityQuery === "function") {
     entityQuery = entityQuery(state, props);
@@ -78,7 +81,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 
   return {
     entityQuery,
-    list: entityDef.selectors.getList(state, { entityQuery }),
+    list: entityDef.selectors[selectorName](state, { entityQuery }),
     loading,
     loaded,
     fetched,
