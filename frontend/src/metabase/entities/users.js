@@ -24,6 +24,7 @@ export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 const BASE_FORM_FIELDS = [
   {
     name: "first_name",
+    title: t`First name`,
     placeholder: "Johnny",
     validate: name =>
       (!name && t`First name is required`) ||
@@ -31,6 +32,7 @@ const BASE_FORM_FIELDS = [
   },
   {
     name: "last_name",
+    title: t`Last name`,
     placeholder: "Appleseed",
     validate: name =>
       (!name && t`Last name is required`) ||
