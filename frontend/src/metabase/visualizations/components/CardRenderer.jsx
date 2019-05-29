@@ -59,34 +59,35 @@ export default class CardRenderer extends Component {
   }
 
   renderChart() {
-    if (this.props.width == null || this.props.height == null) {
+    const { renderer, onRenderError, width, height } = this.props;
+    if (width == null || height == null) {
       return;
     }
 
-    let parent = ReactDOM.findDOMNode(this);
-
-    // deregister previous chart:
+    // deregister previous chart, if any:
     this._deregisterChart();
 
     // reset the DOM:
-    let element = parent.firstChild;
+    let element = this._parent.firstChild;
     if (element) {
-      parent.removeChild(element);
+      this._parent.removeChild(element);
     }
 
     // create a new container element
     element = document.createElement("div");
-    parent.appendChild(element);
+    this._parent.appendChild(element);
 
     try {
-      this._deregister = this.props.renderer(element, this.props);
+      this._deregister = renderer(element, this.props);
     } catch (err) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
+      onRenderError(err.message || err);
     }
   }
 
   render() {
-    return <div className={this.props.className} />;
+    return (
+      <div ref={r => (this._parent = r)} className={this.props.className} />
+    );
   }
 }

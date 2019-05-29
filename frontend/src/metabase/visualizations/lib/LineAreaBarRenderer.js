@@ -852,8 +852,8 @@ export default function lineAreaBar(
   );
 
   // render with customizations
-  // parent.render();
-  parent.redraw();
+  parent.render();
+  // parent.redraw();
 
   // only ordinal axis can display "null" values
   if (isOrdinal(parent.settings)) {
