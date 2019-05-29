@@ -4,7 +4,7 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
@@ -174,9 +174,7 @@ function addPercentSignsToDisplayNames(series) {
 
 // Store a "decimals" property on the column that is normalized
 function addDecimalsToPercentColumn(series, decimals) {
-  return series.map(s =>
-    updateIn(s, ["data", "cols", 1], col => ({ ...col, decimals })),
-  );
+  return series.map(s => assocIn(s, ["data", "cols", 1, "decimals"], decimals));
 }
 
 // Figure out how many decimal places are needed to represent the smallest
