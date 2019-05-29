@@ -53,26 +53,23 @@
       [:field-id (u/get-id field)])))
 
 
-(s/defn ^:private should-add-implicit-fields?
-  [{:keys [fields breakout source-table], aggregations :aggregation} :- mbql.s/MBQLQuery]
+(s/defn should-add-implicit-fields?
+  "Whether we should add implicit Fields to this query. True if the query has a `:source-table`, and no breakouts or
+  aggregations."
+  [{:keys [fields source-table], breakouts :breakout, aggregations :aggregation} :- mbql.s/MBQLQuery]
   ;; if query is using another query as its source then there will be no table to add nested fields for
   (and source-table
-       (not (or (seq aggregations)
-                (seq breakout)
-                (seq fields)))))
+       (every? empty? [aggregations breakouts fields])))
 
 (s/defn ^:private add-implicit-fields :- mbql.s/Query
-  "For MBQL queries with no aggregation, add a `:fields` containing all Fields in the source Table as well as any
+  "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
-  [{{source-table-id :source-table, :as inner-query} :query, :as query} :- mbql.s/Query]
+  [{{source-table-id :source-table, :keys [expressions], :as inner-query} :query, :as query} :- mbql.s/Query]
   (if-not (should-add-implicit-fields? inner-query)
     query
-    ;; add a `fields-is-implict` key to the query, which is used to determine how Fields are sorted in the `sort`
-    ;; middleware.
-    (let [inner-query (assoc inner-query :fields-is-implicit true)
-          fields      (sorted-implicit-fields-for-table source-table-id)
+    (let [fields      (sorted-implicit-fields-for-table source-table-id)
           ;; generate a new expression ref clause for each expression defined in the query.
-          expressions (for [[expression-name] (:expressions inner-query)]
+          expressions (for [[expression-name] expressions]
                         ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
                         ;; keywords as keys. We can remove this call once we fix that.
                         [:expression (u/keyword->qualified-name expression-name)])]

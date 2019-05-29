@@ -349,11 +349,35 @@
                               [:joined-field "checkins_2" [:field-literal "DATE" :type/DateTime]]]}]
              :limit        10}))))))
 
+;; Can we aggregate on the results of a JOIN?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows [["2014-01-01T00:00:00.000Z" 77]
+          ["2014-02-01T00:00:00.000Z" 81]
+          ["2014-04-01T00:00:00.000Z" 50]
+          ["2014-07-01T00:00:00.000Z" 69]
+          ["2014-08-01T00:00:00.000Z" 64]
+          ["2014-10-01T00:00:00.000Z" 66]
+          ["2014-11-01T00:00:00.000Z" 75]
+          ["2014-12-01T00:00:00.000Z" 70]]
+   :columns [(data/format-name "LAST_LOGIN") "avg"]}
+  (qp.test/format-rows-by [identity int]
+    (qp.test/rows+column-names
+      (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                         (data/mbql-query checkins
+                                           {:aggregation [[:count]]
+                                            :breakout    [$user_id]}))]
+        (qp/process-query
+          (data/mbql-query users
+            {:joins       [{:fields       :all
+                            :alias        "checkins_by_user"
+                            :source-table (str "card__" card-id)
+                            :condition    [:= $id [:joined-field "checkins_by_user" [:field-literal "USER_ID" :type/Integer]]]}]
+             :aggregation [[:avg [:joined-field "checkins_by_user" [:field-literal "count" :type/Float]]]]
+             :breakout    [[:datetime-field $last_login :month]]}))))))
+
 ;; TODO Can we join on bucketed datetimes?
 
 ;; TODO Can we join against a source nested native query?
-
-;; TODO Can we include a list of specific Field for the source nested query?
 
 ;; TODO Do joins inside nested queries work?
 

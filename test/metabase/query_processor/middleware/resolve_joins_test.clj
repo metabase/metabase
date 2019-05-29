@@ -239,3 +239,21 @@
                                       [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
         :order-by [[:asc $name]]
         :limit    3}))))
+
+;; if the parent level has a breakout or aggregation, we shouldn't append Join fields to the parent level
+(expect
+  (data/mbql-query users
+    {:joins       [{:source-table $$checkins
+                    :alias        "c"
+                    :strategy     :left-join
+                    :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}],
+     :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
+     :breakout    [[:datetime-field $last_login :month]]})
+  (resolve-joins
+   (data/mbql-query users
+     {:joins       [{:fields       :all
+                     :alias        "c"
+                     :source-table $$checkins
+                     :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}]
+      :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
+      :breakout    [[:datetime-field $last_login :month]]})))

@@ -54,13 +54,11 @@
     (doseq [field (db/select (into [Field] qp.store/field-columns-to-fetch) :id [:in field-ids])]
       (qp.store/store-field! field))))
 
-(s/defn ^:private ^:deprecated resolve-tables! :- (s/eq nil)
-  "TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
+(s/defn ^:private resolve-tables! :- (s/eq nil)
+  "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
+  because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
-  (when-let [source-table-ids (->> (map :source-table joins)
-                                   (filter some?)
-                                   (remove qp.store/has-table?)
-                                   seq)]
+  (when-let [source-table-ids (seq (remove (some-fn nil? qp.store/has-table?) (map :source-table joins)))]
     (let [resolved-tables (db/select (into [Table] qp.store/table-columns-to-fetch)
                             :id    [:in source-table-ids]
                             :db_id (u/get-id (qp.store/database)))
@@ -92,14 +90,15 @@
     [:joined-field alias [:field-literal field-name base-type]]))
 
 (s/defn ^:private handle-all-fields :- mbql.s/Join
+  "Replace `:fields :all` in a join with an appropriate list of Fields."
   [{:keys [source-table source-query alias fields source-metadata], :as join} :- mbql.s/Join]
   (merge
    join
    (when (= fields :all)
      {:fields (if source-query
-                (source-metadata->fields join source-metadata)
-                (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
-                  (mbql.u/->joined-field alias field)))})))
+               (source-metadata->fields join source-metadata)
+               (for [field (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+                 (mbql.u/->joined-field alias field)))})))
 
 
 (s/defn ^:private resolve-references-and-deduplicate :- mbql.s/Joins
@@ -124,21 +123,32 @@
 ;;; |                                           MBQL-Query Transformations                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- joins->fields [joins]
-  (for [{:keys [fields]} joins
-        :when            (sequential? fields)
-        field            fields]
-    field))
+(defn- joins->fields
+  "Return a flattened list of all `:fields` referenced in `joins`."
+  [joins]
+  (reduce concat (filter sequential? (map :fields joins))))
 
 (defn- remove-joins-fields [joins]
   (vec (for [join joins]
          (dissoc join :fields))))
 
+(defn- should-add-join-fields?
+  "Should we append the `:fields` from `:joins` to the parent-level query's `:fields`? True unless the parent-level
+  query has breakouts or aggregations."
+  [{breakouts :breakout, aggregations :aggregation}]
+  (every? empty? [aggregations breakouts]))
+
 (s/defn ^:private merge-joins-fields :- UnresolvedMBQLQuery
-  [{:keys [joins], :as query} :- UnresolvedMBQLQuery]
-  (let [join-fields (joins->fields joins)
-        query       (update query :joins remove-joins-fields)]
-    (cond-> query
+  "Append the `:fields` from `:joins` into their parent level as appropriate so joined columns appear in the final
+  query results, and remove the `:fields` entry for all joins.
+
+  If the parent-level query has breakouts and/or aggregations, this function won't append the joins fields to the
+  parent level, because we should only be returning the ones from the ags and breakouts in the final results."
+  [{:keys [joins], :as inner-query} :- UnresolvedMBQLQuery]
+  (let [join-fields (when (should-add-join-fields? inner-query)
+                      (joins->fields joins))
+        inner-query(update inner-query :joins remove-joins-fields)]
+    (cond-> inner-query
       (seq join-fields) (update :fields (comp vec distinct concat) join-fields))))
 
 (defn- check-join-aliases [{:keys [joins], :as query}]
