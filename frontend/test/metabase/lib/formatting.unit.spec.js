@@ -59,6 +59,31 @@ describe("formatting", () => {
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
         expect(formatNumber(-0.22, options)).toEqual("-22%");
       });
+      it("should format compact scientific notation", () => {
+        const options = { compact: true, number_style: "scientific" };
+        expect(formatNumber(0, options)).toEqual("0.0e+0");
+        expect(formatNumber(0.0001, options)).toEqual("1.0e-4");
+        expect(formatNumber(0.01, options)).toEqual("1.0e-2");
+        expect(formatNumber(0.5, options)).toEqual("5.0e-1");
+        expect(formatNumber(123456.78, options)).toEqual("1.2e+5");
+        expect(formatNumber(-123456.78, options)).toEqual("-1.2e+5");
+      });
+      it("should format compact currency values", () => {
+        const options = {
+          compact: true,
+          number_style: "currency",
+          currency: "USD",
+        };
+        expect(formatNumber(0, options)).toEqual("$0");
+        expect(formatNumber(0.001, options)).toEqual("~$0");
+        expect(formatNumber(7.24, options)).toEqual("$7");
+        expect(formatNumber(1234.56, options)).toEqual("$1.2k");
+        expect(formatNumber(1234567.89, options)).toEqual("$1.2M");
+        expect(formatNumber(-1234567.89, options)).toEqual("$-1.2M");
+        expect(
+          formatNumber(1234567.89, { ...options, currency: "CNY" }),
+        ).toEqual("CN¥1.2M");
+      });
     });
     // FIXME: failing on CI
     xit("should format to correct number of decimal places", () => {
