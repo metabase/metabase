@@ -82,7 +82,7 @@
      (defn ~(vary-meta (symbol (str "expect-with-drivers-" (hash &form)))
                        assoc :expectation true)
        []
-       (doexpect-with-drivers (get-drivers-or-fail (fn [] ~drivers)) get-e# get-a# '~expected '~actual))))
+       (doexpect-with-drivers (get-drivers-or-fail (^:once fn* [] ~drivers)) get-e# get-a# '~expected '~actual))))
 
 (defmacro expect-with-all-drivers
   "Generate unit tests for all drivers specified in env var `DRIVERS`. `*driver*` is bound to the current driver inside

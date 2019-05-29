@@ -3,6 +3,7 @@
             [metabase.models
              [database :refer [Database]]
              [table :refer [Table]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor
              [store :as qp.store]
              [test-util :as qp.test-util]]
@@ -28,6 +29,7 @@
 
 (defn- resolve-joins-and-inspect-store [query]
   (qp.store/with-store
+    (qp.store/store-database! (data/db))
     {:resolved (resolve-joins query)
      :store    (qp.test-util/store-contents)}))
 
@@ -141,3 +143,117 @@
        {:joins [{:source-table table-id
                  :alias        "t"
                  :condition    [:= $category_id 1]}]}))))
+
+;; test that resolving explicit joins still works if implict joins are present
+(expect
+  (data/mbql-query checkins
+    {:source-table $$checkins
+     :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+     :breakout     [$id]
+     :joins        [{:source-table $$users
+                     :alias        "USERS__via__USER_ID"
+                     :strategy     :left-join
+                     :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                     :fk-field-id  (data/id :checkins :user_id)}
+                    {:alias        "u"
+                     :source-table $$users
+                     :strategy     :left-join
+                     :condition    [:=
+                                    [:field-literal "ID" :type/BigInteger]
+                                    [:joined-field "u" $users.id]]}]
+     :limit        10})
+  (resolve-joins
+   (data/mbql-query checkins
+     {:source-table $$checkins
+      :aggregation  [[:sum [:joined-field "USERS__via__USER_ID" $users.id]]]
+      :breakout     [$id]
+      :joins        [{:source-table $$users
+                      :alias        "USERS__via__USER_ID"
+                      :strategy     :left-join
+                      :condition    [:= $user_id [:joined-field "USERS__via__USER_ID" $users.id]]
+                      :fk-field-id  (data/id :checkins :user_id)
+                      :fields       :none}
+                     {:alias        "u"
+                      :source-table $$users
+                      :condition    [:=
+                                     [:field-literal "ID" :type/BigInteger]
+                                     [:joined-field "u" $users.id]]}]
+      :limit        10})))
+
+;; Does a join using a source query get its Tables resolved?
+(expect
+  {:store
+   {:database "test-data",
+    :tables   #{"VENUES" "CATEGORIES"}
+    :fields   #{["VENUES" "CATEGORY_ID"]}}
+
+   :resolved
+   (data/mbql-query venues
+     {:joins    [{:alias        "cat"
+                  :source-query {:source-table $$categories}
+                  :strategy     :left-join
+                  :condition    [:=
+                                 $category_id
+                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+      :order-by [[:asc $name]]
+      :limit    3})}
+  (resolve-joins-and-inspect-store
+   (data/mbql-query venues
+     {:joins    [{:alias        "cat"
+                  :source-query {:source-table $$categories}
+                  :condition    [:=
+                                 $category_id
+                                 [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+      :order-by [[:asc $name]]
+      :limit    3})))
+
+;; Can we resolve joins using a `:source-query` and `:fields` `:all`??
+(let [source-metadata (delay (get-in (qp/process-query (data/mbql-query categories {:limit 1}))
+                                     [:data :results_metadata :columns]))]
+  (expect
+    {:resolved
+     (data/mbql-query venues
+       {:fields   [[:joined-field "cat" [:field-literal "ID" :type/BigInteger]]
+                   [:joined-field "cat" [:field-literal "NAME" :type/Text]]]
+        :joins    [{:alias           "cat"
+                    :source-query    {:source-table $$categories}
+                    :source-metadata @source-metadata
+                    :strategy        :left-join
+                    :condition       [:=
+                                      $category_id
+                                      [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+        :order-by [[:asc $name]]
+        :limit    3})
+     :store
+     {:database "test-data",
+      :tables   #{"CATEGORIES" "VENUES"},
+      :fields   #{["VENUES" "CATEGORY_ID"]}}}
+    (resolve-joins-and-inspect-store
+     (data/mbql-query venues
+       {:joins    [{:alias           "cat"
+                    :source-query    {:source-table $$categories}
+                    :source-metadata @source-metadata
+                    :fields          :all
+                    :condition       [:=
+                                      $category_id
+                                      [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+        :order-by [[:asc $name]]
+        :limit    3}))))
+
+;; if the parent level has a breakout or aggregation, we shouldn't append Join fields to the parent level
+(expect
+  (data/mbql-query users
+    {:joins       [{:source-table $$checkins
+                    :alias        "c"
+                    :strategy     :left-join
+                    :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}],
+     :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
+     :breakout    [[:datetime-field $last_login :month]]})
+  (resolve-joins
+   (data/mbql-query users
+     {:joins       [{:fields       :all
+                     :alias        "c"
+                     :source-table $$checkins
+                     :condition    [:= $id [:joined-field "c" [:field-literal "USER_ID" :type/Integer]]]}]
+      :aggregation [[:sum [:joined-field "c" [:field-literal "id" :type/Float]]]]
+      :breakout    [[:datetime-field $last_login :month]]})))

@@ -153,6 +153,31 @@
                           [:= [:field-id 2] 5000]]}
     (&match :guard #(integer? %))))
 
+;; can we use a predicate and bind the match at the same time?
+(expect
+  [2 4001 3 5001]
+  (mbql.u/match {:filter [:and
+                          [:= [:field-id 1] 4000]
+                          [:= [:field-id 2] 5000]]}
+    (i :guard #(integer? %))
+    (inc i)))
+
+;; can we match against a map?
+(expect
+  ["card__1847"]
+  (let [x {:source-table "card__1847"}]
+    (mbql.u/match x
+      (m :guard (every-pred map? (comp string? :source-table)))
+      (:source-table m))))
+
+;; how about a sequence of maps?
+(expect
+  ["card__1847"]
+  (let [x [{:source-table "card__1847"}]]
+    (mbql.u/match x
+      (m :guard (every-pred map? (comp string? :source-table)))
+      (:source-table m))))
+
 ;; can we use `recur` inside a pattern?
 (expect
   [[0 :month]]
@@ -730,3 +755,25 @@
    {:database    1
     :type        :query
     :query       {:source-table 1}}))
+
+
+;; make sure `->joined-field` works the way it is supposed to
+(expect
+  [:joined-field "a" [:field-id 10]]
+  (mbql.u/->joined-field "a" [:field-id 10]))
+
+(expect
+  [:joined-field "a" [:field-literal "ABC" :type/Integer]]
+  (mbql.u/->joined-field "a" [:field-literal "ABC" :type/Integer]))
+
+(expect
+  [:datetime-field [:joined-field "a" [:field-id 1]] :month]
+  (mbql.u/->joined-field "a" [:datetime-field [:field-id 1] :month]))
+
+;; should throw an Exception if the Field already has an alias
+(expect
+  Exception
+  (mbql.u/->joined-field "a" [:joined-field "a" [:field-id 1]] :month))
+(expect
+  Exception
+  (mbql.u/->joined-field "a" [:datetime-field [:joined-field "a" [:field-id 1]] :month]))

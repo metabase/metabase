@@ -4,9 +4,8 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
-            [metabase.models
-             [card :refer [Card]]
-             [database :as database]]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models.card :refer [Card]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
             [metabase.sync.analyze.query-results :as qr :refer :all]
             [metabase.test
@@ -41,7 +40,7 @@
          (tu/round-all-decimals 2))))
 
 (defn- query-for-card [card]
-  {:database database/virtual-id
+  {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
    :query    {:source-table (str "card__" (u/get-id card))}})
 

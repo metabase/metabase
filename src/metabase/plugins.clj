@@ -100,7 +100,7 @@
                             ;; ignore it but let people know they can get rid of it.
                             (log/warn
                              (u/format-color 'red
-                                 (trs "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.")))))]
+                                 (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))))]
     path))
 
 (defn- has-manifest? ^Boolean [^Path path]

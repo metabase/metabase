@@ -5,6 +5,7 @@
              [core :as core]
              [set :as set]]
             [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
+            [metabase.mbql.util.match :as match]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -503,7 +504,7 @@
 (def ^:private TemplateTag
   s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
 
-(def ^:private NativeQuery
+(def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   {:query                          s/Any
    (s/optional-key :template-tags) {su/NonBlankString TemplateTag}
@@ -518,7 +519,7 @@
 
 (declare Query MBQLQuery)
 
-(def ^:private SourceQuery
+(def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
   (s/if :native
     ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
@@ -527,6 +528,17 @@
     (set/rename-keys NativeQuery {:query :native})
     (s/recursive #'MBQLQuery)))
 
+(def SourceQueryMetadata
+  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
+  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  {:name                          su/NonBlankString
+   :display_name                  su/NonBlankString
+   :base_type                     su/FieldType
+   (s/optional-key :special_type) (s/maybe su/FieldType)
+   ;; you'll need to provide this in order to use BINNING
+   (s/optional-key :fingerprint)  (s/maybe su/Map)
+   s/Any                          s/Any})
+
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
   #"^card__[1-9]\d*$")
@@ -534,6 +546,20 @@
 (def SourceTable
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
+
+(def JoinField
+  "Schema for any valid `Field` that is, or wraps, a `:joined-field` clause."
+  (s/constrained
+   Field
+   (fn [field-clause]
+     (seq (match/match field-clause [:joined-field true])))
+   "`:joined-field` clause or Field clause wrapping a `:joined-field` clause"))
+
+(def JoinFields
+  "Schema for valid values of a join `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [JoinField]))
+   "Distinct, non-empty sequence of `:joined-field` clauses or Field clauses wrapping `:joined-field` clauses"))
 
 (def JoinStrategy
   "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
@@ -551,22 +577,22 @@
     [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
     [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
   (->
-   {;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+   { ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
     ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
-    (s/optional-key :source-table) SourceTable
-    (s/optional-key :source-query) SourceQuery
+    (s/optional-key :source-table)    SourceTable
+    (s/optional-key :source-query)    SourceQuery
     ;;
     ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
     ;; JOINs this is always
     ;;
     ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
     ;;
-    :condition                     Filter
+    :condition                        Filter
     ;;
     ;; Defaults to `:left-join`; used for all automatically-generated JOINs
     ;;
     ;; Driver implementations: this is guaranteed to be present after pre-processing.
-    (s/optional-key :strategy)     JoinStrategy
+    (s/optional-key :strategy)        JoinStrategy
     ;;
     ;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
     ;; `:none`, `:all`, or a sequence of Field clauses.
@@ -582,16 +608,20 @@
     ;;
     ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
     ;; with appropriate aliases.
-    (s/optional-key :fields)       (s/cond-pre
-                                    (s/enum :all :none)
-                                    (su/distinct (su/non-empty [joined-field])))
+    (s/optional-key :fields)          (s/named
+                                       (s/cond-pre
+                                        (s/enum :all :none)
+                                        JoinFields)
+                                       (str
+                                        "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
+                                        " or clauses wrapping `:joined-field`."))
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
     ;; `:joined-field` clause.
     ;;
     ;; Driver implementations: This is guaranteed to be present after pre-processing.
-    (s/optional-key :alias)        su/NonBlankString
+    (s/optional-key :alias)           su/NonBlankString
     ;;
     ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
     ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
@@ -599,10 +629,13 @@
     ;; drill-thru? :shrug:
     ;;
     ;; Don't set this information yourself. It will have no effect.
-    (s/optional-key :fk-field-id)  (s/maybe su/IntGreaterThanZero)}
+    (s/optional-key :fk-field-id)     (s/maybe su/IntGreaterThanZero)
+    ;;
+    ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
+    ;; added automatically by the `resolve-card-id-source-tables` middleware.
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])}
    (s/constrained
-    (fn [{:keys [source-table source-query]}]
-      (u/xor source-table source-query))
+    (u/xor-pred :source-table :source-query)
     "Joins can must have either a `source-table` or `source-query`, but not both.")))
 
 (def Joins
@@ -613,8 +646,10 @@
    "All join aliases must be unique."))
 
 (def Fields
-  "Schema for valid values of the `:fields` clause."
-  (su/distinct (su/non-empty [Field])))
+  "Schema for valid values of the MBQL `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [Field]))
+   "Distinct, non-empty sequence of Field clauses"))
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
@@ -635,9 +670,16 @@
     ;; {:page 2, :items 10} = items 11-20
     (s/optional-key :page)         {:page  su/IntGreaterThanZero
                                     :items su/IntGreaterThanZero}
+    ;;
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
     (s/optional-key :joins)        Joins
+    ;;
+    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
+    ;; used to let power things like binning when used with Field Literals instead of normal Fields
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
+    ;;
+    ;; Other keys are added by middleware or frontend client for various purposes
     s/Keyword                      s/Any}
 
    (s/constrained
@@ -765,27 +807,37 @@
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))})
 
-(def SourceQueryMetadata
-  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
-  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
-  {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
-   :base_type                     su/FieldType
-   (s/optional-key :special_type) (s/maybe su/FieldType)
-   ;; you'll need to provide this in order to use BINNING
-   (s/optional-key :fingerprint)  (s/maybe su/Map)
-   s/Any                          s/Any})
-
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
+
+(def ^Integer saved-questions-virtual-database-id
+  "The ID used to signify that a database is 'virtual' rather than physical.
+
+   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
+   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
+   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
+   ID.)
+
+   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
+   this 'virtual' database and take the appropriate actions."
+  -1337)
+;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
+;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
+;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
+;; and the entire frontend can remain blissfully unaware of its value.
+
+(def DatabaseID
+  "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an
+  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the
+  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
+  actual DB for that source query.)"
+  (s/cond-pre (s/eq saved-questions-virtual-database-id) su/IntGreaterThanZero))
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
   `Card.dataset_query`."
-  (s/constrained
-   ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
-   ;; Something like `metabase.mbql.constants`
-   {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
+  (->
+   {:database                         DatabaseID
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
     :type                             (s/enum :query :native)
     (s/optional-key :native)          NativeQuery
@@ -806,20 +858,36 @@
     ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
     ;; User who ran it
     (s/optional-key :info)            (s/maybe Info)
-    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
-    ;; used to let power things like binning when used with Field Literals instead of normal Fields
-    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
-    #_:fk-field-ids
-    #_:table-ids
     ;;
     ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
     ;; middleware to record bits of state. Everyone else can ignore them.
     s/Keyword                         s/Any}
-   (fn [{native :native, mbql :query, query-type :type}]
-     (case query-type
-       :native (core/and native (core/not mbql))
-       :query  (core/and mbql   (core/not native))))
-   "Native queries should specify `:native` but not `:query`; MBQL queries should specify `:query` but not `:native`."))
+   ;;
+   ;; CONSTRAINTS
+   ;;
+   ;; Make sure we have the combo of query `:type` and `:native`/`:query`
+   (s/constrained
+    (u/xor-pred :native :query)
+    "Query must specify either `:native` or `:query`, but not both.")
+   (s/constrained
+    (fn [{native :native, mbql :query, query-type :type}]
+      (case query-type
+        :native native
+        :query  mbql))
+    "Native queries must specify `:native`; MBQL queries must specify `:query`.")
+   ;;
+   ;; `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+   ;; columns in the source query.
+   ;;
+   ;; Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved,
+   ;; the middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has
+   ;; been changed so it is always added at the same level the resolved `:source-query` is added.
+   ;;
+   ;; This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not
+   ;; functioning properly
+   (s/constrained
+    (complement :source-metadata)
+    "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)")))
 
 
 ;;; --------------------------------------------------- Validators ---------------------------------------------------

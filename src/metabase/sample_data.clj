@@ -1,25 +1,35 @@
 (ns metabase.sample-data
   (:require [clojure.java.io :as io]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [sync :as sync]
-             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [toucan.db :as db]))
+            [metabase.sync :as sync]
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db])
+  (:import java.net.URL))
 
-(def ^:private ^:const ^String sample-dataset-name     "Sample Dataset")
-(def ^:private ^:const ^String sample-dataset-filename "sample-dataset.db.mv.db")
+(def ^:private ^String sample-dataset-name     "Sample Dataset")
+(def ^:private ^String sample-dataset-filename "sample-dataset.db.mv.db")
+
+(defn- jdbc-connection-file-url [^URL file-url]
+  (-> (.getPath file-url)
+      ;; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when
+      ;; running from `lein`, which has no `file:` prefix)
+      (str/replace #"^file:" "zip:")
+      ;; strip the .mv.db suffix from the path
+      (str/replace #"\.mv\.db$" "")
+      ;; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so
+      ;; switch them back to spaces
+      (str/replace #"%20" " ")))
 
 (defn- db-details []
-  (let [resource (io/resource sample-dataset-filename)]
-    (when-not resource
-      (throw (Exception. (format "Can't load sample dataset: the DB file '%s' can't be found." sample-dataset-filename))))
-    {:db (-> (.getPath resource)
-             (s/replace #"^file:" "zip:")           ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from `lein`, which has no `file:` prefix)
-             (s/replace #"\.mv\.db$" "")            ; strip the .mv.db suffix from the path
-             (s/replace #"%20" " ")                 ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
-             (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
+  (let [resource (or (io/resource sample-dataset-filename)
+                     (throw (Exception. (str (trs "Can''t load sample dataset: the DB file ''{0}'' can't be found."
+                                                  sample-dataset-filename)))))]
+    {:db       (jdbc-connection-file-url resource)
+     ;; specify the GUEST user account created for the DB
+     :USER     "GUEST"
+     :PASSWORD "guest"}))
 
 (defn add-sample-dataset!
   "Add the sample dataset as a Metabase DB if it doesn't already exist."
@@ -33,7 +43,7 @@
                              :engine    :h2
                              :is_sample true))
       (catch Throwable e
-        (log/error (u/format-color 'red "Failed to load sample dataset: %s\n%s" (.getMessage e) (u/pprint-to-str (u/filtered-stacktrace e))))))))
+        (log/error e (trs "Failed to load sample dataset"))))))
 
 (defn update-sample-dataset-if-needed!
   "Update the path to the sample dataset DB if it exists in case the JAR has moved."

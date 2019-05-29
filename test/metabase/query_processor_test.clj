@@ -370,3 +370,12 @@
   [results]
   (or (some-> (data results) :cols vec)
       (throw (ex-info "Query does not have any :cols in results." results))))
+
+(defn tz-shifted-driver-bug?
+  "Returns true if `driver` is affected by the bug originally observed in
+  Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
+  applied correctly, but the date operations that we use aren't using that timezone. This function is used to
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
+  also have this issue."
+  [driver]
+  (contains? #{:snowflake :oracle :redshift} driver))

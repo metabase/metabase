@@ -288,7 +288,7 @@
        (let [results {:columns [:ga:eventLabel :ga:totalEvents]
                       :cols    [{}, {:base_type :type/Text}]
                       :rows    [["Toucan Sighting" 1000]]}
-             qp      (#'metabase.query-processor/qp-pipeline (constantly results))
+             qp      (#'metabase.query-processor/build-pipeline (constantly results))
              query   (query-with-some-fields objects)]
          (-> (tu/doall-recursive (qp query))
              (update-in [:data :cols] #(for [col %]

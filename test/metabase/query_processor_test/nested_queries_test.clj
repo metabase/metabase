@@ -7,6 +7,7 @@
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -206,7 +207,7 @@
 
 
 (defn- query-with-source-card {:style/indent 1} [card & {:as additional-clauses}]
-  {:database database/virtual-id
+  {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
    :query    (merge {:source-table (str "card__" (u/get-id card))}
                     additional-clauses)})
@@ -289,7 +290,7 @@
 ;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using
 ;; them
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT \"source\".* FROM %s WHERE \"source\".\"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
    :params nil}
   (qp/query->native
     {:database (data/id)
@@ -300,7 +301,7 @@
 
 ;; make sure that field-literals work as DateTimeFields
 (expect
-  {:query  (str "SELECT * "
+  {:query  (str "SELECT \"source\".* "
                 (format "FROM %s " venues-source-sql)
                 "WHERE parsedatetime(formatdatetime(\"source\".\"BIRD.ID\", 'YYYYww'), 'YYYYww')"
                 " = parsedatetime(formatdatetime(?, 'YYYYww'), 'YYYYww') "
@@ -355,7 +356,7 @@
 
 ;; Make sure we can filter by string fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"text\" <> ? LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT \"source\".* FROM %s WHERE \"source\".\"text\" <> ? LIMIT 10" venues-source-sql)
    :params ["Coo"]}
   (qp/query->native {:database (data/id)
                      :type     :query
@@ -365,7 +366,7 @@
 
 ;; Make sure we can filter by number fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"sender_id\" > 3 LIMIT 10" venues-source-sql)
+  {:query  (format "SELECT \"source\".* FROM %s WHERE \"source\".\"sender_id\" > 3 LIMIT 10" venues-source-sql)
    :params nil}
   (qp/query->native {:database (data/id)
                      :type     :query
@@ -375,7 +376,7 @@
 
 ;; make sure using a native query with default params as a source works
 (expect
-  {:query  "SELECT * FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
+  {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
    :params nil}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native

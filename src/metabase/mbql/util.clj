@@ -143,6 +143,18 @@
   [x & patterns-and-results]
   `(first (mbql.match/match ~x ~patterns-and-results)))
 
+;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
+;; e.g. with a query like
+;;
+;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
+;;
+;; it would be useful to be able to do
+;;
+;;
+;;    ;; get *all* the source tables
+;;    (mbql.u/match-all query
+;;      (&match :guard (every-pred map? :source-table))
+;;      (:source-table &match))
 
 (defmacro replace
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
@@ -485,3 +497,28 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
+
+(s/defn ->joined-field :- mbql.s/JoinField
+  "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
+  [table-alias :- s/Str, field-clause :- mbql.s/Field]
+  (replace field-clause
+    :joined-field
+    (throw (Exception. (format "%s already has an alias." &match)))
+
+    #{:field-id :field-literal}
+    [:joined-field table-alias &match]))
+
+(def ^:private default-join-alias "source")
+
+(s/defn deduplicate-join-aliases :- mbql.s/Joins
+  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
+  one."
+  [joins :- [mbql.s/Join]]
+  (let [joins          (for [join joins]
+                         (update join :alias #(or % default-join-alias)))
+        unique-aliases (uniquify-names (map :alias joins))]
+    (mapv
+     (fn [join alias]
+       (assoc join :alias alias))
+     joins
+     unique-aliases)))

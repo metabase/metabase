@@ -5,6 +5,7 @@
              [query-processor :as qp]
              [query-processor-test :refer :all]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [dimension :refer [Dimension]]
@@ -238,7 +239,7 @@
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :binning)
   {:status :failed
-   :class  Exception
+   :class  clojure.lang.ExceptionInfo
    :error  "Unable to bin Field without a min/max value"}
   (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
     (-> (tu.log/suppress-output
@@ -251,7 +252,7 @@
   (select-keys field [:name :display_name :description :base_type :special_type :unit :fingerprint]))
 
 (defn- nested-venues-query [card-or-card-id]
-  {:database metabase.models.database/virtual-id
+  {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
    :query    {:source-table (str "card__" (u/get-id card-or-card-id))
               :aggregation  [:count]
