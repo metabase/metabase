@@ -253,15 +253,20 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
     return formatNumberCompactWithoutOptions(value * 100) + "%";
   }
   if (options.number_style === "currency") {
-    const { value: currency } = numberFormatterForOptions(options)
-      .formatToParts(value)
-      .find(p => p.type === "currency");
+    try {
+      const { value: currency } = numberFormatterForOptions(options)
+        .formatToParts(value)
+        .find(p => p.type === "currency");
 
-    // this special case ensures the "~" comes before the currency
-    if (value !== 0 && value >= -0.01 && value <= 0.01) {
-      return `~${currency}0`;
+      // this special case ensures the "~" comes before the currency
+      if (value !== 0 && value >= -0.01 && value <= 0.01) {
+        return `~${currency}0`;
+      }
+      return currency + formatNumberCompactWithoutOptions(value);
+    } catch (e) {
+      // Intl.NumberFormat failed, so we fall back to a non-currency number
+      return formatNumberCompactWithoutOptions(value);
     }
-    return currency + formatNumberCompactWithoutOptions(value);
   }
   if (options.number_style === "scientific") {
     return formatNumberScientific(value, {
