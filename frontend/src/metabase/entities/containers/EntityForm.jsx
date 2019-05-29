@@ -8,12 +8,15 @@ import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
 
-export function getForm(entityDef, formName = null) {
+import type { Entity } from "metabase/lib/entities";
+
+export function getForm(entityDef: Entity, formName?: any = null) {
   // 1. named form
   // 2. default `form`
   // 3. first of the named `forms`
   return formName
-    ? entityDef.forms[formName]
+    ? // $FlowFixMe
+      entityDef.forms[formName]
     : entityDef.form
     ? entityDef.form
     : Object.values(entityDef.forms)[0];

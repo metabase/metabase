@@ -1,10 +1,6 @@
 import React from "react";
 
-import {
-  mountWithStore,
-  fillAndSubmitForm,
-  getFormValues,
-} from "__support__/integration_tests";
+import { mountWithStore, getFormValues } from "__support__/integration_tests";
 
 import UserSettings from "metabase/user/components/UserSettings";
 

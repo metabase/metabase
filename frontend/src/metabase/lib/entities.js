@@ -31,6 +31,7 @@ import _ from "underscore";
 import type { APIMethod } from "metabase/lib/api";
 
 type EntityName = string;
+type EntityForm = any;
 
 type ActionType = string;
 type ActionCreator = Function;
@@ -45,6 +46,9 @@ type EntityDefinition = {
 
   nameOne?: string,
   nameMany?: string,
+
+  form: EntityForm,
+  forms?: { [key: string]: EntityForm },
 
   displayNameOne?: string,
   displayNameMany?: string,
@@ -98,6 +102,9 @@ export type Entity = {
 
   displayNameOne: string,
   displayNameMany: string,
+
+  form: EntityForm,
+  forms?: { [key: string]: EntityForm },
 
   path?: string,
   api: {
