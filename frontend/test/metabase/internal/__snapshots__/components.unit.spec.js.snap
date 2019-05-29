@@ -548,7 +548,7 @@ exports[`Radio should render "default" correctly 1`] = `
   className="flex text-bold h3"
 >
   <li
-    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
+    className="flex align-center cursor-pointer text-brand-hover mr3 pt1"
     onClick={[Function]}
     style={
       Object {
@@ -572,7 +572,7 @@ exports[`Radio should render "default" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mr3 text-brand-hover pt1"
+    className="flex align-center cursor-pointer text-brand-hover pt1"
     onClick={[Function]}
     style={
       Object {
@@ -630,7 +630,7 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mr3 pt1"
+    className="flex align-center cursor-pointer pt1"
     onClick={[Function]}
     style={
       Object {
@@ -664,7 +664,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
   className="flex text-bold h3"
 >
   <li
-    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    className="flex align-center cursor-pointer text-brand-hover mr3 py2"
     onClick={[Function]}
     style={
       Object {
@@ -688,7 +688,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mr3 text-brand-hover py2"
+    className="flex align-center cursor-pointer text-brand-hover py2"
     onClick={[Function]}
     style={
       Object {
@@ -746,7 +746,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer mr3 pt1"
+    className="flex align-center cursor-pointer pt1"
     onClick={[Function]}
     style={
       Object {
