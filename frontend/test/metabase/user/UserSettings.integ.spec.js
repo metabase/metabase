@@ -12,13 +12,18 @@ const MOCK_USER = {
 
 describe("UserSettings", () => {
   it("should show user info", async () => {
-    const { wrapper, store } = mountWithStore(
-      <UserSettings user={MOCK_USER} />,
+    const { wrapper } = mountWithStore(
+      <UserSettings
+        user={MOCK_USER}
+        tab="details"
+        setTab={jest.fn()}
+        updatePassword={jest.fn()}
+      />,
     );
 
-    console.log(wrapper.debug());
+    const form = await wrapper.async.find("EntityForm");
+    const values = await getFormValues(form);
 
-    console.log(store);
-    expect(await getFormValues(wrapper)).toEqual(MOCK_USER);
+    expect(values).toEqual(MOCK_USER);
   });
 });
