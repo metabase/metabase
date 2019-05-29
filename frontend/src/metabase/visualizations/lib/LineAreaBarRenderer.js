@@ -837,9 +837,11 @@ export default function lineAreaBar(
 
   applyYAxisSettings(parent, yAxisProps);
 
-  setupTooltips(props, datas, parent, brushChangeFunctions);
-
+  // render once just to measure various things
   parent.render();
+
+  // TODO: move to beforeRender
+  setupTooltips(props, datas, parent, brushChangeFunctions);
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
   lineAndBarOnRender(
@@ -848,6 +850,10 @@ export default function lineAreaBar(
     yAxisProps.isSplit,
     isStacked(parent.settings, datas),
   );
+
+  // render with customizations
+  // parent.render();
+  parent.redraw();
 
   // only ordinal axis can display "null" values
   if (isOrdinal(parent.settings)) {

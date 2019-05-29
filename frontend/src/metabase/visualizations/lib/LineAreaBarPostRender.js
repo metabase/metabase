@@ -602,5 +602,4 @@ export default function lineAndBarOnRender(
   chart.on("renderlet.on-render", () =>
     onRender(chart, onGoalHover, isSplitAxis, isStacked),
   );
-  chart.render();
 }
