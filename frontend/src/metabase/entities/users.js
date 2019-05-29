@@ -22,6 +22,7 @@ export const PASSWORD_RESET_MANUAL =
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
 const BASE_FORM_FIELDS = [
+  // $FlowFixMe - complaining about title not being in object literal?
   {
     name: "first_name",
     title: t`First name`,

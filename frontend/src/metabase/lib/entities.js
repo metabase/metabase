@@ -31,6 +31,7 @@ import _ from "underscore";
 import type { APIMethod } from "metabase/lib/api";
 
 type EntityName = string;
+
 type EntityForm = any;
 
 type ActionType = string;

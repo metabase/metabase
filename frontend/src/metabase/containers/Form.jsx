@@ -9,6 +9,7 @@ import { getIn } from "icepick";
 import StandardForm from "metabase/components/form/StandardForm";
 
 type FormFieldName = string;
+type FormFieldTitle = string;
 type FormFieldType = "input" | "password" | "select" | "textarea" | "color";
 
 type FormValue = any;
@@ -19,6 +20,7 @@ type FormErrors = { [name: FormFieldName]: FormError };
 type FormFieldDef = {
   name: FormFieldName,
   type: FormFieldType,
+  title?: FormFieldTitle,
   initial?: (() => FormValue) | FormValue,
   normalize?: (value: FormValue) => FormValue,
   validate?: (value: FormValue) => ?FormError,
