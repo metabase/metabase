@@ -98,6 +98,11 @@ function enhanceEnzymeWrapper(wrapper) {
 
 export async function getFormValues(wrapper) {
   const values = {};
+  // enhance the wrapper if it hasn't already been enhanced so we can
+  // pass things other than the top level wrapper from mountStore
+  if (!wrapper.async) {
+    enhanceEnzymeWrapper(wrapper);
+  }
   const inputs = await wrapper.async.find("input");
   for (const input of inputs) {
     values[input.props.name] = input.props.value;
