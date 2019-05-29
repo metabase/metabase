@@ -126,6 +126,17 @@
   stroke-width: 3px;
 }
 
+.LineAreaBarChart .dc-tooltip .xRef,
+.LineAreaBarChart .dc-tooltip .yRef {
+  display: none;
+}
+
+.LineAreaBarChart .dc-chart .enable-drill .dot,
+.LineAreaBarChart .dc-chart .enable-drill .bubble,
+.LineAreaBarChart .dc-chart .enable-drill .bar {
+  cursor: pointer;
+}
+
 .LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot,
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.selected,
 .LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot:hover,

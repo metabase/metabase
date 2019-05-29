@@ -10,16 +10,20 @@ import { isNormalized, isStacked } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
-function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
+function clickObjectFromEvent(
+  element,
+  d,
+  { series, isStacked, isScalarSeries },
+) {
   let [
     {
       data: { cols },
     },
   ] = series;
-  const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
+  const seriesIndex = determineSeriesIndexFromElement(element, isStacked);
   const card = series[seriesIndex].card;
   const isSingleSeriesBar =
-    this.classList.contains("bar") && series.length === 1;
+    element.classList.contains("bar") && series.length === 1;
 
   let clicked: ?ClickObject;
   if (Array.isArray(d.key)) {
@@ -76,10 +80,10 @@ function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
   }
 
   if (clicked) {
-    const isLine = this.classList.contains("dot");
+    const isLine = element.classList.contains("dot");
     return {
       index: isSingleSeriesBar ? -1 : seriesIndex,
-      element: isLine ? this : null,
+      element: isLine ? element : null,
       event: isLine ? null : d3.event,
       ...clicked,
     };
@@ -106,194 +110,185 @@ function applyChartTooltips(
     chart.selectAll("title").remove();
 
     if (onHoverChange) {
-      chart
-        .selectAll(".bar, .dot, .area, .line, .bubble")
-        .on("mousemove", function(d, i) {
-          // const clicked = clickObjectFromEvent.call(this, d, {
-          //   series,
-          //   isScalarSeries,
-          //   isStacked,
-          //  });
-          // onHoverChange(clicked);
+      chart.svg().on("mousemove", () => {
+        // NOTE: using event delegation since it's faster than adding event listeners for every element
+        const element = d3.event.target;
+        const d = d3.select(element).datum();
+        if (!d) {
+          onHoverChange(null);
+          return;
+        }
 
-          // NOTE: preferably we could just use the above but there's some weird
-          // edge cases handled by the code below
+        // const clicked = clickObjectFromEvent(element, d, {
+        //   series,
+        //   isScalarSeries,
+        //   isStacked,
+        //  });
+        // onHoverChange(clicked);
 
-          const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
-          const seriesSettings = chart.settings.series(series[seriesIndex]);
-          const seriesTitle = seriesSettings && seriesSettings.title;
+        // NOTE: preferably we could just use the above but there's some weird
+        // edge cases handled by the code below
 
-          const card = series[seriesIndex].card;
+        const seriesIndex = determineSeriesIndexFromElement(element, isStacked);
+        if (seriesIndex == null) {
+          return;
+        }
 
-          const isMultiseries = series.length > 1;
-          const isBreakoutMultiseries = isMultiseries && card._breakoutColumn;
-          const isArea = this.classList.contains("area");
-          const isBar = this.classList.contains("bar");
-          const isSingleSeriesBar = isBar && !isMultiseries;
+        const seriesSettings = chart.settings.series(series[seriesIndex]);
+        const seriesTitle = seriesSettings && seriesSettings.title;
 
-          // always format the second column as the series name?
-          function getColumnDisplayName(col) {
-            // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-            if (col === cols[1] && !isBreakoutMultiseries && seriesTitle) {
-              return seriesTitle;
-            } else {
-              return getFriendlyName(col);
-            }
+        const card = series[seriesIndex].card;
+
+        const isMultiseries = series.length > 1;
+        const isBreakoutMultiseries = isMultiseries && card._breakoutColumn;
+        const isArea = element.classList.contains("area");
+        const isBar = element.classList.contains("bar");
+        const isSingleSeriesBar = isBar && !isMultiseries;
+
+        // always format the second column as the series name?
+        function getColumnDisplayName(col) {
+          // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
+          if (col === cols[1] && !isBreakoutMultiseries && seriesTitle) {
+            return seriesTitle;
+          } else {
+            return getFriendlyName(col);
           }
+        }
 
-          let data = [];
-          if (Array.isArray(d.key)) {
-            // scatter
-            if (d.key._origin) {
-              data = d.key._origin.row.map((value, index) => {
-                const col = d.key._origin.cols[index];
-                return {
-                  key: getColumnDisplayName(col),
-                  value: value,
-                  col,
-                };
-              });
-            } else {
-              data = d.key.map((value, index) => ({
-                key: getColumnDisplayName(cols[index]),
+        let data = [];
+        if (Array.isArray(d.key)) {
+          // scatter
+          if (d.key._origin) {
+            data = d.key._origin.row.map((value, index) => {
+              const col = d.key._origin.cols[index];
+              return {
+                key: getColumnDisplayName(col),
                 value: value,
-                col: cols[index],
-              }));
-            }
-          } else if (d.data) {
-            // line, area, bar
-            if (!isSingleSeriesBar) {
-              cols = series[seriesIndex].data.cols;
-            }
-
-            data = [
-              {
-                key: getColumnDisplayName(cols[0]),
-                value: d.data.key,
-                col: cols[0],
-              },
-              {
-                key: getColumnDisplayName(cols[1]),
-                value: isNormalized
-                  ? formatValue(d.data.value, {
-                      number_style: "percent",
-                      column: cols[1],
-                    })
-                  : d.data.value,
-                col: { ...cols[1] },
-              },
-            ];
-
-            // NOTE: The below overcomplicated code is due to using index (i) of
-            // the element in the DOM, as returned by d3
-            // It would be much preferable to somehow get the row more directly
-
-            // now add entries to the tooltip for columns that aren't the X or Y axis. These aren't in
-            // the normal `cols` array, which is just the cols used in the graph axes; look in `_rawCols`
-            // for any other columns. If we find them, add them at the end of the `data` array.
-            //
-            // To find the actual row where data is coming from is somewhat overcomplicated because i
-            // seems to follow a strange pattern that doesn't directly correspond to the rows in our
-            // data. Not sure why but it appears values of i follow this pattern:
-            //
-            // seems to follow a strange pattern that doesn't directly correspond to the rows in our
-            // data. Not sure why but it appears values of i follow this pattern:
-            //
-            //  [Series 1]  i = 7   i = 8   i = 9  i = 10   i = 11
-            //  [Series 0]  i = 1   i = 2   i = 3  i = 4    i = 5
-            //             [Row 0] [Row 1] [Row 2] [Row 3] [Row 4]
-            //
-            // Deriving the rowIndex from i can be done as follows:
-            // rowIndex = (i % (numRows + 1)) - 1;
-            //
-            // example: for series 1, i = 10
-            // rowIndex = (10 % 6) - 1 = 4 - 1 = 3
-            //
-            // for series 0, i = 3
-            // rowIndex = (3 % 6) - 1 = 3 - 1 = 2
-            const seriesData = series[seriesIndex].data || {};
-            const rawCols = seriesData._rawCols;
-            const rows = seriesData && seriesData.rows;
-            const rowIndex = rows && (i % (rows.length + 1)) - 1;
-            const row = rowIndex != null && seriesData.rows[rowIndex];
-            const rawRow = row && row._origin && row._origin.row; // get the raw query result row
-            // make sure the row index we've determined with our formula above is correct. Check the
-            // x/y axis values ("key" & "value") and make sure they match up with the row before setting
-            // the data for the tooltip
-            if (rawRow && row[0] === d.data.key && row[1] === d.data.value) {
-              // rather than just append the additional values we'll just create a new `data` array.
-              // simply appending the additional values would result in tooltips whose order switches
-              // between different series.
-              // Loop over *all* of the columns and create the new array
-              data = rawCols.map((col, i) => {
-                // if this was one of the original x/y columns keep the original object because it
-                // may have the `isNormalized` tweak above.
-                if (col === data[0].col) {
-                  return data[0];
-                }
-                if (col === data[1].col) {
-                  return data[1];
-                }
-                // otherwise just create a new object for any other columns.
-                return {
-                  key: getColumnDisplayName(col),
-                  value: rawRow[i],
-                  col: col,
-                };
-              });
-            }
+                col,
+              };
+            });
+          } else {
+            data = d.key.map((value, index) => ({
+              key: getColumnDisplayName(cols[index]),
+              value: value,
+              col: cols[index],
+            }));
+          }
+        } else if (d.data) {
+          // line, area, bar
+          if (!isSingleSeriesBar) {
+            cols = series[seriesIndex].data.cols;
           }
 
-          if (isBreakoutMultiseries) {
-            data.unshift({
-              key: getFriendlyName(card._breakoutColumn),
-              // Use series title if it's set
-              value: seriesTitle ? seriesTitle : card._breakoutValue,
-              // Don't include the column if series title is set (it's already formatted)
-              col: seriesTitle ? null : card._breakoutColumn,
+          data = [
+            {
+              key: getColumnDisplayName(cols[0]),
+              value: d.data.key,
+              col: cols[0],
+            },
+            {
+              key: getColumnDisplayName(cols[1]),
+              value: isNormalized
+                ? formatValue(d.data.value, {
+                    number_style: "percent",
+                    column: cols[1],
+                  })
+                : d.data.value,
+              col: { ...cols[1] },
+            },
+          ];
+
+          const seriesData = series[seriesIndex].data || {};
+          const rawCols = seriesData._rawCols;
+          const rowIndex = d.data.index;
+          const row = rowIndex >= 0 && seriesData.rows[rowIndex];
+          const rawRow = row && row._origin && row._origin.row; // get the raw query result row
+          // make sure the row index we've determined with our formula above is correct. Check the
+          // x/y axis values ("key" & "value") and make sure they match up with the row before setting
+          // the data for the tooltip
+
+          if (rawRow && row[0] === d.data.key && row[1] === d.data.value) {
+            // rather than just append the additional values we'll just create a new `data` array.
+            // simply appending the additional values would result in tooltips whose order switches
+            // between different series.
+            // Loop over *all* of the columns and create the new array
+            data = rawCols.map((col, i) => {
+              // if this was one of the original x/y columns keep the original object because it
+              // may have the `isNormalized` tweak above.
+              if (col === data[0].col) {
+                return data[0];
+              }
+              if (col === data[1].col) {
+                return data[1];
+              }
+              // otherwise just create a new object for any other columns.
+              return {
+                key: getColumnDisplayName(col),
+                value: rawRow[i],
+                col: col,
+              };
             });
           }
+        }
 
-          data = _.uniq(data, d => d.col);
-
-          onHoverChange({
-            // for single series bar charts, fade the series and highlght the hovered element with CSS
-            index: isSingleSeriesBar ? -1 : seriesIndex,
-            // for area charts, use the mouse location rather than the DOM element
-            element: isArea ? null : this,
-            event: isArea ? d3.event : null,
-            data: data.length > 0 ? data : null,
+        if (
+          isBreakoutMultiseries &&
+          !(data.length > 0 && data[0].col === card._breakoutColumn)
+        ) {
+          data.unshift({
+            key: getColumnDisplayName(card._breakoutColumn),
+            // Use series title if it's set
+            value: seriesTitle ? seriesTitle : card._breakoutValue,
+            // Don't include the column if series title is set (it's already formatted)
+            col: seriesTitle ? null : card._breakoutColumn,
           });
-        })
-        .on("mouseleave", function() {
-          if (!onHoverChange) {
-            return;
-          }
-          onHoverChange(null);
+        }
+
+        data = _.uniq(data, d => d.col);
+
+        onHoverChange({
+          // for single series bar charts, fade the series and highlght the hovered element with CSS
+          index: isSingleSeriesBar ? -1 : seriesIndex,
+          // for area charts, use the mouse location rather than the DOM element
+          element: isArea ? null : element,
+          event: isArea ? d3.event : null,
+          data: data.length > 0 ? data : null,
         });
+      });
     }
 
-    if (onVisualizationClick) {
-      const onClick = function(d) {
-        const clicked = clickObjectFromEvent.call(this, d, {
+    function onClick(element, d) {
+      if (onVisualizationClick) {
+        const clicked = clickObjectFromEvent(element, d, {
           series,
           isScalarSeries,
         });
         if (clicked) {
           onVisualizationClick(clicked);
         }
-      };
-
-      // for some reason interaction with brush requires we use click for .dot and .bubble but mousedown for bar
-      chart
-        .selectAll(".dot, .bubble")
-        .style({ cursor: "pointer" })
-        .on("click", onClick);
-      chart
-        .selectAll(".bar")
-        .style({ cursor: "pointer" })
-        .on("mousedown", onClick);
+      }
     }
+
+    chart
+      .svg()
+      .classed("enable-drill", !!onVisualizationClick)
+      // for some reason interaction with brush requires we use click for .dot and .bubble but mousedown for bar
+      .on("click", () => {
+        // NOTE: using event delegation since it's faster than adding event listeners for every element
+        const element = d3.event.target;
+        const d = d3.select(element).datum();
+        if (d && element.matches(".dot, .bubble")) {
+          onClick(element, d);
+        }
+      })
+      .on("mousedown", () => {
+        // NOTE: using event delegation since it's faster than adding event listeners for every element
+        const element = d3.event.target;
+        const d = d3.select(element).datum();
+        if (d && element.matches(".bar")) {
+          onClick(element, d);
+        }
+      });
   });
 }
 
