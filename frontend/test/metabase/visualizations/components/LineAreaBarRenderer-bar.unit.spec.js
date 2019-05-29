@@ -46,7 +46,7 @@ function MainSeries(chartType, settings = {}) {
   };
 }
 
-function ExtraSeries() {
+function ExtraSeries(count = 2) {
   return {
     card: {},
     data: {
@@ -54,7 +54,7 @@ function ExtraSeries() {
         StringColumn({ display_name: "Category", source: "breakout" }),
         NumberColumn({ display_name: "Count", source: "aggregation" }),
       ],
-      rows: [["A", 2]],
+      rows: [["A", count]],
     },
   };
 }
@@ -157,6 +157,27 @@ describe("LineAreaBarRenderer-bar", () => {
       { key: "Category", value: "A" },
       { key: "% Count", value: "67%" },
     ]);
+  });
+
+  it(`should render a normalized bar chart with consistent precision`, () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(
+      element,
+      [
+        MainSeries("bar", { "stackable.stack_type": "normalized" }),
+        ExtraSeries(999),
+      ],
+      { onHoverChange },
+    );
+
+    // hover over each bar
+    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
+    dispatchUIEvent(qsa(".bar, .dot")[1], "mousemove");
+
+    const values = onHoverChange.mock.calls.map(
+      call => getDataKeyValues(call[0])[1].value,
+    );
+    expect(values).toEqual(["0.1%", "99.9%"]);
   });
 
   it("should replace the aggregation name with the series name", () => {
