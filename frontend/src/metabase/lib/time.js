@@ -1,4 +1,5 @@
 import moment from "moment";
+import memoize from "lodash.memoize";
 
 const NUMERIC_UNIT_FORMATS = {
   // workaround for https://github.com/metabase/metabase/issues/1992
@@ -40,13 +41,15 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("quarter"),
 };
 
+const parseTimestampWithTimezone = memoize(value => moment.parseZone(value));
+
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(value, unit) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
-    return moment.parseZone(value);
+    return parseTimestampWithTimezone(value);
   } else if (unit in NUMERIC_UNIT_FORMATS) {
     return NUMERIC_UNIT_FORMATS[unit](value);
   } else {
