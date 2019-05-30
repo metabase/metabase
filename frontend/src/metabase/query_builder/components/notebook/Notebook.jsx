@@ -14,7 +14,7 @@ export default function Notebook({ className, ...props }) {
     isRunnable,
     isResultDirty,
     runQuestionQuery,
-    onSetQueryBuilderMode,
+    setQueryBuilderMode,
   } = props;
   return (
     <Box className={cx(className, "relative mb4")} px={4}>
@@ -30,7 +30,7 @@ export default function Notebook({ className, ...props }) {
             if (isResultDirty) {
               runQuestionQuery();
             }
-            onSetQueryBuilderMode("view");
+            setQueryBuilderMode("view");
           }}
         >
           {t`Visualize`}

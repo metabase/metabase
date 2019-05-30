@@ -13,7 +13,7 @@ const NotebookHeader = ({
   isDirty,
   isResultDirty,
   runQuestionQuery,
-  onSetQueryBuilderMode,
+  setQueryBuilderMode,
   onOpenModal,
   setUIControls,
 }) => (
@@ -33,7 +33,7 @@ const NotebookHeader = ({
       medium
       primary
       ml={1}
-      onClick={() => onSetQueryBuilderMode("view")}
+      onClick={() => setQueryBuilderMode("view")}
     >{t`Done`}</Button>
   </Flex>
 );

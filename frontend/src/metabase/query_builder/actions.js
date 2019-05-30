@@ -34,6 +34,7 @@ import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
+  getCard,
   getTableMetadata,
   getNativeDatabases,
   getQuestion,
@@ -46,6 +47,7 @@ import {
   getFirstQueryResult,
   getIsPreviewing,
   getTableForeignKeys,
+  getQueryBuilderMode,
 } from "./selectors";
 
 import { getDatabasesList, getMetadata } from "metabase/selectors/metadata";
@@ -85,8 +87,22 @@ const getTemplateTagCount = (question: Question) => {
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
 
+export const setQueryBuilderMode = queryBuilderMode => async dispatch => {
+  await dispatch(
+    setUIControls({
+      queryBuilderMode,
+      isShowingChartSettingsSidebar: false,
+    }),
+  );
+  await dispatch(updateUrl());
+};
+
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
+
+function getQueryBuilderModeFromLocation(location) {
+  return location.pathname.endsWith("/notebook") ? "notebook" : "view";
+}
 
 export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
@@ -99,6 +115,7 @@ export const popState = createThunkAction(
         dispatch(setCurrentState(location.state));
       }
     }
+    dispatch(setQueryBuilderMode(getQueryBuilderModeFromLocation(location)));
   },
 );
 
@@ -128,48 +145,63 @@ export const updateEmbeddingParams = createAction(
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
 export const updateUrl = createThunkAction(
   UPDATE_URL,
-  (
-    card,
-    { dirty = false, replaceState = false, preserveParameters = true },
-  ) => (dispatch, getState) => {
-    if (!card) {
-      return;
+  (card, { dirty, replaceState, preserveParameters = true } = {}) => (
+    dispatch,
+    getState,
+  ) => {
+    let question;
+    if (card == undefined) {
+      card = getCard(getState());
+      question = getQuestion(getState());
+    } else {
+      question = new Question(getMetadata(getState()), card);
     }
+    if (dirty == undefined) {
+      const originalQuestion = getOriginalQuestion(getState());
+      dirty =
+        !originalQuestion ||
+        (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    }
+
+    const queryBuilderMode = getQueryBuilderMode(getState());
+
     let copy = cleanCopyCard(card);
+    console.log("updateUrl", copy);
+
     let newState = {
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
     };
-
     const { currentState } = getState().qb;
-
-    if (Utils.equals(currentState, newState)) {
-      return;
-    }
 
     let url = urlForCardState(newState, dirty);
 
-    // if the serialized card is identical replace the previous state instead of adding a new one
-    // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-    replaceState =
-      replaceState ||
-      (currentState && currentState.serializedCard === newState.serializedCard);
-
     const urlParsed = urlParse(url);
     const locationDescriptor = {
-      pathname: urlParsed.pathname,
+      pathname:
+        urlParsed.pathname +
+        (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,
       state: newState,
     };
 
-    if (
+    const isSameURL =
       locationDescriptor.pathname === window.location.pathname &&
       (locationDescriptor.search || "") === (window.location.search || "") &&
-      (locationDescriptor.hash || "") === (window.location.hash || "")
-    ) {
-      replaceState = true;
+      (locationDescriptor.hash || "") === (window.location.hash || "");
+    const isSameCard =
+      currentState && currentState.serializedCard === newState.serializedCard;
+
+    if (isSameCard && isSameURL) {
+      return;
+    }
+
+    if (replaceState == undefined) {
+      // if the serialized card is identical replace the previous state instead of adding a new one
+      // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+      replaceState = isSameCard || isSameURL;
     }
 
     // this is necessary because we can't get the state from history.state
@@ -205,7 +237,7 @@ export const initializeQB = (location, params) => {
     let uiControls: UiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
-      queryBuilderMode: "view",
+      queryBuilderMode: getQueryBuilderModeFromLocation(location),
     };
 
     // always start the QB by loading up the databases for the application
@@ -380,13 +412,8 @@ export const initializeQB = (location, params) => {
       }
 
       // clean up the url and make sure it reflects our card state
-      const originalQuestion =
-        originalCard && new Question(getMetadata(getState()), originalCard);
       dispatch(
         updateUrl(card, {
-          dirty:
-            !originalQuestion ||
-            (originalQuestion && question.isDirtyComparedTo(originalQuestion)),
           replaceState: true,
           preserveParameters,
         }),

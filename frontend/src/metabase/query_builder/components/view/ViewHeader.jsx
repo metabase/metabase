@@ -35,7 +35,7 @@ export const ViewTitleHeader = ({
   isDirty,
   isNew,
   queryBuilderMode,
-  onSetQueryBuilderMode,
+  setQueryBuilderMode,
 }) => {
   const isShowingNotebook = queryBuilderMode === "notebook";
 
@@ -107,7 +107,7 @@ export const ViewTitleHeader = ({
             primary={isShowingNotebook}
             style={{ minWidth: 115 }}
             onClick={() =>
-              onSetQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
+              setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
             }
           >
             {isShowingNotebook ? t`Visualize` : t`Notebook`}

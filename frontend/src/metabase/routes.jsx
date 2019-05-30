@@ -233,9 +233,11 @@ export const getRoutes = store => (
               component={NewQuestionMetricSearch}
             />
           </Route>
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path="notebook/:cardId" component={QueryBuilder} />
+          <Route path=":cardId" component={QueryBuilder} />
+          <Route path=":cardId/entity" component={EntityPage} />
         </Route>
-        <Route path="/question/:cardId" component={QueryBuilder} />
-        <Route path="/question/:cardId/entity" component={EntityPage} />
 
         <Route path="/ready" component={PostSetupApp} />
 

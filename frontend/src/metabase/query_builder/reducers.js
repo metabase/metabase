@@ -49,6 +49,7 @@ const DEFAULT_UI_CONTROLS = {
   initialChartSetting: null,
   isShowingChartTypeSidebar: false,
   isPreviewing: true,
+  queryBuilderMode: false,
 };
 
 // various ui state options
