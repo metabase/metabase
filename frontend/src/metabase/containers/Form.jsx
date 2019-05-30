@@ -44,7 +44,7 @@ export type FormDefinition = {
   validate?: (values: FormValues) => FormErrors,
 };
 
-type Form = {
+type FormObject = {
   fields: (values: FormValues) => FormFieldDefinition[],
   fieldNames: (values: FormValues) => FormFieldName[],
   initial: () => FormValues,
@@ -62,7 +62,7 @@ type Props = {
 
 let FORM_ID = 0;
 
-export default class Form_ extends React.Component {
+export default class Form extends React.Component {
   props: Props;
 
   _formName: ?string;
@@ -157,7 +157,7 @@ export default class Form_ extends React.Component {
 // form.fields[0] is { name: "foo", initial: () => "bar" }
 //
 function makeFormMethod(
-  form: Form,
+  form: FormObject,
   methodName: string,
   defaultValues: any = {},
 ) {
@@ -181,7 +181,7 @@ function makeFormMethod(
 function getValue(fnOrValue, ...args): any {
   return typeof fnOrValue === "function" ? fnOrValue(...args) : fnOrValue;
 }
-function makeForm(formDef: FormDefinition): Form {
+function makeForm(formDef: FormDefinition): FormObject {
   const form = {
     ...formDef,
     fields: values => getValue(formDef.fields, values),
