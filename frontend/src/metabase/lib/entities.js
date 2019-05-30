@@ -29,11 +29,9 @@ import _ from "underscore";
 //
 
 import type { APIMethod } from "metabase/lib/api";
-import type { FormFieldDef } from "metabase/containers/Form";
+import type { FormDefinition } from "metabase/containers/Form";
 
 type EntityName = string;
-
-type EntityForm = FormFieldDef;
 
 type ActionType = string;
 type ActionCreator = Function;
@@ -49,8 +47,8 @@ type EntityDefinition = {
   nameOne?: string,
   nameMany?: string,
 
-  form: EntityForm,
-  forms?: { [key: string]: EntityForm },
+  form?: FormDefinition,
+  forms?: { [key: string]: FormDefinition },
 
   displayNameOne?: string,
   displayNameMany?: string,
@@ -72,7 +70,6 @@ type EntityDefinition = {
   },
   reducer?: Reducer,
   wrapEntity?: (object: EntityObject) => any,
-  form?: any,
   actionShouldInvalidateLists?: (action: Action) => boolean,
 
   // list of properties for this object which should be persisted
@@ -105,8 +102,8 @@ export type Entity = {
   displayNameOne: string,
   displayNameMany: string,
 
-  form: EntityForm,
-  forms?: { [key: string]: EntityForm },
+  form?: FormDefinition,
+  forms?: { [key: string]: FormDefinition },
 
   path?: string,
   api: {
@@ -164,7 +161,6 @@ export type Entity = {
     [name: string]: ObjectSelector,
   },
   wrapEntity: (object: EntityObject) => any,
-  form?: any,
 
   requestsReducer: Reducer,
   actionShouldInvalidateLists: (action: Action) => boolean,
