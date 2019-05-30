@@ -83,6 +83,9 @@ describe("formatting", () => {
         expect(
           formatNumber(1234567.89, { ...options, currency: "CNY" }),
         ).toEqual("CN¥1.2M");
+        expect(
+          formatNumber(1234567.89, { ...options, currency_style: "name" }),
+        ).toEqual("$1.2M");
       });
     });
     // FIXME: failing on CI

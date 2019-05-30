@@ -254,7 +254,10 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
   }
   if (options.number_style === "currency") {
     try {
-      const { value: currency } = numberFormatterForOptions(options)
+      const { value: currency } = numberFormatterForOptions({
+        ...options,
+        currency_style: "symbol",
+      })
         .formatToParts(value)
         .find(p => p.type === "currency");
 
