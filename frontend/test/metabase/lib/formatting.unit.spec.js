@@ -46,7 +46,7 @@ describe("formatting", () => {
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
-      it("should format compact percentages", () => {
+      it("should format percentages", () => {
         const options = { compact: true, number_style: "percent" };
         expect(formatNumber(0, options)).toEqual("0%");
         expect(formatNumber(0.001, options)).toEqual("0.1%");
@@ -59,7 +59,7 @@ describe("formatting", () => {
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
         expect(formatNumber(-0.22, options)).toEqual("-22%");
       });
-      it("should format compact scientific notation", () => {
+      it("should format scientific notation", () => {
         const options = { compact: true, number_style: "scientific" };
         expect(formatNumber(0, options)).toEqual("0.0e+0");
         expect(formatNumber(0.0001, options)).toEqual("1.0e-4");
@@ -68,7 +68,7 @@ describe("formatting", () => {
         expect(formatNumber(123456.78, options)).toEqual("1.2e+5");
         expect(formatNumber(-123456.78, options)).toEqual("-1.2e+5");
       });
-      it("should format compact currency values", () => {
+      it("should format currency values", () => {
         const options = {
           compact: true,
           number_style: "currency",
