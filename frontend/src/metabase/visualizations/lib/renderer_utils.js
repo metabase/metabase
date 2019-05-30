@@ -132,10 +132,8 @@ export const isOrdinal = settings =>
 export const isHistogramBar = ({ settings, chartType }) =>
   isHistogram(settings) && chartType === "bar";
 
-export const isStacked = (settings, datas) =>
-  settings["stackable.stack_type"] && datas.length > 1;
+export const isStacked = (settings, datas) => settings["stackable.stack_type"];
 export const isNormalized = (settings, datas) =>
-  isStacked(settings, datas) &&
   settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series
