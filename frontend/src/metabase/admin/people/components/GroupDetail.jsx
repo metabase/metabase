@@ -10,6 +10,8 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
+import colors from "metabase/lib/colors";
+
 import { PermissionsApi } from "metabase/services";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
@@ -59,7 +61,7 @@ const AddMemberAutocompleteSuggestion = ({
     className={cx("px2 py1 cursor-pointer", { "bg-brand": selected })}
     onClick={onClick}
   >
-    <span className="inline-block text-white mr2">
+    <span className="inline-block mr2">
       <UserAvatar background={color} user={user} />
     </span>
     <span className={cx("h3", { "text-white": selected })}>
@@ -68,7 +70,13 @@ const AddMemberAutocompleteSuggestion = ({
   </div>
 );
 
-const COLORS = ["bg-error", "bg-purple", "bg-brand", "bg-gold", "bg-green"];
+const COLORS = [
+  colors["brand"],
+  colors["accent1"],
+  colors["accent2"],
+  colors["accent3"],
+  colors["accent4"],
+];
 
 const AddMemberTypeahead = Typeahead({
   optionFilter: (text, user) =>
