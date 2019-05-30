@@ -54,7 +54,6 @@
 (def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
-
 ;;; Version stuff
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 

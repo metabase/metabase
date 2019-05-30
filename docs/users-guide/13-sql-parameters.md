@@ -71,7 +71,7 @@ Current date example:
 ```
 SELECT p.*
 FROM products p
-WHERE p.createdAt = [[ {{dateOfCreation}} #]]CURRENT_DATE()
+WHERE p.createdAt = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
 ```
 
 ##### Connecting a SQL question to a dashboard filter

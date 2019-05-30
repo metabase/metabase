@@ -14,13 +14,14 @@ export default class ExpandableString extends Component {
 
   static defaultProps = {
     length: 140,
-    expanded: false,
   };
 
   componentWillReceiveProps(newProps) {
-    this.setState({
-      expanded: newProps.expanded,
-    });
+    if (newProps.expanded !== undefined) {
+      this.setState({
+        expanded: newProps.expanded,
+      });
+    }
   }
 
   toggleExpansion() {

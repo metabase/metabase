@@ -280,46 +280,36 @@
     "Get the stack trace associated with E and return it as a vector with non-metabase frames after the last Metabase
     frame filtered out."))
 
-;; These next two functions are a workaround for this bug https://dev.clojure.org/jira/browse/CLJ-1790
-;; When Throwable/Thread are type-hinted, they return an array of type StackTraceElement, this causes
-;; a VerifyError. Adding a layer of indirection here avoids the problem. Once we upgrade to Clojure 1.9
-;; we should be able to remove this code.
-(defn- throwable-get-stack-trace [^Throwable t]
-  (.getStackTrace t))
+(extend-protocol IFilteredStacktrace
+  nil
+  (filtered-stacktrace [_] nil)
 
-(defn- thread-get-stack-trace [^Thread t]
-  (.getStackTrace t))
+  Throwable
+  (filtered-stacktrace [^Throwable this]
+    (filtered-stacktrace (.getStackTrace this)))
 
-(extend nil
-  IFilteredStacktrace {:filtered-stacktrace (constantly nil)})
+  Thread
+  (filtered-stacktrace [^Thread this]
+    (filtered-stacktrace (.getStackTrace this))))
 
-(extend Throwable
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                             (filtered-stacktrace (throwable-get-stack-trace this)))})
-
-(extend Thread
-  IFilteredStacktrace {:filtered-stacktrace (fn [this]
-                                              (filtered-stacktrace (thread-get-stack-trace this)))})
-
-(defn- metabase-frame? [frame]
-  (re-find #"metabase" (str frame)))
-
-;; StackTraceElement[] is what the `.getStackTrace` method for Thread and Throwable returns
 (extend (Class/forName "[Ljava.lang.StackTraceElement;")
   IFilteredStacktrace
   {:filtered-stacktrace
    (fn [this]
      ;; keep all the frames before the last Metabase frame, but then filter out any other non-Metabase frames after
      ;; that
-     (let [[frames-after-last-mb other-frames]     (split-with (complement metabase-frame?)
-                                                               (map str (seq this)))
-           [last-mb-frame & frames-before-last-mb] (map #(str/replace % #"^metabase\." "")
-                                                        (filter metabase-frame? other-frames))]
+     (let [[frames-after-last-mb other-frames]     (split-with #(not (str/includes? % "metabase"))
+                                                               (seq this))
+           [last-mb-frame & frames-before-last-mb] (for [frame other-frames
+                                                         :when (str/includes? frame "metabase")]
+                                                     (str/replace frame #"^metabase\." ""))]
        (concat
-        frames-after-last-mb
+        (map str frames-after-last-mb)
         ;; add a little arrow to the frame so it stands out more
-        (cons (some->> last-mb-frame (str "--> "))
-              frames-before-last-mb))))})
+        (cons
+         (some->> last-mb-frame (str "--> "))
+         frames-before-last-mb))))})
+
 
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
@@ -701,3 +691,17 @@
   {:style/indent 0}
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
+
+(defn xor
+  "Exclusive or. Hopefully this is self-explanatory ;)"
+  [x y & more]
+  (loop [[x y & more] (into [x y] more)]
+    (cond
+      (and x y)
+      false
+
+      (seq more)
+      (recur (cons (or x y) more))
+
+      :else
+      (or x y))))

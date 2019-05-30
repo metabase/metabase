@@ -208,3 +208,20 @@
 (expect
   {:num_cans 2, :lisp_case? {:nested_maps? true}}
   (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))
+
+
+;; `xor`
+(expect false (u/xor false false))
+(expect true  (u/xor false true))
+(expect true  (u/xor true  false))
+(expect false (u/xor true  true))
+
+(expect false (u/xor false false false))
+(expect true  (u/xor false true  false))
+(expect true  (u/xor true  false false))
+(expect false (u/xor true  true  false))
+
+(expect true  (u/xor false false true))
+(expect false (u/xor false true  true))
+(expect false (u/xor true  false true))
+(expect false (u/xor true  true  true))

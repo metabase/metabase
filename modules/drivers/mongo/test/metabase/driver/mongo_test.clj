@@ -126,12 +126,12 @@
   (driver/describe-table :mongo (data/db) (Table (data/id :venues))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
-(tx/def-database-definition ^:private all-null-columns
+(tx/defdataset ^:private all-null-columns
   [["bird_species"
-     [{:field-name "name", :base-type :type/Text}
-      {:field-name "favorite_snack", :base-type :type/Text}]
-     [["House Finch" nil]
-      ["Mourning Dove" nil]]]])
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "favorite_snack", :base-type :type/Text}]
+    [["House Finch" nil]
+     ["Mourning Dove" nil]]]])
 
 (datasets/expect-with-driver :mongo
   [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
@@ -198,7 +198,7 @@
 
 
 ;;; Check that we support Mongo BSON ID and can filter by it (#1367)
-(tx/def-database-definition ^:private with-bson-ids
+(tx/defdataset ^:private with-bson-ids
   [["birds"
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]

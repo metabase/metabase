@@ -34,6 +34,7 @@ const StandardForm = ({
       {form.fields(values).map(formField => {
         const nameComponents = formField.name.split(".");
         const field = getIn(fields, nameComponents);
+
         return (
           <FormField
             key={formField.name}

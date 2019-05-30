@@ -14,7 +14,6 @@
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException Types]
            [java.util Calendar Date TimeZone]))
@@ -180,15 +179,12 @@
           ;; This is what does the real work of canceling the query. We aren't checking the result of
           ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
           (.cancel stmt)
-          (throw e))
-        (catch Exception e
-          (u/ignore-exceptions (.cancel stmt))
-          e)))))
+          (throw e))))))
 
 (defn- run-query
   "Run the query itself."
   [driver {sql :query, :keys [params remark max-rows]}, ^TimeZone timezone, connection]
-  (let [sql              (str "-- " remark "\n" (hx/unescape-dots sql))
+  (let [sql              (str "-- " remark "\n" sql)
         [columns & rows] (cancelable-run-query
                           connection sql params
                           {:identifiers    identity
@@ -248,8 +244,9 @@
 
 (defn- set-timezone!
   "Set the timezone for the current connection."
-  [driver settings connection]
-  (let [timezone      (u/prog1 (:report-timezone settings)
+  {:arglists '([driver settings connection])}
+  [driver {:keys [report-timezone]} connection]
+  (let [timezone      (u/prog1 report-timezone
                         (assert (re-matches #"[A-Za-z\/_]+" <>)))
         format-string (set-timezone-sql driver)
         sql           (format format-string (str \' timezone \'))]

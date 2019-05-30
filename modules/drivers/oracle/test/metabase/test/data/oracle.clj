@@ -23,7 +23,7 @@
 ;; PUBLIC.CHECKINS.USER_ID    | CAM_195.test_data_checkins.user_id
 ;; PUBLIC.INCIDENTS.TIMESTAMP | CAM_195.sad_toucan_incidents.timestamp
 (defonce ^:private session-schema-number (rand-int 200))
-(defonce ^:private session-schema        (str "CAM_" session-schema-number))
+(defonce           session-schema        (str "CAM_" session-schema-number))
 (defonce ^:private session-password      (apply str (repeatedly 16 #(rand-nth (map char (range (int \a) (inc (int \z))))))))
 ;; Session password is only used when creating session user, not anywhere else
 
@@ -36,6 +36,8 @@
     :sid      (tx/db-test-env-var-or-throw :oracle :sid)}))
 
 (defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
+
+(defmethod tx/sorts-nil-first? :oracle [_] false)
 
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/BigInteger] [_ _] "NUMBER(*,0)")
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/Boolean]    [_ _] "NUMBER(1)")

@@ -62,23 +62,38 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
+  [{{:keys [joins]} :query} :- su/Map, join-alias :- su/NonBlankString]
+  (some
+   (fn [{:keys [alias], :as join}]
+     (when (= alias join-alias)
+       join))
+   joins))
+
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [clause :- mbql.s/Field]
+  [query :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
     [:binning-strategy field strategy _ resolved-options]
-    (assoc (col-info-for-field-clause field) :binning_info (assoc (u/snake-keys resolved-options)
-                                                             :binning_strategy strategy))
+    (assoc (col-info-for-field-clause query field)
+      :binning_info (assoc (u/snake-keys resolved-options)
+                      :binning_strategy strategy))
 
     [:datetime-field field unit]
-    (assoc (col-info-for-field-clause field) :unit unit)
+    (assoc (col-info-for-field-clause query field) :unit unit)
 
+    [:joined-field alias field]
+    (let [{:keys [fk-field-id]} (join-with-alias query alias)]
+      (assoc (col-info-for-field-clause query field) :fk_field_id fk-field-id))
+
+    ;; TODO - should be able to remove this now
     [:fk-> [:field-id source-field-id] field]
-    (assoc (col-info-for-field-clause field) :fk_field_id source-field-id)
+    (assoc (col-info-for-field-clause query field) :fk_field_id source-field-id)
 
+    ;; TODO - should be able to remove this now
     ;; for FKs where source is a :field-literal don't include `:fk_field_id`
     [:fk-> _ field]
     (recur field)
@@ -100,7 +115,7 @@
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
       (if-not parent-id
         field
-        (let [parent (col-info-for-field-clause [:field-id parent-id])]
+        (let [parent (col-info-for-field-clause query [:field-id parent-id])]
           (update field :name #(str (:name parent) \. %)))))
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
@@ -171,52 +186,61 @@
     {:name         ag-name
      :display_name ag-name}))
 
-(defn- col-info-for-aggregation-clause
+(s/defn ^:private col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
-  [aggregation-clause]
-  (mbql.u/match-one aggregation-clause
+  ; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
+  ; `match` pattern for field clauses below
+  [query :- su/Map, clause]
+  (mbql.u/match-one clause
     ;; ok, if this is a named aggregation recurse so we can get information about the ag we are naming
     [:named ag _]
-    (merge (col-info-for-aggregation-clause ag)
-           (ag->name-info &match))
+    (merge
+     (col-info-for-aggregation-clause query ag)
+     (ag->name-info &match))
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
     [(_ :guard #{:count :distinct}) & args]
-    (merge (col-info-for-aggregation-clause args)
-           {:base_type    :type/Integer
-            :special_type :type/Number}
-           (ag->name-info &match))
+    (merge
+     (col-info-for-aggregation-clause query args)
+     {:base_type    :type/Integer
+      :special_type :type/Number}
+     (ag->name-info &match))
 
+    ; TODO - should we be doing this for `:sum-where` as well?
     [:count-where _]
-    (merge {:base_type    :type/Integer
-            :special_type :type/Number}
-           (ag->name-info &match))
+    (merge
+     {:base_type    :type/Integer
+      :special_type :type/Number}
+     (ag->name-info &match))
 
     [:share _]
-    (merge {:base_type    :type/Float
-            :special_type :type/Number}
-           (ag->name-info &match))
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (ag->name-info &match))
 
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
-    [(_ :guard #{:field-id :field-literal :fk-> :datetime-field :expression :binning-strategy}) & _]
-    (select-keys (col-info-for-field-clause &match) [:base_type :special_type :settings])
+    (_ :guard mbql.preds/Field?)
+    (select-keys (col-info-for-field-clause query &match) [:base_type :special_type :settings])
 
     ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
     ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
     ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
     ;; for the purposes of a patch release.
     [(_ :guard #{:expression :+ :- :/ :*}) & _]
-    (merge {:base_type    :type/Float
-            :special_type :type/Number}
-           (when (mbql.preds/Aggregation? &match)
-             (ag->name-info &match)))
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (when (mbql.preds/Aggregation? &match)
+       (ag->name-info &match)))
 
     ;; get name/display-name of this ag
     [(_ :guard keyword?) arg & args]
-    (merge (col-info-for-aggregation-clause arg)
-           (ag->name-info &match))))
+    (merge
+     (col-info-for-aggregation-clause query arg)
+     (ag->name-info &match))))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
@@ -236,16 +260,18 @@
                "\n"
                (tru "Actual: {0}" (vec (:columns results))))))))))
 
-(defn- cols-for-fields [{{fields-clause :fields} :query, :as query}]
+(s/defn ^:private cols-for-fields
+  [{{fields-clause :fields} :query, :as query} :- su/Map]
   (for [field fields-clause]
-    (assoc (col-info-for-field-clause field) :source :fields)))
+    (assoc (col-info-for-field-clause query field) :source :fields)))
 
-(defn- cols-for-ags-and-breakouts [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
+(s/defn ^:private cols-for-ags-and-breakouts
+  [{{aggregations :aggregation, breakouts :breakout} :query, :as query} :- su/Map]
   (concat
    (for [breakout breakouts]
-     (assoc (col-info-for-field-clause breakout) :source :breakout))
+     (assoc (col-info-for-field-clause query breakout) :source :breakout))
    (for [aggregation aggregations]
-     (assoc (col-info-for-aggregation-clause aggregation) :source :aggregation))))
+     (assoc (col-info-for-aggregation-clause query aggregation) :source :aggregation))))
 
 (declare mbql-cols)
 
@@ -273,7 +299,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ColsWithUniqueNames
-  (s/constrained [Col] #(distinct? (map :name %)) ":cols with unique names"))
+  (s/constrained [Col] #(su/empty-or-distinct? (map :name %)) ":cols with unique names"))
 
 (s/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [Col]]

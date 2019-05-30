@@ -112,7 +112,7 @@
             {:expressions {"bird-scarcity" ~formula}
              :fields      [[:expression "bird-scarcity"]]
              :filter      ~filter-clause
-             :order-by    [[:asc [:field-id $date]]]
+             :order-by    [[:asc [:field-id ~'$date]]]
              :limit       10})
           rows
           (format-rows-by [(partial u/round-to-decimals 2)]))))

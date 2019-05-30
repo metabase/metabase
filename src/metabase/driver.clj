@@ -102,7 +102,10 @@
       (locking require-lock
         (log/debug
          (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+        (try
+          (apply require expected-ns require-options)
+          (catch Throwable _
+            (throw (Exception. (str (tru "Could not find {0} driver." driver))))))))))
 
 (defn- load-driver-namespace-if-needed
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -525,7 +528,12 @@
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
     ;; DEFAULTS TO TRUE.
-    :case-sensitivity-string-filter-options})
+    :case-sensitivity-string-filter-options
+
+    :left-join
+    :right-join
+    :inner-join
+    :full-join})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in

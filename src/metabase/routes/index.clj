@@ -14,7 +14,8 @@
              [i18n :refer [trs]]]
             [puppetlabs.i18n.core :refer [*locale*]]
             [ring.util.response :as resp]
-            [stencil.core :as stencil]))
+            [stencil.core :as stencil])
+  (:import java.io.FileNotFoundException))
 
 (defn- base-href []
   (let [path (some-> (public-settings/site-url) io/as-url .getPath)]
@@ -40,9 +41,11 @@
   (or
    (when (and locale (not= locale "en"))
      (try
-       (slurp (str "frontend_client/app/locales/" locale ".json"))
+       (slurp (or (io/resource (str "frontend_client/app/locales/" locale ".json"))
+                  ;; don't try to i18n the Exception message below, we have no locale to translate it to!
+                  (throw (FileNotFoundException. (format "Locale '%s' not found." locale)))))
        (catch Throwable e
-         (log/warn (trs "Locale ''{0}'' not found." locale)))))
+         (log/warn (.getMessage e)))))
    (fallback-localization locale)))
 
 (def ^:private ^{:arglists '([])} load-localization

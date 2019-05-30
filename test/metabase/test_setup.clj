@@ -13,7 +13,6 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.plugins.initialize :as plugins.init]
-            [metabase.query-processor.middleware.async-wait :as qp.middleware.async-wait]
             [metabase.test.data.env :as tx.env]
             [yaml.core :as yaml]))
 
@@ -60,7 +59,7 @@
               (System/exit -2))))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db!)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)
@@ -79,13 +78,11 @@
     (u/deref-with-timeout start-web-server! 10000)
     nil))
 
-
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (server/stop-web-server!)
-  (qp.middleware.async-wait/destroy-all-thread-pools!))
+  (server/stop-web-server!))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test
