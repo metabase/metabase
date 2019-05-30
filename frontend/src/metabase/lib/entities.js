@@ -171,6 +171,9 @@ export type Entity = {
   normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
   normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
 
+  getObjectStatePath: Function,
+  getListStatePath: Function,
+
   HACK_getObjectFromAction: (action: Action) => any,
 };
 
@@ -218,6 +221,9 @@ export function createEntity(def: EntityDefinition): Entity {
   const getObjectStatePath = entityId => ["entities", entity.name, entityId];
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+
+  entity.getObjectStatePath = getObjectStatePath;
+  entity.getListStatePath = getListStatePath;
 
   const getWritableProperties = object =>
     entity.writableProperties != null

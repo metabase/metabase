@@ -7,8 +7,10 @@ import Toggle from "metabase/components/Toggle.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
+import Databases from "metabase/entities/databases";
 
 @withRouter
+@Databases.loadList()
 export default class MetadataHeader extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
@@ -17,6 +19,21 @@ export default class MetadataHeader extends Component {
     isShowingSchema: PropTypes.bool.isRequired,
     toggleShowSchema: PropTypes.func.isRequired,
   };
+
+  setDatabaseIdIfUnset() {
+    const { databaseId, databases = [], selectDatabase } = this.props;
+    if (databaseId === undefined && databases.length > 0) {
+      selectDatabase(databases[0]);
+    }
+  }
+
+  componentDidUpdate() {
+    this.setDatabaseIdIfUnset();
+  }
+
+  componentWillMount() {
+    this.setDatabaseIdIfUnset();
+  }
 
   setSaving() {
     this.refs.status.setSaving.apply(this, arguments);

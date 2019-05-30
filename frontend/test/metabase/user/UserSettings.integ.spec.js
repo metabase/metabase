@@ -1,6 +1,7 @@
 import React from "react";
 
-import { mountWithStore, getFormValues } from "__support__/integration_tests";
+import { getFormValues } from "__support__/enzyme_utils";
+import { mountWithStore } from "__support__/integration_tests";
 
 import UserSettings from "metabase/user/components/UserSettings";
 

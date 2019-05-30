@@ -185,27 +185,29 @@ export default class ItemPicker extends React.Component {
                 }}
                 wrapped
               >
-                {({ list }) =>
-                  list
-                    .filter(
-                      item =>
-                        // remove collections unless we're searching
-                        (item.model !== "collection" || !!searchString) &&
-                        // only include desired models (TODO: ideally the endpoint would handle this)
-                        models.has(item.model),
-                    )
-                    .map(item => (
-                      <Item
-                        item={item}
-                        name={item.getName()}
-                        color={item.getColor()}
-                        icon={item.getIcon()}
-                        selected={isSelected(item)}
-                        canSelect
-                        onChange={onChange}
-                      />
-                    ))
-                }
+                {({ list }) => (
+                  <div>
+                    {list
+                      .filter(
+                        item =>
+                          // remove collections unless we're searching
+                          (item.model !== "collection" || !!searchString) &&
+                          // only include desired models (TODO: ideally the endpoint would handle this)
+                          models.has(item.model),
+                      )
+                      .map(item => (
+                        <Item
+                          item={item}
+                          name={item.getName()}
+                          color={item.getColor()}
+                          icon={item.getIcon()}
+                          selected={isSelected(item)}
+                          canSelect
+                          onChange={onChange}
+                        />
+                      ))}
+                  </div>
+                )}
               </EntityListLoader>
             )}
           </Box>
