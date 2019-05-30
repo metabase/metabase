@@ -29,10 +29,11 @@ import _ from "underscore";
 //
 
 import type { APIMethod } from "metabase/lib/api";
+import type { FormFieldDef } from "metabase/containers/Form";
 
 type EntityName = string;
 
-type EntityForm = any;
+type EntityForm = FormFieldDef;
 
 type ActionType = string;
 type ActionCreator = Function;

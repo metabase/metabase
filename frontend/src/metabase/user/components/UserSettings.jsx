@@ -4,8 +4,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
-import colors from "metabase/lib/colors";
-
 import User from "metabase/entities/users";
 
 import Radio from "metabase/components/Radio";
@@ -48,13 +46,7 @@ export default class UserSettings extends Component {
             flexDirection="column"
             p={[2, 2, 4]}
           >
-            <UserAvatar
-              user={user}
-              mb={[1, 2]}
-              bg={colors["brand"]}
-              width={["3em", "4em", "5em"]}
-              height={["3em", "4em", "5em"]}
-            />
+            <UserAvatar user={user} mb={[1, 2]} size={["3em", "4em", "5em"]} />
             <h2>{t`Account settings`}</h2>
           </Flex>
 

@@ -13,6 +13,8 @@ import { UserApi, SessionApi } from "metabase/services";
 
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
+import type { FormFieldDef } from "metabase/containers/Form";
+
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
 export const REACTIVATE = "metabase/entities/users/REACTIVATE";
 export const PASSWORD_RESET_EMAIL =
@@ -21,8 +23,7 @@ export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
-const BASE_FORM_FIELDS = [
-  // $FlowFixMe - complaining about title not being in object literal?
+const BASE_FORM_FIELDS: FormFieldDef[] = [
   {
     name: "first_name",
     title: t`First name`,

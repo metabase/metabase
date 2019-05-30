@@ -17,13 +17,13 @@ type FormError = string;
 type FormValues = { [name: FormFieldName]: FormValue };
 type FormErrors = { [name: FormFieldName]: FormError };
 
-type FormFieldDef = {
+export type FormFieldDef = {
   name: FormFieldName,
-  type: FormFieldType,
+  type?: FormFieldType,
   title?: FormFieldTitle,
   initial?: (() => FormValue) | FormValue,
   normalize?: (value: FormValue) => FormValue,
-  validate?: (value: FormValue) => ?FormError,
+  validate?: (value: FormValue) => ?FormError | boolean,
 };
 
 type FormDef = {

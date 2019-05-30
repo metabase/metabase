@@ -35,7 +35,6 @@ const StandardForm = ({
         const nameComponents = formField.name.split(".");
         const field = getIn(fields, nameComponents);
 
-        console.log("field", field, "name components", nameComponents);
         return (
           <FormField
             key={formField.name}
