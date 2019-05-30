@@ -162,7 +162,7 @@ export default class ChoroplethMap extends Component {
       projection = null;
     }
 
-    // const nameProperty = details.region_name;
+    const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -191,7 +191,7 @@ export default class ChoroplethMap extends Component {
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
 
-    // const getFeatureName = feature => String(feature.properties[nameProperty]);
+    const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
 
@@ -202,12 +202,13 @@ export default class ChoroplethMap extends Component {
 
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
-    const getFeatureClickObject = row => ({
+    const getFeatureClickObject = (row, feature) => ({
       value: row[metricIndex],
       column: cols[metricIndex],
       dimensions: [
         {
-          value: row[dimensionIndex],
+          value:
+            feature != null ? getFeatureName(feature) : row[dimensionIndex],
           column: cols[dimensionIndex],
         },
       ],
@@ -234,7 +235,7 @@ export default class ChoroplethMap extends Component {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && onHoverChange) {
           onHoverChange({
-            ...getFeatureClickObject(row),
+            ...getFeatureClickObject(row, hover.feature),
             event: hover.event,
           });
         } else if (onHoverChange) {
