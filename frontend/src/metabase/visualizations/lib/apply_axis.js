@@ -162,14 +162,7 @@ export function applyChartTimeseriesXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain[0] = moment(xDomain[0]).subtract(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
-  xDomain[1] = moment(xDomain[1]).add(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
+  xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
   chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
@@ -180,6 +173,29 @@ export function applyChartTimeseriesXAxis(
       1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count,
     ),
   );
+}
+
+export function stretchTimeseriesDomain([start, end], { count, interval }) {
+  // Non-timeseries axes are stretched by 0.75 x-intervals in both directions.
+  // That's a bit trickier to do with dates because moment doesn't support
+  // adding or subtracting partial months, weeks, or days. To work around this,
+  // we do approximate math with smaller units. We're unable to add 0.75 months,
+  // so instead we add 0.75 * 30 days. I'm unclear why, but moment *is* able to add partial years and quarters.
+  if (interval === "month") {
+    interval = "day";
+    count *= 30;
+  } else if (interval === "week") {
+    interval = "day";
+    count *= 7;
+  } else if (interval === "day") {
+    interval = "hour";
+    count *= 24;
+  }
+
+  return [
+    moment(start).subtract(count * 0.75, interval),
+    moment(end).add(count * 0.75, interval),
+  ];
 }
 
 export function applyChartQuantitativeXAxis(
