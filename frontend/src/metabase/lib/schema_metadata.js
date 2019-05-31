@@ -646,30 +646,6 @@ export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
 }
 
-export function computeMetadataStrength(table) {
-  let total = 0;
-  let completed = 0;
-  function score(value) {
-    total++;
-    if (value) {
-      completed++;
-    }
-  }
-
-  score(table.description);
-  if (table.fields) {
-    table.fields.forEach(function(field) {
-      score(field.description);
-      score(field.special_type);
-      if (isFK(field)) {
-        score(field.target);
-      }
-    });
-  }
-
-  return completed / total;
-}
-
 export function getFilterArgumentFormatOptions(operator, index) {
   return (
     (operator && operator.formatOptions && operator.formatOptions[index]) || {}

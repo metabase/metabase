@@ -8,10 +8,19 @@ import {
 } from "metabase/lib/redux";
 import _ from "underscore";
 
+import { createSelector } from "reselect";
+
 import { MetabaseApi } from "metabase/services";
 import { TableSchema } from "metabase/schema";
 
+import Metrics from "metabase/entities/metrics";
+import Segments from "metabase/entities/segments";
+
 import { GET } from "metabase/lib/api";
+
+import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
 const listTablesForDatabase = async (...args) =>
@@ -37,6 +46,7 @@ export const FETCH_TABLE_FOREIGN_KEYS =
 
 const Tables = createEntity({
   name: "tables",
+  nameOne: "table",
   path: "/api/table",
   schema: TableSchema,
 
@@ -62,9 +72,12 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetch_query_metadata"],
       ),
       withNormalize(TableSchema),
-    )(entityObject => (dispatch, getState) =>
-      MetabaseApi.table_query_metadata({ tableId: entityObject.id }),
-    ),
+    )(({ id }) => async (dispatch, getState) => {
+      const table = await MetabaseApi.table_query_metadata({
+        tableId: id,
+      });
+      return addValidOperatorsToFields(table);
+    }),
 
     // like fetchMetadata but also loads tables linked by foreign key
     fetchTableMetadata: createThunkAction(
@@ -97,6 +110,68 @@ const Tables = createEntity({
   // FORMS
   form: {
     fields: [{ name: "name" }, { name: "description", type: "text" }],
+  },
+
+  reducer: (state = {}, { type, payload, error }) => {
+    if (type === Segments.actionTypes.CREATE) {
+      const { table_id: tableId, id: segmentId } = payload.segment;
+      const table = state[tableId];
+      if (table) {
+        return {
+          ...state,
+          [tableId]: { ...table, segments: [segmentId, ...table.segments] },
+        };
+      }
+    }
+
+    if (type === Metrics.actionTypes.CREATE) {
+      const { table_id: tableId, id: metricId } = payload.metric;
+      const table = state[tableId];
+      if (table) {
+        return {
+          ...state,
+          [tableId]: { ...table, metrics: [metricId, ...table.metrics] },
+        };
+      }
+    }
+
+    if (type === Segments.actionTypes.UPDATE) {
+      const { table_id: tableId, archived, id: segmentId } = payload.segment;
+      const table = state[tableId];
+      if (archived && table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            segments: table.segments.filter(id => id !== segmentId),
+          },
+        };
+      }
+    }
+
+    if (type === Metrics.actionTypes.UPDATE) {
+      const { table_id: tableId, archived, id: metricId } = payload.metric;
+      const table = state[tableId];
+      if (archived && table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            metrics: table.metrics.filter(id => id !== metricId),
+          },
+        };
+      }
+    }
+
+    return state;
+  },
+
+  selectors: {
+    getTable: createSelector(
+      // we wrap getMetadata to handle a circular dep issue
+      [state => getMetadata(state), (state, props) => props.entityId],
+      (metadata, id) => metadata.table(id),
+    ),
   },
 });
 

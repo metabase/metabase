@@ -109,7 +109,7 @@ export default class ComponentsApp extends Component {
                             </Link>
                           </h4>
                           <div className="flex flex-column">
-                            <div className="p2 bordered rounded flex align-center flex-full border-light">
+                            <div className="p2 bordered rounded flex align-center flex-full">
                               <div className="full">{element}</div>
                             </div>
                             {showExampleCode && (

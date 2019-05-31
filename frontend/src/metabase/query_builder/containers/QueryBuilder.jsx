@@ -17,6 +17,7 @@ import title from "metabase/hoc/Title";
 
 import {
   getCard,
+  getDatabasesList,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -49,7 +50,7 @@ import {
   getIsPreviewable,
 } from "../selectors";
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";

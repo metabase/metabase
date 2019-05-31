@@ -35,6 +35,7 @@ import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
   getCard,
+  getDatabasesList,
   getTableMetadata,
   getNativeDatabases,
   getQuestion,
@@ -50,7 +51,7 @@ import {
   getQueryBuilderMode,
 } from "./selectors";
 
-import { getDatabasesList, getMetadata } from "metabase/selectors/metadata";
+import { getTables, getMetadata } from "metabase/selectors/metadata";
 
 import { fetchDatabases } from "metabase/redux/metadata";
 

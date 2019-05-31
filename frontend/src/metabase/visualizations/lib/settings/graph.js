@@ -234,9 +234,6 @@ export const STACKABLE_SETTINGS = {
         ? "stacked"
         : null,
     getHidden: (series, settings) => {
-      if (series.length < 2) {
-        return true;
-      }
       const displays = series.map(single => settings.series(single).display);
       return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
     },

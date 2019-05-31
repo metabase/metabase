@@ -56,14 +56,19 @@ export default class Field extends Base {
     return path;
   }
 
-  displayName({ includePath = true } = {}) {
+  displayName({ includeSchema, includeTable, includePath = true } = {}) {
+    let displayName = "";
+    if (includeTable && this.table) {
+      displayName += this.table.displayName({ includeSchema }) + " → ";
+    }
     if (includePath) {
-      return this.path()
+      displayName += this.path()
         .map(formatField)
         .join(": ");
     } else {
-      return formatField(this);
+      displayName += formatField(this);
     }
+    return displayName;
   }
 
   fieldType() {

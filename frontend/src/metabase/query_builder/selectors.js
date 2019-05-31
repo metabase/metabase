@@ -15,9 +15,11 @@ import Utils from "metabase/lib/utils";
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
+import Databases from "metabase/entities/databases";
+
 import { getIn } from "icepick";
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -56,6 +58,11 @@ export const getTableId = createSelector(
 
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
+
+export const getDatabasesList = state =>
+  Databases.selectors.getList(state, {
+    entityQuery: { include_tables: true, include_cards: true },
+  }) || [];
 
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
