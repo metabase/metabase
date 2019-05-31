@@ -20,13 +20,10 @@ import {
 } from "__support__/sample_dataset_fixture";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { createSegment } from "metabase/admin/datamodel/datamodel";
+import Segments from "metabase/entities/segments";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
-import {
-  fetchDatabases,
-  fetchSegments,
-  fetchTableMetadata,
-} from "metabase/redux/metadata";
 import { TestTooltip, TestTooltipContent } from "metabase/components/Tooltip";
 import Filter from "metabase/query_builder/components/Filter";
 
@@ -49,8 +46,10 @@ describe("FieldList", () => {
 
   it("should allow using expression as aggregation dimension", async () => {
     const store = await createTestStore();
-    await store.dispatch(fetchDatabases());
-    await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
+    await store.dispatch(Databases.actions.fetchList());
+    await store.dispatch(
+      Tables.actions.fetchTableMetadata({ id: ORDERS_TABLE_ID }),
+    );
 
     const expressionName = "70% of subtotal";
     const metadata = getMetadata(store.getState());
@@ -73,15 +72,24 @@ describe("FieldList", () => {
   });
 
   it("should show the query definition tooltip correctly for a segment", async () => {
-    // TODO Atte Keinänen 6/27/17: Check why the result is wrapped in a promise that needs to be resolved manually
-    const segment = await (await createSegment(orders_past_300_days_segment))
-      .payload;
+    const store = await createTestStore();
+    const {
+      payload: { segment },
+    } = await store.dispatch(
+      Segments.actions.create(orders_past_300_days_segment),
+    );
     cleanup.segment(segment);
 
-    const store = await createTestStore();
-    await store.dispatch(fetchDatabases());
-    await store.dispatch(fetchTableMetadata(ORDERS_TABLE_ID));
-    await store.dispatch(fetchSegments());
+    await store.dispatch(
+      Databases.actions.fetchList({
+        include_tables: true,
+        include_cards: true,
+      }),
+    );
+    await store.dispatch(
+      Tables.actions.fetchTableMetadata({ id: ORDERS_TABLE_ID }),
+    );
+    await store.dispatch(Segments.actions.fetchList());
     const metadata = getMetadata(store.getState());
 
     const query: StructuredQuery = Question.create({

@@ -37,6 +37,7 @@ export default class UserGroupSelect extends Component {
     groups: PropTypes.array,
     createMembership: PropTypes.func.isRequired,
     deleteMembership: PropTypes.func.isRequired,
+    isCurrentUser: PropTypes.bool.isRequired,
   };
 
   static defaultProps = {
@@ -48,7 +49,13 @@ export default class UserGroupSelect extends Component {
   }
 
   render() {
-    let { user, groups, createMembership, deleteMembership } = this.props;
+    const {
+      user,
+      groups,
+      createMembership,
+      deleteMembership,
+      isCurrentUser,
+    } = this.props;
 
     if (!groups || groups.length === 0 || !user.memberships) {
       return <LoadingSpinner />;
@@ -82,6 +89,7 @@ export default class UserGroupSelect extends Component {
           groups={groups}
           selectedGroups={user.memberships}
           onGroupChange={changeMembership}
+          isCurrentUser={isCurrentUser}
         />
       </PopoverWithTrigger>
     );
