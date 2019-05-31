@@ -383,11 +383,40 @@
              :aggregation [[:avg [:joined-field "checkins_by_user" [:field-literal "count" :type/Float]]]]
              :breakout    [[:datetime-field $last_login :month]]}))))))
 
-;; TODO Can we join on bucketed datetimes?
+;; If you join against an *explicit* source query, do all columns for both queries come back? (Only applies if you
+;; include `:source-metadata`)
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows    [["2013-01-01T08:00:00.000Z"  8 "2013-01-01T08:00:00.000Z"  8]
+             ["2013-02-01T08:00:00.000Z" 11 "2013-02-01T08:00:00.000Z" 11]
+             ["2013-03-01T08:00:00.000Z" 21 "2013-03-01T08:00:00.000Z" 21]]
+   :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
+  (tt/with-temp Card [{card-id               :id
+                       {source-query :query} :dataset_query
+                       source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
+                       (data/mbql-query checkins
+                         {:aggregation [[:count]]
+                          :breakout    [[:datetime-field $date :month]]}))]
+    (qp.test/rows+column-names
+      (qp/process-query
+        (data/mbql-query checkins
+          {:source-query    source-query
+           :source-metadata source-metadata
+           :joins           [{:source-table (str "card__" card-id)
+                              :alias        "checkins_by_month"
+                              :fields       :all
+                              :condition    [:=
+                                             [:field-literal (data/format-name "date") :type/DateTime]
+                                             [:joined-field
+                                              "checkins_by_month"
+                                              [:field-literal (data/format-name "date") :type/DateTime]]]}]
+           :limit           3})))))
+
 
 ;; TODO Can we join against a source nested native query?
 
 ;; TODO Do joins inside nested queries work?
+
+;; TODO Do multiple joins work, and return columns in the correct order?
 
 ;; TODO Can we join the same table twice with different conditions?
 

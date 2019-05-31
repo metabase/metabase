@@ -187,21 +187,6 @@
 
 (declare id)
 
-(defn wrap-inner-mbql-query
-  "Wrap inner QUERY with `:database` ID and other 'outer query' kvs. DB ID is fetched by looking up the Database for
-  the query's `:source-table`."
-  {:style/indent 0}
-  [query]
-  {:database (id)
-   :type     :query
-   :query    query})
-
-(defn add-source-table-if-needed [table query]
-  (if (and query
-           (some query #{:source-table :source-query}))
-    query
-    (assoc query :source-table (id table))))
-
 (defmacro mbql-query
   "Build a query, expands symbols like `$field` into calls to `id` and wraps them in `:field-id`. See the dox for
   `$->id` for more information on how `$`-prefixed expansion behaves.
@@ -215,8 +200,12 @@
                       :filter       [:= [:field-id (data/id :venues :id)] 1]}} "
   {:style/indent 1}
   [table & [query]]
-  `(wrap-inner-mbql-query
-     (add-source-table-if-needed ~(keyword table) ~($->id table query))))
+  `{:database (id)
+    :type     :query
+    :query    ~(let [query ($->id table (or query {}))]
+                 (if (some query #{:source-table :source-query})
+                   query
+                   (assoc query :source-table `(id ~(keyword table)))))})
 
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."

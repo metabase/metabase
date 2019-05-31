@@ -529,11 +529,18 @@
     (s/recursive #'MBQLQuery)))
 
 (def SourceQueryMetadata
-  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
+  "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
+  entries), if it is passed in to the query.
+
+  This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
+  form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
+  `:source-query`s."
   ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
   {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
    :base_type                     su/FieldType
+   ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
+   ;; able to remove this as a requirement
+   :display_name                  su/NonBlankString
    (s/optional-key :special_type) (s/maybe su/FieldType)
    ;; you'll need to provide this in order to use BINNING
    (s/optional-key :fingerprint)  (s/maybe su/Map)
