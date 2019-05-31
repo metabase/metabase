@@ -239,9 +239,10 @@
    (mapv data/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
 
    :rows
-   [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 "2014-04-07T00:00:00.000Z" 5 12]
-    [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 "2014-09-18T00:00:00.000Z" 1 31]
-    [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 "2014-09-15T00:00:00.000Z" 8 56]]}
+   (let [tz (if (qp.test/tz-shifted-driver-bug? driver/*driver*) "07:00:00.000Z"  "00:00:00.000Z")]
+     [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 (str "2014-04-07T" tz) 5 12]
+      [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 (str "2014-09-18T" tz) 1 31]
+      [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 (str "2014-09-15T" tz) 8 56]])}
   (qp.test/format-rows-by [int identity identity int identity int int]
     (qp.test/rows+column-names
       (qp/process-query
@@ -268,9 +269,9 @@
            :joins        [{:alias        "u"
                            :source-table $$users
                            :condition    [:=
-                                          [:field-literal "ID" :type/BigInteger]
+                                          [:field-literal (data/format-name "id") :type/BigInteger]
                                           [:joined-field "u" $users.id]]}]
-           :order-by     [[:asc [:field-literal "ID" :type/Integer]]]
+           :order-by     [[:asc [:field-literal (data/format-name "id") :type/Integer]]]
            :limit        3})))))
 
 ;; Can we join against a source nested MBQL query?
@@ -287,7 +288,7 @@
                           :source-query {:source-table $$categories}
                           :condition    [:=
                                          $category_id
-                                         [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                         [:joined-field "cat" [:field-literal (data/format-name "id") :type/BigInteger]]]}]
           :order-by     [[:asc $name]]
           :limit        3})))))
 
@@ -299,7 +300,7 @@
     [93 "33 Taps"           7  34.1018 -118.326 2  7 "Bar"]]
 
    :columns
-   (mapv data/format-name ["ID" "NAME" "CATEGORY_ID" "LATITUDE" "LONGITUDE" "PRICE" "ID_2" "NAME_2"])}
+   (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (data/mbql-query categories))]
     (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
                              int identity]
@@ -311,7 +312,7 @@
                          :fields       :all
                          :condition    [:=
                                         $category_id
-                                        [:joined-field "cat" [:field-literal "ID" :type/BigInteger]]]}]
+                                        [:joined-field "cat" [:field-literal (data/format-name "id") :type/BigInteger]]]}]
              :order-by [[:asc $name]]
              :limit    3}))))))
 
@@ -345,21 +346,24 @@
                :alias        "checkins_2"
                :source-table (str "card__" card-id)
                :condition    [:=
-                              [:field-literal "DATE" :type/DateTime]
-                              [:joined-field "checkins_2" [:field-literal "DATE" :type/DateTime]]]}]
+                              [:datetime-field [:field-literal (data/format-name "date") :type/DateTime] :month]
+                              [:joined-field "checkins_2" [:field-literal (data/format-name "date") :type/DateTime]]]}]
+             :order-by     [[:asc [:datetime-field [:field-literal (data/format-name "date") :type/DateTime] :month]]]
              :limit        10}))))))
 
 ;; Can we aggregate on the results of a JOIN?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
-  {:rows [["2014-01-01T00:00:00.000Z" 77]
-          ["2014-02-01T00:00:00.000Z" 81]
-          ["2014-04-01T00:00:00.000Z" 50]
-          ["2014-07-01T00:00:00.000Z" 69]
-          ["2014-08-01T00:00:00.000Z" 64]
-          ["2014-10-01T00:00:00.000Z" 66]
-          ["2014-11-01T00:00:00.000Z" 75]
-          ["2014-12-01T00:00:00.000Z" 70]]
-   :columns [(data/format-name "LAST_LOGIN") "avg"]}
+  ;; for whatever reason H2 gives slightly different answers :unamused:
+  {:rows    (let [driver-avg #(if (= metabase.driver/*driver* :h2) %1 %2)]
+              [["2014-01-01T00:00:00.000Z" 77]
+               ["2014-02-01T00:00:00.000Z" 81]
+               ["2014-04-01T00:00:00.000Z" (driver-avg 50 49)]
+               ["2014-07-01T00:00:00.000Z" (driver-avg 69 68)]
+               ["2014-08-01T00:00:00.000Z" 64]
+               ["2014-10-01T00:00:00.000Z" (driver-avg 66 65)]
+               ["2014-11-01T00:00:00.000Z" (driver-avg 75 74)]
+               ["2014-12-01T00:00:00.000Z" 70]])
+   :columns [(data/format-name "last_login") "avg"]}
   (qp.test/format-rows-by [identity int]
     (qp.test/rows+column-names
       (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
@@ -371,7 +375,11 @@
             {:joins       [{:fields       :all
                             :alias        "checkins_by_user"
                             :source-table (str "card__" card-id)
-                            :condition    [:= $id [:joined-field "checkins_by_user" [:field-literal "USER_ID" :type/Integer]]]}]
+                            :condition    [:=
+                                           $id
+                                           [:joined-field
+                                            "checkins_by_user"
+                                            [:field-literal (data/format-name "user_id") :type/Integer]]]}]
              :aggregation [[:avg [:joined-field "checkins_by_user" [:field-literal "count" :type/Float]]]]
              :breakout    [[:datetime-field $last_login :month]]}))))))
 

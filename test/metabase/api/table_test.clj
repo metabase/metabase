@@ -326,7 +326,7 @@
 (tt/expect-with-temp [Table [table]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] (:details (data/db))))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     nil
@@ -632,15 +632,14 @@
           first
           :dimension_options))))
 
-(defn- dimension-options-for-field [response field-name]
+(defn- dimension-options-for-field [response, ^String field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name (:name %)))
+       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))
        :dimension_options))
 
 (defn- extract-dimension-options
-  "For the given `FIELD-NAME` find it's dimension_options following
-  the indexes given in the field"
+  "For the given `field-name` find it's dimension_options following the indexes given in the field"
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)
