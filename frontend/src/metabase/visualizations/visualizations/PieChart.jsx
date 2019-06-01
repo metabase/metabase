@@ -11,7 +11,10 @@ import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  getFriendlyName,
+  computeMaxDecimalsForValues,
+} from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
@@ -209,21 +212,25 @@ export default class PieChart extends Component {
         jsx,
         majorWidth: 0,
       });
+
+    const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
+    const decimals = computeMaxDecimalsForValues(
+      rows.map(row => row[metricIndex] / total),
+      { style: "percent", maximumSignificantDigits: 3 },
+    );
     const formatPercent = (percent, jsx = true) =>
       formatValue(percent, {
         ...settings.column(cols[metricIndex]),
         jsx,
         majorWidth: 0,
         number_style: "percent",
-        minimumSignificantDigits: 3,
-        maximumSignificantDigits: 3,
+        _numberFormatter: undefined, // remove the passed formatter
+        decimals,
       });
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
-
-    let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     let sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
