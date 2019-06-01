@@ -9,7 +9,6 @@
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
             [metabase.test.data :as data]
-            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn- resolve-joins [{{:keys [source-table]} :query, :as query}]
@@ -17,8 +16,8 @@
     (qp.store/with-store
       (resolve-joins query))
     (do
-      (qp.store/store-database! (db/select-one (into [Database] qp.store/database-columns-to-fetch) :id (data/id)))
-      (qp.store/store-table! (db/select-one (into [Table] qp.store/table-columns-to-fetch) :id source-table))
+      (qp.test-util/store-referenced-database! query)
+      (qp.store/fetch-and-store-tables! [source-table])
       (#'resolve-joins/resolve-joins* query))))
 
 ;; Does the middleware function if the query has no joins?
@@ -29,7 +28,7 @@
 
 (defn- resolve-joins-and-inspect-store [query]
   (qp.store/with-store
-    (qp.store/store-database! (data/db))
+    (qp.test-util/store-referenced-database! query)
     {:resolved (resolve-joins query)
      :store    (qp.test-util/store-contents)}))
 
@@ -133,9 +132,9 @@
      {:joins [{:source-table $$categories
                :condition    [:= $category_id [:joined-field "x" $categories.id]]}]})))
 
-;; Test that joining against a table in a different DB throws and Exception
+;; Test that joining against a table in a different DB throws an Exception
 (expect
-  IllegalArgumentException
+  clojure.lang.ExceptionInfo
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]]
     (resolve-joins

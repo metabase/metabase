@@ -1,14 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-source-table
   "Fetches Tables corresponding to any `:source-table` IDs anywhere in the query."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.models.table :refer [Table]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (def ^:private ^{:arglists '([x])} positive-int? (every-pred integer? pos?))
 
@@ -36,37 +33,11 @@
    flatten
    set))
 
-(s/defn ^:private fetch-tables :- [(class Table)]
-  [table-ids :- (su/non-empty #{su/IntGreaterThanZero})]
-  (db/select (into [Table] qp.store/table-columns-to-fetch)
-    :db_id (u/get-id (qp.store/database))
-    :id    [:in (set table-ids)]))
-
-(s/defn ^:private check-all-source-tables-fetched
-  "Make sure all the source tables we wanted to fetch have been fetched. Any missing IDs are either Tables that don't
-  exist, or from the wrong DB."
-  [source-table-ids :- (su/non-empty #{su/IntGreaterThanZero}), fetched-tables :- [(class Table)]]
-  (let [fetched-ids (set (map :id fetched-tables))]
-    (doseq [source-table-id source-table-ids]
-      (when-not (contains? fetched-ids source-table-id)
-        (throw
-         (ex-info (str (tru "Cannot run query: source table {0} does not exist, or belongs to a different database."
-                            source-table-id))
-           {:source-table    source-table-id
-            :referenced-ids  fetched-ids
-            :resolved-tables (vec (for [table fetched-tables]
-                                    (select-keys table [:name :schema :id])))}))))))
-
 (defn- resolve-source-tables*
-  "Validate that all "
+  "Resolve all Tables referenced in the `query`, and store them in the QP Store."
   [query]
   (check-all-source-table-ids-are-valid query)
-  (when-let [source-table-ids (query->source-table-ids query)]
-    (let [fetched-tables (fetch-tables source-table-ids)]
-      (check-all-source-tables-fetched source-table-ids fetched-tables)
-      ;; ok, now save each of the fetched Tables
-      (doseq [table fetched-tables]
-        (qp.store/store-table! table)))))
+  (qp.store/fetch-and-store-tables! (query->source-table-ids query)))
 
 (defn resolve-source-tables
   "Middleware that will take any `:source-table`s (integer IDs) anywhere in the query and fetch and save the

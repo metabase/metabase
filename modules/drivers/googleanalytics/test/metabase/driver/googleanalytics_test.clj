@@ -231,9 +231,8 @@
   (do-with-some-fields
    (fn [{:keys [table event-action-field event-label-field date-field], :as objects}]
      (qp.store/with-store
-       (qp.store/store-table! table)
-       (doseq [field [event-action-field event-label-field date-field]]
-         (qp.store/store-field! field))
+       (qp.store/fetch-and-store-tables! [(u/get-id table)])
+       (qp.store/fetch-and-store-fields! (map u/get-id [event-action-field event-label-field date-field]))
        (ga.qp/mbql->native (preprocessed-query-with-some-fields objects))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end

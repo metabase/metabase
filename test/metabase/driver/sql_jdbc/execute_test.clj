@@ -8,9 +8,7 @@
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.tu]]
+            [metabase.query-processor.test-util :as qp.tu]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -228,7 +226,6 @@
                       (deliver timezone report-timezone)
                       (orig driver settings connection)))]
       (qp.tu/with-everything-store
-        (qp.store/store-database! (data/db))
         (sql-jdbc.execute/execute-query driver query))
       {:ran-with-timezone? (u/deref-with-timeout ran-with-timezone? 1000)
        :timezone           (u/deref-with-timeout timezone 1000)})))

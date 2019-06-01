@@ -1,5 +1,5 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.test-util :as qp.test-util]

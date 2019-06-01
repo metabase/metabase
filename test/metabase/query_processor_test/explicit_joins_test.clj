@@ -317,20 +317,23 @@
              :limit    3}))))))
 
 ;; Can we join on a Field literal for a source query?
+;;
+;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies if
+;; you include `:source-metadata`)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
   {:rows
-   [["2013-01-01T00:00:00.000Z" 8]
-    ["2013-02-01T00:00:00.000Z" 11]
-    ["2013-03-01T00:00:00.000Z" 21]
-    ["2013-04-01T00:00:00.000Z" 26]
-    ["2013-05-01T00:00:00.000Z" 23]
-    ["2013-06-01T00:00:00.000Z" 26]
-    ["2013-07-01T00:00:00.000Z" 20]
-    ["2013-08-01T00:00:00.000Z" 22]
-    ["2013-09-01T00:00:00.000Z" 13]
-    ["2013-10-01T00:00:00.000Z" 26]]
-   :columns [(data/format-name "date") "count"]}
-  (qp.test/format-rows-by [identity int]
+   [["2013-01-01T00:00:00.000Z"  8 "2013-01-01T00:00:00.000Z"  8]
+    ["2013-02-01T00:00:00.000Z" 11 "2013-02-01T00:00:00.000Z" 11]
+    ["2013-03-01T00:00:00.000Z" 21 "2013-03-01T00:00:00.000Z" 21]
+    ["2013-04-01T00:00:00.000Z" 26 "2013-04-01T00:00:00.000Z" 26]
+    ["2013-05-01T00:00:00.000Z" 23 "2013-05-01T00:00:00.000Z" 23]
+    ["2013-06-01T00:00:00.000Z" 26 "2013-06-01T00:00:00.000Z" 26]
+    ["2013-07-01T00:00:00.000Z" 20 "2013-07-01T00:00:00.000Z" 20]
+    ["2013-08-01T00:00:00.000Z" 22 "2013-08-01T00:00:00.000Z" 22]
+    ["2013-09-01T00:00:00.000Z" 13 "2013-09-01T00:00:00.000Z" 13]
+    ["2013-10-01T00:00:00.000Z" 26 "2013-10-01T00:00:00.000Z" 26]]
+   :columns [(data/format-name "date") "count" (data/format-name "date_2") "count"]}
+  (qp.test/format-rows-by [identity int identity int]
     (qp.test/rows+column-names
       (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (data/mbql-query checkins
@@ -383,12 +386,12 @@
              :aggregation [[:avg [:joined-field "checkins_by_user" [:field-literal "count" :type/Float]]]]
              :breakout    [[:datetime-field $last_login :month]]}))))))
 
-;; If you join against an *explicit* source query, do all columns for both queries come back? (Only applies if you
-;; include `:source-metadata`)
+;; NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
-  {:rows    [["2013-01-01T08:00:00.000Z"  8 "2013-01-01T08:00:00.000Z"  8]
-             ["2013-02-01T08:00:00.000Z" 11 "2013-02-01T08:00:00.000Z" 11]
-             ["2013-03-01T08:00:00.000Z" 21 "2013-03-01T08:00:00.000Z" 21]]
+  ;; datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows    [["2013-01-01T00:00:00.000Z"  8 "2013-01-01T00:00:00.000Z"  8]
+             ["2013-02-01T00:00:00.000Z" 11 "2013-02-01T00:00:00.000Z" 11]
+             ["2013-03-01T00:00:00.000Z" 21 "2013-03-01T00:00:00.000Z" 21]]
    :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
   (tt/with-temp Card [{card-id               :id
                        {source-query :query} :dataset_query
@@ -399,17 +402,16 @@
     (qp.test/rows+column-names
       (qp/process-query
         (data/mbql-query checkins
-          {:source-query    source-query
-           :source-metadata source-metadata
-           :joins           [{:source-table (str "card__" card-id)
-                              :alias        "checkins_by_month"
-                              :fields       :all
-                              :condition    [:=
-                                             [:field-literal (data/format-name "date") :type/DateTime]
-                                             [:joined-field
-                                              "checkins_by_month"
-                                              [:field-literal (data/format-name "date") :type/DateTime]]]}]
-           :limit           3})))))
+          {:source-query source-query
+           :joins        [{:source-table (str "card__" card-id)
+                           :alias        "checkins_by_month"
+                           :fields       :all
+                           :condition    [:=
+                                          [:field-literal (data/format-name "date") :type/DateTime]
+                                          [:joined-field
+                                           "checkins_by_month"
+                                           [:field-literal (data/format-name "date") :type/DateTime]]]}]
+           :limit        3})))))
 
 
 ;; TODO Can we join against a source nested native query?

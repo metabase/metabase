@@ -1,19 +1,18 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
-  (:require [clojure.data :as data]
-            [medley.core :as m]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+  (:require [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.query-processor.debug :as debug]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
              [add-implicit-joins :as add-implicit-joins]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
+             [add-source-metadata :as add-source-metadata]
              [annotate :as annotate]
              [async :as async]
              [async-wait :as async-wait]
@@ -119,6 +118,7 @@
    #'resolve-fields/resolve-fields
    #'add-dim/add-remapping
    #'implicit-clauses/add-implicit-clauses
+   #'add-source-metadata/add-source-metadata-for-source-queries
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
    #'bucket-datetime/auto-bucket-datetimes
    #'resolve-source-table/resolve-source-tables
@@ -265,28 +265,8 @@
 
 (def ^:private default-pipeline (build-pipeline execute-query))
 
-(defn- debug-middleware [qp middleware-var]
-  (let [middleware      (var-get middleware-var)
-        middleware-name (:name (meta middleware-var))]
-    (fn
-      ([before-query & args]
-       (let [qp (^:once fn* [after-query & args]
-                 (when (not= before-query after-query)
-                   (let [[only-in-before only-in-after] (data/diff before-query after-query)]
-                     (println "Middleware" middleware-name "modified query:\n"
-                              "before" (u/pprint-to-str 'blue before-query)
-                              "after " (u/pprint-to-str 'green after-query)
-                              (if only-in-before
-                                (str "only in before: " (u/pprint-to-str 'cyan only-in-before))
-                                "")
-                              (if only-in-after
-                                (str "only in after: " (u/pprint-to-str 'magenta only-in-after))
-                                ""))))
-                 (apply qp after-query args))]
-         (apply (middleware qp) before-query args))))))
-
 (def ^:private debugging-pipeline
-  (build-pipeline execute-query debug-middleware))
+  (build-pipeline execute-query debug/debug-middleware))
 
 (def ^:private QueryResponse
   (s/named
@@ -304,7 +284,7 @@
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
   {:style/indent 0}
-  [{:keys [debug?], :as query}]
+  [query]
   ((if *debug*
      debugging-pipeline
      default-pipeline) query))

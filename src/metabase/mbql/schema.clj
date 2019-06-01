@@ -521,7 +521,7 @@
 
 (def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
-  (s/if :native
+  (s/if (every-pred map? :native)
     ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
     ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
     ;; queries).

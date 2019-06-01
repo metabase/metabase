@@ -15,7 +15,7 @@
 
 (defn- do-with-store-contents [f]
   (qp.store/with-store
-    (qp.store/store-database! (data/db))
+    (qp.store/fetch-and-store-database! (data/id))
     (f)
     (qp.test-util/store-contents)))
 

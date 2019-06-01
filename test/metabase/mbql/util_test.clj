@@ -447,54 +447,38 @@
 
 ;; can we add an order-by clause to a query?
 (expect
-  {:database 1, :type :query, :query {:source-table 1, :order-by [[:asc [:field-id 10]]]}}
-  (mbql.u/add-order-by-clause {:database 1, :type :query, :query {:source-table 1}} [:asc [:field-id 10]]))
+  {:source-table 1, :order-by [[:asc [:field-id 10]]]}
+  (mbql.u/add-order-by-clause {:source-table 1} [:asc [:field-id 10]]))
 
 (expect
-  {:database 1
-   :type     :query
-   :query    {:source-table 1
-              :order-by     [[:asc [:field-id 10]]
-                             [:asc [:field-id 20]]]}}
-  (mbql.u/add-order-by-clause {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc [:field-id 10]]]}}
+  {:source-table 1
+   :order-by     [[:asc [:field-id 10]]
+                  [:asc [:field-id 20]]]}
+  (mbql.u/add-order-by-clause {:source-table 1
+                               :order-by     [[:asc [:field-id 10]]]}
                               [:asc [:field-id 20]]))
 
 ;; duplicate clauses should get ignored
 (expect
-  {:database 1
-   :type     :query
-   :query    {:source-table 1
-              :order-by     [[:asc [:field-id 10]]]}}
-  (mbql.u/add-order-by-clause {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc [:field-id 10]]]}}
+  {:source-table 1
+   :order-by     [[:asc [:field-id 10]]]}
+  (mbql.u/add-order-by-clause {:source-table 1
+                               :order-by     [[:asc [:field-id 10]]]}
                               [:asc [:field-id 10]]))
 
 ;; as should clauses that reference the same Field
 (expect
-  {:database 1
-   :type     :query
-   :query    {:source-table 1
-              :order-by     [[:asc [:field-id 10]]]}}
-  (mbql.u/add-order-by-clause {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc [:field-id 10]]]}}
+  {:source-table 1
+   :order-by     [[:asc [:field-id 10]]]}
+  (mbql.u/add-order-by-clause {:source-table 1
+                               :order-by     [[:asc [:field-id 10]]]}
                               [:desc [:field-id 10]]))
 
 (expect
-  {:database 1
-   :type     :query
-   :query    {:source-table 1
-              :order-by     [[:asc [:field-id 10]]]}}
-  (mbql.u/add-order-by-clause {:database 1
-                               :type     :query
-                               :query    {:source-table 1
-                                          :order-by     [[:asc [:field-id 10]]]}}
+  {:source-table 1
+   :order-by     [[:asc [:field-id 10]]]}
+  (mbql.u/add-order-by-clause {:source-table 1
+                               :order-by     [[:asc [:field-id 10]]]}
                               [:asc [:datetime-field [:field-id 10] :day]]))
 
 ;; Check that `simplify-compound-filter` can apply de Morgan's law on `:not` over `:and`

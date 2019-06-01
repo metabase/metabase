@@ -117,7 +117,7 @@
   patterns with `:guard` where possible.
 
   You can also call `recur` inside result bodies, to use the same matching logic against a different value.
-  0
+
   ### `&match` and `&parents` anaphors
 
   For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
@@ -175,6 +175,8 @@
      (if-not (seq (get-in form# ks#))
        form#
        (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
+
+;; TODO - it would be useful to have something like a `replace-all` function as well
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -319,17 +321,17 @@
   [clause :- mbql.s/Field]
   (second (unwrap-field-clause clause)))
 
-(s/defn add-order-by-clause :- mbql.s/Query
-  "Add a new `:order-by` clause to an MBQL query. If the new order-by clause references a Field that is already being
-  used in another order-by clause, this function does nothing."
-  [outer-query :- mbql.s/Query, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ existing-field] (-> outer-query :query :order-by)]
+(s/defn add-order-by-clause :- mbql.s/MBQLQuery
+  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
+  already being used in another order-by clause, this function does nothing."
+  [inner-query :- mbql.s/MBQLQuery, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-fields (set (for [[_ existing-field] (:order-by inner-query)]
                                (maybe-unwrap-field-clause existing-field)))]
     (if (existing-fields (maybe-unwrap-field-clause field))
       ;; Field already referenced, nothing to do
-      outer-query
+      inner-query
       ;; otherwise add new clause at the end
-      (update-in outer-query [:query :order-by] (comp vec conj) order-by-clause))))
+      (update inner-query :order-by (comp vec conj) order-by-clause))))
 
 
 (s/defn add-datetime-units :- mbql.s/DateTimeValue

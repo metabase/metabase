@@ -82,12 +82,12 @@
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(s/defn ^:private add-implicit-fields :- mbql.s/Query
+(s/defn ^:private add-implicit-fields :- mbql.s/MBQLQuery
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
-  [{{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query} :query, :as query} :- mbql.s/Query]
+  [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query} :- mbql.s/MBQLQuery]
   (if-not (should-add-implicit-fields? inner-query)
-    query
+    inner-query
     (let [fields      (if source-table-id
                         (sorted-implicit-fields-for-table source-table-id)
                         (source-metadata->fields source-metadata))
@@ -101,40 +101,43 @@
         (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
                                      (:name (qp.store/table source-table-id)))))))
       ;; add the fields & expressions under the `:fields` clause
-      (assoc-in query [:query :fields] (vec (concat fields expressions))))))
+      (assoc inner-query :fields (vec (concat fields expressions))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private add-implicit-breakout-order-by :- mbql.s/Query
+(s/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
-  [{{breakouts :breakout} :query, :as query} :- mbql.s/Query]
+  [{breakouts :breakout, :as inner-query} :- mbql.s/MBQLQuery]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
-  (reduce mbql.u/add-order-by-clause query (for [breakout breakouts]
-                                             [:asc breakout])))
+  (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
+                                                   [:asc breakout])))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private add-implicit-mbql-clauses :- mbql.s/Query
-  [{{:keys [source-query]} :query, :as query} :- mbql.s/Query]
-  (cond-> (-> query add-implicit-breakout-order-by add-implicit-fields)
-    ;; if query has an MBQL source query recursively add implicit clauses to that too as needed
-    (and source-query (not (:native source-query)))
-    (update-in [:query :source-query] (fn [source-query]
-                                        (:query (add-implicit-mbql-clauses
-                                                 (assoc query :query source-query)))))))
+(s/defn add-implicit-mbql-clauses :- mbql.s/MBQLQuery
+  "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."
+  [{:keys [source-query], :as inner-query} :- mbql.s/MBQLQuery]
+  (let [mbql-source-query? (and source-query (not (:native source-query)))
+        inner-query        (-> inner-query add-implicit-breakout-order-by add-implicit-fields)]
+    (if mbql-source-query?
+      ;; if query has an MBQL source query recursively add implicit clauses to that too as needed
+      (update inner-query :source-query add-implicit-mbql-clauses)
+      ;; otherwise we're done
+      inner-query)))
 
 (defn- maybe-add-implicit-clauses
   [{query-type :type, :as query}]
-  (cond-> query
-    (= query-type :query) add-implicit-mbql-clauses))
+  (if (= query-type :native)
+    query
+    (update query :query add-implicit-mbql-clauses)))
 
 (defn add-implicit-clauses
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.

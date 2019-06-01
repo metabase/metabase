@@ -5,17 +5,13 @@
   (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (def ^:private Joins
   "Schema for a non-empty sequence of Joins. Unlike `mbql.s/Joins`, this does not enforce the constraint that all join
@@ -48,30 +44,13 @@
 
 (s/defn ^:private resolve-fields! :- (s/eq nil)
   [joins :- Joins]
-  (when-let [field-ids (->> (mbql.u/match joins [:field-id id] id)
-                            (remove qp.store/has-field?)
-                            seq)]
-    (doseq [field (db/select (into [Field] qp.store/field-columns-to-fetch) :id [:in field-ids])]
-      (qp.store/store-field! field))))
+  (qp.store/fetch-and-store-fields! (mbql.u/match joins [:field-id id] id)))
 
 (s/defn ^:private resolve-tables! :- (s/eq nil)
   "Add Tables referenced by `:joins` to the Query Processor Store. This is only really needed for implicit joins,
   because their Table references are added after `resolve-source-tables` runs."
   [joins :- Joins]
-  (when-let [source-table-ids (seq (remove (some-fn nil? qp.store/has-table?) (map :source-table joins)))]
-    (let [resolved-tables (db/select (into [Table] qp.store/table-columns-to-fetch)
-                            :id    [:in source-table-ids]
-                            :db_id (u/get-id (qp.store/database)))
-          resolved-ids (set (map :id resolved-tables))]
-      ;; make sure all IDs were resolved, otherwise someone is probably trying to Join a table that doesn't exist
-      (doseq [id source-table-ids
-              :when (not (resolved-ids id))]
-        (throw
-         (IllegalArgumentException.
-          (str (tru "Could not find Table {0} in Database {1}." id (u/get-id (qp.store/database)))))))
-      ;; cool, now store the Tables in the DB
-      (doseq [table resolved-tables]
-        (qp.store/store-table! table)))))
+  (qp.store/fetch-and-store-tables! (remove nil? (map :source-table joins))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -178,10 +157,8 @@
 
   TODO - this is no longer needed. `resolve-source-tables` middleware handles all table resolution."
   [{:keys [source-table], :as query}]
-  (u/prog1 query
-    (when-not (qp.store/has-table? source-table)
-      (qp.store/store-table! (db/select-one (into [Table] qp.store/table-columns-to-fetch)
-                               :id source-table, :db_id (u/get-id (qp.store/database)))))))
+  (qp.store/fetch-and-store-tables! [source-table])
+  query)
 
 (defn- resolve-joins-in-mbql-query-all-levels
   [{:keys [joins source-query source-table], :as query}]

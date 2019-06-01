@@ -120,7 +120,8 @@
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
-    _ (throw (Exception. (str (tru "Don't know how to get information about Field:") " " &match)))))
+    _ (throw (ex-info (str (tru "Don't know how to get information about Field:") " " &match)
+               {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
@@ -186,7 +187,7 @@
     {:name         ag-name
      :display_name ag-name}))
 
-(s/defn ^:private col-info-for-aggregation-clause
+(s/defn col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
   ; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ; `match` pattern for field clauses below

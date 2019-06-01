@@ -14,7 +14,7 @@
 (defn- add-implicit-joins [query]
   (driver/with-driver (tx/driver)
     (qp.store/with-store
-      (qp.store/store-database! (data/db))
+      (qp.store/fetch-and-store-database! (data/id))
       ((add-implicit-joins/add-implicit-joins identity) {:database (data/id)
                                                          :type     :query
                                                          :query    query}))))
