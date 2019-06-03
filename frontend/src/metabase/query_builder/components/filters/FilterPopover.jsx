@@ -95,7 +95,7 @@ export default class ViewFilters extends React.Component {
     const dimension = filter.dimension();
     if (filter.isSegmentFilter() || !dimension) {
       return (
-        <div className="full p1">
+        <div className="full">
           <FieldList
             className="text-purple"
             maxHeight={this.props.maxHeight}
@@ -119,19 +119,20 @@ export default class ViewFilters extends React.Component {
           }}
         >
           <FilterPopoverHeader
-            className="FilterPopover-header border-bottom text-medium p1"
+            className="p1 border-bottom border-medium text-medium"
             filter={filter}
             showFieldPicker={showFieldPicker}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
           />
           <FilterPopoverPicker
+            className="p1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}
           />
           <FilterPopoverFooter
-            className="FilterPopover-footer flex align-center p1 pl2"
+            className="p1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}

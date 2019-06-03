@@ -234,8 +234,8 @@ export const getRoutes = store => (
             />
           </Route>
           <Route path="notebook" component={QueryBuilder} />
-          <Route path="notebook/:cardId" component={QueryBuilder} />
           <Route path=":cardId" component={QueryBuilder} />
+          <Route path=":cardId/notebook" component={QueryBuilder} />
           <Route path=":cardId/entity" component={EntityPage} />
         </Route>
 

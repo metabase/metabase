@@ -46,6 +46,9 @@ export default class Query {
     }
   }
 
+  /**
+   * Returns a "clean" version of this query with invalid parts removed
+   */
   clean(): Query {
     return this;
   }
@@ -97,6 +100,10 @@ export default class Query {
     return this._metadata.databasesList();
   }
 
+  /**
+   * Table IDs this query needs metadata for to display correctly
+   * NOTE: we can't get table IDs for implicit joins (fk->) until the Metadata is loaded
+   */
   dependentTableIds(): TableId[] {
     return [];
   }

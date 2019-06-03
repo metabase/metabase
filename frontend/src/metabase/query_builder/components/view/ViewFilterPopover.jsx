@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import cx from "classnames";
 
 import FieldList from "../FieldList";
 
@@ -24,8 +25,9 @@ type State = {
   filter: ?Filter,
 };
 
-// NOTE: this is duplicated from FilterPopover. Consider merging them
-export default class ViewFilters extends Component {
+// NOTE: this is duplicated from FilterPopover but allows you to add filters on
+// the last two "stages" of a nested query, e.x. post aggregation filtering
+export default class ViewFilterPopover extends Component {
   props: Props;
   state: State;
 
@@ -65,9 +67,6 @@ export default class ViewFilters extends Component {
 
   handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
     const filter = this.state.filter || new Filter([], null, query);
-    if (filter.query() !== query) {
-      return;
-    }
     this.setState({
       filter: filter.setDimension(fieldRef, { useDefaultOperator: true }),
     });
@@ -90,6 +89,7 @@ export default class ViewFilters extends Component {
   }
 
   render() {
+    const { className, style } = this.props;
     const { filter } = this.state;
 
     if (!filter || (!filter.isSegmentFilter() && !filter.dimension())) {
@@ -98,7 +98,7 @@ export default class ViewFilters extends Component {
         ? [this.props.filter.query()]
         : this._queries();
       return (
-        <div className="full p1 scroll-y">
+        <div className={className} style={style}>
           {queries.map(query => (
             <FieldList
               className="text-purple"
@@ -116,19 +116,22 @@ export default class ViewFilters extends Component {
       );
     } else {
       return (
-        <div className="full p1">
+        <div className={className} style={style}>
           <FilterPopoverHeader
+            className="p1 border-bottom border-medium"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
             showFieldPicker
           />
           <FilterPopoverPicker
+            className="p1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}
           />
           <FilterPopoverFooter
+            className="p1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}

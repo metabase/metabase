@@ -431,7 +431,7 @@ export default class GuiQueryEditor extends React.Component {
       datasetQuery.database != null &&
       !_.findWhere(databases, { id: datasetQuery.database });
     if (readOnly) {
-      return <div className="border-bottom border-med" />;
+      return <div className="border-bottom border-medium" />;
     }
 
     return (

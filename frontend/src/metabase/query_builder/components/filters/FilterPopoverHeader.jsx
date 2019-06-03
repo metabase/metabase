@@ -1,4 +1,5 @@
 import React from "react";
+import cx from "classnames";
 
 import OperatorSelector from "../filters/OperatorSelector";
 import { formatField, singularize } from "metabase/lib/formatting";
@@ -25,7 +26,7 @@ export default function FilterPopoverHeader({
   };
 
   return showHeader ? (
-    <div className={className}>
+    <div className={cx(className, "flex align-center text-medium")}>
       {showFieldPicker && (
         <div className="flex py1">
           <span

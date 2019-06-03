@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
+import ViewFilterPopover from "metabase/query_builder/components/view/ViewFilterPopover";
 
 const QuestionFilters = ({
   question,
@@ -27,9 +27,11 @@ const QuestionFilters = ({
           </Button>
         }
       >
-        <FilterPopover
+        <ViewFilterPopover
           query={query}
-          onChangeFilter={newFilter => query.addFilter(newFilter).update()}
+          onChangeFilter={newFilter =>
+            newFilter.add().update(null, { run: true })
+          }
         />
       </PopoverWithTrigger>
     </FilterContainer>
@@ -53,7 +55,7 @@ const QuestionFilters = ({
                   size={12}
                   onClick={e => {
                     e.stopPropagation(); // prevent parent button from triggering
-                    filter.remove().update();
+                    filter.remove().update(null, { run: true });
                     onCloseFilter();
                   }}
                 />
@@ -61,10 +63,12 @@ const QuestionFilters = ({
             </Button>
           }
         >
-          <FilterPopover
+          <ViewFilterPopover
             query={query}
             filter={filter}
-            onChangeFilter={newFilter => filter.replace(newFilter).update()}
+            onChangeFilter={newFilter =>
+              newFilter.replace().update(null, { run: true })
+            }
           />
         </PopoverWithTrigger>
       ))}

@@ -25,9 +25,21 @@ type FilterOperator = {
 export default class Filter extends MBQLClause {
   /**
    * Replaces the aggregation in the parent query and returns the new StructuredQuery
+   * or replaces itself in the parent query if no {filter} agument is provided.
    */
-  replace(filter: Filter | FilterObject): StructuredQuery {
-    return this._query.updateFilter(this._index, filter);
+  replace(filter?: Filter | FilterObject): StructuredQuery {
+    if (arguments.length > 0) {
+      return this._query.updateFilter(this._index, filter);
+    } else {
+      return this._query.updateFilter(this._index, this);
+    }
+  }
+
+  /**
+   * Adds itself to the parent query and returns the new StructuredQuery
+   */
+  add(): StructuredQuery {
+    return this._query.addFilter(this);
   }
 
   /**

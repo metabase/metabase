@@ -435,7 +435,7 @@ export default class DataSelector extends Component {
       return this.props.triggerClasses;
     }
     return this.props.renderAsSelect
-      ? "border-med bg-white block no-decoration"
+      ? "border-medium bg-white block no-decoration"
       : "flex align-center";
   }
 
