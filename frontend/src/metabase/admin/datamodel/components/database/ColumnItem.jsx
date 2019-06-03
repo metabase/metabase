@@ -207,6 +207,19 @@ export class SpecialTypeAndTargetPicker extends Component {
     const includeSchema =
       _.uniq(idfields.map(idField => idField.table.schema)).length > 1;
 
+    idfields.sort((...fields) => {
+      const [f1, f2] = fields.map(f =>
+        f.displayName({ includeTable: true, includeSchema }),
+      );
+      if (f1 < f2) {
+        return -1;
+      }
+      if (f1 > f2) {
+        return 1;
+      }
+      return 0;
+    });
+
     return (
       <div>
         <Select
