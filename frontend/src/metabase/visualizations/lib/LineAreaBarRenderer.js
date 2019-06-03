@@ -10,6 +10,7 @@ import { lighten } from "metabase/lib/colors";
 
 import {
   computeSplit,
+  computeMaxDecimalsForValues,
   getFriendlyName,
   getXValues,
   colorShades,
@@ -184,30 +185,6 @@ function addDecimalsToPercentColumn(series, decimals) {
   return series.map(s => assocIn(s, ["data", "cols", 1, "decimals"], decimals));
 }
 
-// Figure out how many decimal places are needed to represent the smallest
-// percentages in the chart with two significant digits.
-function computeDecimalsForNormalizedData(datas, scaleFactors) {
-  // $FlowFixMe
-  const formatter = Intl.NumberFormat("en", {
-    style: "percent",
-    maximumSignificantDigits: 2,
-  });
-
-  let maxDecimalCount = 0;
-  for (const data of datas) {
-    for (const [d, m] of data) {
-      const scaledValue = m / scaleFactors[d];
-      const parts = formatter.formatToParts(scaledValue);
-      const part = parts.find(p => p.type === "fraction");
-      const decimalCount = part ? part.value.length : 0;
-      if (decimalCount > maxDecimalCount) {
-        maxDecimalCount = decimalCount;
-      }
-    }
-  }
-  return maxDecimalCount;
-}
-
 function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   props,
   datas,
@@ -227,12 +204,14 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
 
     props.series = addPercentSignsToDisplayNames(props.series);
 
-    try {
-      // Intl.NumberFormat isn't supported on all browsers.
-      // If that fails we fall back to formatting each value independently.
-      const decimals = computeDecimalsForNormalizedData(datas, scaleFactors);
-      props.series = addDecimalsToPercentColumn(props.series, decimals);
-    } catch (e) {}
+    const normalizedValues = datas.flatMap(data =>
+      data.map(([d, m]) => m / scaleFactors[d]),
+    );
+    const decimals = computeMaxDecimalsForValues(normalizedValues, {
+      style: "percent",
+      maximumSignificantDigits: 2,
+    });
+    props.series = addDecimalsToPercentColumn(props.series, decimals);
   }
 
   datas.map((data, i) =>
