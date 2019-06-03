@@ -34,6 +34,10 @@ export default class MBQLArrayClause extends Array {
     return this.replace(this).update(undefined, ...args);
   }
 
+  parent() {
+    return this.replace(this);
+  }
+
   /**
    * return the Metadata instance from the linked Query
    */
@@ -72,6 +76,10 @@ export class MBQLObjectClause {
    */
   update(...args: any) {
     return this.replace(this).update(undefined, ...args);
+  }
+
+  parent() {
+    return this.replace(this);
   }
 
   /**

@@ -5,7 +5,13 @@ import ClauseStep from "./ClauseStep";
 
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 
-export default function BreakoutStep({ color, query, isLastOpened, ...props }) {
+export default function BreakoutStep({
+  color,
+  query,
+  updateQuery,
+  isLastOpened,
+  ...props
+}) {
   return (
     <ClauseStep
       color={color}
@@ -17,13 +23,13 @@ export default function BreakoutStep({ color, query, isLastOpened, ...props }) {
           breakout={breakout}
           onChangeBreakout={newBreakout =>
             breakout
-              ? breakout.replace(newBreakout).update()
-              : query.addBreakout(newBreakout).update()
+              ? breakout.replace(newBreakout).update(updateQuery)
+              : query.addBreakout(newBreakout).update(updateQuery)
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={breakout => breakout.remove().update()}
+      onRemove={breakout => breakout.remove().update(updateQuery)}
     />
   );
 }

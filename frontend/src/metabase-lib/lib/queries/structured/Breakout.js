@@ -29,4 +29,9 @@ export default class Breakout extends MBQLClause {
     const dimension = this.dimension();
     return dimension && dimension.displayName();
   }
+
+  isValid(): boolean {
+    const query = this.query();
+    return !query || query.breakoutOptions(this).hasDimension(this.dimension());
+  }
 }

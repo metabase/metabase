@@ -149,7 +149,11 @@ export default class Filter extends MBQLClause {
     if (this.isFieldFilter()) {
       // has an operator name and dimension
       const dimension = this.dimension();
-      if (!this.operatorName() || !dimension) {
+      const query = this.query();
+      if (
+        !dimension ||
+        !(query && query.filterFieldOptions().hasDimension(dimension))
+      ) {
         return false;
       }
       const operator = this.operator();

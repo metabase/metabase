@@ -4,7 +4,13 @@ import Input from "metabase/components/Input";
 import Icon from "metabase/components/Icon";
 import { Flex } from "grid-styled";
 
-export default function LimitStep({ color, query, isLastOpened, ...props }) {
+export default function LimitStep({
+  color,
+  query,
+  updateQuery,
+  isLastOpened,
+  ...props
+}) {
   return (
     <Flex align="center">
       <Input
@@ -15,14 +21,14 @@ export default function LimitStep({ color, query, isLastOpened, ...props }) {
         onChange={e => {
           const limit = parseInt(e.target.value, 0);
           if (limit >= 1) {
-            query.updateLimit(limit).update();
+            query.updateLimit(limit).update(updateQuery);
           }
         }}
       />
       {query.limit() != null && (
         <Icon
           name="close"
-          onClick={() => query.clearLimit().update()}
+          onClick={() => query.clearLimit().update(updateQuery)}
           className="ml2 text-light text-medium-hover cursor-pointer"
         />
       )}

@@ -2,21 +2,15 @@
 import "metabase-lib/lib/Question";
 
 import {
-  question,
   ORDERS_TOTAL_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,
-  makeDatasetQuery,
+  makeStructuredQuery,
 } from "__support__/sample_dataset_fixture";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-function makeQuery(query) {
-  return new StructuredQuery(question, makeDatasetQuery(query));
-}
-
 const filter = ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 42];
-const q = makeQuery({ filter: filter });
+const q = makeStructuredQuery({ filter: filter });
 
 describe("StructuredQuery FilterWrapper", () => {
   it("should work as raw MBQL", () => {

@@ -2,32 +2,59 @@ import React from "react";
 
 import { Flex } from "grid-styled";
 import cx from "classnames";
+import _ from "underscore";
 
-import NotebookCell, { NotebookCellItem } from "../NotebookCell";
+import {
+  NotebookCell,
+  NotebookCellItem,
+  NotebookCellAdd,
+} from "../NotebookCell";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
 
-export default function JoinStep({ color, query, isLastOpened, ...props }) {
-  const joins = query.joins();
+export default function JoinStep({
+  color,
+  query,
+  updateQuery,
+  isLastOpened,
+  ...props
+}) {
+  let joins = query.joins();
+  if (joins.length === 0) {
+    joins = [new Join({ fields: "all" }, 0, query)];
+  }
+  const valid = _.all(joins, join => join.isValid());
   return (
-    <NotebookCell color={color}>
-      {joins.map((join, index) => (
-        <JoinClause key={index} color={color} join={join} />
-      ))}
-      {joins.length === 0 && (
-        <JoinClause
+    <NotebookCell color={color} flexWrap="nowrap">
+      <Flex flexDirection="column">
+        {joins.map((join, index) => (
+          <JoinClause
+            mb={index === joins.length - 1 ? 0 : 2}
+            key={index}
+            color={color}
+            join={join}
+            showRemove={joins.length > 1}
+            updateQuery={updateQuery}
+          />
+        ))}
+      </Flex>
+      {valid && (
+        <NotebookCellAdd
           color={color}
-          join={new Join({ fields: "all" }, 0, query)}
+          className="cursor-pointer ml-auto"
+          onClick={() => {
+            query.addJoin(new Join({ fields: "all" })).update(updateQuery);
+          }}
         />
       )}
     </NotebookCell>
   );
 }
 
-function JoinClause({ join, color }) {
+function JoinClause({ color, join, updateQuery, showRemove, ...props }) {
   const query = join.query();
   if (!query) {
     return null;
@@ -35,7 +62,7 @@ function JoinClause({ join, color }) {
   const table = join.table();
   const strategyOption = join.strategyOption();
   return (
-    <Flex align="center">
+    <Flex align="center" flex="1 1 auto" {...props}>
       <NotebookCellItem color={color} icon="table2">
         {query.table().displayName() || `Previous results`}
       </NotebookCellItem>
@@ -59,7 +86,10 @@ function JoinClause({ join, color }) {
           <JoinTypeSelect
             value={strategyOption && strategyOption.value}
             onChange={strategy => {
-              join.setStrategy(strategy).update();
+              join
+                .setStrategy(strategy)
+                .parent()
+                .update(updateQuery);
               onClose();
             }}
             options={join.strategyOptions()}
@@ -78,11 +108,18 @@ function JoinClause({ join, color }) {
         selectedDatabaseId={query.databaseId()}
         selectedTableId={join.tableId()}
         setSourceTableFn={tableId => {
-          join.setJoinTableId(tableId).update();
+          join
+            .setJoinTableId(tableId)
+            .parent()
+            .update(updateQuery);
         }}
         isInitiallyOpen={join.tableId() == null}
         triggerElement={
-          <NotebookCellItem color={color} icon="table2">
+          <NotebookCellItem
+            color={color}
+            icon="table2"
+            inactive={!join.table()}
+          >
             {join.table() ? join.table().displayName() : `Pick a Table...`}
           </NotebookCellItem>
         }
@@ -97,7 +134,12 @@ function JoinClause({ join, color }) {
             query={query}
             dimension={join.sourceDimension()}
             options={join.sourceDimensionOptions()}
-            onChange={fieldRef => join.setSourceDimension(fieldRef).update()}
+            onChange={fieldRef =>
+              join
+                .setSourceDimension(fieldRef)
+                .parent()
+                .update(updateQuery)
+            }
           />
 
           <span className="text-medium text-bold mr1">=</span>
@@ -107,9 +149,23 @@ function JoinClause({ join, color }) {
             query={query}
             dimension={join.joinDimension()}
             options={join.joinDimensionOptions()}
-            onChange={fieldRef => join.setJoinDimension(fieldRef).update()}
+            onChange={fieldRef =>
+              join
+                .setJoinDimension(fieldRef)
+                .parent()
+                .update(updateQuery)
+            }
           />
         </Flex>
+      )}
+
+      {showRemove && (
+        <Icon
+          name="close"
+          size={18}
+          className="cursor-pointer text-light text-medium-hover"
+          onClick={() => join.remove().update(updateQuery)}
+        />
       )}
     </Flex>
   );
@@ -143,7 +199,7 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
     >
       <Icon
         className={cx("mr1", { "text-brand": !selected })}
-        name="join_left_outer"
+        name={icon}
         size={24}
       />
       {name}
@@ -155,7 +211,11 @@ function JoinDimensionPicker({ dimension, onChange, options, query, color }) {
   return (
     <PopoverWithTrigger
       triggerElement={
-        <NotebookCellItem color={color} icon={dimension && dimension.icon()}>
+        <NotebookCellItem
+          color={color}
+          icon={dimension && dimension.icon()}
+          inactive={!dimension}
+        >
           {dimension ? dimension.displayName() : `Pick a column...`}
         </NotebookCellItem>
       }

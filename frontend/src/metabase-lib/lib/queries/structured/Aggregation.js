@@ -83,7 +83,23 @@ export default class Aggregation extends MBQLClause {
    * Predicate function to test if a given aggregation clause is fully formed
    */
   isValid(): boolean {
-    return AggregationClause_DEPRECATED.isValid(this);
+    if (!AggregationClause_DEPRECATED.isValid(this)) {
+      return false;
+    }
+    if (this.isStandard()) {
+      const dimension = this.dimension();
+      const aggregation = this.query()
+        .table()
+        .aggregation(this[0]);
+      return (
+        aggregation &&
+        (!aggregation.requiresField ||
+          this.query()
+            .aggregationFieldOptions(aggregation)
+            .hasDimension(dimension))
+      );
+    }
+    return true;
   }
 
   /**

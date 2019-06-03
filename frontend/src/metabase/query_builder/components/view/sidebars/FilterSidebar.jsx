@@ -14,11 +14,14 @@ const FilterSidebar = ({ question, index, onClose }) => {
         key={index}
         query={question.query()}
         filter={filter}
-        onChangeFilter={(newFilter, query) => {
+        onChangeFilter={newFilter => {
           if (filter) {
             filter.replace(newFilter).update(null, { run: true });
           } else {
-            query.addFilter(newFilter).update(null, { run: true });
+            newFilter
+              .query()
+              .addFilter(newFilter)
+              .update(null, { run: true });
           }
           onClose();
         }}

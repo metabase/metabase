@@ -28,7 +28,6 @@ import type {
 } from "metabase/meta/types/Card";
 import type {
   TableMetadata,
-  DimensionOptions,
   AggregationOption,
 } from "metabase/meta/types/Metadata";
 
@@ -38,6 +37,7 @@ import Dimension, {
   AggregationDimension,
   FieldLiteralDimension,
 } from "metabase-lib/lib/Dimension";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type Segment from "../metadata/Segment";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
@@ -297,18 +297,123 @@ export default class StructuredQuery extends AtomicQuery {
     return this.table();
   }
 
+  /**
+   * Removes invalid clauses from the query (and source-query, recursively)
+   */
   clean() {
-    const datasetQuery = this.datasetQuery();
-    if (datasetQuery.query) {
-      const query = Utils.copy(datasetQuery.query);
+    let query = this;
 
-      return this.setDatasetQuery({
-        ...datasetQuery,
-        query: Q_deprecated.cleanQuery(query),
-      });
-    } else {
-      return this;
+    // first clean the sourceQuery, if any, recursively
+    const sourceQuery = query.sourceQuery();
+    if (sourceQuery) {
+      query = query.setSourceQuery(sourceQuery.clean());
     }
+
+    query = query
+      .cleanJoins()
+      .cleanExpressions()
+      .cleanFilters()
+      .cleanAggregations()
+      .cleanBreakouts()
+      .cleanSorts()
+      .cleanLimit()
+      .cleanFields();
+
+    const newSourceQuery = query.sourceQuery();
+    if (newSourceQuery && (query.isEmpty() || !query.hasAnyClauses())) {
+      return newSourceQuery;
+    }
+
+    return query;
+  }
+
+  cleanJoins() {
+    return this._cleanClauseList("joins");
+  }
+
+  cleanExpressions() {
+    return this; // TODO
+  }
+
+  cleanFilters() {
+    return this._cleanClauseList("filters");
+  }
+
+  cleanAggregations() {
+    return this._cleanClauseList("aggregations");
+  }
+
+  cleanBreakouts() {
+    return this._cleanClauseList("breakouts");
+  }
+
+  cleanSorts() {
+    return this; // TODO
+  }
+
+  cleanLimit() {
+    return this; // TODO
+  }
+
+  cleanFields() {
+    return this; // TODO
+  }
+
+  _cleanClauseList(listName) {
+    let query = this;
+    for (let index = 0; index < query[listName]().length; index++) {
+      if (!query[listName]()[index].isValid()) {
+        query = query[listName]()[index].remove();
+        // since we're removing them in order we need to decrement index when we remove one
+        index -= 1;
+      }
+    }
+    return query;
+  }
+
+  hasAnyClauses() {
+    return (
+      this.hasJoins() ||
+      this.hasExpressions() ||
+      this.hasFilters() ||
+      this.hasAggregations() ||
+      this.hasBreakouts() ||
+      this.hasSorts() ||
+      this.hasLimit() ||
+      this.hasFields()
+    );
+  }
+
+  hasJoins() {
+    return this.joins().length > 0;
+  }
+
+  hasExpressions() {
+    return this.expressions().length > 0;
+  }
+
+  hasFilters() {
+    return this.filters().length > 0;
+  }
+
+  hasAggregations() {
+    return this.aggregations().length > 0;
+  }
+
+  hasBreakouts() {
+    return this.breakouts().length > 0;
+  }
+
+  hasSorts() {
+    return this.sorts().length > 0;
+  }
+
+  hasLimit() {
+    return this.limit() > 0;
+  }
+
+  hasFields() {
+    return this.fields().length > 0;
   }
 
   // JOINS
@@ -366,8 +471,9 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns the field options for the provided aggregation
    */
-  aggregationFieldOptions(agg): DimensionOptions {
-    const aggregation = this.table().aggregation(agg);
+  aggregationFieldOptions(agg: string | AggregationOption): DimensionOptions {
+    const aggregation =
+      typeof agg === "string" ? this.table().aggregation(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
         return aggregation.validFieldsFilters[0]([field]).length === 1;
@@ -380,7 +486,7 @@ export default class StructuredQuery extends AtomicQuery {
       //
       // A real solution would have a `dimensionOptions` method instead of `fieldOptions` which would
       // enable filtering based on dimension properties.
-      return {
+      return new DimensionOptions({
         ...fieldOptions,
         dimensions: _.uniq([
           ...this.expressionDimensions(),
@@ -388,9 +494,9 @@ export default class StructuredQuery extends AtomicQuery {
             d => !(d instanceof ExpressionDimension),
           ),
         ]),
-      };
+      });
     } else {
-      return { count: 0, fks: [], dimensions: [] };
+      return new DimensionOptions({ count: 0, fks: [], dimensions: [] });
     }
   }
 
@@ -534,6 +640,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s.
    */
+  @memoize
   filters(): Filter[] {
     return Q.getFilters(this.query()).map(
       (filter, index) => new FilterWrapper(filter, index, this),
@@ -649,7 +756,7 @@ export default class StructuredQuery extends AtomicQuery {
         }
       }
     }
-    return sortOptions;
+    return new DimensionOptions(sortOptions);
   }
   canAddSort(): boolean {
     const sorts = this.sorts();
@@ -728,7 +835,7 @@ export default class StructuredQuery extends AtomicQuery {
       return this.dimensionOptions(dimensionFilter);
     }
     // TODO: allow adding fields connected by broken out PKs?
-    return { count: 0, dimensions: [], fks: [] };
+    return new DimensionOptions({ count: 0, dimensions: [], fks: [] });
   }
 
   // DIMENSION OPTIONS
@@ -783,7 +890,7 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    return dimensionOptions;
+    return new DimensionOptions(dimensionOptions);
   }
 
   // FIELD OPTIONS
@@ -936,6 +1043,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * The (wrapped) source query, if any
    */
+  @memoize
   sourceQuery(): ?StructuredQuery {
     const sourceQuery = this.query()["source-query"];
     if (sourceQuery) {
@@ -950,6 +1058,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns the "first" of the nested queries, or this query it not nested
    */
+  @memoize
   rootQuery(): Query {
     let query = this;
     let next;
@@ -966,7 +1075,13 @@ export default class StructuredQuery extends AtomicQuery {
     return this.rootQuery().table();
   }
 
-  setSourceQuery(sourceQuery) {
+  setSourceQuery(sourceQuery: DatasetQuery | StructuredQuery): StructuredQuery {
+    if (sourceQuery instanceof StructuredQuery) {
+      if (this.sourceQuery() === sourceQuery) {
+        return this;
+      }
+      sourceQuery = sourceQuery.query();
+    }
     // TODO: if the source query is modified in ways that make the parent query invalid we should "clean" those clauses
     return this._updateQuery(query =>
       chain(query)

@@ -100,7 +100,7 @@ export type FieldOptions = {
 import Dimension from "metabase-lib/lib/Dimension";
 
 export type DimensionOptions = {
-  count: 0,
+  count: number,
   dimensions: Dimension[],
   fks: Array<{
     field: FieldMetadata,

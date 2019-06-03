@@ -1,6 +1,10 @@
 import React from "react";
 
-import NotebookCell, { NotebookCellItem } from "../NotebookCell";
+import {
+  NotebookCell,
+  NotebookCellItem,
+  NotebookCellAdd,
+} from "../NotebookCell";
 
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -40,16 +44,10 @@ export default function ClauseStep({
       ))}
       <PopoverWithTrigger
         triggerElement={
-          <NotebookCellItem
+          <NotebookCellAdd
             color={color}
-            inactive={items.length === 0 && initialAddText}
-          >
-            {items.length === 0 && initialAddText ? (
-              initialAddText
-            ) : (
-              <Icon name="add" className="text-white" />
-            )}
-          </NotebookCellItem>
+            initialAddText={items.length === 0 && initialAddText}
+          />
         }
         isInitiallyOpen={isLastOpened}
       >

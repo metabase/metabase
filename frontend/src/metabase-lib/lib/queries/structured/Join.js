@@ -65,11 +65,13 @@ export default class Join extends MBQLObjectClause {
   }
 
   setJoinTableId(tableId) {
-    return this.set({
-      ...this,
-      "source-query": undefined,
-      "source-table": tableId,
-    });
+    if (tableId !== this["source-table"]) {
+      return this.set({
+        ...this,
+        "source-query": undefined,
+        "source-table": tableId,
+      }).setJoinDimension(null);
+    }
   }
   setJoinQuery(query) {
     return this.set({
@@ -172,5 +174,9 @@ export default class Join extends MBQLObjectClause {
    */
   remove(): StructuredQuery {
     return this._query.removeJoin(this._index);
+  }
+
+  isValid(): boolean {
+    return !!(this.table() && this.sourceDimension() && this.joinDimension());
   }
 }

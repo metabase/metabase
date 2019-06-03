@@ -21,7 +21,7 @@ type Props = {
 };
 
 type State = {
-  filter: Filter,
+  filter: ?Filter,
 };
 
 // NOTE: this is duplicated from FilterPopover. Consider merging them
@@ -31,10 +31,8 @@ export default class ViewFilters extends Component {
 
   constructor(props: Props) {
     super(props);
-
     this.state = {
-      // $FlowFixMe
-      filter: new Filter(props.filter || [], null, props.query),
+      filter: props.filter instanceof Filter ? props.filter : null,
     };
   }
 
@@ -47,29 +45,30 @@ export default class ViewFilters extends Component {
   }
 
   handleCommit = () => {
-    this.handleCommitFilter(this.state.filter, this.state.query);
+    this.handleCommitFilter(this.state.filter);
   };
 
   handleCommitOnEnter = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.handleCommitFilter(this.state.filter, this.state.query);
+      this.handleCommitFilter(this.state.filter);
     }
   };
 
-  handleCommitFilter = (filter: FieldFilter, query) => {
-    if (filter.isValid()) {
-      this.props.onChangeFilter(filter, query);
+  handleCommitFilter = (filter: ?FieldFilter) => {
+    if (filter && filter.isValid()) {
+      this.props.onChangeFilter(filter);
       if (this.props.onClose) {
         this.props.onClose();
       }
     }
   };
 
-  handleFieldChange = (fieldRef: ConcreteField, query) => {
-    const { filter } = this.state;
-    filter._query = query;
+  handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
+    const filter = this.state.filter || new Filter([], null, query);
+    if (filter.query() !== query) {
+      return;
+    }
     this.setState({
-      query: query,
       filter: filter.setDimension(fieldRef, { useDefaultOperator: true }),
     });
   };
@@ -93,8 +92,8 @@ export default class ViewFilters extends Component {
   render() {
     const { filter } = this.state;
 
-    const dimension = filter.dimension();
-    if (filter.isSegmentFilter() || !dimension) {
+    if (!filter || (!filter.isSegmentFilter() && !filter.dimension())) {
+      const dimension = filter && filter.dimension();
       const queries = this.props.filter
         ? [this.props.filter.query()]
         : this._queries();

@@ -134,6 +134,7 @@ export default class View extends React.Component {
       ...this.props,
       onOpenAddFilter: this.handleOpenAddFilter,
       onOpenEditFilter: this.handleOpenEditFilter,
+      onCloseFilter: this.handleCloseFilter,
       onOpenAddAggregation: this.handleOpenAddAggregation,
       onOpenEditBreakout: this.handleOpenEditBreakout,
       onOpenChartSettings: this.handleOpenChartSettings,

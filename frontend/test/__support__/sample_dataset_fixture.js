@@ -3,6 +3,7 @@ import { Provider } from "react-redux";
 import { getStore } from "metabase/store";
 
 import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
 import _ from "underscore";
@@ -1552,6 +1553,10 @@ export function makeDatasetQuery(query = {}) {
       ...query,
     },
   };
+}
+
+export function makeStructuredQuery(query) {
+  return new StructuredQuery(question, makeDatasetQuery(query));
 }
 
 export const orders_past_300_days_segment = {

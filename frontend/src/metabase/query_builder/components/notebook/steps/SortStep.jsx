@@ -4,7 +4,13 @@ import ClauseStep from "./ClauseStep";
 import SortWidget from "metabase/query_builder/components/SortWidget";
 import FieldName from "metabase/query_builder/components/FieldName";
 
-export default function SortStep({ color, query, isLastOpened, ...props }) {
+export default function SortStep({
+  color,
+  query,
+  updateQuery,
+  isLastOpened,
+  ...props
+}) {
   return (
     <ClauseStep
       color={color}
@@ -16,13 +22,13 @@ export default function SortStep({ color, query, isLastOpened, ...props }) {
           sort={sort}
           onChangeSort={newSort =>
             sort
-              ? query.updateSort(index, newSort).update()
-              : query.addSort(newSort).update()
+              ? query.updateSort(index, newSort).updateupdateQuery()
+              : query.addSort(newSort).update(updateQuery)
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={(sort, index) => query.removeSort(index).update()}
+      onRemove={(sort, index) => query.removeSort(index).update(updateQuery)}
     />
   );
 }

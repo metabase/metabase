@@ -8,6 +8,7 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 export default function AggregateStep({
   color,
   query,
+  updateQuery,
   isLastOpened,
   ...props
 }) {
@@ -22,13 +23,13 @@ export default function AggregateStep({
           aggregation={aggregation}
           onChangeAggregation={newAggregation =>
             aggregation
-              ? aggregation.replace(newAggregation).update()
-              : query.addAggregation(newAggregation).update()
+              ? aggregation.replace(newAggregation).update(updateQuery)
+              : query.addAggregation(newAggregation).update(updateQuery)
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={aggregation => aggregation.remove().update()}
+      onRemove={aggregation => aggregation.remove().update(updateQuery)}
     />
   );
 }

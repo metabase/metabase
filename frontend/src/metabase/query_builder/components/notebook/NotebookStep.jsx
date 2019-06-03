@@ -2,10 +2,12 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
+import _ from "underscore";
 
 import colors, { lighten } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 import { Box, Flex } from "grid-styled";
 
@@ -73,16 +75,16 @@ const STEP_UI = {
     color: colors["text-medium"],
     icon: "smartscalar",
     component: SortStep,
+    compact: true,
   },
   limit: {
     title: t`Limit`,
     color: colors["text-medium"],
     icon: "bolt",
     component: LimitStep,
+    compact: true,
   },
 };
-
-// const DEFAULT_MAX_WIDTH = 860;
 
 export default class NotebookStep extends React.Component {
   state = {
@@ -90,13 +92,24 @@ export default class NotebookStep extends React.Component {
   };
 
   render() {
-    const { step, openStep, isLastStep, isLastOpened } = this.props;
+    const {
+      step,
+      openStep,
+      isLastStep,
+      isLastOpened,
+      updateQuery,
+    } = this.props;
     const { showPreview } = this.state;
 
     const { title, color, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
     const canPreview = step.previewQuery && step.previewQuery.canRun();
+    const showPreviewButton = !showPreview && canPreview;
+
+    const largeActionButtons =
+      isLastStep &&
+      _.any(step.actions, action => !STEP_UI[action.type].compact);
 
     const actions = [];
     actions.push(
@@ -106,43 +119,56 @@ export default class NotebookStep extends React.Component {
           <ActionButton
             mr={isLastStep ? 2 : 1}
             mt={isLastStep ? 2 : null}
-            large={isLastStep}
+            large={largeActionButtons}
             {...STEP_UI[action.type] || {}}
-            onClick={() => action.action(this.props)}
+            onClick={() => action.action({ query: step.query, openStep })}
           />
         ),
       })),
     );
-    const showPreviewButton = !showPreview && canPreview;
 
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
+    const onRemove = step.step.revert
+      ? () => {
+          step.step.revert(step.query).update(updateQuery);
+        }
+      : null;
+
     return (
-      <Box mb={2} pb={2} className="border-row-divider">
-        {title && (
-          <Box mb={1} className="text-bold" style={{ color }}>
+      <Box mb={2} pb={2} className="border-bottom">
+        {(title || onRemove) && (
+          <Flex mb={1} width={[8 / 12]} className="text-bold" style={{ color }}>
             {title}
-          </Box>
+            {onRemove && (
+              <Icon
+                name="close"
+                className="ml-auto cursor-pointer text-light text-medium-hover"
+                tooltip={t`Remove`}
+                onClick={onRemove}
+              />
+            )}
+          </Flex>
         )}
 
         {NotebookStepComponent && (
           <Flex align="center">
-            <Box width={[8/12]}>
+            <Box width={[8 / 12]}>
               <NotebookStepComponent
                 color={color}
                 query={step.query}
+                updateQuery={updateQuery}
                 isLastOpened={isLastOpened}
               />
             </Box>
-            <Box width={[1/12]}>
+            <Box width={[1 / 12]}>
               <ActionButton
                 ml={2}
-                className={
-                  !showPreviewButton ? "hidden disabled": null
-                }
+                className={!showPreviewButton ? "hidden disabled" : null}
                 icon="right"
                 title={t`Preview`}
+                color={colors["text-medium"]}
                 onClick={() => this.setState({ showPreview: true })}
               />
             </Box>

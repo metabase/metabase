@@ -7,6 +7,7 @@ import ExpressionWidget from "metabase/query_builder/components/expressions/Expr
 export default function ExpressionStep({
   color,
   query,
+  updateQuery,
   isLastOpened,
   ...props
 }) {
@@ -22,13 +23,17 @@ export default function ExpressionStep({
           expression={expression}
           onChangeExpression={(newName, newExpression) =>
             expression
-              ? query.updateExpression(newName, newExpression, name).update()
-              : query.addExpression(newName, newExpression).update()
+              ? query
+                  .updateExpression(newName, newExpression, name)
+                  .update(updateQuery)
+              : query.addExpression(newName, newExpression).update(updateQuery)
           }
         />
       )}
       isLastOpened={isLastOpened}
-      onRemove={([name, expression]) => query.removeExpression(name).update()}
+      onRemove={([name, expression]) =>
+        query.removeExpression(name).update(updateQuery)
+      }
     />
   );
 }
