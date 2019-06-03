@@ -4,7 +4,6 @@ import cx from "classnames";
 
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial";
 
-import GuiQueryEditor from "../GuiQueryEditor";
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
@@ -20,10 +19,6 @@ import ViewSidebar from "./ViewSidebar";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-
-import FilterSidebar from "./sidebars/FilterSidebar";
-import AggregationSidebar from "./sidebars/AggregationSidebar";
-import BreakoutSidebar from "./sidebars/BreakoutSidebar";
 
 import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
@@ -165,27 +160,7 @@ export default class View extends React.Component {
         : null;
 
     const leftSideBar =
-      isStructured && (isEditingFilterIndex != null || isAddingFilter) ? (
-        <FilterSidebar
-          question={question}
-          index={isEditingFilterIndex}
-          onClose={this.handleCloseFilter}
-        />
-      ) : isStructured &&
-        (isEditingAggregationIndex != null || isAddingAggregation) ? (
-        <AggregationSidebar
-          question={question}
-          index={isEditingAggregationIndex}
-          onClose={this.handleCloseAggregation}
-        />
-      ) : isStructured &&
-        (isEditingBreakoutIndex != null || isAddingBreakout) ? (
-        <BreakoutSidebar
-          question={question}
-          index={isEditingBreakoutIndex}
-          onClose={this.handleCloseBreakout}
-        />
-      ) : isShowingChartSettingsSidebar ? (
+      isStructured && isShowingChartSettingsSidebar ? (
         <ChartSettingsSidebar
           {...propsWithExtras}
           onClose={() =>

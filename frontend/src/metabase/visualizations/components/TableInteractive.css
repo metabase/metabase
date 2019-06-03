@@ -116,7 +116,7 @@
   border-radius: 99px;
   min-width: 35px;
   text-align: center;
-  color: var(--color-text-medium);
+  color: var(--color-brand);
 }
 
 .TableInteractive-ID.TableInteractive-cellWrapper:hover,
