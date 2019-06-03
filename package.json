@@ -87,6 +87,7 @@
     "z-index": "0.0.1"
   },
   "devDependencies": {
+    "@babel/standalone": "^7.4.5",
     "@slack/client": "^3.5.4",
     "@testing-library/react": "^8.0.1",
     "babel-cli": "^6.11.4",

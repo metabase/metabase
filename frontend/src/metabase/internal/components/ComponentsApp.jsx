@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import { Link, Route } from "react-router";
 
 import { slugify } from "metabase/lib/formatting";
+import cx from "classnames";
 
 // $FlowFixMe: react-virtualized ignored
 import reactElementToJSXString from "react-element-to-jsx-string";
@@ -12,16 +13,23 @@ import COMPONENTS from "../lib/components-webpack";
 
 import AceEditor from "metabase/components/TextEditor";
 import CopyButton from "metabase/components/CopyButton";
+import Icon from "metabase/components/Icon";
 
 const Section = ({ title, children }) => (
   <div className="mb2">
-    <h3 className="my2">{title}</h3>
+    {title && <h3 className="my2">{title}</h3>}
     {children}
   </div>
 );
 
-const getComponentName = component =>
-  component && (component.displayName || getComponentName(component));
+function getComponentName(component) {
+  return (
+    (component && (component.displayName || component.name)) || "[Unknown]"
+  );
+}
+function getComponentSlug(component) {
+  return slugify(getComponentName(component));
+}
 
 export default class ComponentsApp extends Component {
   static routes: ?[React$Element<Route>];
@@ -39,13 +47,14 @@ export default class ComponentsApp extends Component {
           <ul className="py2">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
-                !componentName ||
-                componentName === slugify(getComponentName(component)),
+                component &&
+                (!componentName ||
+                  componentName === getComponentSlug(component)),
             ).map(({ component, description, examples }) => (
               <li>
                 <a
                   className="py1 block link h3 text-bold"
-                  href={`/_internal/components#${getComponentName(component)}`}
+                  href={`/_internal/components#${getComponentSlug(component)}`}
                 >
                   {getComponentName(component)}
                 </a>
@@ -54,43 +63,45 @@ export default class ComponentsApp extends Component {
           </ul>
         </nav>
         <div className="bg-light flex-full bg-white" style={{ flex: "66.66%" }}>
-          <div className="p4">
+          <div className="py4">
             {COMPONENTS.filter(
               ({ component, description, examples }) =>
-                !componentName ||
-                componentName === slugify(getComponentName(component)),
+                !componentName || componentName === getComponentSlug(component),
             ).map(({ component, description, examples }, index) => (
-              <div id={getComponentName(component)} key={index}>
+              <div
+                id={getComponentSlug(component)}
+                key={index}
+                className="border-bottom mb4 pb3 px4"
+              >
                 <h2>
                   <Link
-                    to={`_internal/components/${slugify(
-                      getComponentName(component),
-                    )}`}
+                    to={`_internal/components/${getComponentSlug(component)}`}
                     className="no-decoration"
                   >
                     {getComponentName(component)}
                   </Link>
                 </h2>
                 {description && <p className="my2">{description}</p>}
-                {component.propTypes && (
-                  <Section title="Props">
-                    <div className="border-left border-right border-bottom text-code">
-                      {Object.keys(component.propTypes).map(prop => (
-                        <div>
-                          {prop}{" "}
-                          {component.defaultProps &&
-                          component.defaultProps[prop] !== undefined
-                            ? "(default: " +
-                              JSON.stringify(component.defaultProps[prop]) +
-                              ")"
-                            : ""}
-                        </div>
-                      ))}
-                    </div>
-                  </Section>
-                )}
+                {componentName === getComponentSlug(component) &&
+                  component.propTypes && (
+                    <Section title="Props">
+                      <div className="border-left border-right border-bottom text-code">
+                        {Object.keys(component.propTypes).map(prop => (
+                          <div>
+                            {prop}{" "}
+                            {component.defaultProps &&
+                            component.defaultProps[prop] !== undefined
+                              ? "(default: " +
+                                JSON.stringify(component.defaultProps[prop]) +
+                                ")"
+                              : ""}
+                          </div>
+                        ))}
+                      </div>
+                    </Section>
+                  )}
                 {examples && (
-                  <Section title="Examples">
+                  <Section>
                     {Object.entries(examples)
                       .filter(
                         ([name, element]) =>
@@ -100,8 +111,8 @@ export default class ComponentsApp extends Component {
                         <div className="my2">
                           <h4 className="my1">
                             <Link
-                              to={`_internal/components/${slugify(
-                                getComponentName(component),
+                              to={`_internal/components/${getComponentSlug(
+                                component,
                               )}/${slugify(name)}`}
                               className="no-decoration"
                             >
@@ -112,22 +123,7 @@ export default class ComponentsApp extends Component {
                             <div className="p2 bordered rounded flex align-center flex-full">
                               <div className="full">{element}</div>
                             </div>
-                            {showExampleCode && (
-                              <div className="relative">
-                                <AceEditor
-                                  value={reactElementToJSXString(element)}
-                                  mode="ace/mode/jsx"
-                                  theme="ace/theme/metabase"
-                                  readOnly
-                                />
-                                <div className="absolute top right text-brand-hover cursor-pointer z2">
-                                  <CopyButton
-                                    className="p1"
-                                    value={reactElementToJSXString(element)}
-                                  />
-                                </div>
-                              </div>
-                            )}
+                            <SourcePane element={element} />
                           </div>
                         </div>
                       ))}
@@ -137,6 +133,68 @@ export default class ComponentsApp extends Component {
             ))}
           </div>
         </div>
+      </div>
+    );
+  }
+}
+
+class SourcePane extends React.Component {
+  state = {
+    isOpen: false,
+  };
+  render() {
+    const { element } = this.props;
+    const { isOpen } = this.state;
+    const source = reactElementToJSXString(element, {
+      showFunctions: true,
+      showDefaultProps: false,
+    });
+    const scratchUrl = "/_internal/scratch#" + btoa(source);
+    return (
+      <div
+        className={cx("relative", {
+          "border-left border-right border-bottom": isOpen,
+        })}
+      >
+        {isOpen && (
+          <AceEditor
+            value={source}
+            mode="ace/mode/jsx"
+            theme="ace/theme/metabase"
+            readOnly
+          />
+        )}
+        {isOpen ? (
+          <div className="absolute top right z2 flex align-center p1 text-medium">
+            <CopyButton
+              className="ml1 text-brand-hover cursor-pointer"
+              value={source}
+            />
+            <Link to={scratchUrl}>
+              <Icon
+                name="pencil"
+                className="ml1 text-brand-hover cursor-pointer"
+              />
+            </Link>
+            <Icon
+              name="close"
+              className="ml1 text-brand-hover cursor-pointer"
+              onClick={() => this.setState({ isOpen: false })}
+            />
+          </div>
+        ) : (
+          <div className="p1 flex align-ceneter justify-end">
+            <Link className="link ml1" to={scratchUrl}>
+              Open in Scratch
+            </Link>
+            <Link
+              className="link ml1"
+              onClick={() => this.setState({ isOpen: true })}
+            >
+              View Source
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
