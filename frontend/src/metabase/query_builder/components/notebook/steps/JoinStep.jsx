@@ -69,12 +69,13 @@ class JoinClause extends React.Component {
     if (!query) {
       return null;
     }
-    const table = join.table();
+    const parentTable = join.parentTable();
+    const joinedTable = join.joinedTable();
     const strategyOption = join.strategyOption();
     return (
       <Flex align="center" flex="1 1 auto" {...props}>
         <NotebookCellItem color={color} icon="table2">
-          {query.table().displayName() || `Previous results`}
+          {parentTable.displayName() || `Previous results`}
         </NotebookCellItem>
 
         <PopoverWithTrigger
@@ -116,50 +117,48 @@ class JoinClause extends React.Component {
               .filter(db => db.is_saved_questions),
           ]}
           selectedDatabaseId={query.databaseId()}
-          selectedTableId={join.tableId()}
+          selectedTableId={join.joinSourceTableId()}
           setSourceTableFn={tableId => {
-            join
-              .setJoinTableId(tableId)
-              .parent()
-              .update(updateQuery);
-            if (!join.sourceDimension()) {
-              // _sourceDimensionPicker won't be rendered until next update
+            const newJoin = join.setJoinSourceTableId(tableId);
+            newJoin.parent().update(updateQuery);
+            // _parentDimensionPicker won't be rendered until next update
+            if (!newJoin.parentDimension()) {
               setTimeout(() => {
-                this._sourceDimensionPicker.open();
+                this._parentDimensionPicker.open();
               });
             }
           }}
-          isInitiallyOpen={join.tableId() == null}
+          isInitiallyOpen={join.joinSourceTableId() == null}
           triggerElement={
             <NotebookCellItem
               color={color}
               icon="table2"
-              inactive={!join.table()}
+              inactive={!joinedTable}
             >
-              {join.table() ? join.table().displayName() : `Pick a Table...`}
+              {joinedTable ? joinedTable.displayName() : `Pick a Table...`}
             </NotebookCellItem>
           }
         />
 
-        {table && (
+        {joinedTable && (
           <Flex align="center">
             <span className="text-medium text-bold ml1 mr2">where</span>
 
             <JoinDimensionPicker
               color={color}
               query={query}
-              dimension={join.sourceDimension()}
-              options={join.sourceDimensionOptions()}
+              dimension={join.parentDimension()}
+              options={join.parentDimensionOptions()}
               onChange={fieldRef => {
                 join
-                  .setSourceDimension(fieldRef)
+                  .setParentDimension(fieldRef)
                   .parent()
                   .update(updateQuery);
                 if (!join.joinDimension()) {
                   this._joinDimensionPicker.open();
                 }
               }}
-              ref={ref => (this._sourceDimensionPicker = ref)}
+              ref={ref => (this._parentDimensionPicker = ref)}
             />
 
             <span className="text-medium text-bold mr1">=</span>
