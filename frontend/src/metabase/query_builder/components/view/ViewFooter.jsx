@@ -123,13 +123,12 @@ const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
   return (
     // wrap in a span since we want to be able to click anywhere to toggle
     <span
-      className="cursor-pointer"
+      className="text-brand-hover cursor-pointer"
       onClick={() => onShowTable(!isShowingTable)}
     >
       <IconToggle
         icons={["table", vizIcon]}
         value={isShowingTable ? "table" : vizIcon}
-        onChange={value => onShowTable(value === "table")}
       />
     </span>
   );
@@ -151,7 +150,7 @@ const IconToggle = ({ className, icons, value, onChange }) => (
           "text-brand": value === icon,
           "text-brand-hover cursor-pointer": value !== icon && onChange,
         })}
-        onClick={value !== icon ? () => onChange(icon) : null}
+        onClick={onChange && value !== icon ? () => onChange(icon) : null}
       />
     ))}
   </span>
