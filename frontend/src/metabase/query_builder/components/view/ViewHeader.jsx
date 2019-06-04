@@ -150,7 +150,8 @@ export class ViewSubHeader extends React.Component {
     } = this.props;
 
     const isFiltersExpanded =
-      this.state.isFiltersExpanded && questionHasFilters(question);
+      questionHasFilters(question) &&
+      (this.state.isFiltersExpanded || !question.isSaved());
 
     const left = [];
     const middle = [];
