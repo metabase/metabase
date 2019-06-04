@@ -7,8 +7,8 @@ import Query from "metabase/lib/query";
 
 export default class MetricItem extends Component {
   static propTypes = {
-    onRetire: PropTypes.func.isRequired,
     metric: PropTypes.object.isRequired,
+    onRetire: PropTypes.func.isRequired,
     tableMetadata: PropTypes.object.isRequired,
   };
 
