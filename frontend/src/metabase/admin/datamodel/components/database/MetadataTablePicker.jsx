@@ -4,8 +4,11 @@ import PropTypes from "prop-types";
 import MetadataTableList from "./MetadataTableList.jsx";
 import MetadataSchemaList from "./MetadataSchemaList.jsx";
 
+import Tables from "metabase/entities/tables";
+
 import { titleize, humanize } from "metabase/lib/formatting";
 
+@Tables.loadList()
 export default class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
@@ -19,7 +22,7 @@ export default class MetadataTablePicker extends Component {
 
   static propTypes = {
     tableId: PropTypes.number,
-    tables: PropTypes.array.isRequired,
+    databaseId: PropTypes.number,
     selectTable: PropTypes.func.isRequired,
   };
 
@@ -27,8 +30,8 @@ export default class MetadataTablePicker extends Component {
     this.componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
-    const { tables } = newProps;
+  componentWillReceiveProps({ tables: allTables, databaseId, tableId }) {
+    const tables = allTables.filter(({ db_id }) => db_id === databaseId);
     let schemas = {};
     let selectedSchema;
     for (let table of tables) {
@@ -38,7 +41,7 @@ export default class MetadataTablePicker extends Component {
         tables: [],
       };
       schemas[name].tables.push(table);
-      if (table.id === newProps.tableId) {
+      if (table.id === tableId) {
         selectedSchema = schemas[name];
       }
     }
