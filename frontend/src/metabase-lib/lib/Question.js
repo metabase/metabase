@@ -25,7 +25,7 @@ import {
   distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
-  guessVisualization
+  guessVisualization,
 } from "metabase/modes/lib/actions";
 
 import _ from "underscore";
@@ -259,9 +259,9 @@ export default class Question {
   }
 
   setDisplayAutomatically(): Question {
-    const cardCopy = MetabaseUtils.copy(this.card())
-    guessVisualization(cardCopy, this.tableMetadata(), this.display())
-    return this.setCard(cardCopy)
+    const cardCopy = MetabaseUtils.copy(this.card());
+    guessVisualization(cardCopy, this.tableMetadata(), this.display());
+    return this.setCard(cardCopy);
   }
 
   // DEPRECATED: use settings
@@ -439,6 +439,10 @@ export default class Question {
 
   id(): number {
     return this._card && this._card.id;
+  }
+
+  description(): ?string {
+    return this._card && this._card.description;
   }
 
   isSaved(): boolean {

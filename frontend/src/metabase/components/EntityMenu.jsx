@@ -63,7 +63,7 @@ class EntityMenu extends Component {
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["right"]}
+          horizontalAttachments={["right", "left"]}
           targetOffsetY={0}
         >
           {/* Note: @kdoh 10/12/17

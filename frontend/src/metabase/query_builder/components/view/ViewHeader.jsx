@@ -4,9 +4,10 @@ import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 
-import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
-
+import Icon from "metabase/components/Icon";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
+
+import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
 import QuestionFilters, { questionHasFilters } from "./QuestionFilters";
 import QuestionSummaries from "./QuestionSummaries";
@@ -38,18 +39,23 @@ export const ViewTitleHeader = ({
   setQueryBuilderMode,
 }) => {
   const isShowingNotebook = queryBuilderMode === "notebook";
+  const description = question.description();
 
   return (
     <ViewSection className={className} style={style}>
       {question.isSaved() ? (
         <div>
           <div className="flex align-center mb1">
-            <ViewHeading>{question.displayName()}</ViewHeading>
-            <QuestionEntityMenu
-              className="ml1"
-              question={question}
-              onOpenModal={onOpenModal}
-            />
+            <ViewHeading className="mr1">{question.displayName()}</ViewHeading>
+            {description && (
+              <Icon
+                name="info"
+                className="text-light mr1"
+                size={18}
+                tooltip={description}
+              />
+            )}
+            <QuestionEntityMenu question={question} onOpenModal={onOpenModal} />
           </div>
           <ViewSubHeading className="flex align-center">
             <CollectionBadge
