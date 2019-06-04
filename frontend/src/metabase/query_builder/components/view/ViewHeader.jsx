@@ -50,7 +50,7 @@ export const ViewTitleHeader = ({
             {description && (
               <Icon
                 name="info"
-                className="text-light mr1"
+                className="text-light mx1"
                 size={18}
                 tooltip={description}
               />

@@ -139,7 +139,11 @@ export default class QueryModals extends React.Component {
       </Modal>
     ) : modal === "edit" ? (
       <Modal onClose={onCloseModal}>
-        <EditQuestionInfoModal question={question} onClose={onCloseModal} />
+        <EditQuestionInfoModal
+          question={question}
+          onClose={onCloseModal}
+          onSave={card => this.props.onSave(card, false)}
+        />
       </Modal>
     ) : null;
   }
