@@ -13129,9 +13129,9 @@ trough@^1.0.0:
   integrity sha1-qf2LA5Swro//guBjOgo2zK1bX4Y=
 
 ttag@^1.7.8:
-  version "1.7.8"
-  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.8.tgz#b79ba43b5cd5dbf8fc92705dc1662f5ad1bce45c"
-  integrity sha512-ow2in6smg9bSO9NG9e6mSdcQDv4/UNt+C88C/NkPrG7FhSbe2ILR+zhVL5Wpn47ruA7xy5+pJ3vI7SHogCl7Hw==
+  version "1.7.15"
+  resolved "https://registry.yarnpkg.com/ttag/-/ttag-1.7.15.tgz#e0a97283071bc945b1cde09a7cd3b82a0d0921a6"
+  integrity sha512-2DKhWZ1Qg2Yn0FHsB21Ov5ymBdaxlTeiDu7bBO6r/ziCW993OxaJyW6MrKhD4zCOCP4P5W295dGPSfReQ1WiBg==
   dependencies:
     dedent "^0.7.0"
     plural-forms "0.3.3"
