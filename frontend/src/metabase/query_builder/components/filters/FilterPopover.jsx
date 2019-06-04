@@ -337,13 +337,13 @@ export default class FilterPopover extends Component {
           style={{
             minWidth: 300,
             // $FlowFixMe
-            maxWidth: dimension.field().isDate() ? 700 : 500,
+            maxWidth: dimension.field().isDate() ? 600 : 500,
           }}
         >
           {showHeader && (
             <div className="FilterPopover-header border-bottom text-medium p1 flex align-center">
               {showFieldPicker && (
-                <div className="flex py1">
+                <div className="flex flex-wrap py1">
                   <span
                     className="cursor-pointer text-purple-hover transition-color flex align-center"
                     onClick={this.clearField}

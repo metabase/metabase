@@ -54,7 +54,7 @@ export default class Header extends Component {
       } else {
         titleAndDescription = (
           <div className="flex align-baseline">
-            <h1 className="Header-title-name my1 text-wrap">{name}</h1>{" "}
+            <h1 className="Header-title-name my1 text-wrap mr1">{name}</h1>{" "}
             {breadcrumb}
           </div>
         );
