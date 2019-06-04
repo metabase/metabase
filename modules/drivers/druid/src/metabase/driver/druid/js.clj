@@ -1,7 +1,7 @@
 (ns metabase.driver.druid.js
   "Util fns for creating Javascript functions."
   (:refer-clojure :exclude [+ - * / or])
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as str]))
 
 (defn- ->js [x]
   {:pre [(not (coll? x))]}
@@ -20,7 +20,7 @@
 
      (argslist [:x :y]) -> \"(x, y)\""
   ^String [args]
-  (parens (s/join ", " (map ->js args))))
+  (parens (str/join ", " (map ->js args))))
 
 (defn return
   "Generate a javascript `return` statement. STATEMENT-PARTS are combined directly into a single string.
@@ -40,8 +40,8 @@
 (defn- arithmetic-operator
   "Interpose artihmetic OPERATOR between ARGS, and wrap the entire expression in parens."
   ^String [operator & args]
-  (parens (s/join (str " " (name operator) " ")
-                  (map ->js args))))
+  (parens (str/join (str " " (name operator) " ")
+                    (map ->js args))))
 
 (def ^{:arglists '([& args])} ^String + "Interpose `+` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :+))
 (def ^{:arglists '([& args])} ^String - "Interpose `-` between ARGS, and wrap the entire expression in parens." (partial arithmetic-operator :-))
@@ -65,4 +65,4 @@
 
      (or :x :y) -> \"(x || y)\""
   ^String [& args]
-  (parens (s/join " || " (map ->js args))))
+  (parens (str/join " || " (map ->js args))))

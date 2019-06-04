@@ -50,10 +50,10 @@
     (nil? (s/check schema actual)))
   (expected-message [_ _ _ _]
     (str "Result did not match schema:\n"
-         (u/pprint-to-str (s/explain schema))))
+         (u/pprint-to-str 'green (s/explain schema))))
   (actual-message [_ actual _ _]
     (str "Was:\n"
-         (u/pprint-to-str actual)))
+         (u/pprint-to-str 'red actual)))
   (message [_ actual _ _]
     (u/pprint-to-str (s/check schema actual))))
 

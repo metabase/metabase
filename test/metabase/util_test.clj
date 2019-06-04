@@ -210,7 +210,7 @@
   (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))
 
 
-;; `xor`
+;; `xor` & `xor-pred`
 (expect false (u/xor false false))
 (expect true  (u/xor false true))
 (expect true  (u/xor true  false))
@@ -225,3 +225,12 @@
 (expect false (u/xor false true  true))
 (expect false (u/xor true  false true))
 (expect false (u/xor true  true  true))
+
+(expect false  (boolean ((u/xor-pred :a :b :c) {})))
+(expect true   (boolean ((u/xor-pred :a :b :c) {:a 1})))
+(expect true   (boolean ((u/xor-pred :a :b :c) {:b 1})))
+(expect true   (boolean ((u/xor-pred :a :b :c) {:c 1})))
+(expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :b 1})))
+(expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :c 1})))
+(expect false  (boolean ((u/xor-pred :a :b :c) {:b 1, :c 1})))
+(expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :b 1, :c 1})))

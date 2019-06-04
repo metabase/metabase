@@ -8,7 +8,6 @@
              [sync :as sync]
              [util :as u]]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata.fields.sync-instances :as sync-fields.sync-instances]
@@ -165,12 +164,12 @@
                                                          :id field-id)
                                                        (update :fk_target_field_id #(db/exists? Field :id %)))))
         {before-step-info :step-info,
-         before-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))
+         before-task-history :task-history} (sut/sync-database! "sync-fks" (data/db))
         before-special-type-exists? (get-special-type-and-fk-exists?)
         _ (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
         after-special-type-exists? (get-special-type-and-fk-exists?)
         {after-step-info :step-info,
-         after-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))]
+         after-task-history :task-history} (sut/sync-database! "sync-fks" (data/db))]
     [
      (sut/only-step-keys before-step-info)
      (:task_details before-task-history)

@@ -175,7 +175,7 @@
                           ;; need to initialize the store sicne we're calling `execute-query` directly instead of
                           ;; going thru normal QP pipeline
                           (qp.store/with-store
-                            (qp.store/store-database! database)
+                            (qp.store/fetch-and-store-database! (u/get-id database))
                             (->
                              (driver/execute-query driver
                                (merge settings {:database (u/get-id database), :native {:query native-query}}))
