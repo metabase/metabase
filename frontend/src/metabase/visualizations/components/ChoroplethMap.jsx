@@ -1,7 +1,7 @@
 /* eslint-disable no-color-literals */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
@@ -78,7 +78,11 @@ export default class ChoroplethMap extends Component {
     return cols.length > 1 && isString(cols[0]);
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (cols.length < 2) {
       throw new MinColumnsError(2, cols.length);
     }
@@ -146,16 +150,19 @@ export default class ChoroplethMap extends Component {
     let { geoJson, minimalBounds } = this.state;
 
     // special case builtin maps to use legacy choropleth map
-    let projection;
+    let projection, projectionFrame;
+    // projectionFrame is the lng/lat of the top left and bottom right corners
     if (settings["map.region"] === "us_states") {
       projection = d3.geo.albersUsa();
+      projectionFrame = [[-135.0, 46.6], [-69.1, 21.7]];
     } else if (settings["map.region"] === "world_countries") {
       projection = d3.geo.mercator();
+      projectionFrame = [[-170, 78], [180, -60]];
     } else {
       projection = null;
     }
 
-    // const nameProperty = details.region_name;
+    const nameProperty = details.region_name;
     const keyProperty = details.region_key;
 
     if (!geoJson) {
@@ -166,7 +173,11 @@ export default class ChoroplethMap extends Component {
       );
     }
 
-    const [{ data: { cols, rows } }] = series;
+    const [
+      {
+        data: { cols, rows },
+      },
+    ] = series;
     const dimensionIndex = _.findIndex(
       cols,
       col => col.name === settings["map.dimension"],
@@ -180,7 +191,7 @@ export default class ChoroplethMap extends Component {
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
 
-    // const getFeatureName = feature => String(feature.properties[nameProperty]);
+    const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
 
@@ -191,12 +202,13 @@ export default class ChoroplethMap extends Component {
 
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
-    const getFeatureClickObject = row => ({
+    const getFeatureClickObject = (row, feature) => ({
       value: row[metricIndex],
       column: cols[metricIndex],
       dimensions: [
         {
-          value: row[dimensionIndex],
+          value:
+            feature != null ? getFeatureName(feature) : row[dimensionIndex],
           column: cols[dimensionIndex],
         },
       ],
@@ -223,7 +235,7 @@ export default class ChoroplethMap extends Component {
         const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
         if (row && onHoverChange) {
           onHoverChange({
-            ...getFeatureClickObject(row),
+            ...getFeatureClickObject(row, hover.feature),
             event: hover.event,
           });
         } else if (onHoverChange) {
@@ -239,7 +251,11 @@ export default class ChoroplethMap extends Component {
       domain.push(getRowValue(row));
     }
 
-    const heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+    const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+    const heatMapColors =
+      domain.length < _heatMapColors.length
+        ? _heatMapColors.slice(_heatMapColors.length - domain.length)
+        : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
@@ -264,10 +280,8 @@ export default class ChoroplethMap extends Component {
 
     let aspectRatio;
     if (projection) {
-      let translate = projection.translate();
-      let width = translate[0] * 2;
-      let height = translate[1] * 2;
-      aspectRatio = width / height;
+      const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
+      aspectRatio = (maxX - minX) / (maxY - minY);
     } else {
       aspectRatio =
         (minimalBounds.getEast() - minimalBounds.getWest()) /
@@ -292,6 +306,7 @@ export default class ChoroplethMap extends Component {
             onHoverFeature={onHoverFeature}
             onClickFeature={onClickFeature}
             projection={projection}
+            projectionFrame={projectionFrame}
           />
         ) : (
           <LeafletChoropleth

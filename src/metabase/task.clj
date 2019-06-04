@@ -6,7 +6,11 @@
   The most appropriate way to initialize tasks in any `metabase.task.*` namespace is to implement the `task-init`
   function which accepts zero arguments. This function is dynamically resolved and called exactly once when the
   application goes through normal startup procedures. Inside this function you can do any work needed and add your
-  task to the scheduler as usual via `schedule-task!`."
+  task to the scheduler as usual via `schedule-task!`.
+
+  ## Quartz JavaDoc
+
+  Find the JavaDoc for Quartz here: http://www.quartz-scheduler.org/api/2.3.0/index.html"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -18,7 +22,7 @@
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [org.quartz JobDetail JobKey Scheduler Trigger TriggerKey]))
+  (:import [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger TriggerKey]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SCHEDULER INSTANCE                                               |
@@ -27,6 +31,7 @@
 (defonce ^:private quartz-scheduler
   (atom nil))
 
+;; TODO - maybe we should make this a delay instead!
 (defn- scheduler
   "Fetch the instance of our Quartz scheduler. Call this function rather than dereffing the atom directly because there
   are a few places (e.g., in tests) where we swap the instance out."
@@ -53,9 +58,11 @@
   {:arglists '([job-name-string])}
   keyword)
 
-(defn- find-and-load-tasks!
+(defn- find-and-load-task-namespaces!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
+  ;; make sure current thread is using canonical MB classloader
+  (classloader/the-classloader)
   ;; first, load all the task namespaces
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
@@ -63,8 +70,11 @@
       (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))
       (require ns-symb)
       (catch Throwable e
-        (log/error e (trs "Error loading tasks namespace {0}" ns-symb)))))
-  ;; next, call all implementations of `init!`
+        (log/error e (trs "Error loading tasks namespace {0}" ns-symb))))))
+
+(defn- init-tasks!
+  "Call all implementations of `init!`"
+  []
   (doseq [[k f] (methods init!)]
     (try
       ;; don't bother logging namespace for now, maybe in the future if there's tasks of the same name in multiple
@@ -97,33 +107,8 @@
 ;;; |                                       Quartz Scheduler Class Load Helper                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Custom `ClassLoadHelper` implementation that makes sure to require the namespaces that tasks live in (to make sure
-;; record types are loaded) and that uses our canonical ClassLoader.
-
-(defn- task-class-name->namespace-str
-  "Determine the namespace we need to load for one of our tasks.
-
-    (task-class-name->namespace-str \"metabase.task.upgrade_checks.CheckForNewVersions\")
-    ;; -> \"metabase.task.upgrade-checks\""
-  [class-name]
-  (-> class-name
-      (str/replace \_ \-)
-      (str/replace #"\.\w+$" "")))
-
-(defn- require-task-namespace
-  "Since Metabase tasks are defined in Clojure-land we need to make sure we `require` the namespaces where they are
-  defined before we try to load the task classes."
-  [class-name]
-  ;; call `the-classloader` to force side-effects of making it the current thread context classloader
-  (classloader/the-classloader)
-  ;; only try to `require` metabase.task classes; don't do this for other stuff that gets shuffled thru here like
-  ;; Quartz classes
-  (when (str/starts-with? class-name "metabase.task.")
-    (require (symbol (task-class-name->namespace-str class-name)))))
-
 (defn- load-class ^Class [^String class-name]
-  (require-task-namespace class-name)
-  (.loadClass (classloader/the-classloader) class-name))
+  (Class/forName class-name true (classloader/the-classloader)))
 
 (defrecord ^:private ClassLoadHelper []
   org.quartz.spi.ClassLoadHelper
@@ -154,12 +139,14 @@
 (defn start-scheduler!
   "Start our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing."
   []
+  (classloader/the-classloader)
   (when-not @quartz-scheduler
     (set-jdbc-backend-properties!)
     (let [new-scheduler (qs/initialize)]
       (when (compare-and-set! quartz-scheduler nil new-scheduler)
+        (find-and-load-task-namespaces!)
         (qs/start new-scheduler)
-        (find-and-load-tasks!)))))
+        (init-tasks!)))))
 
 (defn stop-scheduler!
   "Stop our Quartzite scheduler and shutdown any running executions."
@@ -173,6 +160,16 @@
 ;;; |                                           SCHEDULING/DELETING TASKS                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(s/defn ^:private reschedule-task!
+  [job :- JobDetail, new-trigger :- Trigger]
+  (try
+    (when-let [scheduler (scheduler)]
+      (when-let [[^Trigger old-trigger] (seq (qs/get-triggers-of-job scheduler (.getKey job)))]
+        (log/debug (trs "Rescheduling job {0}" (-> job .getKey .getName)))
+        (.rescheduleJob scheduler (.getKey old-trigger) new-trigger)))
+    (catch Throwable e
+      (log/error e (trs "Error rescheduling job")))))
+
 (s/defn schedule-task!
   "Add a given job and trigger to our scheduler."
   [job :- JobDetail, trigger :- Trigger]
@@ -180,7 +177,8 @@
     (try
       (qs/schedule scheduler job trigger)
       (catch org.quartz.ObjectAlreadyExistsException _
-        (log/debug (trs "Job already exists:") (-> job .getKey .getName))))))
+        (log/debug (trs "Job already exists:") (-> job .getKey .getName))
+        (reschedule-task! job trigger)))))
 
 (s/defn delete-task!
   "delete a task from the scheduler"
@@ -220,7 +218,12 @@
    :durable?                           (.isDurable job-detail)
    :requests-recovery?                 (.requestsRecovery job-detail)})
 
-(defn- trigger->info [^Trigger trigger]
+(defmulti ^:private trigger->info
+  {:arglists '([trigger])}
+  class)
+
+(defmethod trigger->info Trigger
+  [^Trigger trigger]
   {:description        (.getDescription trigger)
    :end-time           (.getEndTime trigger)
    :final-fire-time    (.getFinalFireTime trigger)
@@ -231,6 +234,19 @@
    :priority           (.getPriority trigger)
    :start-time         (.getStartTime trigger)
    :may-fire-again?    (.mayFireAgain trigger)})
+
+(defmethod trigger->info CronTrigger
+  [^CronTrigger trigger]
+  (merge
+   ((get-method trigger->info Trigger) trigger)
+   {:misfire-instruction
+    ;; not 100% sure why `case` doesn't work here...
+    (condp = (.getMisfireInstruction trigger)
+      CronTrigger/MISFIRE_INSTRUCTION_IGNORE_MISFIRE_POLICY "IGNORE_MISFIRE_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_SMART_POLICY          "SMART_POLICY"
+      CronTrigger/MISFIRE_INSTRUCTION_FIRE_ONCE_NOW         "FIRE_ONCE_NOW"
+      CronTrigger/MISFIRE_INSTRUCTION_DO_NOTHING            "DO_NOTHING"
+      (format "UNKNOWN: %d" (.getMisfireInstruction trigger)))}))
 
 (defn scheduler-info
   "Return raw data about all the scheduler and scheduled tasks (i.e. Jobs and Triggers). Primarily for debugging

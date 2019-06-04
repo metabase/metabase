@@ -10,10 +10,11 @@ export default class MetricItem extends Component {
     metric: PropTypes.object.isRequired,
     tableMetadata: PropTypes.object.isRequired,
     onRetire: PropTypes.func.isRequired,
+    tableMetadata: PropTypes.object.isRequired,
   };
 
   render() {
-    let { metric, tableMetadata } = this.props;
+    let { metric, onRetire, tableMetadata } = this.props;
 
     let description = Query.generateQueryDescription(
       tableMetadata,
@@ -29,7 +30,7 @@ export default class MetricItem extends Component {
           <ObjectActionSelect
             object={metric}
             objectType="metric"
-            onRetire={this.props.onRetire}
+            onRetire={onRetire}
           />
         </td>
       </tr>

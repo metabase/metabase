@@ -1,5 +1,6 @@
 import {
   cardHasBecomeDirty,
+  computeMaxDecimalsForValues,
   getCardAfterVisualizationClick,
   getColumnCardinality,
   getXValues,
@@ -227,6 +228,28 @@ describe("metabase/visualization/lib/utils", () => {
     });
     it("should return display_name for built-in aggregations", () => {
       expect(getFriendlyName({ name: "avg", display_name: "Foo" })).toBe("Foo");
+    });
+  });
+
+  describe("computeMaxDecimalsForValues", () => {
+    it("should correctly compute max decimals for normal numbers", () => {
+      const options = { maximumSignificantDigits: 2 };
+      const testCases = [[[123, 321], 0], [[1.2, 321], 1], [[1, 0.123], 2]];
+      testCases.forEach(([values, decimals]) =>
+        expect(computeMaxDecimalsForValues(values, options)).toBe(decimals),
+      );
+    });
+
+    it("should correctly compute max decimals for percentages", () => {
+      const options = { maximumSignificantDigits: 2, style: "percent" };
+      const testCases = [
+        [[0.12, 0.123], 0],
+        [[12, 0.012], 1],
+        [[0.9999, 0.0001], 2],
+      ];
+      testCases.forEach(([values, decimals]) =>
+        expect(computeMaxDecimalsForValues(values, options)).toBe(decimals),
+      );
     });
   });
 });

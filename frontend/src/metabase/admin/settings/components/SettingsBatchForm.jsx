@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
@@ -243,17 +243,16 @@ export default class SettingsBatchForm extends Component {
           <Breadcrumbs crumbs={this.props.breadcrumbs} className="ml2 mb3" />
         )}
 
-        {layout.map(
-          (section, index) =>
-            section.collapse ? (
-              <CollapsibleSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </CollapsibleSection>
-            ) : (
-              <StandardSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </StandardSection>
-            ),
+        {layout.map((section, index) =>
+          section.collapse ? (
+            <CollapsibleSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </CollapsibleSection>
+          ) : (
+            <StandardSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </StandardSection>
+          ),
         )}
 
         <div className="m2 mb4">

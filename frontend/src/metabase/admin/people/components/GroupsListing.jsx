@@ -12,7 +12,7 @@ import {
 } from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";

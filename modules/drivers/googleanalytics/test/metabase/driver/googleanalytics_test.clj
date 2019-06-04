@@ -87,6 +87,31 @@
   (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
   (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
 
+;; tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)
+(expect
+  (ga-query {:start-date "2016-11-09", :end-date "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2005-01-01", :end-date "2016-10-01"})
+  (mbql->native {:query {:filter [:< (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2005-01-01", :end-date "2016-10-02"})
+  (mbql->native {:query {:filter [:<= (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2016-09-10", :end-date "2016-10-01"})
+  (mbql->native {:query {:filter [:and
+                                  [:< (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]
+                                  [:> (ga-date-field :day) [:absolute-datetime #inst "2016-09-09" :day]]]}}))
+
+(expect
+  (ga-query {:start-date "2016-09-10", :end-date "2016-10-02"})
+  (mbql->native {:query {:filter [:and
+                                  [:<= (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]
+                                  [:> (ga-date-field :day) [:absolute-datetime #inst "2016-09-09" :day]]]}}))
+
 ;; relative date -- last month
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month -1))
@@ -117,6 +142,23 @@
              :end-date   (du/format-date "yyyy-01-01")})
   (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))
 
+;; a range starting from 30 days ago excluding that first day until today
+(expect
+  (ga-query {:start-date "29daysAgo"
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))
+
+(expect
+  (ga-query {:start-date "30daysAgo"
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))
+
+;; last year excluding the first day of the range
+(expect
+  (ga-query {:start-date (du/format-date "yyyy-MM-dd" (du/relative-date :day 1 (du/date-trunc :year (du/relative-date :year -1))))
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))
+
 ;; limit
 (expect
   (ga-query {:max-results 25})
@@ -127,10 +169,10 @@
 
 (defn- do-with-some-fields [f]
   (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
-                  Table    [table              {:name "98765432"}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text"}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text"}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date"}]]
+                  Table    [table              {:name "98765432", :db_id (u/get-id db)}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/get-id table)}]]
     (f {:db                 db
         :table              table
         :event-action-field event-action-field
@@ -215,6 +257,7 @@
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
+;; TODO - Saw random test failure
 (expect
   {:row_count 1
    :status    :completed

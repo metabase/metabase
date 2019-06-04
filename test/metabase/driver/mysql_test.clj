@@ -1,5 +1,6 @@
 (ns metabase.driver.mysql-test
   (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [expectations :refer :all]
             [honeysql.core :as hsql]
             [metabase
@@ -16,7 +17,7 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-driver]]
-             [interface :refer [def-database-definition]]]
+             [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -24,22 +25,36 @@
 
 ;; MySQL allows 0000-00-00 dates, but JDBC does not; make sure that MySQL is converting them to NULL when returning
 ;; them like we asked
-(def-database-definition ^:private ^:const all-zero-dates
-  [["exciting-moments-in-history"
-     [{:field-name "moment", :base-type :type/DateTime}]
-     [["0000-00-00"]]]])
-
 (expect-with-driver :mysql
   [[1 nil]]
-  (-> (data/dataset metabase.driver.mysql-test/all-zero-dates
-        (data/run-mbql-query exciting-moments-in-history))
-      qpt/rows))
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (tx/dbdef->connection-details :mysql :server nil))]
+    (try
+      ;; Create the DB
+      (doseq [sql ["DROP DATABASE IF EXISTS all_zero_dates;"
+                   "CREATE DATABASE all_zero_dates;"]]
+        (jdbc/execute! spec [sql]))
+      ;; Create Table & add data
+      (let [details (tx/dbdef->connection-details :mysql :db {:database-name "all_zero_dates"})
+            spec    (-> (sql-jdbc.conn/connection-details->spec :mysql details)
+                        ;; allow inserting dates where value is '0000-00-00' -- this is disallowed by default on newer
+                        ;; versions of MySQL, but we still want to test that we can handle it correctly for older ones
+                        (assoc :sessionVariables "sql_mode='ALLOW_INVALID_DATES'"))]
+        (doseq [sql ["CREATE TABLE `exciting-moments-in-history` (`id` integer, `moment` timestamp);"
+                     "INSERT INTO `exciting-moments-in-history` (`id`, `moment`) VALUES (1, '0000-00-00');"]]
+          (jdbc/execute! spec [sql]))
+        ;; create & sync MB DB
+        (tt/with-temp Database [database {:engine "mysql", :details details}]
+          (sync/sync-database! database)
+          (data/with-db database
+            ;; run the query
+            (-> (data/run-mbql-query exciting-moments-in-history)
+                qpt/rows)))))))
 
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
-(def-database-definition ^:private ^:const tiny-int-ones
+(tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
       {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
@@ -56,7 +71,7 @@
   #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
+  (data/with-db-for-dataset [db tiny-int-ones]
     (db->fields db)))
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
@@ -64,7 +79,7 @@
   #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
+  (data/with-db-for-dataset [db tiny-int-ones]
     (tt/with-temp Database [db {:engine "mysql"
                                 :details (assoc (:details db)
                                            :additional-options "tinyInt1isBit=false")}]
@@ -86,8 +101,8 @@
     (tu/db-timezone-id)))
 
 
-(def before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
-(def after-daylight-savings (du/str->date-time "2018-03-12 10:00:00" du/utc))
+(def ^:private before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
+(def ^:private after-daylight-savings  (du/str->date-time "2018-03-12 10:00:00" du/utc))
 
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
 (expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
@@ -156,10 +171,10 @@
       (qpt/first-row
         (du/with-effective-timezone (Database (data/id))
           (qp/process-query
-            {:database (data/id),
-             :type :native,
-             :settings {:report-timezone "UTC"}
-             :native     {:query "SELECT cast({{date}} as date)"
+            {:database   (data/id)
+             :type       :native
+             :settings   {:report-timezone "UTC"}
+             :native     {:query         "SELECT cast({{date}} as date)"
                           :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
              :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
 
@@ -173,7 +188,6 @@
    :classname            "org.mariadb.jdbc.Driver"
    :subprotocol          "mysql"
    :zeroDateTimeBehavior "convertToNull"
-   :sessionVariables     "sql_mode='ALLOW_INVALID_DATES'"
    :user                 "cam"
    :subname              "//localhost:3306/my_db"
    :useCompression       true

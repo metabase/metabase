@@ -8,7 +8,8 @@
             [metabase.util.i18n :refer [trs]]
             [puppetlabs.i18n.core :as puppet-i18n]
             [ring.middleware.gzip :as ring.gzip])
-  (:import [java.io File InputStream]))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           [java.io File InputStream]))
 
 (defn- add-content-type* [request response]
   (update-in
@@ -44,7 +45,10 @@
     (when-not (public-settings/site-url)
       (when-let [site-url (or origin host)]
         (log/info (trs "Setting Metabase site URL to {0}" site-url))
-        (public-settings/site-url site-url)))))
+        (try
+          (public-settings/site-url site-url)
+          (catch Throwable e
+            (log/warn e (trs "Failed to set site-url"))))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
@@ -97,4 +101,22 @@
     (handler
      request
      (comp respond (partial wrap-gzip* request))
+     raise)))
+
+
+;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
+
+(defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
+  (cond-> response
+    (instance? ManyToManyChannel body)
+    (assoc-in [:headers "X-Accel-Buffering"] "no")))
+
+(defn disable-streaming-buffering
+  "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and
+  the entire purpose is defeated. See https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache"
+  [handler]
+  (fn [request respond raise]
+    (handler
+     request
+     (comp respond maybe-add-disable-buffering-header)
      raise)))

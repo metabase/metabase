@@ -33,17 +33,17 @@
 ;;                        ↓                          ↓
 ;;          tables->permissions-path-set   source-card-read-perms
 
-(defn- query->source-and-join-tables
+(defn- query->source-and-joins
   "Return a sequence of all Tables (as TableInstance maps, or IDs) referenced by `query`."
-  [{:keys [source-table join-tables source-query native], :as query}]
+  [{:keys [source-table joins source-query native], :as query}]
   (cond
     ;; if we come across a native query just put a placeholder (`::native`) there so we know we need to add native
     ;; permissions to the complete set below.
     native       [::native]
     ;; if we have a source-query just recur until we hit either the native source or the MBQL source
     source-query (recur source-query)
-    ;; for root MBQL queries just return source-table + join-tables
-    :else        (cons source-table (map :table-id join-tables))))
+    ;; for root MBQL queries just return source-table + joins
+    :else        (cons source-table (map :source-table joins))))
 
 (def ^:private PermsOptions
   "Map of options to be passed to the permissions checking functions."
@@ -109,15 +109,15 @@
       ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
       (let [{:keys [query database]} (cond-> query
                                        (not already-preprocessed?) preprocess-query)]
-        (tables->permissions-path-set database (query->source-and-join-tables query))))
+        (tables->permissions-path-set database (query->source-and-joins query))))
     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
     ;; that means no one will ever get to see it (except for superusers who get to see everything)
     (catch Throwable e
       (when throw-exceptions?
         (throw e))
-      (log/warn (tru "Error calculating permissions for query: {0}" (.getMessage e))
-                "\n"
-                (u/pprint-to-str (u/filtered-stacktrace e)))
+      (log/error (tru "Error calculating permissions for query: {0}" (.getMessage e))
+                 "\n"
+                 (u/pprint-to-str (u/filtered-stacktrace e)))
       #{"/db/0/"})))                    ; DB 0 will never exist
 
 (s/defn ^:private perms-set* :- #{perms/ObjectPath}

@@ -45,7 +45,9 @@ export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(
 
 export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
   return async function(dispatch, getState) {
-    let { setup: { allowTracking, databaseDetails, userDetails } } = getState();
+    let {
+      setup: { allowTracking, databaseDetails, userDetails },
+    } = getState();
 
     try {
       // NOTE: this request will return a Set-Cookie header for the session

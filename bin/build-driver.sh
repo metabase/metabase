@@ -48,23 +48,26 @@ fi
 # Calculate a checksum of all the driver source files. If we've already built the driver and the checksum is the same
 # there's no need to build the driver a second time
 calculate_checksum() {
-    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | cat | $md5_command
+    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | xargs cat | $md5_command
 }
 
 # Check whether the saved checksum for the driver sources from the last build is the same as the current one. If so,
 # we don't need to build again.
 checksum_is_same() {
-    result=""
     if [ -f "$checksum_file" ]; then
         old_checksum=`cat "$checksum_file"`
-        if [ "$(calculate_checksum)" == "$old_checksum" ]; then
+        current_checksum=`calculate_checksum`
+        echo "Checksum of source files for previous build: $old_checksum"
+        echo "Current checksum of source files: $current_checksum"
+        if [  "$current_checksum" == "$old_checksum" ]; then
             # Make sure the target driver JAR actually exists as well!
             if [ -f "$target_jar" ]; then
-                result="$driver driver source unchanged since last build. Skipping re-build."
+                echo "$driver driver source unchanged since last build. Skipping re-build."
+                return 0
             fi
         fi
     fi
-    echo "$result"
+    return 1
 }
 
 ######################################## BUILDING THE DRIVER ########################################
@@ -228,9 +231,11 @@ mkdir -p resources/modules
 if [ $# -eq 2 ]; then
     $2
 # Build driver if checksum has changed
-elif [ ! "$(checksum_is_same)" ]; then
+elif ! checksum_is_same; then
+    echo "Checksum has changed."
     build_driver || retry_clean_build
 # Either way, always copy the target uberjar to the dest location
 else
+    echo "Checksum is unchanged."
     (copy_target_to_dest && verify_build) || retry_clean_build
 fi

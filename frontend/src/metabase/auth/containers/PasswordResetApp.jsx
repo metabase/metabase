@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import cx from "classnames";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -30,7 +30,10 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PasswordResetApp extends Component {
   constructor(props, context) {
     super(props, context);

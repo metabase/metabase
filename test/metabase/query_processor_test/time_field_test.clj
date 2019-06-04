@@ -87,10 +87,7 @@
     [[1 "Plato Yeshua" "08:30:00.000Z"]
      [4 "Simcha Yan" "08:30:00.000Z"]])
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (time-query {:filter (vec (cons
-                               :between
-                               (cons
-                                $last_login_time
-                                (if (qpt/supports-report-timezone? driver/*driver*)
-                                  ["08:00:00" "09:00:00"]
-                                  ["08:00:00-00:00" "09:00:00-00:00"]))))})))
+    (time-query {:filter (into [:between $last_login_time]
+                               (if (qpt/supports-report-timezone? driver/*driver*)
+                                 ["08:00:00" "09:00:00"]
+                                 ["08:00:00-00:00" "09:00:00-00:00"]))})))

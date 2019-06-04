@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models

@@ -7,7 +7,7 @@ import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 

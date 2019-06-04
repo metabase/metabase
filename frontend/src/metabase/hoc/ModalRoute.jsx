@@ -5,13 +5,18 @@ import { connect } from "react-redux";
 import Modal from "metabase/components/Modal";
 
 const ModalWithRoute = (ComposedModal, modalProps = {}) =>
-  connect(null, { onChangeLocation: push })(
+  connect(
+    null,
+    { onChangeLocation: push },
+  )(
     class extends Component {
       static displayName = `ModalWithRoute[${ComposedModal.displayName ||
         ComposedModal.name}]`;
 
       onClose = () => {
-        const { location: { pathname } } = this.props;
+        const {
+          location: { pathname },
+        } = this.props;
         const urlWithoutLastSegment = pathname.substring(
           0,
           pathname.lastIndexOf("/"),

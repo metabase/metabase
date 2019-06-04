@@ -16,7 +16,8 @@
              [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import org.joda.time.DateTime))
 
 (declare notify-database-updated)
 
@@ -101,7 +102,10 @@
       (locking require-lock
         (log/debug
          (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+        (try
+          (apply require expected-ns require-options)
+          (catch Throwable _
+            (throw (Exception. (str (tru "Could not find {0} driver." driver))))))))))
 
 (defn- load-driver-namespace-if-needed
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -141,6 +145,7 @@
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
   [driver :- (s/cond-pre s/Str s/Keyword)]
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed driver)
     driver))
@@ -523,7 +528,12 @@
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
     ;; DEFAULTS TO TRUE.
-    :case-sensitivity-string-filter-options})
+    :case-sensitivity-string-filter-options
+
+    :left-join
+    :right-join
+    :inner-join
+    :full-join})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -618,6 +628,7 @@
   query)
 
 
+;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -672,9 +683,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti current-db-time
+(defmulti ^DateTime current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this."
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

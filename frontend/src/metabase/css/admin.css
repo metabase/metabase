@@ -219,6 +219,10 @@
   margin-left: 0;
 }
 
+.MetadataTable {
+  min-width: 800px;
+}
+
 .MetadataTable-title {
   background-color: var(--color-bg-white);
 }

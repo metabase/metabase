@@ -11,7 +11,7 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import type { Filter as FilterT } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
@@ -43,12 +43,14 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
   }
   return (
     <span>
-      {items.filter(f => f).map((item, index, array) => (
-        <span>
-          {item}
-          {index < array.length - 1 ? " " : null}
-        </span>
-      ))}
+      {items
+        .filter(f => f)
+        .map((item, index, array) => (
+          <span>
+            {item}
+            {index < array.length - 1 ? " " : null}
+          </span>
+        ))}
     </span>
   );
 };

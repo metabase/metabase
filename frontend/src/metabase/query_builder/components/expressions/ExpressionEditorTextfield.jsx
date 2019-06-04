@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import S from "./ExpressionEditorTextfield.css";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -367,16 +367,15 @@ export default class ExpressionEditorTextfield extends Component {
                   </li>,
                 ],
               )}
-              {!showAll &&
-                suggestions.length >= MAX_SUGGESTIONS && (
-                  <li
-                    style={{ paddingTop: 5, paddingBottom: 5 }}
-                    onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
-                    className="px2 text-italic text-medium cursor-pointer text-brand-hover"
-                  >
-                    and {suggestions.length - MAX_SUGGESTIONS} more
-                  </li>
-                )}
+              {!showAll && suggestions.length >= MAX_SUGGESTIONS && (
+                <li
+                  style={{ paddingTop: 5, paddingBottom: 5 }}
+                  onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
+                  className="px2 text-italic text-medium cursor-pointer text-brand-hover"
+                >
+                  and {suggestions.length - MAX_SUGGESTIONS} more
+                </li>
+              )}
             </ul>
           </Popover>
         ) : null}

@@ -2,7 +2,7 @@
 
 import _ from "underscore";
 import d3 from "d3";
-import { t } from "c-3po";
+import { t } from "ttag";
 import crossfilter from "crossfilter";
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
@@ -294,8 +294,10 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         ? // Just recycle the original card id of previous card if there was one
           previousCard.original_card_id
         : // A multi-aggregation or multi-breakout series legend / drill-through action
-          // should always use the id of underlying/previous card
-          isMultiseriesQuestion ? previousCard.id : nextCard.id,
+        // should always use the id of underlying/previous card
+        isMultiseriesQuestion
+        ? previousCard.id
+        : nextCard.id,
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,
@@ -324,5 +326,27 @@ export function getDefaultDimensionAndMetric([{ data }]) {
       dimension: null,
       metric: null,
     };
+  }
+}
+
+// Figure out how many decimal places are needed to represent the smallest
+// values in the chart with a certain number of significant digits.
+export function computeMaxDecimalsForValues(values, options) {
+  try {
+    // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
+    // $FlowFixMe
+    const formatter = Intl.NumberFormat("en", options);
+    let maxDecimalCount = 0;
+    for (const value of values) {
+      const parts = formatter.formatToParts(value);
+      const part = parts.find(p => p.type === "fraction");
+      const decimalCount = part ? part.value.length : 0;
+      if (decimalCount > maxDecimalCount) {
+        maxDecimalCount = decimalCount;
+      }
+    }
+    return maxDecimalCount;
+  } catch (e) {
+    return undefined;
   }
 }

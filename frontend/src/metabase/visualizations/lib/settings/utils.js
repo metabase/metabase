@@ -111,7 +111,15 @@ export function fieldSetting(
       widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getProps: ([{ card, data: { cols } }], vizSettings) => ({
+      getProps: (
+        [
+          {
+            card,
+            data: { cols },
+          },
+        ],
+        vizSettings,
+      ) => ({
         options: cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: cols,
         showColumnSetting: showColumnSetting,

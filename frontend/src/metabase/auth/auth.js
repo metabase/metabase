@@ -9,7 +9,7 @@ import { push } from "react-router-redux";
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
 import { refreshCurrentUser } from "metabase/redux/user";

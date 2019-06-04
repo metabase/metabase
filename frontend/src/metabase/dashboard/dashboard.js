@@ -266,30 +266,32 @@ export const saveDashboardAndCards = createThunkAction(
 
       // add isAdded dashboards
       let updatedDashcards = await Promise.all(
-        dashboard.ordered_cards.filter(dc => !dc.isRemoved).map(async dc => {
-          if (dc.isAdded) {
-            let result = await DashboardApi.addcard({
-              dashId: dashboard.id,
-              cardId: dc.card_id,
-            });
-            dispatch(updateDashcardId(dc.id, result.id));
+        dashboard.ordered_cards
+          .filter(dc => !dc.isRemoved)
+          .map(async dc => {
+            if (dc.isAdded) {
+              let result = await DashboardApi.addcard({
+                dashId: dashboard.id,
+                cardId: dc.card_id,
+              });
+              dispatch(updateDashcardId(dc.id, result.id));
 
-            // mark isAdded because addcard doesn't record the position
-            return {
-              ...result,
-              col: dc.col,
-              row: dc.row,
-              sizeX: dc.sizeX,
-              sizeY: dc.sizeY,
-              series: dc.series,
-              parameter_mappings: dc.parameter_mappings,
-              visualization_settings: dc.visualization_settings,
-              isAdded: true,
-            };
-          } else {
-            return dc;
-          }
-        }),
+              // mark isAdded because addcard doesn't record the position
+              return {
+                ...result,
+                col: dc.col,
+                row: dc.row,
+                sizeX: dc.sizeX,
+                sizeY: dc.sizeY,
+                series: dc.series,
+                parameter_mappings: dc.parameter_mappings,
+                visualization_settings: dc.visualization_settings,
+                isAdded: true,
+              };
+            } else {
+              return dc;
+            }
+          }),
       );
 
       // update modified cards
@@ -544,8 +546,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
       );
     } else if (dashboardType === "transient") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(datasetQuery),
-        queryOptions,
+        MetabaseApi.dataset(datasetQuery, queryOptions),
       );
     } else {
       result = await fetchDataOrError(

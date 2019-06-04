@@ -1,12 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
-import { t, ngettext, msgid } from "c-3po";
-
-import { normal } from "metabase/lib/colors";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -59,12 +56,6 @@ export default class MetadataTableList extends Component {
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}
-              <span className="flex-align-right" style={{ width: 17 }}>
-                <ProgressBar
-                  percentage={table.metadataStrength}
-                  color={selected ? normal.grey2 : normal.grey1}
-                />
-              </span>
             </a>
           </li>
         );
@@ -129,8 +120,9 @@ export default class MetadataTableList extends Component {
                 {t`Schemas`}
               </span>
             )}
-            {this.props.onBack &&
-              this.props.schema && <span className="mx1">-</span>}
+            {this.props.onBack && this.props.schema && (
+              <span className="mx1">-</span>
+            )}
             {this.props.schema && <span> {this.props.schema.name}</span>}
           </h4>
         )}

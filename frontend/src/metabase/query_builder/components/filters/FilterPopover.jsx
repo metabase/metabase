@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import FieldList from "../FieldList.jsx";
 import OperatorSelector from "./OperatorSelector.jsx";
@@ -341,9 +341,9 @@ export default class FilterPopover extends Component {
           }}
         >
           {showHeader && (
-            <div className="FilterPopover-header border-bottom text-medium p1 flex align-center">
+            <div className="FilterPopover-header border-bottom p1 flex align-center">
               {showFieldPicker && (
-                <div className="flex flex-wrap py1">
+                <div className="flex flex-wrap py1 text-medium">
                   <span
                     className="cursor-pointer text-purple-hover transition-color flex align-center"
                     onClick={this.clearField}

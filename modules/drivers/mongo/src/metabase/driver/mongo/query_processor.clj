@@ -389,7 +389,7 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregation->rvalue [[aggregation-type arg]]
+(defn- aggregation->rvalue [[aggregation-type arg & args]]
   {:pre [(keyword? aggregation-type)]}
   (if-not arg
     (case aggregation-type
@@ -404,9 +404,11 @@
       :sum         {$sum (->rvalue arg)}
       :min         {$min (->rvalue arg)}
       :max         {$max (->rvalue arg)}
-      :count-where {$sum {$cond {:if   (parse-cond arg)
-                                 :then 1
-                                 :else 0}}})))
+      :sum-where   (let [[pred] args]
+                     {$sum {$cond {:if   (parse-cond pred)
+                                   :then (->rvalue arg)
+                                   :else 0}}})
+      :count-where (recur [:sum-where [:value 1] arg]))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
   (if (= ag-type :named)

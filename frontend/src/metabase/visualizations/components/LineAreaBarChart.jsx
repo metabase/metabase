@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CardRenderer from "./CardRenderer.jsx";
 import LegendHeader from "./LegendHeader.jsx";
 import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
@@ -180,7 +180,9 @@ export default class LineAreaBarChart extends Component {
       let axisClasses =
         hovered.axisIndex === 0
           ? "mute-yr"
-          : hovered.axisIndex === 1 ? "mute-yl" : null;
+          : hovered.axisIndex === 1
+          ? "mute-yl"
+          : null;
       return seriesClasses.concat(axisClasses);
     } else {
       return null;

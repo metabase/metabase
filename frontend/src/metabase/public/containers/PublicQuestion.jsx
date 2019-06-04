@@ -54,7 +54,10 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 @ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
@@ -126,7 +129,10 @@ export default class PublicQuestion extends Component {
 
   // $FlowFixMe: setState expects return type void
   run = async (): void => {
-    const { setErrorPage, params: { uuid, token } } = this.props;
+    const {
+      setErrorPage,
+      params: { uuid, token },
+    } = this.props;
     const { card, parameterValues } = this.state;
 
     if (!card) {
@@ -164,7 +170,9 @@ export default class PublicQuestion extends Component {
   };
 
   render() {
-    const { params: { uuid, token } } = this.props;
+    const {
+      params: { uuid, token },
+    } = this.props;
     const { card, result, parameterValues } = this.state;
 
     const actionButtons = result && (
@@ -185,11 +193,11 @@ export default class PublicQuestion extends Component {
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result} className="flex flex-full">
+        <LoadingAndErrorWrapper loading={!result} noWrapper>
           {() => (
             <Visualization
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full"
+              className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   // $FlowFixMe

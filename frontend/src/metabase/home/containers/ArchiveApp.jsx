@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { Box, Flex } from "grid-styled";
 
@@ -29,7 +29,10 @@ const ROW_HEIGHT = 68;
   wrapped: true,
 })
 @listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, null)
+@connect(
+  mapStateToProps,
+  null,
+)
 export default class ArchiveApp extends Component {
   render() {
     const {

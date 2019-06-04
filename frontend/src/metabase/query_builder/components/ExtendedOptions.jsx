@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AddClauseButton from "./AddClauseButton.jsx";
 import Expressions from "./expressions/Expressions.jsx";
 import ExpressionWidget from "./expressions/ExpressionWidget.jsx";

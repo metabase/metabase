@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -14,7 +14,10 @@ const mapDispatchToProps = {
   archiveQuestion,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 class ArchiveQuestionModal extends Component {
   onArchive = async () => {
     try {
@@ -53,8 +56,7 @@ class ArchiveQuestionModal extends Component {
           >{t`Archive`}</Button>,
         ]}
       >
-        <div
-        >{t`This question will be removed from any dashboards or pulses using it.`}</div>
+        <div>{t`This question will be removed from any dashboards or pulses using it.`}</div>
       </ModalWithTrigger>
     );
   }

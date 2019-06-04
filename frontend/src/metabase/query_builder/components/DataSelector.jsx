@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -10,6 +10,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { isQueryable } from "metabase/lib/table";
 import { titleize, humanize } from "metabase/lib/formatting";
+import MetabaseSettings from "metabase/lib/settings";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -132,7 +133,10 @@ export const TableTriggerContent = ({ selectedTable }) =>
     <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchTableMetadata },
+)
 export default class DataSelector extends Component {
   constructor(props) {
     super();
@@ -835,7 +839,10 @@ export const TablePicker = ({
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <a
-              href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
+              href={MetabaseSettings.docsUrl(
+                "users-guide/04-asking-questions",
+                "source-data",
+              )}
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>

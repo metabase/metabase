@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import colors, { alpha } from "metabase/lib/colors";
 
@@ -86,25 +86,24 @@ export default class PulseCardPreview extends Component {
             paddingLeft: 100,
           }}
         >
-          {attachmentsEnabled &&
-            !isAttachmentOnly && (
-              <Tooltip
-                tooltip={
-                  hasAttachment
-                    ? t`Remove attachment`
-                    : t`Attach file with results`
-                }
-              >
-                <Icon
-                  name="attachment"
-                  size={18}
-                  className={cx("cursor-pointer py1 pr1 text-brand-hover", {
-                    "text-brand": this.hasAttachment(),
-                  })}
-                  onClick={this.toggleAttachment}
-                />
-              </Tooltip>
-            )}
+          {attachmentsEnabled && !isAttachmentOnly && (
+            <Tooltip
+              tooltip={
+                hasAttachment
+                  ? t`Remove attachment`
+                  : t`Attach file with results`
+              }
+            >
+              <Icon
+                name="attachment"
+                size={18}
+                className={cx("cursor-pointer py1 pr1 text-brand-hover", {
+                  "text-brand": this.hasAttachment(),
+                })}
+                onClick={this.toggleAttachment}
+              />
+            </Tooltip>
+          )}
           <Icon
             name="close"
             size={18}

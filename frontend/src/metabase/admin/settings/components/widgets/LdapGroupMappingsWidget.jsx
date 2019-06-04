@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
@@ -110,7 +110,10 @@ export default class LdapGroupMappingsWidget extends React.Component {
 
   _saveClick = (e: Event) => {
     e.preventDefault();
-    const { state: { mappings }, props: { onChangeSetting } } = this;
+    const {
+      state: { mappings },
+      props: { onChangeSetting },
+    } = this;
     SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(
       () => {
         onChangeSetting("ldap-group-mappings", mappings);

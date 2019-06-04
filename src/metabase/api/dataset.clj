@@ -5,15 +5,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [date :as du]
              [export :as ex]
@@ -21,7 +22,6 @@
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
-
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -47,7 +47,7 @@
   (let [source-card-id (query->source-card-id query)
         options        {:executed-by api/*current-user-id*, :context :ad-hoc,
                         :card-id     source-card-id,        :nested? (boolean source-card-id)}]
-    (qp.async/process-query-and-save-with-max! query options)))
+    (qp.async/process-query-and-save-with-max-results-constraints! query options)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -148,6 +148,7 @@
       (qp.async/process-query-and-save-execution!
        (-> query
            (dissoc :constraints)
+           (m/dissoc-in [:middleware :add-default-userland-constraints?])
            (assoc-in [:middleware :skip-results-metadata?] true))
        {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
@@ -164,7 +165,7 @@
   {:average (or
              (some (comp query/average-execution-time-ms qputil/query-hash)
                    [query
-                    (assoc query :constraints qp/default-query-constraints)])
+                    (assoc query :constraints constraints/default-query-constraints)])
              0)})
 
 

@@ -200,3 +200,15 @@ export function getFormattedTooltips(hover) {
   }
   return data.map(d => formatValue(d.value, { column: d.col }));
 }
+
+export function createFixture() {
+  document.body.insertAdjacentHTML(
+    "afterbegin",
+    '<div id="fixture" style="height: 800px; width: 1200px;">',
+  );
+  return document.getElementById("fixture");
+}
+
+export function cleanupFixture(element) {
+  element.parentNode.removeChild(element);
+}

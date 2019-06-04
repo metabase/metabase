@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 
 const ENABLE_BACK_BUTTON = false; // disabled due to possibility of getting in inconsistent states

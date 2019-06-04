@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class Header extends Component {

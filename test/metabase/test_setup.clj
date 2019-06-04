@@ -50,12 +50,16 @@
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
-  ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
-  ;; on a BG thread
-  (let [start-web-server! (future (server/start-web-server! handler/app))]
+  (let [start-web-server!
+        (future
+          (try
+            (server/start-web-server! handler/app)
+            (catch Throwable e
+              (log/error e "Web server failed to start")
+              (System/exit -2))))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db!)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)
@@ -71,15 +75,14 @@
         (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (vec (.getStackTrace e)))))
         (System/exit -1)))
 
-    @start-web-server!))
-
+    (u/deref-with-timeout start-web-server! 10000)
+    nil))
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (server/stop-web-server!)
-  (shutdown-agents))
+  (server/stop-web-server!))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test

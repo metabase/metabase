@@ -14,9 +14,11 @@ import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
 
+import Databases from "metabase/entities/databases";
+
 import { getIn } from "icepick";
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -55,13 +57,19 @@ export const getDatabaseId = createSelector(
   card => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source-table"]),
+export const getTableId = createSelector(
+  [getCard],
+  card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
 export const getTableForeignKeys = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
+
+export const getDatabasesList = state =>
+  Databases.selectors.getList(state, {
+    entityQuery: { include_tables: true, include_cards: true },
+  }) || [];
 
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
@@ -144,8 +152,10 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
 export const getIsResultDirty = createSelector(

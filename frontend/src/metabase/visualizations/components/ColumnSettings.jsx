@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
 
@@ -88,7 +88,7 @@ const ColumnSettings = ({
       ) : (
         <EmptyState
           message={t`No formatting settings`}
-          illustrationElement={<img src="../app/assets/img/no_results.svg" />}
+          illustrationElement={<img src="app/assets/img/no_results.svg" />}
         />
       )}
     </div>

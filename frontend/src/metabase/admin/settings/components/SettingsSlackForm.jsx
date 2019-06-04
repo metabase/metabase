@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon.jsx";
 import RetinaImage from "react-retina-image";
 
 import _ from "underscore";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 export default class SettingsSlackForm extends Component {
   constructor(props, context) {
