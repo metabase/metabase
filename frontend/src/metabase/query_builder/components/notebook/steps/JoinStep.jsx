@@ -38,6 +38,7 @@ export default function JoinStep({
             join={join}
             showRemove={joins.length > 1}
             updateQuery={updateQuery}
+            isLastOpened={isLastOpened && index === join.length - 1}
           />
         ))}
       </Flex>
@@ -54,121 +55,142 @@ export default function JoinStep({
   );
 }
 
-function JoinClause({ color, join, updateQuery, showRemove, ...props }) {
-  const query = join.query();
-  if (!query) {
-    return null;
-  }
-  const table = join.table();
-  const strategyOption = join.strategyOption();
-  return (
-    <Flex align="center" flex="1 1 auto" {...props}>
-      <NotebookCellItem color={color} icon="table2">
-        {query.table().displayName() || `Previous results`}
-      </NotebookCellItem>
+class JoinClause extends React.Component {
+  render() {
+    const {
+      color,
+      join,
+      updateQuery,
+      showRemove,
+      isLastOpened,
+      ...props
+    } = this.props;
+    const query = join.query();
+    if (!query) {
+      return null;
+    }
+    const table = join.table();
+    const strategyOption = join.strategyOption();
+    return (
+      <Flex align="center" flex="1 1 auto" {...props}>
+        <NotebookCellItem color={color} icon="table2">
+          {query.table().displayName() || `Previous results`}
+        </NotebookCellItem>
 
-      <PopoverWithTrigger
-        triggerElement={
-          strategyOption ? (
-            <Icon
-              className="text-brand mr1"
-              name={strategyOption.icon}
-              size={32}
+        <PopoverWithTrigger
+          triggerElement={
+            strategyOption ? (
+              <Icon
+                className="text-brand mr1"
+                name={strategyOption.icon}
+                size={32}
+              />
+            ) : (
+              <NotebookCellItem color={color}>
+                {`Choose a join type`}
+              </NotebookCellItem>
+            )
+          }
+        >
+          {({ onClose }) => (
+            <JoinTypeSelect
+              value={strategyOption && strategyOption.value}
+              onChange={strategy => {
+                join
+                  .setStrategy(strategy)
+                  .parent()
+                  .update(updateQuery);
+                onClose();
+              }}
+              options={join.strategyOptions()}
             />
-          ) : (
-            <NotebookCellItem color={color}>
-              {`Choose a join type`}
+          )}
+        </PopoverWithTrigger>
+
+        <DatabaseSchemaAndTableDataSelector
+          databases={[
+            query.database(),
+            ...query
+              .metadata()
+              .databasesList()
+              .filter(db => db.is_saved_questions),
+          ]}
+          selectedDatabaseId={query.databaseId()}
+          selectedTableId={join.tableId()}
+          setSourceTableFn={tableId => {
+            join
+              .setJoinTableId(tableId)
+              .parent()
+              .update(updateQuery);
+            if (!join.sourceDimension()) {
+              // _sourceDimensionPicker won't be rendered until next update
+              setTimeout(() => {
+                this._sourceDimensionPicker.open();
+              });
+            }
+          }}
+          isInitiallyOpen={join.tableId() == null}
+          triggerElement={
+            <NotebookCellItem
+              color={color}
+              icon="table2"
+              inactive={!join.table()}
+            >
+              {join.table() ? join.table().displayName() : `Pick a Table...`}
             </NotebookCellItem>
-          )
-        }
-      >
-        {({ onClose }) => (
-          <JoinTypeSelect
-            value={strategyOption && strategyOption.value}
-            onChange={strategy => {
-              join
-                .setStrategy(strategy)
-                .parent()
-                .update(updateQuery);
-              onClose();
-            }}
-            options={join.strategyOptions()}
+          }
+        />
+
+        {table && (
+          <Flex align="center">
+            <span className="text-medium text-bold ml1 mr2">where</span>
+
+            <JoinDimensionPicker
+              color={color}
+              query={query}
+              dimension={join.sourceDimension()}
+              options={join.sourceDimensionOptions()}
+              onChange={fieldRef => {
+                join
+                  .setSourceDimension(fieldRef)
+                  .parent()
+                  .update(updateQuery);
+                if (!join.joinDimension()) {
+                  this._joinDimensionPicker.open();
+                }
+              }}
+              ref={ref => (this._sourceDimensionPicker = ref)}
+            />
+
+            <span className="text-medium text-bold mr1">=</span>
+
+            <JoinDimensionPicker
+              color={color}
+              query={query}
+              dimension={join.joinDimension()}
+              options={join.joinDimensionOptions()}
+              onChange={fieldRef => {
+                join
+                  .setJoinDimension(fieldRef)
+                  .parent()
+                  .update(updateQuery);
+              }}
+              ref={ref => (this._joinDimensionPicker = ref)}
+            />
+          </Flex>
+        )}
+
+        {showRemove && (
+          <Icon
+            name="close"
+            size={18}
+            className="cursor-pointer text-light text-medium-hover"
+            onClick={() => join.remove().update(updateQuery)}
           />
         )}
-      </PopoverWithTrigger>
-
-      <DatabaseSchemaAndTableDataSelector
-        databases={[
-          query.database(),
-          ...query
-            .metadata()
-            .databasesList()
-            .filter(db => db.is_saved_questions),
-        ]}
-        selectedDatabaseId={query.databaseId()}
-        selectedTableId={join.tableId()}
-        setSourceTableFn={tableId => {
-          join
-            .setJoinTableId(tableId)
-            .parent()
-            .update(updateQuery);
-        }}
-        isInitiallyOpen={join.tableId() == null}
-        triggerElement={
-          <NotebookCellItem
-            color={color}
-            icon="table2"
-            inactive={!join.table()}
-          >
-            {join.table() ? join.table().displayName() : `Pick a Table...`}
-          </NotebookCellItem>
-        }
-      />
-
-      {table && (
-        <Flex align="center">
-          <span className="text-medium text-bold ml1 mr2">where</span>
-
-          <JoinDimensionPicker
-            color={color}
-            query={query}
-            dimension={join.sourceDimension()}
-            options={join.sourceDimensionOptions()}
-            onChange={fieldRef =>
-              join
-                .setSourceDimension(fieldRef)
-                .parent()
-                .update(updateQuery)
-            }
-          />
-
-          <span className="text-medium text-bold mr1">=</span>
-
-          <JoinDimensionPicker
-            color={color}
-            query={query}
-            dimension={join.joinDimension()}
-            options={join.joinDimensionOptions()}
-            onChange={fieldRef =>
-              join
-                .setJoinDimension(fieldRef)
-                .parent()
-                .update(updateQuery)
-            }
-          />
-        </Flex>
-      )}
-
-      {showRemove && (
-        <Icon
-          name="close"
-          size={18}
-          className="cursor-pointer text-light text-medium-hover"
-          onClick={() => join.remove().update(updateQuery)}
-        />
-      )}
-    </Flex>
-  );
+      </Flex>
+    );
+  }
 }
 
 function JoinTypeSelect({ value, onChange, options }) {
@@ -207,32 +229,39 @@ function JoinTypeOption({ name, value, icon, selected, onChange }) {
   );
 }
 
-function JoinDimensionPicker({ dimension, onChange, options, query, color }) {
-  return (
-    <PopoverWithTrigger
-      triggerElement={
-        <NotebookCellItem
-          color={color}
-          icon={dimension && dimension.icon()}
-          inactive={!dimension}
-        >
-          {dimension ? dimension.displayName() : `Pick a column...`}
-        </NotebookCellItem>
-      }
-    >
-      {({ onClose }) => (
-        <FieldList
-          className="text-brand"
-          field={dimension && dimension.mbql()}
-          fieldOptions={options}
-          table={query.table()}
-          query={query}
-          onFieldChange={field => {
-            onChange(field);
-            onClose();
-          }}
-        />
-      )}
-    </PopoverWithTrigger>
-  );
+class JoinDimensionPicker extends React.Component {
+  open() {
+    this._popover.open();
+  }
+  render() {
+    const { dimension, onChange, options, query, color } = this.props;
+    return (
+      <PopoverWithTrigger
+        ref={ref => (this._popover = ref)}
+        triggerElement={
+          <NotebookCellItem
+            color={color}
+            icon={dimension && dimension.icon()}
+            inactive={!dimension}
+          >
+            {dimension ? dimension.displayName() : `Pick a column...`}
+          </NotebookCellItem>
+        }
+      >
+        {({ onClose }) => (
+          <FieldList
+            className="text-brand"
+            field={dimension && dimension.mbql()}
+            fieldOptions={options}
+            table={query.table()}
+            query={query}
+            onFieldChange={field => {
+              onChange(field);
+              onClose();
+            }}
+          />
+        )}
+      </PopoverWithTrigger>
+    );
+  }
 }
