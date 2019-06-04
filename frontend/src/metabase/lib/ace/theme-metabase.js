@@ -11,7 +11,7 @@ ace.define(
       '\
 .ace-metabase .ace_gutter {\
 background: rgb(220,236,249);\
-color: #509EE3;\
+color: #099268;\
 font-weight: bold;\
 }\
 .ace-metabase  {\

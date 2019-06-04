@@ -102,8 +102,8 @@ exports[`CheckBox should render "On - Default blue" correctly 1`] = `
     className="flex align-center justify-center rounded"
     style={
       Object {
-        "backgroundColor": "#509EE3",
-        "border": "2px solid #509EE3",
+        "backgroundColor": "#006F46",
+        "border": "2px solid #006F46",
         "height": 16,
         "width": 16,
       }
@@ -602,7 +602,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
     style={
       Object {
         "borderBottom": "3px solid transparent",
-        "borderColor": "#509EE3",
+        "borderColor": "#006F46",
       }
     }
   >
@@ -867,8 +867,8 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
         className="flex align-center justify-center rounded"
         style={
           Object {
-            "backgroundColor": "#509EE3",
-            "border": "2px solid #509EE3",
+            "backgroundColor": "#006F46",
+            "border": "2px solid #006F46",
             "height": 16,
             "width": 16,
           }
@@ -884,8 +884,8 @@ exports[`StackedCheckBox should render "Checked" correctly 1`] = `
       className="flex align-center justify-center rounded"
       style={
         Object {
-          "backgroundColor": "#509EE3",
-          "border": "2px solid #509EE3",
+          "backgroundColor": "#006F46",
+          "border": "2px solid #006F46",
           "height": 16,
           "width": 16,
         }
