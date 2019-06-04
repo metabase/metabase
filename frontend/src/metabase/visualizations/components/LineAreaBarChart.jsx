@@ -321,7 +321,9 @@ function transformSingleSeries(s, series, seriesIndex) {
     settings["scatter.bubble"] &&
     _.findIndex(cols, col => col.name === settings["scatter.bubble"]);
   const extraColumnIndexes =
-    bubbleColumnIndex && bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
+    bubbleColumnIndex != null && bubbleColumnIndex >= 0
+      ? [bubbleColumnIndex]
+      : [];
 
   if (dimensions.length > 1) {
     const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
