@@ -28,7 +28,7 @@ export default function Notebook({ className, ...props }) {
               await question.setDisplayAutomatically().update();
             }
             if (isResultDirty) {
-              runQuestionQuery();
+              await runQuestionQuery();
             }
             setQueryBuilderMode("view");
           }}

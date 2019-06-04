@@ -49,6 +49,7 @@ import {
   getIsPreviewing,
   getTableForeignKeys,
   getQueryBuilderMode,
+  getIsShowingTemplateTagsEditor,
 } from "./selectors";
 
 import { getTables, getMetadata } from "metabase/selectors/metadata";
@@ -88,14 +89,19 @@ const getTemplateTagCount = (question: Question) => {
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
 
-export const setQueryBuilderMode = queryBuilderMode => async dispatch => {
+export const setQueryBuilderMode = (
+  queryBuilderMode,
+  { shouldUpdateUrl = true } = {},
+) => async dispatch => {
   await dispatch(
     setUIControls({
       queryBuilderMode,
       isShowingChartSettingsSidebar: false,
     }),
   );
-  await dispatch(updateUrl());
+  if (shouldUpdateUrl) {
+    await dispatch(updateUrl(null, { queryBuilderMode }));
+  }
 };
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
@@ -109,14 +115,23 @@ export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
-    const { card } = getState().qb;
+    const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
-        dispatch(setCardAndRun(location.state.card, false));
-        dispatch(setCurrentState(location.state));
+        await dispatch(setCardAndRun(location.state.card, false));
+        await dispatch(setCurrentState(location.state));
       }
     }
-    dispatch(setQueryBuilderMode(getQueryBuilderModeFromLocation(location)));
+    if (
+      getQueryBuilderMode(getState()) !==
+      getQueryBuilderModeFromLocation(location)
+    ) {
+      await dispatch(
+        setQueryBuilderMode(getQueryBuilderModeFromLocation(location), {
+          shouldUpdateUrl: false,
+        }),
+      );
+    }
   },
 );
 
@@ -142,16 +157,15 @@ export const updateEmbeddingParams = createAction(
   ({ id }, embedding_params) => CardApi.update({ id, embedding_params }),
 );
 
-// TODO Atte Keinänen 6/8/17: Should use the stored question by default instead of requiring an explicit `card` parameter
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
-export const updateUrl = createThunkAction(
+export const updateUrl = (window.updateUrl = createThunkAction(
   UPDATE_URL,
-  (card, { dirty, replaceState, preserveParameters = true } = {}) => (
-    dispatch,
-    getState,
-  ) => {
+  (
+    card,
+    { dirty, replaceState, preserveParameters = true, queryBuilderMode } = {},
+  ) => (dispatch, getState) => {
     let question;
-    if (card == undefined) {
+    if (!card) {
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
@@ -164,19 +178,20 @@ export const updateUrl = createThunkAction(
         (originalQuestion && question.isDirtyComparedTo(originalQuestion));
     }
 
-    const queryBuilderMode = getQueryBuilderMode(getState());
+    if (!queryBuilderMode) {
+      queryBuilderMode = getQueryBuilderMode(getState());
+    }
 
-    let copy = cleanCopyCard(card);
-    console.log("updateUrl", copy);
+    const copy = cleanCopyCard(card);
 
-    let newState = {
+    const newState = {
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
     };
-    const { currentState } = getState().qb;
 
-    let url = urlForCardState(newState, dirty);
+    const { currentState } = getState().qb;
+    const url = urlForCardState(newState, dirty);
 
     const urlParsed = urlParse(url);
     const locationDescriptor = {
@@ -194,6 +209,9 @@ export const updateUrl = createThunkAction(
       (locationDescriptor.hash || "") === (window.location.hash || "");
     const isSameCard =
       currentState && currentState.serializedCard === newState.serializedCard;
+    const isSameMode =
+      getQueryBuilderModeFromLocation(locationDescriptor) ===
+      getQueryBuilderModeFromLocation(window.location);
 
     if (isSameCard && isSameURL) {
       return;
@@ -202,7 +220,7 @@ export const updateUrl = createThunkAction(
     if (replaceState == undefined) {
       // if the serialized card is identical replace the previous state instead of adding a new one
       // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
-      replaceState = isSameCard || isSameURL;
+      replaceState = isSameCard && isSameMode;
     }
 
     // this is necessary because we can't get the state from history.state
@@ -213,7 +231,7 @@ export const updateUrl = createThunkAction(
       dispatch(push(locationDescriptor));
     }
   },
-);
+));
 
 export const REDIRECT_TO_NEW_QUESTION_FLOW =
   "metabase/qb/REDIRECT_TO_NEW_QUESTION_FLOW";
@@ -764,7 +782,10 @@ export const updateQuestion = (
     const newTagCount = getTemplateTagCount(newQuestion);
     if (newTagCount > oldTagCount) {
       dispatch(setIsShowingTemplateTagsEditor(true));
-    } else if (newTagCount === 0 && !getIsShowingDataReference(getState())) {
+    } else if (
+      newTagCount === 0 &&
+      getIsShowingTemplateTagsEditor(getState())
+    ) {
       dispatch(setIsShowingTemplateTagsEditor(false));
     }
 
