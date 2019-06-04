@@ -172,8 +172,8 @@ export default class View extends React.Component {
     const newQuestion = query instanceof StructuredQuery && !query.table();
 
     return (
-      <div className={this.props.fitClassNames}>
-        <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
+      <div className={cx("bg-brand", this.props.fitClassNames)}>
+        <div className={cx("QueryBuilder flex flex-column bg-brand spread")}>
           <Motion
             defaultStyle={newQuestion ? { opacity: 0 } : { opacity: 1 }}
             style={
@@ -184,12 +184,16 @@ export default class View extends React.Component {
               <ViewTitleHeader
                 {...this.props}
                 className="flex-no-shrink z3 bg-white"
-                style={{ opacity }}
+                style={{
+                  opacity,
+                  borderTopLeftRadius: 8,
+                  borderTopRightRadius: 8,
+                }}
               />
             )}
           </Motion>
 
-          <div className="flex flex-full relative">
+          <div className="flex flex-full relative bg-white">
             {query instanceof StructuredQuery && (
               <Motion
                 defaultStyle={
