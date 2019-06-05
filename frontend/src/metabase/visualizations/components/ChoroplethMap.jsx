@@ -258,10 +258,11 @@ export default class ChoroplethMap extends Component {
         : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
+    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
     const colorScale = d3.scale
-      .quantile()
-      .domain(groups.map(cluster => cluster[0]))
+      .threshold()
+      .domain(groupBoundaries)
       .range(heatMapColors);
 
     const legendColors = heatMapColors;
