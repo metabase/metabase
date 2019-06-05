@@ -135,7 +135,7 @@ class JoinClause extends React.Component {
               icon="table2"
               inactive={!joinedTable}
             >
-              {joinedTable ? joinedTable.displayName() : `Pick a Table...`}
+              {joinedTable ? joinedTable.displayName() : `Pick a table...`}
             </NotebookCellItem>
           }
         />
