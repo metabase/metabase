@@ -62,6 +62,7 @@ export default class AggregationPopover extends Component {
     availableAggregations: PropTypes.array,
     // Restricts the shown options to contents of `availableAggregations` only
     showOnlyProvidedAggregations: PropTypes.bool,
+    showRawData: PropTypes.bool,
   };
 
   componentDidUpdate() {
@@ -126,12 +127,12 @@ export default class AggregationPopover extends Component {
   }
 
   _getAvailableAggregations() {
-    const { availableAggregations, query, dimension } = this.props;
+    const { availableAggregations, query, dimension, showRawData } = this.props;
     return (
       availableAggregations ||
       (dimension && dimension.aggregations()) ||
       query.table().aggregations()
-    );
+    ).filter(agg => showRawData || agg.short !== "rows");
   }
 
   _getCustomFields() {

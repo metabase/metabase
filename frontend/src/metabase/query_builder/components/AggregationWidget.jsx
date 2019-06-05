@@ -26,6 +26,7 @@ export default class AggregationWidget extends Component {
     query: PropTypes.object.isRequired,
     isInitiallyOpen: PropTypes.bool,
     children: PropTypes.object,
+    showRawData: PropTypes.bool,
   };
 
   handleChangeAggregation = value => {
@@ -42,11 +43,12 @@ export default class AggregationWidget extends Component {
   };
 
   render() {
-    const { aggregation, query, children, className } = this.props;
+    const { aggregation, query, showRawData, children, className } = this.props;
 
     const popover = this.state.isOpen && (
       <Popover onClose={this.handleClose}>
         <AggregationPopover
+          showRawData={showRawData}
           query={query}
           aggregation={aggregation}
           onChangeAggregation={this.handleChangeAggregation}

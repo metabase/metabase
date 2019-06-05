@@ -233,6 +233,7 @@ export default class GuiQueryEditor extends React.Component {
                     .update(setDatasetQuery)
                 : query.removeAggregation(index).update(setDatasetQuery)
             }
+            showRawData
           >
             {this.renderAdd(null)}
           </AggregationWidget>,
