@@ -247,26 +247,23 @@ export default class PieChart extends Component {
       .partition(d => d.percentage > sliceThreshold)
       .value();
 
-    let otherSlice;
-    if (others.length > 1) {
-      const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
-      if (otherTotal > 0) {
-        otherSlice = {
-          key: "Other",
-          value: otherTotal,
-          percentage: otherTotal / total,
-          color: colors["text-light"],
-        };
-        slices.push(otherSlice);
+    const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
+    // Multiple others get squashed together under the key "Other"
+    let otherSlice =
+      others.length === 1
+        ? others[0]
+        : {
+            key: "Other",
+            value: otherTotal,
+            percentage: otherTotal / total,
+            color: colors["text-light"],
+          };
+    if (otherSlice.value > 0) {
+      // increase "other" slice so it's barely visible
+      if (otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
+        otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
       }
-    } else {
-      slices.push(...others);
-    }
-
-    // increase "other" slice so it's barely visible
-    // $FlowFixMe
-    if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
-      otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
+      slices.push(otherSlice);
     }
 
     const legendTitles = slices.map(slice => [
