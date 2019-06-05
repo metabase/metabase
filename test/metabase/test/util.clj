@@ -306,17 +306,15 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  ;; for saving & restoring the original values we're using `get-string` and `set-string!` to bypass the magic getters
-  ;; & setters which might have some restrictions or other unexpected behavior. We're using these functions rather
-  ;; than manipulating values in the DB directly so we don't have to worry about invalidating the Settings cache
-  ;; ourselves
-  (let [original-value     (setting/get-string setting-k)
-        value-was-default? (not (db/select-one setting/Setting :key (u/keyword->qualified-name setting-k)))]
+  (let [setting        (#'setting/resolve-setting setting-k)
+        original-value (when (or (#'setting/db-or-cache-value setting)
+                                 (#'setting/env-var-value setting))
+                         (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set-string! setting-k (when-not value-was-default? original-value))))))
+        (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This

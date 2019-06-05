@@ -4,8 +4,17 @@
              [data :as data]
              [set :as set]]
             [expectations :as expectations]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.util :as u]
-            [metabase.util.date :as du]))
+            [metabase.util.date :as du]
+            [toucan.db :as db]))
+
+(defn- test-name [test-fn]
+  (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
+    (format "%s %s" file line)))
 
 ;;; ---------------------------------------- Expectations Framework Settings -----------------------------------------
 
@@ -65,9 +74,8 @@
       (let [duration-ms (- (System/currentTimeMillis) start-time-ms)]
         (when (> duration-ms slow-test-threshold-ms)
           (println
-           (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
-             (u/format-color 'red "%s %s is a slow test! It took %s to finish."
-               file line (du/format-milliseconds duration-ms)))
+           (u/format-color 'red "%s is a slow test! It took %s to finish."
+             (test-name test-fn) (du/format-milliseconds duration-ms))
            "(This may have been because it was loading test data.)"))))))
 
 
@@ -83,14 +91,13 @@
   (fn [test-fn]
     (when (= (deref (future (run test-fn)) test-timeout-ms ::timed-out)
              ::timed-out)
-      (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
-        (println
-         (u/format-color 'red "%s %s timed out after %s" file line (du/format-milliseconds test-timeout-ms)))
-        (println "Stacktraces:")
-        (doseq [[thread stacktrace] (Thread/getAllStackTraces)]
-          (println "\n" (u/pprint-to-str 'red thread))
-          (doseq [frame stacktrace]
-            (println frame))))
+      (println
+       (u/format-color 'red "%s timed out after %s" (test-name test-fn) (du/format-milliseconds test-timeout-ms)))
+      (println "Stacktraces:")
+      (doseq [[thread stacktrace] (Thread/getAllStackTraces)]
+        (println "\n" (u/pprint-to-str 'red thread))
+        (doseq [frame stacktrace]
+          (println frame)))
       (System/exit 1))))
 
 
@@ -126,12 +133,40 @@
             (doseq [error-msg error-msgs]
               (println error-msg))
             (println "-----------------------------------------------------")
-            (let [{:keys [file line]} (-> test-fn meta :the-var meta)]
-              (printf "\nStale test rows found in tables, check '%s' at line '%s'\n\n" file line))
+            (printf "\nStale test rows found in tables, check %s\n\n" (test-name test-fn))
             (flush)
             ;; I found this necessary as throwing an exception would show the exception, but the test run would hang and
             ;; you'd have to Ctrl-C anyway
             (System/exit 1)))))))
+
+
+;;; ------------------------------------------- check-test-data-unchanged --------------------------------------------
+
+(defn- test-data-state
+  "State of the metadata for the test database, if test database has already been loaded."
+  []
+  (when-let [database-id (db/select-one-id Database :engine "h2", :name "test-data")]
+    (let [tables (when database-id
+                   (for [table (db/select Table :db_id database-id {:order-by [[:id :asc]]})]
+                     (dissoc table :updated_at)))]
+      {:tables tables
+       :fields (when (seq tables)
+                 (for [field (db/select Field :table_id [:in (map :id tables)] {:order-by [[:id :asc]]})]
+                   (dissoc field :updated_at)))})))
+
+(defn check-test-data-unchanged [run]
+  (fn [test-fn]
+    (let [before-state (test-data-state)]
+      (run test-fn)
+      (when before-state
+        (let [after-state (test-data-state)]
+          (when-not (= before-state after-state)
+            (println
+             "Test data has changed while running" (test-name test-fn) "\n"
+             (let [[only-in-before only-in-after] (data/diff before-state after-state)]
+               (format "Only in before:\n%s\nOnly in after:\n%s"
+                       (u/pprint-to-str 'magenta only-in-before)
+                       (u/pprint-to-str 'cyan only-in-after))))))))))
 
 
 ;;; -------------------------------------------- Putting it all together ---------------------------------------------
@@ -149,8 +184,14 @@
 (def ^:private ^{:expectations-options :in-context} test-middleware
   (-> (fn [test-fn]
         (test-fn))
+      ;;
       ;; uncomment `log-tests` if you need to debug tests or see which ones are being noisy or hanging forever
       #_log-tests
+      ;;
+      ;; Uncomment `check-test-data-unchanged` when you want to debug situations where tests are being bad citizens
+      ;; and leaving the metadata about the test data in a different state than it started out with. This is not
+      ;; enabled by default because it adds ~5ms to each test which adds up when we have ~4000 tests (as of May 2019)
+      #_check-test-data-unchanged ; NOCOMMIT
       log-slow-tests
       enforce-timeout
       check-table-cleanup))

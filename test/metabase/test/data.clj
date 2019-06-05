@@ -409,13 +409,39 @@
   `(with-db-for-dataset [~'_ (resolve-dbdef '~(ns-name *ns*) '~dataset)]
      ~@body))
 
+(defn- copy-db-tables-and-fields! [old-db-id new-db-id]
+  (doseq [{old-table-id :id, :as table} (db/select Table :db_id old-db-id {:order-by [[:id :asc]]})]
+    (let [{new-table-id :id} (db/insert! Table (-> table (dissoc :id) (assoc :db_id new-db-id)))]
+      (doseq [field (db/select Field :table_id old-table-id {:order-by [[:id :asc]]})]
+        (db/insert! Field (-> field (dissoc :id) (assoc :table_id new-table-id)))))))
+
+(defn do-with-temp-copy-of-test-db
+  "Run `f` with a temporary Database that copies the details from the standard test database, and syncs it."
+  [f]
+  (let [{:keys [engine], original-name :name, :as original-db} (select-keys (db) [:details :engine :name])
+        copy-name                                              (format "%s___COPY" original-name)]
+    (try
+      (let [{new-db-id :id, :as new-db} (db/insert! Database (assoc original-db :name copy-name))]
+        (copy-db-tables-and-fields! (id) new-db-id)
+        (with-db new-db
+          (f)))
+      (finally (db/delete! Database :engine (name engine), :name copy-name)))))
+
+(defmacro with-temp-copy-of-test-db
+  "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the
+  current DB. Tables and Fields are copied as well."
+  {:style/indent 0}
+  [& body]
+  `(do-with-temp-copy-of-test-db (fn [] ~@body)))
+
+
 (defn- delete-model-instance!
   "Allows deleting a row by the model instance toucan returns when it's inserted"
   [{:keys [id] :as instance}]
   (db/delete! (-> instance name symbol) :id id))
 
 (defn call-with-data
-  "Takes a thunk `data-load-fn` that returns a seq of toucan model instances that will be deleted after `body-fn`
+  "Takes a thunk `data-load-fn` that returns a seq of Toucan model instances that will be deleted after `body-fn`
   finishes"
   [data-load-fn body-fn]
   (let [result-instances (data-load-fn)]
@@ -426,7 +452,7 @@
           (delete-model-instance! instance))))))
 
 (defmacro with-data
-  "Calls `data-load-fn` to create a sequence of objects, then runs `body`; finally, deletes the objects."
+  "Calls `data-load-fn` to create a sequence of Toucan objects, then runs `body`; finally, deletes the objects."
   [data-load-fn & body]
   `(call-with-data ~data-load-fn (fn [] ~@body)))
 
