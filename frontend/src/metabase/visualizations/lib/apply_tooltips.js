@@ -193,56 +193,48 @@ function applyChartTooltips(
             // the normal `cols` array, which is just the cols used in the graph axes; look in `_rawCols`
             // for any other columns. If we find them, add them at the end of the `data` array.
             //
-            // To find the actual row where data is coming from is somewhat overcomplicated because i
-            // seems to follow a strange pattern that doesn't directly correspond to the rows in our
-            // data. Not sure why but it appears values of i follow this pattern:
+            // It appears values of i follow this pattern:
             //
-            // seems to follow a strange pattern that doesn't directly correspond to the rows in our
-            // data. Not sure why but it appears values of i follow this pattern:
-            //
-            //  [Series 1]  i = 7   i = 8   i = 9  i = 10   i = 11
-            //  [Series 0]  i = 1   i = 2   i = 3  i = 4    i = 5
+            //  [Series 1]  i = 5   i = 6   i = 7  i = 8   i = 9
+            //  [Series 0]  i = 0   i = 1   i = 2   i = 3   i = 4
             //             [Row 0] [Row 1] [Row 2] [Row 3] [Row 4]
             //
             // Deriving the rowIndex from i can be done as follows:
-            // rowIndex = (i % (numRows + 1)) - 1;
+            // rowIndex = i % numRows;
             //
-            // example: for series 1, i = 10
-            // rowIndex = (10 % 6) - 1 = 4 - 1 = 3
+            // example: for series 1, i = 8
+            // rowIndex = 8 % 5 = 3
             //
-            // for series 0, i = 3
-            // rowIndex = (3 % 6) - 1 = 3 - 1 = 2
+            // for series 0, i = 2
+            // rowIndex = 2 % 5 = 2
+
             const seriesData = series[seriesIndex].data || {};
             const rawCols = seriesData._rawCols;
             const rows = seriesData && seriesData.rows;
-            const rowIndex = rows && (i % (rows.length + 1)) - 1;
+            const rowIndex = rows && i % rows.length;
             const row = rowIndex != null && seriesData.rows[rowIndex];
             const rawRow = row && row._origin && row._origin.row; // get the raw query result row
-            // make sure the row index we've determined with our formula above is correct. Check the
-            // x/y axis values ("key" & "value") and make sure they match up with the row before setting
-            // the data for the tooltip
-            if (rawRow && row[0] === d.data.key && row[1] === d.data.value) {
-              // rather than just append the additional values we'll just create a new `data` array.
-              // simply appending the additional values would result in tooltips whose order switches
-              // between different series.
-              // Loop over *all* of the columns and create the new array
-              data = rawCols.map((col, i) => {
-                // if this was one of the original x/y columns keep the original object because it
-                // may have the `isNormalized` tweak above.
-                if (col === data[0].col) {
-                  return data[0];
-                }
-                if (col === data[1].col) {
-                  return data[1];
-                }
-                // otherwise just create a new object for any other columns.
-                return {
-                  key: getColumnDisplayName(col),
-                  value: rawRow[i],
-                  col: col,
-                };
-              });
-            }
+
+            // rather than just append the additional values we'll just create a new `data` array.
+            // simply appending the additional values would result in tooltips whose order switches
+            // between different series.
+            // Loop over *all* of the columns and create the new array
+            data = rawCols.map((col, i) => {
+              // if this was one of the original x/y columns keep the original object because it
+              // may have the `isNormalized` tweak above.
+              if (col === data[0].col) {
+                return data[0];
+              }
+              if (col === data[1].col) {
+                return data[1];
+              }
+              // otherwise just create a new object for any other columns.
+              return {
+                key: getColumnDisplayName(col),
+                value: rawRow[i],
+                col: col,
+              };
+            });
           }
 
           if (isBreakoutMultiseries) {
@@ -255,7 +247,7 @@ function applyChartTooltips(
             });
           }
 
-          data = _.uniq(data, d => d.col);
+          data = _.uniq(data, d => d.key);
 
           onHoverChange({
             // for single series bar charts, fade the series and highlght the hovered element with CSS
