@@ -24,8 +24,8 @@ type FilterOperator = {
 
 export default class Filter extends MBQLClause {
   /**
-   * Replaces the aggregation in the parent query and returns the new StructuredQuery
-   * or replaces itself in the parent query if no {filter} agument is provided.
+   * Replaces the filter in the parent query and returns the new StructuredQuery
+   * or replaces itself in the parent query if no {filter} argument is provided.
    */
   replace(filter?: Filter | FilterObject): StructuredQuery {
     if (arguments.length > 0) {
@@ -43,11 +43,72 @@ export default class Filter extends MBQLClause {
   }
 
   /**
-   * Removes the aggregation in the parent query and returns the new StructuredQuery
+   * Removes the filter in the parent query and returns the new StructuredQuery
    */
   remove(): StructuredQuery {
     return this._query.removeFilter(this._index);
   }
+
+  /**
+   * Returns the display name for the filter
+   */
+  displayName() {
+    if (this.isSegmentFilter()) {
+      const segment = this.segment();
+      return t`Matches ${segment ? segment.displayName() : t`Unknown Segment`}`;
+    } else if (this.isFieldFilter()) {
+      const dimension = this.dimension();
+      const operator = this.operator();
+      const dimensionName = dimension && dimension.displayName();
+      const operatorName = operator && operator.moreVerboseName;
+      const argumentNames = this.formattedArguments().join(" ");
+      return t`${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
+    } else {
+      return t`Unknown Filter`;
+    }
+  }
+
+  /**
+   * Returns true if the filter is valid
+   */
+  isValid() {
+    if (this.isFieldFilter()) {
+      // has an operator name and dimension
+      const dimension = this.dimension();
+      const query = this.query();
+      if (
+        !dimension ||
+        !(query && query.filterFieldOptions().hasDimension(dimension))
+      ) {
+        return false;
+      }
+      const operator = this.operator();
+      if (operator) {
+        const args = this.arguments();
+        // has the mininum number of arguments
+        if (args.length < operator.fields.length) {
+          return false;
+        }
+        // arguments are non-null/undefined
+        if (!_.all(args, arg => arg != null)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  isSegmentFilter() {
+    return isSegmentFilter(this);
+  }
+  isFieldFilter() {
+    return isFieldFilter(this);
+  }
+  isCompoundFilter() {
+    return isCompoundFilter(this);
+  }
+
+  // SEGMENT FILTERS
 
   segmentId() {
     if (this.isSegmentFilter()) {
@@ -60,6 +121,8 @@ export default class Filter extends MBQLClause {
       return this.metadata().segment(this.segmentId());
     }
   }
+
+  // FIELD FILTERS
 
   dimension(): ?Dimension {
     if (this.isFieldFilter()) {
@@ -157,33 +220,6 @@ export default class Filter extends MBQLClause {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
-  isValid() {
-    if (this.isFieldFilter()) {
-      // has an operator name and dimension
-      const dimension = this.dimension();
-      const query = this.query();
-      if (
-        !dimension ||
-        !(query && query.filterFieldOptions().hasDimension(dimension))
-      ) {
-        return false;
-      }
-      const operator = this.operator();
-      if (operator) {
-        const args = this.arguments();
-        // has the mininum number of arguments
-        if (args.length < operator.fields.length) {
-          return false;
-        }
-        // arguments are non-null/undefined
-        if (!_.all(args, arg => arg != null)) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
   operatorOptions(): ?(FilterOperator[]) {
     const dimension = this.dimension();
     return dimension ? dimension.operatorOptions() : null;
@@ -237,33 +273,5 @@ export default class Filter extends MBQLClause {
         ? otherOperator
         : otherOperator && otherOperator.name;
     return operator && operator.name === operatorName;
-  }
-
-  isSegmentFilter() {
-    return isSegmentFilter(this);
-  }
-
-  isCompoundFilter() {
-    return isCompoundFilter(this);
-  }
-
-  isFieldFilter() {
-    return isFieldFilter(this);
-  }
-
-  displayName() {
-    if (this.isSegmentFilter()) {
-      const segment = this.segment();
-      return t`Matches ${segment ? segment.displayName() : t`Unknown Segment`}`;
-    } else if (this.isFieldFilter()) {
-      const dimension = this.dimension();
-      const operator = this.operator();
-      const dimensionName = dimension && dimension.displayName();
-      const operatorName = operator && operator.moreVerboseName;
-      const argumentNames = this.formattedArguments().join(" ");
-      return t`${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
-    } else {
-      return t`Unknown Filter`;
-    }
   }
 }

@@ -17,6 +17,35 @@ import type { MetricId } from "metabase/meta/types/Metric";
 import type { FieldId } from "metabase/meta/types/Field";
 
 export default class Aggregation extends MBQLClause {
+  /**
+   * Replaces the aggregation in the parent query and returns the new StructuredQuery
+   * or replaces itself in the parent query if no {aggregation} argument is provided.
+   */
+  replace(aggregation?: AggregationObject | Aggregation): StructuredQuery {
+    if (arguments.length > 0) {
+      return this._query.updateAggregation(this._index, aggregation);
+    } else {
+      return this._query.updateAggregation(this._index, this);
+    }
+  }
+
+  /**
+   * Adds itself to the parent query and returns the new StructuredQuery
+   */
+  add(): StructuredQuery {
+    return this._query.addAggregation(this);
+  }
+
+  /**
+   * Removes the aggregation in the parent query and returns the new StructuredQuery
+   */
+  remove(): StructuredQuery {
+    return this._query.removeFilter(this._index);
+  }
+
+  /**
+   * Returns the display name for the aggregation
+   */
   displayName() {
     if (this.isNamed()) {
       return NamedClause_DEPRECATED.getName(this);
@@ -43,18 +72,57 @@ export default class Aggregation extends MBQLClause {
   }
 
   /**
-   * Replaces the aggregation in the parent query and returns the new StructuredQuery
+   * Predicate function to test if a given aggregation clause is valid
    */
-  replace(aggregation: AggregationObject | Aggregation): StructuredQuery {
-    return this._query.updateAggregation(this._index, aggregation);
+  isValid(): boolean {
+    if (!AggregationClause_DEPRECATED.isValid(this)) {
+      return false;
+    }
+    if (this.isStandard()) {
+      const dimension = this.dimension();
+      const aggregation = this.query()
+        .table()
+        .aggregation(this[0]);
+      return (
+        aggregation &&
+        (!aggregation.requiresField ||
+          this.query()
+            .aggregationFieldOptions(aggregation)
+            .hasDimension(dimension))
+      );
+    }
+    return true;
   }
 
   /**
-   * Removes the aggregation in the parent query and returns the new StructuredQuery
+   * Returns true if this is a "standard" metric
    */
-  remove(): StructuredQuery {
-    return this._query.removeAggregation(this._index);
+  isStandard(): boolean {
+    return AggregationClause_DEPRECATED.isStandard(this);
   }
+
+  /**
+   * Returns true if this is a metric
+   */
+  isMetric(): boolean {
+    return AggregationClause_DEPRECATED.isMetric(this);
+  }
+
+  /**
+   * Returns true if this is custom expression created with the expression editor
+   */
+  isCustom(): boolean {
+    return AggregationClause_DEPRECATED.isCustom(this);
+  }
+
+  /**
+   * Returns true if this a named aggregation
+   */
+  isNamed() {
+    return NamedClause_DEPRECATED.isNamed(this);
+  }
+
+  // STANDARD AGGREGATION
 
   dimension(): ?Dimension {
     if (this.isStandard() && this.length > 1) {
@@ -80,66 +148,6 @@ export default class Aggregation extends MBQLClause {
   }
 
   /**
-   * Predicate function to test if a given aggregation clause is fully formed
-   */
-  isValid(): boolean {
-    if (!AggregationClause_DEPRECATED.isValid(this)) {
-      return false;
-    }
-    if (this.isStandard()) {
-      const dimension = this.dimension();
-      const aggregation = this.query()
-        .table()
-        .aggregation(this[0]);
-      return (
-        aggregation &&
-        (!aggregation.requiresField ||
-          this.query()
-            .aggregationFieldOptions(aggregation)
-            .hasDimension(dimension))
-      );
-    }
-    return true;
-  }
-
-  /**
-   * Predicate function to test if a given aggregation clause represents a standard aggregation
-   */
-  isStandard(): boolean {
-    return AggregationClause_DEPRECATED.isStandard(this);
-  }
-
-  /**
-   * Predicate function to test if a given aggregation clause represents a metric
-   */
-  isMetric(): boolean {
-    return AggregationClause_DEPRECATED.isMetric(this);
-  }
-
-  /**
-   * Is a custom expression created with the expression editor
-   */
-  isCustom(): boolean {
-    return AggregationClause_DEPRECATED.isCustom(this);
-  }
-
-  getAggregation() {
-    return AggregationClause_DEPRECATED.getAggregation(this);
-  }
-
-  isNamed() {
-    return NamedClause_DEPRECATED.isNamed(this);
-  }
-
-  /**
-   * Get metricId from a metric aggregation clause
-   * Returns `null` if the clause doesn't represent a metric
-   */
-  getMetric(): ?MetricId {
-    return AggregationClause_DEPRECATED.getMetric(this);
-  }
-
-  /**
    * Get the operator from a standard aggregation clause
    * Returns `null` if the clause isn't in a standard format
    */
@@ -153,5 +161,21 @@ export default class Aggregation extends MBQLClause {
    */
   getFieldReference(): ?FieldId {
     return AggregationClause_DEPRECATED.getField(this);
+  }
+
+  // METRIC AGGREGATION
+
+  /**
+   * Get metricId from a metric aggregation clause
+   * Returns `null` if the clause doesn't represent a metric
+   */
+  getMetric(): ?MetricId {
+    return AggregationClause_DEPRECATED.getMetric(this);
+  }
+
+  // NAMED
+
+  getAggregation() {
+    return AggregationClause_DEPRECATED.getAggregation(this);
   }
 }
