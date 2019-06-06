@@ -67,7 +67,7 @@
 ;; LIMIT). Make sure we add a max-results LIMIT to the nested query
 (datasets/expect-with-driver :sqlserver
   {:query  (str
-            "SELECT TOP 1048576 * "
+            "SELECT TOP 1048576 \"source\".\"name\" AS \"name\" "
             "FROM ("
             "SELECT TOP 1048576 "
             "\"dbo\".\"venues\".\"name\" AS \"name\" "
@@ -76,17 +76,15 @@
             " ) \"source\" ") ; not sure why this generates an extra space before the closing paren, but it does
    :params nil}
   (qp/query->native
-    (data/$ids [venues {:wrap-field-ids? true}]
-      {:type     :query
-       :database (data/id)
-       :query    {:source-query {:source-table $$table
-                                 :fields       [$name]
-                                 :order-by     [[:asc $id]]}}})))
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues
+                      :fields       [$name]
+                      :order-by     [[:asc $id]]}})))
 
 ;; make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP clauses that may have
 ;; been set in the query
 (datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT TOP 10 * "
+  {:query (str "SELECT TOP 10 \"source\".\"name\" AS \"name\" "
                "FROM ("
                "SELECT TOP 20 "
                "\"dbo\".\"venues\".\"name\" AS \"name\" "
@@ -95,19 +93,17 @@
                " ) \"source\" ")
    :params nil}
   (qp/query->native
-    (data/$ids [venues {:wrap-field-ids? true}]
-      {:type     :query
-       :database (data/id)
-       :query    {:source-query {:source-table $$table
-                                 :fields       [$name]
-                                 :order-by     [[:asc $id]]
-                                 :limit        20}
-                  :limit        10}})))
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues
+                      :fields       [$name]
+                      :order-by     [[:asc $id]]
+                      :limit        20}
+       :limit        10})))
 
 ;; We don't need to add TOP clauses for top-level order by. Normally we always add one anyway because of the
 ;; max-results stuff, but make sure our impl doesn't add one when it's not in the source MBQL
 (datasets/expect-with-driver :sqlserver
-  {:query (str "SELECT * "
+  {:query (str "SELECT \"source\".\"name\" AS \"name\" "
                "FROM ("
                "SELECT TOP 1048576 "
                "\"dbo\".\"venues\".\"name\" AS \"name\" "
@@ -119,13 +115,11 @@
   ;; in order to actually see how things would work without the implicit max-results limit added we'll preprocess
   ;; the query, strip off the `:limit` that got added, and then feed it back to the QP where we left off
   (let [preprocessed (-> (qp/query->preprocessed
-                           (data/$ids [venues {:wrap-field-ids? true}]
-                             {:type     :query
-                              :database (data/id)
-                              :query    {:source-query {:source-table $$table
-                                                        :fields       [$name]
-                                                        :order-by     [[:asc $id]]}
-                                         :order-by     [[:asc $id]]}}))
+                           (data/mbql-query venues
+                             {:source-query {:source-table $$venues
+                                             :fields       [$name]
+                                             :order-by     [[:asc $id]]}
+                              :order-by     [[:asc $id]]}))
                          (m/dissoc-in [:query :limit]))]
     (qp.test-util/with-everything-store
       (driver/mbql->native :sqlserver preprocessed))))
@@ -137,14 +131,12 @@
    ["The Apple Pan"]]
   (qp.test/rows
     (qp/process-query
-      (data/$ids [venues {:wrap-field-ids? true}]
-        {:type     :query
-         :database (data/id)
-         :query    {:source-query {:source-table $$table
-                                   :fields       [$name]
-                                   :order-by     [[:asc $id]]
-                                   :limit        5}
-                    :limit        3}}))))
+      (data/mbql-query venues
+        {:source-query {:source-table $$venues
+                        :fields       [$name]
+                        :order-by     [[:asc $id]]
+                        :limit        5}
+         :limit        3}))))
 
 ;; Make sure datetime bucketing functions work properly with languages that format dates like yyyy-dd-MM instead of
 ;; yyyy-MM-dd (i.e. not American English) (#9057)

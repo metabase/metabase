@@ -9,7 +9,7 @@
 
     # just test against :h2 (default)
     DRIVERS=h2"
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [environ.core :refer [env]]
@@ -22,8 +22,8 @@
     (println
      (u/format-color 'red
          "The env var ENGINES is no longer supported. Please specify drivers to run tests against with DRIVERS instead.")))
-  (when-let [env-drivers (some-> (env :drivers) s/lower-case)]
-    (set (for [engine (s/split env-drivers #",")
+  (when-let [env-drivers (some-> (env :drivers) str/lower-case)]
+    (set (for [engine (str/split env-drivers #",")
                :when engine]
            (keyword engine)))))
 

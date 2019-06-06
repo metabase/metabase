@@ -1,6 +1,6 @@
 (ns metabase.test.data.sparksql
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [format :as hformat]
@@ -39,7 +39,7 @@
 
 (defmethod tx/format-name :sparksql
   [_ s]
-  (s/replace s #"-" "_"))
+  (str/replace s #"-" "_"))
 
 (defmethod sql.tx/qualified-name-components :sparksql
   [driver & args]

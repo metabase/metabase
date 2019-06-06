@@ -19,13 +19,11 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.table :refer [Table]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
-            [toucan.db :as db])
+             [i18n :refer [tru]]])
   (:import java.sql.Time
            java.util.Date
            metabase.util.honeysql_extensions.Identifier
@@ -189,14 +187,14 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (qp.store/store-table! (db/select-one [Table :id :name :schema], :id (u/get-id table-id)))
+  (qp.store/fetch-and-store-tables! [(u/get-id table-id)])
   (sql.qp/->honeysql driver field))
 
 
 (defmethod driver/table-rows-seq :snowflake [driver database table]
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [(qp.store/with-store
-                                              (qp.store/store-database! database)
+                                              (qp.store/fetch-and-store-database! (u/get-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
 (defmethod driver/describe-database :snowflake [driver database]

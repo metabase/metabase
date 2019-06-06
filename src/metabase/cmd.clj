@@ -23,7 +23,7 @@
             [metabase.util.date :as du]))
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
   (mdb/migrate! (keyword direction)))
 
@@ -40,12 +40,12 @@
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
-  (require 'environ.core)
-  (intern 'environ.core 'env (assoc @(resolve 'environ.core/env) :mb-jetty-join "false"))
+  (require 'environ.core 'metabase.core)
+  (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
   (du/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
-  "Reset the password for a user with EMAIL-ADDRESS."
+  "Reset the password for a user with `email-address`."
   [email-address]
   (require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
@@ -98,28 +98,6 @@
   []
   (require 'metabase.cmd.driver-methods)
   ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
-
-(defn ^:command check-i18n
-  "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
-  things need to be wrapped with i18n forms."
-  []
-  (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
-  (require 'puppetlabs.i18n.core)
-  (let [orig-fn @(resolve 'puppetlabs.i18n.core/fmt)]
-    (intern 'puppetlabs.i18n.core 'fmt (comp str/reverse orig-fn)))
-  (println "Ok.")
-  (println "Reloading all Metabase namespaces...")
-  (let [namespaces-to-reload (for [ns-symb @u/metabase-namespace-symbols
-                                   :when (and (not (#{'metabase.cmd 'metabase.core} ns-symb))
-                                              (u/ignore-exceptions
-                                                ;; try to resolve namespace. If it's not loaded yet, this will throw
-                                                ;; an Exception, so we can skip reloading it
-                                                (the-ns ns-symb)))]
-                               ns-symb)]
-    (apply require (conj (vec namespaces-to-reload) :reload)))
-  (println "Ok.")
-  (println "Starting normally with swapped i18n strings...")
-  ((resolve 'metabase.core/start-normally)))
 
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
