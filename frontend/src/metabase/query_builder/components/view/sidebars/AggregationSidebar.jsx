@@ -7,7 +7,11 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 const AggregationSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <SidebarContent icon="insight" title={t`Pick the metric you'd like to see`} onClose={onClose}>
+    <SidebarContent
+      icon="insight"
+      title={t`Pick the metric you'd like to see`}
+      onClose={onClose}
+    >
       <AggregationPopover
         key={index}
         query={question.query()}

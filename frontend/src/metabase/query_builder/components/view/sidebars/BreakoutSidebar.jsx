@@ -7,7 +7,11 @@ import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 const BreakoutSidebar = ({ question, index, onClose }) => {
   const query = question.query();
   return (
-    <SidebarContent icon="breakout" title={t`Pick a column to group by`} onClose={onClose}>
+    <SidebarContent
+      icon="breakout"
+      title={t`Pick a column to group by`}
+      onClose={onClose}
+    >
       <BreakoutPopover
         key={index}
         query={question.query()}

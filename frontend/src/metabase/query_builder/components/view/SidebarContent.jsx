@@ -1,25 +1,41 @@
 import React from "react";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 
-const SidebarContent = ({ icon, title, onClose, children }) => {
+import cx from "classnames";
+import { t } from "ttag";
+
+const SidebarContent = ({
+  className,
+  icon,
+  title,
+  onBack,
+  onClose,
+  footer = onClose ? (
+    <Button primary className="m2 text-centered" onClick={onClose}>
+      {t`Done`}
+    </Button>
+  ) : null,
+  children,
+}) => {
   return (
-    <div>
-      <div className="flex mb1 pl4 pr2 pt3">
-        <div className="flex align-center pb1">
-          {icon && <Icon name={icon} />}
-          {title && <h3 className="ml1 text-heavy">{title}</h3>}
+    <div className={cx(className, "flex flex-column justify-between")}>
+      <div className="scroll-y">
+        <div
+          className={cx("flex align-center px4 py3 mb1 bg-medium", {
+            "cursor-pointer text-brand-hover": onBack,
+          })}
+          onClick={onBack}
+        >
+          {onBack || icon ? (
+            <Icon name={icon || "chevronleft"} className="mr1" />
+          ) : null}
+          <h3 className="text-heavy">{title}</h3>
         </div>
-        {onClose && (
-          <Icon
-            name="close"
-            className="flex-align-right text-medium text-brand-hover cursor-pointer"
-            onClick={onClose}
-            size={20}
-          />
-        )}
+        {children}
       </div>
-      {children}
+      {footer}
     </div>
   );
 };

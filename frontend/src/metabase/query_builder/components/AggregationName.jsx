@@ -20,7 +20,11 @@ type Props = {
   className?: string,
 };
 
-const AggregationName = ({ aggregation, query, className }: Props) => {
+const AggregationName = ({
+  aggregation,
+  query = aggregation.query(),
+  className,
+}: Props) => {
   const tableMetadata = query.tableMetadata();
   const customFields = query.expressions();
   if (!tableMetadata) {

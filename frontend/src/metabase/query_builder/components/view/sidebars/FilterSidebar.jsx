@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
-import ViewFilters from "../ViewFilters";
+import ViewFilters from "../ViewFilterPopover";
 
 /** FilterSidebar operates on filters from topLevelFilters */
 const FilterSidebar = ({ question, index, onClose }) => {
@@ -16,12 +16,9 @@ const FilterSidebar = ({ question, index, onClose }) => {
         filter={filter}
         onChangeFilter={newFilter => {
           if (filter) {
-            filter.replace(newFilter).update(null, { run: true });
+            newFilter.replace().update(null, { run: true });
           } else {
-            newFilter
-              .query()
-              .addFilter(newFilter)
-              .update(null, { run: true });
+            newFilter.add().update(null, { run: true });
           }
           onClose();
         }}

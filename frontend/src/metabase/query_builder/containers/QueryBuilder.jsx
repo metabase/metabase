@@ -11,7 +11,7 @@ import { loadTableAndForeignKeys } from "metabase/lib/table";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import View from "../components/view/View";
-import Notebook from "../components/notebook/Notebook";
+// import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
 

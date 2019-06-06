@@ -9,7 +9,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 
 import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { isCardDirty } from "metabase/lib/card";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";

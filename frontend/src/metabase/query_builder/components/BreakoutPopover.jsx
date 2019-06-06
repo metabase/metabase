@@ -16,6 +16,8 @@ type Props = {
   onClose?: () => void,
   maxHeight?: number,
   alwaysExpanded?: boolean,
+  searchable?: boolean,
+  width?: number,
 };
 
 const BreakoutPopover = ({
@@ -26,6 +28,7 @@ const BreakoutPopover = ({
   onClose,
   maxHeight,
   alwaysExpanded,
+  width = 400,
 }: Props) => {
   const table = query.table();
   // FieldList requires table
@@ -35,8 +38,7 @@ const BreakoutPopover = ({
   return (
     <FieldList
       className="text-green pl2"
-      maxHeight={maxHeight}
-      width={416}
+      width={width}
       field={breakout}
       fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
       onFieldChange={field => {
@@ -47,7 +49,9 @@ const BreakoutPopover = ({
       }}
       table={table}
       enableSubDimensions
+      maxHeight={maxHeight}
       alwaysExpanded={alwaysExpanded}
+      searchable={false}
     />
   );
 };

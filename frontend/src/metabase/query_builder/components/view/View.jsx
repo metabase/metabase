@@ -20,6 +20,11 @@ import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 
+import FilterSidebar from "./sidebars/FilterSidebar";
+// import AggregationSidebar from "./sidebars/AggregationSidebar";
+// import BreakoutSidebar from "./sidebars/BreakoutSidebar";
+import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+
 import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
 
@@ -131,7 +136,11 @@ export default class View extends React.Component {
       onOpenEditFilter: this.handleOpenEditFilter,
       onCloseFilter: this.handleCloseFilter,
       onOpenAddAggregation: this.handleOpenAddAggregation,
+      onOpenEditAggregation: this.handleOpenEditAggregation,
+      onCloseAggregation: this.handleCloseAggregation,
+      onOpenAddBreakout: this.handleOpenAddBreakout,
       onOpenEditBreakout: this.handleOpenEditBreakout,
+      onCloseBreakout: this.handleCloseBreakout,
       onOpenChartSettings: this.handleOpenChartSettings,
     };
 
@@ -161,7 +170,27 @@ export default class View extends React.Component {
         : null;
 
     const leftSideBar =
-      isStructured && isShowingChartSettingsSidebar ? (
+      isStructured && (isEditingFilterIndex != null || isAddingFilter) ? (
+        <FilterSidebar
+          question={question}
+          index={isEditingFilterIndex}
+          onClose={this.handleCloseFilter}
+        />
+      ) : isStructured &&
+        (isEditingAggregationIndex != null || isAddingAggregation) ? (
+        <SummarizeSidebar
+          question={question}
+          initialAggregationIndex={isEditingAggregationIndex}
+          onClose={this.handleCloseAggregation}
+        />
+      ) : isStructured &&
+        (isEditingBreakoutIndex != null || isAddingBreakout) ? (
+        <SummarizeSidebar
+          question={question}
+          initialBreakoutIndex={isEditingBreakoutIndex}
+          onClose={this.handleCloseBreakout}
+        />
+      ) : isShowingChartSettingsSidebar ? (
         <ChartSettingsSidebar
           {...propsWithExtras}
           onClose={() =>
