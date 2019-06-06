@@ -12,7 +12,6 @@
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
-             [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
@@ -22,9 +21,8 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets]
-             [users :refer [create-users-if-needed! user->client]]]
+             [users :refer [user->client]]]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.util.test :as tt]))

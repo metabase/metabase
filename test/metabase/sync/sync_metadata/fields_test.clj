@@ -8,7 +8,6 @@
              [sync :as sync]
              [util :as u]]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
             [metabase.sync.sync-metadata.fields.sync-instances :as sync-fields.sync-instances]
@@ -19,8 +18,7 @@
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+             [hydrate :refer [hydrate]]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Dropping & Undropping Columns                                          |

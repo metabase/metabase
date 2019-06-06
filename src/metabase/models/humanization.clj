@@ -13,7 +13,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util
-             [i18n :refer [tru trs]]
+             [i18n :refer [trs tru]]
              [infer-spaces :refer [infer-spaces]]]
             [toucan.db :as db]))
 
