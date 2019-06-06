@@ -14,7 +14,9 @@
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data.users :as users]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -173,11 +175,12 @@
                   Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
                   Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
                   Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/get-id table)}]]
-    (f {:db                 db
-        :table              table
-        :event-action-field event-action-field
-        :event-label-field  event-label-field
-        :date-field         date-field})))
+    (data/with-db db
+      (f {:db                 db
+          :table              table
+          :event-action-field event-action-field
+          :event-label-field  event-label-field
+          :date-field         date-field}))))
 
 ;; let's try a real-life GA query and see how it looks when it's all put together. This one has already been
 ;; preprocessed, so we're just checking it gets converted to the correct native query
@@ -229,8 +232,9 @@
 (expect
   expected-ga-query
   (do-with-some-fields
-   (fn [{:keys [table event-action-field event-label-field date-field], :as objects}]
+   (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
      (qp.store/with-store
+       (qp.store/fetch-and-store-database! (u/get-id db))
        (qp.store/fetch-and-store-tables! [(u/get-id table)])
        (qp.store/fetch-and-store-fields! (map u/get-id [event-action-field event-label-field date-field]))
        (ga.qp/mbql->native (preprocessed-query-with-some-fields objects))))))
@@ -252,7 +256,7 @@
 (expect
   expected-ga-query
   (do-with-some-fields
-   (comp metabase.query-processor/query->native query-with-some-fields)))
+   (comp qp/query->native query-with-some-fields)))
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.

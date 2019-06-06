@@ -309,19 +309,19 @@
 
 (s/defn field-clause->alias
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AN`) for a Field clause of any type, or `nil` if
-  the Field should not be aliased (e.g. if `field->alias` returns `nil`)."
-  [driver, field-clause :- mbql.s/Field]
-  (let [expression-name (when (mbql.u/is-clause? :expression field-clause)
-                          (second field-clause))
-        id-or-name      (when-not expression-name
-                          (mbql.u/field-clause->id-or-literal field-clause))
-        field           (when (integer? id-or-name)
-                          (qp.store/field id-or-name))]
-    (when-let [alias (cond
-                       expression-name      expression-name
-                       field                (field->alias driver field)
-                       (string? id-or-name) id-or-name)]
-      (->honeysql driver (hx/identifier :field-alias alias)))))
+  the Field should not be aliased (e.g. if `field->alias` returns `nil`).
+
+  Optionally pass a state-maintaining `unique-name-fn`, such as `mbql.u/unique-name-generator`, to guarantee that each
+  alias generated is unique when generating a sequence of aliases, such as for a `SELECT` clause."
+  ([driver field-clause]
+   (field-clause->alias driver field-clause identity))
+
+  ([driver, field-clause :- mbql.s/Field, unique-name-fn :- (s/pred fn?)]
+   (when-let [alias (mbql.u/match-one field-clause
+                      [:expression expression-name] expression-name
+                      [:field-literal field-name _] field-name
+                      [:field-id id]                (field->alias driver (qp.store/field id)))]
+     (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -335,15 +335,18 @@
 
     (as [:datetime-field [:field-literal \"x\" :type/Text] :month])
     ;; -> [<compiled-form> :x]
-    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\""
+    ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
+
+  As with `field-clause->alias`, you can pass a `unique-name-fn` to generate unique names for a sequence of aliases,
+  such as for a `SELECT` clause."
   ([driver field-clause]
-   (as driver (->honeysql driver field-clause) field-clause))
-  ([driver form field-clause]
-   (if (mbql.u/is-clause? :field-literal field-clause)
-     form
-     (if-let [alias (field-clause->alias driver field-clause)]
-       [form alias]
-       form))))
+   (as driver field-clause identity))
+
+  ([driver field-clause unique-name-fn]
+   (let [honeysql-form (->honeysql driver field-clause)]
+     (if-let [alias (field-clause->alias driver field-clause unique-name-fn)]
+       [honeysql-form alias]
+       honeysql-form))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -373,8 +376,9 @@
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
-  (apply h/merge-select honeysql-form (for [field fields]
-                                        (as driver field))))
+  (let [unique-name-fn (mbql.u/unique-name-generator)]
+    (apply h/merge-select honeysql-form (for [field-clause fields]
+                                          (as driver field-clause unique-name-fn)))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------

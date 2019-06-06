@@ -131,14 +131,17 @@
 
 ;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
 
-(defn- db-id [] (get-in @*store* [:database :id]))
+(s/defn ^:private db-id :- su/IntGreaterThanZero
+  []
+  (or (get-in @*store* [:database :id])
+      (throw (Exception. (str (tru "Cannot store Tables or Fields before Database is stored."))))))
 
 (s/defn fetch-and-store-database!
   "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
   duration of the current query execution. If Database has already been fetched, this function will no-op. Throws an
   Exception if Table does not exist."
   [database-id :- su/IntGreaterThanZero]
-  (if-let [existing-db-id (db-id)]
+  (if-let [existing-db-id (get-in @*store* [:database :id])]
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
       (throw (ex-info (str (tru "Attempting to fetch second Database. Queries can only reference one Database."))

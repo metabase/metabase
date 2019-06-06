@@ -105,6 +105,8 @@ There is also an option to reload changes on save without hot reloading if you p
 $ yarn build-watch
 ```
 
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
+
 ### Frontend testing
 
 All frontend tests are located in `frontend/test` directory. Run all frontend tests with

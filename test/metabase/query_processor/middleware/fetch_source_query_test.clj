@@ -124,8 +124,7 @@
               :alias           "c",
               :condition       [:= $category_id [:joined-field "c" $categories.id]]
               :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}]})
-  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories
-                                                        {:source-table $$table, :limit 100})
+  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories {:limit 100})
                                      :result_metadata [{:name         "name"
                                                         :display_name "Card Name"
                                                         :base_type    "type/Text"}]}]
@@ -142,8 +141,7 @@
                              :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}
               :alias        "c",
               :condition    [:= $category_id [:joined-field "c" $categories.id]]}]})
-  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories
-                                                        {:source-table $$table, :limit 100})
+  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories {:limit 100})
                                      :result_metadata [{:name         "name"
                                                         :display_name "Card Name"
                                                         :base_type    "type/Text"}]}]
@@ -162,8 +160,7 @@
                                     :alias           "c"
                                     :condition       [:= $category_id [:joined-field "c" $categories.id]]
                                     :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]}]}})
-  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories
-                                                        {:source-table $$table, :limit 100})
+  (tt/with-temp Card [{card-id :id} {:dataset_query   (data/mbql-query categories {:limit 100})
                                      :result_metadata [{:name         "name"
                                                         :display_name "Card Name"
                                                         :base_type    "type/Text"}]}]
@@ -180,13 +177,12 @@
 (expect
   (data/mbql-query venues
     {:joins [{:alias           "c"
-              :condition       [:= $category_id [:joined-field "c" $categories.id]]
+              :condition       [:= $category_id &c.$categories.id]
               :source-query    {:source-query    {:source-table $$categories :limit 20}
                                 :source-metadata [{:name "name", :display_name "Card Name", :base_type :type/Text}]
                                 :limit           100}
               :source-metadata nil}]})
-  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query   (data/mbql-query categories
-                                                            {:source-table $$table, :limit 20})
+  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query   (data/mbql-query categories {:limit 20})
                                          :result_metadata [{:name         "name"
                                                             :display_name "Card Name"
                                                             :base_type    "type/Text"}]}]
@@ -197,7 +193,7 @@
      (data/mbql-query venues
        {:joins [{:source-table (str "card__" card-2-id)
                  :alias        "c"
-                 :condition    [:= $category_id [:joined-field "c" $categories.id]]}]}))))
+                 :condition    [:= $category_id &c.categories.id]}]}))))
 
 ;; Middleware should throw an Exception if we try to resolve a source query for a card whose source query is itself
 (expect
@@ -218,7 +214,8 @@
         (or save-error
             (resolve-card-id-source-tables circular-source-query))))))
 
-;; middleware should throw an Exception if we try to resolve a source query card with a source query that refers back to the original
+;; middleware should throw an Exception if we try to resolve a source query card with a source query that refers back
+;; to the original
 (expect
   clojure.lang.ExceptionInfo
   (let [circular-source-query (fn [card-id]
