@@ -5,38 +5,28 @@
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import java.net.URL))
+            [toucan.db :as db]))
 
 (def ^:private ^String sample-dataset-name     "Sample Dataset")
 (def ^:private ^String sample-dataset-filename "sample-dataset.db.mv.db")
 
-(defn- jdbc-connection-file-url [^URL file-url]
-  (-> (.getPath file-url)
-      ;; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when
-      ;; running from `lein`, which has no `file:` prefix)
-      (str/replace #"^file:" "zip:")
-      ;; strip the .mv.db suffix from the path
-      (str/replace #"\.mv\.db$" "")
-      ;; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so
-      ;; switch them back to spaces
-      (str/replace #"%20" " ")))
-
 (defn- db-details []
-  (let [resource (or (io/resource sample-dataset-filename)
-                     (throw (Exception. (str (trs "Can''t load sample dataset: the DB file ''{0}'' can't be found."
-                                                  sample-dataset-filename)))))]
-    {:db       (jdbc-connection-file-url resource)
-     ;; specify the GUEST user account created for the DB
-     :USER     "GUEST"
-     :PASSWORD "guest"}))
+  (let [resource (io/resource sample-dataset-filename)]
+    (when-not resource
+      (throw (Exception. (str (trs "Sample dataset DB file ''{0}'' cannot be found."
+                                   sample-dataset-filename)))))
+    {:db (-> (.getPath resource)
+             (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from `lein`, which has no `file:` prefix)
+             (str/replace #"\.mv\.db$" "")  ; strip the .mv.db suffix from the path
+             (str/replace #"%20" " ") ; for some reason the path can get URL-encoded and replace spaces with `%20`; this breaks things so switch them back to spaces
+             (str ";USER=GUEST;PASSWORD=guest"))})) ; specify the GUEST user account created for the DB
 
 (defn add-sample-dataset!
   "Add the sample dataset as a Metabase DB if it doesn't already exist."
   []
   (when-not (db/exists? Database :is_sample true)
     (try
-      (log/info "Loading sample dataset...")
+      (log/info (trs "Loading sample dataset..."))
       (sync/sync-database! (db/insert! Database
                              :name      sample-dataset-name
                              :details   (db-details)

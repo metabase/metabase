@@ -30,22 +30,22 @@ const STEP_UI = {
     component: DataStep,
   },
   join: {
-    title: t`Add data`,
+    title: t`Join data`,
     color: colors["brand"],
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
   },
   expression: {
-    title: t`Custom fields`,
+    title: t`Add column`,
     color: colors["text-medium"],
-    icon: "addtodash",
+    icon: "add_data",
     component: ExpressionStep,
   },
   filter: {
     title: t`Filter`,
     color: colors["accent7"],
-    icon: "funneladd",
+    icon: "filter",
     component: FilterStep,
     priority: 10,
   },
@@ -78,9 +78,9 @@ const STEP_UI = {
     compact: true,
   },
   limit: {
-    title: t`Limit`,
+    title: t`Row limit`,
     color: colors["text-medium"],
-    icon: "bolt",
+    icon: "list",
     component: LimitStep,
     compact: true,
   },
@@ -199,7 +199,7 @@ const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
       }}
       small={!large}
       iconVertical={large}
-      iconSize={large ? 18 : 12}
+      iconSize={large ? 18 : 14}
       className="text-medium bg-medium"
       onClick={onClick}
       {...props}

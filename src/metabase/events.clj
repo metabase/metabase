@@ -9,7 +9,7 @@
   when the application goes through normal startup procedures. Inside this function you can do any work needed and add
   your events subscribers to the bus as usual via `start-event-listener!`."
   (:require [clojure.core.async :as async]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -103,7 +103,7 @@
   "Determine a valid `model` identifier for the given TOPIC."
   [topic]
   ;; just take the first part of the topic name after splitting on dashes.
-  (first (s/split (name topic) #"-")))
+  (first (str/split (name topic) #"-")))
 
 (defn object->model-id
   "Determine the appropriate `model_id` (if possible) for a given OBJECT."

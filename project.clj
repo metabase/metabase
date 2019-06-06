@@ -175,10 +175,14 @@
    :run
    [:exclude-tests {}]
 
-   ;; start the HTTP server with 'lein ring server'
+   ;; start the dev HTTP server with 'lein ring server'
    :ring
    [:exclude-tests
-    {:plugins
+    {:dependencies
+     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
+     [[ns-tracker "0.4.0"]]
+
+     :plugins
      [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
      :ring

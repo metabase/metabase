@@ -19,15 +19,11 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.table :refer [Table]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.test-util]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
-            [toucan.db :as db])
+             [i18n :refer [tru]]])
   (:import java.sql.Time
            java.util.Date
            metabase.util.honeysql_extensions.Identifier
@@ -197,7 +193,8 @@
 
 (defmethod driver/table-rows-seq :snowflake [driver database table]
   (sql-jdbc/query driver database {:select [:*]
-                                   :from   [(qp.test-util/with-everything-store
+                                   :from   [(qp.store/with-store
+                                              (qp.store/fetch-and-store-database! (u/get-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
 (defmethod driver/describe-database :snowflake [driver database]

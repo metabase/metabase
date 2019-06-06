@@ -196,7 +196,7 @@
   "2018-08-31T00:00:00.000-05:00"
    (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
 
@@ -205,7 +205,7 @@
   "2018-08-31T00:00:00.000+07:00"
   (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
 

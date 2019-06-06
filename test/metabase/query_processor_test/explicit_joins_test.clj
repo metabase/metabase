@@ -31,17 +31,17 @@
   (native-form
    (data/mbql-query venues
      {:joins [{:source-table $$categories
-               :condition    [:= [:field-id $category_id] 1]}]})))
+               :condition    [:= $category_id 1]}]})))
 
 (defn- query-with-strategy [strategy]
   (data/dataset bird-flocks
     (data/mbql-query bird
-      {:fields   [[:field-id $name] [:joined-field "f" [:field-id $flock.name]]]
+      {:fields   [$name &f.flock.name]
        :joins    [{:source-table $$flock
-                   :condition    [:= [:field-id $flock_id] [:joined-field "f" [:field-id $flock.id]]]
+                   :condition    [:= $flock_id &f.flock.id]
                    :strategy     strategy
                    :alias        "f"}]
-       :order-by [[:asc [:field-id $name]]]})))
+       :order-by [[:asc $name]]})))
 
 ;; Can we supply a custom alias? Can we do a left outer join ??
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -158,14 +158,13 @@
              [1  "Russell Crow"     4   4   "Mission Street Murder"]]}
   (qp.test/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/dataset bird-flocks
-          (data/mbql-query bird
-            {:joins    [{:source-table $$flock
-                         :condition    [:= [:field-id $flock_id] [:joined-field "f" [:field-id $flock.id]]]
-                         :alias        "f"
-                         :fields       :all}]
-             :order-by [[:asc [:field-id $name]]]}))))))
+      (data/dataset bird-flocks
+        (data/run-mbql-query bird
+          {:joins    [{:source-table $$flock
+                       :condition    [:= $flock_id &f.flock.id]
+                       :alias        "f"
+                       :fields       :all}]
+           :order-by [[:asc [:field-id $name]]]})))))
 
 ;; Can we include no Fields (with `:none`)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -190,14 +189,13 @@
              [1  "Russell Crow"     4  ]]}
   (qp.test/format-rows-by [#(some-> % int) str #(some-> % int)]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/dataset bird-flocks
-          (data/mbql-query bird
-            {:joins    [{:source-table $$flock
-                         :condition    [:= [:field-id $flock_id] [:joined-field "f" [:field-id $flock.id]]]
-                         :alias        "f"
-                         :fields       :none}]
-             :order-by [[:asc [:field-id $name]]]}))))))
+      (data/dataset bird-flocks
+        (data/run-mbql-query bird
+          {:joins    [{:source-table $$flock
+                       :condition    [:= $flock_id &f.flock.id]
+                       :alias        "f"
+                       :fields       :none}]
+           :order-by [[:asc [:field-id $name]]]})))))
 
 ;;Can we include a list of specific Fields?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -222,15 +220,14 @@
              [1  "Russell Crow"    "Mission Street Murder"]]}
   (qp.test/format-rows-by [#(some-> % int) str identity]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/dataset bird-flocks
-          (data/mbql-query bird
-            {:fields   [$id $name]
-             :joins    [{:source-table $$flock
-                         :condition    [:= [:field-id $flock_id] [:joined-field "f" [:field-id $flock.id]]]
-                         :alias        "f"
-                         :fields       [[:joined-field "f" $flock.name]]}]
-             :order-by [[:asc [:field-id $name]]]}))))))
+      (data/dataset bird-flocks
+        (data/run-mbql-query bird
+          {:fields   [$id $name]
+           :joins    [{:source-table $$flock
+                       :condition    [:= $flock_id &f.flock.id]
+                       :alias        "f"
+                       :fields       [&f.flock.name]}]
+           :order-by [[:asc [:field-id $name]]]})))))
 
 ;; Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in `:datetime-field`
 ;; forms?
@@ -239,21 +236,21 @@
    (mapv data/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
 
    :rows
-   (let [tz (if (qp.test/tz-shifted-driver-bug? driver/*driver*) "07:00:00.000Z"  "00:00:00.000Z")]
+   ;; not sure why only Oracle seems to do this
+   (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
      [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 (str "2014-04-07T" tz) 5 12]
       [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 (str "2014-09-18T" tz) 1 31]
       [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 (str "2014-09-15T" tz) 8 56]])}
   (qp.test/format-rows-by [int identity identity int identity int int]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/mbql-query users
-          {:source-table $$users
-           :joins        [{:source-table $$checkins
-                           :alias        "c"
-                           :fields       "all"
-                           :condition    [:= $id [:joined-field "c" $checkins.id]]}]
-           :order-by     [["asc" ["joined-field" "c" $checkins.id]]]
-           :limit        3})))))
+      (data/run-mbql-query users
+        {:source-table $$users
+         :joins        [{:source-table $$checkins
+                         :alias        "c"
+                         :fields       "all"
+                         :condition    [:= $id &c.checkins.id]}]
+         :order-by     [["asc" ["joined-field" "c" $checkins.id]]]
+         :limit        3}))))
 
 ;; Can we run a query that for whatever reason ends up with a `SELECT *` for the source query
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -261,18 +258,15 @@
    :rows    [[1 5] [2 1] [3 8]]}
   (qp.test/format-rows-by [int int]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/mbql-query checkins
-          {:source-query {:source-table $$checkins
-                          :aggregation  [[:sum $user_id->users.id]]
-                          :breakout     [$id]}
-           :joins        [{:alias        "u"
-                           :source-table $$users
-                           :condition    [:=
-                                          [:field-literal (data/format-name "id") :type/BigInteger]
-                                          [:joined-field "u" $users.id]]}]
-           :order-by     [[:asc [:field-literal (data/format-name "id") :type/Integer]]]
-           :limit        3})))))
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :aggregation  [[:sum $user_id->users.id]]
+                        :breakout     [$id]}
+         :joins        [{:alias        "u"
+                         :source-table $$users
+                         :condition    [:= *checkins.id &u.users.id]}]
+         :order-by     [[:asc [:field-literal (data/format-name "id") :type/Integer]]]
+         :limit        3}))))
 
 ;; Can we join against a source nested MBQL query?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -281,16 +275,13 @@
    [93 "33 Taps"            7 34.1018 -118.326 2]]
   (qp.test/formatted-venues-rows
    (qp.test/rows
-     (qp/process-query
-       (data/mbql-query venues
-         {:source-table $$venues
-          :joins        [{:alias        "cat"
-                          :source-query {:source-table $$categories}
-                          :condition    [:=
-                                         $category_id
-                                         [:joined-field "cat" [:field-literal (data/format-name "id") :type/BigInteger]]]}]
-          :order-by     [[:asc $name]]
-          :limit        3})))))
+     (data/run-mbql-query venues
+       {:source-table $$venues
+        :joins        [{:alias        "cat"
+                        :source-query {:source-table $$categories}
+                        :condition    [:= $category_id &cat.*categories.id]}]
+        :order-by     [[:asc $name]]
+        :limit        3}))))
 
 ;; Can we join against a `card__id` source query and use `:fields` `:all`?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -305,16 +296,13 @@
     (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
                              int identity]
       (qp.test/rows+column-names
-        (qp/process-query
-          (data/mbql-query venues
-            {:joins    [{:alias        "cat"
-                         :source-table (str "card__" card-id)
-                         :fields       :all
-                         :condition    [:=
-                                        $category_id
-                                        [:joined-field "cat" [:field-literal (data/format-name "id") :type/BigInteger]]]}]
-             :order-by [[:asc $name]]
-             :limit    3}))))))
+        (data/run-mbql-query venues
+          {:joins    [{:alias        "cat"
+                       :source-table (str "card__" card-id)
+                       :fields       :all
+                       :condition    [:= $category_id &cat.*categories.id]}]
+           :order-by [[:asc $name]]
+           :limit    3})))))
 
 ;; Can we join on a Field literal for a source query?
 ;;
@@ -332,27 +320,24 @@
     ["2013-08-01T00:00:00.000Z" 22 "2013-08-01T00:00:00.000Z" 22]
     ["2013-09-01T00:00:00.000Z" 13 "2013-09-01T00:00:00.000Z" 13]
     ["2013-10-01T00:00:00.000Z" 26 "2013-10-01T00:00:00.000Z" 26]]
-   :columns [(data/format-name "date") "count" (data/format-name "date_2") "count"]}
+   :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
   (qp.test/format-rows-by [identity int identity int]
     (qp.test/rows+column-names
       (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (data/mbql-query checkins
                                            {:aggregation [[:count]]
-                                            :breakout    [[:datetime-field $date :month]]}))]
-        (qp/process-query
-          (data/mbql-query checkins
-            {:source-query {:source-table $$checkins
-                            :aggregation  [[:count]]
-                            :breakout     [[:datetime-field $date :month]]}
-             :joins
-             [{:fields       :all
-               :alias        "checkins_2"
-               :source-table (str "card__" card-id)
-               :condition    [:=
-                              [:datetime-field [:field-literal (data/format-name "date") :type/DateTime] :month]
-                              [:joined-field "checkins_2" [:field-literal (data/format-name "date") :type/DateTime]]]}]
-             :order-by     [[:asc [:datetime-field [:field-literal (data/format-name "date") :type/DateTime] :month]]]
-             :limit        10}))))))
+                                            :breakout    [!month.date]}))]
+        (data/run-mbql-query checkins
+          {:source-query {:source-table $$checkins
+                          :aggregation  [[:count]]
+                          :breakout     [!month.date]}
+           :joins
+           [{:fields       :all
+             :alias        "checkins_2"
+             :source-table (str "card__" card-id)
+             :condition    [:= !month.*date &checkins_2.*date]}]
+           :order-by     [[:asc !month.*date]]
+           :limit        10})))))
 
 ;; Can we aggregate on the results of a JOIN?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -373,18 +358,13 @@
                                          (data/mbql-query checkins
                                            {:aggregation [[:count]]
                                             :breakout    [$user_id]}))]
-        (qp/process-query
-          (data/mbql-query users
-            {:joins       [{:fields       :all
-                            :alias        "checkins_by_user"
-                            :source-table (str "card__" card-id)
-                            :condition    [:=
-                                           $id
-                                           [:joined-field
-                                            "checkins_by_user"
-                                            [:field-literal (data/format-name "user_id") :type/Integer]]]}]
-             :aggregation [[:avg [:joined-field "checkins_by_user" [:field-literal "count" :type/Float]]]]
-             :breakout    [[:datetime-field $last_login :month]]}))))))
+        (data/run-mbql-query users
+          {:joins       [{:fields       :all
+                          :alias        "checkins_by_user"
+                          :source-table (str "card__" card-id)
+                          :condition    [:= $id &checkins_by_user.*checkins.user_id]}]
+           :aggregation [[:avg &checkins_by_user.*count/Float]]
+           :breakout    [!month.last_login]})))))
 
 ;; NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
@@ -398,20 +378,59 @@
                        source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
                        (data/mbql-query checkins
                          {:aggregation [[:count]]
-                          :breakout    [[:datetime-field $date :month]]}))]
+                          :breakout    [!month.date]}))]
     (qp.test/rows+column-names
-      (qp/process-query
-        (data/mbql-query checkins
+      (qp.test/format-rows-by [identity int identity int]
+        (data/run-mbql-query checkins
           {:source-query source-query
            :joins        [{:source-table (str "card__" card-id)
                            :alias        "checkins_by_month"
                            :fields       :all
-                           :condition    [:=
-                                          [:field-literal (data/format-name "date") :type/DateTime]
-                                          [:joined-field
-                                           "checkins_by_month"
-                                           [:field-literal (data/format-name "date") :type/DateTime]]]}]
+                           :condition    [:= *checkins.date &checkins_by_month.*checkins.date]}]
+           :order-by     [[:asc *checkins.date]]
            :limit        3})))))
+
+;; Should be able to use a joined field in a `:time-interval` clause
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows    []
+   :columns (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
+  (qp.test/rows+column-names
+    (data/run-mbql-query venues
+      {:joins    [{:source-table $$checkins
+                   :alias        "c"
+                   :strategy     :right-join
+                   :condition    [:= $id &c.checkins.venue_id]}]
+       :filter   [:time-interval &c.checkins.date -30 :day]
+       :order-by [[:asc &c.checkins.id]]
+       :limit    10})))
+
+;; Do we gracefully handle situtations where joins would produce multiple columns with the same name?
+;;
+;; (Multiple columns named `id` in the example below)
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  {:rows
+   ;; again, not sure why Oracle is the only driver giving us wrong answers here
+   (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
+     [[1 (str "2014-04-07T" tz) 5 12 5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
+      [2 (str "2014-09-18T" tz) 1 31 1 "Red Medicine"                  4 10.065 -165.374 3]])
+   :columns (mapv data/format-name
+                  ["id" "date" "user_id" "venue_id" "id_2" "name" "category_id" "latitude" "longitude" "price"])}
+  (qp.test/rows+column-names
+    (qp.test/format-rows-by [int str int int int str int (partial u/round-to-decimals 3) (partial u/round-to-decimals 3) int]
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :joins
+                        [{:fields       :all
+                          :alias        "u"
+                          :source-table $$users
+                          :condition    [:= $user_id &u.users.id]}]}
+         :joins        [{:fields       :all
+                         :alias        "v"
+                         :source-table $$venues
+                         :condition    [:= *user_id &v.venues.id]}]
+         :order-by     [[:asc $id]]
+         :limit        2}))))
+
 
 
 ;; TODO Can we join against a source nested native query?

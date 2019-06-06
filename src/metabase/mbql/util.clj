@@ -418,20 +418,31 @@
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
+(defn unique-name-generator
+  "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
+  any names passed to it as needed so all results will be unique.
+
+    (let [unique-name (unique-name-generator)]
+      [(unique-name \"A\")
+       (unique-name \"B\")
+       (unique-name \"A\")])
+    ;; -> [\"A\" \"B\" \"A_2\"]"
+  []
+  (let [aliases (atom {})]
+    (s/fn [original-name :- s/Str]
+      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
+                             original-name)]
+        (if (= total-count 1)
+          original-name
+          (recur (str original-name \_ total-count)))))))
+
 (s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
   [names :- [s/Str]]
-  (let [aliases     (atom {})
-        unique-name (fn [original-name]
-                      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
-                                             original-name)]
-                        (if (= total-count 1)
-                          original-name
-                          (recur (str original-name \_ total-count)))))]
-    (map unique-name names)))
+  (map (unique-name-generator) names))
 
 (def ^:private NamedAggregationsWithUniqueNames
   (s/constrained [mbql.s/named] #(distinct? (map last %)) "sequence of named aggregations with unique names"))
