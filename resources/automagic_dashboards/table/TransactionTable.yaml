@@ -1,87 +1,7 @@
 title: A look at your [[this]]
 transient_title: It looks like your [[this]] has transactions, so here''s a look at them
 description: Some metrics we found about your transactions.
-metrics:
-- AvgDiscount:
-    metric: [/, [sum, [dimension, Discount]], [sum, [dimension, Income]]]
-    name: Average discount %
-- TotalIncome:
-    metric: [sum, [dimension, Income]]
-    name: Total income
-- AvgIncome:
-    metric: [avg, [dimension, Income]]
-    name: Average income per transaction
-- AvgQuantity:
-    metric: [avg, [dimension, Quantity]]
-    name: Average quantity
-- TotalOrders:
-    metric: [count]
-    name: Number of orders
-dimensions:
-- Timestamp:
-    field_type: CreationTimestamp
-    score: 100
-- Timestamp:
-    field_type: CreationDate
-    score: 100
-- Timestamp:
-    field_type: DateTime
-    score: 90
-- Timestamp:
-    field_type: Date
-    score: 90
-- State:
-    field_type: GenericTable.State
-- Country: GenericTable.Country
-- Income: Income
-- Discount: Discount
-- Quantity:
-    field_type: Quantity
-- SourceSmall:
-    field_type: GenericTable.Source
-    max_cardinality: 5
-- SourceMedium:
-    field_type: GenericTable.Source
-    max_cardinality: 10
-    score: 90
-- SourceLarge:
-    field_type: GenericTable.Source
-- Cohort:
-    field_type: UserTable.JoinTimestamp
-    score: 100
-- Cohort:
-    field_type: UserTable.CreationTimestamp
-    score: 90
-- Cohort:
-    field_type: UserTable.DateTime
-    score: 80
-- ProductMedium:
-    field_type: Product
-    score: 90
-    max_cardinality: 10
-- ProductMedium:
-    field_type: ProductTable.Name
-    max_cardinality: 10
-- ProductMedium:
-    field_type: ProductTable.Title
-    max_cardinality: 10
-- ProductLarge:
-    field_type: Product
-    score: 90
-- ProductLarge:
-    field_type: ProductTable.Name
-- ProductLarge:
-    field_type: ProductTable.Title
-- ProductCategoryMedium:
-    field_type: ProductTable.Category
-    named: category
-    max_cardinality: 10
-    score: 90
-- ProductCategoryLarge:
-    field_type: ProductTable.Category
-    named: category
-- Long: GenericTable.Longitude
-- Lat: GenericTable.Latitude
+data_model: Orders
 filters:
   - Last30Days:
       filter: ["time-interval", [dimension, Timestamp], -30, day]
@@ -171,39 +91,6 @@ cards:
       score: 90
       height: 8
       group: General
-  - OrdersByProduct:
-      title: Sales per product
-      visualization: table
-      dimensions:
-        - ProductLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
-  - OrdersByProductCategory:
-      title: Sales for each product category
-      visualization: row
-      dimensions:
-        - ProductCategoryMedium
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
-  - OrdersByProductCategory:
-      title: Sales for each product category
-      visualization: table
-      dimensions:
-        - ProductCategoryLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
   - OrdersBySource:
       title: Sales per source
       visualization:
@@ -216,25 +103,6 @@ cards:
       width: 12
       height: 8
       score: 100
-      group: General
-  - OrdersBySource:
-      title: Sales per source
-      visualization: row
-      dimensions: SourceMedium
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
-      height: 8
-      group: General
-  - OrdersBySource:
-      title: Sales per source
-      visualization: table
-      dimensions: SourceLarge
-      metrics: TotalOrders
-      order_by:
-        - TotalOrders: descending
-      score: 90
       group: General
 # Geographical
   - CountByCountry:

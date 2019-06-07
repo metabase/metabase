@@ -295,198 +295,6 @@
       :year)
     :day))
 
-(defmethod ->reference [:mbql (type Field)]
-  [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (cond
-                    link               [:fk-> link id]
-                    fk_target_field_id [:fk-> id fk_target_field_id]
-                    id                 [:field-id id]
-                    :else              [:field-literal name base_type])]
-    (cond
-      (isa? base_type :type/DateTime)
-      [:datetime-field reference (or aggregation
-                                     (optimal-datetime-resolution field))]
-
-      (and aggregation
-           (isa? base_type :type/Number))
-      [:binning-strategy reference aggregation]
-
-      :else
-      reference)))
-
-(defmethod ->reference [:string (type Field)]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
-
-(defmethod ->reference [:string (type Table)]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
-
-(defmethod ->reference [:string (type Metric)]
-  [_ {:keys [name full-name]}]
-  (or full-name name))
-
-(defmethod ->reference [:mbql (type Metric)]
-  [_ {:keys [id definition]}]
-  (if id
-    [:metric id]
-    (-> definition :aggregation first)))
-
-(defmethod ->reference [:native (type Field)]
-  [_ field]
-  (field/qualified-name field))
-
-(defmethod ->reference [:native (type Table)]
-  [_ {:keys [name]}]
-  name)
-
-(defmethod ->reference :default
-  [_ form]
-  (or (cond-> form
-        (map? form) ((some-fn :full-name :name) form))
-      form))
-
-(defn- field-isa?
-  [{:keys [base_type special_type]} t]
-  (or (isa? (keyword special_type) t)
-      (isa? (keyword base_type) t)))
-
-(defn- key-col?
-  "Workaround for our leaky type system which conflates types with properties."
-  [{:keys [base_type special_type name]}]
-  (and (isa? base_type :type/Number)
-       (or (#{:type/PK :type/FK} special_type)
-           (let [name (str/lower-case name)]
-             (or (= name "id")
-                 (str/starts-with? name "id_")
-                 (str/ends-with? name "_id"))))))
-
-(def ^:private field-filters
-  {:fieldspec       (fn [fieldspec]
-                      (if (and (string? fieldspec)
-                               (rules/ga-dimension? fieldspec))
-                        (comp #{fieldspec} :name)
-                        (fn [{:keys [special_type target] :as field}]
-                          (cond
-                            ;; This case is mostly relevant for native queries
-                            (#{:type/PK :type/FK} fieldspec)
-                            (isa? special_type fieldspec)
-
-                            target
-                            (recur target)
-
-                            :else
-                            (and (not (key-col? field))
-                                 (field-isa? field fieldspec))))))
-   :named           (fn [name-pattern]
-                      (comp (->> name-pattern
-                                 str/lower-case
-                                 re-pattern
-                                 (partial re-find))
-                            str/lower-case
-                            :name))
-   :max-cardinality (fn [cardinality]
-                      (fn [field]
-                        (some-> field
-                                (get-in [:fingerprint :global :distinct-count])
-                                (<= cardinality))))})
-
-(defn- filter-fields
-  "Find all fields belonging to table `table` for which all predicates in
-   `preds` are true."
-  [preds fields]
-  (filter (->> preds
-               (keep (fn [[k v]]
-                       (when-let [pred (field-filters k)]
-                         (some-> v pred))))
-               (apply every-pred))
-          fields))
-
-(defn- filter-tables
-  [tablespec tables]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
-
-(defn- fill-templates
-  [template-type {:keys [root tables]} bindings s]
-  (let [bindings (some-fn (merge {"this" (-> root
-                                             :entity
-                                             (assoc :full-name (:full-name root)))}
-                                 bindings)
-                          (comp first #(filter-tables % tables) rules/->entity)
-                          identity)]
-    (str/replace s #"\[\[(\w+)(?:\.([\w\-]+))?\]\]"
-                 (fn [[_ identifier attribute]]
-                   (let [entity    (bindings identifier)
-                         attribute (some-> attribute qp.util/normalize-token)]
-                     (str (or (and (ifn? entity) (entity attribute))
-                              (root attribute)
-                              (->reference template-type entity))))))))
-
-(defn- field-candidates
-  [context {:keys [field_type links_to named max_cardinality] :as constraints}]
-  (if links_to
-    (filter (comp (->> (filter-tables links_to (:tables context))
-                       (keep :link)
-                       set)
-                  u/get-id)
-            (field-candidates context (dissoc constraints :links_to)))
-    (let [[tablespec fieldspec] field_type]
-      (if fieldspec
-        (mapcat (fn [table]
-                  (some->> table
-                           :fields
-                           (filter-fields {:fieldspec       fieldspec
-                                           :named           named
-                                           :max-cardinality max_cardinality})
-                           (map #(assoc % :link (:link table)))))
-                (filter-tables tablespec (:tables context)))
-        (filter-fields {:fieldspec       tablespec
-                        :named           named
-                        :max-cardinality max_cardinality}
-                       (-> context :source :fields))))))
-
-(defn- make-binding
-  [context [identifier definition]]
-  (->> definition
-       (field-candidates context)
-       (map #(->> (merge % definition)
-                  vector ; we wrap these in a vector to make merging easier (see `bind-dimensions`)
-                  (assoc definition :matches)
-                  (hash-map (name identifier))))))
-
-(def ^:private ^{:arglists '([definitions])} most-specific-definition
-  "Return the most specific defintion among `definitions`.
-   Specificity is determined based on:
-   1) how many ancestors `field_type` has (if field_type has a table prefix,
-      ancestors for both table and field are counted);
-   2) if there is a tie, how many additional filters (`named`, `max_cardinality`,
-      `links_to`, ...) are used;
-   3) if there is still a tie, `score`."
-  (comp last (partial sort-by (comp (fn [[_ definition]]
-                                      [(transduce (map (comp count ancestors))
-                                                  +
-                                                  (:field_type definition))
-                                       (count definition)
-                                       (:score definition)])
-                                    first))))
-
-(defn- bind-dimensions
-  "Bind fields to dimensions and resolve overloading.
-   Each field will be bound to only one dimension. If multiple dimension definitions
-   match a single field, the field is bound to the most specific definition used
-   (see `most-specific-defintion` for details)."
-  [context dimensions]
-  (->> dimensions
-       (mapcat (comp (partial make-binding context) first))
-       (group-by (comp id-or-name first :matches val first))
-       (map (comp most-specific-definition val))
-       (apply merge-with (fn [a b]
-                           (case (compare (:score a) (:score b))
-                             1  a
-                             0  (update a :matches concat (:matches b))
-                             -1 b))
-              {})))
-
 (defn- build-order-by
   [dimensions metrics order-by]
   (let [dimensions (set dimensions)]
@@ -534,23 +342,6 @@
    {:type     :native
     :native   {:query (fill-templates :native context bindings query)}
     :database (-> context :root :database)}))
-
-(defn- has-matches?
-  [dimensions definition]
-  (->> definition
-       rules/collect-dimensions
-       (every? (partial get dimensions))))
-
-(defn- resolve-overloading
-  "Find the overloaded definition with the highest `score` for which all referenced dimensions have at least one
-  matching field."
-  [{:keys [dimensions]} definitions]
-  (apply merge-with (fn [a b]
-                      (case (map (partial has-matches? dimensions) [a b])
-                        [true false] a
-                        [false true] b
-                        (max-key :score a b)))
-         definitions))
 
 (defn- instantate-visualization
   [[k v] dimensions metrics]
@@ -653,109 +444,6 @@
                              :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
-(defn- matching-rules
-  "Return matching rules orderd by specificity.
-   Most specific is defined as entity type specification the longest ancestor
-   chain."
-  [rules {:keys [source entity]}]
-  (let [table-type (or (:entity_type source) :entity/GenericTable)]
-    (->> rules
-         (filter (fn [{:keys [applies_to]}]
-                   (let [[entity-type field-type] applies_to]
-                     (and (isa? table-type entity-type)
-                          (or (nil? field-type)
-                              (field-isa? entity field-type))))))
-         (sort-by :specificity >))))
-
-(defn- linked-tables
-  "Return all tables accessable from a given table with the paths to get there.
-   If there are multiple FKs pointing to the same table, multiple entries will
-   be returned."
-  [table]
-  (for [{:keys [id target]} (field/with-targets
-                              (db/select Field
-                                :table_id           (u/get-id table)
-                                :fk_target_field_id [:not= nil]
-                                :active             true))
-        :when (some-> target mi/can-read?)]
-    (-> target field/table (assoc :link id))))
-
-(def ^:private ^{:arglists '([source])} source->engine
-  (comp :engine Database (some-fn :db_id :database_id)))
-
-(defmulti
-  ^{:private  true
-    :arglists '([context entity])}
-  inject-root (fn [_ entity] (type entity)))
-
-(defmethod inject-root (type Field)
-  [context field]
-  (let [field (assoc field
-                :link   (->> context
-                             :tables
-                             (m/find-first (comp #{(:table_id field)} u/get-id))
-                             :link)
-                :engine (-> context :source source->engine))]
-    (update context :dimensions
-            (fn [dimensions]
-              (->> dimensions
-                   (keep (fn [[identifier definition]]
-                           (when-let [matches (->> definition
-                                                   :matches
-                                                   (remove (comp #{(id-or-name field)} id-or-name))
-                                                   not-empty)]
-                             [identifier (assoc definition :matches matches)])))
-                   (concat [["this" {:matches [field]
-                                     :name    (:display_name field)
-                                     :score   rules/max-score}]])
-                   (into {}))))))
-
-(defmethod inject-root (type Metric)
-  [context metric]
-  (update context :metrics assoc "this" {:metric (->reference :mbql metric)
-                                         :name   (:name metric)
-                                         :score  rules/max-score}))
-
-(defmethod inject-root :default
-  [context _]
-  context)
-
-(s/defn ^:private make-context
-  [root, rule :- rules/Rule]
-  {:pre [(:source root)]}
-  (let [source        (:source root)
-        tables        (concat [source] (when (instance? (type Table) source)
-                                         (linked-tables source)))
-        engine        (source->engine source)
-        table->fields (if (instance? (type Table) source)
-                        (comp (->> (db/select Field
-                                     :table_id        [:in (map u/get-id tables)]
-                                     :visibility_type "normal"
-                                     :active          true)
-                                   field/with-targets
-                                   (map #(assoc % :engine engine))
-                                   (group-by :table_id))
-                              u/get-id)
-                        (->> source
-                             :result_metadata
-                             (map (fn [field]
-                                    (-> field
-                                        (update :base_type keyword)
-                                        (update :special_type keyword)
-                                        field/map->FieldInstance
-                                        (classify/run-classifiers {})
-                                        (assoc :engine engine))))
-                             constantly))]
-    (as-> {:source       (assoc source :fields (table->fields source))
-           :root         root
-           :tables       (map #(assoc % :fields (table->fields %)) tables)
-           :query-filter (filters/inject-refinement (:query-filter root)
-                                                    (:cell-query root))} context
-      (assoc context :dimensions (bind-dimensions context (:dimensions rule)))
-      (assoc context :metrics (resolve-overloading context (:metrics rule)))
-      (assoc context :filters (resolve-overloading context (:filters rule)))
-      (inject-root context (:entity root)))))
-
 (defn- make-cards
   [context {:keys [cards]}]
   (some->> cards
@@ -781,23 +469,6 @@
          (update :groups (partial m/map-vals (fn [{:keys [title comparison_title] :as group}]
                                                (assoc group :title (or comparison_title title))))))
        (instantiate-metadata context {}))))
-
-(s/defn ^:private apply-rule
-  [root, rule :- rules/Rule]
-  (let [context   (make-context root rule)
-        dashboard (make-dashboard root rule context)
-        filters   (->> rule
-                       :dashboard_filters
-                       (mapcat (comp :matches (:dimensions context)))
-                       (remove (comp (singular-cell-dimensions root) id-or-name)))
-        cards     (make-cards context rule)]
-    (when (or (not-empty cards)
-              (-> rule :cards nil?))
-      [(assoc dashboard
-         :filters filters
-         :cards   cards)
-       rule
-       context])))
 
 (def ^:private ^:const ^Long max-related 8)
 (def ^:private ^:const ^Long max-cards 15)
@@ -971,6 +642,10 @@
                    [id (->field root id)])))
        (remove (comp nil? second))
        (into {})))
+
+(defn- find-rule-for-entity
+  [root-entity]
+  (m/find-first (comp #{(-> root-entity :source :data-model) :data_model}) (rules/get-rules )))
 
 (defn- automagic-dashboard
   "Create dashboards for table `root` using the best matching heuristics."

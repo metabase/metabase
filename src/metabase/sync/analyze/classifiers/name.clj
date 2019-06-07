@@ -185,3 +185,9 @@
                                     :druid           :entity/EventTable
                                     nil)
                                   :entity/GenericTable))))
+
+(defn- infer-data-model
+  [table]
+  (when-let [data-model (data-model/find-model-for-table)]
+    (let [datamodel-id (db/insert! DataModel (data-model/instantiate-template data-model table))]
+      (assoc table :data_model (u/get-id datamodel-id)))))
