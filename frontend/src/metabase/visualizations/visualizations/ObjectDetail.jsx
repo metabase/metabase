@@ -109,6 +109,7 @@ export class ObjectDetail extends Component {
       } else {
         cellValue = formatValue(value, {
           column: column,
+          ...column.settings
           jsx: true,
           rich: true,
         });
