@@ -137,7 +137,7 @@ export default class NotebookStep extends React.Component {
       : null;
 
     return (
-      <Box mb={2} pb={2} className="border-bottom">
+      <Box mb={3} pb={3} className="border-bottom">
         {(title || onRemove) && (
           <Flex mb={1} width={[8 / 12]} className="text-bold" style={{ color }}>
             {title}
@@ -194,7 +194,7 @@ const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
       icon={icon}
       style={{
         color,
-        backgroundColor: color ? lighten(color, 0.65) : null,
+        backgroundColor: color ? lighten(color, 0.61) : null,
         borderColor: lighten(color, 0.35),
       }}
       small={!large}
