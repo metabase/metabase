@@ -15,7 +15,6 @@ const NotebookHeader = ({
   runQuestionQuery,
   setQueryBuilderMode,
   onOpenModal,
-  setUIControls,
 }) => (
   <Flex p={2} align="center" justify="flex-end" className={className}>
     <Tooltip tooltip={t`FIX ME`}>

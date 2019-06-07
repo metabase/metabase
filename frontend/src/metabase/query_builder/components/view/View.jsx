@@ -31,82 +31,7 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-const UI_CONTROLS_DEFAULTS = {
-  isAddingFilter: false,
-  isEditingFilterIndex: null,
-  isAddingAggregation: false,
-  isEditingAggregationIndex: null,
-  isAddingBreakout: false,
-  isEditingBreakoutIndex: null,
-};
-
 export default class View extends React.Component {
-  // FILTER
-  handleOpenAddFilter = () => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isAddingFilter: true,
-    });
-  };
-  handleOpenEditFilter = index => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isEditingFilterIndex: index,
-    });
-  };
-  handleCloseFilter = index => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-    });
-  };
-
-  // AGGREGATION
-  handleOpenAddAggregation = () => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isAddingAggregation: true,
-    });
-  };
-  handleOpenEditAggregation = index => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isEditingAggregationIndex: index,
-    });
-  };
-  handleCloseAggregation = () => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-    });
-  };
-
-  // BREAKOUT
-  handleOpenAddBreakout = () => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isAddingBreakout: true,
-    });
-  };
-  handleOpenEditBreakout = index => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-      isEditingBreakoutIndex: index || 0,
-    });
-  };
-  handleCloseBreakout = () => {
-    this.props.setUIControls({
-      ...UI_CONTROLS_DEFAULTS,
-    });
-  };
-
-  handleOpenChartSettings = initial => {
-    // TODO: move to reducer
-    this.props.setUIControls({
-      isShowingTable: false,
-      isShowingChartSettingsSidebar: true,
-      initialChartSetting: initial,
-    });
-  };
-
   render() {
     const {
       question,
@@ -130,20 +55,6 @@ export default class View extends React.Component {
       mode,
     } = this.props;
 
-    const propsWithExtras = {
-      ...this.props,
-      onOpenAddFilter: this.handleOpenAddFilter,
-      onOpenEditFilter: this.handleOpenEditFilter,
-      onCloseFilter: this.handleCloseFilter,
-      onOpenAddAggregation: this.handleOpenAddAggregation,
-      onOpenEditAggregation: this.handleOpenEditAggregation,
-      onCloseAggregation: this.handleCloseAggregation,
-      onOpenAddBreakout: this.handleOpenAddBreakout,
-      onOpenEditBreakout: this.handleOpenEditBreakout,
-      onCloseBreakout: this.handleCloseBreakout,
-      onOpenChartSettings: this.handleOpenChartSettings,
-    };
-
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
       return <div />;
@@ -153,9 +64,9 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
 
     // only allow editing of series for structured queries
-    const onAddSeries = isStructured ? this.handleOpenAddAggregation : null;
+    const onAddSeries = isStructured ? this.props.onOpenAddAggregation : null;
     const onEditSeries = isStructured
-      ? (card, index) => this.handleOpenEditAggregation(index)
+      ? (card, index) => this.props.onOpenEditAggregation(index)
       : null;
     const onRemoveSeries =
       isStructured && query.aggregations().length > 1
@@ -166,7 +77,7 @@ export default class View extends React.Component {
         : null;
     const onEditBreakout =
       isStructured && query.breakouts().length > 0
-        ? this.handleOpenEditBreakout
+        ? this.props.onOpenEditBreakout
         : null;
 
     const leftSideBar =
@@ -174,45 +85,43 @@ export default class View extends React.Component {
         <FilterSidebar
           question={question}
           index={isEditingFilterIndex}
-          onClose={this.handleCloseFilter}
+          onClose={this.props.onCloseFilter}
         />
       ) : isStructured &&
         (isEditingAggregationIndex != null || isAddingAggregation) ? (
         <SummarizeSidebar
           question={question}
           initialAggregationIndex={isEditingAggregationIndex}
-          onClose={this.handleCloseAggregation}
+          onClose={this.props.onCloseAggregation}
         />
       ) : isStructured &&
         (isEditingBreakoutIndex != null || isAddingBreakout) ? (
         <SummarizeSidebar
           question={question}
           initialBreakoutIndex={isEditingBreakoutIndex}
-          onClose={this.handleCloseBreakout}
+          onClose={this.props.onCloseBreakout}
         />
       ) : isShowingChartSettingsSidebar ? (
         <ChartSettingsSidebar
-          {...propsWithExtras}
-          onClose={() =>
-            this.props.setUIControls({
-              isShowingChartSettingsSidebar: false,
-              isShowingChartTypeSidebar: false,
-            })
-          }
+          {...this.props}
+          onClose={this.props.onCloseChartSettings}
         />
       ) : isShowingChartTypeSidebar ? (
-        <ChartTypeSidebar {...propsWithExtras} />
+        <ChartTypeSidebar
+          {...this.props}
+          onClose={this.props.onCloseChartType}
+        />
       ) : null;
 
     const rightSideBar =
       isShowingTemplateTagsEditor && query instanceof NativeQuery ? (
         <TagEditorSidebar
-          {...propsWithExtras}
+          {...this.props}
           onClose={() => this.props.toggleTemplateTagsEditor()}
         />
       ) : isShowingDataReference ? (
         <DataReference
-          {...propsWithExtras}
+          {...this.props}
           onClose={() => this.props.toggleDataReference()}
         />
       ) : null;
@@ -230,7 +139,7 @@ export default class View extends React.Component {
           >
             {({ opacity }) => (
               <ViewTitleHeader
-                {...propsWithExtras}
+                {...this.props}
                 className="flex-no-shrink z3 bg-white"
                 style={{ opacity }}
               />
@@ -282,18 +191,18 @@ export default class View extends React.Component {
               {query instanceof NativeQuery && (
                 <div className="z2 hide sm-show border-bottom">
                   <NativeQueryEditor
-                    {...propsWithExtras}
+                    {...this.props}
                     isOpen={!card.dataset_query.native.query || isDirty}
                     datasetQuery={card && card.dataset_query}
                   />
                 </div>
               )}
 
-              <ViewSubHeader {...propsWithExtras} />
+              <ViewSubHeader {...this.props} />
 
               <DebouncedFrame className="flex-full" style={{ flexGrow: 1 }}>
                 <QueryVisualization
-                  {...propsWithExtras}
+                  {...this.props}
                   onAddSeries={onAddSeries}
                   onEditSeries={onEditSeries}
                   onRemoveSeries={onRemoveSeries}
@@ -304,7 +213,7 @@ export default class View extends React.Component {
               </DebouncedFrame>
 
               {ModeFooter && (
-                <ModeFooter {...propsWithExtras} className="flex-no-shrink" />
+                <ModeFooter {...this.props} className="flex-no-shrink" />
               )}
 
               <ViewFooter {...this.props} className="flex-no-shrink" />
@@ -326,7 +235,7 @@ export default class View extends React.Component {
           />
         )}
 
-        <QueryModals {...propsWithExtras} />
+        <QueryModals {...this.props} />
       </div>
     );
   }

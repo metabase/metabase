@@ -104,6 +104,84 @@ export const setQueryBuilderMode = (
   }
 };
 
+// NOTE: technically these should be in the reducer but ¯\_(ツ)_/¯
+const UI_CONTROLS_SIDEBAR_DEFAULTS = {
+  isAddingFilter: false,
+  isEditingFilterIndex: null,
+  isAddingAggregation: false,
+  isEditingAggregationIndex: null,
+  isAddingBreakout: false,
+  isEditingBreakoutIndex: null,
+  isShowingChartSettingsSidebar: false,
+  isShowingChartTypeSidebar: false,
+};
+// FILTER
+export const onOpenAddFilter = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isAddingFilter: true,
+  });
+export const onOpenEditFilter = index =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isEditingFilterIndex: index,
+  });
+export const onCloseFilter = index =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+// AGGREGATION
+export const onOpenAddAggregation = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isAddingAggregation: true,
+  });
+export const onOpenEditAggregation = index =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isEditingAggregationIndex: index,
+  });
+export const onCloseAggregation = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+// BREAKOUT
+export const onOpenAddBreakout = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isAddingBreakout: true,
+  });
+export const onOpenEditBreakout = index =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isEditingBreakoutIndex: index || 0,
+  });
+export const onCloseBreakout = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+// CHART SETTINGS
+export const onOpenChartSettings = initial =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isShowingChartSettingsSidebar: true,
+    initialChartSetting: initial,
+  });
+export const onCloseChartSettings = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+// CHART TYPE
+export const onOpenChartType = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isShowingChartTypeSidebar: true,
+  });
+export const onCloseChartType = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
 
