@@ -35,8 +35,8 @@ const AggregationSidebar = ({ question, index, onClose }) => {
       onDone={onClose}
       className="full-height"
     >
-      <div className="px4 pt3">
-        <SectionTitle className="mb1">Pick a metric to view</SectionTitle>
+      <div className="px4 pt2">
+        <SectionTitle className="mb2">Pick a metric to view</SectionTitle>
         {query.aggregations().map((aggregation, index) => (
           <SummarizeAggregation
             className="mb1"
@@ -49,7 +49,7 @@ const AggregationSidebar = ({ question, index, onClose }) => {
         <SummarizeAggregationAdd className="mb1" query={query} />
       </div>
       {query.hasAggregations() && (
-        <div className="border-top mt2 pt2 mx1">
+        <div className="border-top mt2 pt3 mx1">
           <SectionTitle className="mb1 ml3">Summarize by</SectionTitle>
           <SummarizeBreakouts className="mx2" query={query} />
         </div>
@@ -146,6 +146,6 @@ const SummarizeBreakouts = ({ className, query }) => {
   );
 };
 
-const SectionTitle = styled.h4.attrs({ className: "text-medium" })``;
+const SectionTitle = styled.h3.attrs({ className: "text-medium" })``;
 
 export default AggregationSidebar;

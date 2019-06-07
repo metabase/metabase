@@ -34,6 +34,7 @@ const ViewFooter = ({
     <ViewSection
       className={cx(className, "flex align-center text-medium")}
       bottom
+      trim
     >
       <div className="flex align-center">
         <VizTypeButton
@@ -84,7 +85,7 @@ const VizTypeButton = ({ className, question, result, selected, onClick }) => {
 
   return (
     <span
-      className="h3 flex align-center bg-medium rounded px2 py1 cursor-pointer"
+      className="text-bold flex align-center bg-medium rounded px2 py1 cursor-pointer"
       onClick={onClick}
     >
       {`Visualization`}:

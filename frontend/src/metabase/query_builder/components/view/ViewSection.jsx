@@ -5,11 +5,11 @@ import cx from "classnames";
 
 import Subhead from "metabase/components/Subhead";
 
-const ViewSection = ({ bottom, className, style, ...props }) => (
+const ViewSection = ({ bottom, trim, className, style, ...props }) => (
   <Flex
     align="center"
     px={3}
-    py={2}
+    py={trim ? 1 : 2}
     className={cx(bottom ? "border-top" : "border-bottom", className)}
     style={style}
     {...props}

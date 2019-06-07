@@ -47,7 +47,7 @@ export default class NotebookSteps extends React.Component {
     const steps = getQuestionSteps(question, openSteps);
 
     return (
-      <div className={cx(className, "pt2")}>
+      <div className={cx(className, "pt3")}>
         {steps.map((step, index) => {
           const updateQuery = async datasetQuery => {
             let query = step.query.setDatasetQuery(datasetQuery);

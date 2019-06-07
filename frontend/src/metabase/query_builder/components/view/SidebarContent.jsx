@@ -23,7 +23,7 @@ const SidebarContent = ({
     <div className={cx(className, "flex flex-column justify-between")}>
       <div className="scroll-y">
         <div
-          className={cx("flex align-center px4 py3 mb1 bg-medium", {
+          className={cx("flex align-center px4 pt3 mb2", {
             "cursor-pointer text-brand-hover": onBack,
           })}
           onClick={onBack}

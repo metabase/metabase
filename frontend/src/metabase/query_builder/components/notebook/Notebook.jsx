@@ -23,8 +23,7 @@ export default function Notebook({ className, ...props }) {
         <Button
           medium
           primary
-          mt={2}
-          style={{ minWidth: 220 }}
+          style={{minWidth: 220}}
           onClick={async () => {
             if (question.display() === "table") {
               await question.setDisplayDefault().update();
