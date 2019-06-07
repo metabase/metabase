@@ -1,4 +1,4 @@
-(ns metabase.etl.core
+(ns metabase.transforms.core
   (:require [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -69,11 +69,11 @@
 
 (def ^:private Name s/Str)
 
-(def ^:private MBTL {(s/required-key :name)        Name
-                     (s/required-key :requires)    Requires
-                     (s/required-key :provides)    Provides
-                     (s/required-key :steps)       Steps
-                     (s/optional-key :description) Description})
+(def ^:private TransformTemplate {(s/required-key :name)        Name
+                                  (s/required-key :requires)    Requires
+                                  (s/required-key :provides)    Provides
+                                  (s/required-key :steps)       Steps
+                                  (s/optional-key :description) Description})
 
 (defn- dependencies-sort
   [dependencies-fn g]
@@ -111,7 +111,7 @@
 
 (def ^:private transforms-validator
   (sc/coercer!
-   MBTL
+   TransformTemplate
    {MBQL                     mbql.normalize/normalize
     Steps                    (comp (partial dependencies-sort (fn [{:keys [source join]}]
                                                                 (conj (map :source join) source)))
@@ -366,7 +366,9 @@
                                     (transform-step! bindings transform (assoc step :name name)))
                                   requirements
                                   steps)]
-          (map (comp u/get-id :entity bindings key) provides))))))
+          (for [[result-step {required-dimensions :dimensions}] provides]
+            (assert (every? (-> result-step bindings :dimensions) required-dimensions))
+            (-> result-step bindings :entity u/get-id)))))))
 
 ;; TODO: should this work for cards as well?
 (defn candidates

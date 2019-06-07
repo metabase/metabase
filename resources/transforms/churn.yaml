@@ -21,7 +21,7 @@ steps:
       source: OrderHistory
  #     expressions:
   #      Month: [datetime-field, [dimension, CreationTimestamp], month]
-  #      PrevMonth: [-, [dimension, Month], [interval, -1, month]]
+         PrevMonth: [-, [dimension, Month], [interval, -1, month]]
   NextMonth:
        source: Charges
   MRR:
@@ -34,7 +34,7 @@ steps:
   MRRStatistics:
       source: Charges
     #  expressions:
-    #     Month: [-, [dimension, Month], [interval, 1, month]]
+         Month: [-, [dimension, Month], [interval, 1, month]]
       aggregation:
         ChurrnedMRR: [sum-where, [dimension, Income], [is-null, [dimension, NextMonth.CreationTimestamp]]]
         MRRChurn: [/, [dimension, ChurrnedMRR], [min, [dimension, MRR.MRR]]]
