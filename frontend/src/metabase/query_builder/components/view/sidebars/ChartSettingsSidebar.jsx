@@ -16,7 +16,7 @@ const ChartSettingsSidebar = ({
   initialChartSetting,
   onReplaceAllVisualizationSettings,
   onClose,
-  setUIControls,
+  onOpenChartType,
   ...props
 }) =>
   result && (
@@ -24,12 +24,7 @@ const ChartSettingsSidebar = ({
       className="full-height"
       title={t`${visualizations.get(question.display()).uiName} options`}
       onClose={onClose}
-      onBack={() =>
-        setUIControls({
-          isShowingChartSettingsSidebar: false,
-          isShowingChartTypeSidebar: true,
-        })
-      }
+      onBack={onOpenChartType}
     >
       <ChartSettings
         question={question}

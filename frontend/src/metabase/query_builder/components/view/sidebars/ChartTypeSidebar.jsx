@@ -20,7 +20,7 @@ const ChartTypeSidebar = ({
   question,
   result,
   onOpenChartSettings,
-  setUIControls,
+  onCloseChartType,
   isShowingChartTypeSidebar,
   ...props
 }) => {
@@ -40,11 +40,7 @@ const ChartTypeSidebar = ({
     <SidebarContent
       className="full-height"
       title={t`Choose a visualization`}
-      onClose={() =>
-        setUIControls({
-          isShowingChartTypeSidebar: false, // TODO: move to reducer
-        })
-      }
+      onClose={onCloseChartType}
     >
       {layout.map(row => (
         <div className="flex border-row-divider py2 px3">

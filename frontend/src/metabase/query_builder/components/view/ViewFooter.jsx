@@ -19,6 +19,10 @@ const ViewFooter = ({
   isShowingChartTypeSidebar,
   isShowingChartSettingsSidebar,
   isShowingTable,
+  onOpenChartType,
+  onCloseChartType,
+  onOpenChartSettings,
+  onCloseChartSettings,
   setUIControls,
   isObjectDetail,
 }) => {
@@ -36,23 +40,17 @@ const ViewFooter = ({
           question={question}
           result={result}
           selected={isShowingChartTypeSidebar}
-          onClick={() =>
-            // TODO: move to reducer
-            setUIControls({
-              isShowingChartTypeSidebar: !isShowingChartTypeSidebar,
-              isShowingChartSettingsSidebar: false,
-            })
+          onClick={
+            isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
           }
         />
         <VizSettingsButton
           className="ml2"
           selected={isShowingChartSettingsSidebar}
-          onClick={() =>
-            // TODO: move to reducer
-            setUIControls({
-              isShowingChartSettingsSidebar: !isShowingChartSettingsSidebar,
-              isShowingChartTypeSidebar: false,
-            })
+          onClick={
+            isShowingChartSettingsSidebar
+              ? onCloseChartSettings
+              : onOpenChartSettings
           }
         />
       </div>
@@ -66,11 +64,7 @@ const ViewFooter = ({
             }
             onShowTable={isShowingTable => {
               if (question.display() === "table" && !isShowingTable) {
-                // TODO: move to reducer
-                setUIControls({
-                  isShowingChartTypeSidebar: true,
-                  isShowingChartSettingsSidebar: false,
-                });
+                onOpenChartType();
               } else {
                 setUIControls({ isShowingTable });
               }
