@@ -97,7 +97,9 @@ export default class QueryVisualization extends Component {
   }
 
   runQuery = () => {
-    this.props.runQuestionQuery({ ignoreCache: true });
+    const { isResultDirty } = this.props;
+    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
+    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
   };
 
   renderHeader() {
