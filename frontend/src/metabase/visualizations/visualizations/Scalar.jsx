@@ -161,7 +161,7 @@ export default class Scalar extends Component {
   }
 
   render() {
-    let {
+    const {
       actionButtons,
       series: [
         {
@@ -177,7 +177,7 @@ export default class Scalar extends Component {
       onVisualizationClick,
     } = this.props;
 
-    let isSmall = gridSize && gridSize.width < 4;
+    const isSmall = gridSize && gridSize.width < 4;
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];

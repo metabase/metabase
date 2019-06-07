@@ -5,7 +5,7 @@ import DateRangeWidget from "metabase/parameters/components/widgets/DateRangeWid
 describe("DateRangeWidget", () => {
   it("should allow selections spanning years", () => {
     const setValue = jest.fn();
-    let picker = mount(
+    const picker = mount(
       <DateRangeWidget value={"2018-12-01~2018-12-01"} setValue={setValue} />,
     );
     picker

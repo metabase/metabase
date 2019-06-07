@@ -198,9 +198,9 @@ function computeTimeseriesDataInvervalIndex(xValues, unit) {
   }
   // Keep track of the value seen for each level of granularity,
   // if any don't match then we know the data is *at least* that granular.
-  let values = [];
+  const values = [];
   let index = TIMESERIES_INTERVALS.length;
-  for (let xValue of xValues) {
+  for (const xValue of xValues) {
     // Only need to check more granular than the current interval
     for (let i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
       const interval = TIMESERIES_INTERVALS[i];

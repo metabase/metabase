@@ -60,7 +60,7 @@ export default class Calendar extends Component {
   }
 
   onClickDay = date => {
-    let { selected, selectedEnd, isRangePicker } = this.props;
+    const { selected, selectedEnd, isRangePicker } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
       this.props.onChange(date.format("YYYY-MM-DD"), null);
     } else if (!selectedEnd) {
@@ -128,13 +128,13 @@ export default class Calendar extends Component {
   }
 
   renderWeeks(current) {
-    let weeks = [],
-      done = false,
-      date = moment(current)
-        .startOf("month")
-        .day("Sunday"),
-      monthIndex = date.month(),
-      count = 0;
+    const weeks = [];
+    const date = moment(current)
+      .startOf("month")
+      .day("Sunday");
+    let done = false;
+    let monthIndex = date.month();
+    let count = 0;
 
     while (!done) {
       weeks.push(
@@ -192,11 +192,11 @@ class Week extends Component {
   };
 
   render() {
-    let days = [];
+    const days = [];
     let { date, month, selected, selectedEnd } = this.props;
 
     for (let i = 0; i < 7; i++) {
-      let classes = cx("Calendar-day p1 cursor-pointer text-centered", {
+      const classes = cx("Calendar-day p1 cursor-pointer text-centered", {
         "Calendar-day--today": date.isSame(new Date(), "day"),
         "Calendar-day--this-month": date.month() === month.month(),
         "Calendar-day--selected": selected && date.isSame(selected, "day"),

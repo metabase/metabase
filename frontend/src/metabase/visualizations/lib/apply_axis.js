@@ -49,7 +49,7 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) {
+  for (const value of values) {
     totalLength += String(value).length;
   }
 
@@ -97,10 +97,11 @@ export function applyChartTimeseriesXAxis(
   let dimensionColumn = firstSeries.data.cols[0];
 
   // get the data's timezone offset from the first row
-  let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
+  const dataOffset =
+    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
   // compute the data interval
-  let dataInterval = xInterval;
+  const dataInterval = xInterval;
   let tickInterval = dataInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
@@ -356,7 +357,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     if (chart.settings["stackable.stack_type"] === "normalized") {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
     } else {
-      let metricColumn = series[0].data.cols[1];
+      const metricColumn = series[0].data.cols[1];
       axis
         .axis()
         .tickFormat(value =>

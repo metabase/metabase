@@ -353,7 +353,7 @@ describe("dashboard list", () => {
         expect(deleteButtons).not.toHaveLength(0);
       });
 
-      let dbCount = deleteButtons.length;
+      const dbCount = deleteButtons.length;
       click(deleteButtons.first());
 
       const deleteModal = app.find(".test-modal");

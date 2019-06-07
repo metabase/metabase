@@ -75,7 +75,7 @@ export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
   (databaseId, databases) => {
     if (databaseId != null && databases && databases.length > 0) {
-      let db = _.findWhere(databases, { id: databaseId });
+      const db = _.findWhere(databases, { id: databaseId });
       if (db && db.tables) {
         return db.tables;
       }

@@ -14,7 +14,7 @@ export default class RevisionDiff extends Component {
   };
 
   render() {
-    let {
+    const {
       diff: { before, after },
       tableMetadata,
     } = this.props;

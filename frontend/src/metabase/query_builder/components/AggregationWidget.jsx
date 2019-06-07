@@ -49,7 +49,7 @@ export default class AggregationWidget extends Component {
     const { aggregation, tableMetadata } = this.props;
     const fieldId = AggregationClause.getField(aggregation);
 
-    let selectedAggregation = getAggregator(
+    const selectedAggregation = getAggregator(
       AggregationClause.getOperator(aggregation),
     );
     // if this table doesn't support the selected aggregation, prompt the user to select a different one
@@ -86,7 +86,7 @@ export default class AggregationWidget extends Component {
     const { aggregation, tableMetadata } = this.props;
     const metricId = AggregationClause.getMetric(aggregation);
 
-    let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
+    const selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
     if (selectedMetric) {
       return selectedMetric.name.replace(" of ...", "");
     }

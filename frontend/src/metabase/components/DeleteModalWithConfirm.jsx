@@ -34,7 +34,7 @@ export default class DeleteModalWithConfirm extends Component {
   render() {
     const { title, objectType, confirmItems, buttonText } = this.props;
     const { checked } = this.state;
-    let confirmed = confirmItems.reduce(
+    const confirmed = confirmItems.reduce(
       (acc, item, index) => acc && checked[index],
       true,
     );

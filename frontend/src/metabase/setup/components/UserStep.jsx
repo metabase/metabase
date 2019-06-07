@@ -45,7 +45,7 @@ export default class UserStep extends Component {
   };
 
   validateForm = () => {
-    let { fieldValues, valid, validPassword } = this.state;
+    const { fieldValues, valid, validPassword } = this.state;
     let isValid = true;
 
     // required: first_name, last_name, email, password
@@ -96,7 +96,7 @@ export default class UserStep extends Component {
       formError: null,
     });
 
-    let formErrors = { data: { errors: {} } };
+    const formErrors = { data: { errors: {} } };
 
     // validate email address
     if (!MetabaseUtils.validEmail(fieldValues.email)) {
@@ -146,8 +146,8 @@ export default class UserStep extends Component {
   onSiteNameChange = e => this.updateFieldValue("site_name", e.target.value);
 
   render() {
-    let { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
-    let { formError, passwordError, valid } = this.state;
+    const { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
+    const { formError, passwordError, valid } = this.state;
 
     const passwordComplexityDesc = MetabaseSettings.passwordComplexityDescription();
     const stepText =

@@ -136,7 +136,7 @@ describe("visualization.lib.timeseries", () => {
 
     TEST_CASES.map(([expectedInterval, expectedCount, data]) => {
       it("should return " + expectedCount + " " + expectedInterval, () => {
-        let { interval, count } = computeTimeseriesDataInverval(
+        const { interval, count } = computeTimeseriesDataInverval(
           data.map(d => new Date(d)),
         );
         expect(interval).toBe(expectedInterval);

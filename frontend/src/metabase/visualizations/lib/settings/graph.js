@@ -47,8 +47,8 @@ function getDefaultScatterColumns([
     data: { cols, rows },
   },
 ]) {
-  let dimensions = cols.filter(isDimension);
-  let metrics = cols.filter(isMetric);
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
   if (dimensions.length === 2 && metrics.length < 2) {
     return {
       dimensions: [dimensions[0].name],
@@ -69,9 +69,9 @@ function getDefaultLineAreaBarColumns([
     data: { cols, rows },
   },
 ]) {
-  let type = getChartTypeFromData(cols, rows, false);
+  const type = getChartTypeFromData(cols, rows, false);
   if (type === DIMENSION_DIMENSION_METRIC) {
-    let dimensions = [cols[0], cols[1]];
+    const dimensions = [cols[0], cols[1]];
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
       // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();

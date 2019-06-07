@@ -23,7 +23,7 @@ export default class Expressions extends Component {
   render() {
     const { expressions, onAddExpression, onEditExpression } = this.props;
 
-    let sortedNames = _.sortBy(_.keys(expressions), _.identity);
+    const sortedNames = _.sortBy(_.keys(expressions), _.identity);
     return (
       <div className="pb3">
         <div className="pb1 h6 text-uppercase text-medium text-bold">

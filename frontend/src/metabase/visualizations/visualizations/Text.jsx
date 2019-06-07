@@ -123,14 +123,14 @@ export default class Text extends Component {
   }
 
   render() {
-    let {
+    const {
       className,
       actionButtons,
       gridSize,
       settings,
       isEditing,
     } = this.props;
-    let isSmall = gridSize && gridSize.width < 4;
+    const isSmall = gridSize && gridSize.width < 4;
 
     if (isEditing) {
       return (

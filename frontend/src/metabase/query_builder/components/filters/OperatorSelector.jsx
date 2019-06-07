@@ -25,7 +25,7 @@ export default class OperatorSelector extends Component {
   };
 
   render() {
-    let { operator, operators, onOperatorChange, className } = this.props;
+    const { operator, operators, onOperatorChange, className } = this.props;
 
     return (
       <Select

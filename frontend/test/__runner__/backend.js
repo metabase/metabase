@@ -20,7 +20,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     return dbKey || {};
   },
   create({ dbKey = DEFAULT_DB }) {
-    let dbFile = getDbFile();
+    const dbFile = getDbFile();
     if (!dbKey) {
       dbKey = dbFile;
     }
@@ -31,7 +31,7 @@ export const BackendResource = createSharedResource("BackendResource", {
         process: { kill: () => {} },
       };
     } else {
-      let port = getPort();
+      const port = getPort();
       return {
         dbKey: dbKey,
         dbFile: dbFile,
@@ -106,7 +106,7 @@ export const BackendResource = createSharedResource("BackendResource", {
 
 export async function isReady(host) {
   try {
-    let response = await fetch(`${host}/api/health`);
+    const response = await fetch(`${host}/api/health`);
     if (response.status === 200) {
       return true;
     }
@@ -124,14 +124,14 @@ function createSharedResource(
     stop = resource => {},
   },
 ) {
-  let entriesByKey = new Map();
-  let entriesByResource = new Map();
+  const entriesByKey = new Map();
+  const entriesByResource = new Map();
 
   function kill(entry) {
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
-      let p = stop(entry.resource).then(null, err =>
+      const p = stop(entry.resource).then(null, err =>
         console.log("Error stopping resource", resourceName, entry.key, err),
       );
       return p;
@@ -140,7 +140,7 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      let key = getKey(options);
+      const key = getKey(options);
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
@@ -155,11 +155,11 @@ function createSharedResource(
       return entry.resource;
     },
     async start(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       return start(entry.resource);
     },
     async stop(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       if (entry && --entry.references <= 0) {
         await kill(entry);
       }
