@@ -2,6 +2,8 @@ import React from "react";
 
 import cx from "classnames";
 
+import Popover from "metabase/components/Popover";
+
 import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial";
 
 import NativeQueryEditor from "../NativeQueryEditor";
@@ -9,6 +11,9 @@ import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
 import TagEditorSidebar from "../template_tags/TagEditorSidebar";
 import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
+
+import AggregationPopover from "../AggregationPopover";
+import BreakoutPopover from "../BreakoutPopover";
 
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 
@@ -31,7 +36,48 @@ import { Motion, spring } from "react-motion";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+const DEFAULT_POPOVER_STATE = {
+  aggregationIndex: null,
+  aggregationPopoverTarget: null,
+  breakoutIndex: null,
+  breakoutPopoverTarget: null,
+};
+
 export default class View extends React.Component {
+  state = {
+    ...DEFAULT_POPOVER_STATE,
+  };
+
+  handleAddSeries = e => {
+    this.setState({
+      ...DEFAULT_POPOVER_STATE,
+      aggregationPopoverTarget: e.target,
+    });
+  };
+  handleEditSeries = (e, index) => {
+    this.setState({
+      ...DEFAULT_POPOVER_STATE,
+      aggregationPopoverTarget: e.target,
+      aggregationIndex: index,
+    });
+  };
+  handleRemoveSeries = (e, index) => {
+    const { query } = this.props;
+    query.removeAggregation(index).update(null, { run: true });
+  };
+  handleEditBreakout = (e, index) => {
+    this.setState({
+      ...DEFAULT_POPOVER_STATE,
+      breakoutPopoverTarget: e.target,
+      breakoutIndex: index,
+    });
+  };
+  handleClosePopover = () => {
+    this.setState({
+      ...DEFAULT_POPOVER_STATE,
+    });
+  };
+
   render() {
     const {
       question,
@@ -54,6 +100,12 @@ export default class View extends React.Component {
       queryBuilderMode,
       mode,
     } = this.props;
+    const {
+      aggregationIndex,
+      aggregationPopoverTarget,
+      breakoutIndex,
+      breakoutPopoverTarget,
+    } = this.state;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
@@ -64,21 +116,12 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
 
     // only allow editing of series for structured queries
-    const onAddSeries = isStructured ? this.props.onOpenAddAggregation : null;
-    const onEditSeries = isStructured
-      ? (card, index) => this.props.onOpenEditAggregation(index)
-      : null;
+    const onAddSeries = isStructured ? this.handleAddSeries : null;
+    const onEditSeries = isStructured ? this.handleEditSeries : null;
     const onRemoveSeries =
-      isStructured && query.aggregations().length > 1
-        ? (card, index) => {
-            const agg = query.aggregations()[index];
-            agg.remove().update(null, { run: true });
-          }
-        : null;
+      isStructured && query.hasAggregations() ? this.handleRemoveSeries : null;
     const onEditBreakout =
-      isStructured && query.breakouts().length > 0
-        ? this.props.onOpenEditBreakout
-        : null;
+      isStructured && query.hasBreakouts() ? this.handleEditBreakout : null;
 
     const leftSideBar =
       isStructured && (isEditingFilterIndex != null || isAddingFilter) ? (
@@ -236,6 +279,51 @@ export default class View extends React.Component {
         )}
 
         <QueryModals {...this.props} />
+
+        <Popover
+          isOpen={!!aggregationPopoverTarget}
+          target={aggregationPopoverTarget}
+          onClose={this.handleClosePopover}
+        >
+          <AggregationPopover
+            query={query}
+            aggregation={
+              aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
+            }
+            onChangeAggregation={aggregation => {
+              if (aggregationIndex != null) {
+                query
+                  .updateAggregation(aggregationIndex, aggregation)
+                  .update(null, { run: true });
+              } else {
+                query.addAggregation(aggregation).update(null, { run: true });
+              }
+              this.handleClosePopover();
+            }}
+            onClose={this.handleClosePopover}
+          />
+        </Popover>
+        <Popover
+          isOpen={!!breakoutPopoverTarget}
+          onClose={this.handleClosePopover}
+          target={breakoutPopoverTarget}
+        >
+          <BreakoutPopover
+            query={query}
+            breakout={breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0}
+            onChangeBreakout={breakout => {
+              if (breakoutIndex != null) {
+                query
+                  .updateBreakout(breakoutIndex, breakout)
+                  .update(null, { run: true });
+              } else {
+                query.addBreakout(breakout).update(null, { run: true });
+              }
+              this.handleClosePopover();
+            }}
+            onClose={this.handleClosePopover}
+          />
+        </Popover>
       </div>
     );
   }

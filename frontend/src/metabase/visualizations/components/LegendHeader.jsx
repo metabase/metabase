@@ -88,7 +88,7 @@ export default class LegendHeader extends Component {
             onMouseLeave={() => onHoverChange && onHoverChange(null)}
             onClick={
               onEditSeries
-                ? () => onEditSeries(s.card, index)
+                ? e => onEditSeries(e, index)
                 : s.clicked && visualizationIsClickable(s.clicked)
                 ? e =>
                     onVisualizationClick({
@@ -111,7 +111,7 @@ export default class LegendHeader extends Component {
               className="text-light text-medium-hover flex-no-shrink mr2 cursor-pointer"
               width={12}
               height={12}
-              onClick={() => onRemoveSeries(s.card, index)}
+              onClick={e => onRemoveSeries(e, index)}
             />
           ),
         ])}
@@ -120,7 +120,7 @@ export default class LegendHeader extends Component {
             name="add"
             className="mx1 p1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
             height={14}
-            onClick={onAddSeries}
+            onClick={e => onAddSeries(e)}
           />
         )}
         {actionButtons && (

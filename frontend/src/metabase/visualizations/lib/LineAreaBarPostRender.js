@@ -372,7 +372,7 @@ function onRenderAddExtraClickHandlers(chart) {
     chart
       .svg()
       .select(".x-axis-label")
-      .on("click", () => onEditBreakout(0))
+      .on("click", () => onEditBreakout(d3.event, 0))
       .classed("cursor-pointer", true);
   }
 }

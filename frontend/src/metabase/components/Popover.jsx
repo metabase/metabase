@@ -182,7 +182,7 @@ export default class Popover extends Component {
   }
 
   _getMaxHeight() {
-    const { top, bottom } = this._getTarget().getBoundingClientRect();
+    const { top, bottom } = this._getTargetElement().getBoundingClientRect();
 
     let attachments;
     if (this.props.pinInitialAttachment && this._best) {
@@ -248,7 +248,7 @@ export default class Popover extends Component {
     return best;
   }
 
-  _getTarget() {
+  _getTargetElement() {
     let target;
     if (this.props.targetEvent) {
       // create a fake element at the event coordinates
@@ -285,7 +285,7 @@ export default class Popover extends Component {
     if (isOpen) {
       let tetherOptions = {
         element: popoverElement,
-        target: this._getTarget(),
+        target: this._getTargetElement(),
       };
 
       if (this.props.tetherOptions) {
