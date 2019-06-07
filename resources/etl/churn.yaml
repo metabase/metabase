@@ -1,0 +1,53 @@
+name: MRR & Churn
+description: Builds tables needed for MRR and churn calculations
+requires:
+  OrderHistory:
+      dimensions:
+        - Income
+        - CreationTimestamp
+#        - User
+provides:
+  MRRStatistics:
+       dimensions:
+         - Month
+         - ChurrnedMRR
+         - MRRChurn
+#         - AccountChurn
+         - MRR
+ #        - Accounts
+  #       - ARPU
+steps:
+  Charges:
+      source: OrderHistory
+ #     expressions:
+  #      Month: [datetime-field, [dimension, CreationTimestamp], month]
+  #      PrevMonth: [-, [dimension, Month], [interval, -1, month]]
+  NextMonth:
+       source: Charges
+  MRR:
+      source: Charges
+      aggregation:
+        MRR: [sum, [dimension, Income]]
+#        Accounts: [count-distinct, [dimension, User]]
+#        ARPU: [/, [dimension, MRR], [dimension , Accounts]]
+      breakout: CreationTimestamp
+  MRRStatistics:
+      source: Charges
+    #  expressions:
+    #     Month: [-, [dimension, Month], [interval, 1, month]]
+      aggregation:
+        ChurrnedMRR: [sum-where, [dimension, Income], [is-null, [dimension, NextMonth.CreationTimestamp]]]
+        MRRChurn: [/, [dimension, ChurrnedMRR], [min, [dimension, MRR.MRR]]]
+  #      AccountChurn: [count-when, [is-null, [dimension, NextMonth.CreationTimestamp]]]
+      breakout:
+        - CreationTimestamp
+        - MRR.MRR
+#        - MRR.Accounts
+      join:
+        - source: NextMonth
+          strategy: left-join
+# [=, [dimension, Charges.User], [dimension, NextMonth.User]],
+          condition: [and, [=, [dimension, Charges.CreationTimestamp], [dimension, NextMonth.CreationTimestamp]]]
+        - source: MRR
+          strategy: inner-join
+          condition: [=, [dimension, Charges.CreationTimestamp], [dimension, MRR.CreationTimestamp]]
