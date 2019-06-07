@@ -297,9 +297,6 @@
                            (get-in [name :dimensions]))
         mbql-snippets  (m/map-vals ->mbql local-bindings)
         query          (cond-> {:source-table (->> source bindings :entity)}
-                    ;     (nil? aggregation)
-                    ;     (assoc :fields (map mbql-snippets (-> source bindings :dimensions keys)))
-
                          ;; Expressions used in metrics will just get inlined
                          (and expressions
                               (nil? aggregation))
@@ -354,9 +351,6 @@
                  [identifier {:entity     table
                               :dimensions (table-dimensions table)}])))))
 
-;; TODO
-;; * validation
-;; * should check if it already exists
 (defn run-transform!
   [db-id schema {:keys [steps provides] :as transform}]
   (driver/with-driver (-> db-id Database :engine)
@@ -374,7 +368,7 @@
                                   steps)]
           (map (comp u/get-id :entity bindings key) provides))))))
 
-;; TODO extend this to cards
+;; TODO: should this work for cards as well?
 (defn candidates
   [table]
   (->> @transforms
