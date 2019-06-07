@@ -597,6 +597,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     jsx: false,
     remap: true,
     ...options,
+    ...(column || {}).settings,
   };
 
   if (options.remap && column) {
