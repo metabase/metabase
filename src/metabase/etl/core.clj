@@ -362,11 +362,17 @@
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! db-id)
-      (let [bindings (reduce-kv (fn [bindings name step]
-                                  (transform-step! bindings transform (assoc step :name name)))
-                                (satisfy-requirements db-id schema transform)
-                                steps)]
-        (map (comp u/get-id :entity bindings key) provides)))))
+      (let [requirements (satisfy-requirements db-id schema transform)]
+        (->> requirements
+             vals
+             (mapcat (comp vals :dimensions))
+             (map u/get-id)
+             qp.store/fetch-and-store-fields!)
+        (let [bindings (reduce-kv (fn [bindings name step]
+                                    (transform-step! bindings transform (assoc step :name name)))
+                                  requirements
+                                  steps)]
+          (map (comp u/get-id :entity bindings key) provides))))))
 
 ;; TODO extend this to cards
 (defn candidates

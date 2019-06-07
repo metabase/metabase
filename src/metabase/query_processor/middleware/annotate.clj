@@ -9,9 +9,7 @@
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.models
-             [field :refer [Field]]
-             [humanization :as humanization]]
+            [metabase.models.humanization :as humanization]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [i18n :refer [tru]]
@@ -114,9 +112,7 @@
      :expression_name expression-name}
 
     [:field-id id]
-    (let [{parent-id :parent_id, :as field} (do
-                                              (qp.store/fetch-and-store-fields! [id])
-                                              (dissoc (qp.store/field id) :database_type))]
+    (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
       (if-not parent-id
         field
         (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
