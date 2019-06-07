@@ -45,11 +45,18 @@ const DEFAULT_UI_CONTROLS = {
   isShowingNewbModal: false,
   isEditing: false,
   isRunning: false,
+  isAddingFilter: false,
+  isEditingFilterIndex: null,
+  isAddingAggregation: false,
+  isEditingAggregationIndex: null,
+  isAddingBreakout: false,
+  isEditingBreakoutIndex: null,
+  isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   initialChartSetting: null,
-  isShowingChartTypeSidebar: false,
-  isPreviewing: true,
-  queryBuilderMode: false,
+  isPreviewing: true, // sql preview mode
+  isShowingTable: false, // table/viz toggle
+  queryBuilderMode: false, // "view" or "notebook"
 };
 
 // various ui state options

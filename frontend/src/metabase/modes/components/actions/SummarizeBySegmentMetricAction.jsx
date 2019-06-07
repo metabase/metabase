@@ -42,7 +42,8 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
             onClose && onClose();
           }}
           onClose={onClose}
-          showOnlyProvidedAggregations
+          showMetrics={false}
+          showCustom={false}
         />
       ),
     },

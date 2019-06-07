@@ -651,10 +651,10 @@ const SegmentAndDatabasePicker = ({
       className="text-brand"
       sections={sections}
       onChange={onChangeSchema}
-      onChangeSection={index => {
-        index === 0
+      onChangeSection={(section, sectionIndex) => {
+        sectionIndex === 0
           ? onShowSegmentSection()
-          : onChangeDatabase(index - segmentItem.length, true);
+          : onChangeDatabase(sectionIndex - segmentItem.length, true);
       }}
       itemIsSelected={schema => selectedSchema === schema}
       renderSectionIcon={section => (
@@ -739,7 +739,9 @@ export const DatabaseSchemaPicker = ({
         className="text-brand"
         sections={sections}
         onChange={onChangeSchema}
-        onChangeSection={dbId => onChangeDatabase(dbId, true)}
+        onChangeSection={(section, sectionIndex) =>
+          onChangeDatabase(sectionIndex, true)
+        }
         itemIsSelected={schema => schema === selectedSchema}
         renderSectionIcon={item => (
           <Icon className="Icon text-default" name={item.icon} size={18} />

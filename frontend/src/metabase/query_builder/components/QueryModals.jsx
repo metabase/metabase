@@ -45,16 +45,23 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          // if saving modified question, don't show "add to dashboard" modal
-          saveFn={card => this.props.onSave(card, false)}
-          createFn={this.props.onCreate}
+          saveFn={async card => {
+            // if saving modified question, don't show "add to dashboard" modal
+            await this.props.onSave(card);
+          }}
+          createFn={async card => {
+            await this.props.onCreate(card);
+            this.openModal("saved");
+          }}
         />
       </Modal>
     ) : modal === "saved" ? (
       <Modal small onClose={onCloseModal}>
         <QuestionSavedModal
           onClose={onCloseModal}
-          addToDashboardFn={() => onOpenModal("add-to-dashboard")}
+          addToDashboardFn={() => {
+            onOpenModal("add-to-dashboard");
+          }}
         />
       </Modal>
     ) : modal === "add-to-dashboard-save" ? (
@@ -66,11 +73,11 @@ export default class QueryModals extends React.Component {
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
           saveFn={async card => {
-            await this.props.onSave(card, false);
+            await this.props.onSave(card);
             onOpenModal("add-to-dashboard");
           }}
           createFn={async card => {
-            await this.props.onCreate(card, false);
+            await this.props.onCreate(card);
             onOpenModal("add-to-dashboard");
           }}
           multiStep

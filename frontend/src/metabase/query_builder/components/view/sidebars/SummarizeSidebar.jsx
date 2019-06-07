@@ -78,10 +78,11 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
               onClose();
             }}
             onClose={onClose}
+            alwaysExpanded
+            showCustom={false}
           />
         )}
       </PopoverWithTrigger>
-      {/* {query.aggregations().length > 1 && ( */}
       <Button
         icon="close"
         className="block text-light ml1"
@@ -89,7 +90,6 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
           updateAndRun(query.removeAggregation(index));
         }}
       />
-      {/* )} */}
     </div>
   );
 };
@@ -109,6 +109,8 @@ const SummarizeAggregationAdd = ({ className, query }) => {
             onClose();
           }}
           onClose={onClose}
+          alwaysExpanded
+          showCustom={false}
         />
       )}
     </PopoverWithTrigger>

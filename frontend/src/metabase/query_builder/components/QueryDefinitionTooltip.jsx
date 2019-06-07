@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import FilterList from "./FilterList.jsx";
-import AggregationWidget from "./AggregationWidget.jsx";
+import AggregationName from "./AggregationName.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 
 import Query from "metabase/lib/query";
@@ -16,7 +16,7 @@ export default class QueryDefinitionTooltip extends Component {
   };
 
   render() {
-    const { type, object, tableMetadata } = this.props;
+    const { type, object, tableMetadata, customFields } = this.props;
 
     return (
       <div className="p2" style={{ width: 250 }}>
@@ -30,7 +30,7 @@ export default class QueryDefinitionTooltip extends Component {
             <FieldSet legend={t`Definition`} className="border-light">
               <div className="TooltipFilterList">
                 {Query.getAggregations(object.definition).map(aggregation => (
-                  <AggregationWidget
+                  <AggregationName
                     aggregation={aggregation}
                     tableMetadata={tableMetadata}
                   />

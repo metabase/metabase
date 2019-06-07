@@ -21,12 +21,13 @@ type Props = {
 };
 
 const AggregationName = ({
-  aggregation,
-  query = aggregation.query(),
   className,
+  aggregation,
+  query = aggregation.query && aggregation.query(),
+  // DEPRECATED: replaced with 'aggregation' / 'query`
+  tableMetadata = query && query.tableMetadata(),
+  customFields = query && query.expressions(),
 }: Props) => {
-  const tableMetadata = query.tableMetadata();
-  const customFields = query.expressions();
   if (!tableMetadata) {
     return null;
   }

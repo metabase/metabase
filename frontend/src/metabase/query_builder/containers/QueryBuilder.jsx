@@ -274,18 +274,15 @@ export default class QueryBuilder extends Component {
     }, 5000);
   };
 
-  handleCreate = async (card, showSavedModal = true) => {
+  handleCreate = async card => {
     const { question, apiCreateQuestion } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
     await apiCreateQuestion(questionWithUpdatedCard);
 
     this.setRecentlySaved("created");
-    if (showSavedModal) {
-      this.openModal("saved");
-    }
   };
 
-  handleSave = async (card, showSavedModal = true) => {
+  handleSave = async card => {
     const { question, apiUpdateQuestion } = this.props;
     const questionWithUpdatedCard = question.setCard(card);
     await apiUpdateQuestion(questionWithUpdatedCard);
@@ -294,9 +291,6 @@ export default class QueryBuilder extends Component {
       this.props.onChangeLocation(this.props.fromUrl);
     } else {
       this.setRecentlySaved("updated");
-      if (showSavedModal) {
-        this.openModal("saved");
-      }
     }
   };
 

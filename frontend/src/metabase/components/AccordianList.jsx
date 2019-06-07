@@ -135,8 +135,9 @@ export default class AccordianList extends Component {
   }
 
   toggleSection = sectionIndex => {
-    if (this.props.onChangeSection) {
-      if (this.props.onChangeSection(sectionIndex) === false) {
+    const { sections, onChangeSection } = this.props;
+    if (onChangeSection) {
+      if (onChangeSection(sections[sectionIndex], sectionIndex) === false) {
         return;
       }
     }
@@ -516,6 +517,7 @@ const AccordianListCell = ({
     content = (
       <div className="m1" style={{ border: "2px solid transparent" }}>
         <ListSearchField
+          className="bg-white"
           onChange={onChangeSearchText}
           searchText={searchText}
           placeholder={searchPlaceholder}

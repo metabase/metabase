@@ -16,8 +16,11 @@ import _ from "underscore";
 
 import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield.jsx";
 
+const COMMON_SECTION_NAME = t`Common Metrics`;
+const BASIC_SECTION_NAME = t`Basic Metrics`;
 const CUSTOM_SECTION_NAME = t`Custom Expression`;
-const METRICS_SECTION_NAME = t`Common Metrics`;
+
+const COMMON_AGGREGATIONS = new Set(["count"]);
 
 export default class AggregationPopover extends Component {
   constructor(props, context) {
@@ -60,9 +63,18 @@ export default class AggregationPopover extends Component {
     datasetQuery: PropTypes.object,
 
     availableAggregations: PropTypes.array,
-    // Restricts the shown options to contents of `availableAggregations` only
-    showOnlyProvidedAggregations: PropTypes.bool,
+
+    showCustom: PropTypes.bool,
+    showMetrics: PropTypes.bool,
     showRawData: PropTypes.bool,
+
+    width: PropTypes.number,
+  };
+
+  static defaultProps = {
+    showCustom: true,
+    showMetrics: true,
+    width: 300,
   };
 
   componentDidUpdate() {
@@ -83,28 +95,30 @@ export default class AggregationPopover extends Component {
     }
   }
 
-  onPickAggregation(agg) {
-    const { dimension } = this.props;
+  onPickAggregation(item) {
+    const { dimension, aggregation } = this.props;
     if (dimension) {
-      if (agg.aggregation && agg.aggregation.requiresField) {
+      if (item.aggregation && item.aggregation.requiresField) {
         this.commitAggregation(
-          AggregationClause.setField(agg.value, dimension.mbql()),
+          AggregationClause.setField(item.value, dimension.mbql()),
         );
       }
-    } else if (agg.custom) {
-      // check if this aggregation requires a field, if so then force user to pick that now, otherwise we are done
+    } else if (item.custom) {
+      // use the existing aggregation as the starting point unless it's "rows"
+      const value = !_.isEqual(aggregation, ["rows"]) ? aggregation : null;
       this.setState({
-        aggregation: agg.value,
+        aggregation: value,
         editingAggregation: true,
       });
-    } else if (agg.aggregation && agg.aggregation.requiresField) {
+    } else if (item.aggregation && item.aggregation.requiresField) {
+      // check if this aggregation requires a field, if so then force user to pick that now, otherwise we are done
       this.setState({
-        aggregation: agg.value,
+        aggregation: item.value,
         choosingField: true,
       });
     } else {
       // this includse picking a METRIC or picking an aggregation which doesn't require a field
-      this.commitAggregation(agg.value);
+      this.commitAggregation(item.value);
     }
   }
 
@@ -172,6 +186,7 @@ export default class AggregationPopover extends Component {
               type="metric"
               object={metric}
               tableMetadata={this._getTableMetadata()}
+              customFields={this._getCustomFields()}
             />
           }
         >
@@ -182,13 +197,25 @@ export default class AggregationPopover extends Component {
   }
 
   render() {
-    const { query, dimension } = this.props;
-    const showOnlyProvidedAggregations =
-      this.props.showOnlyProvidedAggregations || dimension;
+    let {
+      query,
+      dimension,
+      showCustom,
+      showMetrics,
+      alwaysExpanded,
+    } = this.props;
 
     const tableMetadata = this._getTableMetadata();
     const customFields = this._getCustomFields();
     const availableAggregations = this._getAvailableAggregations();
+
+    if (dimension) {
+      showCustom = false;
+      showMetrics = false;
+    }
+    if (tableMetadata.db.features.indexOf("expression-aggregations") < 0) {
+      showCustom = false;
+    }
 
     const { choosingField, editingAggregation } = this.state;
     const aggregation = NamedClause.getContent(this.state.aggregation);
@@ -204,58 +231,81 @@ export default class AggregationPopover extends Component {
       });
     }
 
-    let sections = [];
-    let customExpressionIndex = null;
+    let aggregationItems = availableAggregations.map(aggregation => ({
+      name: dimension
+        ? aggregation.name.replace("of ...", "")
+        : aggregation.name,
+      value: [aggregation.short, ...aggregation.fields.map(field => null)],
+      isSelected: agg =>
+        !AggregationClause.isCustom(agg) &&
+        AggregationClause.getAggregation(agg) === aggregation.short,
+      aggregation: aggregation,
+    }));
 
-    if (availableAggregations.length > 0) {
+    // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
+    // retired metric then we include it in the list to maintain continuity
+    const metrics =
+      showMetrics && tableMetadata.metrics
+        ? tableMetadata.metrics.filter(
+            metric =>
+              !metric.archived ||
+              (selectedAggregation && selectedAggregation.id === metric.id),
+          )
+        : [];
+    const metricItems = metrics.map(metric => ({
+      name: metric.name,
+      value: ["metric", metric.id],
+      isSelected: aggregation =>
+        AggregationClause.getMetric(aggregation) === metric.id,
+      metric: metric,
+    }));
+
+    const sections = [];
+    // "Basic Metrics", e.x. count, sum, avg, etc
+    if (aggregationItems.length > 0) {
       sections.push({
-        name: showOnlyProvidedAggregations ? null : t`Metabasics`,
-        items: availableAggregations.map(aggregation => ({
-          name: dimension
-            ? aggregation.name.replace("of ...", "")
-            : aggregation.name,
-          value: [aggregation.short].concat(
-            aggregation.fields.map(field => null),
-          ),
-          isSelected: agg =>
-            !AggregationClause.isCustom(agg) &&
-            AggregationClause.getAggregation(agg) === aggregation.short,
-          aggregation: aggregation,
-        })),
-        icon: showOnlyProvidedAggregations ? null : "table2",
+        name: BASIC_SECTION_NAME,
+        icon: "table2",
+        items: aggregationItems,
+      });
+    }
+    // "Common Metrics" a.k.a. saved metrics
+    if (metricItems.length > 0) {
+      sections.push({
+        name: COMMON_SECTION_NAME,
+        icon: "staroutline",
+        items: metricItems,
       });
     }
 
-    if (!showOnlyProvidedAggregations) {
-      // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
-      // retired metric then we include it in the list to maintain continuity
-      let metrics =
-        tableMetadata.metrics &&
-        tableMetadata.metrics.filter(
-          mtrc =>
-            !mtrc.archived ||
-            (selectedAggregation && selectedAggregation.id === mtrc.id),
-        );
-      if (metrics && metrics.length > 0) {
-        sections.push({
-          name: METRICS_SECTION_NAME,
-          items: metrics.map(metric => ({
-            name: metric.name,
-            value: ["metric", metric.id],
-            isSelected: aggregation =>
-              AggregationClause.getMetric(aggregation) === metric.id,
-            metric: metric,
-          })),
-          icon: "staroutline",
-        });
-      }
+    // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
+    if (alwaysExpanded && sections.length > 1) {
+      let [commonAggregationItems, basicAggregationItems] = _.partition(
+        aggregationItems,
+        item => COMMON_AGGREGATIONS.has(item.aggregation.short),
+      );
+      // move COMMON_AGGREGATIONS into the "common metrics" section
+      sections[0].items = basicAggregationItems;
+      sections[1].items = [...commonAggregationItems, ...metricItems];
+      // swap the order of the sections so "common metrics" are first
+      sections.reverse();
+    }
 
-      customExpressionIndex = sections.length;
-      if (tableMetadata.db.features.indexOf("expression-aggregations") >= 0) {
-        sections.push({
-          name: CUSTOM_SECTION_NAME,
-          icon: "sum",
-        });
+    if (showCustom) {
+      // add "custom" as it's own section
+      sections.push({
+        name: CUSTOM_SECTION_NAME,
+        icon: "sum",
+        custom: true,
+      });
+      if (alwaysExpanded) {
+        sections[sections.length - 1].items = [
+          {
+            name: t`Custom…`,
+            custom: true,
+            isSelected: agg => AggregationClause.isCustom(agg),
+          },
+        ];
       }
     }
 
@@ -350,6 +400,7 @@ export default class AggregationPopover extends Component {
           </div>
           <FieldList
             className={"text-green"}
+            width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
             table={tableMetadata}
             field={fieldId}
@@ -364,8 +415,9 @@ export default class AggregationPopover extends Component {
       return (
         <AccordianList
           className="text-green"
-          width={416}
+          width={this.props.width}
           maxHeight={this.props.maxHeight}
+          alwaysExpanded={this.props.alwaysExpanded}
           sections={sections}
           onChange={this.onPickAggregation}
           itemIsSelected={this.itemIsSelected.bind(this)}
@@ -374,15 +426,9 @@ export default class AggregationPopover extends Component {
           getItemClassName={item =>
             item.metric && item.metric.archived ? "text-medium" : null
           }
-          onChangeSection={index => {
-            if (index === customExpressionIndex) {
-              this.onPickAggregation({
-                custom: true,
-                value:
-                  aggregation !== "rows" && !_.isEqual(aggregation, ["rows"])
-                    ? aggregation
-                    : null,
-              });
+          onChangeSection={(section, sectionIndex) => {
+            if (section.custom) {
+              this.onPickAggregation({ custom: true });
             }
           }}
         />
