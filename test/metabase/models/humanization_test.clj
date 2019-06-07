@@ -1,7 +1,7 @@
 (ns metabase.models.humanization-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models
-             [humanization :as humanization :refer :all]
+             [humanization :as humanization]
              [table :refer [Table]]]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -91,7 +91,7 @@
 ;;; Re-humanization
 
 (defn- get-humanized-display-name [actual-name strategy]
-  (tu/with-temporary-setting-values [humanization-strategy strategy]
+  (with-redefs [humanization/humanization-strategy (constantly strategy)]
     (tt/with-temp Table [{table-id :id} {:name actual-name}]
       (db/select-one-field :display_name Table, :id table-id))))
 
@@ -112,9 +112,9 @@
     (tt/with-temp Table [{table-id :id} {:name actual-name}]
       (let [display-name #(db/select-one-field :display_name Table, :id table-id)]
         {:initial  (display-name)
-         :simple   (do (humanization-strategy "simple")   (display-name))
-         :advanced (do (humanization-strategy "advanced") (display-name))
-         :none     (do (humanization-strategy "none")     (display-name))}))))
+         :simple   (do (humanization/humanization-strategy "simple")   (display-name))
+         :advanced (do (humanization/humanization-strategy "advanced") (display-name))
+         :none     (do (humanization/humanization-strategy "none")     (display-name))}))))
 (expect
   {:initial  "Toucans Are Cool"
    :simple   "Toucansare Cool"
@@ -136,7 +136,7 @@
     (tt/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
       (db/update! Table table-id
         :display_name "My Favorite Table")
-      (humanization-strategy new-strategy)
+      (humanization/humanization-strategy new-strategy)
       (db/select-one-field :display_name Table, :id table-id))))
 
 (expect "My Favorite Table" (switch-strategies-and-get-display-name "advanced" "simple"))

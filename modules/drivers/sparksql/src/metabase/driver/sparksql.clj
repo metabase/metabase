@@ -1,7 +1,7 @@
 (ns metabase.driver.sparksql
   (:require [clojure
              [set :as set]
-             [string :as s]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql
              [core :as hsql]
@@ -87,7 +87,7 @@
 
 (defn- dash-to-underscore [s]
   (when s
-    (s/replace s #"-" "_")))
+    (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql

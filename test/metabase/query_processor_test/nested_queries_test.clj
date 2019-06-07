@@ -2,15 +2,16 @@
   "Tests for handling queries with nested expressions."
   (:require [clojure.string :as str]
             [expectations :refer [expect]]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
-             [database :as database :refer [Database]]
              [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
@@ -20,9 +21,9 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets]
-             [users :refer [create-users-if-needed! user->client]]]
+             [users :refer [user->client]]]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -206,7 +207,7 @@
 
 
 (defn- query-with-source-card {:style/indent 1} [card & {:as additional-clauses}]
-  {:database database/virtual-id
+  {:database mbql.s/saved-questions-virtual-database-id
    :type     :query
    :query    (merge {:source-table (str "card__" (u/get-id card))}
                     additional-clauses)})
@@ -280,17 +281,36 @@
       :query    {:source-query {:source-table (data/id :venues)}
                  :filter       [:= [:field-literal (data/format-name :id) :type/Integer] 1]}})))
 
-(def ^:private ^:const ^String venues-source-sql
-  (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-       "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-       "FROM \"PUBLIC\".\"VENUES\") \"source\""))
+(defn- honeysql->sql
+  "Convert `honeysql-form` to the format returned by `query->native`. Writing HoneySQL is a lot easier that writing
+  giant SQL strings for the 'expected' part of the tests below."
+  [honeysql-form]
+  (let [[sql & params] (hsql/format honeysql-form :quoting :ansi)]
+    {:query  sql
+     :params (seq params)}))
 
-;; make sure that dots in field literal identifiers get escaped so you can't reference fields from other tables using
-;; them
+(def ^:private venues-source-honeysql
+  {:select [[:PUBLIC.VENUES.ID :ID]
+            [:PUBLIC.VENUES.NAME :NAME]
+            [:PUBLIC.VENUES.CATEGORY_ID :CATEGORY_ID]
+            [:PUBLIC.VENUES.LATITUDE :LATITUDE]
+            [:PUBLIC.VENUES.LONGITUDE :LONGITUDE]
+            [:PUBLIC.VENUES.PRICE :PRICE]]
+   :from   [:PUBLIC.VENUES]})
+
+;; make sure that dots in field literal identifiers get handled properly so you can't reference fields from other
+;; tables using them
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"BIRD.ID\" = 1 LIMIT 10" venues-source-sql)
-   :params nil}
+  (honeysql->sql
+   {:select [[:source.ID :ID]
+             [:source.NAME :NAME]
+             [:source.CATEGORY_ID :CATEGORY_ID]
+             [:source.LATITUDE :LATITUDE]
+             [:source.LONGITUDE :LONGITUDE]
+             [:source.PRICE :PRICE]]
+    :from   [[venues-source-honeysql :source]]
+    :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
+    :limit  10})
   (qp/query->native
     {:database (data/id)
      :type     :query
@@ -300,82 +320,97 @@
 
 ;; make sure that field-literals work as DateTimeFields
 (expect
-  {:query  (str "SELECT * "
-                (format "FROM %s " venues-source-sql)
-                "WHERE parsedatetime(formatdatetime(\"source\".\"BIRD.ID\", 'YYYYww'), 'YYYYww')"
-                " = parsedatetime(formatdatetime(?, 'YYYYww'), 'YYYYww') "
-                "LIMIT 10")
-   :params [#inst "2017-01-01T00:00:00.000000000-00:00"]}
+  (honeysql->sql
+   {:select [[:source.ID :ID]
+             [:source.NAME :NAME]
+             [:source.CATEGORY_ID :CATEGORY_ID]
+             [:source.LATITUDE :LATITUDE]
+             [:source.LONGITUDE :LONGITUDE]
+             [:source.PRICE :PRICE]]
+    :from   [[venues-source-honeysql :source]]
+    :where  (let [week (let [format-str (hx/literal "YYYYww")]
+                         #(hsql/call :parsedatetime (hsql/call :formatdatetime % format-str) format-str))]
+              [:=
+               (week (hsql/raw "\"source\".\"BIRD.ID\""))
+               (week #inst "2017-01-01T00:00:00.000000000-00:00")])
+    :limit  10})
   (qp/query->native
-    {:database (data/id)
-     :type     :query
-     :query    {:source-query {:source-table (data/id :venues)}
-                :filter       [:= [:datetime-field [:field-literal :BIRD.ID :type/DateTime] :week] "2017-01-01"]
-                :limit        10}}))
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues}
+       :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+       :limit        10})))
 
 ;; make sure that aggregation references match up to aggregations from the same level they're from
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
 (expect
   {:query (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
-                   "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
-                   "FROM \"PUBLIC\".\"VENUES\" "
-                   "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
-                   "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
+               "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
+               "FROM \"PUBLIC\".\"VENUES\" "
+               "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
+               "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"
                ") \"source\"")
    :params nil}
   (qp/query->native
-    {:database (data/id)
-     :type     :query
-     :query    {:source-query {:source-table (data/id :venues)
-                               :aggregation  [[:stddev [:field-id (data/id :venues :id)]]]
-                               :breakout     [[:field-id (data/id :venues :price)]]
-                               :order-by     [[[:aggregation 0] :descending]]}
-                :aggregation  [[:avg [:field-literal "stddev" :type/Integer]]]}}))
-
-(def ^:private ^:const ^String venues-source-with-category-sql
-  (str "(SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
-       "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", \"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
-       "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
-       "FROM \"PUBLIC\".\"VENUES\") \"source\""))
+    (data/mbql-query venues
+     {:source-query {:source-table $$venues
+                     :aggregation  [[:stddev $id]]
+                     :breakout     [$price]
+                     :order-by     [[[:aggregation 0] :descending]]}
+      :aggregation  [[:avg *stddev/Integer]]})))
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
-  {:query  (str "SELECT \"source\".\"category_id\" "
-                (format "FROM %s " venues-source-with-category-sql)
-                "GROUP BY \"source\".\"category_id\" "
-                "ORDER BY \"source\".\"category_id\" ASC "
-                "LIMIT 10")
-   :params nil}
+  (honeysql->sql
+   {:select   [[:source.category_id :category_id]]
+    :from     [[venues-source-honeysql :source]]
+    :group-by [:source.category_id]
+    :order-by [[:source.category-id :asc]]
+    :limit    10})
   (qp/query->native
-    {:database (data/id)
-     :type     :query
-     :query    {:source-query {:source-table (data/id :venues)}
-                :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
-                :limit        10}}))
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues}
+       :breakout     [[:field-id [:field-literal "category_id" :type/Integer]]]
+       :limit        10})))
 
 ;; Make sure we can filter by string fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"text\" <> ? LIMIT 10" venues-source-sql)
-   :params ["Coo"]}
-  (qp/query->native {:database (data/id)
-                     :type     :query
-                     :query    {:source-query {:source-table (data/id :venues)}
-                                :limit        10
-                                :filter       [:!= [:field-literal "text" :type/Text] "Coo"]}}))
+  (honeysql->sql
+   {:select [[:source.ID :ID]
+             [:source.NAME :NAME]
+             [:source.CATEGORY_ID :CATEGORY_ID]
+             [:source.LATITUDE :LATITUDE]
+             [:source.LONGITUDE :LONGITUDE]
+             [:source.PRICE :PRICE]]
+    :from   [[venues-source-honeysql :source]]
+    :where  [:not= :source.text "Coo"]
+    :limit  10})
+  (qp/query->native
+    (data/mbql-query nil
+      {:source-query {:source-table $$venues}
+       :limit        10
+       :filter       [:!= [:field-literal "text" :type/Text] "Coo"]})))
 
 ;; Make sure we can filter by number fields
 (expect
-  {:query  (format "SELECT * FROM %s WHERE \"source\".\"sender_id\" > 3 LIMIT 10" venues-source-sql)
-   :params nil}
-  (qp/query->native {:database (data/id)
-                     :type     :query
-                     :query    {:source-query {:source-table (data/id :venues)}
-                                :limit        10
-                                :filter       [:> [:field-literal "sender_id" :type/Integer] 3]}}))
+  (honeysql->sql
+   {:select [[:source.ID :ID]
+             [:source.NAME :NAME]
+             [:source.CATEGORY_ID :CATEGORY_ID]
+             [:source.LATITUDE :LATITUDE]
+             [:source.LONGITUDE :LONGITUDE]
+             [:source.PRICE :PRICE]]
+    :from   [[venues-source-honeysql :source]]
+    :where  [:> :source.sender_id 3]
+    :limit  10})
+  (qp/query->native
+    (data/mbql-query nil
+      {:source-query {:source-table $$venues}
+       :limit        10
+       :filter       [:> *sender_id/Integer 3]})))
 
 ;; make sure using a native query with default params as a source works
 (expect
-  {:query  "SELECT * FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
+  {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
    :params nil}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
@@ -480,7 +515,7 @@
     :table_id     (data/id :checkins)
     :unit         :year}
    {:base_type    :type/Integer
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type :type/Number}]
   (-> (tt/with-temp Card [card (mbql-card-def
@@ -490,7 +525,7 @@
         (qp/process-query (query-with-source-card card)))
       results-metadata))
 
-(defn- identifier [table-kw field-kw]
+(defn- field-name [table-kw field-kw]
   (db/select-one-field :name Field :id (data/id table-kw field-kw)))
 
 (defn- completed-status [{:keys [status], :as results}]
@@ -504,7 +539,7 @@
   (tt/with-temp Card [card (mbql-card-def
                              :source-table (data/id :checkins))]
     (-> (query-with-source-card card
-          :filter [:time-interval [:field-literal (identifier :checkins :date) :type/DateTime] -30 :day])
+          :filter [:time-interval [:field-literal (field-name :checkins :date) :type/DateTime] -30 :day])
         qp/process-query
         completed-status)))
 
@@ -515,8 +550,8 @@
                              :source-table (data/id :checkins))]
     (-> (query-with-source-card card
           :aggregation [[:count]]
-          :filter      [:= [:datetime-field [:field-literal (identifier :checkins :date) :type/Date] :quarter] "2014-01-01T08:00:00.000Z"]
-          :breakout    [[:datetime-field [:field-literal (identifier :checkins :date) :type/Date] :month]])
+          :filter      [:= [:datetime-field [:field-literal (field-name :checkins :date) :type/Date] :quarter] "2014-01-01T08:00:00.000Z"]
+          :breakout    [[:datetime-field [:field-literal (field-name :checkins :date) :type/Date] :month]])
         qp/process-query
         completed-status)))
 
@@ -570,19 +605,6 @@
 
 ;; try this in an end-to-end fashion using the API and make sure we can save a Card if we have appropriate read
 ;; permissions for the source query
-(defn- do-with-temp-copy-of-test-db
-  "Run `f` with a temporary Database that copies the details from the standard test database. `f` is invoked as `(f
-  db)`."
-  [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (create-users-if-needed!)
-    (tt/with-temp Database [db {:details (:details (data/db)), :engine "h2"}]
-      (f db))))
-
-(defmacro ^:private with-temp-copy-of-test-db {:style/indent 1} [[db-binding] & body]
-  `(do-with-temp-copy-of-test-db (fn [~(or db-binding '_)]
-                                   ~@body)))
-
 (defn- save-card-via-API-with-native-source-query!
   "Attempt to save a Card that uses a native source query and belongs to a Collection with `collection-id` via the API
   using Rasta. Use this to test how the API endpoint behaves based on certain permissions grants for the `All Users`
@@ -605,12 +627,12 @@
 (expect
   :ok
   (tu/with-non-admin-groups-no-root-collection-perms
-    (with-temp-copy-of-test-db [db]
+    (data/with-temp-copy-of-test-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-        (save-card-via-API-with-native-source-query! 200 db source-card-collection dest-card-collection)
+        (save-card-via-API-with-native-source-query! 200 (data/db) source-card-collection dest-card-collection)
         :ok))))
 
 ;; however, if we do *not* have read permissions for the source Card's collection we shouldn't be allowed to save the
@@ -620,20 +642,20 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (with-temp-copy-of-test-db [db]
+    (data/with-temp-copy-of-test-db
       (tt/with-temp Collection [dest-card-collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-        (save-card-via-API-with-native-source-query! 403 db nil dest-card-collection)))))
+        (save-card-via-API-with-native-source-query! 403 (data/db) nil dest-card-collection)))))
 
 ;; Card in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (with-temp-copy-of-test-db [db]
+    (data/with-temp-copy-of-test-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+        (save-card-via-API-with-native-source-query! 403 (data/db) source-card-collection dest-card-collection)))))
 
 ;; similarly, if we don't have *write* perms for the dest collection it should also fail
 
@@ -641,20 +663,20 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (with-temp-copy-of-test-db [db]
+    (data/with-temp-copy-of-test-db
       (tt/with-temp Collection [source-card-collection]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-        (save-card-via-API-with-native-source-query! 403 db source-card-collection nil)))))
+        (save-card-via-API-with-native-source-query! 403 (data/db) source-card-collection nil)))))
 
 ;; Try to save in a different Collection for which we do not have perms
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (with-temp-copy-of-test-db [db]
+    (data/with-temp-copy-of-test-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
-        (save-card-via-API-with-native-source-query! 403 db source-card-collection dest-card-collection)))))
+        (save-card-via-API-with-native-source-query! 403 (data/db) source-card-collection dest-card-collection)))))
 
 ;; make sure that if we refer to a Field that is actually inside the source query, the QP is smart enough to figure
 ;; out what you were referring to and behave appropriately
@@ -662,18 +684,11 @@
   [[10]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
-      (qp/process-query
-        {:database (data/id)
-         :type     :query
-         :query    {:source-query {:source-table (data/id :venues)
-                                   :fields       [(data/id :venues :id)
-                                                  (data/id :venues :name)
-                                                  (data/id :venues :category_id)
-                                                  (data/id :venues :latitude)
-                                                  (data/id :venues :longitude)
-                                                  (data/id :venues :price)]}
-                    :aggregation  [[:count]]
-                    :filter       [:= [:field-id (data/id :venues :category_id)] 50]}}))))
+      (data/run-mbql-query venues
+        {:source-query {:source-table $$venues
+                        :fields       [$id $name $category_id $latitude $longitude $price]}
+         :aggregation  [[:count]]
+         :filter       [:= $category_id 50]}))))
 
 ;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -687,12 +702,11 @@
   (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
     (qp.test/rows
       (qp/process-query
-        (data/$ids [venues {:wrap-field-ids? true}]
-          {:type     :query
-           :database (data/id)
-           :query    {:source-query {:source-table $$table
-                                     :filter       [:= $venues.category_id->categories.name "BBQ"]
-                                     :order-by     [[:asc $id]]}}})))))
+        (data/mbql-query venues
+          {:source-query
+           {:source-table $$venues
+            :filter       [:= $venues.category_id->categories.name "BBQ"]
+            :order-by     [[:asc $id]]}})))))
 
 ;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -700,16 +714,13 @@
    [980]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
-      (qp/process-query
-        (data/$ids checkins
-          {:type     :query
-           :database (data/id)
-           :query    {:source-query {:source-table $$table
-                                     :order-by     [[:asc [:field-id $id]]]}
-                      :fields       [[:field-id $id]]
-                      :filter       [:=
-                                     [:field-literal (db/select-one-field :name Field :id $date) "type/DateTime"]
-                                     "2014-03-30"]}})))))
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :order-by     [[:asc $id]]}
+         :fields       [$id]
+         :filter       [:=
+                        [:field-literal (field-name :checkins :date) "type/DateTime"]
+                        "2014-03-30"]}))))
 
 ;; make sure filters in source queries are applied correctly!
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -717,11 +728,10 @@
    ["Frolic Room" 1]]
   (qp.test/format-rows-by [str int]
     (qp.test/rows
-      (qp/process-query
-        (data/mbql-query checkins
-          {:source-query {:source-table $$checkins
-                          :filter       [:> $date "2015-01-01"]}
-           :aggregation  [:count]
-           :order-by     [[:asc $venue_id->venues.name]]
-           :breakout     [$venue_id->venues.name]
-           :filter       [:starts-with $venue_id->venues.name "F"]})))))
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :filter       [:> $date "2015-01-01"]}
+         :aggregation  [:count]
+         :order-by     [[:asc $venue_id->venues.name]]
+         :breakout     [$venue_id->venues.name]
+         :filter       [:starts-with $venue_id->venues.name "F"]}))))

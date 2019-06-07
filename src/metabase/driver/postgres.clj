@@ -2,8 +2,8 @@
   "Database driver for PostgreSQL databases. Builds on top of the SQL JDBC driver, which implements most functionality
   for JDBC-based drivers."
   (:require [clojure
-             [set :as set :refer [rename-keys]]
-             [string :as s]]
+             [set :as set]
+            [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
             [metabase.db.spec :as db.spec]
@@ -54,7 +54,7 @@
 
     #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
-      (str (s/capitalize message) \.))
+      (str (str/capitalize message) \.))
 
     #".*" ; default
     message))
@@ -259,7 +259,7 @@
       (merge (if ssl?
                ssl-params
                disable-ssl-params))
-      (rename-keys {:dbname :db})
+      (set/rename-keys {:dbname :db})
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
 
