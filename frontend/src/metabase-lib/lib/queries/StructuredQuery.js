@@ -584,9 +584,11 @@ export default class StructuredQuery extends AtomicQuery {
   breakoutOptions(includedBreakout?: any, fieldFilter = () => true) {
     // the set of field ids being used by other breakouts
     const usedFields = new Set(
-      this.breakouts()
-        .filter(b => !_.isEqual(b, includedBreakout))
-        .map(b => Q_deprecated.getFieldTargetId(b)),
+      includedBreakout === true
+        ? []
+        : this.breakouts()
+            .filter(b => !_.isEqual(b, includedBreakout))
+            .map(b => Q_deprecated.getFieldTargetId(b)),
     );
 
     return this.fieldOptions(

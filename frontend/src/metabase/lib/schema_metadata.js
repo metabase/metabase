@@ -156,6 +156,8 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.special_type == null || isa(field.special_type, TYPE.Number));
 
+export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
+
 export const isTime = field => isa(field && field.base_type, TYPE.Time);
 
 export const isAddress = field =>

@@ -164,31 +164,13 @@ export class ViewSubHeader extends React.Component {
     const right = [];
 
     if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
-      // left.push(
-      //   <QuestionSummaries
-      //     triggerElement={
-      //       <Button
-      //         medium
-      //         icon="insight"
-      //         color="#84BB4C"
-      //         className="mr2"
-      //       >{t`Summarize`}</Button>
-      //     }
-      //     key="summaries"
-      //     question={question}
-      //     onRun={() => runQuestionQuery({ ignoreCache: true })}
-      //   />,
-      // );
       left.push(
-        <Button
-          medium
-          icon="insight"
-          color="#84BB4C"
+        <QuestionSummaries
+          key="summarize"
           className="mr2"
-          onClick={onOpenAddAggregation}
-        >
-          {t`Summarize`}
-        </Button>,
+          question={question}
+          onOpenAddAggregation={onOpenAddAggregation}
+        />,
       );
     }
 

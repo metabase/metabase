@@ -371,7 +371,7 @@ export default class AggregationPopover extends Component {
           itemIsSelected={this.itemIsSelected.bind(this)}
           renderSectionIcon={s => <Icon name={s.icon} size={18} />}
           renderItemExtra={this.renderItemExtra.bind(this)}
-          getItemClasses={item =>
+          getItemClassName={item =>
             item.metric && item.metric.archived ? "text-medium" : null
           }
           onChangeSection={index => {

@@ -23,7 +23,7 @@ const ChartSettingsSidebar = ({
     <SidebarContent
       className="full-height"
       title={t`${visualizations.get(question.display()).uiName} options`}
-      onDone={onClose}
+      onClose={onClose}
       onBack={() =>
         setUIControls({
           isShowingChartSettingsSidebar: false,

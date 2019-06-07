@@ -63,7 +63,7 @@ export default class AccordianList extends Component {
     renderItem: PropTypes.func,
     renderSectionIcon: PropTypes.func,
     renderItemWrapper: PropTypes.func,
-    getItemClasses: PropTypes.func,
+    getItemClassName: PropTypes.func,
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
@@ -203,9 +203,9 @@ export default class AccordianList extends Component {
     this.setState({ searchText });
   };
 
-  renderItemExtra = (item, itemIndex) => {
+  renderItemExtra = (item, itemIndex, isSelected) => {
     if (this.props.renderItemExtra) {
-      return this.props.renderItemExtra(item, itemIndex);
+      return this.props.renderItemExtra(item, itemIndex, isSelected);
     } else {
       return null;
     }
@@ -214,6 +214,8 @@ export default class AccordianList extends Component {
   renderItemIcon = (item, itemIndex) => {
     if (this.props.renderItemIcon) {
       return this.props.renderItemIcon(item, itemIndex);
+    } else if (item.icon) {
+      return <Icon className="Icon text-default" name={item.icon} size={18} />;
     } else {
       return null;
     }
@@ -245,13 +247,13 @@ export default class AccordianList extends Component {
     }
   };
 
-  getItemClasses = (item, itemIndex) => {
-    return (
-      this.props.getItemClasses && this.props.getItemClasses(item, itemIndex)
-    );
+  getItemClassName = (item, itemIndex) => {
+    if (this.props.getItemClassName) {
+      return this.props.getItemClassName(item, itemIndex);
+    } else {
+      return item.className;
+    }
   };
-
-  renderRow(row, style = {}) {}
 
   render() {
     const {
@@ -369,7 +371,7 @@ export default class AccordianList extends Component {
               renderItemWrapper={this.renderItemWrapper}
               renderItemIcon={this.renderItemIcon}
               renderItemExtra={this.renderItemExtra}
-              getItemClasses={this.getItemClasses}
+              getItemClassName={this.getItemClassName}
             />
           ))}
         </div>
@@ -439,7 +441,7 @@ export default class AccordianList extends Component {
                   renderItemWrapper={this.renderItemWrapper}
                   renderItemIcon={this.renderItemIcon}
                   renderItemExtra={this.renderItemExtra}
-                  getItemClasses={this.getItemClasses}
+                  getItemClassName={this.getItemClassName}
                 />
               )}
             </CellMeasurer>
@@ -469,9 +471,97 @@ const AccordianListCell = ({
   onChangeSearchText,
   searchPlaceholder,
   showItemArrows,
-  getItemClasses,
+  getItemClassName,
 }) => {
   const { type, section, sectionIndex, item, itemIndex, isLastItem } = row;
+  let content;
+  if (type === "header") {
+    if (alwaysExpanded) {
+      content = (
+        <div className="px2 pt2 pb1 h6 text-light text-uppercase text-bold">
+          {section.name}
+        </div>
+      );
+    } else {
+      content = (
+        <div
+          className={cx("List-section-header p2 flex align-center", {
+            "cursor-pointer": sectionIsTogglable(sectionIndex),
+            "border-top": sectionIndex !== 0,
+            "border-bottom": sectionIsExpanded(sectionIndex),
+          })}
+          onClick={
+            sectionIsTogglable(sectionIndex) &&
+            (() => toggleSection(sectionIndex))
+          }
+        >
+          {renderSectionIcon(section, sectionIndex)}
+          <h3 className="List-section-title">{section.name}</h3>
+          {sections.length > 1 && section.items && section.items.length > 0 && (
+            <span className="flex-align-right">
+              <Icon
+                name={
+                  sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"
+                }
+                size={12}
+              />
+            </span>
+          )}
+        </div>
+      );
+    }
+  } else if (type === "header-hidden") {
+    content = <div className="my1" />;
+  } else if (type === "search") {
+    content = (
+      <div className="m1" style={{ border: "2px solid transparent" }}>
+        <ListSearchField
+          onChange={onChangeSearchText}
+          searchText={searchText}
+          placeholder={searchPlaceholder}
+          autoFocus
+        />
+      </div>
+    );
+  } else if (type === "item") {
+    const isSelected = itemIsSelected(item, itemIndex);
+    const isClickable = itemIsClickable(item, itemIndex);
+    content = renderItemWrapper(
+      item,
+      itemIndex,
+      <div
+        className={cx(
+          "List-item flex mx1",
+          {
+            "List-item--selected": isSelected,
+            "List-item--disabled": !isClickable,
+            mb1: isLastItem,
+          },
+          getItemClassName(item, itemIndex),
+        )}
+      >
+        <a
+          className={cx(
+            "p1 flex-full flex align-center",
+            isClickable ? "cursor-pointer" : "cursor-default",
+          )}
+          onClick={isClickable ? () => onChange(item) : null}
+        >
+          <span className="flex align-center">
+            {renderItemIcon(item, itemIndex, isSelected)}
+          </span>
+          <h4 className="List-item-title ml1">{item.name}</h4>
+        </a>
+        {renderItemExtra(item, itemIndex, isSelected)}
+        {showItemArrows && (
+          <div className="List-item-arrow flex align-center px1">
+            <Icon name="chevronright" size={8} />
+          </div>
+        )}
+      </div>,
+    );
+  }
+
   return (
     <div
       style={style}
@@ -480,86 +570,7 @@ const AccordianListCell = ({
         "List-section--togglable": sectionIsTogglable(sectionIndex),
       })}
     >
-      {type === "header" ? (
-        alwaysExpanded ? (
-          <div className="px2 pt2 pb1 h6 text-light text-uppercase text-bold">
-            {section.name}
-          </div>
-        ) : (
-          <div
-            className={cx("List-section-header p2 flex align-center", {
-              "cursor-pointer": sectionIsTogglable(sectionIndex),
-              "border-top": sectionIndex !== 0,
-              "border-bottom": sectionIsExpanded(sectionIndex),
-            })}
-            onClick={
-              sectionIsTogglable(sectionIndex) &&
-              (() => toggleSection(sectionIndex))
-            }
-          >
-            {renderSectionIcon(section, sectionIndex)}
-            <h3 className="List-section-title">{section.name}</h3>
-            {sections.length > 1 && section.items && section.items.length > 0 && (
-              <span className="flex-align-right">
-                <Icon
-                  name={
-                    sectionIsExpanded(sectionIndex)
-                      ? "chevronup"
-                      : "chevrondown"
-                  }
-                  size={12}
-                />
-              </span>
-            )}
-          </div>
-        )
-      ) : type === "header-hidden" ? (
-        <div className="my1" />
-      ) : type === "search" ? (
-        <div className="m1" style={{ border: "2px solid transparent" }}>
-          <ListSearchField
-            onChange={onChangeSearchText}
-            searchText={searchText}
-            placeholder={searchPlaceholder}
-            autoFocus
-          />
-        </div>
-      ) : type === "item" ? (
-        renderItemWrapper(
-          item,
-          itemIndex,
-          <div
-            className={cx(
-              "List-item flex mx1",
-              {
-                "List-item--selected": itemIsSelected(item),
-                "List-item--disabled": !itemIsClickable(item),
-                mb1: isLastItem,
-              },
-              getItemClasses(item, itemIndex),
-            )}
-          >
-            <a
-              className={cx(
-                "p1 flex-full flex align-center",
-                itemIsClickable(item) ? "cursor-pointer" : "cursor-default",
-              )}
-              onClick={itemIsClickable(item) ? () => onChange(item) : null}
-            >
-              <span className="flex align-center">
-                {renderItemIcon(item, itemIndex)}
-              </span>
-              <h4 className="List-item-title ml1">{item.name}</h4>
-            </a>
-            {renderItemExtra(item, itemIndex)}
-            {showItemArrows && (
-              <div className="List-item-arrow flex align-center px1">
-                <Icon name="chevronright" size={8} />
-              </div>
-            )}
-          </div>,
-        )
-      ) : null}
+      {content}
     </div>
   );
 };

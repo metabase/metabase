@@ -19,15 +19,16 @@ import {
   isString,
   isSummable,
   isCategory,
+  isState,
+  isCountry,
+  isCoordinate,
   isLocation,
   isDimension,
   isMetric,
   isPK,
   isFK,
   isEntityName,
-  isCoordinate,
   getIconForField,
-  getFieldType,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
@@ -71,10 +72,6 @@ export default class Field extends Base {
     return displayName;
   }
 
-  fieldType() {
-    return getFieldType(this);
-  }
-
   isDate() {
     return isDate(this);
   }
@@ -93,6 +90,15 @@ export default class Field extends Base {
   isString() {
     return isString(this);
   }
+  isState() {
+    return isState(this);
+  }
+  isCountry() {
+    return isCountry(this);
+  }
+  isCoordinate() {
+    return isCoordinate(this);
+  }
   isLocation() {
     return isLocation(this);
   }
@@ -104,14 +110,6 @@ export default class Field extends Base {
   }
   isMetric() {
     return isMetric(this);
-  }
-
-  isCompatibleWith(field: Field) {
-    return (
-      this.isDate() === field.isDate() ||
-      this.isNumeric() === field.isNumeric() ||
-      this.id === field.id
-    );
   }
 
   /**
@@ -134,8 +132,12 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
-  isCoordinate() {
-    return isCoordinate(this);
+  isCompatibleWith(field: Field) {
+    return (
+      this.isDate() === field.isDate() ||
+      this.isNumeric() === field.isNumeric() ||
+      this.id === field.id
+    );
   }
 
   fieldValues(): FieldValues {

@@ -1,6 +1,7 @@
 /* @flow */
 
 import React from "react";
+import cx from "classnames";
 
 import FieldList from "metabase/query_builder/components/FieldList.jsx";
 
@@ -9,6 +10,7 @@ import type { FieldOptions } from "metabase/meta/types/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
+  className?: string,
   breakout?: Breakout,
   onChangeBreakout: (breakout: Breakout) => void,
   query: StructuredQuery,
@@ -21,6 +23,7 @@ type Props = {
 };
 
 const BreakoutPopover = ({
+  className,
   breakout,
   onChangeBreakout,
   query,
@@ -37,7 +40,7 @@ const BreakoutPopover = ({
   }
   return (
     <FieldList
-      className="text-green pl2"
+      className={cx(className, "text-green")}
       width={width}
       field={breakout}
       fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
