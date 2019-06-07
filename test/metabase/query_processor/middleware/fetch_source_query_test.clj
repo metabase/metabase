@@ -236,3 +236,28 @@
                            (str "Failed to save Card:" e)))]
         (or save-error
             (resolve-card-id-source-tables (circular-source-query card-1-id)))))))
+
+;; Alow complex dependency topologies
+(expect
+  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query {:database (data/id)
+                                                         :type     :query
+                                                         :query    {:source-table (data/id :venues)}}
+                                         :name "foo"
+                                         :display :table
+                                         :visualization_settings {}
+                                         :creator_id 1}]
+                  Card [{card-2-id :id} {:dataset_query {:database (data/id)
+                                                         :type     :query
+                                                         :query    {:source-table (str "card__" card-1-id)}}
+                                         :name "foo"
+                                         :display :table
+                                         :visualization_settings {}
+                                         :creator_id 1}]]
+    (some?
+     (resolve-card-id-source-tables
+      {:database (data/id)
+       :type     :query
+       :query    {:source-table (str "card__" card-1-id)
+                  :joins        [{:alias "c"
+                                  :source-table (str "card__" card-2-id)
+                                  :condition [:= [:field-literal "ID" :type/Number] [:joined-field "c" [:field-id (data/id :venues :id)]]]}]}}))))
