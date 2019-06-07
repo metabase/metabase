@@ -11,6 +11,8 @@ import AggregationPopover from "metabase/query_builder/components/AggregationPop
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import AggregationName from "metabase/query_builder/components/AggregationName";
 
+import DimensionList from "metabase/query_builder/components/DimensionList";
+
 import SelectButton from "metabase/components/SelectButton";
 import Button from "metabase/components/Button";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
@@ -20,7 +22,7 @@ import Icon from "metabase/components/Icon";
 function updateAndRun(query) {
   query
     .question()
-    .setDisplayAutomatically()
+    .setDisplayDefault()
     .update(null, { run: true });
 }
 
@@ -47,9 +49,9 @@ const AggregationSidebar = ({ question, index, onClose }) => {
         <SummarizeAggregationAdd className="mb1" query={query} />
       </div>
       {query.hasAggregations() && (
-        <div className="border-top mt2 pt2 ml1">
+        <div className="border-top mt2 pt2 mx1">
           <SectionTitle className="mb1 ml3">Summarize by</SectionTitle>
-          <SummarizeBreakouts query={query} />
+          <SummarizeBreakouts className="mx2" query={query} />
         </div>
       )}
     </SidebarContent>
@@ -114,23 +116,30 @@ const SummarizeAggregationAdd = ({ className, query }) => {
 };
 
 const SummarizeBreakouts = ({ className, query }) => {
-  const breakouts = query.breakouts();
+  const dimensions = query.breakouts().map(b => b.dimension());
   return (
-    <BreakoutPopover
-      className={className}
-      query={query}
-      breakout={breakouts[0]}
-      onChangeBreakout={breakout => {
-        if (breakouts.length > 0) {
-          updateAndRun(query.updateBreakout(0, breakout));
-        } else {
-          updateAndRun(query.addBreakout(breakout));
+    <DimensionList
+      className="text-green mx2"
+      dimensions={dimensions}
+      sections={query.breakoutOptions(true).sections()}
+      onChangeDimension={dimension => {
+        updateAndRun(query.clearBreakouts().addBreakout(dimension.mbql()));
+      }}
+      onAddDimension={dimension => {
+        updateAndRun(query.addBreakout(dimension.mbql()));
+      }}
+      onRemoveDimension={dimension => {
+        for (const [index, existing] of dimensions.entries()) {
+          if (dimension.isSameBaseDimension(existing)) {
+            updateAndRun(query.removeBreakout(index));
+            return;
+          }
         }
       }}
       alwaysExpanded
       width={null}
-      maxHeight={Infinity} // just implement scrolling ourselves
-      searchable={false}
+      maxHeight={Infinity}
+      enableSubDimensions
     />
   );
 };

@@ -17,6 +17,8 @@ import {
   isCountry,
   isCoordinate,
   isNumber,
+  isCategory,
+  isBinnedNumber,
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
@@ -401,6 +403,7 @@ const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
     ? existingDisplay
     : defaultDisplay;
 
+// DEPRECATED: use question.setDisplayDefault()
 export function guessVisualization(
   card: CardObject,
   tableMetadata: Table,

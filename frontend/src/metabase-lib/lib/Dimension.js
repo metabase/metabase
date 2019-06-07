@@ -657,8 +657,15 @@ export class DatetimeFieldDimension extends FieldDimension {
     return this._parent.baseDimension();
   }
 
-  bucketing(): DatetimeUnit {
+  unit(): DatetimeUnit {
     return this._args[0];
+  }
+
+  isExtraction(): boolean {
+    return /-of-/.test(this.unit());
+  }
+  isTruncation(): boolean {
+    return !this.isExtraction();
   }
 
   subDisplayName(): string {

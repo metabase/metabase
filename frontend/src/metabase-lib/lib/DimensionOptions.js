@@ -1,4 +1,5 @@
 import Dimension from "metabase-lib/lib/Dimension";
+import { stripId, singularize } from "metabase/lib/formatting";
 
 export default class DimensionOptions {
   count: number;
@@ -23,5 +24,31 @@ export default class DimensionOptions {
       }
     }
     return false;
+  }
+
+  sections({ extraItems = [] } = {}) {
+    const table = this.dimensions[0] && this.dimensions[0].field().table;
+    const mainSection = {
+      name: this.name || (table && singularize(table.display_name)),
+      icon: this.icon || "table2",
+      items: [
+        ...extraItems,
+        ...this.dimensions.map(dimension => ({ dimension })),
+      ],
+    };
+
+    const fkSections = this.fks.map(fk => ({
+      name: fk.name || stripId(fk.field.display_name),
+      icon: fk.icon || "connections",
+      items: fk.dimensions.map(dimension => ({ dimension })),
+    }));
+
+    const sections = [];
+    if (mainSection.items.length > 0) {
+      sections.push(mainSection);
+    }
+    sections.push(...fkSections);
+
+    return sections;
   }
 }

@@ -45,6 +45,7 @@ import { MetabaseApi, CardApi } from "metabase/services";
 import Questions from "metabase/entities/questions";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
@@ -56,6 +57,7 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { BinnedDimension } from "./Dimension";
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
@@ -258,10 +260,69 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  setDisplayAutomatically(): Question {
-    const cardCopy = MetabaseUtils.copy(this.card());
-    guessVisualization(cardCopy, this.tableMetadata(), this.display());
-    return this.setCard(cardCopy);
+  setDisplayDefault(): Question {
+    const query = this.query();
+    if (query instanceof StructuredQuery) {
+      // TODO: move to StructuredQuery?
+      const aggregations = query.aggregations();
+      const breakouts = query.breakouts();
+      const breakoutDimensions = breakouts.map(b => b.dimension());
+      const breakoutFields = breakoutDimensions.map(d => d.field());
+      if (aggregations.length === 0 && breakouts.length === 0) {
+        return this.setDisplay("table");
+      }
+      if (aggregations.length === 1 && breakouts.length === 0) {
+        return this.setDisplay("scalar");
+      }
+      if (aggregations.length === 1 && breakouts.length === 1) {
+        if (breakoutFields[0].isState()) {
+          return this.setDisplay("map").updateSettings({
+            "map.type": "region",
+            "map.region": "us_states",
+          });
+        } else if (breakoutFields[0].isCountry()) {
+          return this.setDisplay("map").updateSettings({
+            "map.type": "region",
+            "map.region": "world_countries",
+          });
+        }
+      }
+      if (aggregations.length >= 1 && breakouts.length === 1) {
+        if (breakoutFields[0].isDate()) {
+          if (
+            breakoutDimensions[0] instanceof DatetimeFieldDimension &&
+            breakoutDimensions[0].isExtraction()
+          ) {
+            return this.setDisplay("bar");
+          } else {
+            return this.setDisplay("line");
+          }
+        }
+        if (breakoutDimensions[0] instanceof BinnedDimension) {
+          return this.setDisplay("bar");
+        }
+        if (breakoutFields[0].isCategory()) {
+          return this.setDisplay("bar");
+        }
+      }
+      if (aggregations.length === 1 && breakouts.length === 2) {
+        if (_.any(breakoutFields, f => f.isDate())) {
+          return this.setDisplay("line");
+        }
+        if (
+          breakoutFields[0].isCoordinate() &&
+          breakoutFields[1].isCoordinate()
+        ) {
+          return this.setDisplay("map").updateSettings({
+            "map.type": "grid",
+          });
+        }
+        if (_.all(breakoutFields, f => f.isCategory())) {
+          return this.setDisplay("bar");
+        }
+      }
+    }
+    return this.setDisplay("table");
   }
 
   // DEPRECATED: use settings
