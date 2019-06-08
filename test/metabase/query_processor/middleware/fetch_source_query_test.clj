@@ -246,25 +246,12 @@
 ;;   C
 ;;
 (expect
-  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query {:database (data/id)
-                                                         :type     :query
-                                                         :query    {:source-table (data/id :venues)}}
-                                         :name "foo"
-                                         :display :table
-                                         :visualization_settings {}
-                                         :creator_id 1}]
-                  Card [{card-2-id :id} {:dataset_query {:database (data/id)
-                                                         :type     :query
-                                                         :query    {:source-table (str "card__" card-1-id)}}
-                                         :name "foo"
-                                         :display :table
-                                         :visualization_settings {}
-                                         :creator_id 1}]]
-    (some?
-     (resolve-card-id-source-tables
-      {:database (data/id)
-       :type     :query
-       :query    {:source-table (str "card__" card-1-id)
-                  :joins        [{:alias "c"
-                                  :source-table (str "card__" card-2-id)
-                                  :condition [:= [:field-literal "ID" :type/Number] [:joined-field "c" [:field-id (data/id :venues :id)]]]}]}}))))
+  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query (data/mbql-query venues)}]
+                  Card [{card-2-id :id} {:dataset_query (data/mbql-query nil
+                                                          {:source-table (str "card__" card-1-id)})}]]
+    (resolve-card-id-source-tables
+     (data/mbql-query nil
+       {:source-table (str "card__" card-1-id)
+        :joins        [{:alias        "c"
+                        :source-table (str "card__" card-2-id)
+                        :condition    [:= *ID/Number &c.venues.id]}]}))))
