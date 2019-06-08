@@ -237,7 +237,14 @@
         (or save-error
             (resolve-card-id-source-tables (circular-source-query card-1-id)))))))
 
-;; Alow complex dependency topologies
+;; Alow complex dependency topologies such as:
+;;
+;;   A
+;:   | \
+;;   B  |
+;;   | /
+;;   C
+;;
 (expect
   (tt/with-temp* [Card [{card-1-id :id} {:dataset_query {:database (data/id)
                                                          :type     :query
