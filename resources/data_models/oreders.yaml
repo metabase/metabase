@@ -1,0 +1,19 @@
+name: Orders
+required_dimensions:
+  - Income
+  - Timestamp
+optional_dimensions:
+  - Quantity
+  - User
+  - Product
+  - Source
+  - NumOrders
+metrics:
+  TotalIncome:
+    aggregation [sum, [dimensions, Income]]
+segments:
+  ReturningUsers:
+    filter: [>, [dimension, NumOrders],  1]
+breakout_dimensions:
+  - Source
+  - Timestamp
