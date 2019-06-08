@@ -1217,6 +1217,7 @@ export const runQuestionQuery = ({
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
+        ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
       .then(queryResults =>

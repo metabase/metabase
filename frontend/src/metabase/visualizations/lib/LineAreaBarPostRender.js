@@ -314,7 +314,7 @@ function onRenderHideDisabledAxis(chart) {
 }
 
 function onRenderHideBadAxis(chart) {
-  if (chart.selectAll(".axis.x .tick")[0].length === 1) {
+  if (chart.selectAll(".axis.x .tick")[0].length === 0) {
     chart.selectAll(".axis.x").remove();
   }
 }
