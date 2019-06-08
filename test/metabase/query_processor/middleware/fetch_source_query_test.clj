@@ -236,3 +236,22 @@
                            (str "Failed to save Card:" e)))]
         (or save-error
             (resolve-card-id-source-tables (circular-source-query card-1-id)))))))
+
+;; Alow complex dependency topologies such as:
+;;
+;;   A
+;:   | \
+;;   B  |
+;;   | /
+;;   C
+;;
+(expect
+  (tt/with-temp* [Card [{card-1-id :id} {:dataset_query (data/mbql-query venues)}]
+                  Card [{card-2-id :id} {:dataset_query (data/mbql-query nil
+                                                          {:source-table (str "card__" card-1-id)})}]]
+    (resolve-card-id-source-tables
+     (data/mbql-query nil
+       {:source-table (str "card__" card-1-id)
+        :joins        [{:alias        "c"
+                        :source-table (str "card__" card-2-id)
+                        :condition    [:= *ID/Number &c.venues.id]}]}))))
