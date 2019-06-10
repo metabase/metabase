@@ -29,6 +29,11 @@ const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
 
 export const ScalarTitle = ({ title, description, onClick }) => (
   <div className="flex align-center full justify-center px2">
+    {/*
+      This is a hacky spacer so that the h3 is centered correctly.
+      It needs match the width of the tooltip icon on the other side.
+     */}
+    {description && description.length > 0 && <div style={{ width: "24px" }} />}
     <h3
       onClick={onClick}
       className={cx(
