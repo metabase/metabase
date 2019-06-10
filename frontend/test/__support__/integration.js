@@ -10,6 +10,8 @@ export { delay } from "metabase/lib/promise";
 
 import { MockResponse, MockRequest } from "xhr-mock";
 
+import { enhanceEnzymeWrapper } from "__support__/enzyme_utils";
+
 // helper for JSON responses, also defaults to 200 status code
 MockResponse.prototype.json = function(object) {
   return this.status(this._status || 200)

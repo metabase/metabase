@@ -337,3 +337,25 @@ export function computeMaxDecimalsForValues(values, options) {
     return undefined;
   }
 }
+
+// Figure out how many decimal places are needed to represent the smallest
+// values in the chart with a certain number of significant digits.
+export function computeMaxDecimalsForValues(values, options) {
+  try {
+    // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
+    // $FlowFixMe
+    const formatter = Intl.NumberFormat("en", options);
+    let maxDecimalCount = 0;
+    for (const value of values) {
+      const parts = formatter.formatToParts(value);
+      const part = parts.find(p => p.type === "fraction");
+      const decimalCount = part ? part.value.length : 0;
+      if (decimalCount > maxDecimalCount) {
+        maxDecimalCount = decimalCount;
+      }
+    }
+    return maxDecimalCount;
+  } catch (e) {
+    return undefined;
+  }
+}

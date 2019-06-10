@@ -12,6 +12,8 @@ import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
 import { titleize, humanize } from "metabase/lib/formatting";
 
+import { titleize, humanize } from "metabase/lib/formatting";
+
 import Dimension from "../Dimension";
 
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
