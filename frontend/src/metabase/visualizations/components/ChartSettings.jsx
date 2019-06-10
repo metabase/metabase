@@ -158,7 +158,8 @@ class ChartSettings extends Component {
       };
       widgets = [widget];
     } else {
-      widgets = sections[currentSection];
+      // if there are no named tabs, get widgets from the first one
+      widgets = sections[currentSection] || Object.values(sections)[0];
     }
 
     const extraWidgetProps = {
