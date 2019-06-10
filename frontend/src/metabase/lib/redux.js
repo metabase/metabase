@@ -341,3 +341,10 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
         return thunkCreator(...args)(dispatch, getState);
       };
 }
+
+import { normalize } from "normalizr";
+
+export function withNormalize(schema) {
+  return thunkCreator => (...args) => async (dispatch, getState) =>
+    normalize(await thunkCreator(...args)(dispatch, getState), schema);
+}

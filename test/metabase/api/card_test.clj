@@ -80,7 +80,7 @@
 (defn- do-with-temp-native-card
   {:style/indent 0}
   [f]
-  (tt/with-temp* [Database   [db    {:details (:details (Database (data/id))), :engine :h2}]
+  (tt/with-temp* [Database   [db    {:details (:details (data/db)), :engine :h2}]
                   Table      [table {:db_id (u/get-id db), :name "CATEGORIES"}]
                   Card       [card  {:dataset_query {:database (u/get-id db)
                                                      :type     :native
@@ -123,7 +123,7 @@
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (tt/with-temp*
-    [Database   [db    {:details (:details (Database (data/id))), :engine :h2}]
+    [Database   [db    {:details (:details (data/db)), :engine :h2}]
      Table      [table {:db_id (u/get-id db), :name "VENUES"}]
      Card       [card  {:dataset_query
                         {:database (u/get-id db)

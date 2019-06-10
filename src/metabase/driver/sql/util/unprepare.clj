@@ -51,6 +51,7 @@
   (hformat/to-sql (hx/->time (hsql/raw (unprepare-value driver (du/->Timestamp value))))))
 
 
+;; TODO - I think a name like `deparameterize` would be more appropriate here
 (defmulti ^String unprepare
   "Convert a normal SQL `[statement & prepared-statement-args]` vector into a flat, non-prepared statement.
   Implementations should return a plain SQL string.

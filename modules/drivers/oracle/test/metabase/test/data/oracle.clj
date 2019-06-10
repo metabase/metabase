@@ -37,6 +37,8 @@
 
 (defmethod tx/dbdef->connection-details :oracle [& _] @connection-details)
 
+(defmethod tx/sorts-nil-first? :oracle [_] false)
+
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/BigInteger] [_ _] "NUMBER(*,0)")
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/Boolean]    [_ _] "NUMBER(1)")
 (defmethod sql.tx/field-base-type->sql-type [:oracle :type/Date]       [_ _] "DATE")

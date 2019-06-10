@@ -177,10 +177,10 @@
 (expect
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
-      {:source-table $$table
-       :breakout     [[:datetime-field [:field-id $timestamp] :day]]}))
+      {:source-table $$incidents
+       :breakout     [!day.timestamp]}))
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
       (auto-bucket-mbql
-       {:source-table $$table
-        :breakout     [[:field-id $timestamp]]}))))
+       {:source-table $$incidents
+        :breakout     [$timestamp]}))))

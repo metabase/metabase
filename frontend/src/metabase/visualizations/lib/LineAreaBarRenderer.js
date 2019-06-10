@@ -4,12 +4,13 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import {
   computeSplit,
+  computeMaxDecimalsForValues,
   getFriendlyName,
   getXValues,
   colorShades,
@@ -172,6 +173,11 @@ function addPercentSignsToDisplayNames(series) {
   );
 }
 
+// Store a "decimals" property on the column that is normalized
+function addDecimalsToPercentColumn(series, decimals) {
+  return series.map(s => assocIn(s, ["data", "cols", 1, "decimals"], decimals));
+}
+
 function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   props,
   datas,
@@ -190,6 +196,15 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
     }
 
     props.series = addPercentSignsToDisplayNames(props.series);
+
+    const normalizedValues = datas.flatMap(data =>
+      data.map(([d, m]) => m / scaleFactors[d]),
+    );
+    const decimals = computeMaxDecimalsForValues(normalizedValues, {
+      style: "percent",
+      maximumSignificantDigits: 2,
+    });
+    props.series = addDecimalsToPercentColumn(props.series, decimals);
   }
 
   datas.map((data, i) =>

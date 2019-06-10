@@ -1,6 +1,8 @@
-(ns metabase.query-processor-test.joins-test
+(ns metabase.query-processor-test.implicit-joins-test
   "Test for JOIN behavior."
-  (:require [metabase.query-processor-test :as qp.test]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :as qp.test]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -96,7 +98,7 @@
 ;; Check that trying to use a Foreign Key fails for Mongo and other DBs
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-without-feature :foreign-keys)
   {:status :failed
-   :error  "foreign-keys is not supported by this driver."}
+   :error  (format "%s driver does not support foreign keys." driver/*driver*)}
   (select-keys
    (data/dataset tupac-sightings
      (data/run-mbql-query sightings

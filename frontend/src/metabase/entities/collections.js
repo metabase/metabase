@@ -94,7 +94,7 @@ const Collections = createEntity({
         placeholder: "My new fantastic collection",
         validate: name =>
           (!name && t`Name is required`) ||
-          (name.length > 100 && t`Name must be 100 characters or less`),
+          (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
       {
         name: "description",

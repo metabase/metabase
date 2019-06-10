@@ -3,8 +3,12 @@
   (:require [expectations :refer [expect]]
             [medley.core :as m]
             [metabase.query-processor :as qp]
-            [metabase.test.data :as data]
-            [metabase.test.util.log :as tu.log]))
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.util.log :as tu.log]
+            [metabase.util.schema :as su]
+            [schema.core :as s]))
 
 ;; Just check that a basic query works
 (expect
@@ -39,13 +43,16 @@
       (m/dissoc-in [:data :insights])))
 
 ;; Check that we get proper error responses for malformed SQL
-(expect
-  {:status :failed
-   :class  java.lang.Exception
-   :error  "Column \"ZID\" not found"}
-  (dissoc (tu.log/suppress-output
-            (qp/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
-                               :type     :native
-                               :database (data/id)}))
-          :stacktrace
-          :query))
+(tu/expect-schema
+  {:status     (s/eq :failed)
+   :class      (s/eq java.lang.Exception)
+   :error      (s/eq "Column \"ZID\" not found")
+   :stacktrace [su/NonBlankString]
+   :query      {:native {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
+                :type (s/eq :native)}
+   :cause      {:class (s/eq org.h2.jdbc.JdbcSQLException)
+                :error #"Column \"ZID\" not found; SQL statement:.*"}}
+  (tu.log/suppress-output
+    (qp/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
+                       :type     :native
+                       :database (data/id)})))

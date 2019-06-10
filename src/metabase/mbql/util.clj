@@ -117,7 +117,7 @@
   patterns with `:guard` where possible.
 
   You can also call `recur` inside result bodies, to use the same matching logic against a different value.
-  0
+
   ### `&match` and `&parents` anaphors
 
   For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
@@ -143,6 +143,18 @@
   [x & patterns-and-results]
   `(first (mbql.match/match ~x ~patterns-and-results)))
 
+;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
+;; e.g. with a query like
+;;
+;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
+;;
+;; it would be useful to be able to do
+;;
+;;
+;;    ;; get *all* the source tables
+;;    (mbql.u/match-all query
+;;      (&match :guard (every-pred map? :source-table))
+;;      (:source-table &match))
 
 (defmacro replace
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
@@ -163,6 +175,8 @@
      (if-not (seq (get-in form# ks#))
        form#
        (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
+
+;; TODO - it would be useful to have something like a `replace-all` function as well
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -307,17 +321,17 @@
   [clause :- mbql.s/Field]
   (second (unwrap-field-clause clause)))
 
-(s/defn add-order-by-clause :- mbql.s/Query
-  "Add a new `:order-by` clause to an MBQL query. If the new order-by clause references a Field that is already being
-  used in another order-by clause, this function does nothing."
-  [outer-query :- mbql.s/Query, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ existing-field] (-> outer-query :query :order-by)]
+(s/defn add-order-by-clause :- mbql.s/MBQLQuery
+  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
+  already being used in another order-by clause, this function does nothing."
+  [inner-query :- mbql.s/MBQLQuery, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-fields (set (for [[_ existing-field] (:order-by inner-query)]
                                (maybe-unwrap-field-clause existing-field)))]
     (if (existing-fields (maybe-unwrap-field-clause field))
       ;; Field already referenced, nothing to do
-      outer-query
+      inner-query
       ;; otherwise add new clause at the end
-      (update-in outer-query [:query :order-by] (comp vec conj) order-by-clause))))
+      (update inner-query :order-by (comp vec conj) order-by-clause))))
 
 
 (s/defn add-datetime-units :- mbql.s/DateTimeValue
@@ -404,20 +418,31 @@
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
+(defn unique-name-generator
+  "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
+  any names passed to it as needed so all results will be unique.
+
+    (let [unique-name (unique-name-generator)]
+      [(unique-name \"A\")
+       (unique-name \"B\")
+       (unique-name \"A\")])
+    ;; -> [\"A\" \"B\" \"A_2\"]"
+  []
+  (let [aliases (atom {})]
+    (s/fn [original-name :- s/Str]
+      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
+                             original-name)]
+        (if (= total-count 1)
+          original-name
+          (recur (str original-name \_ total-count)))))))
+
 (s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
   [names :- [s/Str]]
-  (let [aliases     (atom {})
-        unique-name (fn [original-name]
-                      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
-                                             original-name)]
-                        (if (= total-count 1)
-                          original-name
-                          (recur (str original-name \_ total-count)))))]
-    (map unique-name names)))
+  (map (unique-name-generator) names))
 
 (def ^:private NamedAggregationsWithUniqueNames
   (s/constrained [mbql.s/named] #(distinct? (map last %)) "sequence of named aggregations with unique names"))
@@ -485,3 +510,28 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
+
+(s/defn ->joined-field :- mbql.s/JoinField
+  "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
+  [table-alias :- s/Str, field-clause :- mbql.s/Field]
+  (replace field-clause
+    :joined-field
+    (throw (Exception. (format "%s already has an alias." &match)))
+
+    #{:field-id :field-literal}
+    [:joined-field table-alias &match]))
+
+(def ^:private default-join-alias "source")
+
+(s/defn deduplicate-join-aliases :- mbql.s/Joins
+  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
+  one."
+  [joins :- [mbql.s/Join]]
+  (let [joins          (for [join joins]
+                         (update join :alias #(or % default-join-alias)))
+        unique-aliases (uniquify-names (map :alias joins))]
+    (mapv
+     (fn [join alias]
+       (assoc join :alias alias))
+     joins
+     unique-aliases)))
