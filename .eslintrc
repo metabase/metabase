@@ -18,7 +18,7 @@
         "flowtype/define-flow-type": 1,
         "flowtype/use-flow-type": 1,
         "no-color-literals": 1,
-        "prefer-const": [2, {"destructuring": "all"}],
+        "prefer-const": [1, {"destructuring": "all"}],
     },
     "globals": {
         "pending": false
