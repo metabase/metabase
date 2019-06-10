@@ -288,6 +288,71 @@
     :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}))
 
 
+;;; ----------------------------------------------------- joins ------------------------------------------------------
+
+;; do entries in the `:joins` clause get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:source-table 2
+                              :alias        "my/table"
+                              :strategy     :left-join
+                              :fields       :all}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_table" 1
+               "Joins"        [{"source_table" 2
+                                "alias"        :my/table
+                                "strategy"     "left-join"
+                                "fields"       "all"}]}}))
+
+;; what about with a sequence of :fields?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:fields [[:field-id 1]
+                                       [:field-literal "MY_FIELD" :type/Integer]]}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_table" 1
+               "joins"        [{"fields" [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
+
+;; does `:source-query` in `:joins` get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-table 1
+              :joins        [{:source-query {:source-table 2}
+                              :fields       [[:field-id 1]
+                                             [:field-literal "MY_FIELD" :type/Integer]]}]}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {:source-table 1
+               :joins        [{"source_query" {"source_table" 2}
+                               "fields"       [["field_id" 1]
+                                               ["field_literal" :MY_FIELD "type/Integer"]]}]}}))
+
+;; do `:joins` inside a nested query get normalized?
+(expect
+  {:database 4
+   :type     :query
+   :query    {:source-query {:source-table 1
+                             :joins        [{:strategy :right-join
+                                             :fields   [[:field-id 1]
+                                                        [:field-literal "MY_FIELD" :type/Integer]]}]}}}
+  (#'normalize/normalize-tokens
+   {:database 4
+    :type     :query
+    :query    {"source_query" {"source_table" 1
+                               "joins"        [{"strategy" "right-join"
+                                                "fields"   [["field_id" 1] ["field_literal" :MY_FIELD "type/Integer"]]}]}}}))
+
+
 ;;; ----------------------------------------------------- other ------------------------------------------------------
 
 ;; Does the QueryExecution context get normalized?
@@ -892,18 +957,45 @@
     :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
                  {:type "date/all-options", :target ["dimension" ["field-id" 3270]], :value "thismonth"}]}))
 
-;; make sure source-metadata gets normalized the way we'd expect (just the type names in this case)
+;; make sure `:source-metadata` gets normalized the way we'd expect:
+
+;; 1. Type names should get converted to keywords
 (expect
-  {:source-metadata
-   [{:name         "name"
-     :display_name "Name"
-     :base_type    :type/Text
-     :special_type :type/Name
-     :fingerprint {:global {:distinct-count 100}
-                   :type   {:type/Text {:percent-json   0.0
-                                        :percent-url    0.0
-                                        :percent-email  0.0
-                                        :average-length 15.63}}}}]}
+  {:query {:source-metadata
+           [{:name         "name"
+             :display_name "Name"
+             :base_type    :type/Text
+             :special_type :type/Name
+             :fingerprint  {:global {:distinct-count 100}
+                            :type   {:type/Text {:percent-json   0.0
+                                                 :percent-url    0.0
+                                                 :percent-email  0.0
+                                                 :average-length 15.63}}}}]}}
+  (normalize/normalize
+   {:query {:source-metadata [{:name         "name"
+                               :display_name "Name"
+                               :description  nil
+                               :base_type    "type/Text"
+                               :special_type "type/Name"
+                               :fingerprint  {"global" {"distinct-count" 100}
+                                              "type"   {"type/Text" {"percent-json"   0.0
+                                                                     "percent-url"    0.0
+                                                                     "percent-email"  0.0
+                                                                     "average-length" 15.63}}}}]}}))
+
+;; 2. if `:source-metadata` is at the top-level, it should get moved to the correct location inside the 'inner' MBQL
+;; query
+(expect
+  {:query {:source-metadata
+           [{:name         "name"
+             :display_name "Name"
+             :base_type    :type/Text
+             :special_type :type/Name
+             :fingerprint  {:global {:distinct-count 100}
+                            :type   {:type/Text {:percent-json   0.0
+                                                 :percent-url    0.0
+                                                 :percent-email  0.0
+                                                 :average-length 15.63}}}}]}}
   (normalize/normalize
    {:source-metadata [{:name         "name"
                        :display_name "Name"

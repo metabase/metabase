@@ -26,6 +26,8 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver/supports? [:h2 :full-join] [_ _] false)
+
 (defmethod driver/connection-properties :h2 [_]
   [{:name         "db"
     :display-name (tru "Connection String")
@@ -33,7 +35,7 @@
     :required     true}])
 
 (defn- connection-string->file+options
-  "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
+  "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
@@ -44,19 +46,22 @@
                                     (str/split option #"=")))]
     [file options]))
 
+(defn- db-details->user [{:keys [db], :as details}]
+  {:pre [(string? db)]}
+  (or (some (partial get details) ["USER" :USER])
+      (let [[_ {:strs [USER]}] (connection-string->file+options db)]
+        USER)))
+
 (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
-  {:pre [(integer? database-id)]}
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (:details (qp.store/database))
-            _              (assert db)
-            [_ options]    (connection-string->file+options db)
-            {:strs [USER]} options]
-        (when (or (str/blank? USER)
-                  (= USER "sa"))        ; "sa" is the default USER
+      (let [{:keys [details]} (qp.store/database)
+            user              (db-details->user details)]
+        (when (or (str/blank? user)
+                  (= user "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
             (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
@@ -238,7 +243,7 @@
                     (str ";" k "=" v))))
 
 (defn- connection-string-set-safe-options
-  "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
+  "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
   (let [[file options] (connection-string->file+options connection-string)]
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"

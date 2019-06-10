@@ -329,6 +329,15 @@
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
 
 
+(defmulti sorts-nil-first?
+  "Whether this database will sort nil values before or after non-nil values. Defaults to `true`."
+  {:arglists '([driver])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod sorts-nil-first? ::test-extensions [_] true)
+
+
 (defmulti aggregate-column-info
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a
   given type (and applied to a given Field, when applicable)."

@@ -15,11 +15,10 @@ export default class ObjectRetireModal extends Component {
   }
 
   async handleSubmit() {
-    const { object, objectType } = this.props;
-    let payload = {
+    const payload = {
+      id: this.props.object.id,
       revision_message: ReactDOM.findDOMNode(this.refs.revision_message).value,
     };
-    payload[objectType + "Id"] = object.id;
 
     await this.props.onRetire(payload);
     this.props.onClose();

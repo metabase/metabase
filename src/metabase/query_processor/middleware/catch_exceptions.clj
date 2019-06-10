@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [metabase.util :as u]
+  (:require [metabase.query-processor.interface :as qp.i]
+            [metabase.util :as u]
             schema.utils)
   (:import clojure.lang.ExceptionInfo
            [schema.utils NamedError ValidationError]))
@@ -31,11 +32,16 @@
      ;; obviously we do not want to get core.async channels back for preprocessed & native, so run the preprocessing
      ;; steps synchronously
      (let [query (dissoc query :async?)]
-       (binding [*add-preprocessed-queries?* false]
+       (binding [*add-preprocessed-queries?* false
+                 qp.i/*disable-qp-logging*   true]
          {:preprocessed (u/ignore-exceptions
                           ((resolve 'metabase.query-processor/query->preprocessed) query))
           :native       (u/ignore-exceptions
-                          ((resolve 'metabase.query-processor/query->native) query))})))))
+                          ((resolve 'metabase.query-processor/query->native) query))})))
+   ;; if the Exception has a cause, add that in as well, because a lot of times we add relevant context to Exceptions
+   ;; and rethrow
+   (when-let [cause (.getCause e)]
+     {:cause (dissoc (format-exception nil cause) :status :query :stacktrace)})))
 
 
 (defn- explain-schema-validation-error

@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
+
 moment.locale("en");
 moment().isoWeekday(1);
 moment.updateLocale('en',{
@@ -13,6 +14,8 @@ moment.updateLocale('en',{
   dow: 1,
   },
 });
+
+import colors from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
@@ -81,7 +84,6 @@ export default class PeopleListingApp extends Component {
     let { user, users, groups } = this.props;
     let { showDeactivated } = this.state;
 
-    const isAdmin = u => u.is_superuser;
     const isCurrentUser = u => user && user.id === u.id;
 
     // TODO - this should be done in connect
@@ -146,8 +148,10 @@ export default class PeopleListingApp extends Component {
                   <td>
                     <span className="text-white inline-block">
                       <UserAvatar
-                        background={
-                          user.is_superuser ? "bg-purple" : "bg-brand"
+                        bg={
+                          user.is_superuser
+                            ? colors["accent2"]
+                            : colors["brand"]
                         }
                         user={user}
                       />
@@ -191,6 +195,7 @@ export default class PeopleListingApp extends Component {
                             groups={groups}
                             createMembership={this.props.createMembership}
                             deleteMembership={this.props.deleteMembership}
+                            isCurrentUser={isCurrentUser(user)}
                           />
                         </td>,
                         <td key="last_login">
@@ -210,11 +215,10 @@ export default class PeopleListingApp extends Component {
                                 title: t`Reset password`,
                                 link: Urls.resetPassword(user.id),
                               },
-                              !isAdmin(user) &&
-                                !isCurrentUser(user) && {
-                                  title: t`Deactivate user`,
-                                  link: Urls.deactivateUser(user.id),
-                                },
+                              !isCurrentUser(user) && {
+                                title: t`Deactivate user`,
+                                link: Urls.deactivateUser(user.id),
+                              },
                             ]}
                           />
                         </td>,

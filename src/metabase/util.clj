@@ -693,7 +693,8 @@
   `(do-with-us-locale (fn [] ~@body)))
 
 (defn xor
-  "Exclusive or. Hopefully this is self-explanatory ;)"
+  "Exclusive or. (Because this is implemented as a function, rather than a macro, it is not short-circuting the way `or`
+  is.)"
   [x y & more]
   (loop [[x y & more] (into [x y] more)]
     (cond
@@ -705,3 +706,11 @@
 
       :else
       (or x y))))
+
+(defn xor-pred
+  "Takes a set of predicates and returns a function that is true if *exactly one* of its composing predicates returns a
+  logically true value. Compare to `every-pred`."
+  [& preds]
+  (fn [& args]
+    (apply xor (for [pred preds]
+                 (apply pred args)))))

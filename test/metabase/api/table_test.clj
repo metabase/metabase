@@ -10,6 +10,7 @@
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
@@ -325,7 +326,7 @@
 (tt/expect-with-temp [Table [table]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] (:details (data/db))))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     nil
@@ -442,7 +443,7 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Go Dubs!"
      :schema            "Everything else"
-     :db_id             database/virtual-id
+     :db_id             mbql.s/saved-questions-virtual-database-id
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
@@ -490,7 +491,7 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Users"
      :schema            "Everything else"
-     :db_id             database/virtual-id
+     :db_id             mbql.s/saved-questions-virtual-database-id
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
@@ -631,15 +632,14 @@
           first
           :dimension_options))))
 
-(defn- dimension-options-for-field [response field-name]
+(defn- dimension-options-for-field [response, ^String field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name (:name %)))
+       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))
        :dimension_options))
 
 (defn- extract-dimension-options
-  "For the given `FIELD-NAME` find it's dimension_options following
-  the indexes given in the field"
+  "For the given `field-name` find it's dimension_options following the indexes given in the field"
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)

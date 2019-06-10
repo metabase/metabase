@@ -140,7 +140,7 @@
   (let [clause-name (mbql.u/normalize-token clause-name)]
     (if-let [f (mbql-clause->special-token-normalization-fn clause-name)]
       (apply f clause-name args)
-      (vec (cons clause-name (map #(normalize-tokens % :ignore-path) args))))))
+      (into [clause-name] (map #(normalize-tokens % :ignore-path) args)))))
 
 
 (defn- aggregation-subclause? [x]
@@ -211,12 +211,26 @@
 (defn- normalize-source-query [{native? :native, :as source-query}]
   (normalize-tokens source-query [(if native? :native :query)]))
 
+(defn- normalize-join [join]
+  ;; path in call to `normalize-tokens` is [:query] so it will normalize `:source-query` as appropriate
+  (let [{:keys [strategy fields alias], :as join} (normalize-tokens join :query)]
+    (cond-> join
+      strategy
+      (update :strategy mbql.u/normalize-token)
+
+      ((some-fn keyword? string?) fields)
+      (update :fields mbql.u/normalize-token)
+
+      alias
+      (update :alias u/keyword->qualified-name))))
+
 (defn- normalize-source-metadata [metadata]
   (-> metadata
       (update :base_type    keyword)
       (update :special_type keyword)
       (update :fingerprint  walk/keywordize-keys)))
 
+;; TODO - why not make this a multimethod of some sort?
 (def ^:private path->special-token-normalization-fn
   "Map of special functions that should be used to perform token normalization for a given path. For example, the
   `:expressions` key in an MBQL query should preserve the case of the expression names; this custom behavior is
@@ -225,10 +239,12 @@
    ;; don't normalize native queries
    :native          {:query         identity
                      :template-tags normalize-template-tags}
-   :query           {:aggregation  normalize-ag-clause-tokens
-                     :expressions  normalize-expressions-tokens
-                     :order-by     normalize-order-by-tokens
-                     :source-query normalize-source-query}
+   :query           {:aggregation     normalize-ag-clause-tokens
+                     :expressions     normalize-expressions-tokens
+                     :order-by        normalize-order-by-tokens
+                     :source-query    normalize-source-query
+                     :source-metadata {::sequence normalize-source-metadata}
+                     :joins           {::sequence normalize-join}}
    :parameters      {::sequence normalize-query-parameter}
    :context         #(some-> % mbql.u/normalize-token)
    :source-metadata {::sequence normalize-source-metadata}})
@@ -499,13 +515,22 @@
 (def ^:private ^{:arglists '([query])} canonicalize-inner-mbql-query
   (comp canonicalize-mbql-clauses canonicalize-top-level-mbql-clauses))
 
+(defn- move-source-metadata-to-mbql-query
+  "In Metabase 0.33.0 `:source-metadata` about resolved queries is added to the 'inner' MBQL query rather than to the
+  top-level; if we encounter the old style, move it to the appropriate location."
+  [{:keys [source-metadata], :as query}]
+  (-> query
+      (dissoc :source-metadata)
+      (assoc-in [:query :source-metadata] source-metadata)))
+
 (defn- canonicalize
   "Canonicalize a query [MBQL query], rewriting the query as if you perfectly followed the recommended style guides for
   writing MBQL. Does things like removes unneeded and empty clauses, converts older MBQL '95 syntax to MBQL '98, etc."
-  [outer-query]
+  [{:keys [query parameters source-metadata], :as outer-query}]
   (cond-> outer-query
-    (:query outer-query)      (update :query canonicalize-inner-mbql-query)
-    (:parameters outer-query) (update :parameters (partial mapv canonicalize-mbql-clauses))))
+    source-metadata move-source-metadata-to-mbql-query
+    query           (update :query canonicalize-inner-mbql-query)
+    parameters      (update :parameters (partial mapv canonicalize-mbql-clauses))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

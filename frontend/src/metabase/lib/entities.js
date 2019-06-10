@@ -29,6 +29,7 @@ import _ from "underscore";
 //
 
 import type { APIMethod } from "metabase/lib/api";
+import type { FormDefinition } from "metabase/containers/Form";
 
 type EntityName = string;
 
@@ -45,6 +46,9 @@ type EntityDefinition = {
 
   nameOne?: string,
   nameMany?: string,
+
+  form?: FormDefinition,
+  forms?: { [key: string]: FormDefinition },
 
   displayNameOne?: string,
   displayNameMany?: string,
@@ -66,7 +70,6 @@ type EntityDefinition = {
   },
   reducer?: Reducer,
   wrapEntity?: (object: EntityObject) => any,
-  form?: any,
   actionShouldInvalidateLists?: (action: Action) => boolean,
 
   // list of properties for this object which should be persisted
@@ -98,6 +101,9 @@ export type Entity = {
 
   displayNameOne: string,
   displayNameMany: string,
+
+  form?: FormDefinition,
+  forms?: { [key: string]: FormDefinition },
 
   path?: string,
   api: {
@@ -155,7 +161,6 @@ export type Entity = {
     [name: string]: ObjectSelector,
   },
   wrapEntity: (object: EntityObject) => any,
-  form?: any,
 
   requestsReducer: Reducer,
   actionShouldInvalidateLists: (action: Action) => boolean,
@@ -165,6 +170,9 @@ export type Entity = {
 
   normalize: (object: EntityObject, schema?: schema.Entity) => any, // FIXME: return type
   normalizeList: (list: EntityObject[], schema?: schema.Entity) => any, // FIXME: return type
+
+  getObjectStatePath: Function,
+  getListStatePath: Function,
 
   HACK_getObjectFromAction: (action: Action) => any,
 };
@@ -213,6 +221,9 @@ export function createEntity(def: EntityDefinition): Entity {
   const getObjectStatePath = entityId => ["entities", entity.name, entityId];
   const getListStatePath = entityQuery =>
     ["entities", entity.name + "_list"].concat(getIdForQuery(entityQuery));
+
+  entity.getObjectStatePath = getObjectStatePath;
+  entity.getListStatePath = getListStatePath;
 
   const getWritableProperties = object =>
     entity.writableProperties != null

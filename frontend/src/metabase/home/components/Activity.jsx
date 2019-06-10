@@ -4,6 +4,8 @@ import { Link } from "react-router";
 import _ from "underscore";
 import { t } from "ttag";
 
+import colors from "metabase/lib/colors";
+
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ActivityItem from "./ActivityItem.jsx";
 import ActivityStory from "./ActivityStory.jsx";
@@ -16,12 +18,12 @@ export default class Activity extends Component {
     this.state = { error: null, userColors: {} };
 
     this.colorClasses = [
-      "bg-brand",
-      "bg-purple",
-      "bg-error",
-      "bg-green",
-      "bg-gold",
-      "bg-medium",
+      colors["brand"],
+      colors["accent1"],
+      colors["accent2"],
+      colors["accent3"],
+      colors["accent4"],
+      colors["accent5"],
     ];
   }
 
