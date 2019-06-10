@@ -179,6 +179,7 @@
    ;; start the dev HTTP server with 'lein ring server'
    :ring
    [:exclude-tests
+    :include-all-drivers
     {:dependencies
      ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
      [[ns-tracker "0.4.0"]]
@@ -195,7 +196,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.5"]]
+    [[metabase/lein-include-drivers "1.0.6"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
