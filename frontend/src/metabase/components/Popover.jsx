@@ -59,13 +59,13 @@ export default class Popover extends Component {
 
   static defaultProps = {
     isOpen: true,
-    hasArrow: true,
+    hasArrow: false,
     hasBackground: true,
     verticalAttachments: ["top", "bottom"],
-    horizontalAttachments: ["center", "left", "right"],
+    horizontalAttachments: ["left", "right"],
     alignVerticalEdge: false,
-    alignHorizontalEdge: false,
-    targetOffsetX: 24,
+    alignHorizontalEdge: true,
+    targetOffsetX: 0,
     targetOffsetY: 5,
     sizeToFit: false,
     autoWidth: false,
