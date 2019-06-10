@@ -96,10 +96,10 @@ export default class FilterPopover extends Component {
       filter[1] = fieldId;
 
       // default to the first operator
-      let { field } = query.table().fieldTarget(filter[1]);
+      const { field } = query.table().fieldTarget(filter[1]);
 
       // let the DatePicker choose the default operator, otherwise use the first one
-      let operator = isDate(field) ? null : field.operators[0].name;
+      const operator = isDate(field) ? null : field.operators[0].name;
 
       // $FlowFixMe
       filter = this._updateOperator(filter, operator);
@@ -120,28 +120,28 @@ export default class FilterPopover extends Component {
   };
 
   setValue(index: number, value: any) {
-    let { filter } = this.state;
+    const { filter } = this.state;
     // $FlowFixMe Flow doesn't like spread operator
-    let newFilter: FieldFilter = [...filter];
+    const newFilter: FieldFilter = [...filter];
     newFilter[index + 2] = value;
     this.setState({ filter: newFilter });
   }
 
   setValues = (values: any[]) => {
-    let { filter } = this.state;
+    const { filter } = this.state;
     // $FlowFixMe
     this.setState({ filter: filter.slice(0, 2).concat(values) });
   };
 
   _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
     const { query } = this.props;
-    let { field } = query.table().fieldTarget(oldFilter[1]);
-    let operator = field.operator(operatorName);
-    let oldOperator = field.operator(oldFilter[0]);
+    const { field } = query.table().fieldTarget(oldFilter[1]);
+    const operator = field.operator(operatorName);
+    const oldOperator = field.operator(oldFilter[0]);
 
     // update the operator
     // $FlowFixMe
-    let filter: FieldFilter = [operatorName, oldFilter[1]];
+    const filter: FieldFilter = [operatorName, oldFilter[1]];
 
     if (operator) {
       for (let i = 0; i < operator.fields.length; i++) {
@@ -157,8 +157,10 @@ export default class FilterPopover extends Component {
       if (oldOperator) {
         // copy over values of the same type
         for (let i = 0; i < oldFilter.length - 2; i++) {
-          let field = operator.multi ? operator.fields[0] : operator.fields[i];
-          let oldField = oldOperator.multi
+          const field = operator.multi
+            ? operator.fields[0]
+            : operator.fields[i];
+          const oldField = oldOperator.multi
             ? oldOperator.fields[0]
             : oldOperator.fields[i];
           if (
@@ -177,14 +179,14 @@ export default class FilterPopover extends Component {
 
   isValid() {
     const { query } = this.props;
-    let { filter } = this.state;
+    const { filter } = this.state;
     // has an operator name and field id
     if (filter[0] == null || !Query.isValidField(filter[1])) {
       return false;
     }
     // field/operator combo is valid
-    let { field } = query.table().fieldTarget(filter[1]);
-    let operator = field.operators_lookup[filter[0]];
+    const { field } = query.table().fieldTarget(filter[1]);
+    const operator = field.operators_lookup[filter[0]];
     if (operator) {
       // has the mininum number of arguments
       if (filter.length - 2 < operator.fields.length) {
@@ -202,7 +204,7 @@ export default class FilterPopover extends Component {
   }
 
   clearField = () => {
-    let { filter } = this.state;
+    const { filter } = this.state;
     // $FlowFixMe
     this.setState({
       filter: [...filter.slice(0, 1), null, ...filter.slice(2)],
@@ -210,15 +212,15 @@ export default class FilterPopover extends Component {
   };
 
   renderPicker(filter: FieldFilter, field: Field) {
-    let operator: ?Operator = field.operators_lookup[filter[0]];
-    let fieldWidgets =
+    const operator: ?Operator = field.operators_lookup[filter[0]];
+    const fieldWidgets =
       operator &&
       operator.fields.map((operatorField, index) => {
         if (!operator) {
           return null;
         }
         let values, onValuesChange;
-        let placeholder =
+        const placeholder =
           (operator && operator.placeholders && operator.placeholders[index]) ||
           undefined;
         if (operator.multi) {
@@ -326,7 +328,7 @@ export default class FilterPopover extends Component {
         </div>
       );
     } else {
-      let { table, field } = query.table().fieldTarget(fieldRef);
+      const { table, field } = query.table().fieldTarget(fieldRef);
       const dimension = query.parseFieldReference(fieldRef);
 
       const showOperatorSelector = !(isTime(field) || isDate(field));

@@ -371,7 +371,7 @@ const SECTIONS = [
             newValue &&
             !settingsValues["embedding-secret-key"]
           ) {
-            let result = await UtilApi.random_token();
+            const result = await UtilApi.random_token();
             await onChangeSetting("embedding-secret-key", result.token);
           }
         },
@@ -488,9 +488,9 @@ export const getSections = createSelector(
       return [];
     }
 
-    let settingsByKey = _.groupBy(settings, "key");
+    const settingsByKey = _.groupBy(settings, "key");
     return SECTIONS.map(function(section) {
-      let sectionSettings = section.settings.map(function(setting) {
+      const sectionSettings = section.settings.map(function(setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
         if (apiSetting) {

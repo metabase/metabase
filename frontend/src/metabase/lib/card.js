@@ -17,7 +17,7 @@ export function createCard(name = null) {
 // start a new card using the given query type and optional database and table selections
 export function startNewCard(type, databaseId, tableId) {
   // create a brand new card to work from
-  let card = createCard();
+  const card = createCard();
   card.dataset_query = createQuery(type, databaseId, tableId);
 
   return card;
@@ -84,12 +84,12 @@ export function isCardRunnable(card, tableMetadata) {
 
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
-  let dataset_query = Utils.copy(card.dataset_query);
+  const dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
     dataset_query.query = Query.cleanQuery(dataset_query.query);
   }
 
-  let cardCopy = {
+  const cardCopy = {
     name: card.name,
     description: card.description,
     dataset_query: dataset_query,
@@ -134,8 +134,8 @@ export function urlForCardState(state, dirty) {
 }
 
 export function cleanCopyCard(card) {
-  let cardCopy = {};
-  for (let name in card) {
+  const cardCopy = {};
+  for (const name in card) {
     if (name.charAt(0) !== "$") {
       cardCopy[name] = card[name];
     }

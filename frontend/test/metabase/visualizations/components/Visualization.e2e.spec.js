@@ -35,18 +35,18 @@ describe("Visualization", () => {
   describe("not in dashboard", () => {
     describe("scalar card", () => {
       it("should not render title", () => {
-        let viz = renderVisualization({ rawSeries: [ScalarCard("Foo")] });
+        const viz = renderVisualization({ rawSeries: [ScalarCard("Foo")] });
         expect(getScalarTitles(viz)).toEqual([]);
       });
     });
 
     describe("line card", () => {
       it("should not render card title", () => {
-        let viz = renderVisualization({ rawSeries: [LineCard("Foo")] });
+        const viz = renderVisualization({ rawSeries: [LineCard("Foo")] });
         expect(getTitles(viz)).toEqual([]);
       });
       it("should not render setting title", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [
             LineCard("Foo", {
               card: { visualization_settings: { "card.title": "Foo_title" } },
@@ -56,7 +56,7 @@ describe("Visualization", () => {
         expect(getTitles(viz)).toEqual([]);
       });
       it("should render breakout multiseries titles", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [MultiseriesLineCard("Foo")],
         });
         expect(getTitles(viz)).toEqual([["Foo_cat1", "Foo_cat2"]]);
@@ -67,7 +67,7 @@ describe("Visualization", () => {
   describe("in dashboard", () => {
     describe("scalar card", () => {
       it("should render a scalar title, not a legend title", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [ScalarCard("Foo")],
           showTitle: true,
           isDashboard: true,
@@ -76,14 +76,14 @@ describe("Visualization", () => {
         expect(getScalarTitles(viz).length).toEqual(1);
       });
       it("should render title when loading", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [ScalarCard("Foo", { data: null })],
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([["Foo_name"]]);
       });
       it("should render title when there's an error", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [ScalarCard("Foo")],
           showTitle: true,
           error: "oops",
@@ -91,14 +91,14 @@ describe("Visualization", () => {
         expect(getTitles(viz)).toEqual([["Foo_name"]]);
       });
       it("should not render scalar title", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [ScalarCard("Foo")],
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([]);
       });
       it("should render multi scalar titles", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [ScalarCard("Foo"), ScalarCard("Bar")],
           showTitle: true,
         });
@@ -108,14 +108,14 @@ describe("Visualization", () => {
 
     describe("line card", () => {
       it("should render normal title", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [LineCard("Foo")],
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([["Foo_name"]]);
       });
       it("should render normal title and breakout multiseries titles", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [MultiseriesLineCard("Foo")],
           showTitle: true,
         });
@@ -125,14 +125,14 @@ describe("Visualization", () => {
         ]);
       });
       it("should render dashboard multiseries titles", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [LineCard("Foo"), LineCard("Bar")],
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([["Foo_name", "Bar_name"]]);
       });
       it("should render dashboard multiseries titles and chart setting title", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [
             LineCard("Foo", {
               card: { visualization_settings: { "card.title": "Foo_title" } },
@@ -147,7 +147,7 @@ describe("Visualization", () => {
         ]);
       });
       it("should render multiple breakout multiseries titles (with both card titles and breakout values)", () => {
-        let viz = renderVisualization({
+        const viz = renderVisualization({
           rawSeries: [MultiseriesLineCard("Foo"), MultiseriesLineCard("Bar")],
           showTitle: true,
         });
@@ -165,7 +165,7 @@ describe("Visualization", () => {
     describe("text card", () => {
       describe("when not editing", () => {
         it("should not render edit and preview actions", () => {
-          let viz = renderVisualization({
+          const viz = renderVisualization({
             rawSeries: [TextCard("Foo")],
             isEditing: false,
           });
@@ -182,7 +182,7 @@ describe("Visualization", () => {
               },
             },
           });
-          let viz = renderVisualization({
+          const viz = renderVisualization({
             rawSeries: [textCard],
             isEditing: false,
           });
@@ -194,7 +194,7 @@ describe("Visualization", () => {
 
       describe("when editing", () => {
         it("should render edit and preview actions", () => {
-          let viz = renderVisualization({
+          const viz = renderVisualization({
             rawSeries: [TextCard("Foo")],
             isEditing: true,
           });
@@ -203,7 +203,7 @@ describe("Visualization", () => {
         });
 
         it("should render in the edit mode", () => {
-          let viz = renderVisualization({
+          const viz = renderVisualization({
             rawSeries: [TextCard("Foo")],
             isEditing: true,
           });
@@ -212,7 +212,7 @@ describe("Visualization", () => {
 
         describe("toggling edit/preview modes", () => {
           it("should switch between rendered markdown and textarea input", () => {
-            let viz = renderVisualization({
+            const viz = renderVisualization({
               rawSeries: [TextCard("Foo")],
               isEditing: true,
             });

@@ -59,7 +59,7 @@ export default class DatabaseList extends Component {
   }
 
   render() {
-    let {
+    const {
       databases,
       hasSampleDataset,
       created,

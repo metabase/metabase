@@ -397,7 +397,7 @@ export function parseViewBox(viewBox: string): Array<number> {
 }
 
 export function loadIcon(name: string) {
-  let def = ICON_PATHS[name];
+  const def = ICON_PATHS[name];
   if (!def) {
     console.warn('Icon "' + name + '" does not exist.');
     return;
@@ -407,7 +407,7 @@ export function loadIcon(name: string) {
     return { ...def, attrs: { ...def.attrs, className: "Icon Icon-" + name } };
   }
 
-  let icon = {
+  const icon = {
     attrs: {
       className: "Icon Icon-" + name,
       viewBox: "0 0 32 32",
@@ -422,8 +422,8 @@ export function loadIcon(name: string) {
   if (typeof def === "string") {
     icon.path = def;
   } else if (def != null) {
-    let { svg, path, attrs } = def;
-    for (let attr in attrs) {
+    const { svg, path, attrs } = def;
+    for (const attr in attrs) {
       icon.attrs[attr] = attrs[attr];
     }
 

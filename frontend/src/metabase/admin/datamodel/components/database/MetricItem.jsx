@@ -13,9 +13,9 @@ export default class MetricItem extends Component {
   };
 
   render() {
-    let { metric, onRetire, tableMetadata } = this.props;
+    const { metric, onRetire, tableMetadata } = this.props;
 
-    let description = Query.generateQueryDescription(
+    const description = Query.generateQueryDescription(
       tableMetadata,
       metric.definition,
       { sections: ["aggregation", "filter"], jsx: true },

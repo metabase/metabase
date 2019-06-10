@@ -234,10 +234,10 @@ export default class QueryVisualization extends Component {
     let viz;
 
     if (!result) {
-      let hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
+      const hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
       viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />;
     } else {
-      let error = result.error;
+      const error = result.error;
 
       if (error) {
         viz = (

@@ -5,7 +5,7 @@ export const METABASE_SESSION_COOKIE = "metabase.SESSION";
 export const METABASE_SEEN_ALERT_SPLASH_COOKIE = "metabase.SEEN_ALERT_SPLASH";
 
 // Handles management of Metabase cookie work
-let MetabaseCookies = {
+const MetabaseCookies = {
   setHasSeenAlertSplash: hasSeen => {
     const options = {
       path: window.MetabaseRoot || "/",

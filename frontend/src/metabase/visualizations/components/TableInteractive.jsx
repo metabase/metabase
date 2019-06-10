@@ -290,7 +290,7 @@ export default class TableInteractive extends Component {
 
   onColumnResize(columnIndex: number, width: number) {
     const { settings } = this.props;
-    let columnWidthsSetting = settings["table.column_widths"]
+    const columnWidthsSetting = settings["table.column_widths"]
       ? settings["table.column_widths"].slice()
       : [];
     columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);

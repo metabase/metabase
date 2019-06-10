@@ -32,7 +32,7 @@ describe("time", () => {
           "with the offset " +
           expectedOffset,
         () => {
-          let result = parseTimestamp(str);
+          const result = parseTimestamp(str);
 
           expect(moment.isMoment(result)).toBe(true);
           expect(result.utcOffset()).toBe(expectedOffset);

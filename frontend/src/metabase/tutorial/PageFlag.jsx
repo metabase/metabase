@@ -34,9 +34,9 @@ export default class PageFlag extends Component {
   }
 
   renderPageFlag() {
-    let position = (this._position = this.props.target.getBoundingClientRect());
-    let isLarge = !!this.props.text;
-    let style = {
+    const position = (this._position = this.props.target.getBoundingClientRect());
+    const isLarge = !!this.props.text;
+    const style = {
       position: "absolute",
       left: position.left + position.width,
       top: position.top + position.height / 2 - (isLarge ? 21 : 12),

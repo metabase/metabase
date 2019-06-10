@@ -41,7 +41,7 @@ export default class QueryModeButton extends Component {
     } = this.props;
 
     // determine the type to switch to based on the type
-    let targetType = mode === "query" ? "native" : "query";
+    const targetType = mode === "query" ? "native" : "query";
 
     const engine = tableMetadata && tableMetadata.db.engine;
     const nativeQueryName =

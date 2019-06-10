@@ -83,10 +83,10 @@ export default class ExpressionEditorTextfield extends Component {
       this.props.tableMetadata != newProps.tableMetadata
     ) {
       const parserInfo = this._getParserInfo(newProps);
-      let parsedExpression = newProps.expression;
-      let expressionString = format(newProps.expression, parserInfo);
+      const parsedExpression = newProps.expression;
+      const expressionString = format(newProps.expression, parserInfo);
       let expressionErrorMessage = null;
-      let suggestions = [];
+      const suggestions = [];
       try {
         if (expressionString) {
           compile(expressionString, parserInfo);
@@ -218,7 +218,7 @@ export default class ExpressionEditorTextfield extends Component {
   };
 
   onExpressionChange(expressionString) {
-    let inputElement = ReactDOM.findDOMNode(this.refs.input);
+    const inputElement = ReactDOM.findDOMNode(this.refs.input);
     if (!inputElement) {
       return;
     }

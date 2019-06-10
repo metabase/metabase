@@ -76,7 +76,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isa } from "metabase/lib/types";
 
 export function getGlobalSettingsForColumn(column: Column) {
-  let settings = {};
+  const settings = {};
 
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings

@@ -47,7 +47,7 @@ import * as table from "metabase/visualizations/visualizations/Table";
 table.default = table.TestTable;
 
 // Replace addEventListener with a test implementation which collects all event listeners to `eventListeners` map
-export let eventListeners = {};
+export const eventListeners = {};
 const testAddEventListener = jest.fn((event, listener) => {
   eventListeners[event] = eventListeners[event]
     ? [...eventListeners[event], listener]

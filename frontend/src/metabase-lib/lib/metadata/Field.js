@@ -225,7 +225,7 @@ export default class Field extends Base {
    * Returns the field to be searched for this field, either the remapped field or itself
    */
   parameterSearchField(): ?Field {
-    let remappedField = this.remappedField();
+    const remappedField = this.remappedField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }
