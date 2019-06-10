@@ -49,11 +49,11 @@ export default class Radio extends Component {
       vertical,
       underlined,
       bubble,
-      xspace, 
+      xspace,
       yspace,
       py,
       showButtons = vertical && !bubble, // show buttons for vertical only by default
-      ...props,
+      ...props
     } = this.props;
 
     const [List, Item] = bubble
@@ -102,7 +102,7 @@ export default class Radio extends Component {
 // BASE components all variants inherit from
 const BaseList = styled.ul`
   display: flex;
-  flex-direction: ${props => props.vertical ? "column" : "row"};
+  flex-direction: ${props => (props.vertical ? "column" : "row")};
 `;
 const BaseItem = styled.li.attrs({
   mr: props => (!props.vertical && !props.last ? props.xspace : null),
@@ -124,17 +124,18 @@ BaseItem.defaultProps = {
 
 // NORMAL
 const NormalList = styled(BaseList).attrs({
-  className: props => cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
+  className: props =>
+    cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
 })``;
 const NormalItem = styled(BaseItem)`
-  color: ${props => props.selected ? colors["brand"] : null}
+  color: ${props => (props.selected ? colors["brand"] : null)};
 `;
 
 // UNDERLINE
 const UnderlinedList = styled(NormalList)``;
 const UnderlinedItem = styled(NormalItem)`
   border-bottom: 3px solid transparent;
-  border-color: ${props => props.selected ? colors["brand"] : null};
+  border-color: ${props => (props.selected ? colors["brand"] : null)};
 `;
 UnderlinedItem.defaultProps = {
   py: 2,
@@ -143,10 +144,10 @@ UnderlinedItem.defaultProps = {
 // BUBBLE
 const BubbleList = styled(BaseList)``;
 const BubbleItem = styled(BaseItem)`
+  font-weight: 700;
   border-radius: 99px;
-  color: ${props => props.selected ? colors["white"] : null};
-  background-color: ${props =>
-    props.selected ? colors["brand"] : colors["bg-medium"]};
+  color: ${props => (props.selected ? colors["white"] : colors["brand"])};
+  background-color: ${props => (props.selected ? colors["brand"] : "#D8ECFF")};
 `;
 BubbleItem.defaultProps = {
   xspace: 1,
