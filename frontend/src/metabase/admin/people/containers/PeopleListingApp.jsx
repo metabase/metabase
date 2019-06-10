@@ -6,20 +6,8 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
-
-moment.locale("en");
-moment().isoWeekday(1);
-moment.updateLocale('en',{
- week:{
-  dow: 1,
-  },
-});
-
-
 import colors from "metabase/lib/colors";
-
 import * as Urls from "metabase/lib/urls";
-
 import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon.jsx";
@@ -39,6 +27,15 @@ import { getUser } from "metabase/selectors/user";
 
 import User from "metabase/entities/users";
 import Group from "metabase/entities/groups";
+
+moment.locale("en");
+moment().isoWeekday(1);
+moment.updateLocale('en',{
+ week:{
+  dow: 1,
+  },
+});
+
 
 // set outer loadingAndErrorWrapper to false to avoid conflicets. the second loader will handle that
 @User.loadList({

@@ -113,11 +113,19 @@ if [ -n "$HEROKU" ]; then
     JAVA_OPTS="$JAVA_OPTS -XX:+UseCompressedClassPointers" # Same as above. See also http://blog.leneghan.com/2012/03/reducing-java-memory-usage-and-garbage.html
 fi
 
+
 # Other Java options
 JAVA_OPTS="$JAVA_OPTS -XX:+IgnoreUnrecognizedVMOptions" # Don't barf if we see an option we don't understand (e.g. Java 9 option on Java 7/8)
 JAVA_OPTS="$JAVA_OPTS -Djava.awt.headless=true"         # don't try to start AWT. Not sure this does anything but better safe than wasting memory
 JAVA_OPTS="$JAVA_OPTS -Dfile.encoding=UTF-8"            # Use UTF-8
 JAVA_OPTS="$JAVA_OPTS --add-modules=java.xml.bind"      # Enable access to java.xml.bind module (Java 9)
+
+export MB_DB_TYPE=$DBTYPE   # We are using postgres
+export MB_DB_DBNAME=$DBNAME
+export MB_DB_PORT=$DBPORT
+export MB_DB_USER=$DBUSER
+export MB_DB_PASS=$DBPASS
+export MB_DB_HOST=$DBHOST
 
 echo "Using these JAVA_OPTS: ${JAVA_OPTS}"
 
