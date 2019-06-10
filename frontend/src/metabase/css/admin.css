@@ -224,6 +224,14 @@
   margin-left: 0;
 }
 
+.AdminSelect-chevron {
+  opacity: 0.75;
+}
+
+.AdminSelect:hover .AdminSelect-chevron {
+  opacity: 1;
+}
+
 .MetadataTable {
   min-width: 800px;
 }
