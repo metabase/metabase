@@ -369,7 +369,7 @@ export default class DatePicker extends Component {
     return (
       <div
         // apply flex to align the operator selector and the "Widget" if necessary
-        className={cx("border-top pt2", {
+        className={cx("pt2", {
           "flex align-center": Widget && Widget.horizontalLayout,
         })}
         style={{ minWidth: 380 }}

@@ -20,13 +20,13 @@ export default function FilterPopoverPicker({
   const field = dimension.field();
   return field.isTime() ? (
     <TimePicker
-      className="mt1 border-top"
+      className="mt1"
       filter={filter}
       onFilterChange={onFilterChange}
     />
   ) : field.isDate() ? (
     <DatePicker
-      className="mt1 border-top"
+      className="mt1"
       filter={filter}
       onFilterChange={onFilterChange}
     />
