@@ -123,7 +123,7 @@ const SummarizeBreakouts = ({ className, query }) => {
     <DimensionList
       className="text-green mx2"
       dimensions={dimensions}
-      sections={query.breakoutOptions(true).sections()}
+      sections={query.breakoutOptions(true).sectionsByType()}
       onChangeDimension={dimension => {
         updateAndRun(query.clearBreakouts().addBreakout(dimension.mbql()));
       }}
