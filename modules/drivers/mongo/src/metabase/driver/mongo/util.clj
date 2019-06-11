@@ -107,13 +107,11 @@
                                pass)
             conn-str         (conn-str user pass host dbname additional-options)
             {:keys [conn db]} (mg/connect-via-uri conn-str)]
-
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
             (f *mongo-connection*))
-          (finally
-            (mg/disconnect conn)
+          (finally        (mg/disconnect conn)
                           (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection
