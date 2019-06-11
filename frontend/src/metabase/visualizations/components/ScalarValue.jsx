@@ -27,35 +27,40 @@ const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
   <h1 className="ScalarValue cursor-pointer text-brand-hover">{value}</h1>
 );
 
-export const ScalarTitle = ({ title, description, onClick }) => (
-  <div className="flex align-center full justify-center px2">
-    {/*
+export const ScalarTitle = ({ title, description, onClick }) => {
+  const iconWidth = "24px";
+  return (
+    <div className="flex align-center full justify-center px2">
+      {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
      */}
-    {description && description.length > 0 && <div style={{ width: "24px" }} />}
-    <h3
-      onClick={onClick}
-      className={cx(
-        "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
-        {
-          "cursor-pointer": !!onClick,
-        },
+      {description && description.length > 0 && (
+        <div style={{ width: iconWidth }} />
       )}
-    >
-      <Ellipsified tooltip={title}>{title}</Ellipsified>
-    </h3>
-    {description && description.length > 0 && (
-      <div
-        className="hover-child cursor-pointer ml1 text-brand-hover"
-        style={{ marginTop: 5 }}
+      <h3
+        onClick={onClick}
+        className={cx(
+          "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
+          {
+            "cursor-pointer": !!onClick,
+          },
+        )}
       >
-        <Tooltip tooltip={description} maxWidth={"22em"}>
-          <Icon name="infooutlined" />
-        </Tooltip>
-      </div>
-    )}
-  </div>
-);
+        <Ellipsified tooltip={title}>{title}</Ellipsified>
+      </h3>
+      {description && description.length > 0 && (
+        <div
+          className="hover-child cursor-pointer pl1 text-brand-hover"
+          style={{ marginTop: 5, width: iconWidth }}
+        >
+          <Tooltip tooltip={description} maxWidth={"22em"}>
+            <Icon name="infooutlined" />
+          </Tooltip>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default ScalarValue;
