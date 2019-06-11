@@ -6,8 +6,7 @@
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
-            [monger
-             [core :as mg]]
+            [monger.core :as mg]
             [toucan.db :as db])
   (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
