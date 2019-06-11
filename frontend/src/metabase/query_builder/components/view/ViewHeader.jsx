@@ -107,7 +107,7 @@ export const ViewTitleHeader = ({
         ) : null}
         {!question.isNative() && (
           <Button
-            icon={isShowingNotebook ? null : "list"}
+            icon="list"
             medium
             ml={1}
             primary={isShowingNotebook}
@@ -116,7 +116,7 @@ export const ViewTitleHeader = ({
               setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
             }
           >
-            {isShowingNotebook ? t`Hide editor` : t`Custom question`}
+            {isShowingNotebook ? t`Hide editor` : t`Show editor`}
           </Button>
         )}
       </div>
