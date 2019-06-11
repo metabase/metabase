@@ -71,7 +71,7 @@ const HeadBreadcrumbs = ({ parts }) => (
         {name}
       </MaybeLink>,
       index < parts.length - 1 ? (
-        <span key={index + "-divider"} className="mx1 text-light text-small">
+        <span key={index + "-divider"} className="mx1 text-light text-smaller">
           •
         </span>
       ) : null,

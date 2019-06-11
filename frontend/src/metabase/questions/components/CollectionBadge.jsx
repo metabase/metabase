@@ -42,18 +42,17 @@ class CollectionBadge extends React.Component {
       <Link
         to={Urls.collection(object.id)}
         className={cx(className, "block cursor-pointer", {
-          px1: backgroundStyle,
+          px0: backgroundStyle,
         })}
         style={{
-          color: colors["brand"],
           ...backgroundStyle,
           ...style,
         }}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
-        <Flex align="center">
-          <Icon name={object.getIcon()} mr={1} />
-          <h4 style={{ fontWeight: 900 }}>{object.name}</h4>
+        <Flex align="center" className="text-medium text-brand-hover">
+          <Icon name={object.getIcon()} mr={1} size={13} />
+          <h4 className="text-bold">{object.name}</h4>
         </Flex>
       </Link>
     );
