@@ -486,11 +486,13 @@ const AccordianListCell = ({
     } else {
       content = (
         <div
-          className={cx("List-section-header p2 flex align-center", {
-            "cursor-pointer": sectionIsTogglable(sectionIndex),
-            "border-top": sectionIndex !== 0,
-            "border-bottom": sectionIsExpanded(sectionIndex),
-          })}
+          className={cx(
+            "List-section-header mx2 py2 flex align-center hover-parent hover--opacity",
+            {
+              "cursor-pointer": sectionIsTogglable(sectionIndex),
+              "text-brand": sectionIsExpanded(sectionIndex),
+            },
+          )}
           onClick={
             sectionIsTogglable(sectionIndex) &&
             (() => toggleSection(sectionIndex))
@@ -499,7 +501,7 @@ const AccordianListCell = ({
           {renderSectionIcon(section, sectionIndex)}
           <h3 className="List-section-title">{section.name}</h3>
           {sections.length > 1 && section.items && section.items.length > 0 && (
-            <span className="flex-align-right">
+            <span className="flex-align-right hover-child">
               <Icon
                 name={
                   sectionIsExpanded(sectionIndex) ? "chevronup" : "chevrondown"

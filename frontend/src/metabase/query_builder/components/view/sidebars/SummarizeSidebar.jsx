@@ -84,8 +84,10 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
         )}
       </PopoverWithTrigger>
       <Button
+        borderless
+        ml={1}
         icon="close"
-        className="block text-light ml1"
+        className="block text-light text-brand-hover"
         onClick={() => {
           updateAndRun(query.removeAggregation(index));
         }}
@@ -98,7 +100,9 @@ const SummarizeAggregationAdd = ({ className, query }) => {
   return (
     <PopoverWithTrigger
       triggerClasses={cx(className, "flex")}
-      triggerElement={<Button icon="add" className="text-light flex-full" />}
+      triggerElement={
+        <Button borderless icon="add" className="text-light text-brand-hover" />
+      }
       isInitiallyOpen={!query.hasAggregations()}
     >
       {({ onClose }) => (

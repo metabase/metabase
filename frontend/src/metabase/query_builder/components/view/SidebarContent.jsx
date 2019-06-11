@@ -13,7 +13,15 @@ const SidebarContent = ({
   onBack,
   onClose,
   footer = onClose ? (
-    <Button primary className="m2 text-centered" onClick={onClose}>
+    <Button
+      primary
+      px={4}
+      ml="auto"
+      mr="auto"
+      mb={2}
+      className="circular shadowed"
+      onClick={onClose}
+    >
       {t`Done`}
     </Button>
   ) : null,

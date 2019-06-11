@@ -137,7 +137,7 @@ export default class NotebookStep extends React.Component {
       : null;
 
     return (
-      <Box mb={3} pb={3} className="border-bottom">
+      <Box mb={3} pb={3}>
         {(title || onRemove) && (
           <Flex mb={1} width={[8 / 12]} className="text-bold" style={{ color }}>
             {title}

@@ -118,7 +118,7 @@ export default class ViewFilterPopover extends Component {
       return (
         <div className={className} style={style}>
           <FilterPopoverHeader
-            className="p1 border-bottom border-medium"
+            className="p1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}

@@ -15,7 +15,7 @@ const ViewSideBar = ({ left, right, width = 420, isOpen, children }) => (
   >
     {motionStyle => (
       <div
-        className={cx("bg-light relative overflow-x-hidden", {
+        className={cx("bg-white relative overflow-x-hidden", {
           "border-right": left,
           "border-left": right,
         })}

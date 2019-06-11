@@ -33,7 +33,7 @@ export default function FilterPopoverHeader({
             className="cursor-pointer text-purple-hover transition-color flex align-center"
             onClick={onClearField}
           >
-            <Icon name="chevronleft" size={16} />
+            <Icon name="chevronleft" size={14} />
             {tableDisplayName && (
               <h3 className="ml1">{singularize(tableDisplayName)}</h3>
             )}

@@ -1,18 +1,20 @@
 import React from "react";
-import cx from "classnames";
 import _ from "underscore";
 import { t } from "ttag";
-
+import cx from "classnames";
+import { Box, Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
+
+import colors from "metabase/lib/colors";
 
 import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
-  ["line", "bar", "combo", "area"],
-  ["scatter", "row", "pie", "funnel"],
-  ["scalar", "smartscalar", "progress", "gauge"],
-  ["table", "map"],
+  ["line", "bar", "combo", "area", "row"],
+  ["scatter", "pie", "funnel"],
+  ["smartscalar", "progress", "gauge"],
+  ["scalar", "table", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
 
@@ -43,13 +45,12 @@ const ChartTypeSidebar = ({
       onClose={onCloseChartType}
     >
       {layout.map(row => (
-        <div className="flex border-row-divider py2 px3">
+        <Flex py={2} mx={3} mb={1} className="flex-wrap">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
               visualization && (
                 <ChartTypeOption
-                  className="mx2"
                   visualization={visualization}
                   isSelected={type === question.display()}
                   isSensible={
@@ -66,7 +67,7 @@ const ChartTypeSidebar = ({
               )
             );
           })}
-        </div>
+        </Flex>
       ))}
     </SidebarContent>
   );
@@ -78,26 +79,34 @@ const ChartTypeOption = ({
   isSensible,
   onClick,
 }) => (
-  <div
-    onClick={onClick}
-    className={cx("m1 flex flex-column layout-centered cursor-pointer", {
-      "text-white bg-brand": isSelected,
-      "text-dark bg-medium-hover": !isSelected,
-    })}
-    style={{
-      width: 70,
-      height: 70,
-      borderRadius: 8,
-      opacity: !isSensible ? 0.35 : 1,
-    }}
+  <Box
+    p={1}
+    w={1 / 3}
+    className="text-centered"
+    style={{ opacity: !isSensible ? 0.25 : 1 }}
   >
-    <Icon
-      className={isSelected ? "text-white" : "text-medium"}
-      name={visualization.iconName}
-      size={20}
-    />
-    <span className="text-bold mt1">{visualization.uiName}</span>
-  </div>
+    <Flex
+      p={2}
+      flexDirection="column"
+      align="center"
+      justifyContent="center"
+      bg={isSelected ? colors["brand"] : "#D8ECFF"}
+      onClick={onClick}
+      className={cx(
+        "cursor-pointer bg-brand-hover text-brand text-white-hover",
+        { "text-white": isSelected },
+      )}
+      style={{
+        height: 70,
+        borderRadius: 18,
+      }}
+    >
+      <Icon name={visualization.iconName} size={24} />
+    </Flex>
+    <Box mt={1} className="text-bold text-brand">
+      {visualization.uiName}
+    </Box>
+  </Box>
 );
 
 export default ChartTypeSidebar;

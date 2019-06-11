@@ -2,7 +2,6 @@ import React from "react";
 
 import { Flex } from "grid-styled";
 import styled from "styled-components";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
@@ -33,6 +32,11 @@ export const NotebookCellItem = styled(Flex).attrs({
   background-color: ${props => (props.inactive ? "transparent" : props.color)};
   border-color: ${props =>
     props.inactive ? alpha(props.color, 0.25) : "transparent"};
+  &:hover {
+    background-color: ${props => !props.inactive && alpha(props.color, 0.8)};
+    border-color: ${props => props.inactive && alpha(props.color, 0.8)};
+  }
+  transition: background 300ms linear, border 300ms linear;
 `;
 NotebookCellItem.defaultProps = {
   p: 1,

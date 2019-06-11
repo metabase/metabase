@@ -30,7 +30,16 @@ import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
 import { getPath, getContext, getUser } from "../selectors";
 import Database from "metabase/entities/databases";
 
+import {
+  getCurrentQuery,
+  getNewQueryOptions,
+  getPlainNativeQuery,
+} from "metabase/new_query/selectors";
+
 const mapStateToProps = (state, props) => ({
+  query: getCurrentQuery(state),
+  plainNativeQuery: getPlainNativeQuery(state),
+  newQueryOptions: getNewQueryOptions(state),
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
@@ -295,12 +304,28 @@ export default class Navbar extends Component {
         <Flex ml="auto" align="center" className="relative z2">
           {hasDataAccess && (
             <Link
-              to={Urls.newQuestion()}
-              mx={2}
-              className="hide sm-show"
-              data-metabase-event={`NavBar;New Question`}
+              mr={[1, 2]}
+              to="browse"
+              className="flex align-center"
+              data-metabase-event={`NavBar;Data Browse`}
             >
-              <Button dark white>{t`Ask a question`}</Button>
+              <Tooltip tooltip={t`Browse data`}>
+                <Icon size={17} name="table" mr={1} />
+              </Tooltip>
+              <h4 className="hide sm-show">{t`Browse data`}</h4>
+            </Link>
+          )}
+          {hasDataAccess && (
+            <Link
+              mr={[1, 2]}
+              to={this.props.plainNativeQuery.question().getUrl()}
+              className="flex align-center"
+              data-metabase-event={`NavBar;Data Browse`}
+            >
+              <Tooltip tooltip={t`Write SQL`}>
+                <Icon size={17} name="sql" mr={1} />
+              </Tooltip>
+              <h4 className="hide sm-show">{t`Write SQL`}</h4>
             </Link>
           )}
           <EntityMenu
@@ -320,21 +345,14 @@ export default class Navbar extends Component {
                 link: Urls.newPulse(),
                 event: `NavBar;New Pulse Click;`,
               },
+              {
+                title: t`New custom question`,
+                icon: `document`,
+                link: hasDataAccess && this.props.query.question().getUrl(),
+                event: `NavBar;New Question;`,
+              },
             ]}
           />
-          {hasDataAccess && (
-            <Tooltip tooltip={t`Browse data`}>
-              <Link
-                ml={2}
-                to="browse"
-                data-metabase-event={`NavBar;Data Browse`}
-              >
-                <IconWrapper>
-                  <Icon size={17} name="table" />
-                </IconWrapper>
-              </Link>
-            </Tooltip>
-          )}
           <Tooltip tooltip={t`Activity`}>
             <Link mx={2} to="activity" data-metabase-event={`NavBar;Activity`}>
               <IconWrapper>
