@@ -7,8 +7,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
             [monger
-             [core :as mg]
-             [credentials :as mcred]]
+             [core :as mg]]
             [toucan.db :as db])
   (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
@@ -106,7 +105,7 @@
                                user)
             pass             (when (seq pass)
                                pass)
-            conn-str (conn-str user pass host dbname additional-options)
+            conn-str         (conn-str user pass host dbname additional-options)
             {:keys [conn db]} (mg/connect-via-uri conn-str)]
 
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
