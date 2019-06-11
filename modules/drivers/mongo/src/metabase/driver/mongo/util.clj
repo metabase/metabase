@@ -89,6 +89,11 @@
     :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
+(defn- conn-str
+  "Builds a MongoDb connection string"
+  [user pass host dbname additional-options]
+  (format  "mongodb+srv://%s:%s@%s/%s?%s" user pass host dbname additional-options))
+
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
@@ -101,22 +106,15 @@
                                user)
             pass             (when (seq pass)
                                pass)
-            authdb           (if (seq authdb)
-                               authdb
-                               dbname)
-            server-address   (mg/server-address host port)
-            credentials      (when user
-                               (mcred/create user authdb pass))
-            connect          (partial mg/connect server-address (build-connection-options :ssl? ssl, :additional-options additional-options))
-            conn             (if credentials
-                               (connect credentials)
-                               (connect))
-            mongo-connection (mg/get-db conn dbname)]
+            conn-str (conn-str user pass host dbname additional-options)
+            {:keys [conn db]} (mg/connect-via-uri conn-str)]
+
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
-          (binding [*mongo-connection* mongo-connection]
+          (binding [*mongo-connection* db]
             (f *mongo-connection*))
-          (finally        (mg/disconnect conn)
+          (finally
+            (mg/disconnect conn)
                           (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection
