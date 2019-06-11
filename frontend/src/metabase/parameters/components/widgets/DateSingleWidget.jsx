@@ -7,7 +7,7 @@ const DateSingleWidget = ({ value, setValue, onClose }) => (
   <div className="p1">
     <Calendar
       initial={value ? moment(value) : null}
-      selected={value ? moment(value) : null}
+      selected={value ? moment(value) : moment()}
       selectedEnd={value ? moment(value) : null}
       onChange={value => {
         setValue(value);
