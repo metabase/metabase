@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -48,7 +48,7 @@ export default class DeleteDatabaseModal extends Component {
     }
 
     // allow English or localized
-    let confirmed =
+    const confirmed =
       confirmValue.toUpperCase() === "DELETE" ||
       confirmValue.toUpperCase() === t`DELETE`;
 

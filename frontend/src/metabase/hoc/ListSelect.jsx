@@ -21,7 +21,8 @@ const listSelect = ({
       selectionKeys: new Set(),
     };
 
-    static displayName = "ListSelect[" +
+    static displayName =
+      "ListSelect[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

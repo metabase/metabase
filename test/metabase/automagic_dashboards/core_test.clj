@@ -328,7 +328,7 @@
 (expect
   4
   (with-rasta
-    (->> (Database (data/id)) candidate-tables first :tables count)))
+    (->> (data/db) candidate-tables first :tables count)))
 
 ;; /candidates should work with unanalyzed tables
 (expect

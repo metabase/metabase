@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
@@ -61,7 +61,10 @@ const TABS: TabOption[] = [
   { name: t`Scheduling`, value: "scheduling" },
 ];
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   state: {
@@ -108,7 +111,7 @@ export default class DatabaseEditApp extends Component {
   }
 
   render() {
-    let { database, formState } = this.props;
+    const { database, formState } = this.props;
     const { currentTab } = this.state;
 
     const editingExistingDatabase = database && database.id != null;

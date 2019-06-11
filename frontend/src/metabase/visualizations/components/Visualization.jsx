@@ -9,7 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -345,7 +345,7 @@ export default class Visualization extends Component {
     }
 
     let error = this.props.error || this.state.error;
-    let loading = !(
+    const loading = !(
       series &&
       series.length > 0 &&
       _.every(
@@ -401,18 +401,17 @@ export default class Visualization extends Component {
       );
     }
 
-    let extra = (
+    const extra = (
       <span className="flex align-center">
-        {isSlow &&
-          !loading && (
-            <LoadingSpinner
-              size={18}
-              className={cx(
-                "Visualization-slow-spinner",
-                isSlow === "usually-slow" ? "text-gold" : "text-slate",
-              )}
-            />
-          )}
+        {isSlow && !loading && (
+          <LoadingSpinner
+            size={18}
+            className={cx(
+              "Visualization-slow-spinner",
+              isSlow === "usually-slow" ? "text-gold" : "text-slate",
+            )}
+          />
+        )}
         {actionButtons}
       </span>
     );
@@ -426,7 +425,7 @@ export default class Visualization extends Component {
     }
 
     return (
-      <div className={cx(className, "flex flex-column")}>
+      <div className={cx(className, "flex flex-column full-height")}>
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||
@@ -467,7 +466,7 @@ export default class Visualization extends Component {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src="../app/assets/img/no_results.svg" />
+              <img src="app/assets/img/no_results.svg" />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>
@@ -500,7 +499,7 @@ export default class Visualization extends Component {
                   </div>
                 ) : (
                   <div>
-                    {t`This is usually pretty fast but seems to be taking awhile right now.`}
+                    {t`This is usually pretty fast but seems to be taking a while right now.`}
                   </div>
                 )}
               </div>

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Button from "metabase/components/Button";
@@ -134,7 +134,7 @@ class ChartSettings extends Component {
 
     // Move settings from the "undefined" section in the first tab
     if (sections["undefined"] && Object.values(sections).length > 1) {
-      let extra = sections["undefined"];
+      const extra = sections["undefined"];
       delete sections["undefined"];
       Object.values(sections)[0].unshift(...extra);
     }

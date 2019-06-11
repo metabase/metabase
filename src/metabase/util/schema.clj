@@ -1,5 +1,6 @@
 (ns metabase.util.schema
   "Various schemas that are useful throughout the app."
+  (:refer-clojure :exclude [distinct])
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [medley.core :as m]
@@ -116,11 +117,24 @@
 
 
 (defn non-empty
-  "Add an addditonal constraint to SCHEMA (presumably an array) that requires it to be non-empty
+  "Add an addditonal constraint to `schema` (presumably an array) that requires it to be non-empty
    (i.e., it must satisfy `seq`)."
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
     (str (api-error-message schema) " " (tru "The array cannot be empty."))))
+
+(defn empty-or-distinct?
+  "True if `coll` is either empty or distinct."
+  [coll]
+  (if (seq coll)
+    (apply distinct? coll)
+    true))
+
+(defn distinct
+  "Add an additional constraint to `schema` (presumably an array) that requires all elements to be distinct."
+  [schema]
+  (with-api-error-message (s/constrained schema empty-or-distinct? "distinct")
+    (str (api-error-message schema) " " (tru "All elements must be distinct."))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

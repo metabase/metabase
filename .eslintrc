@@ -17,7 +17,8 @@
         "react/no-find-dom-node": 0,
         "flowtype/define-flow-type": 1,
         "flowtype/use-flow-type": 1,
-        "no-color-literals": 1
+        "no-color-literals": 1,
+        "prefer-const": [1, {"destructuring": "all"}],
     },
     "globals": {
         "pending": false

@@ -11,7 +11,11 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
 function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
-  let [{ data: { cols } }] = series;
+  let [
+    {
+      data: { cols },
+    },
+  ] = series;
   const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
   const card = series[seriesIndex].card;
   const isSingleSeriesBar =
@@ -92,7 +96,11 @@ function applyChartTooltips(
   onHoverChange,
   onVisualizationClick,
 ) {
-  let [{ data: { cols } }] = series;
+  let [
+    {
+      data: { cols },
+    },
+  ] = series;
   chart.on("renderlet.tooltips", function(chart) {
     // remove built-in tooltips
     chart.selectAll("title").remove();
@@ -170,6 +178,7 @@ function applyChartTooltips(
                   ? formatValue(d.data.value, {
                       number_style: "percent",
                       column: cols[1],
+                      decimals: cols[1].decimals,
                     })
                   : d.data.value,
                 col: { ...cols[1] },
@@ -206,7 +215,7 @@ function applyChartTooltips(
             const seriesData = series[seriesIndex].data || {};
             const rawCols = seriesData._rawCols;
             const rows = seriesData && seriesData.rows;
-            const rowIndex = rows && i % (rows.length + 1) - 1;
+            const rowIndex = rows && (i % (rows.length + 1)) - 1;
             const row = rowIndex != null && seriesData.rows[rowIndex];
             const rawRow = row && row._origin && row._origin.row; // get the raw query result row
             // make sure the row index we've determined with our formula above is correct. Check the

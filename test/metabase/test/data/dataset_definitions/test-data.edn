@@ -29,98 +29,98 @@
            {:field-name "password"
             :base-type  :type/Text
             :visibility-type :sensitive}]
-  [["Plato Yeshua" #inst "2014-04-01T08:30" "4be68cda-6fd5-4ba7-944e-2b475600bda5"]
-   ["Felipinho Asklepios" #inst "2014-12-05T15:15" "5bb19ad9-f3f8-421f-9750-7d398e38428d"]
-   ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15" "a329ccfe-b99c-42eb-9c93-cb9adc3eb1ab"]
-   ["Simcha Yan" #inst "2014-01-01T08:30" "a61f97c6-4484-4a63-b37e-b5e58bfa2ecb"]
-   ["Quentin Sören" #inst "2014-10-03T17:30" "10a0fea8-9bb4-48fe-a336-4d9cbbd78aa0"]
-   ["Shad Ferdynand" #inst "2014-08-02T12:30" "d35c9d78-f9cf-4f52-b1cc-cb9078eebdcb"]
-   ["Conchúr Tihomir" #inst "2014-08-02T09:30" "900335ad-e03b-4259-abc7-76aac21cedca"]
-   ["Szymon Theutrich" #inst "2014-02-01T10:15" "d6c47a54-9d88-4c4a-8054-ace76764ed0d"]
-   ["Nils Gotam" #inst "2014-04-03T09:30" "b085040c-7aa4-4e96-8c8f-420b2c99c920"]
-   ["Frans Hevel" #inst "2014-07-03T19:30" "b7a43e91-9fb9-4fe9-ab6f-ea51ab0f94e4"]
-   ["Spiros Teofil" #inst "2014-11-01T07:00" "62b9602c-27b8-44ea-adbd-2748f26537af"]
-   ["Kfir Caj" #inst "2014-07-03T01:30" "dfe21df3-f364-479d-a5e7-04bc5d85ad2b"]
-   ["Dwight Gresham" #inst "2014-08-01T10:30" "75a1ebf1-cae7-4a50-8743-32d97500f2cf"]
-   ["Broen Olujimi" #inst "2014-10-03T13:45" "f9b65c74-9f91-4cfd-9248-94a53af82866"]
-   ["Rüstem Hebel" #inst "2014-08-01T12:45" "02ad6b15-54b0-4491-bf0f-d781b0a2c4f5"]]]
+  [["Plato Yeshua"        #inst "2014-04-01T08:30" "4be68cda-6fd5-4ba7-944e-2b475600bda5"]   ; 1
+   ["Felipinho Asklepios" #inst "2014-12-05T15:15" "5bb19ad9-f3f8-421f-9750-7d398e38428d"]   ; 2
+   ["Kaneonuskatew Eiran" #inst "2014-11-06T16:15" "a329ccfe-b99c-42eb-9c93-cb9adc3eb1ab"]   ; 3
+   ["Simcha Yan"          #inst "2014-01-01T08:30" "a61f97c6-4484-4a63-b37e-b5e58bfa2ecb"]   ; 4
+   ["Quentin Sören"       #inst "2014-10-03T17:30" "10a0fea8-9bb4-48fe-a336-4d9cbbd78aa0"]   ; 5
+   ["Shad Ferdynand"      #inst "2014-08-02T12:30" "d35c9d78-f9cf-4f52-b1cc-cb9078eebdcb"]   ; 6
+   ["Conchúr Tihomir"     #inst "2014-08-02T09:30" "900335ad-e03b-4259-abc7-76aac21cedca"]   ; 7
+   ["Szymon Theutrich"    #inst "2014-02-01T10:15" "d6c47a54-9d88-4c4a-8054-ace76764ed0d"]   ; 8
+   ["Nils Gotam"          #inst "2014-04-03T09:30" "b085040c-7aa4-4e96-8c8f-420b2c99c920"]   ; 9
+   ["Frans Hevel"         #inst "2014-07-03T19:30" "b7a43e91-9fb9-4fe9-ab6f-ea51ab0f94e4"]   ; 10
+   ["Spiros Teofil"       #inst "2014-11-01T07:00" "62b9602c-27b8-44ea-adbd-2748f26537af"]   ; 11
+   ["Kfir Caj"            #inst "2014-07-03T01:30" "dfe21df3-f364-479d-a5e7-04bc5d85ad2b"]   ; 12
+   ["Dwight Gresham"      #inst "2014-08-01T10:30" "75a1ebf1-cae7-4a50-8743-32d97500f2cf"]   ; 13
+   ["Broen Olujimi"       #inst "2014-10-03T13:45" "f9b65c74-9f91-4cfd-9248-94a53af82866"]   ; 14
+   ["Rüstem Hebel"        #inst "2014-08-01T12:45" "02ad6b15-54b0-4491-bf0f-d781b0a2c4f5"]]] ; 15
  ["categories" [{:field-name "name"
                  :base-type  :type/Text}]
-  [["African"]
-   ["American"]
-   ["Artisan"]
-   ["Asian"]
-   ["BBQ"]
-   ["Bakery"]
-   ["Bar"]
-   ["Beer Garden"]
-   ["Breakfast / Brunch"]
-   ["Brewery"]
-   ["Burger"]
-   ["Café"]
-   ["Café Sweets"]
-   ["Caribbean"]
-   ["Chinese"]
-   ["Coffee Shop"]
-   ["Comedy Club"]
-   ["Deli"]
-   ["Dim Sum"]
-   ["Diner"]
-   ["Donut Shop"]
-   ["English"]
-   ["Entertainment"]
-   ["Fashion"]
-   ["Fast Food"]
-   ["Food Truck"]
-   ["French"]
-   ["Gay Bar"]
-   ["German"]
-   ["Gluten-free"]
-   ["Greek"]
-   ["Grocery"]
-   ["Health & Beauty"]
-   ["Home"]
-   ["Hostel"]
-   ["Hot Dog"]
-   ["Hotel"]
-   ["Indian"]
-   ["Italian"]
-   ["Japanese"]
-   ["Jewish"]
-   ["Juice Bar"]
-   ["Karaoke"]
-   ["Korean"]
-   ["Landmark"]
-   ["Late Dining"]
-   ["Latin American"]
-   ["Lounge"]
-   ["Mediterannian"]
-   ["Mexican"]
-   ["Middle Eastern"]
-   ["Molecular Gastronomy"]
-   ["Moroccan"]
-   ["Museum"]
-   ["Nightclub"]
-   ["Nightlife"]
-   ["Outdoors"]
-   ["Pizza"]
-   ["Ramen"]
-   ["Restaurant General"]
-   ["Scandinavian"]
-   ["Seafood"]
-   ["South Pacific"]
-   ["Southern"]
-   ["Spanish"]
-   ["Stadium"]
-   ["Steakhouse"]
-   ["Strip Club"]
-   ["Tapas"]
-   ["Tea Room"]
-   ["Thai"]
-   ["Unknown"]
-   ["Vegetarian / Vegan"]
-   ["Wine Bar"]
-   ["Winery"]]]
+  [["African"]              ; 1
+   ["American"]             ; 2
+   ["Artisan"]              ; 3
+   ["Asian"]                ; 4
+   ["BBQ"]                  ; 5
+   ["Bakery"]               ; 6
+   ["Bar"]                  ; 7
+   ["Beer Garden"]          ; 8
+   ["Breakfast / Brunch"]   ; 9
+   ["Brewery"]              ; 10
+   ["Burger"]               ; 11
+   ["Café"]                 ; 12
+   ["Café Sweets"]          ; 13
+   ["Caribbean"]            ; 14
+   ["Chinese"]              ; 15
+   ["Coffee Shop"]          ; 16
+   ["Comedy Club"]          ; 17
+   ["Deli"]                 ; 18
+   ["Dim Sum"]              ; 19
+   ["Diner"]                ; 20
+   ["Donut Shop"]           ; 21
+   ["English"]              ; 22
+   ["Entertainment"]        ; 23
+   ["Fashion"]              ; 24
+   ["Fast Food"]            ; 25
+   ["Food Truck"]           ; 26
+   ["French"]               ; 27
+   ["Gay Bar"]              ; 28
+   ["German"]               ; 29
+   ["Gluten-free"]          ; 30
+   ["Greek"]                ; 31
+   ["Grocery"]              ; 32
+   ["Health & Beauty"]      ; 33
+   ["Home"]                 ; 34
+   ["Hostel"]               ; 35
+   ["Hot Dog"]              ; 36
+   ["Hotel"]                ; 37
+   ["Indian"]               ; 38
+   ["Italian"]              ; 39
+   ["Japanese"]             ; 40
+   ["Jewish"]               ; 41
+   ["Juice Bar"]            ; 42
+   ["Karaoke"]              ; 43
+   ["Korean"]               ; 44
+   ["Landmark"]             ; 45
+   ["Late Dining"]          ; 46
+   ["Latin American"]       ; 47
+   ["Lounge"]               ; 48
+   ["Mediterannian"]        ; 49
+   ["Mexican"]              ; 50
+   ["Middle Eastern"]       ; 51
+   ["Molecular Gastronomy"] ; 52
+   ["Moroccan"]             ; 53
+   ["Museum"]               ; 54
+   ["Nightclub"]            ; 55
+   ["Nightlife"]            ; 56
+   ["Outdoors"]             ; 57
+   ["Pizza"]                ; 58
+   ["Ramen"]                ; 59
+   ["Restaurant General"]   ; 60
+   ["Scandinavian"]         ; 61
+   ["Seafood"]              ; 62
+   ["South Pacific"]        ; 63
+   ["Southern"]             ; 64
+   ["Spanish"]              ; 65
+   ["Stadium"]              ; 66
+   ["Steakhouse"]           ; 67
+   ["Strip Club"]           ; 68
+   ["Tapas"]                ; 69
+   ["Tea Room"]             ; 70
+   ["Thai"]                 ; 71
+   ["Unknown"]              ; 72
+   ["Vegetarian / Vegan"]   ; 73
+   ["Wine Bar"]             ; 74
+   ["Winery"]]]             ; 75
  ["venues" [{:field-name   "name"
              :base-type    :type/Text}
             {:field-name   "latitude"

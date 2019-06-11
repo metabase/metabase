@@ -30,7 +30,7 @@
   (assoc (default-pg-spec "") :dbname nil, :somethingrandom nil)
   (db.spec/postgres
    {:host    "localhost"
-    :port            5432
+    :port            nil
     :dbname          nil
     :db              nil
     :somethingrandom nil}))
@@ -39,3 +39,17 @@
 (expect
   (default-pg-spec "")
   (db.spec/postgres {}))
+
+(defn- default-mysql-spec [db]
+  {:classname                     "org.mariadb.jdbc.Driver"
+   :subprotocol                   "mysql"
+   :subname                       (format "//localhost:3306/%s" db)})
+
+;; Check that we default to port 3306 for MySQL databases, if `:port` is `nil`
+(expect
+  (assoc (default-mysql-spec "") :dbname nil)
+  (db.spec/mysql
+   {:host    "localhost"
+    :port            nil
+    :dbname          nil
+    :db              nil}))

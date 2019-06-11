@@ -48,8 +48,8 @@ export default class ShrinkableList extends Component {
     const { isShrunk } = this.state;
     return (
       <div className={className}>
-        {items.map(
-          item => (isShrunk ? renderItemSmall(item) : renderItem(item)),
+        {items.map(item =>
+          isShrunk ? renderItemSmall(item) : renderItem(item),
         )}
       </div>
     );

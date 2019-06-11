@@ -18,7 +18,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -72,16 +72,16 @@ export default class TableSimple extends Component {
   }
 
   componentDidUpdate() {
-    let headerHeight = ReactDOM.findDOMNode(
+    const headerHeight = ReactDOM.findDOMNode(
       this.refs.header,
     ).getBoundingClientRect().height;
-    let footerHeight = this.refs.footer
+    const footerHeight = this.refs.footer
       ? ReactDOM.findDOMNode(this.refs.footer).getBoundingClientRect().height
       : 0;
-    let rowHeight =
+    const rowHeight =
       ReactDOM.findDOMNode(this.refs.firstRow).getBoundingClientRect().height +
       1;
-    let pageSize = Math.max(
+    const pageSize = Math.max(
       1,
       Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
     );
@@ -104,8 +104,8 @@ export default class TableSimple extends Component {
 
     const { page, pageSize, sortColumn, sortDescending } = this.state;
 
-    let start = pageSize * page;
-    let end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
+    const start = pageSize * page;
+    const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
 
     let rowIndexes = _.range(0, rows.length);
     if (sortColumn != null) {

@@ -156,7 +156,7 @@ export const MetabaseApi = {
     async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
-        let GA = await getGAMetadata();
+        const GA = await getGAMetadata();
         table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
         table.metrics.push(...GA.metrics);
         table.segments.push(...GA.segments);
@@ -313,8 +313,8 @@ export const I18NApi = {
 };
 
 export const TaskApi = {
-  get: GET("api/task"),
-  getJobsInfo: GET("api/task/info"),
+  get: GET("/api/task"),
+  getJobsInfo: GET("/api/task/info"),
 };
 
 export function setPublicQuestionEndpoints(uuid: string) {

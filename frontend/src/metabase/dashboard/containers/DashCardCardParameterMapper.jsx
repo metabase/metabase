@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./DashCardCardParameterMapper.css";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
@@ -58,7 +58,10 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
+@connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)
 export default class DashCardCardParameterMapper extends Component {
   props: {
     card: Card,
@@ -147,20 +150,19 @@ export default class DashCardCardParameterMapper extends Component {
         className="mx1 flex flex-column align-center"
         onMouseDown={e => e.stopPropagation()}
       >
-        {dashcard.series &&
-          dashcard.series.length > 0 && (
-            <div
-              className="h5 mb1 text-bold"
-              style={{
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                overflowX: "hidden",
-                maxWidth: 100,
-              }}
-            >
-              {card.name}
-            </div>
-          )}
+        {dashcard.series && dashcard.series.length > 0 && (
+          <div
+            className="h5 mb1 text-bold"
+            style={{
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflowX: "hidden",
+              maxWidth: 100,
+            }}
+          >
+            {card.name}
+          </div>
+        )}
         <PopoverWithTrigger
           ref="popover"
           triggerClasses={cx({ disabled: disabled })}
@@ -184,7 +186,9 @@ export default class DashCardCardParameterMapper extends Component {
                 <span className="text-centered mr1">
                   {disabled
                     ? t`No valid fields`
-                    : selected ? selected.name : t`Select…`}
+                    : selected
+                    ? selected.name
+                    : t`Select…`}
                 </span>
                 {selected ? (
                   <Icon

@@ -10,6 +10,7 @@
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.test.data :as data]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -37,13 +38,17 @@
 ;;; |                                              add-mbql-column-info                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- info-for-field
+  ([field-id]
+   (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id))
+  ([table-key field-key]
+   (info-for-field (data/id table-key field-key))))
+
 ;; make sure columns are comming back the way we'd expect
 (expect
-  [(-> (Field (data/id :venues :price))
-       (dissoc :database_type)
-       (assoc :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :venues :price)))
+  [(assoc (info-for-field :venues :price)
+     :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:field-id (data/id :venues :price)]]}}
          {:columns [:price]})
@@ -51,12 +56,13 @@
         vec)))
 
 ;; when an `fk->` form is used, we should add in `:fk_field_id` info about the source Field
+;;
+;; TODO - this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses before the
+;; query ever makes it to the 'annotate' stage
 (expect
-  [(-> (Field (data/id :categories :name))
-       (dissoc :database_type)
-       (assoc :fk_field_id (data/id :venues :category_id), :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :categories :name)))
+  [(assoc (info-for-field :categories :name)
+     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:fk->
                             [:field-id (data/id :venues :category_id)]
@@ -65,13 +71,29 @@
         :cols
         vec)))
 
+;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses
+(expect
+  [(assoc (info-for-field :categories :name)
+     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (-> (#'annotate/add-mbql-column-info
+           {:query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                    :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                              :source-table $$venues
+                              :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                              :strategy     :left-join
+                              :fk-field-id  %category_id}]}}
+           {:columns [:name]})
+          :cols
+          vec))))
+
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
-  [(-> (Field (data/id :venues :price))
-       (dissoc :database_type)
-       (assoc :unit :month, :source :fields))]
-  (qp.store/with-store
-    (qp.store/store-field! (Field (data/id :venues :price)))
+  [(assoc (info-for-field :venues :price)
+     :unit   :month
+     :source :fields)]
+  (qp.test-util/with-everything-store
     (-> (#'annotate/add-mbql-column-info
          {:query {:fields [[:datetime-field [:field-id (data/id :venues :price)] :month]]}}
          {:columns [:price]})
@@ -164,7 +186,7 @@
 ;; make sure custom aggregation names get included in the col info
 (defn- col-info-for-aggregation-clause [clause]
   (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause clause)))
+    (#'annotate/col-info-for-aggregation-clause {} clause)))
 
 (expect
   {:base_type    :type/Float
@@ -178,10 +200,9 @@
    :special_type :type/Number
    :name         "sum"
    :display_name "sum"}
-  (qp.store/with-store
+  (qp.test-util/with-everything-store
     (data/$ids venues
-      (qp.store/store-field! (Field $price))
-      (col-info-for-aggregation-clause [:sum [:+ [:field-id $price] 1]]))))
+      (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
 ;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
 ;; that information in the results. Their information should be preferred over ours
@@ -196,10 +217,8 @@
                                                        :display_name "Total Events"
                                                        :base_type    :type/Text}]
                                             :columns ["totalEvents"]}))
-     {:database (data/id)
-      :type     :query
-      :query    {:source-table (data/id :venues)
-                 :aggregation  [[:metric "ga:totalEvents"]]}})))
+     (data/mbql-query venues
+       {:aggregation [[:metric "ga:totalEvents"]]}))))
 
 ;; Make sure columns always come back with a unique `:name` key (#8759)
 (expect
@@ -253,15 +272,18 @@
    :source          :fields}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
-         {:database (data/id)
-          :type     :query
-          :query    (data/$ids [venues {:wrap-field-ids? true}]
-                      {:source-table $$table
-                       :expressions  {"discount_price" [:* 0.9 [:field-id $price]]}
-                       :fields       [$name [:expression "discount_price"]]
-                       :limit        10})}))
+         (data/mbql-query venues
+           {:source-table $$venues
+            :expressions  {"discount_price" [:* 0.9 [:field-id $price]]}
+            :fields       [$name [:expression "discount_price"]]
+            :limit        10})))
       :cols
       second))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           result-rows-maps->vectors                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; If a driver returns result rows as a sequence of maps, does the `result-rows-maps->vectors` convert them to a
 ;; sequence of vectors in the correct order?
@@ -277,12 +299,10 @@
                              :NAME        "Red Medicine"
                              :PRICE       3}]}]
         ((annotate/result-rows-maps->vectors (constantly results))
-         {:database (data/id)
-          :type     :query
-          :query    (data/$ids [venues {:wrap-field-ids? true}]
-                      {:source-table $$table
-                       :fields       [$id $name $category_id $latitude $longitude $price]
-                       :limit        1})})))))
+         (data/mbql-query venues
+           {:source-table $$venues
+            :fields       [$id $name $category_id $latitude $longitude $price]
+            :limit        1}))))))
 
 ;; if a driver would have returned result rows as a sequence of maps, but query returned no results, middleware should
 ;; still add `:columns` info
@@ -293,12 +313,10 @@
     (driver/with-driver :h2
       (let [results {:rows []}]
         ((annotate/result-rows-maps->vectors (constantly results))
-         {:database (data/id)
-          :type     :query
-          :query    (data/$ids [venues {:wrap-field-ids? true}]
-                      {:source-table $$table
-                       :fields       [$id $name $category_id $latitude $longitude $price]
-                       :limit        1})})))))
+         (data/mbql-query venues
+           {:source-table $$venues
+            :fields       [$id $name $category_id $latitude $longitude $price]
+            :limit        1}))))))
 
 ;; `result-rows-maps->vectors` should preserve sort order of columns in the first result row for native queries
 ;; (hopefully the driver is using Flatland `ordered-map` as suggested)
@@ -332,14 +350,12 @@
                              :sum         56
                              :sum_2       4}]}]
         ((annotate/result-rows-maps->vectors (constantly results))
-         {:database (data/id)
-          :type     :query
-          :query    (data/$ids [venues {:wrap-field-ids? true}]
-                      {:source-table $$table
-                       :aggregation  [[:sum $id]
-                                      [:sum $price]]
-                       :breakout     [$category_id]
-                       :limit        2})})))))
+         (data/mbql-query venues
+           {:source-table $$venues
+            :aggregation  [[:sum $id]
+                           [:sum $price]]
+            :breakout     [$category_id]
+            :limit        2}))))))
 
 ;; For fields with parents we should return them with a combined name including parent's name
 (tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
@@ -356,7 +372,7 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
 
 ;; nested-nested fields should include grandparent name (etc)
 (tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
@@ -374,4 +390,4 @@
    :fingerprint     nil
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause [:field-id (u/get-id child)])))
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))

@@ -117,7 +117,7 @@
   patterns with `:guard` where possible.
 
   You can also call `recur` inside result bodies, to use the same matching logic against a different value.
-  0
+
   ### `&match` and `&parents` anaphors
 
   For more advanced matches, like finding `:field-id` clauses nested anywhere inside `:datetime-field` clauses,
@@ -143,6 +143,18 @@
   [x & patterns-and-results]
   `(first (mbql.match/match ~x ~patterns-and-results)))
 
+;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
+;; e.g. with a query like
+;;
+;;    {:query {:source-table 1, :joins [{:source-table 2, ...}]}}
+;;
+;; it would be useful to be able to do
+;;
+;;
+;;    ;; get *all* the source tables
+;;    (mbql.u/match-all query
+;;      (&match :guard (every-pred map? :source-table))
+;;      (:source-table &match))
 
 (defmacro replace
   "Like `match`, but replace matches in `x` with the results of result body. The same pattern options are supported,
@@ -164,6 +176,8 @@
        form#
        (update-in form# ks# #(mbql.match/replace % ~patterns-and-results)))))
 
+;; TODO - it would be useful to have something like a `replace-all` function as well
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Functions for manipulating queries                                       |
@@ -179,7 +193,7 @@
              [&match])
           subclauses))
 
-(s/defn simplify-compound-filter :- (s/maybe mbql.s/Filter)
+(defn simplify-compound-filter
   "Simplify compound `:and`, `:or`, and `:not` compound filters, combining or eliminating them where possible. This
   also fixes theoretically disallowed compound filters like `:and` with only a single subclause, and eliminates `nils`
   and duplicate subclauses from the clauses."
@@ -278,14 +292,14 @@
                                  mbql.s/field-id
                                  mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
-  [[clause-name x y, :as clause] :- mbql.s/Field]
-  ;; TODO - could use `match` to do this
-  (case clause-name
-    :field-id         clause
-    :fk->             (recur y)
-    :field-literal    clause
-    :datetime-field   (recur x)
-    :binning-strategy (recur x)))
+  [clause :- mbql.s/Field]
+  (match-one clause
+    :field-id                     &match
+    :field-literal                &match
+    [:fk-> _ dest-field]          (recur dest-field)
+    [:joined-field _ field]       (recur field)
+    [:datetime-field field _]     (recur field)
+    [:binning-strategy field & _] (recur field)))
 
 (defn maybe-unwrap-field-clause
   "Unwrap a Field `clause`, if it's something that can be unwrapped (i.e. something that is, or wraps, a `:field-id` or
@@ -307,17 +321,17 @@
   [clause :- mbql.s/Field]
   (second (unwrap-field-clause clause)))
 
-(s/defn add-order-by-clause :- mbql.s/Query
-  "Add a new `:order-by` clause to an MBQL query. If the new order-by clause references a Field that is already being
-  used in another order-by clause, this function does nothing."
-  [outer-query :- mbql.s/Query, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
-  (let [existing-fields (set (for [[_ existing-field] (-> outer-query :query :order-by)]
+(s/defn add-order-by-clause :- mbql.s/MBQLQuery
+  "Add a new `:order-by` clause to an MBQL `inner-query`. If the new order-by clause references a Field that is
+  already being used in another order-by clause, this function does nothing."
+  [inner-query :- mbql.s/MBQLQuery, [_ field, :as order-by-clause] :- mbql.s/OrderBy]
+  (let [existing-fields (set (for [[_ existing-field] (:order-by inner-query)]
                                (maybe-unwrap-field-clause existing-field)))]
     (if (existing-fields (maybe-unwrap-field-clause field))
       ;; Field already referenced, nothing to do
-      outer-query
+      inner-query
       ;; otherwise add new clause at the end
-      (update-in outer-query [:query :order-by] (comp vec conj) order-by-clause))))
+      (update inner-query :order-by (comp vec conj) order-by-clause))))
 
 
 (s/defn add-datetime-units :- mbql.s/DateTimeValue
@@ -340,29 +354,6 @@
     (class x)))
 
 
-(s/defn fk-clause->join-info :- (s/maybe mbql.s/JoinInfo)
-  "Return the matching info about the JOINed for the 'destination' Field in an `fk->` clause, for the current level of
-  nesting (`0` meaning this `fk->` clause was found in the top-level query; `1` meaning it was found in the first
-  `source-query`, and so forth.)
-
-     (fk-clause->join-info query [:fk-> [:field-id 1] [:field-id 2]] 0)
-     ;; -> \"orders__via__order_id\""
-  [query :- mbql.s/Query, nested-query-level :- su/NonNegativeInt, [_ source-field-clause :as fk-clause] :- mbql.s/fk->]
-  ;; if we're dealing with something that's not at the top-level go ahead and recurse a level until we get to the
-  ;; query we want to work with
-  (if (pos? nested-query-level)
-    (recur {:query (or (get-in query [:query :source-query])
-                       (throw (Exception. (str (tru "Bad nested-query-level: query does not have a source query")))))}
-           (dec nested-query-level)
-           fk-clause)
-    ;; ok, when we've reached the right level of nesting, look in `:join-tables` to find the appropriate info
-    (let [source-field-id (field-clause->id-or-literal source-field-clause)]
-      (some (fn [{:keys [fk-field-id], :as info}]
-              (when (= fk-field-id source-field-id)
-                info))
-            (-> query :query :join-tables)))))
-
-
 (s/defn expression-with-name :- mbql.s/FieldOrExpressionDef
   "Return the `Expression` referenced by a given `expression-name`."
   [query :- mbql.s/Query, expression-name :- su/NonBlankString]
@@ -377,6 +368,7 @@
    number to as optional arg `nesting-level` to make sure you reference aggregations at the right level of nesting."
   ([query index]
    (aggregation-at-index query index 0))
+
   ([query :- mbql.s/Query, index :- su/NonNegativeInt, nesting-level :- su/NonNegativeInt]
    (if (zero? nesting-level)
      (or (nth (get-in query [:query :aggregation]) index)
@@ -426,20 +418,31 @@
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------
 
+(defn unique-name-generator
+  "Return a function that can be used to uniquify string names. Function maintains an internal counter that will suffix
+  any names passed to it as needed so all results will be unique.
+
+    (let [unique-name (unique-name-generator)]
+      [(unique-name \"A\")
+       (unique-name \"B\")
+       (unique-name \"A\")])
+    ;; -> [\"A\" \"B\" \"A_2\"]"
+  []
+  (let [aliases (atom {})]
+    (s/fn [original-name :- s/Str]
+      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
+                             original-name)]
+        (if (= total-count 1)
+          original-name
+          (recur (str original-name \_ total-count)))))))
+
 (s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.
 
      (uniquify-names [\"count\" \"sum\" \"count\" \"count_2\"])
      ;; -> [\"count\" \"sum\" \"count_2\" \"count_2_2\"]"
   [names :- [s/Str]]
-  (let [aliases     (atom {})
-        unique-name (fn [original-name]
-                      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
-                                             original-name)]
-                        (if (= total-count 1)
-                          original-name
-                          (recur (str original-name \_ total-count)))))]
-    (map unique-name names)))
+  (map (unique-name-generator) names))
 
 (def ^:private NamedAggregationsWithUniqueNames
   (s/constrained [mbql.s/named] #(distinct? (map last %)) "sequence of named aggregations with unique names"))
@@ -507,3 +510,28 @@
                              max-results-bare-rows)
                            max-results)]
     (safe-min mbql-limit constraints-limit)))
+
+(s/defn ->joined-field :- mbql.s/JoinField
+  "Convert a Field clause to one that uses an appropriate `alias`, e.g. for a joined table."
+  [table-alias :- s/Str, field-clause :- mbql.s/Field]
+  (replace field-clause
+    :joined-field
+    (throw (Exception. (format "%s already has an alias." &match)))
+
+    #{:field-id :field-literal}
+    [:joined-field table-alias &match]))
+
+(def ^:private default-join-alias "source")
+
+(s/defn deduplicate-join-aliases :- mbql.s/Joins
+  "Make sure every join in `:joins` has a unique alias. If a `:join` does not already have an alias, this will give it
+  one."
+  [joins :- [mbql.s/Join]]
+  (let [joins          (for [join joins]
+                         (update join :alias #(or % default-join-alias)))
+        unique-aliases (uniquify-names (map :alias joins))]
+    (mapv
+     (fn [join alias]
+       (assoc join :alias alias))
+     joins
+     unique-aliases)))

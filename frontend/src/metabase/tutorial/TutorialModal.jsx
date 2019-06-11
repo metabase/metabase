@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 
 const ENABLE_BACK_BUTTON = false; // disabled due to possibility of getting in inconsistent states
@@ -7,8 +7,8 @@ const ENABLE_BACK_BUTTON = false; // disabled due to possibility of getting in i
 export default class TutorialModal extends Component {
   render() {
     const { modalStepIndex, modalStepCount } = this.props;
-    let showStepCount = modalStepIndex != null;
-    let showBackButton = ENABLE_BACK_BUTTON && modalStepIndex > 0;
+    const showStepCount = modalStepIndex != null;
+    const showBackButton = ENABLE_BACK_BUTTON && modalStepIndex > 0;
     return (
       <div className="TutorialModalContent p2">
         <div className="flex">

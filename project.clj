@@ -50,7 +50,8 @@
    [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
-   [buddy/buddy-core "1.5.0"]                                         ; various cryptograhpic functions
+   [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
+    :exclusions [commons-codec]]
    [buddy/buddy-sign "3.0.0"]                                         ; JSON Web Tokens; High-Level message signing library
    [cheshire "5.8.1"]                                                 ; fast JSON encoding (used by Ring JSON middleware)
    [clj-http "3.9.1"                                                  ; HTTP client
@@ -75,6 +76,12 @@
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.mchange/c3p0 "0.9.5.3"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
+   [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
+   [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
+   [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
+    :exclusions [commons-beanutils
+                 commons-digester
+                 commons-logging]]
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
@@ -95,6 +102,7 @@
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
+   [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
@@ -112,7 +120,8 @@
    [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
 
   :main ^:skip-aot metabase.core
 
@@ -149,17 +158,13 @@
     [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
 
     :env      {:mb-run-mode "dev"}
-    :jvm-opts ["-Dlogfile.path=target/log"]
-    ;; Log appender class needs to be compiled for log4j to use it. Same with the Quartz class load helper
-    :aot      [metabase.logger
-               metabase.task.DynamicClassLoadHelper]}
+    :jvm-opts ["-Dlogfile.path=target/log"]}
 
    :ci
    {:jvm-opts ["-Xmx2500m"]}
 
    :install
-   {:aot [metabase.logger
-          metabase.task.DynamicClassLoadHelper]}
+   {}
 
    :install-for-building-drivers
    {:auto-clean true
@@ -171,21 +176,27 @@
    :run
    [:exclude-tests {}]
 
-   ;; start the HTTP server with 'lein ring server'
+   ;; start the dev HTTP server with 'lein ring server'
    :ring
    [:exclude-tests
-    {:plugins
+    :include-all-drivers
+    {:dependencies
+     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
+     [[ns-tracker "0.4.0"]]
+
+     :plugins
      [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
      :ring
      {:handler      metabase.handler/app
       :init         metabase.core/init!
+      :async?       true
       :destroy      metabase.core/destroy
       :reload-paths ["src"]}}]
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.5"]]
+    [[metabase/lein-include-drivers "1.0.6"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
@@ -197,7 +208,8 @@
        :exclusions [expectations]]]
 
      :injections
-     [(require 'metabase.test-setup                                   ; for test setup stuff
+     [(require 'expectation-options                                   ; expectations customizations
+               'metabase.test-setup                                   ; for test setup stuff
                'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
 
      :resource-paths

@@ -58,7 +58,7 @@ export default class Tooltip extends Component {
   };
 
   componentDidMount() {
-    let elem = ReactDOM.findDOMNode(this);
+    const elem = ReactDOM.findDOMNode(this);
 
     elem.addEventListener("mouseenter", this._onMouseEnter, false);
     elem.addEventListener("mouseleave", this._onMouseLeave, false);
@@ -96,7 +96,7 @@ export default class Tooltip extends Component {
 
   componentWillUnmount() {
     popTooltip(this);
-    let elem = ReactDOM.findDOMNode(this);
+    const elem = ReactDOM.findDOMNode(this);
     elem.removeEventListener("mouseenter", this._onMouseEnter, false);
     elem.removeEventListener("mouseleave", this._onMouseLeave, false);
     elem.removeEventListener("mousedown", this._onMouseDown, true);
@@ -183,19 +183,17 @@ export class TestTooltip extends Component {
           {this.props.children}
         </TestTooltipTarget>
 
-        {tooltip &&
-          isEnabled &&
-          isOpen && (
-            <TestTooltipContent>
-              <TooltipPopover
-                isOpen={true}
-                target={this}
-                {...this.props}
-                children={this.props.tooltip}
-              />
-              {this.props.tooltip}
-            </TestTooltipContent>
-          )}
+        {tooltip && isEnabled && isOpen && (
+          <TestTooltipContent>
+            <TooltipPopover
+              isOpen={true}
+              target={this}
+              {...this.props}
+              children={this.props.tooltip}
+            />
+            {this.props.tooltip}
+          </TestTooltipContent>
+        )}
       </div>
     );
   }

@@ -212,7 +212,9 @@ export default class TableInteractive extends Component {
   }
 
   _measure() {
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
 
     ReactDOM.render(
       <div style={{ display: "flex" }}>
@@ -288,7 +290,7 @@ export default class TableInteractive extends Component {
 
   onColumnResize(columnIndex: number, width: number) {
     const { settings } = this.props;
-    let columnWidthsSetting = settings["table.column_widths"]
+    const columnWidthsSetting = settings["table.column_widths"]
       ? settings["table.column_widths"].slice()
       : [];
     columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
@@ -577,23 +579,21 @@ export default class TableInteractive extends Component {
         >
           {renderTableHeaderWrapper(
             <Ellipsified tooltip={columnTitle}>
-              {isSortable &&
-                isRightAligned && (
-                  <Icon
-                    className="Icon mr1"
-                    name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
-                  />
-                )}
+              {isSortable && isRightAligned && (
+                <Icon
+                  className="Icon mr1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
               {columnTitle}
-              {isSortable &&
-                !isRightAligned && (
-                  <Icon
-                    className="Icon ml1"
-                    name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
-                  />
-                )}
+              {isSortable && !isRightAligned && (
+                <Icon
+                  className="Icon ml1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
             </Ellipsified>,
             column,
             columnIndex,
@@ -641,7 +641,12 @@ export default class TableInteractive extends Component {
   };
 
   render() {
-    const { width, height, data: { cols, rows }, className } = this.props;
+    const {
+      width,
+      height,
+      data: { cols, rows },
+      className,
+    } = this.props;
 
     if (!width || !height) {
       return <div className={className} />;

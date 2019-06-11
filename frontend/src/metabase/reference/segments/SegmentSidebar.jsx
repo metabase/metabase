@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import pure from "recompose/pure";
 
@@ -49,15 +49,14 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
           name={t`X-ray this segment`}
         />
       )}
-      {user &&
-        user.is_superuser && (
-          <SidebarItem
-            key={`/reference/segments/${segment.id}/revisions`}
-            href={`/reference/segments/${segment.id}/revisions`}
-            icon="history"
-            name={t`Revision history`}
-          />
-        )}
+      {user && user.is_superuser && (
+        <SidebarItem
+          key={`/reference/segments/${segment.id}/revisions`}
+          href={`/reference/segments/${segment.id}/revisions`}
+          icon="history"
+          name={t`Revision history`}
+        />
+      )}
     </ul>
   </div>
 );

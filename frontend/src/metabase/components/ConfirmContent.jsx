@@ -1,7 +1,7 @@
 import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 

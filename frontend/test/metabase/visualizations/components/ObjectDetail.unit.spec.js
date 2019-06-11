@@ -32,6 +32,7 @@ describe("ObjectDetail", () => {
           data={objectDetailCard.data}
           series={objectDetailCard}
           loadObjectDetailFKReferences={() => ({})}
+          settings={{ column: () => ({}) }}
         />,
       );
 

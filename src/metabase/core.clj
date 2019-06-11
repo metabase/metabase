@@ -44,7 +44,10 @@
   "General application shutdown function which should be called once at application shuddown."
   []
   (log/info (trs "Metabase Shutting Down ..."))
+  ;; TODO - it would really be much nicer if we implemented a basic notification system so these things could listen
+  ;; to a Shutdown hook of some sort instead of having here
   (task/stop-scheduler!)
+  (server/stop-web-server!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
 
@@ -69,7 +72,7 @@
 
   ;; startup database.  validates connection & runs any necessary migrations
   (log/info (trs "Setting up and migrating Metabase DB. Please sit tight, this may take a minute..."))
-  (mdb/setup-db! :auto-migrate (config/config-bool :mb-db-automigrate))
+  (mdb/setup-db!)
   (init-status/set-progress! 0.5)
 
   ;; run a very quick check to see if we are doing a first time installation

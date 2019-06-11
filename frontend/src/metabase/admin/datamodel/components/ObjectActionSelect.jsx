@@ -5,7 +5,7 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ObjectRetireModal from "./ObjectRetireModal.jsx";
 
 import { capitalize } from "metabase/lib/formatting";

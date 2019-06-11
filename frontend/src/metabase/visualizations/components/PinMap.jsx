@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { hasLatitudeAndLongitudeColumns } from "metabase/lib/schema_metadata";
 import { LatitudeLongitudeError } from "metabase/visualizations/lib/errors";
 
@@ -52,7 +52,11 @@ export default class PinMap extends Component {
     return hasLatitudeAndLongitudeColumns(cols);
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!hasLatitudeAndLongitudeColumns(cols)) {
       throw new LatitudeLongitudeError();
     }
@@ -90,7 +94,7 @@ export default class PinMap extends Component {
   }
 
   updateSettings = () => {
-    let newSettings = {};
+    const newSettings = {};
     if (this.state.lat != null) {
       newSettings["map.center_latitude"] = this.state.lat;
     }
@@ -113,7 +117,14 @@ export default class PinMap extends Component {
   };
 
   _getPoints(props: Props) {
-    const { settings, series: [{ data: { cols, rows } }] } = props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols, rows },
+        },
+      ],
+    } = props;
     const latitudeIndex = _.findIndex(
       cols,
       col => col.name === settings["map.latitude_column"],
@@ -159,7 +170,7 @@ export default class PinMap extends Component {
 
   render() {
     const { className, settings, isEditing, isDashboard } = this.props;
-    let { lat, lng, zoom } = this.state;
+    const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];

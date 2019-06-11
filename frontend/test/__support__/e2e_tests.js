@@ -157,7 +157,9 @@ export const createTestStore = async ({
   const history = useRouterHistory(createMemoryHistory)();
   const getRoutes = publicApp
     ? getPublicRoutes
-    : embedApp ? getEmbedRoutes : getNormalRoutes;
+    : embedApp
+    ? getEmbedRoutes
+    : getNormalRoutes;
   const reducers = publicApp || embedApp ? publicReducers : normalReducers;
   const store = getStore(reducers, history, undefined, createStore =>
     testStoreEnhancer(createStore, history, getRoutes),
@@ -418,7 +420,7 @@ export const createSavedQuestion = async unsavedQuestion => {
 };
 
 export const createDashboard = async details => {
-  let savedDashboard = await DashboardApi.create(details);
+  const savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
 
@@ -584,10 +586,13 @@ cleanup.fn = action => cleanup.actions.push(action);
 cleanup.metric = metric => cleanup.fn(() => deleteMetric(metric));
 cleanup.segment = segment => cleanup.fn(() => deleteSegment(segment));
 cleanup.question = question => cleanup.fn(() => deleteQuestion(question));
+cleanup.dashboard = dashboard => cleanup.fn(() => deleteDashboard(dashboard));
 cleanup.collection = c => cleanup.fn(() => deleteCollection(c));
 
 export const deleteQuestion = question =>
   CardApi.delete({ cardId: getId(question) });
+export const deleteDashboard = dashboard =>
+  DashboardApi.delete({ dashId: getId(dashboard) });
 export const deleteSegment = segment =>
   SegmentApi.delete({ segmentId: getId(segment), revision_message: "Please" });
 export const deleteMetric = metric =>
@@ -597,7 +602,9 @@ export const deleteCollection = collection =>
 
 const getId = o =>
   typeof o === "object" && o != null
-    ? typeof o.id === "function" ? o.id() : o.id
+    ? typeof o.id === "function"
+      ? o.id()
+      : o.id
     : o;
 
 export const deleteAllSegments = async () =>

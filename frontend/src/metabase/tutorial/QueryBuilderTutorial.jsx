@@ -1,7 +1,8 @@
 /* eslint-disable react/display-name */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t, jt } from "ttag";
+import MetabaseSettings from "metabase/lib/settings";
 import Tutorial, { qs, qsWithContent } from "./Tutorial.jsx";
 
 import RetinaImage from "react-retina-image";
@@ -18,8 +19,7 @@ const QUERY_BUILDER_STEPS = [
           width={186}
         />
         <h3>{t`Welcome to the Query Builder!`}</h3>
-        <p
-        >{t`The Query Builder lets you assemble questions (or "queries") to ask about your data.`}</p>
+        <p>{t`The Query Builder lets you assemble questions (or "queries") to ask about your data.`}</p>
         <a
           className="Button Button--primary"
           onClick={props.onNext}
@@ -39,10 +39,8 @@ const QUERY_BUILDER_STEPS = [
           src="app/assets/img/qb_tutorial/table.png"
           width={157}
         />
-        <h3
-        >{t`Start by picking the table with the data that you have a question about.`}</h3>
-        <p
-        >{t`Go ahead and select the "Orders" table from the dropdown menu.`}</p>
+        <h3>{t`Start by picking the table with the data that you have a question about.`}</h3>
+        <p>{t`Go ahead and select the "Orders" table from the dropdown menu.`}</p>
       </div>
     ),
     shouldAllowEvent: e => qs(".GuiBuilder-data a").contains(e.target),
@@ -112,10 +110,12 @@ const QUERY_BUILDER_STEPS = [
           src="app/assets/img/qb_tutorial/calculator.png"
           width={115}
         />
-        <h3
-        >{t`Here's where you can choose to add or average your data, count the number of rows in the table, or just view the raw data.`}</h3>
-        <p
-        >{t`Try it: click on <strong>Raw Data</strong> to change it to <strong>Count of rows</strong> so we can count how many orders there are in this table.`}</p>
+        <h3>{t`Here's where you can choose to add or average your data, count the number of rows in the table, or just view the raw data.`}</h3>
+        <p>{jt`Try it: click on ${(
+          <strong>{t`Raw Data`}</strong>
+        )} to change it to ${(
+          <strong>{t`Count of rows`}</strong>
+        )} so we can count how many orders there are in this table.`}</p>
       </div>
     ),
     shouldAllowEvent: e => qs(".View-section-aggregation").contains(e.target),
@@ -138,10 +138,10 @@ const QUERY_BUILDER_STEPS = [
           src="app/assets/img/qb_tutorial/banana.png"
           width={232}
         />
-        <h3
-        >{t`Add a grouping to break out your results by category, day, month, and more.`}</h3>
-        <p
-        >{t`Let's do it: click on <strong>Add a grouping</strong>, and choose <strong>Created At: by Week</strong>.`}</p>
+        <h3>{t`Add a grouping to break out your results by category, day, month, and more.`}</h3>
+        <p>{jt`Let's do it: click on ${(
+          <strong>{t`Add a grouping`}</strong>
+        )}, and choose ${<strong>{t`Created At: by Week`}</strong>}.`}</p>
       </div>
     ),
     shouldAllowEvent: e => qs(".Query-section-breakout").contains(e.target),
@@ -171,8 +171,9 @@ const QUERY_BUILDER_STEPS = [
           width={217}
         />
         <h3>{t`Run Your Query.`}</h3>
-        <p
-        >{t`You're doing so well! Click <strong>Run query</strong> to get your results!`}</p>
+        <p>{jt`You're doing so well! Click ${(
+          <strong>{t`Run query`}</strong>
+        )} to get your results!`}</p>
       </div>
     ),
     shouldAllowEvent: e => qs(".RunButton").contains(e.target),
@@ -190,8 +191,9 @@ const QUERY_BUILDER_STEPS = [
           width={160}
         />
         <h3>{t`You can view your results as a chart instead of a table.`}</h3>
-        <p
-        >{t`Everbody likes charts! Click the <strong>Visualization</strong> dropdown and select <strong>Line</strong>.`}</p>
+        <p>{jt`Everbody likes charts! Click the ${(
+          <strong>{t`Visualization`}</strong>
+        )} dropdown and select ${<strong>{t`Line`}</strong>}.`}</p>
       </div>
     ),
     shouldAllowEvent: e => qs(".VisualizationSettings a").contains(e.target),
@@ -219,8 +221,9 @@ const QUERY_BUILDER_STEPS = [
           <a
             className="link"
             target="_blank"
-            href="http://www.metabase.com/docs/latest/users-guide/start.html"
-          >{t`User's Guide`}</a>. {t`Have fun exploring your data!`}
+            href={MetabaseSettings.docsUrl("users-guide/start")}
+          >{t`User's Guide`}</a>
+          . {t`Have fun exploring your data!`}
         </p>
         <a className="Button Button--primary" onClick={props.onNext}>
           {t`Thanks`}!
@@ -233,8 +236,7 @@ const QUERY_BUILDER_STEPS = [
     getModal: props => (
       <div className="text-centered">
         <h3>{t`Save Your Questions`}!</h3>
-        <p
-        >{t`By the way, you can save your questions so you can refer to them later. Saved Questions can also be put into dashboards or Pulses.`}</p>
+        <p>{t`By the way, you can save your questions so you can refer to them later. Saved Questions can also be put into dashboards or Pulses.`}</p>
         <a
           className="Button Button--primary"
           onClick={props.onClose}

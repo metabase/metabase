@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import moment from "moment";
 import _ from "underscore";
@@ -151,7 +151,7 @@ function getDateTimeField(
   field: ConcreteField,
   bucketing: ?DatetimeUnit,
 ): ConcreteField {
-  let target = getDateTimeFieldTarget(field);
+  const target = getDateTimeFieldTarget(field);
   if (bucketing) {
     // $FlowFixMe
     return ["datetime-field", target, bucketing];

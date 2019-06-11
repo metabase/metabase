@@ -1,11 +1,11 @@
 import React from "react";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import { t } from "c-3po";
+import { t } from "ttag";
 export const component = EntityMenu;
 
 export const description = `
-    A menu with varios entity related options grouped by context.
+    A menu with various entity related options grouped by context.
 `;
 
 const DemoAlignRight = ({ children }) => (

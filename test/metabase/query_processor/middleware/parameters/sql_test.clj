@@ -1,13 +1,12 @@
 (ns metabase.query-processor.middleware.parameters.sql-test
   "Tests for parameters in native SQL queries, which are of the `{{param}}` form."
   (:require [clj-time.core :as t]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qpt :refer [first-row format-rows-by]]]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor.middleware.parameters.sql :as sql]
             [metabase.test
              [data :as data]
@@ -575,7 +574,7 @@
   (delay (disj (qpt/non-timeseries-drivers-with-feature :native-parameters) :redshift)))
 
 (defn- process-native {:style/indent 0} [& kvs]
-  (du/with-effective-timezone (Database (data/id))
+  (du/with-effective-timezone (data/db)
     (qp/process-query
       (apply assoc {:database (data/id), :type :native, :settings {:report-timezone "UTC"}} kvs))))
 
@@ -778,13 +777,14 @@
    :param {:type   :date/all-options
            :target [:dimension [:template-tag "checkin_date"]]
            :value  "past5days"}}
-  (#'sql/dimension-value-for-tag {:name         "checkin_date"
-                                  :display-name "Checkin Date"
-                                  :type         :dimension
-                                  :dimension    [:field-id (data/id :checkins :date)]
-                                  :default      "past5days"
-                                  :widget-type  :date/all-options}
-                                 nil))
+  (#'sql/dimension-value-for-tag
+   {:name         "checkin_date"
+    :display-name "Checkin Date"
+    :type         :dimension
+    :dimension    [:field-id (data/id :checkins :date)]
+    :default      "past5days"
+    :widget-type  :date/all-options}
+   nil))
 
 ;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
 ;; `:widget-type` key. Check that it works correctly with relative dates...

@@ -7,4 +7,5 @@
   into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to
   simplifiy the logic in the QP steps following this."
   [qp]
-  (comp qp normalize/normalize))
+  (fn [query respond raise canceled-chan]
+    (qp (normalize/normalize query) respond raise canceled-chan)))

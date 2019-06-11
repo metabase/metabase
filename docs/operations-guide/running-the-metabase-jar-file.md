@@ -4,7 +4,7 @@ To run the Metabase jar file you need to have Java installed on your system. Cur
 
 ### Download Metabase
 
-If you haven't done so already the first thing you need to do is [Download Metabase](http://www.metabase.com/start/jar.html).  Simply save the .jar file to a folder on your system where you wish to run Metabase.
+If you haven't done so already the first thing you need to do is [Download Metabase](https://metabase.com/start/jar.html).  Simply save the .jar file to a folder on your system where you wish to run Metabase.
 
 
 ### Verify Java is installed

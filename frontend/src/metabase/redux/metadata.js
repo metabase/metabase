@@ -130,7 +130,7 @@ export const fetchTables = (reload = false) => {
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (tableId, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchTableMetadata({ id: tableId }, reload);
+  return Tables.actions.fetchTableMetadata({ id: tableId }, { reload });
 };
 
 export const fetchField = (id, reload = false) => {

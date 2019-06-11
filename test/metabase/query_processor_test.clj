@@ -294,24 +294,39 @@
   this behavior."
   {:style/indent 1}
   ([format-fns rows]
-   (format-rows-by format-fns (not :format-nil-values?) rows))
-  ([format-fns format-nil-values? rows]
-   (cond
-     (= (:status rows) :failed) (do (println "Error running query:" (u/pprint-to-str 'red rows))
-                                    (throw (ex-info (:error rows) rows)))
+   (format-rows-by format-fns false rows))
 
-     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-     :else        (vec (for [row rows]
-                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                                (when (or v format-nil-values?)
-                                  (try (f v)
-                                       (catch Throwable e
-                                         (printf "(%s %s) failed: %s" f v (.getMessage e))
-                                         (throw e)))))))))))
+  ([format-fns format-nil-values? response]
+   (when (= (:status response) :failed)
+     (println "Error running query:" (u/pprint-to-str 'red response))
+     (throw (ex-info (:error response) response)))
+
+   (-> response
+       ((fn format-rows [rows]
+          (cond
+            (:data rows)
+            (update rows :data format-rows)
+
+            (:rows rows)
+            (update rows :rows format-rows)
+
+            (sequential? rows)
+            (vec
+             (for [row rows]
+               (vec
+                (for [[f v] (partition 2 (interleave format-fns row))]
+                  (when (or v format-nil-values?)
+                    (try
+                      (f v)
+                      (catch Throwable e
+                        (printf "(%s %s) failed: %s" f v (.getMessage e))
+                        (throw e))))))))
+
+            :else
+            (throw (ex-info "Unexpected response: rows are not sequential!" {:response response}))))))))
 
 (def ^{:arglists '([results])} formatted-venues-rows
-  "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
+  "Helper function to format the rows in `results` when running a 'raw data' query against the Venues test table."
   (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
 
 (defn data
@@ -320,26 +335,26 @@
   [results]
   (when (= (:status results) :failed)
     (println "Error running query:" (u/pprint-to-str 'red results))
-    (throw (ex-info (:error results) results)))
+    (throw (ex-info (str (or (:error results) "Error running query"))
+             (if (map? results) results {:results results}))))
   (:data results))
 
 (defn rows
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (vec (or (:rows (data results))
-           (println (u/pprint-to-str 'red results)) ; DEBUG
-           (throw (Exception. "Error!")))))
+  (or (some-> (data results) :rows vec)
+      (throw (ex-info "Query does not have any :rows in results." results))))
 
 (defn rows+column-names
-  "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   {:rows    (rows results)
    :columns (get-in results [:data :columns])})
 
 (defn first-row
-  "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."
+  "Return the first row in the `results` of a query, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   (first (rows results)))
@@ -348,3 +363,19 @@
   "Returns truthy if `driver` supports setting a timezone"
   [driver]
   (driver/supports? driver :set-timezone))
+
+(defn cols
+  "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (or (some-> (data results) :cols vec)
+      (throw (ex-info "Query does not have any :cols in results." results))))
+
+(defn tz-shifted-driver-bug?
+  "Returns true if `driver` is affected by the bug originally observed in
+  Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
+  applied correctly, but the date operations that we use aren't using that timezone. This function is used to
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
+  also have this issue."
+  [driver]
+  (contains? #{:snowflake :oracle :redshift} driver))

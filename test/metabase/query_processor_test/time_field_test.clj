@@ -12,8 +12,8 @@
      (data/with-db (data/get-or-create-database! defs/test-data-with-time)
        (data/run-mbql-query users
          ~(merge
-           {:fields   `[~'$id ~'$name ~'$last_login_time]
-            :order-by `[[:asc ~'$id]]}
+           '{:fields   [$id $name $last_login_time]
+             :order-by [[:asc $id]]}
            additional-clauses)))))
 
 ;; Basic between query on a time field
@@ -87,10 +87,7 @@
     [[1 "Plato Yeshua" "08:30:00.000Z"]
      [4 "Simcha Yan" "08:30:00.000Z"]])
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (time-query {:filter (vec (cons
-                               :between
-                               (cons
-                                $last_login_time
-                                (if (qpt/supports-report-timezone? driver/*driver*)
-                                  ["08:00:00" "09:00:00"]
-                                  ["08:00:00-00:00" "09:00:00-00:00"]))))})))
+    (time-query {:filter (into [:between $last_login_time]
+                               (if (qpt/supports-report-timezone? driver/*driver*)
+                                 ["08:00:00" "09:00:00"]
+                                 ["08:00:00-00:00" "09:00:00-00:00"]))})))

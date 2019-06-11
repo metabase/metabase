@@ -35,7 +35,7 @@ const obfuscateString = (original, string) => {
 };
 
 export function enableTranslatedStringReplacement() {
-  const c3po = require("c-3po");
+  const c3po = require("ttag");
   const _t = c3po.t;
   const _jt = c3po.jt;
   const _ngettext = c3po.ngettext;

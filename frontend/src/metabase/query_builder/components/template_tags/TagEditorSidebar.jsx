@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon.jsx";
 import TagEditorParam from "./TagEditorParam.jsx";
 import TagEditorHelp from "./TagEditorHelp.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";

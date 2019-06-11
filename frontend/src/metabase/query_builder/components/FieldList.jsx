@@ -61,8 +61,8 @@ export default class FieldList extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    let { table, fieldOptions, segmentOptions, hideSectionHeader } = newProps;
-    let tableName = table.display_name;
+    const { table, fieldOptions, segmentOptions, hideSectionHeader } = newProps;
+    const tableName = table.display_name;
 
     let specialOptions = [];
     if (segmentOptions) {
@@ -79,17 +79,17 @@ export default class FieldList extends Component {
         dimension: dimension,
       }));
 
-    let mainSection = {
+    const mainSection = {
       name: hideSectionHeader ? null : singularize(tableName),
       items: specialOptions.concat(getSectionItems(fieldOptions)),
     };
 
-    let fkSections = fieldOptions.fks.map(fkOptions => ({
+    const fkSections = fieldOptions.fks.map(fkOptions => ({
       name: hideSectionHeader ? null : stripId(fkOptions.field.display_name),
       items: getSectionItems(fkOptions),
     }));
 
-    let sections = [];
+    const sections = [];
     if (mainSection.items.length > 0) {
       sections.push(mainSection);
     }
@@ -105,15 +105,18 @@ export default class FieldList extends Component {
   };
 
   renderItemExtra = item => {
-    const { field, enableSubDimensions, table: { metadata } } = this.props;
+    const {
+      field,
+      enableSubDimensions,
+      table: { metadata },
+    } = this.props;
 
     return (
       <div className="Field-extra flex align-center">
         {item.segment && this.renderSegmentTooltip(item.segment)}
-        {item.dimension &&
-          item.dimension.tag && (
-            <span className="h5 text-light px1">{item.dimension.tag}</span>
-          )}
+        {item.dimension && item.dimension.tag && (
+          <span className="h5 text-light px1">{item.dimension.tag}</span>
+        )}
         {enableSubDimensions &&
         item.dimension &&
         item.dimension.dimensions().length > 0 ? (
@@ -158,7 +161,10 @@ export default class FieldList extends Component {
   };
 
   renderSubDimensionTrigger(dimension) {
-    const { field, table: { metadata } } = this.props;
+    const {
+      field,
+      table: { metadata },
+    } = this.props;
     const subDimension = dimension.isSameBaseDimension(field)
       ? Dimension.parseMBQL(field, metadata)
       : dimension.defaultDimension();
@@ -172,7 +178,7 @@ export default class FieldList extends Component {
   }
 
   renderSegmentTooltip(segment) {
-    let { table } = this.props;
+    const { table } = this.props;
     return (
       <div className="p1">
         <Tooltip

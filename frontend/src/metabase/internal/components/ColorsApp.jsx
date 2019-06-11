@@ -39,7 +39,7 @@ class ColorSwatch extends React.Component {
 }
 
 // eslint-disable-next-line import/no-commonjs
-let colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metabase/css/core/colors.css");
+const colorStyles = require("!style-loader!css-loader?modules!postcss-loader!metabase/css/core/colors.css");
 
 const ColorsApp = () => (
   <div className="wrapper">

@@ -488,8 +488,8 @@ export default class Question {
   }
 
   setResultsMetadata(resultsMetadata) {
-    let metadataColumns = resultsMetadata && resultsMetadata.columns;
-    let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
+    const metadataColumns = resultsMetadata && resultsMetadata.columns;
+    const metadataChecksum = resultsMetadata && resultsMetadata.checksum;
 
     return this.setCard({
       ...this.card(),

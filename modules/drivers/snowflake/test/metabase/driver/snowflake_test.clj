@@ -1,12 +1,43 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
+  (:require [clojure.set :as set]
+            [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.models.table :refer [Table]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :refer [expect-with-driver]]))
+            [metabase.test.data
+             [dataset-definitions :as dataset-defs]
+             [datasets :refer [expect-with-driver]]
+             [interface :as tx]
+             [sql :as sql.tx]]
+            [metabase.test.data.sql.ddl :as ddl]))
+
+;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
+(expect
+  "DROP DATABASE IF EXISTS \"test-data\"; CREATE DATABASE \"test-data\";"
+  (sql.tx/create-db-sql :snowflake (tx/get-dataset-definition dataset-defs/test-data)))
+
+(expect
+  ["DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"users\";"
+   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT  ,\"last_login\" TIMESTAMPLTZ"
+        "  ,\"password\" TEXT , \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;")
+   "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"categories\";"
+   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"name\" TEXT , \"id\" INTEGER AUTOINCREMENT,"
+        " PRIMARY KEY (\"id\")) ;")
+   "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"venues\";"
+   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"venues\" (\"name\" TEXT  ,\"latitude\" FLOAT  ,\"longitude\" FLOAT"
+        "  ,\"price\" INTEGER  ,\"category_id\" INTEGER , \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;")
+   "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"checkins\";"
+   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"checkins\" (\"user_id\" INTEGER  ,\"venue_id\" INTEGER  ,\"date\" DATE ,"
+        " \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;")
+   (str "ALTER TABLE \"test-data\".\"PUBLIC\".\"venues\" ADD CONSTRAINT \"fk_venues_category_id_categori\" FOREIGN KEY"
+        " (\"category_id\") REFERENCES \"test-data\".\"PUBLIC\".\"categories\" (\"id\");")
+   (str "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"fk_checkins_user_id_users\""
+        " FOREIGN KEY (\"user_id\") REFERENCES \"test-data\".\"PUBLIC\".\"users\" (\"id\");")
+   (str "ALTER TABLE \"test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"fk_checkins_venue_id_venues\""
+        " FOREIGN KEY (\"venue_id\") REFERENCES \"test-data\".\"PUBLIC\".\"venues\" (\"id\");")]
+  (ddl/create-db-ddl-statements :snowflake (tx/get-dataset-definition dataset-defs/test-data)))
 
 (expect-with-driver :snowflake
   "UTC"

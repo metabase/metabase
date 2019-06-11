@@ -19,6 +19,20 @@ target_jar="$driver_project_dir/target/uberjar/$driver_jar"
 parents=''
 checksum_file="$driver_project_dir/target/checksum.txt"
 
+################################ DELETING OLD INCORRECTLY BUILT DRIVERS ###############################
+
+verify_existing_build() {
+    verification_failed=''
+    ./bin/verify-driver "$driver" || verification_failed=true
+
+    if [ "$verification_failed" ]; then
+        echo 'No existing build, or existing build is invalid. (Re)building driver.'
+        # By removing the checksum it will force rebuilding the driver
+        rm -f "$checksum_file"
+    fi
+}
+
+
 ######################################## CALCULATING CHECKSUMS ########################################
 
 md5_command=''
@@ -34,23 +48,26 @@ fi
 # Calculate a checksum of all the driver source files. If we've already built the driver and the checksum is the same
 # there's no need to build the driver a second time
 calculate_checksum() {
-    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | cat | $md5_command
+    find "$driver_project_dir" -name '*.clj' -or -name '*.yaml' | sort | xargs cat | $md5_command
 }
 
 # Check whether the saved checksum for the driver sources from the last build is the same as the current one. If so,
 # we don't need to build again.
 checksum_is_same() {
-    result=""
     if [ -f "$checksum_file" ]; then
         old_checksum=`cat "$checksum_file"`
-        if [ "$(calculate_checksum)" == "$old_checksum" ]; then
+        current_checksum=`calculate_checksum`
+        echo "Checksum of source files for previous build: $old_checksum"
+        echo "Current checksum of source files: $current_checksum"
+        if [  "$current_checksum" == "$old_checksum" ]; then
             # Make sure the target driver JAR actually exists as well!
             if [ -f "$target_jar" ]; then
-                result="$driver driver source unchanged since last build. Skipping re-build."
+                echo "$driver driver source unchanged since last build. Skipping re-build."
+                return 0
             fi
         fi
     fi
-    echo "$result"
+    return 1
 }
 
 ######################################## BUILDING THE DRIVER ########################################
@@ -137,7 +154,7 @@ build_driver_uberjar() {
 
     if [ ! -f "$target_jar" ]; then
         echo "Error: could not find $target_jar. Build failed."
-        return -1
+        return -3
     fi
 }
 
@@ -153,6 +170,26 @@ strip_and_compress() {
     done
 }
 
+# copy finished JAR to the resources dir
+copy_target_to_dest() {
+    echo "Copying $target_jar -> $dest_location"
+    cp "$target_jar" "$dest_location"
+}
+
+# check that JAR in resources dir looks correct
+verify_build () {
+    verification_failed=''
+    ./bin/verify-driver "$driver" || verification_failed=true
+
+    if [ "$verification_failed" ]; then
+        echo "./bin/build-driver.sh $driver FAILED."
+        rm -f "$checksum_file"
+        rm -f "$target_jar"
+        rm -f "$dest_location"
+        return -4
+    fi
+}
+
 # Save the checksum for the newly built JAR
 save_checksum() {
     echo "Saving checksum for source files to $checksum_file"
@@ -160,22 +197,18 @@ save_checksum() {
     echo "$checksum" > "$checksum_file"
 }
 
-copy_target_to_dest() {
-    # ok, finally, copy finished JAR to the resources dir
-    echo "Copying $target_jar -> $dest_location"
-    cp "$target_jar" "$dest_location"
-}
-
 # Runs all the steps needed to build the driver.
 build_driver() {
-    delete_old_drivers &&
+    verify_existing_build &&
+        delete_old_drivers &&
         install_metabase_core &&
         build_metabase_uberjar &&
         build_parents &&
         build_driver_uberjar &&
         strip_and_compress &&
-        save_checksum &&
-        copy_target_to_dest
+        copy_target_to_dest &&
+        verify_build &&
+        save_checksum
 }
 
 ######################################## PUTTING IT ALL TOGETHER ########################################
@@ -198,9 +231,11 @@ mkdir -p resources/modules
 if [ $# -eq 2 ]; then
     $2
 # Build driver if checksum has changed
-elif [ ! "$(checksum_is_same)" ]; then
+elif ! checksum_is_same; then
+    echo "Checksum has changed."
     build_driver || retry_clean_build
 # Either way, always copy the target uberjar to the dest location
 else
-    copy_target_to_dest
+    echo "Checksum is unchanged."
+    (copy_target_to_dest && verify_build) || retry_clean_build
 fi

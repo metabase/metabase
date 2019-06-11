@@ -51,7 +51,7 @@ export const getParametersBySlug = (
   parameters: Parameter[],
   parameterValues: ParameterValues,
 ): { [key: string]: string } => {
-  let result = {};
+  const result = {};
   for (const parameter of parameters) {
     if (parameterValues[parameter.id] != undefined) {
       result[parameter.slug] = parameterValues[parameter.id];
@@ -66,10 +66,10 @@ export function getParameterTargetFieldId(
   datasetQuery: DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
-    let dimension = target[1];
+    const dimension = target[1];
     if (Array.isArray(dimension) && dimension[0] === "template-tag") {
       if (datasetQuery.type === "native") {
-        let templateTag =
+        const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
           return Q.getFieldTargetId(templateTag.dimension);

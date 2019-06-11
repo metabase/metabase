@@ -5,15 +5,17 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [date :as du]
              [export :as ex]
@@ -21,7 +23,6 @@
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
-
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -41,13 +42,13 @@
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
   ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
-  (when-not (= database database/virtual-id)
+  (when-not (= database mbql.s/saved-questions-virtual-database-id)
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
         options        {:executed-by api/*current-user-id*, :context :ad-hoc,
                         :card-id     source-card-id,        :nested? (boolean source-card-id)}]
-    (qp.async/process-query-and-save-with-max! query options)))
+    (qp.async/process-query-and-save-with-max-results-constraints! query options)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -142,12 +143,13 @@
   {query         su/JSONString
    export-format ExportFormat}
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database database/virtual-id)
+    (when-not (= database mbql.s/saved-questions-virtual-database-id)
       (api/read-check Database database))
     (as-format-async export-format respond raise
       (qp.async/process-query-and-save-execution!
        (-> query
            (dissoc :constraints)
+           (m/dissoc-in [:middleware :add-default-userland-constraints?])
            (assoc-in [:middleware :skip-results-metadata?] true))
        {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
@@ -164,7 +166,7 @@
   {:average (or
              (some (comp query/average-execution-time-ms qputil/query-hash)
                    [query
-                    (assoc query :constraints qp/default-query-constraints)])
+                    (assoc query :constraints constraints/default-query-constraints)])
              0)})
 
 
