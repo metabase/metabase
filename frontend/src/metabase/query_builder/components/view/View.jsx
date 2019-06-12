@@ -285,50 +285,58 @@ export default class View extends React.Component {
 
         <QueryModals {...this.props} />
 
-        <Popover
-          isOpen={!!aggregationPopoverTarget}
-          target={aggregationPopoverTarget}
-          onClose={this.handleClosePopover}
-        >
-          <AggregationPopover
-            query={query}
-            aggregation={
-              aggregationIndex >= 0 ? query.aggregations()[aggregationIndex] : 0
-            }
-            onChangeAggregation={aggregation => {
-              if (aggregationIndex != null) {
-                query
-                  .updateAggregation(aggregationIndex, aggregation)
-                  .update(null, { run: true });
-              } else {
-                query.addAggregation(aggregation).update(null, { run: true });
-              }
-              this.handleClosePopover();
-            }}
+        {isStructured && (
+          <Popover
+            isOpen={!!aggregationPopoverTarget}
+            target={aggregationPopoverTarget}
             onClose={this.handleClosePopover}
-          />
-        </Popover>
-        <Popover
-          isOpen={!!breakoutPopoverTarget}
-          onClose={this.handleClosePopover}
-          target={breakoutPopoverTarget}
-        >
-          <BreakoutPopover
-            query={query}
-            breakout={breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0}
-            onChangeBreakout={breakout => {
-              if (breakoutIndex != null) {
-                query
-                  .updateBreakout(breakoutIndex, breakout)
-                  .update(null, { run: true });
-              } else {
-                query.addBreakout(breakout).update(null, { run: true });
+          >
+            <AggregationPopover
+              query={query}
+              aggregation={
+                aggregationIndex >= 0
+                  ? query.aggregations()[aggregationIndex]
+                  : 0
               }
-              this.handleClosePopover();
-            }}
+              onChangeAggregation={aggregation => {
+                if (aggregationIndex != null) {
+                  query
+                    .updateAggregation(aggregationIndex, aggregation)
+                    .update(null, { run: true });
+                } else {
+                  query.addAggregation(aggregation).update(null, { run: true });
+                }
+                this.handleClosePopover();
+              }}
+              onClose={this.handleClosePopover}
+            />
+          </Popover>
+        )}
+        {isStructured && (
+          <Popover
+            isOpen={!!breakoutPopoverTarget}
             onClose={this.handleClosePopover}
-          />
-        </Popover>
+            target={breakoutPopoverTarget}
+          >
+            <BreakoutPopover
+              query={query}
+              breakout={
+                breakoutIndex >= 0 ? query.breakouts()[breakoutIndex] : 0
+              }
+              onChangeBreakout={breakout => {
+                if (breakoutIndex != null) {
+                  query
+                    .updateBreakout(breakoutIndex, breakout)
+                    .update(null, { run: true });
+                } else {
+                  query.addBreakout(breakout).update(null, { run: true });
+                }
+                this.handleClosePopover();
+              }}
+              onClose={this.handleClosePopover}
+            />
+          </Popover>
+        )}
       </div>
     );
   }
