@@ -100,7 +100,7 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
              :or   {port 27017, pass "", ssl false}} details-with-tunnel
-            host             (if (= "localhost" host)  ; tests w/localhost + DNS-SRV means we need domain is hostname
+            host             (if (= "localhost" host)  ; tests w/localhost + DNS-SRV means we need domain in hostname: https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format
                                "localhost.localdomain"
                                "localhost")
             user             (when (seq user) ; ignore empty :user and :pass strings
