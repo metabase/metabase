@@ -79,6 +79,14 @@ name), last name (surname), and email address are included as
 attributes of the first assertion returned in the identity provider's
 SAML response.
 
+We've pulled the attributes out of the XML above for easy copy/pasting into your SAML identity provider:
+
+| Name      | Value |
+| ----------- | ----------- |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname```      | user.firstName       |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress``` | user.email |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname```   | user.lastName        |
+
 ##### IMPORTANT NOTE!
 
 The email address *attribute* is used to log in an end user into a
