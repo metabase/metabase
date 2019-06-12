@@ -564,7 +564,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Category
@@ -583,7 +583,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Enum
@@ -602,7 +602,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (category-id-special-type
      :type/Category
