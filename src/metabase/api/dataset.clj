@@ -21,7 +21,8 @@
              [export :as ex]
              [i18n :refer [trs tru]]
              [schema :as su]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.query-processor :as qp])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
@@ -168,6 +169,11 @@
                    [query
                     (assoc query :constraints constraints/default-query-constraints)])
              0)})
+
+(api/defendpoint POST "/native"
+  "Fetch a native version of an MBQL query."
+  [:as {query :body}]
+  (qp/query->native query))
 
 
 (api/define-routes)

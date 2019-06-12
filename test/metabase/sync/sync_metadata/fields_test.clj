@@ -124,7 +124,7 @@
    :type/PK
    :type/Latitude
    :type/PK]
-  (data/with-temp-copy-of-test-db
+  (data/with-temp-copy-of-db
     (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (data/id :venues :id)))]
       [ ;; Special type should be :id to begin with
        (get-special-type)
@@ -169,7 +169,7 @@
     :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}
     :special-type      :type/FK
     :fk-target-exists? true}}
-  (data/with-temp-copy-of-test-db
+  (data/with-temp-copy-of-db
     (let [state (fn []
                   (let [{:keys                  [step-info]
                          {:keys [task_details]} :task-history}    (sync.util-test/sync-database! "sync-fks" (data/db))

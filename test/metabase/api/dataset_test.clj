@@ -10,12 +10,9 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
-             [query-execution :refer [QueryExecution]]
-             [table :refer [Table]]]
+             [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
@@ -277,14 +274,33 @@
  {:status   (s/eq "failed")
   :error    (s/eq "You do not have permissions to run this query.")
   s/Keyword s/Any}
- (tt/with-temp* [Database [{db-id :id}    (select-keys (data/db) [:engine :details])]
-                 Table    [{table-id :id} {:db_id db-id, :name "VENUES"}]
-                 Field    [_              {:table_id table-id, :name "ID"}]]
+ (data/with-temp-copy-of-db
    ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
    ;; the Database
-   (perms/revoke-permissions! (group/all-users) db-id)
-   (perms/grant-permissions! (group/all-users) db-id "schema_that_does_not_exist")
+   (perms/revoke-permissions! (group/all-users) (data/id))
+   (perms/grant-permissions! (group/all-users) (data/id) "schema_that_does_not_exist")
    ((test-users/user->client :rasta) :post "dataset"
-    {:database db-id
-     :type     :query
-     :query    {:source-table table-id, :limit 1}})))
+    (data/mbql-query venues {:limit 1}))))
+
+;; Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?
+(expect
+  {:query (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
+               "FROM \"PUBLIC\".\"VENUES\" "
+               "LIMIT 1048576")
+   :params nil}
+  ((test-users/user->client :rasta) :post "dataset/native"
+   (data/mbql-query venues
+     {:fields [$id $name]})))
+
+;; `POST /api/dataset/native` should require that the user have ad-hoc native perms for the DB
+(tu/expect-schema
+  {:permissions-error? (s/eq true)
+   :message            (s/eq "You do not have permissions to run this query.")
+   s/Any               s/Any}
+  (data/with-temp-copy-of-db
+    ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+    (perms/revoke-permissions! (group/all-users) (data/id))
+    (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
+    ((test-users/user->client :rasta) :post "dataset/native"
+     (data/mbql-query venues
+       {:fields [$id $name]}))))

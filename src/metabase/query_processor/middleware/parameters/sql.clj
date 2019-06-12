@@ -7,9 +7,7 @@
             [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver
-             [sql :as sql]
-             [util :as driver.u]]
+            [metabase.driver.sql :as sql]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
@@ -542,22 +540,29 @@
   {:query  s/Str
    :params [s/Any]})
 
-(s/defn ^:private parse-optional :- ParseTemplateResponse
+(defn- parse-one-optional-param
+  "Parse a single optional param."
+  [param-key->value {:keys [delimited-body suffix]}]
+  (let [optional-clause (parse-params delimited-body param-key->value)]
+    (if (some no-value-param? optional-clause)
+      (parse-params-or-throw suffix param-key->value)
+      (concat optional-clause (parse-params-or-throw suffix param-key->value)))))
+
+(s/defn ^:private parse-optional-params :- ParseTemplateResponse
   "Attempts to parse SQL parameter string `s`. Parses any optional clauses or parameters found, returns a query map."
   [s :- s/Str, param-key->value :- ParamValues]
-  (let [{:keys [prefix delimited-strings]} (split-delimited-string "[[" "]]" s)]
-    (reduce merge-query-map empty-query-map
-            (apply concat (parse-params-or-throw prefix param-key->value)
-                   (for [{:keys [delimited-body suffix]} delimited-strings
-                         :let [optional-clause (parse-params delimited-body param-key->value)]]
-                     (if (some no-value-param? optional-clause)
-                       (parse-params-or-throw suffix param-key->value)
-                       (concat optional-clause (parse-params-or-throw suffix param-key->value))))))))
+  (let [{:keys [prefix delimited-strings]} (split-delimited-string "[[" "]]" s)
+        parsed                             (apply
+                                            concat
+                                            (parse-params-or-throw prefix param-key->value)
+                                            (for [parsed-delimited-string delimited-strings]
+                                              (parse-one-optional-param param-key->value parsed-delimited-string)))]
+    (reduce merge-query-map empty-query-map parsed)))
 
 (s/defn ^:private parse-template :- ParseTemplateResponse
   [sql :- s/Str, param-key->value :- ParamValues]
   (-> sql
-      (parse-optional param-key->value)
+      (parse-optional-params param-key->value)
       (update :query str/trim)))
 
 
@@ -569,19 +574,9 @@
   [{sql :query, :as native}, param-key->value :- ParamValues]
   (merge native (parse-template sql param-key->value)))
 
-;; TODO - this can probably be taken out since driver/*driver* should always be bound...
-(defn- ensure-driver
-  "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
-  the query. If there is no driver, use the database to find the right driver or throw."
-  [{:keys [driver database] :as query}]
-  (or driver
-      (driver.u/database->driver database)
-      (throw (IllegalArgumentException. (str (tru "Could not resolve driver."))))))
-
 (defn expand
   "Expand parameters inside a *SQL* `query`."
   [query]
-  (binding [driver/*driver* (ensure-driver query)]
-    (if (driver/supports? driver/*driver* :native-parameters)
-      (update query :native expand-query-params (query->params-map query))
-      query)))
+  (if (driver/supports? driver/*driver* :native-parameters)
+    (update query :native expand-query-params (query->params-map query))
+    query))

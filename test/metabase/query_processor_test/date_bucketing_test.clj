@@ -25,7 +25,6 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
@@ -40,7 +39,7 @@
 (defn- sad-toucan-incidents-with-bucketing
   "Returns 10 sad toucan incidents grouped by `UNIT`"
   ([unit]
-   (->> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+   (->> (data/dataset sad-toucan-incidents
           (data/run-mbql-query incidents
             {:aggregation [[:count]]
              :breakout    [[:datetime-field $timestamp unit]]
@@ -304,7 +303,7 @@
 (defn- find-events-in-range
   "Find the number of sad toucan events between `start-date-str` and `end-date-str`"
   [start-date-str end-date-str]
-  (-> (data/with-db (data/get-or-create-database! defs/sad-toucan-incidents)
+  (-> (data/dataset sad-toucan-incidents
         (data/run-mbql-query incidents
           {:aggregation [[:count]]
            :breakout    [[:datetime-field $timestamp :day]]
@@ -802,7 +801,7 @@
 (def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 60 60 24)))
 
 (defn- count-of-grouping [dataset field-grouping & relative-datetime-args]
-  (-> (data/with-db-for-dataset [_ dataset]
+  (-> (data/dataset dataset
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:=
@@ -834,7 +833,7 @@
 ;; SYNTACTIC SUGAR
 (qp.test/expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   1
-  (-> (data/with-db-for-dataset [_ checkins:1-per-day]
+  (-> (data/dataset checkins:1-per-day
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:time-interval $timestamp :current :day]}))
@@ -842,7 +841,7 @@
 
 (qp.test/expect-with-non-timeseries-dbs-except #{:snowflake :bigquery}
   7
-  (-> (data/with-db-for-dataset [_ checkins:1-per-day]
+  (-> (data/dataset checkins:1-per-day
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:time-interval $timestamp :last :week]}))
@@ -853,7 +852,7 @@
 ;; and the col info use the unit used by breakout
 (defn- date-bucketing-unit-when-you [& {:keys [breakout-by filter-by with-interval]
                                         :or   {with-interval :current}}]
-  (let [results (data/with-db-for-dataset [_ checkins:1-per-day]
+  (let [results (data/dataset checkins:1-per-day
                   (data/run-mbql-query checkins
                     {:aggregation [[:count]]
                      :breakout    [[:datetime-field $timestamp breakout-by]]
@@ -906,7 +905,7 @@
   [[1]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
-      (data/with-db-for-dataset [_ checkins:1-per-day]
+      (data/dataset checkins:1-per-day
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:= [:field-id $timestamp] (du/format-date "yyyy-MM-dd" (du/date-trunc :day))]})))))
@@ -942,7 +941,7 @@
     [[0]])
   (qp.test/format-rows-by [int]
     (qp.test/rows
-      (data/with-db-for-dataset [_ checkins:1-per-day]
+      (data/dataset checkins:1-per-day
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
            :filter      [:= [:field-id $timestamp] (str (du/format-date "yyyy-MM-dd" (du/date-trunc :day))
