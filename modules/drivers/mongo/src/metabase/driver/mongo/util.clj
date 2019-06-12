@@ -99,11 +99,10 @@
         credentials (when user
                       (mcred/create user authdb pass))
         ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
-        connect (partial mg/connect server-address (-> opts
-                                                       .build))
+        do-connect (partial mg/connect server-address (-> opts .build))
         mongo-client (if credentials
-                       (connect credentials)
-                       (connect))
+                       (do-connect credentials)
+                       (do-connect))
         db (mg/get-db mongo-client dbname)]
     [mongo-client db]))
 
