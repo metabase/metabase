@@ -45,7 +45,7 @@ export const ViewTitleHeader = ({
     <ViewSection className={className} style={style}>
       {question.isSaved() ? (
         <div>
-          <div className="flex align-center mb1">
+          <div className="flex align-center">
             <ViewHeading className="mr1">{question.displayName()}</ViewHeading>
             {description && (
               <Icon
@@ -59,10 +59,11 @@ export const ViewTitleHeader = ({
           </div>
           <ViewSubHeading className="flex align-center">
             <CollectionBadge
-              hasBackground
               collectionId={question.collectionId()}
-              className="mr2"
             />
+            <span className="mx2 text-light text-smaller">
+             •
+            </span>
             <QuestionDataSource question={question} subHead />
           </ViewSubHeading>
         </div>
@@ -106,7 +107,7 @@ export const ViewTitleHeader = ({
         ) : null}
         {!question.isNative() && (
           <Button
-            icon={isShowingNotebook ? null : "list"}
+            icon="list"
             medium
             ml={1}
             primary={isShowingNotebook}
@@ -115,7 +116,7 @@ export const ViewTitleHeader = ({
               setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
             }
           >
-            {isShowingNotebook ? t`Hide editor` : t`Custom question`}
+            {isShowingNotebook ? t`Hide editor` : t`Show editor`}
           </Button>
         )}
       </div>
