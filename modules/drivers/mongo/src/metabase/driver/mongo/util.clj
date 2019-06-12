@@ -126,9 +126,6 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
              :or   {port 27017, pass "", ssl false}} details-with-tunnel
-            protocol         (if (= 2 (-> host frequencies (get \.))) ; if fqdn, use DNS SRV
-                               "mongodb+srv"
-                               "mongodb")
             user             (when (seq user) ; ignore empty :user and :pass strings
                                user)
             pass             (when (seq pass)
@@ -136,10 +133,11 @@
             authdb           (if (seq authdb)
                                authdb
                                dbname)
-            [mongo-client db] (-> (case protocol
-                                    "mongodb" connect
-                                    "mongodb+srv" connect-srv)
-                                  (apply [host port user authdb pass dbname ssl additional-options]))]
+            [mongo-client db] (->
+                                (if (= 2 (-> host frequencies (get \.))) ; if fqdn, use DNS SRV
+                                  connect-srv
+                                  connect)
+                                (apply [host port user authdb pass dbname ssl additional-options]))]
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
