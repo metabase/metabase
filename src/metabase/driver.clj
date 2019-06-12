@@ -368,8 +368,10 @@
 
 
 (defmulti can-connect?
-  "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL
-  database might try running a query like `SELECT 1;`. This function should return `true` or `false`."
+  "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
+  database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
+  can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
+  connection cannot be made."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

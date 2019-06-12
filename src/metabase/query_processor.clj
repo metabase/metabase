@@ -215,7 +215,8 @@
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
-                  results         (qp (assoc query :results-promise results-promise))]
+                  results         (binding [async-wait/*disable-async-wait* true]
+                                    (qp (assoc query :results-promise results-promise)))]
               (if (realized? results-promise)
                 @results-promise
                 ;; if the results promise was never delivered, it means we never made it all the way to the
@@ -244,6 +245,7 @@
   simliar functionality for queries that are actually executed.)"
   {:style/indent 0}
   [query]
+  (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
         (throw (ex-info (str (tru "No native form returned."))

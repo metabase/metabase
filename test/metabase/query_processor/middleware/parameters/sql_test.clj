@@ -364,13 +364,14 @@
                                 :timezone "UTC"
                                 :name     "mock_db"
                                 :id       1}
-    ~@body))
+     ~@body))
 
 (defn- expand* [query]
-  (with-h2-db-timezone
-    (-> (sql/expand (assoc (normalize/normalize query) :driver :h2))
-        :native
-        (select-keys [:query :params :template-tags]))))
+  (-> (with-h2-db-timezone
+        (driver/with-driver :h2
+          (sql/expand (normalize/normalize query))))
+      :native
+      (select-keys [:query :params :template-tags])))
 
 ;; unspecified optional param
 (expect

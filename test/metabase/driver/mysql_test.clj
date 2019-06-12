@@ -74,17 +74,17 @@
   #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-db-for-dataset [db tiny-int-ones]
-    (db->fields db)))
+  (data/dataset tiny-int-ones
+    (db->fields (data/db))))
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
 (expect-with-driver :mysql
   #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-db-for-dataset [db tiny-int-ones]
+  (data/dataset tiny-int-ones
     (tt/with-temp Database [db {:engine "mysql"
-                                :details (assoc (:details db)
+                                :details (assoc (:details (data/db))
                                            :additional-options "tinyInt1isBit=false")}]
       (sync/sync-database! db)
       (db->fields db))))
