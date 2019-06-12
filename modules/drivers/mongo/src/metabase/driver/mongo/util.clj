@@ -94,7 +94,7 @@
     (.getDB conn dbName)
     (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
 
-(defn connect [host port user authdb pass dbname ssl additional-options]
+(defn- connect [host port user authdb pass dbname ssl additional-options]
   (let [server-address (mg/server-address host port)
         credentials (when user
                       (mcred/create user authdb pass))
@@ -107,7 +107,7 @@
         db (mg/get-db mongo-client dbname)]
     [mongo-client db]))
 
-(defn connect-srv [host port user authdb pass dbname ssl additional-options]
+(defn- connect-srv [host port user authdb pass dbname ssl additional-options]
   (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
         authdb (if (seq authdb)
                  authdb
