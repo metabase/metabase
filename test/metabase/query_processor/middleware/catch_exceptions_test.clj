@@ -57,7 +57,7 @@
   {:native       (s/eq nil)
    :preprocessed (s/pred map?)
    s/Any         s/Any}
-  (data/with-temp-copy-of-test-db
+  (data/with-temp-copy-of-db
     (perms/revoke-permissions! (group/all-users) (data/id))
     (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (test-users/with-test-user :rasta
@@ -71,7 +71,7 @@
           :params nil})
    :preprocessed (s/pred map?)
    s/Any         s/Any}
-  (data/with-temp-copy-of-test-db
+  (data/with-temp-copy-of-db
     (perms/revoke-permissions! (group/all-users) (data/id))
     (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
     (perms/grant-native-readwrite-permissions! (group/all-users) (data/id))
