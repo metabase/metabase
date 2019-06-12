@@ -101,10 +101,9 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
              :or   {port 27017, pass "", ssl false}} details-with-tunnel
-            host             (cond
-                               (= "localhost" host) "localhost.localdomain."
-                               (str/includes? host ".") host
-                               :default (str host ".localdomain."))
+            protocol         (if (= 2 (-> host frequencies (get \.))) ; if fqdn, use DNS SRV
+                               "mongodb+srv"
+                               "mongodb")
             user             (when (seq user) ; ignore empty :user and :pass strings
                                user)
             pass             (when (seq pass)
@@ -113,7 +112,7 @@
             authdb           (if (seq authdb)
                                authdb
                                dbname)
-            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host authdb)
+            conn-str         (format  "%s://%s:%s@%s/%s" protocol user pass host authdb)
             mongo-uri        (MongoClientURI. conn-str conn-opts) ; https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format
             mongo-client     (MongoClient. mongo-uri)
             db               (connect-via-uri-w-opts mongo-uri mongo-client)]
