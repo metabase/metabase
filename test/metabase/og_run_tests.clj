@@ -9,18 +9,25 @@
     [expectations :as expectations]))
 
 
-(defn run-driver-tests []
-  (System/setProperty "DRIVERS" "h2,mongo")
 
+(defn expectations-wrap [stage]
   (doseq [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
           :when (and (str/starts-with? ns-symb "metabase.")
                      (find-ns ns-symb))
           [_ varr] (ns-interns ns-symb)
           :let [{:keys [expectations-options]} (meta varr)]
-          :when (= expectations-options :before-run)]
-    (varr))
+          :when (= expectations-options stage)]
+    (varr)))
+
+(defn run-driver-tests []
+  (System/setProperty "DRIVERS" "h2,mongo")
+
+  (expectations-wrap :before-run)
+
   (metabase.test-setup/call-with-test-scaffolding
-    (fn [] (expectations/run-tests '[metabase.query-processor-test.breakout-test]))))
+    (fn [] (expectations/run-tests '[metabase.query-processor-test.breakout-test])))
+
+  (expectations-wrap :after-run))
 
 
 
@@ -37,7 +44,7 @@
 
 (comment
 
-  ;; Run tests with driver
+  ;; Run tests with drivers
   (run-driver-tests)
 
 
