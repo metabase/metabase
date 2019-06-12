@@ -8,7 +8,7 @@
             [metabase.util.ssh :as ssh]
             [monger.core :as mg]
             [toucan.db :as db])
-  (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI MongoClient]))
+  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection. By default, Monger uses a 10-second
@@ -88,7 +88,7 @@
 
 
 (defn- connect-via-uri-w-opts
-  [uri conn]
+  [^MongoClientURI uri ^MongoClient conn]
   (if-let [dbName (.getDatabase uri)]
     (.getDB conn dbName)
     (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
