@@ -6,7 +6,9 @@
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
-            [monger.core :as mg]
+            [monger
+             [core :as mg]
+             [credentials :as mcred]]
             [toucan.db :as db])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
@@ -92,6 +94,31 @@
     (.getDB conn dbName)
     (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
 
+(defn connect [host port user authdb pass dbname ssl additional-options]
+  (let [server-address (mg/server-address host port)
+        credentials (when user
+                      (mcred/create user authdb pass))
+        ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
+        connect (partial mg/connect server-address (-> opts
+                                                       .build))
+        mongo-client (if credentials
+                       (connect credentials)
+                       (connect))
+        db (mg/get-db mongo-client dbname)]
+    [mongo-client db]))
+
+(defn connect-srv [host port user authdb pass dbname ssl additional-options]
+  (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
+        authdb (if (seq authdb)
+                 authdb
+                 dbname)
+        protocol "mongodb+srv"
+        conn-str (format "%s://%s:%s@%s/%s" protocol user pass host authdb)
+        mongo-uri (MongoClientURI. conn-str conn-opts)      ; https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format
+        mongo-client (MongoClient. mongo-uri)
+        db (connect-via-uri-w-opts mongo-uri mongo-client)]
+    [mongo-client db]))
+
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
    Don't use this directly; use `with-mongo-connection`."
@@ -107,14 +134,13 @@
                                user)
             pass             (when (seq pass)
                                pass)
-            conn-opts        (connection-options-builder :ssl? ssl, :additional-options additional-options)
             authdb           (if (seq authdb)
                                authdb
                                dbname)
-            conn-str         (format  "%s://%s:%s@%s/%s" protocol user pass host authdb)
-            mongo-uri        (MongoClientURI. conn-str conn-opts) ; https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format
-            mongo-client     (MongoClient. mongo-uri)
-            db               (connect-via-uri-w-opts mongo-uri mongo-client)]
+            [mongo-client db] (-> (case protocol
+                                    "mongodb" connect
+                                    "mongodb+srv" connect-srv)
+                                  (apply [host port user authdb pass dbname ssl additional-options]))]
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
