@@ -34,7 +34,6 @@
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
             [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]

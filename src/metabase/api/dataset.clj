@@ -12,6 +12,7 @@
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
@@ -21,8 +22,7 @@
              [export :as ex]
              [i18n :refer [trs tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [metabase.query-processor :as qp])
+            [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
