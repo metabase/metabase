@@ -86,7 +86,6 @@
     :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
-
 (defn- connect-via-uri-w-opts
   [^MongoClientURI uri ^MongoClient conn]
   (if-let [dbName (.getDatabase uri)]
@@ -106,13 +105,13 @@
             pass             (when (seq pass)
                                pass)
             conn-opts        (connection-options-builder :ssl? ssl, :additional-options additional-options)
-            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host dbname)
+            authdb           (if (seq authdb)
+                               authdb
+                               dbname)
+            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host authdb)
             mongo-uri        (MongoClientURI. conn-str conn-opts)
             mongo-client     (MongoClient. mongo-uri)
             db               (connect-via-uri-w-opts mongo-uri mongo-client)]
-
-        (log/warn (str "------- MONGO CONN"  mongo-uri conn-opts))
-
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
