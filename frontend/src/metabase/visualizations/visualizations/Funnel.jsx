@@ -99,7 +99,7 @@ export default class Funnel extends Component {
   };
 
   static transformSeries(series) {
-    let [
+    const [
       {
         card,
         data: { rows, cols },

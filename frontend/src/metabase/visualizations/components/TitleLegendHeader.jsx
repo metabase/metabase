@@ -9,8 +9,8 @@ export const TitleLegendHeader = ({
   actionButtons,
 }) => {
   // $FlowFixMe
-  let originalSeries = series._raw || series;
-  let cardIds = _.uniq(originalSeries.map(s => s.card.id));
+  const originalSeries = series._raw || series;
+  const cardIds = _.uniq(originalSeries.map(s => s.card.id));
   const isComposedOfMultipleQuestions = cardIds.length > 1;
 
   if (settings["card.title"]) {

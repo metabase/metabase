@@ -61,7 +61,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     ];
   }
 
-  let operators = getFiltersForColumn(column) || [];
+  const operators = getFiltersForColumn(column) || [];
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",

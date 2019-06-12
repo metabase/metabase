@@ -269,10 +269,10 @@ export default class Map extends Component {
   }
 
   shouldComponentUpdate(nextProps: any, nextState: any) {
-    let sameSize =
+    const sameSize =
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
-    let sameSeries = isSameSeries(this.props.series, nextProps.series);
+    const sameSeries = isSameSeries(this.props.series, nextProps.series);
     return !(sameSize && sameSeries);
   }
 

@@ -89,12 +89,12 @@ export default class SelectPicker extends Component {
   }
 
   render() {
-    let { values, options, placeholder, multi } = this.props;
+    const { values, options, placeholder, multi } = this.props;
 
-    let checked = new Set(values);
+    const checked = new Set(values);
 
     let validOptions = [];
-    let regex = this.state.searchRegex;
+    const regex = this.state.searchRegex;
 
     if (regex) {
       for (const option of options) {

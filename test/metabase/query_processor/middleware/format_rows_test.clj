@@ -11,7 +11,8 @@
             [metabase.test.data.dataset-definitions :as defs]))
 
 (def ^:private dbs-exempt-from-format-rows-tests
-  "DBs to skip the tests below for. TODO - why are so many databases not running these tests?"
+  "DBs to skip the tests below for. TODO - why are so many databases not running these tests? Most of these should be
+  able to pass with a few tweaks."
   #{:oracle :mongo :redshift :presto :sparksql :snowflake})
 
 (qpt/expect-with-non-timeseries-dbs-except dbs-exempt-from-format-rows-tests

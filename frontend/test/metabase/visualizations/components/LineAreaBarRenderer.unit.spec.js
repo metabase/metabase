@@ -13,7 +13,7 @@ import {
   getFormattedTooltips,
 } from "../__support__/visualizations";
 
-let formatTz = offset =>
+const formatTz = offset =>
   (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
 
 const BROWSER_TZ = formatTz(-new Date().getTimezoneOffset() / 60);
@@ -76,7 +76,7 @@ describe("LineAreaBarRenderer", () => {
 
         dispatchUIEvent(qs(".dot"), "mousemove");
 
-        let expected = rows.map(row =>
+        const expected = rows.map(row =>
           formatValue(row[0], {
             column: DateTimeColumn({ unit: "hour" }),
           }),
@@ -201,7 +201,7 @@ describe("LineAreaBarRenderer", () => {
 
   describe("goals", () => {
     it("should render a goal line", () => {
-      let rows = [["2016", 1], ["2017", 2]];
+      const rows = [["2016", 1], ["2017", 2]];
 
       renderTimeseriesLine({
         rowsOfSeries: [rows],
@@ -218,7 +218,7 @@ describe("LineAreaBarRenderer", () => {
     });
 
     it("should render a goal tooltip with the proper value", () => {
-      let rows = [["2016", 1], ["2017", 2]];
+      const rows = [["2016", 1], ["2017", 2]];
 
       const goalValue = 30;
       const onHoverChange = jest.fn();

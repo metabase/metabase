@@ -43,7 +43,7 @@ import Table from "metabase-lib/lib/metadata/Table";
           errors.revision_message = t`Revision message is required`;
         }
       }
-      let aggregations =
+      const aggregations =
         values.definition && Query.getAggregations(values.definition);
       if (!aggregations || aggregations.length === 0) {
         errors.definition = t`Aggregation is required`;

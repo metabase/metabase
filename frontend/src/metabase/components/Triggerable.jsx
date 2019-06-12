@@ -88,7 +88,7 @@ export default ComposedComponent =>
     _startCheckObscured() {
       if (this._offscreenTimer == null) {
         this._offscreenTimer = setInterval(() => {
-          let trigger = ReactDOM.findDOMNode(this.refs.trigger);
+          const trigger = ReactDOM.findDOMNode(this.refs.trigger);
           if (isObscured(trigger)) {
             this.close();
           }

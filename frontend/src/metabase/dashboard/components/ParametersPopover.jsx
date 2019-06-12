@@ -31,7 +31,7 @@ export default class ParametersPopover extends Component {
         <ParameterOptionsSectionsPane
           sections={PARAMETER_SECTIONS}
           onSelectSection={selectedSection => {
-            let parameterSection = _.findWhere(PARAMETER_SECTIONS, {
+            const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
               id: selectedSection.id,
             });
             if (parameterSection && parameterSection.options.length === 1) {
@@ -44,7 +44,7 @@ export default class ParametersPopover extends Component {
         />
       );
     } else {
-      let parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
+      const parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
       return (
         <ParameterOptionsPane
           options={parameterSection && parameterSection.options}

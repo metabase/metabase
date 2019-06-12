@@ -70,7 +70,7 @@ export default class Setup extends Component {
   }
 
   render() {
-    let {
+    const {
       activeStep,
       setupComplete,
       databaseDetails,

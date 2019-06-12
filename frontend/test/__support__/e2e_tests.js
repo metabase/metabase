@@ -420,7 +420,7 @@ export const createSavedQuestion = async unsavedQuestion => {
 };
 
 export const createDashboard = async details => {
-  let savedDashboard = await DashboardApi.create(details);
+  const savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
 

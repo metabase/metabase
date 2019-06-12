@@ -286,7 +286,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 
 function getSeriesIconName(series) {
   try {
-    let display = series[0].card.display;
+    const display = series[0].card.display;
     return visualizations.get(display === "scalar" ? "bar" : display).iconName;
   } catch (e) {
     return "bar";

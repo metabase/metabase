@@ -259,7 +259,7 @@ export default class GroupDetail extends Component {
     try {
       await Promise.all(
         this.state.selectedUsers.map(async user => {
-          let members = await PermissionsApi.createMembership({
+          const members = await PermissionsApi.createMembership({
             group_id: this.props.group.id,
             user_id: user.id,
           });
@@ -322,7 +322,7 @@ export default class GroupDetail extends Component {
     group = group || {};
     users = users || {};
 
-    let usedUsers = {};
+    const usedUsers = {};
     for (const user of members) {
       usedUsers[user.user_id] = true;
     }

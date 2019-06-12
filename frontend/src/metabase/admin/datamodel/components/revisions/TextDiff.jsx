@@ -11,7 +11,7 @@ export default class TextDiff extends Component {
   };
 
   render() {
-    let {
+    const {
       diff: { before, after },
     } = this.props;
     return (

@@ -201,7 +201,7 @@ export default class AggregationPopover extends Component {
       });
     }
 
-    let sections = [];
+    const sections = [];
     let customExpressionIndex = null;
 
     if (availableAggregations.length > 0) {
@@ -226,7 +226,7 @@ export default class AggregationPopover extends Component {
     if (!showOnlyProvidedAggregations) {
       // we only want to consider active metrics, with the ONE exception that if the currently selected aggregation is a
       // retired metric then we include it in the list to maintain continuity
-      let metrics =
+      const metrics =
         tableMetadata.metrics &&
         tableMetadata.metrics.filter(
           mtrc =>

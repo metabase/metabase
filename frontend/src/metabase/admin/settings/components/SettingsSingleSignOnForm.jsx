@@ -24,11 +24,11 @@ export default class SettingsSingleSignOnForm extends Component {
   };
 
   componentWillMount() {
-    let { elements } = this.props,
-      clientID = _.findWhere(elements, { key: "google-auth-client-id" }),
-      domain = _.findWhere(elements, {
-        key: "google-auth-auto-create-accounts-domain",
-      });
+    const { elements } = this.props;
+    const clientID = _.findWhere(elements, { key: "google-auth-client-id" });
+    const domain = _.findWhere(elements, {
+      key: "google-auth-auto-create-accounts-domain",
+    });
 
     this.setState({
       clientID: clientID,
@@ -70,7 +70,7 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   saveChanges() {
-    let { clientID, clientIDValue, domain, domainValue } = this.state;
+    const { clientID, clientIDValue, domain, domainValue } = this.state;
 
     if (this.clientIDChanged()) {
       this.props.updateSetting(clientID, clientIDValue);
@@ -102,8 +102,8 @@ export default class SettingsSingleSignOnForm extends Component {
   }
 
   render() {
-    let hasChanges = this.domainChanged() || this.clientIDChanged(),
-      hasClientID = this.state.clientIDValue;
+    const hasChanges = this.domainChanged() || this.clientIDChanged();
+    const hasClientID = this.state.clientIDValue;
 
     return (
       <form noValidate>

@@ -13,7 +13,7 @@ const LegacyChoropleth = ({
   onHoverFeature,
   onClickFeature,
 }) => {
-  let geo = d3.geo.path().projection(projection);
+  const geo = d3.geo.path().projection(projection);
 
   const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
   const width = maxX - minX;

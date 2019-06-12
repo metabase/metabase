@@ -46,6 +46,7 @@ describe("Question", () => {
       question._parameterValues = { [templateTagId]: "5" };
       const results2 = await question.apiGetResults({ ignoreCache: true });
       expect(results2[0]).toBeDefined();
+      expect(results2[0].status).toBe("completed");
       expect(results2[0].data.rows[0][0]).toEqual(127.88197029833711);
     });
 
@@ -74,6 +75,7 @@ describe("Question", () => {
 
       const results1 = await question.apiGetResults({ ignoreCache: true });
       expect(results1[0]).toBeDefined();
+      expect(results1[0].status).toBe("completed");
       expect(results1[0].data.rows.length).toEqual(2000);
 
       question._parameterValues = { [templateTagId]: "5" };

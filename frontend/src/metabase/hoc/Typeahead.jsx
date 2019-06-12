@@ -84,7 +84,7 @@ export default ({
     }
 
     setSelectedIndex(newIndex) {
-      let index = Math.max(
+      const index = Math.max(
         Math.min(newIndex, this.state.suggestions.length - 1),
         0,
       );

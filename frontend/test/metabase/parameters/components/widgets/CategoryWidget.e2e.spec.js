@@ -25,7 +25,7 @@ function renderCategoryWidget(props) {
 describe("CategoryWidget", () => {
   describe("with a selected value", () => {
     it("should render with selected value checked", () => {
-      let categoryWidget = renderCategoryWidget({ value: VALUES[0] });
+      const categoryWidget = renderCategoryWidget({ value: VALUES[0] });
       expect(categoryWidget.find(".Icon-check").length).toEqual(1);
       categoryWidget
         .find("label")
@@ -37,14 +37,14 @@ describe("CategoryWidget", () => {
 
   describe("without a selected value", () => {
     it("should render with selected value checked", () => {
-      let categoryWidget = renderCategoryWidget({ value: [] });
+      const categoryWidget = renderCategoryWidget({ value: [] });
       expect(categoryWidget.find(".Icon-check").length).toEqual(0);
     });
   });
 
   describe("selecting values", () => {
     it("should mark the values as selected", () => {
-      let categoryWidget = renderCategoryWidget({ value: [] });
+      const categoryWidget = renderCategoryWidget({ value: [] });
       // Check option 1
       click(categoryWidget.find("label").at(0));
       expect(categoryWidget.find(".Icon-check").length).toEqual(1);
@@ -69,7 +69,7 @@ describe("CategoryWidget", () => {
 
   describe("selecting no values", () => {
     it("selected values should be null", () => {
-      let categoryWidget = renderCategoryWidget({ value: [] });
+      const categoryWidget = renderCategoryWidget({ value: [] });
       // Check option 1
       click(categoryWidget.find("label").at(0));
       clickButton(categoryWidget.find(".Button"));

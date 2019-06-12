@@ -396,17 +396,17 @@
     (hx/identifier :field table-name field-name)))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
-  [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
+  [driver _ honeysql-form {breakouts :breakout, fields :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields.
       ;;
       ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
       ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakout-field-clauses))
+      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakouts))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
-                                            :when        (not (contains? (set fields-field-clauses) field-clause))]
+      ((partial apply h/merge-select) (for [field-clause breakouts
+                                            :when        (not (contains? (set fields) field-clause))]
                                         (sql.qp/as driver field-clause)))))
 
 ;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
