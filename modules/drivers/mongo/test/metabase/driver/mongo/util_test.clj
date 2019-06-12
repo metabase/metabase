@@ -30,7 +30,8 @@
 ;; make sure that invalid additional options throw an Exception
 (expect
   IllegalArgumentException
-  (#'mongo-util/connection-options-builder :additional-options "readPreference=ternary"))
+  (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=ternary")
+      .build))
 
 (expect
   #"We couldn't connect to the ssh tunnel host"

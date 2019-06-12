@@ -106,7 +106,7 @@
             pass             (when (seq pass)
                                pass)
             conn-opts        (connection-options-builder :ssl? ssl, :additional-options additional-options)
-            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host dbname )
+            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host dbname)
             mongo-uri        (MongoClientURI. conn-str conn-opts)
             mongo-client     (MongoClient. mongo-uri)
             db               (connect-via-uri-w-opts mongo-uri mongo-client)]
