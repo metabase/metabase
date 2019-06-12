@@ -8,7 +8,7 @@
             [metabase.util.ssh :as ssh]
             [monger.core :as mg]
             [toucan.db :as db])
-  (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
+  (:import [com.mongodb MongoClientOptions MongoClientOptions$Builder MongoClientURI MongoClient]))
 
 (def ^:const ^:private connection-timeout-ms
   "Number of milliseconds to wait when attempting to establish a Mongo connection. By default, Monger uses a 10-second
@@ -51,7 +51,7 @@
     (MongoClientOptions$Builder. client-options)
     (MongoClientOptions$Builder.)))
 
-(defn- build-connection-options
+(defn- connection-options-builder
   "Build connection options for Mongo.
   We have to use `MongoClientOptions.Builder` directly to configure our Mongo connection since Monger's wrapper method
   doesn't support `.serverSelectionTimeout` or `.sslEnabled`. `additional-options`, a String like
@@ -64,8 +64,7 @@
       (.description config/mb-app-id-string)
       (.connectTimeout connection-timeout-ms)
       (.serverSelectionTimeout connection-timeout-ms)
-      (.sslEnabled ssl?)
-      .build))
+      (.sslEnabled ssl?)))
 
 ;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity
 ;; where you can pass options and credentials, as we'd like to do. We need to go in and alter the metadata of this
@@ -87,10 +86,12 @@
     :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
-(defn- conn-str
-  "Builds a MongoDb connection string"
-  [user pass host dbname additional-options]
-  (format  "mongodb+srv://%s:%s@%s/%s?%s" user pass host dbname additional-options))
+
+(defn- connect-via-uri-w-opts
+  [uri conn]
+  (if-let [dbName (.getDatabase uri)]
+    (.getDB conn dbName)
+    (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
 
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
@@ -104,13 +105,19 @@
                                user)
             pass             (when (seq pass)
                                pass)
-            conn-str         (conn-str user pass host dbname additional-options)
-            {:keys [conn db]} (mg/connect-via-uri conn-str)]
+            conn-opts        (connection-options-builder :ssl? ssl, :additional-options additional-options)
+            conn-str         (format  "mongodb+srv://%s:%s@%s/%s" user pass host dbname )
+            mongo-uri        (MongoClientURI. conn-str conn-opts)
+            mongo-client     (MongoClient. mongo-uri)
+            db               (connect-via-uri-w-opts mongo-uri mongo-client)]
+
+        (log/warn (str "------- MONGO CONN"  mongo-uri conn-opts))
+
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
             (f *mongo-connection*))
-          (finally        (mg/disconnect conn)
+          (finally        (mg/disconnect mongo-client)
                           (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
 
 (defmacro with-mongo-connection

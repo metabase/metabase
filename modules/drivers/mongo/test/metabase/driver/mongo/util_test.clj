@@ -8,25 +8,29 @@
 ;; test that people can specify additional connection options like `?readPreference=nearest`
 (expect
   (ReadPreference/nearest)
-  (.getReadPreference (#'mongo-util/build-connection-options :additional-options "readPreference=nearest")))
+  (.getReadPreference (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=nearest")
+                          .build)))
 
 (expect
   (ReadPreference/secondaryPreferred)
-  (.getReadPreference (#'mongo-util/build-connection-options :additional-options "readPreference=secondaryPreferred")))
+  (.getReadPreference (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=secondaryPreferred")
+                          .build)))
 
 ;; make sure we can specify multiple options
 (expect
   "test"
-  (.getRequiredReplicaSetName (#'mongo-util/build-connection-options :additional-options "readPreference=secondary&replicaSet=test")))
+  (.getRequiredReplicaSetName (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=secondary&replicaSet=test")
+                                  .build)))
 
 (expect
   (ReadPreference/secondary)
-  (.getReadPreference (#'mongo-util/build-connection-options :additional-options "readPreference=secondary&replicaSet=test")))
+  (.getReadPreference (-> (#'mongo-util/connection-options-builder :additional-options "readPreference=secondary&replicaSet=test")
+                          .build)))
 
 ;; make sure that invalid additional options throw an Exception
 (expect
   IllegalArgumentException
-  (#'mongo-util/build-connection-options :additional-options "readPreference=ternary"))
+  (#'mongo-util/connection-options-builder :additional-options "readPreference=ternary"))
 
 (expect
   #"We couldn't connect to the ssh tunnel host"
