@@ -17,13 +17,13 @@ export default function Notebook({ className, ...props }) {
     setQueryBuilderMode,
   } = props;
   return (
-    <Box className={cx(className, "relative mb4")} px={4}>
+    <Box className={cx(className, "relative mb4")} px={[2, 3]}>
       <NotebookSteps {...props} />
       {isRunnable && (
         <Button
           medium
           primary
-          style={{minWidth: 220}}
+          style={{ minWidth: 220 }}
           onClick={async () => {
             if (question.display() === "table") {
               await question.setDisplayDefault().update();
