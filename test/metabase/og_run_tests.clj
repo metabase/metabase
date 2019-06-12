@@ -1,6 +1,7 @@
 (ns metabase.og-run-tests
   (:require
     [metabase.query-processor-test.breakout-test]
+    [metabase.api.database-test]
     [clojure.test :refer :all]
     [clojure.tools.namespace.find :as ns-find]
     [clojure.java.classpath :as classpath]
@@ -22,10 +23,17 @@
 (defn run-driver-tests []
   (System/setProperty "DRIVERS" "h2,mongo")
 
+  (use 'metabase.query-processor-test.breakout-test :reload)
+  (use 'metabase.api.database-test :reload)
+
   (expectations-wrap :before-run)
 
   (metabase.test-setup/call-with-test-scaffolding
-    (fn [] (expectations/run-tests '[metabase.query-processor-test.breakout-test])))
+    (fn []
+      (expectations/run-tests
+        '[
+          ;metabase.query-processor-test.breakout-test
+          metabase.api.database-test])))
 
   (expectations-wrap :after-run))
 
