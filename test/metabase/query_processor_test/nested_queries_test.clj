@@ -627,7 +627,7 @@
 (expect
   :ok
   (tu/with-non-admin-groups-no-root-collection-perms
-    (data/with-temp-copy-of-test-db
+    (data/with-temp-copy-of-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
@@ -642,7 +642,7 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (data/with-temp-copy-of-test-db
+    (data/with-temp-copy-of-db
       (tt/with-temp Collection [dest-card-collection]
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
         (save-card-via-API-with-native-source-query! 403 (data/db) nil dest-card-collection)))))
@@ -651,7 +651,7 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (data/with-temp-copy-of-test-db
+    (data/with-temp-copy-of-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
@@ -663,7 +663,7 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (data/with-temp-copy-of-test-db
+    (data/with-temp-copy-of-db
       (tt/with-temp Collection [source-card-collection]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)
         (save-card-via-API-with-native-source-query! 403 (data/db) source-card-collection nil)))))
@@ -672,7 +672,7 @@
 (expect
   "You don't have permissions to do that."
   (tu/with-non-admin-groups-no-root-collection-perms
-    (data/with-temp-copy-of-test-db
+    (data/with-temp-copy-of-db
       (tt/with-temp* [Collection [source-card-collection]
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions! (group/all-users) source-card-collection)

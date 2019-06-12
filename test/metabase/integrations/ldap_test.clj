@@ -1,7 +1,8 @@
 (ns metabase.integrations.ldap-test
   (:require [expectations :refer [expect]]
             [metabase.integrations.ldap :as ldap]
-            [metabase.test.integrations.ldap :as ldap.test]))
+            [metabase.test.integrations.ldap :as ldap.test]
+            [metabase.test.util :as tu]))
 
 (defn- get-ldap-details []
   {:host       "localhost"
@@ -13,14 +14,6 @@
    :group-base "dc=metabase,dc=com"})
 
 ;; See test_resources/ldap.ldif for fixtures
-
-(expect
-  "\\20\\2AJohn \\28Dude\\29 Doe\\5C"
-  (#'ldap/escape-value " *John (Dude) Doe\\"))
-
-(expect
-  "John\\2BSmith@metabase.com"
-  (#'ldap/escape-value "John+Smith@metabase.com"))
 
 ;; The connection test should pass with valid settings
 (expect
@@ -111,3 +104,11 @@
    :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
   (ldap.test/with-ldap-server
     (ldap/find-user "John.Smith@metabase.com")))
+
+;; LDAP group matching should identify Metabase groups using DN equality rules
+(expect
+  #{1 2 3}
+  (tu/with-temporary-setting-values [ldap-group-mappings {"cn=accounting,ou=groups,dc=metabase,dc=com" [1 2]
+                                                          "cn=shipping,ou=groups,dc=metabase,dc=com" [2 3]}]
+    (#'ldap/ldap-groups->mb-group-ids ["CN=Accounting,OU=Groups,DC=metabase,DC=com"
+                                       "CN=Shipping,OU=Groups,DC=metabase,DC=com"])))

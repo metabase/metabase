@@ -125,14 +125,17 @@
 ;; Make sure it works end-to-end: make sure bound `*current-user-id*` and `*current-user-permissions-set*` are used to
 ;; permissions check queries
 (tu/expect-schema
- {:status    (s/eq :failed)
-  :class     (s/eq Exception)
-  :error    (s/eq "You do not have permissions to run this query.")
-  s/Keyword s/Any}
- (binding [api/*current-user-id*              (users/user->id :rasta)
-           api/*current-user-permissions-set* (delay #{})]
+  {:status   (s/eq :failed)
+   :class    (s/eq clojure.lang.ExceptionInfo)
+   :error    (s/eq "You do not have permissions to run this query.")
+   :ex-data  (s/eq {:required-permissions #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+                    :actual-permissions   #{}
+                    :permissions-error?   true})
+   s/Keyword s/Any}
+  (binding [api/*current-user-id*              (users/user->id :rasta)
+            api/*current-user-permissions-set* (delay #{})]
    (qp/process-query
-    {:database (data/id)
-     :type     :query
-     :query    {:source-table (data/id :venues)
-                :limit        1}})))
+     {:database (data/id)
+      :type     :query
+      :query    {:source-table (data/id :venues)
+                 :limit        1}})))

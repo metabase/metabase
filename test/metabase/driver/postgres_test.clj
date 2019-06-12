@@ -64,12 +64,10 @@
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (datasets/expect-with-driver :postgres
   :type/SerializedJSON
-  (data/with-db-for-dataset
-    [_
-     (tx/dataset-definition "Postgres with a JSON Field"
-       ["venues"
-        [{:field-name "address", :base-type {:native "json"}}]
-        [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+  (data/dataset (tx/dataset-definition "Postgres with a JSON Field"
+                  ["venues"
+                   [{:field-name "address", :base-type {:native "json"}}]
+                   [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
     (db/select-one-field :special_type Field, :id (data/id :venues :address))))
 
 

@@ -13,18 +13,10 @@
   "The normal test-data DB definition as a flattened, single-table DB definition."
   (tx/flattened-dataset-definition defs/test-data "checkins"))
 
-;; force loading of the flattened db definitions for the DBs that need it
-(defn- load-event-based-db-data!
-  {:expectations-options :before-run}
-  []
-  (doseq [driver event-based-dbs]
-    (datasets/with-driver-when-testing driver
-      (data/do-with-db-for-dataset flattened-db-def (constantly nil)))))
-
 (defn do-with-flattened-dbdef
   "Execute `f` with a flattened version of the test data DB as the current DB def."
   [f]
-  (data/do-with-db-for-dataset flattened-db-def (fn [_] (f))))
+  (data/dataset flattened-db-def (f)))
 
 (defmacro with-flattened-dbdef
   "Execute `body` using the flattened test data DB definition."

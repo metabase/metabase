@@ -1,5 +1,5 @@
 (ns metabase.test.data.dataset-definitions
-  "Definitions of various datasets for use in tests with `data/dataset` or `data/with-db-for-dataset`."
+  "Definitions of various datasets for use in tests with `data/dataset` and the like."
   (:require [medley.core :as m]
             [metabase.test.data.interface :as tx])
   (:import java.sql.Time
