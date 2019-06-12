@@ -1,14 +1,14 @@
 (ns metabase.driver.mongo.util
   "`*mongo-connection*`, `with-mongo-connection`, and other functions shared between several Mongo driver namespaces."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
             [monger.core :as mg]
-            [toucan.db :as db]
-            [clojure.string :as str])
+            [toucan.db :as db])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
