@@ -7,7 +7,8 @@
             [metabase.models.database :refer [Database]]
             [metabase.util.ssh :as ssh]
             [monger.core :as mg]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [clojure.string :as str])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:const ^:private connection-timeout-ms
@@ -100,9 +101,10 @@
     (ssh/with-ssh-tunnel [details-with-tunnel details]
       (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
              :or   {port 27017, pass "", ssl false}} details-with-tunnel
-            host             (if (= "localhost" host)  ; tests w/localhost + DNS-SRV means we need domain in hostname
-                               "localhost.localdomain"
-                               "localhost")
+            host             (cond
+                               (= "localhost" host) "localhost.localdomain."
+                               (str/includes? host ".") host
+                               :default (str host ".localdomain."))
             user             (when (seq user) ; ignore empty :user and :pass strings
                                user)
             pass             (when (seq pass)
