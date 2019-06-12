@@ -147,7 +147,10 @@
       (throw (ex-info (str (tru "Attempting to fetch second Database. Queries can only reference one Database."))
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
-    (store-database! (db/select-one (into [Database] database-columns-to-fetch) :id database-id))))
+    (store-database!
+     (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
+         (throw (ex-info (str (tru "Database {0} does not exist." (str database-id)))
+                  {:database database-id}))))))
 
 (def ^:private IDs
   (s/maybe

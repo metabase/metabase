@@ -9,14 +9,16 @@
             [metabase.util.i18n :refer [tru]]))
 
 (defn- query->native-form
-  "Return a `:native` query form for QUERY, converting it from MBQL if needed."
+  "Return a `:native` query form for `query`, converting it from MBQL if needed."
   [{query-type :type, :as query}]
   (u/prog1 (if-not (= :query query-type)
              (:native query)
-             (try (driver/mbql->native (:driver query) query)
-                  (catch Throwable e
-                    (log/error (tru "Error transforming MBQL query to native:") "\n" (u/pprint-to-str query))
-                    (throw e))))
+             (try
+               (driver/mbql->native (:driver query) query)
+               (catch Throwable e
+                 (when-not i/*disable-qp-logging*
+                   (log/error (tru "Error transforming MBQL query to native:") "\n" (u/pprint-to-str query)))
+                 (throw e))))
     (when-not i/*disable-qp-logging*
       (log/debug (u/format-color 'green "NATIVE FORM: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>))))))
 

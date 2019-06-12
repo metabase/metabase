@@ -10,19 +10,15 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :refer [expect-with-drivers]]
              [sql :as sql.tx]]
             [toucan.db :as db]))
 
-(defn- call-with-timezones-db [f]
-  (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
-    (f)))
-
 (defmacro ^:private with-tz-db
   "Calls `with-db` on the `test-data-with-timezones` dataset and ensures the timestamps are fixed up on MySQL"
   [& body]
-  `(call-with-timezones-db (fn [] ~@body)))
+  `(data/dataset ~'test-data-with-timezones
+     (fn [] ~@body)))
 
 (def ^:private default-utc-results
   #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]})

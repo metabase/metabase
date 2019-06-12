@@ -12,6 +12,7 @@
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
@@ -168,6 +169,11 @@
                    [query
                     (assoc query :constraints constraints/default-query-constraints)])
              0)})
+
+(api/defendpoint POST "/native"
+  "Fetch a native version of an MBQL query."
+  [:as {query :body}]
+  (qp/query->native query))
 
 
 (api/define-routes)
