@@ -40,7 +40,6 @@ export default class QueryModals extends React.Component {
     return modal === "save" ? (
       <Modal form onClose={onCloseModal}>
         <SaveQuestionModal
-          onClose={onCloseModal}
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
@@ -48,11 +47,13 @@ export default class QueryModals extends React.Component {
           saveFn={async card => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(card);
+            onCloseModal();
           }}
           createFn={async card => {
             await this.props.onCreate(card);
-            this.openModal("saved");
+            onOpenModal("saved");
           }}
+          onClose={onCloseModal}
         />
       </Modal>
     ) : modal === "saved" ? (
@@ -67,7 +68,6 @@ export default class QueryModals extends React.Component {
     ) : modal === "add-to-dashboard-save" ? (
       <Modal onClose={onCloseModal}>
         <SaveQuestionModal
-          onClose={onCloseModal}
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
@@ -80,6 +80,7 @@ export default class QueryModals extends React.Component {
             await this.props.onCreate(card);
             onOpenModal("add-to-dashboard");
           }}
+          onClose={onCloseModal}
           multiStep
         />
       </Modal>

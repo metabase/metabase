@@ -58,12 +58,8 @@ export const ViewTitleHeader = ({
             <QuestionEntityMenu question={question} onOpenModal={onOpenModal} />
           </div>
           <ViewSubHeading className="flex align-center">
-            <CollectionBadge
-              collectionId={question.collectionId()}
-            />
-            <span className="mx2 text-light text-smaller">
-             •
-            </span>
+            <CollectionBadge collectionId={question.collectionId()} />
+            <span className="mx2 text-light text-smaller">•</span>
             <QuestionDataSource question={question} subHead />
           </ViewSubHeading>
         </div>
@@ -95,9 +91,9 @@ export const ViewTitleHeader = ({
         </div>
       )}
       <div className="ml-auto flex align-center">
-        {!question.isNative() && isShowingNotebook && (
+        {/* {!question.isNative() && isShowingNotebook && (
           <QueryModeButton size={20} />
-        )}
+        )} */}
         {isDirty ? (
           <Button
             medium

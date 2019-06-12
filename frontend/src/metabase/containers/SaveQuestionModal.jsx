@@ -126,7 +126,7 @@ export default class SaveQuestionModal extends Component {
         await saveFn(card);
       }
 
-      this.props.onClose();
+      // this.props.onClose();
     } catch (error) {
       if (error && !error.isCanceled) {
         this.setState({ error: error });
