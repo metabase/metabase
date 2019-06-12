@@ -4,6 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import ViewSection from "./ViewSection";
 
@@ -46,7 +47,6 @@ const ViewFooter = ({
           }
         />
         <VizSettingsButton
-          className="ml2"
           selected={isShowingChartSettingsSidebar}
           onClick={
             isShowingChartSettingsSidebar
@@ -85,29 +85,24 @@ const VizTypeButton = ({ className, question, result, selected, onClick }) => {
 
   return (
     <span
-      className="text-bold flex align-center bg-medium rounded px2 py1 cursor-pointer"
+      className="text-bold flex align-center text-brand bg-light-hover transition-background rounded px1 py1 cursor-pointer"
       onClick={onClick}
     >
-      {`Visualization`}:
-      <span
-        className={cx("ml1 text-brand flex align-center", {
-          "cursor-pointer": onClick,
-        })}
-      >
-        {CardVisualization ? CardVisualization.uiName : `[${t`Unknown`}]`}
-      </span>
+      {`Change visualization`}
     </span>
   );
 };
 
 const VizSettingsButton = ({ className, selected, onClick }) => (
-  <Icon
-    name="gear"
-    className={cx(className, "cursor-pointer text-brand-hover", {
-      "text-brand": selected,
-    })}
-    onClick={onClick}
-  />
+  <Tooltip tooltip={t`Visualization options`}>
+    <Icon
+      name="gear"
+      className={cx(className, "cursor-pointer text-light text-brand-hover bg-light-hover transition-all rounded px1 py1", {
+        "text-brand": selected,
+      })}
+      onClick={onClick}
+    />
+  </Tooltip>
 );
 
 const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
