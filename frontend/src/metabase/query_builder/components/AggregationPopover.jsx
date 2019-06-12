@@ -231,7 +231,7 @@ export default class AggregationPopover extends Component {
       });
     }
 
-    let aggregationItems = availableAggregations.map(aggregation => ({
+    const aggregationItems = availableAggregations.map(aggregation => ({
       name: dimension
         ? aggregation.name.replace("of ...", "")
         : aggregation.name,
@@ -280,7 +280,7 @@ export default class AggregationPopover extends Component {
 
     // slightly different layout of "basic" and "common" metrics for alwaysExpanded=true
     if (alwaysExpanded && sections.length > 1) {
-      let [commonAggregationItems, basicAggregationItems] = _.partition(
+      const [commonAggregationItems, basicAggregationItems] = _.partition(
         aggregationItems,
         item => COMMON_AGGREGATIONS.has(item.aggregation.short),
       );

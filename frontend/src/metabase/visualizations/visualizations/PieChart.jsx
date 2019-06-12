@@ -223,9 +223,9 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
+    const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
-    let sliceThreshold =
+    const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
         : SLICE_THRESHOLD;
@@ -242,7 +242,7 @@ export default class PieChart extends Component {
 
     let otherSlice;
     if (others.length > 1) {
-      let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
+      const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
       if (otherTotal > 0) {
         otherSlice = {
           key: "Other",

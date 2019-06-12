@@ -42,7 +42,7 @@ export default class Join extends MBQLObjectClause {
   }
   setJoinSourceTableId(tableId, { defaultCondition = true } = {}) {
     if (tableId !== this["source-table"]) {
-      let join = this.set({
+      const join = this.set({
         ...this,
         "source-query": undefined,
         "source-table": tableId,

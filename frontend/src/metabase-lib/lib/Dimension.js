@@ -103,7 +103,7 @@ export default class Dimension {
         ? a
         : // $FlowFixMe
           Dimension.parseMBQL(a);
-    let dimensionB: ?Dimension =
+    const dimensionB: ?Dimension =
       b instanceof Dimension
         ? b
         : // $FlowFixMe
@@ -205,7 +205,7 @@ export default class Dimension {
     } else {
       mbql = fieldRef;
     }
-    let dimension = Dimension.parseMBQL(mbql, this._metadata, this._query);
+    const dimension = Dimension.parseMBQL(mbql, this._metadata, this._query);
     if (option.name) {
       dimension._subDisplayName = option.name;
       dimension._subTriggerDisplayName = option.name;
