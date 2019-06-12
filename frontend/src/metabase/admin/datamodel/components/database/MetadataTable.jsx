@@ -73,7 +73,7 @@ export default class MetadataTable extends Component {
   }
 
   renderVisibilityType(text, type, any) {
-    let classes = cx(
+    const classes = cx(
       "mx1",
       "text-bold",
       "text-brand-hover",

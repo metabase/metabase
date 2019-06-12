@@ -42,8 +42,8 @@ function getDefaultScatterColumns([
     data: { cols, rows },
   },
 ]) {
-  let dimensions = cols.filter(isDimension);
-  let metrics = cols.filter(isMetric);
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
   if (dimensions.length === 2 && metrics.length < 2) {
     return {
       dimensions: [dimensions[0].name],

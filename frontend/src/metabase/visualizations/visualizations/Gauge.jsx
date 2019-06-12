@@ -185,13 +185,13 @@ export default class Gauge extends Component {
     const svgAspectRatio = viewBoxHeight / viewBoxWidth;
     const containerAspectRadio = height / width;
 
-    let svgWidth, svgHeight;
+    let svgWidth;
     if (containerAspectRadio < svgAspectRatio) {
       svgWidth = Math.min(MAX_WIDTH, height / svgAspectRatio);
     } else {
       svgWidth = Math.min(MAX_WIDTH, width);
     }
-    svgHeight = svgWidth * svgAspectRatio;
+    const svgHeight = svgWidth * svgAspectRatio;
 
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 

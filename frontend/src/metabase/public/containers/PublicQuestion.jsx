@@ -103,8 +103,8 @@ export default class PublicQuestion extends Component {
         this.props.addFields(card.param_fields);
       }
 
-      let parameterValues: ParameterValues = {};
-      for (let parameter of getParameters(card)) {
+      const parameterValues: ParameterValues = {};
+      for (const parameter of getParameters(card)) {
         parameterValues[String(parameter.id)] = query[parameter.slug];
       }
 

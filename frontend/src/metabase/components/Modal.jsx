@@ -135,7 +135,7 @@ export class FullPageModal extends Component {
 
   componentDidUpdate() {
     // set the top of the modal to the bottom of the nav
-    let nav = document.body.querySelector(".Nav");
+    const nav = document.body.querySelector(".Nav");
     if (nav) {
       this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
     }

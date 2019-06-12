@@ -36,7 +36,7 @@ export default class PartialQueryBuilder extends Component {
   };
 
   render() {
-    let {
+    const {
       features,
       value,
       metadata,
@@ -44,7 +44,7 @@ export default class PartialQueryBuilder extends Component {
       previewSummary,
     } = this.props;
 
-    let datasetQuery = {
+    const datasetQuery = {
       type: "query",
       database: tableMetadata.db_id,
       query: {
@@ -57,7 +57,7 @@ export default class PartialQueryBuilder extends Component {
       dataset_query: datasetQuery,
     }).query();
 
-    let previewCard = {
+    const previewCard = {
       dataset_query: {
         ...datasetQuery,
         query: {
@@ -68,7 +68,7 @@ export default class PartialQueryBuilder extends Component {
         },
       },
     };
-    let previewUrl = Urls.question(null, previewCard);
+    const previewUrl = Urls.question(null, previewCard);
 
     const onChange = query => {
       this.props.onChange(query);

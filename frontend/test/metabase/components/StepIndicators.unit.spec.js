@@ -8,7 +8,7 @@ import { normal } from "metabase/lib/colors";
 import StepIndicators from "metabase/components/StepIndicators";
 
 describe("Step indicators", () => {
-  let steps = [{}, {}, {}];
+  const steps = [{}, {}, {}];
 
   it("should render as many indicators as steps", () => {
     const wrapper = shallow(<StepIndicators steps={steps} />);

@@ -32,11 +32,11 @@ export function getColorplethColorScale(
   color,
   { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
 ) {
-  let lightColor = Color(color)
+  const lightColor = Color(color)
     .lightness(lightness)
     .saturate(saturate);
 
-  let darkColor = Color(color)
+  const darkColor = Color(color)
     .darken(darken)
     .saturate(saturate);
 
@@ -147,7 +147,7 @@ export default class ChoroplethMap extends Component {
       onVisualizationClick,
       settings,
     } = this.props;
-    let { geoJson, minimalBounds } = this.state;
+    const { geoJson, minimalBounds } = this.state;
 
     // special case builtin maps to use legacy choropleth map
     let projection, projectionFrame;
@@ -259,13 +259,13 @@ export default class ChoroplethMap extends Component {
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
 
-    let colorScale = d3.scale
+    const colorScale = d3.scale
       .quantile()
       .domain(groups.map(cluster => cluster[0]))
       .range(heatMapColors);
 
-    let legendColors = heatMapColors;
-    let legendTitles = heatMapColors.map((color, index) => {
+    const legendColors = heatMapColors;
+    const legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
@@ -274,7 +274,7 @@ export default class ChoroplethMap extends Component {
     });
 
     const getColor = feature => {
-      let value = getFeatureValue(feature);
+      const value = getFeatureValue(feature);
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 

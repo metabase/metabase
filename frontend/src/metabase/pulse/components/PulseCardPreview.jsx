@@ -60,7 +60,7 @@ export default class PulseCardPreview extends Component {
   };
 
   render() {
-    let { cardPreview, attachmentsEnabled } = this.props;
+    const { cardPreview, attachmentsEnabled } = this.props;
     const hasAttachment = this.hasAttachment();
     const isAttachmentOnly =
       attachmentsEnabled &&

@@ -141,7 +141,7 @@ class ChartSettings extends Component {
 
     // Move settings from the "undefined" section in the first tab
     if (sections["undefined"] && Object.values(sections).length > 1) {
-      let extra = sections["undefined"];
+      const extra = sections["undefined"];
       delete sections["undefined"];
       Object.values(sections)[0].unshift(...extra);
     }

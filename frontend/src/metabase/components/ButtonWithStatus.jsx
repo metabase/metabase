@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 
-let defaultTitleForState = {
+const defaultTitleForState = {
   default: t`Save`,
   inProgress: t`Saving...`,
   completed: t`Saved!`,

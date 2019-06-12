@@ -192,6 +192,7 @@
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
+    "eslint-fix": "yarn && eslint --fix --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules frontend/src frontend/test",
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",

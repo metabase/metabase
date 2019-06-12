@@ -110,7 +110,7 @@ export function getTimeFormatFromStyle(
   unit: DatetimeUnit,
   timeEnabled: ?TimeEnabled,
 ): TimeFormat {
-  let format = style;
+  const format = style;
   if (!timeEnabled || timeEnabled === "milliseconds") {
     return format.replace(/mm/, "mm:ss.SSS");
   } else if (timeEnabled === "seconds") {

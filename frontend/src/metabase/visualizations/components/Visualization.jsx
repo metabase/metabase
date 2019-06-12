@@ -350,7 +350,7 @@ export default class Visualization extends Component {
     }
 
     let error = this.props.error || this.state.error;
-    let loading = !(
+    const loading = !(
       series &&
       series.length > 0 &&
       _.every(
@@ -414,7 +414,7 @@ export default class Visualization extends Component {
       );
     }
 
-    let extra = (
+    const extra = (
       <span className="flex align-center">
         {isSlow && !loading && (
           <LoadingSpinner

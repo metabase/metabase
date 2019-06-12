@@ -25,7 +25,7 @@ const Greeting = {
 
   sayHello: function(personalization) {
     if (personalization) {
-      let g = Greeting.simpleGreeting();
+      const g = Greeting.simpleGreeting();
       if (g === t`How's it going`) {
         return g + ", " + personalization + "?";
       } else {

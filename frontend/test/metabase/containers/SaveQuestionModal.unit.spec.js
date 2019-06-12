@@ -89,7 +89,7 @@ describe("SaveQuestionModal", () => {
       collection_id: 5,
     });
 
-    let dirtyQuestion = originalQuestion
+    const dirtyQuestion = originalQuestion
       .query()
       .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
       .question();

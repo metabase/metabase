@@ -52,7 +52,7 @@ export default class NumberPicker extends Component {
   }
 
   onValuesChange(stringValues: string[]) {
-    let values = stringValues.map(v => parseFloat(v));
+    const values = stringValues.map(v => parseFloat(v));
     this.props.onValuesChange(values.map(v => (isNaN(v) ? null : v)));
     this.setState({
       stringValues: stringValues,

@@ -344,7 +344,7 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -397,7 +397,7 @@ function replaceDateFormatNames(format, options) {
 }
 
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
+  const m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -421,7 +421,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -469,7 +469,7 @@ export function formatDateTimeWithUnit(
 }
 
 export function formatTime(value: Value) {
-  let m = parseTime(value);
+  const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
@@ -591,7 +591,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  let column = options.column;
+  const column = options.column;
 
   options = {
     jsx: false,
@@ -710,10 +710,10 @@ export function humanize(...args) {
 
 export function duration(milliseconds: number) {
   if (milliseconds < 60000) {
-    let seconds = Math.round(milliseconds / 1000);
+    const seconds = Math.round(milliseconds / 1000);
     return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
   } else {
-    let minutes = Math.round(milliseconds / 1000 / 60);
+    const minutes = Math.round(milliseconds / 1000 / 60);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
 }
@@ -739,13 +739,13 @@ export function assignUserColors(
     "bg-medium",
   ],
 ) {
-  let assignments = {};
+  const assignments = {};
 
   const currentUserColor = colorClasses[0];
   const otherUserColors = colorClasses.slice(1);
   let otherUserColorIndex = 0;
 
-  for (let userId of userIds) {
+  for (const userId of userIds) {
     if (!(userId in assignments)) {
       if (userId === currentUserId) {
         assignments[userId] = currentUserColor;

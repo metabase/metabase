@@ -225,7 +225,7 @@ export const makeGetMergedParameterFieldValues = () => {
 
 // clone each object in the provided mapping of objects
 export function copyObjects(metadata, objects, Klass) {
-  let copies = {};
+  const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
       // $FlowFixMe
@@ -257,7 +257,7 @@ function hydrateList(objects, property, targetObjects) {
 // creates a *_lookup object for a previously hydrated list
 function hydrateLookup(objects, property, idProperty = "id") {
   hydrate(objects, property + "_lookup", object => {
-    let lookup = {};
+    const lookup = {};
     for (const item of object[property] || []) {
       lookup[item[idProperty]] = item;
     }

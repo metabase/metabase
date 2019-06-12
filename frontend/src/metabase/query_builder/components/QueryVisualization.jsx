@@ -97,7 +97,7 @@ export default class QueryVisualization extends Component {
         />
       );
     } else {
-      let error = result.error;
+      const error = result.error;
 
       if (error) {
         viz = (

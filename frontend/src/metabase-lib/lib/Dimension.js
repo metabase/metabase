@@ -98,7 +98,7 @@ export default class Dimension {
    * Returns true if these two dimensions are identical to one another.
    */
   static isEqual(a: ?Dimension | ConcreteField, b: ?Dimension): boolean {
-    let dimensionA: ?Dimension =
+    const dimensionA: ?Dimension =
       a instanceof Dimension
         ? a
         : // $FlowFixMe
@@ -221,7 +221,7 @@ export default class Dimension {
       return false;
     }
 
-    let otherDimension: ?Dimension =
+    const otherDimension: ?Dimension =
       other instanceof Dimension
         ? other
         : Dimension.parseMBQL(other, this._metadata, this._query);
@@ -240,7 +240,7 @@ export default class Dimension {
       return false;
     }
 
-    let otherDimension: ?Dimension =
+    const otherDimension: ?Dimension =
       other instanceof Dimension
         ? other
         : Dimension.parseMBQL(other, this._metadata, this._query);

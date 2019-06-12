@@ -76,7 +76,7 @@ export default class TokenizedInput extends Component {
 
     const input = ReactDOM.findDOMNode(this);
 
-    let [start, end] = getSelectionPosition(input);
+    const [start, end] = getSelectionPosition(input);
     if (start !== end) {
       return;
     }

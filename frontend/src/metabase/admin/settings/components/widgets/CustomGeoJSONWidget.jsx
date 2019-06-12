@@ -86,7 +86,7 @@ export default class CustomGeoJSONWidget extends Component {
         geoJsonError: null,
       });
       await this._saveMap(map.id, map);
-      let geoJson = await GeoJSONApi.get({ id: map.id });
+      const geoJson = await GeoJSONApi.get({ id: map.id });
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
@@ -211,7 +211,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
 );
 
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
-  let options = {};
+  const options = {};
   if (geoJson) {
     for (const feature of geoJson.features) {
       for (const property in feature.properties) {

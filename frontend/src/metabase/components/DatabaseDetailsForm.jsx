@@ -64,8 +64,8 @@ export default class DatabaseDetailsForm extends Component {
   };
 
   validateForm() {
-    let { engine, engines } = this.props;
-    let { details } = this.state;
+    const { engine, engines } = this.props;
+    const { details } = this.state;
 
     let valid = true;
 
@@ -75,7 +75,7 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     // go over individual fields
-    for (let field of engines[engine]["details-fields"]) {
+    for (const field of engines[engine]["details-fields"]) {
       // tunnel fields aren't required if tunnel isn't enabled
       if (!details["tunnel-enabled"] && isTunnelField(field)) {
         continue;
@@ -113,10 +113,10 @@ export default class DatabaseDetailsForm extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { engine, engines, submitFn } = this.props;
-    let { details } = this.state;
+    const { engine, engines, submitFn } = this.props;
+    const { details } = this.state;
 
-    let request = {
+    const request = {
       engine: engine,
       name: details.name,
       details: {},
@@ -124,7 +124,7 @@ export default class DatabaseDetailsForm extends Component {
       is_full_sync: details.is_full_sync,
     };
 
-    for (let field of engines[engine]["details-fields"]) {
+    for (const field of engines[engine]["details-fields"]) {
       let val = details[field.name] === "" ? null : details[field.name];
 
       if (val && field.type === "integer") {
@@ -146,8 +146,8 @@ export default class DatabaseDetailsForm extends Component {
   }
 
   renderFieldInput(field, fieldIndex) {
-    let { details } = this.state;
-    let value = (details && details[field.name]) || "";
+    const { details } = this.state;
+    const value = (details && details[field.name]) || "";
 
     switch (field.type) {
       case "boolean":
@@ -195,11 +195,11 @@ export default class DatabaseDetailsForm extends Component {
   }
 
   renderField(field, fieldIndex) {
-    let { engine } = this.props;
+    const { engine } = this.props;
     window.ENGINE = engine;
 
     if (field.name === "tunnel-enabled") {
-      let on =
+      const on =
         this.state.details["tunnel-enabled"] == undefined
           ? false
           : this.state.details["tunnel-enabled"];
@@ -227,7 +227,7 @@ export default class DatabaseDetailsForm extends Component {
       // don't show tunnel fields if tunnel isn't enabled
       return null;
     } else if (field.name === "use-jvm-timezone") {
-      let on =
+      const on =
         this.state.details["use-jvm-timezone"] == undefined
           ? false
           : this.state.details["use-jvm-timezone"];
@@ -251,7 +251,7 @@ export default class DatabaseDetailsForm extends Component {
         </FormField>
       );
     } else if (field.name === "let-user-control-scheduling") {
-      let on =
+      const on =
         this.state.details["let-user-control-scheduling"] == undefined
           ? false
           : this.state.details["let-user-control-scheduling"];
@@ -277,12 +277,12 @@ export default class DatabaseDetailsForm extends Component {
         </FormField>
       );
     } else if (field.name === "client-id" && CREDENTIALS_URL_PREFIXES[engine]) {
-      let { details } = this.state;
-      let projectID = details && details["project-id"];
-      let credentialsURLLink;
+      const { details } = this.state;
+      const projectID = details && details["project-id"];
       // if (projectID) {
-      let credentialsURL = CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
-      credentialsURLLink = (
+      const credentialsURL =
+        CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
+      const credentialsURLLink = (
         <div className="flex align-center Form-offset">
           <div className="Grid-cell--top">
             {jt`${(
@@ -304,11 +304,11 @@ export default class DatabaseDetailsForm extends Component {
         </FormField>
       );
     } else if (field.name === "auth-code" && AUTH_URL_PREFIXES[engine]) {
-      let { details } = this.state;
+      const { details } = this.state;
       const clientID = details && details["client-id"];
       let authURLLink;
       if (clientID) {
-        let authURL = AUTH_URL_PREFIXES[engine] + clientID;
+        const authURL = AUTH_URL_PREFIXES[engine] + clientID;
         authURLLink = (
           <div className="flex align-center Form-offset">
             <div className="Grid-cell--top">
@@ -388,12 +388,12 @@ export default class DatabaseDetailsForm extends Component {
       isNewDatabase,
       submitting,
     } = this.props;
-    let { valid, details } = this.state;
+    const { valid, details } = this.state;
 
     const willProceedToNextDbCreationStep =
       isNewDatabase && details["let-user-control-scheduling"];
 
-    let fields = [
+    const fields = [
       {
         name: "name",
         "display-name": t`Name`,

@@ -72,7 +72,7 @@ export function getMode(
       return MetricMode;
     }
     if (aggregations.length > 0 && breakouts.length > 0) {
-      let breakoutFields = breakouts.map(
+      const breakoutFields = breakouts.map(
         breakout =>
           (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
       );

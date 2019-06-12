@@ -32,7 +32,7 @@ const BaseButton = ({
   children,
   ...props
 }) => {
-  let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
+  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
 

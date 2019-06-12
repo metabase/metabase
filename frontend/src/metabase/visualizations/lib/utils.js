@@ -75,8 +75,8 @@ function generateSplits(list, left = [], right = []) {
 }
 
 function axisCost(seriesExtents, favorUnsplit = true) {
-  let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
-  let axisRange = axisExtent[1] - axisExtent[0];
+  const axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+  const axisRange = axisExtent[1] - axisExtent[0];
   if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
@@ -182,10 +182,10 @@ export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
-      let sameData = a.data === b.data;
-      let sameDisplay =
+      const sameData = a.data === b.data;
+      const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
-      let sameVizSettings =
+      const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
       return acc && (sameData && sameDisplay && sameVizSettings);
@@ -200,16 +200,16 @@ export function colorShades(color, count) {
 }
 
 export function colorShade(hex, shade = 0) {
-  let match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
+  const match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
   if (!match) {
     return hex;
   }
-  let components = (match[1] != null
+  const components = (match[1] != null
     ? match.slice(1, 4)
     : match.slice(4, 7)
   ).map(d => parseInt(d, 16));
-  let min = Math.min(...components);
-  let max = Math.max(...components);
+  const min = Math.min(...components);
+  const max = Math.max(...components);
   return (
     "#" +
     components
@@ -224,7 +224,7 @@ const cardinalityCache = new WeakMap();
 export function getColumnCardinality(cols, rows, index) {
   const col = cols[index];
   if (!cardinalityCache.has(col)) {
-    let dataset = crossfilter(rows);
+    const dataset = crossfilter(rows);
     cardinalityCache.set(
       col,
       dataset

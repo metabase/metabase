@@ -138,7 +138,7 @@ export default class NativeQueryEditor extends Component {
       this._localUpdate = false;
     }
 
-    let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -188,7 +188,7 @@ export default class NativeQueryEditor extends Component {
   loadAceEditor() {
     const { query } = this.props;
 
-    let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
 
     // $FlowFixMe
     if (typeof ace === "undefined" || !ace || !ace.edit) {
@@ -212,7 +212,7 @@ export default class NativeQueryEditor extends Component {
     // hmmm, this could be dangerous
     this._editor.focus();
 
-    let aceLanguageTools = ace.require("ace/ext/language_tools");
+    const aceLanguageTools = ace.require("ace/ext/language_tools");
     this._editor.setOptions({
       enableBasicAutocompletion: true,
       enableSnippets: true,
@@ -227,9 +227,9 @@ export default class NativeQueryEditor extends Component {
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-          let results = await this.props.autocompleteResultsFn(prefix);
+          const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
-          let js_results = results.map(function(result) {
+          const js_results = results.map(function(result) {
             return {
               name: result[0],
               value: result[0],

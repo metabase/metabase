@@ -59,8 +59,8 @@ import { push } from "react-router-redux";
 import { MetabaseApi } from "metabase/services";
 
 function autocompleteResults(card, prefix) {
-  let databaseId = card && card.dataset_query && card.dataset_query.database;
-  let apiCall = MetabaseApi.db_autocomplete_suggestions({
+  const databaseId = card && card.dataset_query && card.dataset_query.database;
+  const apiCall = MetabaseApi.db_autocomplete_suggestions({
     dbId: databaseId,
     prefix: prefix,
   });
@@ -233,7 +233,7 @@ export default class QueryBuilder extends Component {
   }
 
   componentDidUpdate() {
-    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    const viz = ReactDOM.findDOMNode(this.refs.viz);
     if (viz) {
       viz.style.opacity = 1.0;
     }
@@ -252,7 +252,7 @@ export default class QueryBuilder extends Component {
   // Debounce the function to improve resizing performance.
   handleResize = e => {
     this.forceUpdateDebounced();
-    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    const viz = ReactDOM.findDOMNode(this.refs.viz);
     if (viz) {
       viz.style.opacity = 0.2;
     }

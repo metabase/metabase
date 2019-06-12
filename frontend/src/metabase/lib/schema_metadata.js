@@ -448,7 +448,7 @@ function dimensionFields(fields) {
   return _.filter(fields, isDimension);
 }
 
-let Aggregators = [
+const Aggregators = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations
     name: t`Raw data`,
@@ -532,7 +532,7 @@ let Aggregators = [
   },
 ];
 
-let BreakoutAggregator = {
+const BreakoutAggregator = {
   name: t`Break out by dimension`,
   short: "breakout",
   validFieldsFilters: [dimensionFields],
@@ -584,14 +584,14 @@ export const isCompatibleAggregatorForField = (aggregator, field) =>
   aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
 
 export function getBreakouts(fields) {
-  let result = populateFields(BreakoutAggregator, fields);
+  const result = populateFields(BreakoutAggregator, fields);
   result.fields = result.fields[0];
   result.validFieldsFilter = result.validFieldsFilters[0];
   return result;
 }
 
 export function addValidOperatorsToFields(table) {
-  for (let field of table.fields) {
+  for (const field of table.fields) {
     field.operators = getOperators(field, table);
   }
   table.aggregation_options = getAggregatorsWithFields(table);
