@@ -1,4 +1,4 @@
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTime, parseTimestamp } from "metabase/lib/time";
 import moment from "moment";
 
 describe("time", () => {
@@ -39,6 +39,22 @@ describe("time", () => {
           expect(result.unix()).toEqual(expectedMoment.unix());
         },
       );
+    });
+  });
+
+  describe("parseTime", () => {
+    it("parse timezones", () => {
+      const result = parseTime("01:02:03.456+07:00");
+
+      expect(moment.isMoment(result)).toBe(true);
+      expect(result.format("h:mm A")).toBe("1:02 AM");
+    });
+
+    it("parse time without seconds", () => {
+      const result = parseTime("01:02");
+
+      expect(moment.isMoment(result)).toBe(true);
+      expect(result.format("h:mm A")).toBe("1:02 AM");
     });
   });
 });
