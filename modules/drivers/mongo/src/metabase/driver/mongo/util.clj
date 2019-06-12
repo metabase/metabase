@@ -88,13 +88,17 @@
     :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
-(defn- connect-via-uri-w-opts
+(defn- connect-via-uri
   [^MongoClientURI uri ^MongoClient conn]
   (if-let [dbName (.getDatabase uri)]
     (.getDB conn dbName)
     (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
 
-(defn- connect [host port user authdb pass dbname ssl additional-options]
+(defn- connect
+  "Connects to Mongo.  This is the fallback method to connect to hostnames that are
+   not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
+   If you would like to provide a FQDN, use `connect-srv`."
+  [{:keys [host port user authdb pass dbname ssl additional-options]}]
   (let [server-address (mg/server-address host port)
         credentials (when user
                       (mcred/create user authdb pass))
@@ -106,17 +110,41 @@
         db (mg/get-db mongo-client dbname)]
     [mongo-client db]))
 
-(defn- connect-srv [host port user authdb pass dbname ssl additional-options]
+(defn- connect-srv
+  "Connects to Mongo using DNS SRV.  Requires FQDN for `host` in the format
+   'hostname.domain.top-level-domain'.  Only a single host is supported, but a
+   replica list could easily provided instead of a single host.
+
+   Using SRV automatically enables SSL, though we explicitly set SSL to true anyway.
+
+   Docs to generate URI string:
+   https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
+  [{:keys [host port user authdb pass dbname ssl additional-options]}]
   (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
         authdb (if (seq authdb)
                  authdb
                  dbname)
-        protocol "mongodb+srv"
-        conn-str (format "%s://%s:%s@%s/%s" protocol user pass host authdb)
-        mongo-uri (MongoClientURI. conn-str conn-opts)      ; https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format
+        conn-str (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb)
+        mongo-uri (MongoClientURI. conn-str conn-opts)
         mongo-client (MongoClient. mongo-uri)
-        db (connect-via-uri-w-opts mongo-uri mongo-client)]
+        db (connect-via-uri mongo-uri mongo-client)]
     [mongo-client db]))
+
+(defn- fqdn?
+  "A very simple way to check if a hostname is fully-qualified:
+   Check if there are exactly two periods in the name."
+  [host]
+  (= 2 (-> host frequencies (get \.))))
+
+(defn- connect-fn
+  "If `host` is a fully-qualified domain name, then we need to connect to Mongo
+   differently.  It has been problematic to connect to Mongo with an FQDN using
+   `mg/connect`.  The fix was to create a connection string and use DNS SRV for
+   FQDNS.  In this fn we provide the correct connection fn based on host."
+  [host]
+  (if (fqdn? host)
+    connect-srv
+    connect))
 
 (defn -with-mongo-connection
   "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
@@ -133,11 +161,17 @@
             authdb           (if (seq authdb)
                                authdb
                                dbname)
+            opts {:host               host
+                  :port               port
+                  :user               user
+                  :authdb             authdb
+                  :pass               pass
+                  :dbname             dbname
+                  :ssl                ssl
+                  :additional-options additional-options}
             [mongo-client db] (->
-                                (if (= 2 (-> host frequencies (get \.))) ; if fqdn, use DNS SRV
-                                  connect-srv
-                                  connect)
-                                (apply [host port user authdb pass dbname ssl additional-options]))]
+                                (connect-fn host)
+                                (apply [opts]))]
         (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
         (try
           (binding [*mongo-connection* db]
