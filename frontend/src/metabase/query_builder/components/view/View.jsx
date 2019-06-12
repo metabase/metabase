@@ -19,6 +19,7 @@ import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
+import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
 
@@ -181,11 +182,15 @@ export default class View extends React.Component {
             }
           >
             {({ opacity }) => (
-              <ViewTitleHeader
-                {...this.props}
-                className="flex-no-shrink z3 bg-white"
-                style={{ opacity }}
-              />
+              <div className="flex-no-shrink z3 bg-white relative">
+                <ViewTitleHeader {...this.props} style={{ opacity }} />
+                {opacity < 1 && (
+                  <NewQuestionHeader
+                    className="spread"
+                    style={{ opacity: 1 - opacity }}
+                  />
+                )}
+              </div>
             )}
           </Motion>
 
