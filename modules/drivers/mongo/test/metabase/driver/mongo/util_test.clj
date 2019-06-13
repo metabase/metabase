@@ -17,6 +17,9 @@
   (fn [{map-type :type}]
     map-type))
 
+(def srv-passthrough
+  (fn [_] {:type :srv}))
+
 
 ;; test hostname is fqdn
 
@@ -44,11 +47,11 @@
   (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "authdb"))
 
 
-;; test that connect-srv is invoked for fqdn
+;; test that srv toggle works
 
 (expect
   :srv
-  (with-redefs [mongo-util/srv-connection-info (fn [_] {:type :srv})
+  (with-redefs [mongo-util/srv-connection-info srv-passthrough
                 mongo-util/connect connect-passthrough]
     (let [host "my.fake.domain"
           opts {:host               host
@@ -58,10 +61,9 @@
                 :pass               "test-passwd"
                 :dbname             "test-dbname"
                 :ssl                true
-                :additional-options ""}]
+                :additional-options ""
+                :use-srv            true}]
       (connect-mongo opts))))
-
-;; test that normal connect is invoked for non-fqdn
 
 (expect
   :normal
@@ -74,7 +76,8 @@
                 :pass               "test-passwd"
                 :dbname             "test-dbname"
                 :ssl                true
-                :additional-options ""}]
+                :additional-options ""
+                :use-srv            false}]
       (connect-mongo opts))))
 
 (expect
@@ -91,7 +94,7 @@
                 :additional-options ""}]
       (connect-mongo opts))))
 
-;; test that connection attempt fails for fake hosts when using srv
+;; test that connection properties when using srv
 
 (expect
   "No SRV record available for host fake.fqdn.com"
@@ -104,7 +107,8 @@
                 :pass               "test-passwd"
                 :dbname             "test-dbname"
                 :ssl                true
-                :additional-options ""}
+                :additional-options ""
+                :use-srv            true}
           [^MongoClient mongo-client ^DB db] (connect-mongo opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
@@ -113,6 +117,29 @@
           mongo-port (-> mongo-addr .getPort)]
       [mongo-host mongo-port])
     (catch MongoClientException e
+      (.getMessage e))))
+
+(expect
+  "Using DNS SRV requires a FQDN for host"
+  (try
+    (let [host "host1"
+          opts {:host               host
+                :port               1015
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""
+                :use-srv            true}
+          [^MongoClient mongo-client ^DB db] (connect-mongo opts)
+          ^ServerAddress mongo-addr (-> mongo-client
+                                        (.getAllAddress)
+                                        first)
+          mongo-host (-> mongo-addr .getHost)
+          mongo-port (-> mongo-addr .getPort)]
+      [mongo-host mongo-port])
+    (catch Exception e
       (.getMessage e))))
 
 (expect
@@ -126,7 +153,8 @@
                 :pass               "test-passwd"
                 :dbname             "test-dbname"
                 :ssl                true
-                :additional-options ""}
+                :additional-options ""
+                :use-srv            true}
           [^MongoClient mongo-client ^DB db] (connect-mongo opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
@@ -137,7 +165,7 @@
     (catch MongoClientException e
       (.getMessage e))))
 
-;; test host and port are correct in plain client
+;; test host and port are correct for both srv and normal
 
 (expect
   ["localhost" 1010]

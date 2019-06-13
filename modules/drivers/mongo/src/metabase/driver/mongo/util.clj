@@ -97,8 +97,8 @@
   (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
 
 (defn- normalize-details [details]
-  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
-         :or   {port 27017, pass "", ssl false}} details
+  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv]
+         :or   {port 27017, pass "", ssl false, use-srv false}} details
         ;; ignore empty :user and :pass strings
         user             (when (seq user)
                            user)
@@ -114,22 +114,32 @@
      :pass               pass
      :dbname             dbname
      :ssl                ssl
-     :additional-options additional-options}))
+     :additional-options additional-options
+     :srv?               use-srv}))
+
+(defn- fqdn?
+  "A very simple way to check if a hostname is fully-qualified:
+   Check if there are exactly two periods in the name."
+  [host]
+  (<= 2 (-> host frequencies (get \. 0))))
 
 (defn- srv-connection-info
   "Connection info for Mongo using DNS SRV.  Requires FQDN for `host` in the format
-   'hostname.domain.top-level-domain'.  Only a single host is supported, but a
+   'subdomain. ... .domain.top-level-domain'.  Only a single host is supported, but a
    replica list could easily provided instead of a single host.
    Using SRV automatically enables SSL, though we explicitly set SSL to true anyway.
    Docs to generate URI string: https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
   [{:keys [host port user authdb pass dbname ssl additional-options]}]
-  (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
-        authdb    (if (seq authdb)
-                    authdb
-                    dbname)
-        conn-str  (srv-conn-str user pass host authdb)]
-    {:type :srv
-     :uri (MongoClientURI. conn-str conn-opts)}))
+  (if-not (fqdn? host)
+    (throw (ex-info (str (tru "Using DNS SRV requires a FQDN for host" ))
+                    {:host host}))
+    (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
+          authdb (if (seq authdb)
+                   authdb
+                   dbname)
+          conn-str (srv-conn-str user pass host authdb)]
+      {:type :srv
+       :uri  (MongoClientURI. conn-str conn-opts)})))
 
 (defn- normal-connection-info
   "Connection info for Mongo.  Returns options for the fallback method to connect
@@ -146,14 +156,8 @@
      :dbname         dbname
      :options        (-> opts .build)}))
 
-(defn- fqdn?
-  "A very simple way to check if a hostname is fully-qualified:
-   Check if there are exactly two periods in the name."
-  [host]
-  (<= 2 (-> host frequencies (get \. 0))))
-
-(defn- details->mongo-connection-info [{:keys [host], :as details}]
-  ((if (fqdn? host)
+(defn- details->mongo-connection-info [{:keys [srv?], :as details}]
+  ((if srv?
      srv-connection-info
      normal-connection-info) details))
 
