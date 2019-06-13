@@ -117,7 +117,7 @@
      :additional-options additional-options}))
 
 (defn- srv-connection-info
-  "Connects to Mongo using DNS SRV.  Requires FQDN for `host` in the format
+  "Connection info for Mongo using DNS SRV.  Requires FQDN for `host` in the format
    'hostname.domain.top-level-domain'.  Only a single host is supported, but a
    replica list could easily provided instead of a single host.
    Using SRV automatically enables SSL, though we explicitly set SSL to true anyway.
@@ -132,9 +132,9 @@
      :uri (MongoClientURI. conn-str conn-opts)}))
 
 (defn- normal-connection-info
-  "Connects to Mongo.  This is the fallback method to connect to hostnames that are
-   not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
-   If you would like to provide a FQDN, use :srv. "
+  "Connection info for Mongo.  Returns options for the fallback method to connect
+   to hostnames that are not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
+   If you would like to provide a FQDN, use `srv-connection-info`"
   [{:keys [host port user authdb pass dbname ssl additional-options]}]
   (let [server-address                   (mg/server-address host port)
         credentials                      (when user
