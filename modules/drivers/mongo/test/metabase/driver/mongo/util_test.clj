@@ -111,7 +111,7 @@
     (catch MongoClientException e
       (.getMessage e))))
 
-;; test host and port and correct in plain client
+;; test host and port are correct in plain client
 
 (expect
   ["localhost" 1010]

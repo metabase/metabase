@@ -5,6 +5,7 @@
              [config :as config]
              [util :as u]]
             [metabase.models.database :refer [Database]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.ssh :as ssh]
             [monger
              [core :as mg]
@@ -92,7 +93,10 @@
   [^MongoClientURI uri ^MongoClient conn]
   (if-let [dbname (.getDatabase uri)]
     (.getDB conn dbname)
-    (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
+    (throw (ex-info (str (tru "No database name specified in URI. Monger requires a database to be explicitly configured." ))
+                    {:hosts (-> uri .getHosts)
+                     :uri   (-> uri .getURI)
+                     :opts  (-> uri .getOptions)}))))
 
 (defn- connect
   "Connects to Mongo.  This is the fallback method to connect to hostnames that are
