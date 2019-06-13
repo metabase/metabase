@@ -5767,7 +5767,7 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:52
 msgid ""
-"Your answer has a large number of rows so it could take a while to download."
+"Your answer has a large number of rows so it could take awhile to download."
 msgstr ""
 
 #: frontend/src/metabase/query_builder/components/QueryDownloadWidget.jsx:53
