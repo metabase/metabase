@@ -5,8 +5,9 @@
              [config :as config]
              [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ssh :as ssh]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [ssh :as ssh]]
             [monger
              [core :as mg]
              [credentials :as mcred]]

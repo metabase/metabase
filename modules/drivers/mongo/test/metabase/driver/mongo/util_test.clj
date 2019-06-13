@@ -7,7 +7,6 @@
            (com.mongodb MongoClient DB ServerAddress MongoClientException)))
 
 
-
 (defn- connect-mongo [opts]
   (let [connection-info (#'mongo-util/details->mongo-connection-info
                           (#'mongo-util/normalize-details
@@ -42,7 +41,7 @@
                 :additional-options ""}]
       (connect-mongo opts))))
 
-;; test that connect is invoked for non-fqdn
+;; test that normal connect is invoked for non-fqdn
 
 (expect
   :normal
@@ -139,19 +138,6 @@
         mongo-port (-> mongo-addr .getPort)]
     [mongo-host mongo-port]))
 
-;; test that we get an ifn back when trying to connect
-
-(expect
-  true
-  (let [host "localhost"
-        conn-fn (#'mongo-util/connect-fn host)]
-    (ifn? conn-fn)))
-
-(expect
-  true
-  (let [host "fake.fqdn.org"
-        conn-fn (#'mongo-util/connect-fn host)]
-    (ifn? conn-fn)))
 
 ;; test that people can specify additional connection options like `?readPreference=nearest`
 (expect
