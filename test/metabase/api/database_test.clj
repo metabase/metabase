@@ -431,7 +431,7 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(driver/register! ::no-nested-query-support :parent :h2)
+(driver/register! ::no-nested-query-support :parent :h2, :abstract? true)
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 

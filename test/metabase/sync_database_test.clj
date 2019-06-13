@@ -49,9 +49,7 @@
                         :database-type "VARCHAR"
                         :base-type     :type/Text}}}})
 
-(driver/register! ::sync-test)
-
-(defmethod driver/available? ::sync-test [_] false)
+(driver/register! ::sync-test, :abstract? true)
 
 (defmethod driver/describe-database ::sync-test [& _]
   {:tables (set (for [table (vals sync-test-tables)]

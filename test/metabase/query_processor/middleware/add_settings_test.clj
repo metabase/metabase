@@ -4,9 +4,7 @@
             [metabase.models.setting :as setting]
             [metabase.query-processor.middleware.add-settings :as add-settings]))
 
-(driver/register! ::test-driver)
-
-(defmethod driver/available? ::test-driver [_] false)
+(driver/register! ::test-driver, :abstract? true)
 
 (defmethod driver/supports? [::test-driver :set-timezone] [_ _] true)
 

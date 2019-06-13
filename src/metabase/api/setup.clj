@@ -62,7 +62,10 @@
     (public-settings/anon-tracking-enabled (or (nil? allow_tracking)
                                                allow_tracking))
     ;; setup database (if needed)
-    (when (some-> engine driver/available?)
+    (when engine
+      (when-not (driver/available? engine)
+        (throw (ex-info (str (tru "Cannot create Database: cannot find driver {0}." engine))
+                 {:engine engine})))
       (let [db (db/insert! Database
                  (merge
                   {:name         name
