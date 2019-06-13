@@ -3,7 +3,7 @@
             [metabase.driver :as driver]
             [metabase.plugins.classloader :as classloader]))
 
-(driver/register! ::test-driver)
+(driver/register! ::test-driver, :abstract? true)
 
 (defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
 
@@ -32,5 +32,10 @@
     (.getContextClassLoader (Thread/currentThread))))
 
 ;; `driver/available?` should work for if `driver` is a string -- see #10135
-(expect (driver/available? ::test-driver))
-(expect (driver/available? "metabase.driver-test/test-driver"))
+(expect
+  (with-redefs [driver/concrete? (constantly true)]
+    (driver/available? ::test-driver)))
+
+(expect
+  (with-redefs [driver/concrete? (constantly true)]
+    (driver/available? "metabase.driver-test/test-driver")))

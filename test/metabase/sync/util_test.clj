@@ -23,7 +23,7 @@
 
 (defonce ^:private calls-to-describe-database (atom 0))
 
-(driver/register! ::concurrent-sync-test)
+(driver/register! ::concurrent-sync-test, :abstract? true)
 
 (defmethod driver/describe-database ::concurrent-sync-test [& _]
   (swap! calls-to-describe-database inc)

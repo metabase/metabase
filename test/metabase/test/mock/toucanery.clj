@@ -50,7 +50,7 @@
                               :database-type "VARCHAR"
                               :base-type     :type/Text}}}})
 
-(driver/register! ::toucanery)
+(driver/register! ::toucanery, :abstract? true)
 
 (defmethod driver/describe-database ::toucanery [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals toucanery-tables)

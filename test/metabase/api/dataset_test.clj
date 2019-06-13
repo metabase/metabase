@@ -297,10 +297,11 @@
   {:permissions-error? (s/eq true)
    :message            (s/eq "You do not have permissions to run this query.")
    s/Any               s/Any}
-  (data/with-temp-copy-of-db
-    ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-    (perms/revoke-permissions! (group/all-users) (data/id))
-    (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
-    ((test-users/user->client :rasta) :post "dataset/native"
-     (data/mbql-query venues
-       {:fields [$id $name]}))))
+  (tu.log/suppress-output
+    (data/with-temp-copy-of-db
+      ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+      (perms/revoke-permissions! (group/all-users) (data/id))
+      (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
+      ((test-users/user->client :rasta) :post "dataset/native"
+       (data/mbql-query venues
+         {:fields [$id $name]})))))
