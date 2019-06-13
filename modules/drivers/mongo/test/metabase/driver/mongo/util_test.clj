@@ -3,7 +3,92 @@
             [metabase.driver.mongo.util :as mongo-util]
             [metabase.driver.util :as driver.u]
             [metabase.test.util.log :as tu.log])
-  (:import com.mongodb.ReadPreference))
+  (:import com.mongodb.ReadPreference
+           (com.mongodb MongoClient DB Mongo ServerAddress MongoClientException)))
+
+
+
+;; test that correct URI is generated for mongodb+srv://
+
+(expect
+  "No SRV record available for host fake.fqdn.com"
+  (try
+    (let [host "fake.fqdn.com"
+          opts {:host               host
+                :port               1015
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""}
+          [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
+                                                 (apply [opts]))
+          ^ServerAddress mongo-addr (-> mongo-client
+                                        (.getAllAddress)
+                                        first)
+          mongo-host (-> mongo-addr .getHost)
+          mongo-port (-> mongo-addr .getPort)]
+      [mongo-host mongo-port])
+    (catch MongoClientException e
+      (.getMessage e))))
+
+(expect
+  "Unable to look up SRV record for host fake.fqdn.org"
+  (try
+    (let [host "fake.fqdn.org"
+          opts {:host               host
+                :port               1015
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""}
+          [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
+                                                 (apply [opts]))
+          ^ServerAddress mongo-addr (-> mongo-client
+                                        (.getAllAddress)
+                                        first)
+          mongo-host (-> mongo-addr .getHost)
+          mongo-port (-> mongo-addr .getPort)]
+      [mongo-host mongo-port])
+    (catch MongoClientException e
+      (.getMessage e))))
+
+;; test that correct client is generated for mongodb://
+
+(expect
+  ["localhost" 1010]
+  (let [host "localhost"
+        opts {:host               host
+              :port               1010
+              :user               "test-user"
+              :authdb             "test-authdb"
+              :pass               "test-passwd"
+              :dbname             "test-dbname"
+              :ssl                true
+              :additional-options ""}
+        [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
+                                               (apply [opts]))
+        ^ServerAddress mongo-addr (-> mongo-client
+                                      (.getAllAddress)
+                                      first)
+        mongo-host (-> mongo-addr .getHost)
+        mongo-port (-> mongo-addr .getPort)]
+    [mongo-host mongo-port]))
+
+(expect
+  true
+  (let [host "localhost"
+        conn-fn (#'mongo-util/connect-fn host)]
+    (ifn? conn-fn)))
+
+(expect
+  true
+  (let [host "fake.fqdn.org"
+        conn-fn (#'mongo-util/connect-fn host)]
+    (ifn? conn-fn)))
 
 ;; test that people can specify additional connection options like `?readPreference=nearest`
 (expect
@@ -36,7 +121,7 @@
 (expect
   #"We couldn't connect to the ssh tunnel host"
   (try
-    (let [engine  :mongo
+    (let [engine :mongo
           details {:ssl            false
                    :password       "changeme"
                    :tunnel-host    "localhost"
@@ -49,5 +134,5 @@
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
         (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+    (catch Exception e
+      (.getMessage e))))
