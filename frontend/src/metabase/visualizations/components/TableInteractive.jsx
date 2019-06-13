@@ -640,6 +640,16 @@ export default class TableInteractive extends Component {
     );
   };
 
+  handleOnMouseEnter = () => {
+    // prevent touchpad gestures from navigating forward/back if you're expecting to just scroll the table
+    // https://stackoverflow.com/a/50846937
+    this._previousOverscrollBehaviorX = document.body.style.overscrollBehaviorX;
+    document.body.style.overscrollBehaviorX = "none";
+  };
+  handleOnMouseLeave = () => {
+    document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
+  };
+
   render() {
     const {
       width,
@@ -664,6 +674,8 @@ export default class TableInteractive extends Component {
               // no hover if we're dragging a column
               "TableInteractive--noHover": this.state.dragColIndex != null,
             })}
+            onMouseEnter={this.handleOnMouseEnter}
+            onMouseLeave={this.handleOnMouseLeave}
           >
             <canvas
               className="spread"
