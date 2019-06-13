@@ -358,11 +358,13 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
     } else {
       const metricColumn = series[0].data.cols[1];
-      axis
-        .axis()
-        .tickFormat(value =>
-          formatValue(value, chart.settings.column(metricColumn)),
-        );
+      axis.axis().tickFormat(value => {
+        if (Math.abs(value) < Number.EPSILON) {
+          // snap very small values to zero
+          value = 0;
+        }
+        return formatValue(value, chart.settings.column(metricColumn));
+      });
     }
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
