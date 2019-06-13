@@ -39,7 +39,7 @@ Here's a breakdown of each of the settings:
 | Okta | Identity Provider Single-Sign On URL |
 | OneLogin   | Issuer URL       |
 
-**Identity Provider Certificate:** This is a an encoded certificate that we will use when connecting to the IDP provider URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Again, different providers may have slightly different labels:
+**Identity Provider Certificate:** This is an encoded certificate that we will use when connecting to the IDP provider URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Again, different providers may have slightly different labels:
 
 | Provider      | Name |
 | ----------- | ----------- |
@@ -107,7 +107,7 @@ name), last name (surname), and email address are included as
 attributes of the first assertion returned in the identity provider's
 SAML response.
 
-We've pulled the attributes out of the XML above for easy copy/pasting into your SAML identity provider:
+We've pulled the attributes out of the XML above for easy copy/pasting into your SAML identity provider. We've found that generally, you need to paste this into a field labelled "Name" but the location of the field may vary depending on the provider. Look for it in a section labelled "Attributes" or "Parameters."
 
 | Name      | Value |
 | ----------- | ----------- |
