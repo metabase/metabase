@@ -150,7 +150,7 @@
   "A very simple way to check if a hostname is fully-qualified:
    Check if there are exactly two periods in the name."
   [host]
-  (= 2 (-> host frequencies (get \.))))
+  (<= 2 (-> host frequencies (get \. 0))))
 
 (defn- details->mongo-connection-info [{:keys [host], :as details}]
   ((if (fqdn? host)

@@ -17,6 +17,26 @@
   (fn [{map-type :type}]
     map-type))
 
+
+;; test hostname is fqdn
+
+(expect
+  true
+  (#'mongo-util/fqdn? "db.mongo.com"))
+
+(expect
+  true
+  (#'mongo-util/fqdn? "replica-01.db.mongo.com"))
+
+(expect
+  false
+  (#'mongo-util/fqdn? "localhost"))
+
+(expect
+  false
+  (#'mongo-util/fqdn? "localhost.localdomain"))
+
+
 ;; test srv connection string
 
 (expect
