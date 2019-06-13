@@ -25,8 +25,6 @@
 
 (driver/register! ::concurrent-sync-test)
 
-(defmethod driver/available? ::concurrent-sync-test [_] false)
-
 (defmethod driver/describe-database ::concurrent-sync-test [& _]
   (swap! calls-to-describe-database inc)
   (Thread/sleep 1000)

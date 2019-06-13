@@ -71,8 +71,6 @@
 
 (driver/register! ::moviedb)
 
-(defmethod driver/available? ::moviedb [_] false)
-
 (defmethod driver/describe-database ::moviedb [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals moviedb-tables)
                      :when (not (contains? exclude-tables (:name table)))]

@@ -51,8 +51,6 @@
 
 (driver/register! ::sync-test)
 
-(defmethod driver/available? ::sync-test [_] false)
-
 (defmethod driver/describe-database ::sync-test [& _]
   {:tables (set (for [table (vals sync-test-tables)]
                   (dissoc table :fields)))})

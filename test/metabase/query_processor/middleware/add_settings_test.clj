@@ -6,8 +6,6 @@
 
 (driver/register! ::test-driver)
 
-(defmethod driver/available? ::test-driver [_] false)
-
 (defmethod driver/supports? [::test-driver :set-timezone] [_ _] true)
 
 (expect

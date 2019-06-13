@@ -52,8 +52,6 @@
 
 (driver/register! ::toucanery)
 
-(defmethod driver/available? ::toucanery [_] false)
-
 (defmethod driver/describe-database ::toucanery [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals toucanery-tables)
                      :when (not (contains? exclude-tables (:name table)))]

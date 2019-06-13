@@ -83,7 +83,6 @@
     ;; ok, now add implementations for the so-called "non-trivial" driver multimethods
     (doseq [[^MultiFn multifn, f]
             {driver/initialize!           (make-initialize! driver add-to-classpath! init-steps)
-             driver/available?            (constantly (not abstract))
              driver/display-name          (when display-name (constantly display-name))
              driver/connection-properties (constantly connection-props)}]
       (when f
