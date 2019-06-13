@@ -18,7 +18,8 @@ const STEPS = [
   },
   {
     type: "expression",
-    valid: query => !!query.table(),
+    valid: query =>
+      !!query.table() && query.database().hasFeature("expressions"),
     visible: query => Object.keys(query.expressions()).length > 0,
     revert: query => query.clearExpressions(),
     clean: query => query, // TODO
