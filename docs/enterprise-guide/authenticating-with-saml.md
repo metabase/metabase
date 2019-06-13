@@ -6,6 +6,8 @@ The open source edition of Metabase includes the option to [set up SSO with Goog
 
 There are slightly different steps to take depending on whether your SSO solution uses SAML or JWT. We'll cover SAML first.
 
+> **Tip!** Before beginning your SAML set-up, make sure you know the password for your admin account. If anything becomes misconfigured during the set-up process, an "Admin backup login" option on the sign-in screen is available.
+
 ### Setting Up Your SAML Provider
 
 Before you get started, you'll need to make sure things are configured correctly with your SAML provider. Each provider handles this differently, so here are some links that may help:
@@ -137,6 +139,15 @@ These settings allow Metabase to automatically get each user's email address and
 The settings that Metabase defaults to here might work for you out of the box, but you can override them if you know that your settings are different.
 
 Each of these input boxes needs a URI that points to the location of a SAML attribute.
+
+### Troubleshooting Tips
+
+Here are a few things to double check if you're experiencing issues setting up your SAML connection:
+
+* Verify that the application you created with your SAML provider supports SAML - sometimes other options are presented during the app creation process.
+* Read all field labels and tooltips carefully - since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
+* Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
+* Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at ``https://metabase.mycompany.com``, the full url should be ``https://metabase.mycompany.com/auth/sso``
 
 ---
 
