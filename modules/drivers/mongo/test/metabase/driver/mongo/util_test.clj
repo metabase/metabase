@@ -4,14 +4,19 @@
             [metabase.driver.util :as driver.u]
             [metabase.test.util.log :as tu.log])
   (:import com.mongodb.ReadPreference
-           (com.mongodb MongoClient DB Mongo ServerAddress MongoClientException)))
+           (com.mongodb MongoClient DB ServerAddress MongoClientException)))
 
 
 
-(defn- connect [host opts]
-  (-> (#'mongo-util/connect-fn host)
-      (apply [opts])))
+(defn- connect-mongo [opts]
+  (let [connection-info (#'mongo-util/details->mongo-connection-info
+                          (#'mongo-util/normalize-details
+                            opts))]
+    (#'mongo-util/connect connection-info)))
 
+(def connect-passthrough
+  (fn [{map-type :type}]
+    map-type))
 
 ;; test srv connection string
 
@@ -19,11 +24,13 @@
   "mongodb+srv://test-user:test-pass@test-host.place.com/authdb"
   (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "authdb"))
 
+
 ;; test that connect-srv is invoked for fqdn
 
 (expect
-  :mongo-srv
-  (with-redefs [mongo-util/connect-srv (fn [d] :mongo-srv)]
+  :srv
+  (with-redefs [mongo-util/srv-connection-info (fn [_] {:type :srv})
+                mongo-util/connect connect-passthrough]
     (let [host "my.fake.domain"
           opts {:host               host
                 :port               1015
@@ -33,13 +40,13 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}]
-      (connect host opts))))
+      (connect-mongo opts))))
 
 ;; test that connect is invoked for non-fqdn
 
 (expect
-  :mongo-plain
-  (with-redefs [mongo-util/connect (fn [d] :mongo-plain)]
+  :normal
+  (with-redefs [mongo-util/connect connect-passthrough]
     (let [host "localhost"
           opts {:host               host
                 :port               1010
@@ -49,11 +56,11 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}]
-      (connect host opts))))
+      (connect-mongo opts))))
 
 (expect
-  :mongo-plain
-  (with-redefs [mongo-util/connect (fn [d] :mongo-plain)]
+  :normal
+  (with-redefs [mongo-util/connect connect-passthrough]
     (let [host "localhost.domain"
           opts {:host               host
                 :port               1010
@@ -63,7 +70,7 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}]
-      (connect host opts))))
+      (connect-mongo opts))))
 
 ;; test that connection attempt fails for fake hosts when using srv
 
@@ -79,7 +86,7 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}
-          [^MongoClient mongo-client ^DB db] (connect host opts)
+          [^MongoClient mongo-client ^DB db] (connect-mongo opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
                                         first)
@@ -101,7 +108,7 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}
-          [^MongoClient mongo-client ^DB db] (connect host opts)
+          [^MongoClient mongo-client ^DB db] (connect-mongo opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
                                         first)
@@ -124,7 +131,7 @@
               :dbname             "test-dbname"
               :ssl                true
               :additional-options ""}
-        [^MongoClient mongo-client ^DB db] (connect host opts)
+        [^MongoClient mongo-client ^DB db] (connect-mongo opts)
         ^ServerAddress mongo-addr (-> mongo-client
                                       (.getAllAddress)
                                       first)

@@ -5,7 +5,7 @@
              [config :as config]
              [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh]
             [monger
              [core :as mg]
@@ -89,56 +89,61 @@
     :else                         (throw (Exception. (str "with-mongo-connection failed: bad connection details:"
                                                           (:details database))))))
 
-(defn- connect-via-uri
-  [^MongoClientURI uri ^MongoClient conn]
-  (if-let [dbname (.getDatabase uri)]
-    (.getDB conn dbname)
-    (throw (ex-info (str (tru "No database name specified in URI. Monger requires a database to be explicitly configured." ))
-                    {:hosts (-> uri .getHosts)
-                     :uri   (-> uri .getURI)
-                     :opts  (-> uri .getOptions)}))))
-
-(defn- connect
-  "Connects to Mongo.  This is the fallback method to connect to hostnames that are
-   not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
-   If you would like to provide a FQDN, use `connect-srv`."
-  [{:keys [host port user authdb pass dbname ssl additional-options]}]
-  (let [server-address (mg/server-address host port)
-        credentials (when user
-                      (mcred/create user authdb pass))
-        ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
-        do-connect (partial mg/connect server-address (-> opts .build))
-        mongo-client (if credentials
-                       (do-connect credentials)
-                       (do-connect))
-        db (mg/get-db mongo-client dbname)]
-    [mongo-client db]))
-
 (defn- srv-conn-str
   "Creates Mongo client connection string to connect using
-  DNS + SRV discovery mechanism."
+   DNS + SRV discovery mechanism."
   [user pass host authdb]
   (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
 
-(defn- connect-srv
+(defn- normalize-details [details]
+  (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
+         :or   {port 27017, pass "", ssl false}} details
+        ;; ignore empty :user and :pass strings
+        user             (when (seq user)
+                           user)
+        pass             (when (seq pass)
+                           pass)
+        authdb           (if (seq authdb)
+                           authdb
+                           dbname)]
+    {:host               host
+     :port               port
+     :user               user
+     :authdb             authdb
+     :pass               pass
+     :dbname             dbname
+     :ssl                ssl
+     :additional-options additional-options}))
+
+(defn- srv-connection-info
   "Connects to Mongo using DNS SRV.  Requires FQDN for `host` in the format
    'hostname.domain.top-level-domain'.  Only a single host is supported, but a
    replica list could easily provided instead of a single host.
-
    Using SRV automatically enables SSL, though we explicitly set SSL to true anyway.
-
-   Docs to generate URI string:
-   https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
+   Docs to generate URI string: https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
   [{:keys [host port user authdb pass dbname ssl additional-options]}]
   (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
-        authdb (if (seq authdb)
-                 authdb
-                 dbname)
-        conn-str (srv-conn-str user pass host authdb)
-        mongo-uri (MongoClientURI. conn-str conn-opts)
-        mongo-client (MongoClient. mongo-uri)
-        db (connect-via-uri mongo-uri mongo-client)]
-    [mongo-client db]))
+        authdb    (if (seq authdb)
+                    authdb
+                    dbname)
+        conn-str  (srv-conn-str user pass host authdb)]
+    {:type :srv
+     :uri (MongoClientURI. conn-str conn-opts)}))
+
+(defn- normal-connection-info
+  "Connects to Mongo.  This is the fallback method to connect to hostnames that are
+   not FQDNs.  This works with 'localhost', but has been problematic with FQDNs.
+   If you would like to provide a FQDN, use :srv. "
+  [{:keys [host port user authdb pass dbname ssl additional-options]}]
+  (let [server-address                   (mg/server-address host port)
+        credentials                      (when user
+                                           (mcred/create user authdb pass))
+        ^MongoClientOptions$Builder opts (connection-options-builder :ssl? ssl, :additional-options additional-options)]
+    {:type           :normal
+     :server-address server-address
+     :credentials    credentials
+     :dbname         dbname
+     :options        (-> opts .build)}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
@@ -146,48 +151,57 @@
   [host]
   (= 2 (-> host frequencies (get \.))))
 
-(defn- connect-fn
-  "If `host` is a fully-qualified domain name, then we need to connect to Mongo
-   differently.  It has been problematic to connect to Mongo with an FQDN using
-   `mg/connect`.  The fix was to create a connection string and use DNS SRV for
-   FQDNS.  In this fn we provide the correct connection fn based on host."
-  [host]
-  (if (fqdn? host)
-    connect-srv
-    connect))
+(defn- details->mongo-connection-info [{:keys [host], :as details}]
+  ((if (fqdn? host)
+     srv-connection-info
+     normal-connection-info) details))
+
+(defmulti ^:private connect
+          "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
+          and `DB` respectively.
+
+          If `host` is a fully-qualified domain name, then we need to connect to Mongo
+          differently.  It has been problematic to connect to Mongo with an FQDN using
+          `mg/connect`.  The fix was to create a connection string and use DNS SRV for
+          FQDNS.  In this fn we provide the correct connection fn based on host."
+          {:arglists '([connection-info])}
+          :type)
+
+(defmethod connect :srv
+  [{:keys [^MongoClientURI uri ]}]
+  (let [mongo-client (MongoClient. uri)]
+    (if-let [db-name (.getDatabase uri)]
+      [mongo-client (.getDB mongo-client db-name)]
+      (throw (ex-info (str (tru "No database name specified in URI. Monger requires a database to be explicitly configured." ))
+                      {:hosts (-> uri .getHosts)
+                       :uri   (-> uri .getURI)
+                       :opts  (-> uri .getOptions)})))))
+
+(defmethod connect :normal
+  [{:keys [server-address options credentials dbname]}]
+  (let [do-connect (partial mg/connect server-address options)
+        mongo-client (if credentials
+                       (do-connect credentials)
+                       (do-connect))]
+    [mongo-client (mg/get-db mongo-client dbname)]))
+
 
 (defn -with-mongo-connection
-  "Run F with a new connection (bound to `*mongo-connection*`) to DATABASE.
-   Don't use this directly; use `with-mongo-connection`."
+  "Run `f` with a new connection (bound to `*mongo-connection*`) to `database`. Don't use this directly; use
+  `with-mongo-connection`."
   [f database]
   (let [details (database->details database)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [{:keys [dbname host port user pass ssl authdb tunnel-host tunnel-user tunnel-pass additional-options]
-             :or   {port 27017, pass "", ssl false}} details-with-tunnel
-            user             (when (seq user) ; ignore empty :user and :pass strings
-                               user)
-            pass             (when (seq pass)
-                               pass)
-            authdb           (if (seq authdb)
-                               authdb
-                               dbname)
-            opts {:host               host
-                  :port               port
-                  :user               user
-                  :authdb             authdb
-                  :pass               pass
-                  :dbname             dbname
-                  :ssl                ssl
-                  :additional-options additional-options}
-            [mongo-client db] (->
-                                (connect-fn host)
-                                (apply [opts]))]
-        (log/debug (u/format-color 'cyan "<< OPENED NEW MONGODB CONNECTION >>"))
-        (try
-          (binding [*mongo-connection* db]
-            (f *mongo-connection*))
-          (finally        (mg/disconnect mongo-client)
-                          (log/debug (u/format-color 'cyan "<< CLOSED MONGODB CONNECTION >>"))))))))
+                         (let [connection-info   (details->mongo-connection-info (normalize-details details-with-tunnel))
+                               [mongo-client db] (connect connection-info)]
+                           (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
+                           (try
+                             (binding [*mongo-connection* db]
+                               (f *mongo-connection*))
+                             (finally
+                               (mg/disconnect mongo-client)
+                               (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
+
 
 (defmacro with-mongo-connection
   "Open a new MongoDB connection to ``database-or-connection-string`, bind connection to `binding`, execute `body`, and
