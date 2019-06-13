@@ -12,8 +12,7 @@ import visualizations from "metabase/visualizations";
 
 const FIXED_LAYOUT = [
   ["line", "bar", "combo", "area", "row"],
-  ["scatter", "pie", "funnel"],
-  ["smartscalar", "progress", "gauge"],
+  ["scatter", "pie", "funnel", "smartscalar", "progress", "gauge"],
   ["scalar", "table", "map"],
 ];
 const FIXED_TYPES = new Set(_.flatten(FIXED_LAYOUT));
@@ -86,7 +85,7 @@ const ChartTypeOption = ({
     style={{ opacity: !isSensible ? 0.25 : 1 }}
   >
     <Flex
-      p={2}
+      p={[1, 2]}
       flexDirection="column"
       align="center"
       justifyContent="center"
