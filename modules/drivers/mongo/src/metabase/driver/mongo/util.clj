@@ -158,15 +158,15 @@
      normal-connection-info) details))
 
 (defmulti ^:private connect
-          "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
-          and `DB` respectively.
+  "Connect to MongoDB using Mongo `connection-info`, return a tuple of `[mongo-client db]`, instances of `MongoClient`
+   and `DB` respectively.
 
-          If `host` is a fully-qualified domain name, then we need to connect to Mongo
-          differently.  It has been problematic to connect to Mongo with an FQDN using
-          `mg/connect`.  The fix was to create a connection string and use DNS SRV for
-          FQDNS.  In this fn we provide the correct connection fn based on host."
-          {:arglists '([connection-info])}
-          :type)
+   If `host` is a fully-qualified domain name, then we need to connect to Mongo
+   differently.  It has been problematic to connect to Mongo with an FQDN using
+   `mg/connect`.  The fix was to create a connection string and use DNS SRV for
+   FQDNS.  In this fn we provide the correct connection fn based on host."
+  {:arglists '([connection-info])}
+  :type)
 
 (defmethod connect :srv
   [{:keys [^MongoClientURI uri ]}]
@@ -193,15 +193,15 @@
   [f database]
   (let [details (database->details database)]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-                         (let [connection-info   (details->mongo-connection-info (normalize-details details-with-tunnel))
-                               [mongo-client db] (connect connection-info)]
-                           (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
-                           (try
-                             (binding [*mongo-connection* db]
-                               (f *mongo-connection*))
-                             (finally
-                               (mg/disconnect mongo-client)
-                               (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
+      (let [connection-info (details->mongo-connection-info (normalize-details details-with-tunnel))
+           [mongo-client db] (connect connection-info)]
+       (log/debug (u/format-color 'cyan (trs "Opened new MongoDB connection.")))
+       (try
+         (binding [*mongo-connection* db]
+           (f *mongo-connection*))
+         (finally
+           (mg/disconnect mongo-client)
+           (log/debug (u/format-color 'cyan (trs "Closed MongoDB connection.")))))))))
 
 
 (defmacro with-mongo-connection
