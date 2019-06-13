@@ -189,6 +189,19 @@
                          :target [:dimension $id]
                          :value  "100"}]})))))
 
+;; check that Categories work correctly (passed in as strings, as the frontend is wont to do; should get converted)
+(datasets/expect-with-drivers params-test-drivers
+  [[6]]
+  (qp.test/format-rows-by [int]
+    (qp.test/rows
+      (qp/process-query
+        (data/query venues
+          {:query      {:aggregation [[:count]]}
+           :parameters [{:name   "price"
+                         :type   :category
+                         :target $price
+                         :value  "4"}]})))))
+
 ;; test that we can inject a basic `WHERE id = 9` type param (`id` type)
 (datasets/expect-with-drivers params-test-drivers
   [[9 "Nils Gotam"]]

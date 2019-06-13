@@ -5,6 +5,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -43,7 +44,8 @@
                   :error #"Cannot parse \"TIMESTAMP\" constant \"1\"; SQL statement:.*"
                   :cause {:class (s/eq java.lang.IllegalArgumentException)
                           :error (s/eq "1")}}}
-  (qp/process-query (bad-query)))
+  (tu.log/suppress-output
+    (qp/process-query (bad-query))))
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (tu/expect-schema
