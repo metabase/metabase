@@ -90,8 +90,8 @@
 
 (defn- connect-via-uri
   [^MongoClientURI uri ^MongoClient conn]
-  (if-let [dbName (.getDatabase uri)]
-    (.getDB conn dbName)
+  (if-let [dbname (.getDatabase uri)]
+    (.getDB conn dbname)
     (throw (IllegalArgumentException. "No database name specified in URI. Monger requires a database to be explicitly configured."))))
 
 (defn- connect
@@ -110,6 +110,12 @@
         db (mg/get-db mongo-client dbname)]
     [mongo-client db]))
 
+(defn- srv-conn-str
+  "Creates Mongo client connection string to connect using
+  DNS + SRV discovery mechanism."
+  [user pass host authdb]
+  (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb))
+
 (defn- connect-srv
   "Connects to Mongo using DNS SRV.  Requires FQDN for `host` in the format
    'hostname.domain.top-level-domain'.  Only a single host is supported, but a
@@ -124,7 +130,7 @@
         authdb (if (seq authdb)
                  authdb
                  dbname)
-        conn-str (format "mongodb+srv://%s:%s@%s/%s" user pass host authdb)
+        conn-str (srv-conn-str user pass host authdb)
         mongo-uri (MongoClientURI. conn-str conn-opts)
         mongo-client (MongoClient. mongo-uri)
         db (connect-via-uri mongo-uri mongo-client)]

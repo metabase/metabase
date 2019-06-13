@@ -8,7 +8,64 @@
 
 
 
-;; test that correct URI is generated for mongodb+srv://
+(defn- connect [host opts]
+  (-> (#'mongo-util/connect-fn host)
+      (apply [opts])))
+
+
+;; test srv connection string
+
+(expect
+  "mongodb+srv://test-user:test-pass@test-host.place.com/authdb"
+  (#'mongo-util/srv-conn-str "test-user" "test-pass" "test-host.place.com" "authdb"))
+
+;; test that connect-srv is invoked for fqdn
+
+(expect
+  :mongo-srv
+  (with-redefs [mongo-util/connect-srv (fn [d] :mongo-srv)]
+    (let [host "my.fake.domain"
+          opts {:host               host
+                :port               1015
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""}]
+      (connect host opts))))
+
+;; test that connect is invoked for non-fqdn
+
+(expect
+  :mongo-plain
+  (with-redefs [mongo-util/connect (fn [d] :mongo-plain)]
+    (let [host "localhost"
+          opts {:host               host
+                :port               1010
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""}]
+      (connect host opts))))
+
+(expect
+  :mongo-plain
+  (with-redefs [mongo-util/connect (fn [d] :mongo-plain)]
+    (let [host "localhost.domain"
+          opts {:host               host
+                :port               1010
+                :user               "test-user"
+                :authdb             "test-authdb"
+                :pass               "test-passwd"
+                :dbname             "test-dbname"
+                :ssl                true
+                :additional-options ""}]
+      (connect host opts))))
+
+;; test that connection attempt fails for fake hosts when using srv
 
 (expect
   "No SRV record available for host fake.fqdn.com"
@@ -22,8 +79,7 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}
-          [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
-                                                 (apply [opts]))
+          [^MongoClient mongo-client ^DB db] (connect host opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
                                         first)
@@ -45,8 +101,7 @@
                 :dbname             "test-dbname"
                 :ssl                true
                 :additional-options ""}
-          [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
-                                                 (apply [opts]))
+          [^MongoClient mongo-client ^DB db] (connect host opts)
           ^ServerAddress mongo-addr (-> mongo-client
                                         (.getAllAddress)
                                         first)
@@ -56,7 +111,7 @@
     (catch MongoClientException e
       (.getMessage e))))
 
-;; test that correct client is generated for mongodb://
+;; test host and port and correct in plain client
 
 (expect
   ["localhost" 1010]
@@ -69,14 +124,15 @@
               :dbname             "test-dbname"
               :ssl                true
               :additional-options ""}
-        [^MongoClient mongo-client ^DB db] (-> (#'mongo-util/connect-fn host)
-                                               (apply [opts]))
+        [^MongoClient mongo-client ^DB db] (connect host opts)
         ^ServerAddress mongo-addr (-> mongo-client
                                       (.getAllAddress)
                                       first)
         mongo-host (-> mongo-addr .getHost)
         mongo-port (-> mongo-addr .getPort)]
     [mongo-host mongo-port]))
+
+;; test that we get an ifn back when trying to connect
 
 (expect
   true
