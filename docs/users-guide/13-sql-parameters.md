@@ -102,7 +102,7 @@ WHERE True
   [[AND category = {% raw %}{{category}}{% endraw %}]]
 ```
 
-When using field filter, the column should not be included in the SQL, since the variable should be mapped to a field in the side panel.
+When using a field filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel.
 
 Example:
 

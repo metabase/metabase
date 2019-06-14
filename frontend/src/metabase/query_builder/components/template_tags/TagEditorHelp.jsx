@@ -173,7 +173,7 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
         setDatasetQuery={setQueryWithSampleDatasetId}
       />
 
-      <p>{t`When using Field Filter, the column should not be included.`}</p>
+      <p>{t`When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel.`}</p>
       <TagExample
         datasetQuery={EXAMPLES.optionalDimension}
         setDatasetQuery={setQueryWithSampleDatasetId}
