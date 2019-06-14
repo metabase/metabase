@@ -3,9 +3,11 @@
             [clojure.string :as str]
             [honeysql
              [core :as hsql]
-             [format :as hformat]
-             [helpers :as h]]
-            [metabase.driver.hive-like :as hive-like]
+             [format :as hformat]]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -14,15 +16,15 @@
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
-            [metabase.test.data.sql.ddl :as ddl]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]
-             [spec :as spec]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+             [load-data :as load-data]]
+            [metabase.test.data.sql.ddl :as ddl]))
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
+
+;; during unit tests don't treat Spark SQL as having FK support
+(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
 
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/BigInteger] [_ _] "BIGINT")
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Boolean]    [_ _] "BOOLEAN")

@@ -149,7 +149,7 @@
 
 
 (defn- user-id [username]
-  (require 'metabase.test.data.users)
+  (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
 (defn- rasta-id [] (user-id :rasta))

@@ -1,14 +1,19 @@
 (ns metabase.test.data.oracle
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [clojure.set :as set]
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]]
-            [metabase.util :as u]))
+             [load-data :as load-data]]))
 
 (sql-jdbc.tx/add-test-extensions! :oracle)
 
@@ -102,6 +107,15 @@
   be ignored). (This is used as part of the implementation of `excluded-schemas` for the Oracle driver during tests.)"
   []
   (set (map :username (jdbc/query (dbspec) ["SELECT username FROM dba_users WHERE username <> ?" session-schema]))))
+
+(let [orig (get-method sql-jdbc.sync/excluded-schemas :oracle)]
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle [driver]
+    (set/union
+     (orig driver)
+     (when config/is-test?
+       ;; This is similar hack we do for Redshift, see the explanation there we just want to ignore all the test
+       ;; "session schemas" that don't match the current test
+       (non-session-schemas)))))
 
 
 ;;; Clear out the sesion schema before and after tests run

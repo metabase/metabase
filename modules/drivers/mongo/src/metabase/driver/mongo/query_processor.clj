@@ -13,6 +13,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -38,8 +39,8 @@
 ;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
 ;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
 (when-not *compile-files*
-  (require 'monger.joda-time
-           'monger.json))
+  (classloader/require 'monger.joda-time
+                       'monger.json))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
