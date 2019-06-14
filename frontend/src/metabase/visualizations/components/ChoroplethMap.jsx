@@ -244,12 +244,13 @@ export default class ChoroplethMap extends Component {
       });
 
     const valuesMap = {};
-    const domain = [];
     for (const row of rows) {
-      valuesMap[getRowKey(row)] =
-        (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
-      domain.push(getRowValue(row));
+      const key = getRowKey(row);
+      const value = getRowValue(row);
+      valuesMap[key] = (valuesMap[key] || 0) + value;
     }
+    const domainSet = new Set(Object.values(valuesMap));
+    const domain = Array.from(domainSet);
 
     const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
     const heatMapColors =
