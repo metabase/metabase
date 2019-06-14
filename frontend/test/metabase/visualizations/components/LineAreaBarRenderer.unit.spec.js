@@ -239,6 +239,32 @@ describe("LineAreaBarRenderer", () => {
     });
   });
 
+  describe("histogram", () => {
+    it("should have one more tick than it has bars", () => {
+      // this is because each bar has a tick on either side
+      renderLineAreaBar(
+        element,
+        [
+          {
+            data: {
+              cols: [NumberColumn(), NumberColumn()],
+              rows: [[1, 1], [2, 2], [3, 1]],
+            },
+            card: {
+              display: "bar",
+              visualization_settings: {
+                "graph.x_axis.axis_enabled": true,
+                "graph.x_axis.scale": "histogram",
+              },
+            },
+          },
+        ],
+        {},
+      );
+      expect(qsa(".axis.x .tick").length).toBe(4);
+    });
+  });
+
   // querySelector shortcut
   const qs = selector => element.querySelector(selector);
 
