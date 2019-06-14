@@ -317,6 +317,17 @@ export function applyChartOrdinalXAxis(
   chart.x(d3.scale.ordinal().domain(xValues)).xUnits(dc.units.ordinal);
 }
 
+// Sometimes tick marks are placed *just* off from zero.
+// We still want to format these as "0" rather than "0.0000000000000018".
+// But! We need to allow for real non-zero ticks at very small values,
+// so we scale a tolerance to the extent of the yAxis.
+// The tolerance is arbitrarily set to one millionth of the yExtent.
+const TOLERANCE_TO_Y_EXTENT = 1e6;
+export function maybeRoundValueToZero(value, [yMin, yMax]) {
+  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  return Math.abs(value) < tolerance ? 0 : value;
+}
+
 export function applyChartYAxis(chart, series, yExtent, axisName) {
   let axis;
   if (axisName !== "right") {
@@ -358,11 +369,10 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
     } else {
       const metricColumn = series[0].data.cols[1];
-      axis
-        .axis()
-        .tickFormat(value =>
-          formatValue(value, chart.settings.column(metricColumn)),
-        );
+      axis.axis().tickFormat(value => {
+        value = maybeRoundValueToZero(value, yExtent);
+        return formatValue(value, chart.settings.column(metricColumn));
+      });
     }
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());

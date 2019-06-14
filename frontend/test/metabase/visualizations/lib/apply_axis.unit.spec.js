@@ -1,4 +1,7 @@
-import { stretchTimeseriesDomain } from "metabase/visualizations/lib/apply_axis";
+import {
+  maybeRoundValueToZero,
+  stretchTimeseriesDomain,
+} from "metabase/visualizations/lib/apply_axis";
 import moment from "moment";
 
 describe("visualization.lib.apply_axis", () => {
@@ -37,6 +40,26 @@ describe("visualization.lib.apply_axis", () => {
         "2020-03-31T06:00:00.000Z",
         "2020-04-05T18:00:00.000Z",
       ]);
+    });
+  });
+
+  describe("maybeRoundValueToZero", () => {
+    it("shouldn't change big values", () => {
+      const value = maybeRoundValueToZero(0.2, [-1, 1]);
+
+      expect(value).toBe(0.2);
+    });
+
+    it("should snap small values to zero", () => {
+      const value = maybeRoundValueToZero(0.0000000000018, [-1, 1]);
+
+      expect(value).toBe(0);
+    });
+
+    it("shouldn't snap small values to zero if the yExtent is small", () => {
+      const value = maybeRoundValueToZero(0.0000000000018, [-1e-20, 1e-20]);
+
+      expect(value).toBe(0.0000000000018);
     });
   });
 });
