@@ -102,6 +102,18 @@ WHERE True
   [[AND category = {% raw %}{{category}}{% endraw %}]]
 ```
 
+When using field filter, the column should not be included in the SQL, since the variable should be mapped to a field in the side panel.
+
+Example:
+
+```
+SELECT count(*)
+FROM products
+WHERE True
+  [[AND {% raw %}{{id}}{% endraw %}]]
+  [[AND {% raw %}{{category}}{% endraw %}]]
+```
+
 ---
 
 ## Next: automated x-ray explorations
