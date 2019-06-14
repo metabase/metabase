@@ -13,6 +13,30 @@
     (when (.exists parents-file)
       (str/split-lines (slurp parents-file)))))
 
+(defn- driver->project [driver]
+  (let [project-filename (format "modules/drivers/%s/project.clj" driver)]
+    (when (file-exists? project-filename)
+      (p/read project-filename))))
+
+(defn- plugins-file-exists? [filename-pattern]
+  (some
+   (fn [filename]
+     (re-matches filename-pattern filename))
+   (.list (File. "plugins"))))
+
+(defn- driver-dependencies-satisfied?
+  "If a driver's project specifies a list of dependency filenames like
+
+    {:include-drivers-dependencies [#\"^ojdbc[78]\\.jar$\"]}
+
+  Make sure a file matching that name pattern exists in the `/plugins` directory."
+  [driver]
+  (when-let [{:keys [include-drivers-dependencies]} (driver->project driver)]
+    (or (every? plugins-file-exists? include-drivers-dependencies)
+        (println
+         (format "Not including %s because not all dependencies matching %s found in /plugins"
+                 driver include-drivers-dependencies)))))
+
 ;; if :include-drivers is specified in the project, and its value is `:all`, include all drivers; if it's a collection
 ;; of driver names, include the specified drivers; otherwise include whatever was set in the `DRIVERS` env var
 (defn- test-drivers [{:keys [include-drivers]}]
@@ -25,52 +49,39 @@
           include-drivers
 
           :else
-          (some-> (System/getenv "DRIVERS") (str/split #",")))]
-    (concat drivers
-            (set (mapcat driver-parents drivers)))))
+          (some-> (System/getenv "DRIVERS") (str/split #",")))
 
-(defn- plugins-file-exists? [filename-pattern]
-  (some
-   (fn [filename]
-     (re-matches filename-pattern filename))
-   (.list (File. "plugins"))))
-
-(defn- driver-dependencies-satisfied?
-  "If `project` specifies a list of dependency filenames like
-
-    {:include-drivers-dependencies [#\"^ojdbc[78]\\.jar$\"]}
-
-  Make sure a file matching that name pattern exists in the `/plugins` directory."
-  {:arglists '([project])}
-  [{:keys [include-drivers-dependencies]}]
-  (every? plugins-file-exists? include-drivers-dependencies))
+        drivers
+        (for [driver drivers
+              :when (driver-dependencies-satisfied? driver)]
+          driver)]
+    (concat drivers (set (mapcat driver-parents drivers)))))
 
 (defn- test-drivers-source-paths [test-drivers]
   (vec
    (for [driver test-drivers
          :let   [source-path (format "modules/drivers/%s/src" driver)]
-         :when  (and (file-exists? source-path)
-                     (driver-dependencies-satisfied? driver))]
+         :when  (file-exists? source-path)]
      source-path)))
 
 (defn- test-drivers-test-paths [test-drivers]
   (vec
    (for [driver test-drivers
          :let   [test-path (format "modules/drivers/%s/test" driver)]
-         :when  (and (file-exists? test-path)
-                     (driver-dependencies-satisfied? driver))]
+         :when  (file-exists? test-path)]
+     test-path)))
+
+(defn- test-drivers-test-paths [test-drivers]
+  (vec
+   (for [driver test-drivers
+         :let   [test-path (format "modules/drivers/%s/test" driver)]
+         :when  (file-exists? test-path)]
      test-path)))
 
 (defn- test-drivers-projects [test-drivers]
   (for [driver test-drivers
-        :let   [project-file (format "modules/drivers/%s/project.clj" driver)]
-        :when  (file-exists? project-file)
-        :let   [project (p/read project-file)]
-        :when  (or (driver-dependencies-satisfied? project)
-                   (println
-                    (format "Not including %s because not all dependencies matching %s found in /plugins"
-                            driver
-                            (:include-drivers-dependencies project))))]
+        :let   [project (driver->project driver)]
+        :when  project]
     project))
 
 (defn- test-drivers-dependencies [test-projects]
@@ -97,8 +108,6 @@
 (defn- test-drivers-profile [project]
   (let [test-drivers  (test-drivers project)
         test-projects (test-drivers-projects test-drivers)]
-    (when (seq test-drivers)
-      (println "[include drivers middleware] adding sources/deps for these drivers:" test-drivers))
     {:repositories (test-drivers-repositories test-projects)
      :dependencies (test-drivers-dependencies test-projects)
      :aot          (test-drivers-aot          test-projects)

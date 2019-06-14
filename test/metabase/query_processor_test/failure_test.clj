@@ -61,4 +61,5 @@
    :running_time (s/constrained s/Int (complement neg?))
    :preprocessed (s/eq (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true))
    :data         (s/eq {:rows [], :cols [], :columns []})}
-  (qp/process-query-and-save-execution! (bad-query) {:context :question}))
+  (tu.log/suppress-output
+    (qp/process-query-and-save-execution! (bad-query) {:context :question})))
