@@ -50,14 +50,14 @@
 
   ([hour :- Hour, weekday :- Weekday, monthday :- MonthDay, monthweek :- MonthWeek, on-error]
    (log/info (trs "Sending scheduled pulses..."))
-   (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
-     (doseq [pulse-id (keys channels-by-pulse)]
+   (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
+     (doseq [[pulse-id channels] pulse-id->channels]
        (try
          (task-history/with-task-history {:task (format "send-pulse %s" pulse-id)}
-           (log/debug (format "Starting Pulse Execution: %d" pulse-id))
+           (log/debug (trs "Starting Pulse Execution: {0}" pulse-id))
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-             (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
-           (log/debug (format "Finished Pulse Execution: %d" pulse-id)))
+             (p/send-pulse! pulse :channel-ids (map :id channels)))
+           (log/debug (trs "Finished Pulse Execution: {0}" pulse-id)))
          (catch Throwable e
            (on-error pulse-id e)))))))
 
