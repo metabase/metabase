@@ -100,7 +100,7 @@
 (defn user-details
   [username]
   (-> (test-users/fetch-user username)
-      (dissoc :common_name :date_joined :last_login :is_superuser :is_qbnewb)))
+      (dissoc :date_joined :last_login :is_superuser :is_qbnewb)))
 
 ;; create a channel then select its details
 (defn- create-channel-then-select!
@@ -365,15 +365,20 @@
 
 ;; Inactive users shouldn't get Pulses
 (expect
-  #{{:id         (test-users/user->id :lucky)
-     :email      "lucky@metabase.com"
-     :first_name "Lucky"
-     :last_name  "Pigeon"}
-    {:id         (test-users/user->id :rasta)
-     :email      "rasta@metabase.com"
-     :first_name "Rasta"
-     :last_name  "Toucan"}
-    {:email "cam@test.com"}}
+  (cons
+   {:email "cam@test.com"}
+   (sort-by
+    :id
+    [{:id          (test-users/user->id :lucky)
+      :email       "lucky@metabase.com"
+      :first_name  "Lucky"
+      :last_name   "Pigeon"
+      :common_name "Lucky Pigeon"}
+     {:id          (test-users/user->id :rasta)
+      :email       "rasta@metabase.com"
+      :first_name  "Rasta"
+      :last_name   "Toucan"
+      :common_name "Rasta Toucan"}]))
   (tt/with-temp* [Pulse                 [{pulse-id :id}]
                   PulseChannel          [{channel-id :id, :as channel} {:pulse_id pulse-id
                                                                         :details  {:emails ["cam@test.com"]}}]
@@ -381,6 +386,4 @@
                   PulseChannelRecipient [_ {:pulse_channel_id channel-id, :user_id inactive-user-id}]
                   PulseChannelRecipient [_ {:pulse_channel_id channel-id, :user_id (test-users/user->id :rasta)}]
                   PulseChannelRecipient [_ {:pulse_channel_id channel-id, :user_id (test-users/user->id :lucky)}]]
-    (set
-     (:recipients
-      (hydrate channel :recipients)))))
+    (:recipients (hydrate channel :recipients))))

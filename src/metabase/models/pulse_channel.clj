@@ -5,7 +5,7 @@
             [metabase.models
              [interface :as i]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [user :refer [User]]]
+             [user :as user :refer [User]]]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan
@@ -115,16 +115,18 @@
 (defn ^:hydrate recipients
   "Return the `PulseChannelRecipients` associated with this `pulse-channel`."
   [{pulse-channel-id :id, {:keys [emails]} :details}]
-  (into
+  (concat
    (for [email emails]
      {:email email})
-   (db/query
-    {:select    [:u.id :u.email :u.first_name :u.last_name]
-     :from      [[User :u]]
-     :left-join [[PulseChannelRecipient :pcr] [:= :u.id :pcr.user_id]]
-     :where     [:and
-                 [:= :pcr.pulse_channel_id pulse-channel-id]
-                 [:= :u.is_active true]]})))
+   (for [user (db/query
+               {:select    [:u.id :u.email :u.first_name :u.last_name]
+                :from      [[User :u]]
+                :left-join [[PulseChannelRecipient :pcr] [:= :u.id :pcr.user_id]]
+                :where     [:and
+                            [:= :pcr.pulse_channel_id pulse-channel-id]
+                            [:= :u.is_active true]]
+                :order-by [[:u.id :asc]]})]
+     (user/add-common-name user))))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! PulseChannelRecipient :pulse_channel_id id))
