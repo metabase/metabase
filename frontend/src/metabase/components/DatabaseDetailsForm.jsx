@@ -250,6 +250,31 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
+    } else if (field.name === "use-srv") {
+      const on =
+        this.state.details["use-srv"] == undefined
+          ? false
+          : this.state.details["use-srv"];
+      return (
+        <FormField key={field.name} fieldName={field.name}>
+          <div className="flex align-center Form-offset">
+            <div className="Grid-cell--top">
+              <Toggle
+                value={on}
+                onChange={val => this.onChange("use-srv", val)}
+              />
+            </div>
+            <div className="px2">
+              <h3>{t`Use DNS SRV when connecting`}</h3>
+              <div style={{ maxWidth: "40rem" }} className="pt1">
+                {t`Using this option requires that provided host is a FQDN.  If connecting to 
+                an Atlas cluster, you might need to enable this option.  If you don't know what this means,
+                leave this disabled.`}
+              </div>
+            </div>
+          </div>
+        </FormField>
+      );
     } else if (field.name === "let-user-control-scheduling") {
       const on =
         this.state.details["let-user-control-scheduling"] == undefined

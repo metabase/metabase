@@ -21,14 +21,13 @@ driver:
     - name: authdb
       display-name: Authentication Database
       placeholder: Optional database to use when authenticating
-    - name: use-srv
-      type: boolean
-      display-name: Use DNS SRV when connecting.  Using SRV requires host be an FQDN.  If you don't know what this means, leave it disabled.
-      default: false
     - merge:
         - additional-options
         - display-name: Additional Mongo connection string options
-          placeholder: 'readPreference=nearest&replicaSet=test'
+          placeholder: 'retryWrites=true&w=majority&authSource=admin&readPreference=nearest&replicaSet=test'
+    - name: use-srv
+      type: boolean
+      default: false
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace
