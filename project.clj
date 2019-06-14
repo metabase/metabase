@@ -196,7 +196,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.7"]]
+    [[metabase/lein-include-drivers "1.0.8"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}

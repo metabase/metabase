@@ -13,6 +13,7 @@
             [metabase.db
              [connection-pool :as connection-pool]
              [spec :as dbspec]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]
@@ -400,7 +401,7 @@
   ([driver :- s/Keyword, details :- su/Map]
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (require 'metabase.driver.util)
+             (classloader/require 'metabase.driver.util)
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
@@ -455,7 +456,7 @@
   "Do any custom code-based migrations now that the db structure is up to date."
   []
   (when-not *disable-data-migrations*
-    (require 'metabase.db.migrations)
+    (classloader/require 'metabase.db.migrations)
     ((resolve 'metabase.db.migrations/run-all!))))
 
 

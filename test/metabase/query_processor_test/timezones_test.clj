@@ -18,7 +18,7 @@
   "Calls `with-db` on the `test-data-with-timezones` dataset and ensures the timestamps are fixed up on MySQL"
   [& body]
   `(data/dataset ~'test-data-with-timezones
-     (fn [] ~@body)))
+     ~@body))
 
 (def ^:private default-utc-results
   #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]})

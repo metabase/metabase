@@ -101,37 +101,52 @@ class ChartSettings extends Component {
     );
   }
 
-  render() {
-    const {
-      isDashboard,
-      question,
-      addField,
-      series,
-      noPreview,
-      children,
-    } = this.props;
-    const { currentWidget, currentSection } = this.state;
+  _getWidgets() {
+    if (this.props.widgets) {
+      return this.props.widgets;
+    } else {
+      const { isDashboard } = this.props;
+      const transformedSeries = this._getTransformedSeries();
 
+      return getSettingsWidgetsForSeries(
+        transformedSeries,
+        this.handleChangeSettings,
+        isDashboard,
+      );
+    }
+  }
+
+  // TODO: move this logic out of the React component
+  _getRawSeries() {
+    const { series } = this.props;
     const settings = this._getSettings();
-
     const rawSeries = assocIn(
       series,
       [0, "card", "visualization_settings"],
       settings,
     );
-
+    return rawSeries;
+  }
+  _getTransformedSeries() {
+    const rawSeries = this._getRawSeries();
     const { series: transformedSeries } = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
+    return transformedSeries;
+  }
+
+  render() {
+    const { question, addField, noPreview, children } = this.props;
+    const { currentWidget } = this.state;
+
+    const settings = this._getSettings();
+    const widgets = this._getWidgets();
+    const rawSeries = this._getRawSeries();
 
     const widgetsById = {};
-
     const sections = {};
-    for (const widget of getSettingsWidgetsForSeries(
-      transformedSeries,
-      this.handleChangeSettings,
-      isDashboard,
-    )) {
+
+    for (const widget of widgets) {
       widgetsById[widget.id] = widget;
       if (widget.widget && !widget.hidden) {
         sections[widget.section] = sections[widget.section] || [];
@@ -147,13 +162,13 @@ class ChartSettings extends Component {
     }
 
     const sectionNames = Object.keys(sections);
-    const section =
-      currentSection && currentSection in sections
-        ? currentSection
+    const currentSection =
+      this.state.currentSection && sections[this.state.currentSection]
+        ? this.state.currentSection
         : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
           sectionNames[0];
 
-    let widgets;
+    let visibleWidgets;
     let widget = currentWidget && widgetsById[currentWidget.id];
     if (widget) {
       widget = {
@@ -164,9 +179,9 @@ class ChartSettings extends Component {
           ...(currentWidget.props || {}),
         },
       };
-      widgets = [widget];
+      visibleWidgets = [widget];
     } else {
-      widgets = sections[section];
+      visibleWidgets = sections[currentSection] || [];
     }
 
     const extraWidgetProps = {
@@ -179,7 +194,7 @@ class ChartSettings extends Component {
 
     const sectionPicker = (
       <Radio
-        value={section}
+        value={currentSection}
         onChange={this.handleShowSection}
         options={sectionNames}
         optionNameFn={v => v}
@@ -188,7 +203,7 @@ class ChartSettings extends Component {
       />
     );
 
-    const widgetList = widgets.map(widget => (
+    const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
         key={`${widget.id}`}
         {...widget}

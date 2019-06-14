@@ -4,6 +4,10 @@
              [format :as tformat]]
             [clojure.string :as str]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver
              [bigquery :as bigquery]
              [google :as google]]
@@ -11,7 +15,6 @@
              [datasets :as datasets]
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -23,6 +26,16 @@
            java.sql.Time))
 
 (sql.tx/add-test-extensions! :bigquery)
+
+;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
+;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
+;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
+;; tests are not appropriate for BigQuery, so they're disabled for the time being.
+;;
+;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
+;; relationships for FK tables
+(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] (not config/is-test?))
+
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 

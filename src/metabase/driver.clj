@@ -104,23 +104,17 @@
 (defonce ^:private require-lock (Object.))
 
 (defn- require-driver-ns [driver & require-options]
-  ;; call `the-classloader` for side effects which will make sure the current thread's context classloader is one
-  ;; that has access to any URLs we've added dynamically if not already the case.
-  (classloader/the-classloader)
-  ;; make sure Clojure is using the context classloader to load namespaces. This should normally be the case, but
-  ;; better safe than sorry IMO
-  (binding [*use-context-classloader* true]
-    (let [expected-ns (driver->expected-namespace driver)]
-      ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
-      ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
-      ;; you try to do multithreaded require, at least last time I checked.
-      (locking require-lock
-        (log/debug
-         (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (try
-          (apply require expected-ns require-options)
-          (catch Throwable _
-            (throw (Exception. (str (tru "Could not find {0} driver." driver))))))))))
+  (let [expected-ns (driver->expected-namespace driver)]
+    ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
+    ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
+    ;; you try to do multithreaded require, at least last time I checked.
+    (locking require-lock
+      (log/debug
+       (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+      (try
+        (apply classloader/require expected-ns require-options)
+        (catch Throwable _
+          (throw (Exception. (str (tru "Could not find {0} driver." driver)))))))))
 
 (defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase

@@ -2,6 +2,7 @@
   "Internal implementation of various helper functions in `metabase.test.data`."
   (:require [clojure.tools.logging :as log]
             [metabase
+             [config :as config]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -68,26 +69,36 @@
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
             (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
 
+(def ^:private create-database-timeout
+  "Max amount of time to wait for driver text extensions to create a DB and load test data."
+  (* 4 60 1000)) ; 4 minutes
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
-  ;; Create the database and load its data
-  ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-  (tu.tz/with-jvm-tz "UTC"
-    (tx/create-db! driver database-definition))
-  ;; Add DB object to Metabase DB
-  (let [db (db/insert! Database
-             :name    database-name
-             :engine  (name driver)
-             :details (tx/dbdef->connection-details driver :db database-definition))]
-    ;; sync newly added DB
-    (sync/sync-database! db)
-    ;; add extra metadata for fields
-    (try
-      (add-extra-metadata! database-definition db)
-      (catch Throwable e
-        (println "Error adding extra metadata:" e)))
-    ;; make sure we're returing an up-to-date copy of the DB
-    (Database (u/get-id db))))
+  (try
+    ;; Create the database and load its data
+    ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
+    (u/with-timeout create-database-timeout
+      (tu.tz/with-jvm-tz "UTC"
+        (tx/create-db! driver database-definition)))
+    ;; Add DB object to Metabase DB
+    (let [db (db/insert! Database
+               :name    database-name
+               :engine  (name driver)
+               :details (tx/dbdef->connection-details driver :db database-definition))]
+      ;; sync newly added DB
+      (sync/sync-database! db)
+      ;; add extra metadata for fields
+      (try
+        (add-extra-metadata! database-definition db)
+        (catch Throwable e
+          (println "Error adding extra metadata:" e)))
+      ;; make sure we're returing an up-to-date copy of the DB
+      (Database (u/get-id db)))
+    (catch Throwable e
+      (log/error e (format "Failed to create %s '%s' test database" driver database-name))
+      (when config/is-test?
+        (System/exit -1)))))
 
 
 (defmethod get-or-create-database! :default [driver dbdef]
@@ -214,8 +225,7 @@
   [namespace-symb symb]
   @(or (ns-resolve namespace-symb symb)
        (do
-         (classloader/the-classloader)
-         (require 'metabase.test.data.dataset-definitions)
+         (classloader/require 'metabase.test.data.dataset-definitions)
          (ns-resolve 'metabase.test.data.dataset-definitions symb))
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))

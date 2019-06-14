@@ -1,5 +1,6 @@
 (ns leiningen.include-drivers
   (:require [clojure.string :as str]
+            [colorize.core :as colorize]
             [leiningen.core.project :as p])
   (:import java.io.File))
 
@@ -31,11 +32,18 @@
 
   Make sure a file matching that name pattern exists in the `/plugins` directory."
   [driver]
-  (when-let [{:keys [include-drivers-dependencies]} (driver->project driver)]
+  {:pre [(string? driver) (seq driver)]}
+  (if-let [{:keys [include-drivers-dependencies]} (driver->project driver)]
     (or (every? plugins-file-exists? include-drivers-dependencies)
         (println
-         (format "Not including %s because not all dependencies matching %s found in /plugins"
-                 driver include-drivers-dependencies)))))
+         (colorize/color
+          :red
+          (format " [include-drivers middleware]Not including %s because not all dependencies matching %s found in /plugins"
+                  driver (set include-drivers-dependencies)))))
+    (println
+     (colorize/color
+      :red
+      (format "[include-drivers middleware] Not including %s because we could not its project.clj" driver)))))
 
 ;; if :include-drivers is specified in the project, and its value is `:all`, include all drivers; if it's a collection
 ;; of driver names, include the specified drivers; otherwise include whatever was set in the `DRIVERS` env var
@@ -49,13 +57,20 @@
           include-drivers
 
           :else
-          (some-> (System/getenv "DRIVERS") (str/split #",")))
+          (some-> (System/getenv "DRIVERS") (str/split #",") set (disj "h2" "postgres" "mysql")))
 
-        drivers
+        _ (println
+           (colorize/color
+            :magenta
+            (format "[include-drivers middleware] Attempting to include these drivers: %s" (set drivers))))
+
+        available-drivers
         (for [driver drivers
               :when (driver-dependencies-satisfied? driver)]
           driver)]
-    (concat drivers (set (mapcat driver-parents drivers)))))
+    (concat
+     available-drivers
+     (set (mapcat driver-parents available-drivers)))))
 
 (defn- test-drivers-source-paths [test-drivers]
   (vec
@@ -79,10 +94,7 @@
      test-path)))
 
 (defn- test-drivers-projects [test-drivers]
-  (for [driver test-drivers
-        :let   [project (driver->project driver)]
-        :when  project]
-    project))
+  (filter some? (map driver->project test-drivers)))
 
 (defn- test-drivers-dependencies [test-projects]
   (vec
@@ -108,6 +120,10 @@
 (defn- test-drivers-profile [project]
   (let [test-drivers  (test-drivers project)
         test-projects (test-drivers-projects test-drivers)]
+    (println
+     (colorize/color
+      :magenta
+      (format "[include-drivers middleware] including these drivers: %s" (set test-drivers))))
     {:repositories (test-drivers-repositories test-projects)
      :dependencies (test-drivers-dependencies test-projects)
      :aot          (test-drivers-aot          test-projects)

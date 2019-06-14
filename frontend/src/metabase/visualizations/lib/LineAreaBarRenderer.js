@@ -137,13 +137,20 @@ function getXInterval({ settings, series }, xValues) {
 }
 
 function getXAxisProps(props, datas) {
-  const xValues = getXValues(datas);
+  const rawXValues = getXValues(datas);
+  const isHistogram = isHistogramBar(props);
+  const xInterval = getXInterval(props, rawXValues);
 
+  // For histograms we add a fake x value one xInterval to the right
+  // This compensates for the barshifting we do align ticks
+  const xValues = isHistogram
+    ? [...rawXValues, Math.max(...rawXValues) + xInterval]
+    : rawXValues;
   return {
-    xValues,
+    isHistogramBar: isHistogram,
     xDomain: d3.extent(xValues),
-    xInterval: getXInterval(props, xValues),
-    isHistogramBar: isHistogramBar(props),
+    xInterval,
+    xValues,
   };
 }
 

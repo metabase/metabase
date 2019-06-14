@@ -15,6 +15,9 @@
 
 (driver/register! :googleanalytics, :parent :google)
 
+(defmethod driver/supports? [:googleanalytics :basic-aggregations] [_ _] false)
+
+
 ;;; ----------------------------------------------------- Client -----------------------------------------------------
 
 (defn- ^Analytics credential->client [^GoogleCredential credential]

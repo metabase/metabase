@@ -2,6 +2,7 @@
   (:require [clojure.java.classpath :as classpath]
             [clojure.string :as str]
             [clojure.tools.namespace.find :as ns-find]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]))
 
 (defn- driver-ns-symbs []
@@ -11,7 +12,7 @@
          :when   (and (or (starts-with? "metabase.driver")
                           (starts-with? "metabase.test.data"))
                       (do
-                        (u/ignore-exceptions (require ns-symb))
+                        (u/ignore-exceptions (classloader/require ns-symb))
                         (find-ns ns-symb)))]
      ns-symb)))
 
