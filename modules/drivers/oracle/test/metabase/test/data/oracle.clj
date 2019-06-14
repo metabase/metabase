@@ -108,16 +108,14 @@
   []
   (set (map :username (jdbc/query (dbspec) ["SELECT username FROM dba_users WHERE username <> ?" session-schema]))))
 
-(def ^:private excluded-schemas
-  (sql-jdbc.sync/excluded-schemas :oracle))
-
-(defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  (set/union
-   excluded-schemas
-   (when config/is-test?
-     ;; This is similar hack we do for Redshift, see the explanation there we just want to ignore all the test
-     ;; "session schemas" that don't match the current test
-     (non-session-schemas))))
+(let [orig (get-method sql-jdbc.sync/excluded-schemas :oracle)]
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
+    (set/union
+     (orig)
+     (when config/is-test?
+       ;; This is similar hack we do for Redshift, see the explanation there we just want to ignore all the test
+       ;; "session schemas" that don't match the current test
+       (non-session-schemas)))))
 
 
 ;;; Clear out the sesion schema before and after tests run
