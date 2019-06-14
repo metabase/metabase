@@ -214,8 +214,7 @@
   [namespace-symb symb]
   @(or (ns-resolve namespace-symb symb)
        (do
-         (classloader/the-classloader)
-         (require 'metabase.test.data.dataset-definitions)
+         (classloader/require 'metabase.test.data.dataset-definitions)
          (ns-resolve 'metabase.test.data.dataset-definitions symb))
        (throw (Exception. (format "Dataset definition not found: '%s/%s' or 'metabase.test.data.dataset-definitions/%s'"
                                   namespace-symb symb symb)))))

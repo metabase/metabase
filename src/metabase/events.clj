@@ -14,8 +14,8 @@
             [metabase
              [config :as config]
              [util :as u]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs]]))
-
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 
@@ -30,7 +30,7 @@
   (when-not config/is-test?
     (doseq [ns-symb @u/metabase-namespace-symbols
             :when   (.startsWith (name ns-symb) "metabase.events.")]
-      (require ns-symb)
+      (classloader/require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
         (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))

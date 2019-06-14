@@ -1,11 +1,15 @@
 (ns metabase.test.data.redshift
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util :as u]))
+            [metabase.test.data.sql.ddl :as ddl]))
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
@@ -44,6 +48,21 @@
 
 (defonce ^:private session-schema-name
   (str "schema_" session-schema-number))
+
+;; When we test against Redshift we use a session-unique schema so we can run simultaneous tests
+;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
+(def ^:private excluded-schemas
+  (if-not config/is-test?
+    (constantly nil)
+    (memoize
+     (fn []
+       (set (conj (for [i     (range 240)
+                        :when (not= i session-schema-number)]
+                    (str "schema_" i))
+                  "public"))))))
+
+(defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
+  (excluded-schemas))
 
 (defmethod sql.tx/create-db-sql         :redshift [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :redshift [& _] nil)

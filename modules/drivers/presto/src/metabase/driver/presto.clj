@@ -13,7 +13,6 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
@@ -363,5 +362,4 @@
 (defmethod driver/supports? [:presto :expression-aggregations]         [_ _] true)
 (defmethod driver/supports? [:presto :binning]                         [_ _] true)
 
-;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:presto :foreign-keys] [_ _] true)

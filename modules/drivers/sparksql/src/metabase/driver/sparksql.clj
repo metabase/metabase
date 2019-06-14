@@ -6,9 +6,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
@@ -142,7 +140,6 @@
 (defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
 
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true)
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)

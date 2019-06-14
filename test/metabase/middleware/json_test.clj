@@ -1,10 +1,11 @@
 (ns metabase.middleware.json-test
   (:require [cheshire.core :as json]
-            [expectations :refer [expect]]))
+            [expectations :refer [expect]]
+            [metabase.plugins.classloader :as classloader]))
 
 ;;; JSON encoding tests
 ;; Required here so so custom Cheshire encoders are loaded
-(require 'metabase.middleware.json)
+(classloader/require 'metabase.middleware.json)
 
 ;; Check that we encode byte arrays as the hex values of their first four bytes
 (expect
