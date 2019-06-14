@@ -35,12 +35,25 @@
 
 
 ;;;  sql
-(expect "Sum Subtotal"                (humanization/name->human-readable-name :advanced "sum(subtotal)"))
+(expect "Sum Subtotal"                (humanization/name->human-readable-name :advanced "sumsubtotal"))
+(expect "Sum(subtotal)"               (humanization/name->human-readable-name :advanced "sum(subtotal)"))
 (expect "Sum(subtotal)"               (humanization/name->human-readable-name :simple "sum(subtotal)"))
 (expect "sum(subtotal)"               (humanization/name->human-readable-name :none "sum(subtotal)"))
 (expect "Created At::date"            (humanization/name->human-readable-name :advanced "created_at::date"))
 (expect "Created At::date"            (humanization/name->human-readable-name :simple "created_at::date"))
 (expect "created_at::date"            (humanization/name->human-readable-name :none "created_at::date"))
+(expect "Date Created"                (humanization/name->human-readable-name :advanced "datecreated"))
+(expect "Datecreated"                 (humanization/name->human-readable-name :simple "datecreated"))
+(expect "datecreated"                 (humanization/name->human-readable-name :none "datecreated"))
+(expect "Created At"                  (humanization/name->human-readable-name :advanced "createdat"))
+(expect "Createdat"                   (humanization/name->human-readable-name :simple "createdat"))
+(expect "createdat"                   (humanization/name->human-readable-name :none "createdat"))
+(expect "Updated At"                  (humanization/name->human-readable-name :advanced "updatedat"))
+(expect "Updatedat"                   (humanization/name->human-readable-name :simple "updatedat"))
+(expect "updatedat"                   (humanization/name->human-readable-name :none "updatedat"))
+(expect "Cast Created At As Date"     (humanization/name->human-readable-name :advanced "castcreatedatasdate"))
+(expect "Cast(createdatasdate)"       (humanization/name->human-readable-name :simple "cast(createdatasdate)"))
+(expect "cast(createdatasdate)"       (humanization/name->human-readable-name :none "cast(createdatasdate)"))
 
 
 ;;; :simple humanization
