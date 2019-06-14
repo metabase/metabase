@@ -401,7 +401,6 @@
   ([driver :- s/Keyword, details :- su/Map]
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-
              (classloader/require 'metabase.driver.util)
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
