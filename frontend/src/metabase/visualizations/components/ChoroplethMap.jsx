@@ -244,12 +244,13 @@ export default class ChoroplethMap extends Component {
       });
 
     const valuesMap = {};
-    const domain = [];
     for (const row of rows) {
-      valuesMap[getRowKey(row)] =
-        (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
-      domain.push(getRowValue(row));
+      const key = getRowKey(row);
+      const value = getRowValue(row);
+      valuesMap[key] = (valuesMap[key] || 0) + value;
     }
+    const domainSet = new Set(Object.values(valuesMap));
+    const domain = Array.from(domainSet);
 
     const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
     const heatMapColors =
@@ -258,10 +259,11 @@ export default class ChoroplethMap extends Component {
         : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
+    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
     const colorScale = d3.scale
-      .quantile()
-      .domain(groups.map(cluster => cluster[0]))
+      .threshold()
+      .domain(groupBoundaries)
       .range(heatMapColors);
 
     const legendColors = heatMapColors;
