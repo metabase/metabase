@@ -5,7 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
@@ -156,7 +156,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 
   if (options.compact) {
-    return formatNumberCompact(number);
+    return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -248,7 +248,41 @@ function formatNumberScientific(
   }
 }
 
-function formatNumberCompact(value: number) {
+function formatNumberCompact(value: number, options: FormattingOptions) {
+  if (options.number_style === "percent") {
+    return formatNumberCompactWithoutOptions(value * 100) + "%";
+  }
+  if (options.number_style === "currency") {
+    try {
+      const { value: currency } = numberFormatterForOptions({
+        ...options,
+        currency_style: "symbol",
+      })
+        .formatToParts(value)
+        .find(p => p.type === "currency");
+
+      // this special case ensures the "~" comes before the currency
+      if (value !== 0 && value >= -0.01 && value <= 0.01) {
+        return `~${currency}0`;
+      }
+      return currency + formatNumberCompactWithoutOptions(value);
+    } catch (e) {
+      // Intl.NumberFormat failed, so we fall back to a non-currency number
+      return formatNumberCompactWithoutOptions(value);
+    }
+  }
+  if (options.number_style === "scientific") {
+    return formatNumberScientific(value, {
+      ...options,
+      // unsetting maximumFractionDigits prevents truncation of small numbers
+      maximumFractionDigits: undefined,
+      minimumFractionDigits: 1,
+    });
+  }
+  return formatNumberCompactWithoutOptions(value);
+}
+
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -285,8 +319,8 @@ export function formatCoordinate(
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-      : DECIMAL_DEGREES_FORMATTER(value);
+    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+    : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
@@ -337,7 +371,7 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -390,7 +424,7 @@ function replaceDateFormatNames(format, options) {
 }
 
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
+  const m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -414,7 +448,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -462,7 +496,7 @@ export function formatDateTimeWithUnit(
 }
 
 export function formatTime(value: Value) {
-  let m = parseTime(value);
+  const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
@@ -584,7 +618,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  let column = options.column;
+  const column = options.column;
 
   options = {
     jsx: false,
@@ -703,10 +737,10 @@ export function humanize(...args) {
 
 export function duration(milliseconds: number) {
   if (milliseconds < 60000) {
-    let seconds = Math.round(milliseconds / 1000);
+    const seconds = Math.round(milliseconds / 1000);
     return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
   } else {
-    let minutes = Math.round(milliseconds / 1000 / 60);
+    const minutes = Math.round(milliseconds / 1000 / 60);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
 }
@@ -732,13 +766,13 @@ export function assignUserColors(
     "bg-medium",
   ],
 ) {
-  let assignments = {};
+  const assignments = {};
 
   const currentUserColor = colorClasses[0];
   const otherUserColors = colorClasses.slice(1);
   let otherUserColorIndex = 0;
 
-  for (let userId of userIds) {
+  for (const userId of userIds) {
     if (!(userId in assignments)) {
       if (userId === currentUserId) {
         assignments[userId] = currentUserColor;

@@ -4,12 +4,13 @@ import crossfilter from "crossfilter";
 import d3 from "d3";
 import dc from "dc";
 import _ from "underscore";
-import { updateIn } from "icepick";
-import { t } from "c-3po";
+import { assocIn, updateIn } from "icepick";
+import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import {
   computeSplit,
+  computeMaxDecimalsForValues,
   getFriendlyName,
   getXValues,
   colorShades,
@@ -105,7 +106,9 @@ function getDatas({ settings, series }, warn) {
         // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
         isDimensionTimeseries(series) && !isQuantitative(settings)
           ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-          : isDimensionNumeric(series) ? row[0] : String(row[0]),
+          : isDimensionNumeric(series)
+          ? row[0]
+          : String(row[0]),
         ...row.slice(1),
       ];
       // $FlowFixMe: _origin not typed
@@ -135,13 +138,20 @@ function getXInterval({ settings, series }, xValues) {
 }
 
 function getXAxisProps(props, datas) {
-  const xValues = getXValues(datas);
+  const rawXValues = getXValues(datas);
+  const isHistogram = isHistogramBar(props);
+  const xInterval = getXInterval(props, rawXValues);
 
+  // For histograms we add a fake x value one xInterval to the right
+  // This compensates for the barshifting we do align ticks
+  const xValues = isHistogram
+    ? [...rawXValues, Math.max(...rawXValues) + xInterval]
+    : rawXValues;
   return {
-    xValues,
+    isHistogramBar: isHistogram,
     xDomain: d3.extent(xValues),
-    xInterval: getXInterval(props, xValues),
-    isHistogramBar: isHistogramBar(props),
+    xInterval,
+    xValues,
   };
 }
 
@@ -170,6 +180,11 @@ function addPercentSignsToDisplayNames(series) {
   );
 }
 
+// Store a "decimals" property on the column that is normalized
+function addDecimalsToPercentColumn(series, decimals) {
+  return series.map(s => assocIn(s, ["data", "cols", 1, "decimals"], decimals));
+}
+
 function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   props,
   datas,
@@ -188,6 +203,15 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
     }
 
     props.series = addPercentSignsToDisplayNames(props.series);
+
+    const normalizedValues = datas.flatMap(data =>
+      data.map(([d, m]) => m / scaleFactors[d]),
+    );
+    const decimals = computeMaxDecimalsForValues(normalizedValues, {
+      style: "percent",
+      maximumSignificantDigits: 2,
+    });
+    props.series = addDecimalsToPercentColumn(props.series, decimals);
   }
 
   datas.map((data, i) =>
@@ -242,12 +266,12 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
   return chartType === "scatter"
     ? getDimensionsAndGroupsForScatterChart(datas)
     : isStacked(settings, datas)
-      ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
-          props,
-          datas,
-          warn,
-        )
-      : getDimensionsAndGroupsForOther(props, datas, warn);
+    ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
+        props,
+        datas,
+        warn,
+      )
+    : getDimensionsAndGroupsForOther(props, datas, warn);
 }
 
 ///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
@@ -420,12 +444,14 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     const isBubble = datas[index][0].length > 2;
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
-      chart.radiusValueAccessor(d => d.value).r(
-        d3.scale
-          .sqrt()
-          .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
-          .range([0, 1]),
-      );
+      chart
+        .radiusValueAccessor(d => d.value)
+        .r(
+          d3.scale
+            .sqrt()
+            .domain([0, yExtent[1] * BUBBLE_SCALE_FACTOR_MAX])
+            .range([0, 1]),
+        );
     } else {
       chart.radiusValueAccessor(d => 1);
       chart.MIN_RADIUS = 3;

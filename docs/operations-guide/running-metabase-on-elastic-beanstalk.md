@@ -32,11 +32,11 @@ You should now see a screen that looks like
 
 NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documentation [here](running-metabase-on-elastic-beanstalk-old.md)
 
-Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
+While most of the fields are correctly prefilled by following the launch url above, "Sample Application" will be incorrectly selected. To run Metabase successfully, you'll need to click the radio button for "Upload your code".
+
+Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application. You can customize the application name here.
 
 ![Elastic Beanstalk ApplicationInformation](images/EBApplicationInformation.png)
-
-
 
 ### Environment Information
 

@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
@@ -39,7 +39,10 @@ const mapDispatchToProps = {
 };
 
 @Database.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     databases: PropTypes.array,
@@ -56,7 +59,7 @@ export default class DatabaseList extends Component {
   }
 
   render() {
-    let {
+    const {
       databases,
       hasSampleDataset,
       created,

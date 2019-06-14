@@ -102,6 +102,7 @@
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
+   [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
@@ -119,7 +120,8 @@
    [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
 
   :main ^:skip-aot metabase.core
 
@@ -174,10 +176,15 @@
    :run
    [:exclude-tests {}]
 
-   ;; start the HTTP server with 'lein ring server'
+   ;; start the dev HTTP server with 'lein ring server'
    :ring
    [:exclude-tests
-    {:plugins
+    :include-all-drivers
+    {:dependencies
+     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
+     [[ns-tracker "0.4.0"]]
+
+     :plugins
      [[lein-ring "0.12.5" :exclusions [org.clojure/clojure]]]
 
      :ring
@@ -189,7 +196,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.5"]]
+    [[metabase/lein-include-drivers "1.0.8"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}

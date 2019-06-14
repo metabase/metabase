@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from "c-3po";
+import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -61,7 +61,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     ];
   }
 
-  let operators = getFiltersForColumn(column) || [];
+  const operators = getFiltersForColumn(column) || [];
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",

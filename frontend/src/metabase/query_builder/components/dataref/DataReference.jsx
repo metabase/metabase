@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MainPane from "./MainPane.jsx";
 import DatabasePane from "./DatabasePane.jsx";
 import TablePane from "./TablePane.jsx";
@@ -68,7 +68,7 @@ export default class DataReference extends Component {
     if (this.state.stack.length === 0) {
       content = <MainPane {...this.props} show={this.show} />;
     } else {
-      let page = this.state.stack[this.state.stack.length - 1];
+      const page = this.state.stack[this.state.stack.length - 1];
       if (page.type === "database") {
         content = (
           <DatabasePane {...this.props} show={this.show} database={page.item} />
@@ -105,7 +105,7 @@ export default class DataReference extends Component {
       );
     }
 
-    let closeButton = (
+    const closeButton = (
       <a
         className="flex-align-right text-medium text-brand-hover no-decoration"
         onClick={this.close}

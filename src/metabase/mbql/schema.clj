@@ -5,6 +5,8 @@
              [core :as core]
              [set :as set]]
             [metabase.mbql.schema.helpers :refer [defclause is-clause? one-of]]
+            [metabase.mbql.util.match :as match]
+            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -134,10 +136,15 @@
 
 (defclause field-literal, field-name su/NonBlankString, field-type su/FieldType)
 
+(defclause joined-field, alias su/NonBlankString, field (one-of field-id field-literal))
+
 ;; Both args in `[:fk-> <source-field> <dest-field>]` are implict `:field-ids`. E.g.
 ;;
 ;;   [:fk-> 10 20] --[NORMALIZE]--> [:fk-> [:field-id 10] [:field-id 20]]
-(defclause ^{:requires-features #{:foreign-keys}} fk->
+;;
+;; `fk->` clauses are automatically replaced by the Query Processor with appropriate `:joined-field` clauses during
+;; preprocessing. Drivers do not need to handle `:fk->` clauses themselves.
+(defclause ^{:requires-features #{:foreign-keys}} ^:sugar fk->
   source-field (one-of field-id field-literal)
   dest-field   (one-of field-id field-literal))
 
@@ -160,7 +167,7 @@
 ;;
 ;; Field is an implicit Field ID
 (defclause datetime-field
-  field (one-of field-id field-literal fk->)
+  field (one-of field-id field-literal fk-> joined-field)
   unit  DatetimeFieldUnit)
 
 ;; binning strategy can wrap any of the above clauses, but again, not another binning strategy clause
@@ -170,7 +177,7 @@
 
 (def BinnableField
   "Schema for any sort of field clause that can be wrapped by a `binning-strategy` clause."
-  (one-of field-id fk-> datetime-field field-literal))
+  (one-of field-id field-literal joined-field fk-> datetime-field))
 
 (def ResolvedBinningStrategyOptions
   "Schema for map of options tacked on to the end of `binning-strategy` clauses by the `binning` middleware."
@@ -189,10 +196,13 @@
   ;; replaced. Driver implementations can rely on this being populated
   resolved-options (optional ResolvedBinningStrategyOptions))
 
+(def ^:private Field*
+  (one-of field-id field-literal joined-field fk-> datetime-field expression binning-strategy))
+
 (def Field
   "Schema for anything that refers to a Field, from the common `[:field-id <id>]` to variants like `:datetime-field` or
   `:fk->` or an expression reference `[:expression <name>]`."
-  (one-of field-id field-literal fk-> datetime-field expression binning-strategy))
+  (s/recursive #'Field*))
 
 ;; aggregate field reference refers to an aggregation, e.g.
 ;;
@@ -238,9 +248,12 @@
 (defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 (defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
 
+(def ^:private ArithmeticExpression*
+  (one-of + - / *))
+
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
-  (one-of + - / *))
+  (s/recursive #'ArithmeticExpression*))
 
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -248,92 +261,6 @@
   (s/if (partial is-clause? #{:+ :- :* :/})
     ArithmeticExpression
     Field))
-
-
-;;; -------------------------------------------------- Aggregations --------------------------------------------------
-
-;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
-
-;; cum-sum and cum-count are SUGAR because they're implemented in middleware. They clauses are swapped out with
-;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
-(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
-
-;; technically aggregations besides count can also accept expressions as args, e.g.
-;;
-;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
-;;
-;; Which is equivalent to SQL:
-;;
-;;    SUM(field_1 + field_2)
-
-(defclause ^{:requires-features #{:basic-aggregations}} avg,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,  field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} distinct, field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} sum,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} min,      field-or-expression FieldOrExpressionDef)
-(defclause ^{:requires-features #{:basic-aggregations}} max,      field-or-expression FieldOrExpressionDef)
-
-(defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev, field-or-expression FieldOrExpressionDef)
-
-;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
-;; expanded to other aggregations/etc. in the expand-macros middleware
-;;
-;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
-;; pass straight thru to the GA query processor.
-(defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
-
-;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
-
-(declare Aggregation)
-
-(def ^:private ExpressionAggregationArg
-  (s/if number?
-    s/Num
-    (s/recursive #'Aggregation)))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-;; ag:/ isn't a valid token
-
-(def ^:private UnnamedAggregation
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric))
-
-;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
-;; a `:named`
-
-(defclause named, aggregation UnnamedAggregation, aggregation-name su/NonBlankString)
-
-(def Aggregation
-  "Schema for anything that is a valid `:aggregation` clause."
-  (s/if (partial is-clause? :named)
-    named
-    UnnamedAggregation))
-
-
-;;; ---------------------------------------------------- Order-By ----------------------------------------------------
-
-;; order-by is just a series of `[<direction> <field>]` clauses like
-;;
-;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
-;;
-;; Field ID is implicit in these clauses
-
-(defclause asc,  field FieldOrAggregationReference)
-(defclause desc, field FieldOrAggregationReference)
-
-(def OrderBy
-  "Schema for an `order-by` clause subclause."
-  (one-of asc desc))
 
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
@@ -447,7 +374,7 @@
 ;;
 ;; SUGAR: This is automatically rewritten as a filter clause with a relative-datetime value
 (defclause ^:sugar time-interval
-  field   (one-of field-id fk-> field-literal)
+  field   (one-of field-id fk-> field-literal joined-field)
   n       (s/cond-pre
            s/Int
            (s/enum :current :last :next))
@@ -461,13 +388,108 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
-(def Filter
-  "Schema for a valid MBQL `:filter` clause."
+(def ^:private Filter*
   (one-of
    ;; filters drivers must implement
    and or not = != < > <= >= between starts-with ends-with contains
    ;; SUGAR filters drivers do not need to implement
    does-not-contain inside is-null not-null time-interval segment))
+
+(def Filter
+  "Schema for a valid MBQL `:filter` clause."
+  (s/recursive #'Filter*))
+
+
+;;; -------------------------------------------------- Aggregations --------------------------------------------------
+
+;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
+
+;; cum-sum and cum-count are SUGAR because they're implemented in middleware. They clauses are swapped out with
+;; `count` and `sum` aggregations respectively and summation is done in Clojure-land
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar count,     field (optional Field))
+(defclause ^{:requires-features #{:basic-aggregations}} ^:sugar cum-count, field (optional Field))
+
+;; technically aggregations besides count can also accept expressions as args, e.g.
+;;
+;;    [[:sum [:+ [:field-id 1] [:field-id 2]]]]
+;;
+;; Which is equivalent to SQL:
+;;
+;;    SUM(field_1 + field_2)
+
+(defclause ^{:requires-features #{:basic-aggregations}} avg,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} cum-sum,     field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} distinct,    field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} min,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} max,         field-or-expression FieldOrExpressionDef)
+(defclause ^{:requires-features #{:basic-aggregations}} sum-where,   field-or-expression FieldOrExpressionDef, pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} count-where, pred Filter)
+(defclause ^{:requires-features #{:basic-aggregations}} share,       pred Filter)
+
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev, field-or-expression FieldOrExpressionDef)
+
+;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
+;; expanded to other aggregations/etc. in the expand-macros middleware
+;;
+;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
+;; pass straight thru to the GA query processor.
+(defclause ^:sugar metric, metric-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
+
+;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
+
+(declare Aggregation)
+
+(def ^:private ExpressionAggregationArg
+  (s/if number?
+    s/Num
+    (s/recursive #'Aggregation)))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+
+(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
+  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
+;; ag:/ isn't a valid token
+
+(def ^:private UnnamedAggregation*
+  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where sum-where))
+
+(def ^:private UnnamedAggregation
+  (s/recursive #'UnnamedAggregation*))
+
+;; any sort of aggregation can be wrapped in a `[:named <ag> <custom-name>]` clause, but you cannot wrap a `:named` in
+;; a `:named`
+
+(defclause named, aggregation UnnamedAggregation, aggregation-name su/NonBlankString)
+
+(def Aggregation
+  "Schema for anything that is a valid `:aggregation` clause."
+  (s/if (partial is-clause? :named)
+    named
+    UnnamedAggregation))
+
+
+;;; ---------------------------------------------------- Order-By ----------------------------------------------------
+
+;; order-by is just a series of `[<direction> <field>]` clauses like
+;;
+;;    {:order-by [[:asc [:field-id 1]], [:desc [:field-id 2]]]}
+;;
+;; Field ID is implicit in these clauses
+
+(defclause asc,  field FieldOrAggregationReference)
+(defclause desc, field FieldOrAggregationReference)
+
+(def OrderBy
+  "Schema for an `order-by` clause subclause."
+  (one-of asc desc))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -482,7 +504,7 @@
 (def ^:private TemplateTag
   s/Any) ; s/Any for now until we move over the stuff from the parameters middleware
 
-(def ^:private NativeQuery
+(def NativeQuery
   "Schema for a valid, normalized native [inner] query."
   {:query                          s/Any
    (s/optional-key :template-tags) {su/NonBlankString TemplateTag}
@@ -497,41 +519,32 @@
 
 (declare Query MBQLQuery)
 
-(def ^:private SourceQuery
+(def SourceQuery
   "Schema for a valid value for a `:source-query` clause."
-  (s/if :native
+  (s/if (every-pred map? :native)
     ;; when using native queries as source queries the schema is exactly the same except use `:native` in place of
     ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
     ;; queries).
     (set/rename-keys NativeQuery {:query :native})
     (s/recursive #'MBQLQuery)))
 
-(def JoinTableInfo
-  "Schema for information about a JOIN (or equivalent) that should be performed, and how to do it.. This is added
-  automatically by `resolve-joined-tables` middleware for `fk->` forms that are encountered."
-  { ;; The alias we should use for the table
-   :join-alias  su/NonBlankString
-   ;; ID of the Table to JOIN against. Table will be present in the QP store
-   :table-id    su/IntGreaterThanZero
-   ;; ID of the Field of the Query's SOURCE TABLE to use for the JOIN
-   ;; TODO - can `fk-field-id` and `pk-field-id` possibly be NAMES of FIELD LITERALS??
-   :fk-field-id su/IntGreaterThanZero
-   ;; ID of the Field on the Table we will JOIN (i.e., Table with `table-id`) to use for the JOIN
-   :pk-field-id su/IntGreaterThanZero})
+(def SourceQueryMetadata
+  "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
+  entries), if it is passed in to the query.
 
-(def JoinQueryInfo
-  "Schema for information about about a JOIN (or equivalent) that should be performed using a recursive MBQL or native
-  query."
-  ;; Similar to a `JoinTable` but instead of referencing a table, it references a query expression
-  (assoc JoinTableInfo
-    :query (s/recursive #'Query)))
-
-(def JoinInfo
-  "Schema for information about a JOIN (or equivalent) that needs to be performed, either `JoinTableInfo` or
-  `JoinQueryInfo`."
-  (s/if :query
-    JoinQueryInfo
-    JoinTableInfo))
+  This metadata automatically gets added for all source queries that are referenced via the `card__id` `:source-table`
+  form; for explicit `:source-query`s you should usually include this information yourself when specifying explicit
+  `:source-query`s."
+  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
+  {:name                          su/NonBlankString
+   :base_type                     su/FieldType
+   ;; this is only used by the annotate post-processing stage, not really needed at all for pre-processing, might be
+   ;; able to remove this as a requirement
+   :display_name                  su/NonBlankString
+   (s/optional-key :special_type) (s/maybe su/FieldType)
+   ;; you'll need to provide this in order to use BINNING
+   (s/optional-key :fingerprint)  (s/maybe su/Map)
+   s/Any                          s/Any})
 
 (def ^java.util.regex.Pattern source-table-card-id-regex
   "Pattern that matches `card__id` strings that can be used as the `:source-table` of MBQL queries."
@@ -541,8 +554,109 @@
   "Schema for a valid value for the `:source-table` clause of an MBQL query."
   (s/cond-pre su/IntGreaterThanZero source-table-card-id-regex))
 
-(defn- distinct-non-empty [schema]
-  (s/constrained schema (every-pred (partial apply distinct?) seq) "non-empty sequence of distinct items"))
+(def JoinField
+  "Schema for any valid `Field` that is, or wraps, a `:joined-field` clause."
+  (s/constrained
+   Field
+   (fn [field-clause]
+     (seq (match/match field-clause [:joined-field true])))
+   "`:joined-field` clause or Field clause wrapping a `:joined-field` clause"))
+
+(def JoinFields
+  "Schema for valid values of a join `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [JoinField]))
+   "Distinct, non-empty sequence of `:joined-field` clauses or Field clauses wrapping `:joined-field` clauses"))
+
+(def JoinStrategy
+  "Strategy that should be used to perform the equivalent of a SQL `JOIN` against another table or a nested query.
+  These correspond 1:1 to features of the same name in driver features lists; e.g. you should check that the current
+  driver supports `:full-join` before generating a Join clause using that strategy."
+  (s/enum :left-join :right-join :inner-join :full-join))
+
+(def Join
+  "Perform the equivalent of a SQL `JOIN` with another Table or nested `:source-query`. JOINs are either explicitly
+  specified in the incoming query, or implicitly generated when one uses a `:fk->` clause.
+  In the top-level query, you can reference Fields from the joined table or nested query by the `:fk->` clause for
+  implicit joins; for explicit joins, you *must* specify `:alias` yourself; you can then reference Fields by using a
+  `:joined-field` clause, e.g.
+
+    [:joined-field \"my_join_alias\" [:field-id 1]]                 ; for joins against other Tabless
+    [:joined-field \"my_join_alias\" [:field-literal \"my_field\"]] ; for joins against nested queries"
+  (->
+   { ;; *What* to JOIN. Self-joins can be done by using the same `:source-table` as in the query where this is specified.
+    ;; YOU MUST SUPPLY EITHER `:source-table` OR `:source-query`, BUT NOT BOTH!
+    (s/optional-key :source-table)    SourceTable
+    (s/optional-key :source-query)    SourceQuery
+    ;;
+    ;; The condition on which to JOIN. Can be anything that is a valid `:filter` clause. For automatically-generated
+    ;; JOINs this is always
+    ;;
+    ;;    [:= <source-table-fk-field> [:joined-field <join-table-alias> <dest-table-pk-field>]]
+    ;;
+    :condition                        Filter
+    ;;
+    ;; Defaults to `:left-join`; used for all automatically-generated JOINs
+    ;;
+    ;; Driver implementations: this is guaranteed to be present after pre-processing.
+    (s/optional-key :strategy)        JoinStrategy
+    ;;
+    ;; The Fields to include in the results *if* a top-level `:fields` clause *is not* specified. This can be either
+    ;; `:none`, `:all`, or a sequence of Field clauses.
+    ;;
+    ;; *  `:none`: no Fields from the joined table or nested query are included (unless indirectly included by
+    ;;    breakouts or other clauses). This is the default, and what is used for automatically-generated joins.
+    ;;
+    ;; *  `:all`: will include all of the Fields from the joined table or query
+    ;;
+    ;; *  a sequence of Field clauses: include only the Fields specified. Valid clauses are the same as the top-level
+    ;;    `:fields` clause. This should be non-empty and all elements should be distinct. The normalizer will
+    ;;    automatically remove duplicate fields for you, and replace empty clauses with `:none`.
+    ;;
+    ;; Driver implementations: you can ignore this clause. Relevant fields will be added to top-level `:fields` clause
+    ;; with appropriate aliases.
+    (s/optional-key :fields)          (s/named
+                                       (s/cond-pre
+                                        (s/enum :all :none)
+                                        JoinFields)
+                                       (str
+                                        "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:joined-field` clauses,"
+                                        " or clauses wrapping `:joined-field`."))
+    ;;
+    ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
+    ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field in a
+    ;; `:joined-field` clause.
+    ;;
+    ;; Driver implementations: This is guaranteed to be present after pre-processing.
+    (s/optional-key :alias)           su/NonBlankString
+    ;;
+    ;; Used internally, only for annotation purposes in post-processing. When a join is implicitly generated via an
+    ;; `:fk->` clause, the ID of the foreign key field in the source Table will be recorded here. This information is
+    ;; used to add `fk_field_id` information to the `:cols` in the query results; I believe this is used to facilitate
+    ;; drill-thru? :shrug:
+    ;;
+    ;; Don't set this information yourself. It will have no effect.
+    (s/optional-key :fk-field-id)     (s/maybe su/IntGreaterThanZero)
+    ;;
+    ;; Metadata about the source query being used, if pulled in from a Card via the `:source-table "card__id"` syntax.
+    ;; added automatically by the `resolve-card-id-source-tables` middleware.
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])}
+   (s/constrained
+    (u/xor-pred :source-table :source-query)
+    "Joins can must have either a `source-table` or `source-query`, but not both.")))
+
+(def Joins
+  "Schema for a valid sequence of `Join`s. Must be a non-empty sequence, and `:alias`, if specified, must be unique."
+  (s/constrained
+   (su/non-empty [Join])
+   #(su/empty-or-distinct? (filter some? (map :alias %)))
+   "All join aliases must be unique."))
+
+(def Fields
+  "Schema for valid values of the MBQL `:fields` clause."
+  (s/named
+   (su/distinct (su/non-empty [Field]))
+   "Distinct, non-empty sequence of Field clauses"))
 
 (def MBQLQuery
   "Schema for a valid, normalized MBQL [inner] query."
@@ -551,22 +665,28 @@
     (s/optional-key :source-table) SourceTable
     (s/optional-key :aggregation)  (su/non-empty [Aggregation])
     (s/optional-key :breakout)     (su/non-empty [Field])
-    ; TODO - expressions keys should be strings; fix this when we get a chance
+    ;; TODO - expressions keys should be strings; fix this when we get a chance
     (s/optional-key :expressions)  {s/Keyword FieldOrExpressionDef}
-    ;; TODO - should this be `distinct-non-empty`?
-    (s/optional-key :fields)       (su/non-empty [Field])
+    (s/optional-key :fields)       Fields
     (s/optional-key :filter)       Filter
     (s/optional-key :limit)        su/IntGreaterThanZero
-    (s/optional-key :order-by)     (distinct-non-empty [OrderBy])
+    (s/optional-key :order-by)     (su/distinct (su/non-empty [OrderBy]))
     ;; page = page num, starting with 1. items = number of items per page.
     ;; e.g.
     ;; {:page 1, :items 10} = items 1-10
     ;; {:page 2, :items 10} = items 11-20
     (s/optional-key :page)         {:page  su/IntGreaterThanZero
                                     :items su/IntGreaterThanZero}
+    ;;
     ;; Various bits of middleware add additonal keys, such as `fields-is-implicit?`, to record bits of state or pass
     ;; info to other pieces of middleware. Everyone else can ignore them.
-    (s/optional-key :join-tables)  (s/constrained [JoinInfo] (partial apply distinct?) "distinct JoinInfo")
+    (s/optional-key :joins)        Joins
+    ;;
+    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
+    ;; used to let power things like binning when used with Field Literals instead of normal Fields
+    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
+    ;;
+    ;; Other keys are added by middleware or frontend client for various purposes
     s/Keyword                      s/Any}
 
    (s/constrained
@@ -694,27 +814,37 @@
    ;; and have the code that saves QueryExceutions figure out their values when it goes to save them
    (s/optional-key :query-hash)   (s/maybe (Class/forName "[B"))})
 
-(def SourceQueryMetadata
-  "Schema for the expected keys in metadata about source query columns if it is passed in to the query."
-  ;; TODO - there is a very similar schema in `metabase.sync.analyze.query-results`; see if we can merge them
-  {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
-   :base_type                     su/FieldType
-   (s/optional-key :special_type) (s/maybe su/FieldType)
-   ;; you'll need to provide this in order to use BINNING
-   (s/optional-key :fingerprint)  (s/maybe su/Map)
-   s/Any                          s/Any})
-
 
 ;;; --------------------------------------------- Metabase [Outer] Query ---------------------------------------------
+
+(def ^Integer saved-questions-virtual-database-id
+  "The ID used to signify that a database is 'virtual' rather than physical.
+
+   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
+   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
+   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
+   ID.)
+
+   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
+   this 'virtual' database and take the appropriate actions."
+  -1337)
+;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
+;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
+;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
+;; and the entire frontend can remain blissfully unaware of its value.
+
+(def DatabaseID
+  "Schema for a valid `:database` ID, in the top-level 'outer' query. Either a positive integer (referring to an
+  actual Database), or the saved questions virtual ID, which is a placeholder used for queries using the
+  `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
+  actual DB for that source query.)"
+  (s/cond-pre (s/eq saved-questions-virtual-database-id) su/IntGreaterThanZero))
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
   `Card.dataset_query`."
-  (s/constrained
-   ;; TODO - move database/virtual-id into this namespace so we don't have to use the magic number here
-   ;; Something like `metabase.mbql.constants`
-   {:database                         (s/cond-pre (s/eq -1337) su/IntGreaterThanZero)
+  (->
+   {:database                         DatabaseID
     ;; Type of query. `:query` = MBQL; `:native` = native. TODO - consider normalizing `:query` to `:mbql`
     :type                             (s/enum :query :native)
     (s/optional-key :native)          NativeQuery
@@ -735,20 +865,36 @@
     ;; Used when recording info about this run in the QueryExecution log; things like context query was ran in and
     ;; User who ran it
     (s/optional-key :info)            (s/maybe Info)
-    ;; Info about the columns of the source query. Added in automatically by middleware. This metadata is primarily
-    ;; used to let power things like binning when used with Field Literals instead of normal Fields
-    (s/optional-key :source-metadata) (s/maybe [SourceQueryMetadata])
-    #_:fk-field-ids
-    #_:table-ids
     ;;
     ;; Other various keys get stuck in the query dictionary at some point or another by various pieces of QP
     ;; middleware to record bits of state. Everyone else can ignore them.
     s/Keyword                         s/Any}
-   (fn [{native :native, mbql :query, query-type :type}]
-     (case query-type
-       :native (core/and native (core/not mbql))
-       :query  (core/and mbql   (core/not native))))
-   "Native queries should specify `:native` but not `:query`; MBQL queries should specify `:query` but not `:native`."))
+   ;;
+   ;; CONSTRAINTS
+   ;;
+   ;; Make sure we have the combo of query `:type` and `:native`/`:query`
+   (s/constrained
+    (u/xor-pred :native :query)
+    "Query must specify either `:native` or `:query`, but not both.")
+   (s/constrained
+    (fn [{native :native, mbql :query, query-type :type}]
+      (case query-type
+        :native native
+        :query  mbql))
+    "Native queries must specify `:native`; MBQL queries must specify `:query`.")
+   ;;
+   ;; `:source-metadata` is added to queries when `card__id` source queries are resolved. It contains info about the
+   ;; columns in the source query.
+   ;;
+   ;; Where this is added was changed in Metabase 0.33.0 -- previously, when `card__id` source queries were resolved,
+   ;; the middleware would add `:source-metadata` to the top-level; to support joins against source queries, this has
+   ;; been changed so it is always added at the same level the resolved `:source-query` is added.
+   ;;
+   ;; This should automatically be fixed by `normalize`; if we encounter it, it means some middleware is not
+   ;; functioning properly
+   (s/constrained
+    (complement :source-metadata)
+    "`:source-metadata` should be added in the same level as `:source-query` (i.e., the 'inner' MBQL query.)")))
 
 
 ;;; --------------------------------------------------- Validators ---------------------------------------------------

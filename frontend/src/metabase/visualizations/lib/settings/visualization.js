@@ -7,7 +7,7 @@ import {
 } from "../settings";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase/meta/types/Visualization";

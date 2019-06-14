@@ -61,14 +61,11 @@
 (defn- find-and-load-task-namespaces!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
-  ;; make sure current thread is using canonical MB classloader
-  (classloader/the-classloader)
-  ;; first, load all the task namespaces
   (doseq [ns-symb @u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
     (try
       (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))
-      (require ns-symb)
+      (classloader/require ns-symb)
       (catch Throwable e
         (log/error e (trs "Error loading tasks namespace {0}" ns-symb))))))
 

@@ -3,7 +3,7 @@
 import React from "react";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
@@ -68,7 +68,7 @@ const MetricAggregation = ({ aggregation, tableMetadata }) => {
 const StandardAggregation = ({ aggregation, tableMetadata, customFields }) => {
   const fieldId = AggregationClause.getField(aggregation);
 
-  let selectedAggregation = getAggregator(
+  const selectedAggregation = getAggregator(
     AggregationClause.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one

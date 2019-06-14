@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [config :as config]
              [db :as mdb]
              [handler :as handler]
              [plugins :as plugins]
@@ -13,7 +14,6 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.plugins.initialize :as plugins.init]
-            [metabase.query-processor.middleware.async-wait :as qp.middleware.async-wait]
             [metabase.test.data.env :as tx.env]
             [yaml.core :as yaml]))
 
@@ -60,7 +60,7 @@
               (System/exit -2))))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db!)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)
@@ -79,13 +79,37 @@
     (u/deref-with-timeout start-web-server! 10000)
     nil))
 
+(defn- shutdown-threads!
+  "Attempt to shut down any non-daemon threads that are still alive for whatever reason. For some reason lately (6/2019)
+  tests have been hanging on shutdown on occasion -- I think they might be core.async threads. (?)
+
+  Once we resolve the issues and figure out which ones are hanging we can remove this. Logged info below may help
+  debug the issues."
+  []
+  (doseq [[^Thread thread, stacktrace] (Thread/getAllStackTraces)
+          :when                        (and (.isAlive thread)
+                                            (not (.isDaemon thread))
+                                            (not= (.getName thread) "main"))]
+    (println
+     "attempting to shut down thread:"
+     (u/pprint-to-str 'blue
+       {:name        (.getName thread)
+        :state       (.name (.getState thread))
+        :alive?      (.isAlive thread)
+        :interrupted (.isInterrupted thread)
+        :frames      (take 5 stacktrace)}))
+    (try
+      (.interrupt thread)
+      (catch Throwable e
+        (log/error e "Failed to make Thread a daemon thread")))))
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
   (server/stop-web-server!)
-  (qp.middleware.async-wait/destroy-all-thread-pools!))
+  (when config/is-test?
+    (shutdown-threads!)))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test

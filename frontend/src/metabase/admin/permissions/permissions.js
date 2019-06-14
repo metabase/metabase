@@ -6,7 +6,7 @@ import {
 } from "metabase/lib/redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { PermissionsApi } from "metabase/services";
 import Group from "metabase/entities/groups";
 
@@ -47,7 +47,7 @@ export const updatePermission = createThunkAction(
     getState,
   ) => {
     if (postAction) {
-      let action = postAction(groupId, entityId, value);
+      const action = postAction(groupId, entityId, value);
       if (action) {
         dispatch(action);
       }
@@ -62,7 +62,7 @@ export const savePermissions = createThunkAction(
   () => async (dispatch, getState) => {
     MetabaseAnalytics.trackEvent("Permissions", "save");
     const { permissions, revision, save } = getState().admin.permissions;
-    let result = await save({
+    const result = await save({
       revision: revision,
       groups: permissions,
     });

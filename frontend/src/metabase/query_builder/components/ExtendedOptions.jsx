@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AddClauseButton from "./AddClauseButton.jsx";
 import Expressions from "./expressions/Expressions.jsx";
 import ExpressionWidget from "./expressions/ExpressionWidget.jsx";
@@ -54,7 +54,7 @@ export class ExtendedOptionsPopover extends Component {
   };
 
   setExpression(name, expression, previousName) {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query
       .updateExpression(name, expression, previousName)
       .update(setDatasetQuery);
@@ -67,7 +67,7 @@ export class ExtendedOptionsPopover extends Component {
   }
 
   removeExpression(name) {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query.removeExpression(name).update(setDatasetQuery);
     this.setState({ editExpression: null });
 
@@ -75,7 +75,7 @@ export class ExtendedOptionsPopover extends Component {
   }
 
   setLimit = limit => {
-    let { query, setDatasetQuery } = this.props;
+    const { query, setDatasetQuery } = this.props;
     query.updateLimit(limit).update(setDatasetQuery);
     MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
     if (this.props.onClose) {

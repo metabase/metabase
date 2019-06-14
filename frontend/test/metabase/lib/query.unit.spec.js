@@ -66,7 +66,7 @@ describe("Legacy Query library", () => {
       expect(copiedDatasetQuery).toBeDefined();
     });
     it("should not remove complete sort clauses", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["rows"],
         breakout: [],
@@ -77,7 +77,7 @@ describe("Legacy Query library", () => {
       expect(query["order-by"]).toEqual([["asc", 1]]);
     });
     it("should remove incomplete sort clauses", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["rows"],
         breakout: [],
@@ -89,7 +89,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should not remove sort clauses on aggregations if that aggregation supports it", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [1],
@@ -100,7 +100,7 @@ describe("Legacy Query library", () => {
       expect(query["order-by"]).toEqual([["asc", ["aggregation", 0]]]);
     });
     it("should remove sort clauses on aggregations if that aggregation doesn't support it", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["rows"],
         breakout: [],
@@ -112,7 +112,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should not remove sort clauses on fields appearing in breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [1],
@@ -123,7 +123,7 @@ describe("Legacy Query library", () => {
       expect(query["order-by"]).toEqual([["asc", 1]]);
     });
     it("should remove sort clauses on fields not appearing in breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [],
@@ -135,7 +135,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should not remove sort clauses with foreign keys on fields appearing in breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [["fk->", 1, 2]],
@@ -147,7 +147,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should not remove sort clauses with datetime-fields on fields appearing in breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [["datetime-field", 1, "as", "week"]],
@@ -161,7 +161,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should replace order-by clauses with the exact matching datetime-fields version in the breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [["datetime-field", 1, "as", "week"]],
@@ -175,7 +175,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should replace order-by clauses with the exact matching fk-> version in the breakout", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [["fk->", 1, 2]],
@@ -189,7 +189,7 @@ describe("Legacy Query library", () => {
 
   describe("removeBreakout", () => {
     it("should not mutate the query", () => {
-      let query = {
+      const query = {
         "source-table": 0,
         aggregation: ["count"],
         breakout: [["field-id", 1]],
@@ -222,22 +222,22 @@ describe("Legacy Query library", () => {
   });
 
   describe("getFieldTarget", () => {
-    let field2 = {
+    const field2 = {
       display_name: "field2",
     };
-    let table2 = {
+    const table2 = {
       display_name: "table2",
       fields_lookup: {
         2: field2,
       },
     };
-    let field1 = {
+    const field1 = {
       display_name: "field1",
       target: {
         table: table2,
       },
     };
-    let table1 = {
+    const table1 = {
       display_name: "table1",
       fields_lookup: {
         1: field1,
@@ -245,21 +245,21 @@ describe("Legacy Query library", () => {
     };
 
     it("should return field object for old-style local field", () => {
-      let target = Query.getFieldTarget(1, table1);
+      const target = Query.getFieldTarget(1, table1);
       expect(target.table).toEqual(table1);
       expect(target.field).toEqual(field1);
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
     });
     it("should return field object for new-style local field", () => {
-      let target = Query.getFieldTarget(["field-id", 1], table1);
+      const target = Query.getFieldTarget(["field-id", 1], table1);
       expect(target.table).toEqual(table1);
       expect(target.field).toEqual(field1);
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
     });
     it("should return unit object for old-style datetime-field", () => {
-      let target = Query.getFieldTarget(
+      const target = Query.getFieldTarget(
         ["datetime-field", 1, "as", "day"],
         table1,
       );
@@ -269,7 +269,7 @@ describe("Legacy Query library", () => {
       expect(target.unit).toEqual("day");
     });
     it("should return unit object for new-style datetime-field", () => {
-      let target = Query.getFieldTarget(
+      const target = Query.getFieldTarget(
         ["datetime-field", 1, "as", "day"],
         table1,
       );
@@ -280,7 +280,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should return field object and table for old-style fk field", () => {
-      let target = Query.getFieldTarget(["fk->", 1, 2], table1);
+      const target = Query.getFieldTarget(["fk->", 1, 2], table1);
       expect(target.table).toEqual(table2);
       expect(target.field).toEqual(field2);
       expect(target.path).toEqual([field1]);
@@ -288,7 +288,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should return field object and table for new-style fk field", () => {
-      let target = Query.getFieldTarget(
+      const target = Query.getFieldTarget(
         ["fk->", ["field-id", 1], ["field-id", 2]],
         table1,
       );
@@ -299,7 +299,7 @@ describe("Legacy Query library", () => {
     });
 
     it("should return field object and table and unit for fk + datetime field", () => {
-      let target = Query.getFieldTarget(
+      const target = Query.getFieldTarget(
         ["datetime-field", ["fk->", 1, 2], "day"],
         table1,
       );
@@ -310,11 +310,12 @@ describe("Legacy Query library", () => {
     });
 
     it("should return field object and table for expression", () => {
-      let target = Query.getFieldTarget(["expression", "foo"], table1);
+      const target = Query.getFieldTarget(["expression", "foo"], table1);
       expect(target.table).toEqual(table1);
       expect(target.field.display_name).toEqual("foo");
       expect(target.path).toEqual([]);
       expect(target.unit).toEqual(undefined);
+      expect(target.field.constructor.name).toEqual("Field");
     });
   });
 });

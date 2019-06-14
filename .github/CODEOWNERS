@@ -1,0 +1,9 @@
+
+*.clj @camsaul
+*.css @kdoh
+/frontend/src @tlrobinson @kdoh
+/frontend/src/metabase/components/ @kdoh
+/frontend/src/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
+/frontend/src/metabase/entities/ @tlrobinson @paulrosenzweig
+/frontend/src/metabase/lib/entities/ @tlrobinson @paulrosenzweig
+/docs/ @mazameli

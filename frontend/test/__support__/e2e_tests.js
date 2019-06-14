@@ -157,7 +157,9 @@ export const createTestStore = async ({
   const history = useRouterHistory(createMemoryHistory)();
   const getRoutes = publicApp
     ? getPublicRoutes
-    : embedApp ? getEmbedRoutes : getNormalRoutes;
+    : embedApp
+    ? getEmbedRoutes
+    : getNormalRoutes;
   const reducers = publicApp || embedApp ? publicReducers : normalReducers;
   const store = getStore(reducers, history, undefined, createStore =>
     testStoreEnhancer(createStore, history, getRoutes),
@@ -418,7 +420,7 @@ export const createSavedQuestion = async unsavedQuestion => {
 };
 
 export const createDashboard = async details => {
-  let savedDashboard = await DashboardApi.create(details);
+  const savedDashboard = await DashboardApi.create(details);
   return savedDashboard;
 };
 
@@ -600,7 +602,9 @@ export const deleteCollection = collection =>
 
 const getId = o =>
   typeof o === "object" && o != null
-    ? typeof o.id === "function" ? o.id() : o.id
+    ? typeof o.id === "function"
+      ? o.id()
+      : o.id
     : o;
 
 export const deleteAllSegments = async () =>

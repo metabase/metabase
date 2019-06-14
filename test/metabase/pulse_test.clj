@@ -19,9 +19,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [users :as users]]
+            [metabase.test.data.users :as users]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -50,9 +48,8 @@
 
 (defn- pulse-test-fixture
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-      (f))))
+  (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+    (f)))
 
 (defmacro ^:private slack-test-setup
   "Macro that ensures test-data is present and disables sending of all notifications"

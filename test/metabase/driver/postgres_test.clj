@@ -64,17 +64,15 @@
 ;; Verify that we identify JSON columns and mark metadata properly during sync
 (datasets/expect-with-driver :postgres
   :type/SerializedJSON
-  (data/with-temp-db
-    [_
-     (tx/create-database-definition "Postgres with a JSON Field"
-       ["venues"
-        [{:field-name "address", :base-type {:native "json"}}]
-        [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+  (data/dataset (tx/dataset-definition "Postgres with a JSON Field"
+                  ["venues"
+                   [{:field-name "address", :base-type {:native "json"}}]
+                   [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
     (db/select-one-field :special_type Field, :id (data/id :venues :address))))
 
 
 ;;; # UUID Support
-(tx/def-database-definition ^:private with-uuid
+(tx/defdataset ^:private with-uuid
   [["users"
     [{:field-name "user_id", :base-type :type/UUID}]
     [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
@@ -125,7 +123,7 @@
 
 
 ;; Make sure that Tables / Fields with dots in their names get escaped properly
-(tx/def-database-definition ^:private dots-in-names
+(tx/defdataset ^:private dots-in-names
   [["objects.stuff"
     [{:field-name "dotted.name", :base-type :type/Text}]
     [["toucan_cage"]
@@ -143,7 +141,7 @@
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(tx/def-database-definition ^:private duplicate-names
+(tx/defdataset ^:private duplicate-names
   [["birds"
     [{:field-name "name", :base-type :type/Text}]
     [["Rasta"]
@@ -163,7 +161,7 @@
 
 
 ;;; Check support for `inet` columns
-(tx/def-database-definition ^:private ip-addresses
+(tx/defdataset ^:private ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}}]
     [[(hsql/raw "'192.168.1.1'::inet")]

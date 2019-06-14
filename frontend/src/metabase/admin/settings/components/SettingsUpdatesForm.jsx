@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting.jsx";
@@ -38,8 +38,8 @@ export default class SettingsUpdatesForm extends Component {
   }
 
   renderVersionUpdateNotice() {
-    let versionInfo = _.findWhere(this.props.settings, { key: "version-info" }),
-      currentVersion = MetabaseSettings.get("version").tag;
+    let versionInfo = _.findWhere(this.props.settings, { key: "version-info" });
+    const currentVersion = MetabaseSettings.get("version").tag;
 
     if (versionInfo) {
       versionInfo = versionInfo.value;
@@ -127,9 +127,9 @@ export default class SettingsUpdatesForm extends Component {
   }
 
   render() {
-    let { elements, updateSetting } = this.props;
+    const { elements, updateSetting } = this.props;
 
-    let settings = elements.map((setting, index) => (
+    const settings = elements.map((setting, index) => (
       <SettingsSetting
         key={setting.key}
         setting={setting}

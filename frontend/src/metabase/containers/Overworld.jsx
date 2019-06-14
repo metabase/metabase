@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import { createSelector } from "reselect";
 
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
@@ -81,7 +81,7 @@ class Overworld extends React.Component {
         </Flex>
         <CollectionItemsLoader collectionId="root">
           {({ items }) => {
-            let pinnedDashboards = items.filter(
+            const pinnedDashboards = items.filter(
               d => d.model === "dashboard" && d.collection_position != null,
             );
 

@@ -8,9 +8,7 @@
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.tu]]
+            [metabase.query-processor.test-util :as qp.tu]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -197,11 +195,14 @@
    :class      (s/eq java.lang.Exception)
    :error      (s/eq "Column \"ADSASDASD\" not found")
    :stacktrace [s/Str]
-   :query      s/Any}
-  (qp/process-query
-    {:database (data/id)
-     :type     :native
-     :native   {:query "SELECT adsasdasd;"}}))
+   :query      s/Any
+   :cause      {:class (s/eq org.h2.jdbc.JdbcSQLException)
+                :error #"Column \"ADSASDASD\" not found; SQL statement:.*"}}
+  (tu.log/suppress-output
+    (qp/process-query
+      {:database (data/id)
+       :type     :native
+       :native   {:query "SELECT adsasdasd;"}})))
 
 ;; do we run query with a timezone if one is present in the Settings?
 (defn- ran-with-timezone? [driver query]
@@ -226,7 +227,6 @@
                       (deliver timezone report-timezone)
                       (orig driver settings connection)))]
       (qp.tu/with-everything-store
-        (qp.store/store-database! (data/db))
         (sql-jdbc.execute/execute-query driver query))
       {:ran-with-timezone? (u/deref-with-timeout ran-with-timezone? 1000)
        :timezone           (u/deref-with-timeout timezone 1000)})))

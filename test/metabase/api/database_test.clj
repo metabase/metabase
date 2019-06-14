@@ -7,6 +7,7 @@
              [util :as u]]
             [metabase.api.database :as database-api]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -364,14 +365,14 @@
 
 (defn- saved-questions-virtual-db {:style/indent 0} [& card-tables]
   {:name               "Saved Questions"
-   :id                 database/virtual-id
+   :id                 mbql.s/saved-questions-virtual-database-id
    :features           ["basic-aggregations"]
    :tables             card-tables
    :is_saved_questions true})
 
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge {:id           (format "card__%d" (u/get-id card))
-          :db_id        database/virtual-id
+          :db_id        mbql.s/saved-questions-virtual-database-id
           :display_name (:name card)
           :schema       "Everything else"
           :description  nil}
@@ -395,7 +396,7 @@
       ((user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
       ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
       (some (fn [database]
-              (when (= (u/get-id database) database/virtual-id)
+              (when (= (u/get-id database) mbql.s/saved-questions-virtual-database-id)
                 database))
             ((user->client :crowberto) :get 200 "database" :include_cards true)))))
 
@@ -430,7 +431,7 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(driver/register! ::no-nested-query-support :parent :h2)
+(driver/register! ::no-nested-query-support :parent :h2, :abstract? true)
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 
@@ -490,12 +491,12 @@
                 :base_type                nil
                 :default_dimension_option nil
                 :dimension_options        []}]))
-  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))
 
 ;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
 (expect
   nil
-  ((user->client :crowberto) :get 200 (format "database/%d/metadata" database/virtual-id)))
+  ((user->client :crowberto) :get 200 (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

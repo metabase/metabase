@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class DatabaseEditForms extends Component {
   static propTypes = {
@@ -16,7 +16,7 @@ export default class DatabaseEditForms extends Component {
   };
 
   render() {
-    let {
+    const {
       database,
       details,
       hiddenFields,
@@ -24,7 +24,7 @@ export default class DatabaseEditForms extends Component {
       formState: { formError, formSuccess, isSubmitting },
     } = this.props;
 
-    let errors = {};
+    const errors = {};
     return (
       <div className="mt4">
         <div

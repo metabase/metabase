@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetricItem from "./MetricItem.jsx";
 
 export default class MetricsList extends Component {
@@ -11,12 +11,8 @@ export default class MetricsList extends Component {
   };
 
   render() {
-    let { tableMetadata } = this.props;
-
-    tableMetadata.metrics = tableMetadata.metrics || [];
-    tableMetadata.metrics = tableMetadata.metrics.filter(
-      mtrc => mtrc.archived === false,
-    );
+    const { onRetire, tableMetadata } = this.props;
+    const { metrics = [] } = tableMetadata;
 
     return (
       <div id="MetricsList" className="my3">
@@ -39,17 +35,17 @@ export default class MetricsList extends Component {
             </tr>
           </thead>
           <tbody>
-            {tableMetadata.metrics.map(metric => (
+            {metrics.map(metric => (
               <MetricItem
                 key={metric.id}
                 metric={metric}
+                onRetire={onRetire}
                 tableMetadata={tableMetadata}
-                onRetire={this.props.onRetire}
               />
             ))}
           </tbody>
         </table>
-        {tableMetadata.metrics.length === 0 && (
+        {metrics.length === 0 && (
           <div className="flex layout-centered m4 text-medium">
             {t`Create metrics to add them to the View dropdown in the query builder`}
           </div>

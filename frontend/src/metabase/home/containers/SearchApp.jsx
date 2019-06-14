@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import Link from "metabase/components/Link";
 
@@ -46,7 +46,7 @@ export default class SearchApp extends React.Component {
                       title={t`No results`}
                       message={t`Metabase couldn't find any results for your search.`}
                       illustrationElement={
-                        <img src="../app/assets/img/no_results.svg" />
+                        <img src="app/assets/img/no_results.svg" />
                       }
                     />
                   </Card>

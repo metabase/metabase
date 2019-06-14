@@ -5,11 +5,14 @@
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.query-processor.debug :as debug]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
+             [add-implicit-joins :as add-implicit-joins]
              [add-row-count-and-status :as row-count-and-status]
              [add-settings :as add-settings]
+             [add-source-metadata :as add-source-metadata]
              [annotate :as annotate]
              [async :as async]
              [async-wait :as async-wait]
@@ -38,7 +41,7 @@
              [resolve-database :as resolve-database]
              [resolve-driver :as resolve-driver]
              [resolve-fields :as resolve-fields]
-             [resolve-joined-tables :as resolve-joined-tables]
+             [resolve-joins :as resolve-joins]
              [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
              [splice-params-in-response :as splice-params-in-response]
@@ -46,7 +49,8 @@
              [validate :as validate]
              [wrap-value-literals :as wrap-value-literals]]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -61,100 +65,131 @@
   (driver/execute-query (:driver query) query))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
-;; Compojure.
+;; Ring.
 ;;
-;; (defn- qp-middleware-fn [qp]
-;;   (fn [query]
-;;     (do-some-postprocessing (qp (do-some-preprocessing query)))))
+;;    (defn- qp-middleware-fn [qp]
+;;      (fn [query]
+;;        (do-some-postprocessing (qp (do-some-preprocessing query)))))
 ;;
-;; Each query processor function is passed a single arg, QP, and returns a function that accepts a single arg, QUERY.
+;; (For most of the middleware.) We are currently in the process to converting all middleware to an async pattern,
+;; which is similar to async Ring, with an added `canceled-chan` param:
 ;;
-;; This returned function *pre-processes* QUERY as needed, and then passes it to QP.
-;; The function may then *post-process* the results of (QP QUERY) as neeeded, and returns the results.
+;;    (defn- async-qp-middleware-fn [qp]
+;;      (fn [query respond raise canceled-chan]
+;;        (qp (do-some-preprocessing query)
+;;            (fn [results]
+;;              (respond (do-some-post-processing results)))
+;;            raise
+;;            canceled-chan)))
 ;;
-;; Many functions do both pre and post-processing; this middleware pattern allows them to return closures that
-;; maintain some sort of internal state. For example, `cumulative-sum` can determine if it needs to perform cumulative
-;; summing, and, if so, modify the query before passing it to QP; once the query is processed, it can use modify the
-;; results as needed.
+;; `canceled-chan` is a core.async promise channel that will recieve a single message if the connection or thread
+;; waiting for the query result is canceled before the QP returns a response; middleware can listen for this message
+;; to cancel pending queries if supported by the database. This channel will also close whenever the QP finishes, so
+;; you can use it in core.async go blocks to schedule other async actions as well.
+;;
+;;
+;; The majority of middleware functions do only pre-processing, fewer still do only post-processing, and even fewer
+;; still do a combination of both. The middleware pattern allows individual pieces of middleware to return closures
+;; that maintain some sort of internal state. For example, `cumulative-sum` can determine if it needs to perform
+;; cumulative summing, and, if so, modify the query before passing it to QP; once the query is processed, it can use
+;; modify the results as needed.
 ;;
 ;; PRE-PROCESSING fns are applied from bottom to top, and POST-PROCESSING from top to bottom;
 ;; the easiest way to wrap your head around this is picturing a the query as a ball being thrown in the air
 ;; (up through the preprocessing fns, back down through the post-processing ones)
-(defn- qp-pipeline
-  "Construct a new Query Processor pipeline with F as the final 'piviotal' function. e.g.:
-
-     All PRE-PROCESSING (query) --> F --> All POST-PROCESSING (result)
-
-   Or another way of looking at it is
-
-     (post-process (f (pre-process query)))
-
-   Normally F is something that runs the query, like the `execute-query` function above, but this can be swapped out
-   when we want to do things like process a query without actually running it."
-  [f]
+(def ^:private pipeline
   ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
-  (-> f
-      ;; ▲▲▲ NATIVE-ONLY POINT ▲▲▲ Query converted from MBQL to native here; f will see a native query instead of MBQL
-      mbql-to-native/mbql->native
-      annotate/result-rows-maps->vectors
-      check-features/check-features
-      wrap-value-literals/wrap-value-literals
-      annotate/add-column-info
-      perms/check-query-permissions
-      cumulative-ags/handle-cumulative-aggregations
-      resolve-joined-tables/resolve-joined-tables
-      dev/check-results-format
-      limit/limit
-      results-metadata/record-and-return-metadata!
-      format-rows/format-rows
-      desugar/desugar
-      binning/update-binning-strategy
-      resolve-fields/resolve-fields
-      add-dim/add-remapping
-      implicit-clauses/add-implicit-clauses
-      reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-      bucket-datetime/auto-bucket-datetimes
-      resolve-source-table/resolve-source-table
-      row-count-and-status/add-row-count-and-status
-      ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
-      ;;
-      ;; TODO - I think we should add row count and status much later, perhaps at the very end right before
-      ;; `catch-exceptions`
-      parameters/substitute-parameters
-      expand-macros/expand-macros
-      ;; (drivers can inject custom middleware if they implement IDriver's `process-query-in-context`)
-      driver-specific/process-query-in-context
-      add-settings/add-settings
-      splice-params-in-response/splice-params-in-response
-      ;; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲
-      ;; All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
-      ;; TODO - I think we should do this much earlier
-      resolve-driver/resolve-driver
-      bind-timezone/bind-effective-timezone
-      resolve-database/resolve-database
-      fetch-source-query/fetch-source-query
-      store/initialize-store
-      log-query/log-query
-      ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲
-      ;;
-      ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in
-      ;; async 4-arg style. Eventually the entire QP middleware stack will be rewritten in the async style. But not yet
-      ;;
-      ;; TODO - `async-wait` should be moved way up the stack, at least after the DB is resolved, right now for nested
-      ;; queries it creates a thread pool for the nested query placeholder DB ID
-      ;;
-      ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
-      async/async->sync
-      async-wait/wait-for-turn
-      cache/maybe-return-cached-results
-      validate/validate-query
-      normalize/normalize
-      catch-exceptions/catch-exceptions
-      process-userland-query/process-userland-query
-      constraints/add-default-userland-constraints
-      async/async-setup))
+  [#'mbql-to-native/mbql->native
+   #'annotate/result-rows-maps->vectors
+   #'check-features/check-features
+   #'wrap-value-literals/wrap-value-literals
+   #'annotate/add-column-info
+   #'perms/check-query-permissions
+   #'cumulative-ags/handle-cumulative-aggregations
+   ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
+   #'resolve-joins/resolve-joins
+   #'add-implicit-joins/add-implicit-joins
+   #'dev/check-results-format
+   #'limit/limit
+   #'results-metadata/record-and-return-metadata!
+   #'format-rows/format-rows
+   #'desugar/desugar
+   #'binning/update-binning-strategy
+   #'resolve-fields/resolve-fields
+   #'add-dim/add-remapping
+   #'implicit-clauses/add-implicit-clauses
+   #'add-source-metadata/add-source-metadata-for-source-queries
+   #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
+   #'bucket-datetime/auto-bucket-datetimes
+   #'resolve-source-table/resolve-source-tables
+   #'row-count-and-status/add-row-count-and-status
+   ;; ▼▼▼ RESULTS WRAPPING POINT ▼▼▼ All functions *below* will see results WRAPPED in `:data` during POST-PROCESSING
+   ;;
+   ;; TODO - I think we should add row count and status much later, perhaps at the very end right before
+   ;; `catch-exceptions`
+   #'parameters/substitute-parameters
+   #'expand-macros/expand-macros
+   ;; (drivers can inject custom middleware if they implement `process-query-in-context`)
+   #'driver-specific/process-query-in-context
+   #'add-settings/add-settings
+   #'splice-params-in-response/splice-params-in-response
+   ;; ▲▲▲ DRIVER RESOLUTION POINT ▲▲▲
+   ;; All functions *above* will have access to the driver during PRE- *and* POST-PROCESSING
+   ;;
+   ;; TODO - `resolve-driver` and `resolve-database` can be combined into a single step, so we don't need to fetch
+   ;; DB twice
+   #'resolve-driver/resolve-driver
+   #'bind-timezone/bind-effective-timezone
+   #'resolve-database/resolve-database
+   #'fetch-source-query/resolve-card-id-source-tables
+   #'store/initialize-store
+   #'log-query/log-query
+   ;; ▲▲▲ SYNC MIDDLEWARE ▲▲▲
+   ;;
+   ;; All middleware above this point is written in the synchronous 1-arg style. All middleware below is written in
+   ;; async 4-arg style. Eventually the entire QP middleware stack will be rewritten in the async style. But not yet
+   ;;
+   ;; TODO - `async-wait` should be moved way up the stack, at least after the DB is resolved, right now for nested
+   ;; queries it creates a thread pool for the nested query placeholder DB ID
+   ;;
+   ;; ▼▼▼ ASYNC MIDDLEWARE ▼▼▼
+   #'async/async->sync
+   #'async-wait/wait-for-turn
+   #'cache/maybe-return-cached-results
+   #'validate/validate-query
+   #'normalize/normalize
+   #'catch-exceptions/catch-exceptions
+   #'process-userland-query/process-userland-query
+   #'constraints/add-default-userland-constraints
+   #'async/async-setup])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
+
+(defn- build-pipeline
+  "Construct a new Query Processor pipeline with `f` as the final 'piviotal' function. e.g.:
+
+    All PRE-PROCESSING (query) --> f --> All POST-PROCESSING (result)
+
+  Or another way of looking at it is
+
+    (post-process (f (pre-process query)))
+
+  Normally `f` is something that runs the query, like the `execute-query` function above, but this can be swapped out
+  when we want to do things like process a query without actually running it.
+
+  Normally the middleware is combined as if threading the underlying functions thru `->`, e.g.
+
+    ;; with pipeline [#'middleware-1 #'middleware-2]
+    (build-pipeline f) ; -> (middleware-2 (middleware-1 f))
+
+  However you can supply a custom `reducing-fn` to build modify various pieces of middleware as needed."
+  ([f]
+   (build-pipeline f (fn [qp middleware-var]
+                       ((var-get middleware-var) qp))))
+
+  ([f reducing-fn]
+   (reduce reducing-fn f pipeline)))
+
 
 (def ^:private ^{:arglists '([query])} preprocess
   "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
@@ -180,7 +215,8 @@
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
-                  results         (qp (assoc query :results-promise results-promise))]
+                  results         (binding [async-wait/*disable-async-wait* true]
+                                    (qp (assoc query :results-promise results-promise)))]
               (if (realized? results-promise)
                 @results-promise
                 ;; if the results promise was never delivered, it means we never made it all the way to the
@@ -190,7 +226,7 @@
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
                   (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
-    (receive-native-query (qp-pipeline deliver-native-query))))
+    (receive-native-query (build-pipeline deliver-native-query))))
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
@@ -209,6 +245,7 @@
   simliar functionality for queries that are actually executed.)"
   {:style/indent 0}
   [query]
+  (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
         (throw (ex-info (str (tru "No native form returned."))
@@ -228,13 +265,31 @@
     (driver/splice-parameters-into-native-query driver
       (query->native query))))
 
-(def ^:private default-pipeline (qp-pipeline execute-query))
+(def ^:private default-pipeline (build-pipeline execute-query))
 
-(defn process-query
-  "A pipeline of various QP functions (including middleware) that are used to process MB queries."
+(def ^:private debugging-pipeline
+  (build-pipeline execute-query debug/debug-middleware))
+
+(def ^:private QueryResponse
+  (s/named
+   (s/cond-pre
+    ManyToManyChannel
+    {:status (s/enum :completed :failed :canceled), s/Any s/Any})
+   "Valid query response (core.async channel or map with :status)"))
+
+(def ^:dynamic *debug*
+  "Bind this to `true` to print debugging messages when processing the query."
+  false)
+
+(s/defn process-query :- QueryResponse
+  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a
+  core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
+  the core.async channel is closed, the query will be canceled."
   {:style/indent 0}
   [query]
-  (default-pipeline query))
+  ((if *debug*
+     debugging-pipeline
+     default-pipeline) query))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

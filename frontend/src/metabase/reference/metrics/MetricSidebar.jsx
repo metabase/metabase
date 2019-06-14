@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import pure from "recompose/pure";
 
@@ -43,15 +43,14 @@ const MetricSidebar = ({ metric, user, style, className }) => (
           name={t`X-ray this metric`}
         />
       )}
-      {user &&
-        user.is_superuser && (
-          <SidebarItem
-            key={`/reference/metrics/${metric.id}/revisions`}
-            href={`/reference/metrics/${metric.id}/revisions`}
-            icon="history"
-            name={t`Revision history for ${metric.name}`}
-          />
-        )}
+      {user && user.is_superuser && (
+        <SidebarItem
+          key={`/reference/metrics/${metric.id}/revisions`}
+          href={`/reference/metrics/${metric.id}/revisions`}
+          icon="history"
+          name={t`Revision history for ${metric.name}`}
+        />
+      )}
     </ul>
   </div>
 );

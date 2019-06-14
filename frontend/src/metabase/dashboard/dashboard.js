@@ -147,8 +147,8 @@ export const fetchCards = createThunkAction(FETCH_CARDS, function(
   filterMode = "all",
 ) {
   return async function(dispatch, getState) {
-    let cards = await CardApi.list({ f: filterMode });
-    for (let c of cards) {
+    const cards = await CardApi.list({ f: filterMode });
+    for (const c of cards) {
       c.updated_at = moment(c.updated_at);
     }
     return normalize(cards, [card]);
@@ -244,8 +244,8 @@ export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function() {
     return async function(dispatch, getState) {
-      let { dashboards, dashcards, dashboardId } = getState().dashboard;
-      let dashboard = {
+      const { dashboards, dashcards, dashboardId } = getState().dashboard;
+      const dashboard = {
         ...dashboards[dashboardId],
         ordered_cards: dashboards[dashboardId].ordered_cards.map(
           dashcardId => dashcards[dashcardId],
@@ -265,31 +265,33 @@ export const saveDashboardAndCards = createThunkAction(
       );
 
       // add isAdded dashboards
-      let updatedDashcards = await Promise.all(
-        dashboard.ordered_cards.filter(dc => !dc.isRemoved).map(async dc => {
-          if (dc.isAdded) {
-            let result = await DashboardApi.addcard({
-              dashId: dashboard.id,
-              cardId: dc.card_id,
-            });
-            dispatch(updateDashcardId(dc.id, result.id));
+      const updatedDashcards = await Promise.all(
+        dashboard.ordered_cards
+          .filter(dc => !dc.isRemoved)
+          .map(async dc => {
+            if (dc.isAdded) {
+              const result = await DashboardApi.addcard({
+                dashId: dashboard.id,
+                cardId: dc.card_id,
+              });
+              dispatch(updateDashcardId(dc.id, result.id));
 
-            // mark isAdded because addcard doesn't record the position
-            return {
-              ...result,
-              col: dc.col,
-              row: dc.row,
-              sizeX: dc.sizeX,
-              sizeY: dc.sizeY,
-              series: dc.series,
-              parameter_mappings: dc.parameter_mappings,
-              visualization_settings: dc.visualization_settings,
-              isAdded: true,
-            };
-          } else {
-            return dc;
-          }
-        }),
+              // mark isAdded because addcard doesn't record the position
+              return {
+                ...result,
+                col: dc.col,
+                row: dc.row,
+                sizeX: dc.sizeX,
+                sizeY: dc.sizeY,
+                series: dc.series,
+                parameter_mappings: dc.parameter_mappings,
+                visualization_settings: dc.visualization_settings,
+                isAdded: true,
+              };
+            } else {
+              return dc;
+            }
+          }),
       );
 
       // update modified cards
@@ -301,7 +303,7 @@ export const saveDashboardAndCards = createThunkAction(
 
       // update the dashboard itself
       if (dashboard.isDirty) {
-        let { id, name, description, parameters } = dashboard;
+        const { id, name, description, parameters } = dashboard;
         await dispatch(
           Dashboards.actions.update({ id }, { name, description, parameters }),
         );
@@ -309,7 +311,7 @@ export const saveDashboardAndCards = createThunkAction(
 
       // reposition the cards
       if (_.some(updatedDashcards, dc => dc.isDirty || dc.isAdded)) {
-        let cards = updatedDashcards.map(
+        const cards = updatedDashcards.map(
           ({
             id,
             card_id,
@@ -498,7 +500,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     let result = null;
 
     // start a timer that will show the expected card duration if the query takes too long
-    let slowCardTimer = setTimeout(() => {
+    const slowCardTimer = setTimeout(() => {
       if (result === null) {
         dispatch(markCardAsSlow(card, datasetQuery));
       }
@@ -683,7 +685,7 @@ export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({
   id,
 }) {
   return async function(dispatch, getState) {
-    let revisions = await RevisionApi.list({ entity, id });
+    const revisions = await RevisionApi.list({ entity, id });
     return { entity, id, revisions };
   };
 });
@@ -835,7 +837,7 @@ export const CREATE_PUBLIC_LINK = "metabase/dashboard/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAction(
   CREATE_PUBLIC_LINK,
   async ({ id }) => {
-    let { uuid } = await DashboardApi.createPublicLink({ id });
+    const { uuid } = await DashboardApi.createPublicLink({ id });
     return { id, uuid };
   },
 );

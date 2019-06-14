@@ -70,9 +70,8 @@ export const getQuestion = ({
   // consider taking a look at Ramda as a possible underscore alternative?
   // http://ramdajs.com/0.21.0/index.html
   const question = chain(newQuestion)
-    .updateIn(
-      ["dataset_query", "query", "aggregation"],
-      aggregation => (getCount ? ["count"] : aggregation),
+    .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
+      getCount ? ["count"] : aggregation,
     )
     .updateIn(["display"], display => visualization || display)
     .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {

@@ -1,18 +1,16 @@
 (ns metabase.driver.oracle
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
              [date :as du]
@@ -155,52 +153,6 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds] [driver _ field-or-value]
   (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
-
-(defn- increment-identifier-suffix
-  "Add an appropriate suffix to a keyword IDENTIFIER to make it distinct from previous usages of the same identifier,
-  e.g.
-
-     (increment-identifier-suffix :my_col)   ; -> :my_col_2
-     (increment-identifier-suffix :my_col_2) ; -> :my_col_3"
-  [identifier]
-  (keyword
-   (let [identifier (name identifier)]
-     (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" identifier)]
-       ;; if identifier already has an alias like col_2 then increment it to col_3
-       (let [new-suffix (str (inc (Integer/parseInt existing-suffix)))]
-         (clojure.string/replace identifier (re-pattern (str existing-suffix \$)) new-suffix))
-       ;; otherwise just stick a _2 on the end so it's col_2
-       (str identifier "_2")))))
-
-(defn- alias-everything
-  "Make sure all the columns in SELECT-CLAUSE are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
-  (This faciliates our deduplication logic.)"
-  [select-clause]
-  (for [col select-clause]
-    (if (sequential? col)
-      ;; if something's already an alias form like [:table.col :col] it's g2g
-      col
-      ;; otherwise if it's something like :table.col replace with [:table.col :col]
-      [col (keyword (last (clojure.string/split (name col) #"\.")))])))
-
-(defn- deduplicate-identifiers
-  "Make sure every column in SELECT-CLAUSE has a unique alias. This is done because Oracle can't figure out how to use a
-  query that produces duplicate columns in a subselect."
-  [select-clause]
-  (if (= select-clause [:*])
-    ;; if we're doing `SELECT *` there's no way we can deduplicate anything so we're SOL, return as-is
-    select-clause
-    ;; otherwise we can actually deduplicate things
-    (loop [already-seen #{}, acc [], [[col alias] & more] (alias-everything select-clause)]
-      (cond
-        ;; if not more cols are left to deduplicate, we're done
-        (not col)                      acc
-        ;; otherwise if we've already used this alias, replace it with one like `identifier_2` and try agan
-        (contains? already-seen alias) (recur already-seen acc (cons [col (increment-identifier-suffix alias)]
-                                                                     more))
-        ;; otherwise if we haven't seen it record it as seen and move on to the next column
-        :else                          (recur (conj already-seen alias) (conj acc [col alias]) more)))))
-
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.
 ;;
@@ -231,17 +183,18 @@
 ;;
 ;; See issue #3568 and the Oracle documentation for more details:
 ;; http://docs.oracle.com/cd/B19306_01/server.102/b14200/pseudocolumns009.htm
-(defmethod sql.qp/apply-top-level-clause [:oracle :limit] [_ _ honeysql-query {value :limit}]
-  {:pre [(integer? value)]}
+(defmethod sql.qp/apply-top-level-clause [:oracle :limit]
+  [_ _ honeysql-query {value :limit}]
   {:select [:*]
    ;; if `honeysql-query` doesn't have a `SELECT` clause yet (which might be the case when using a source query) fall
    ;; back to including a `SELECT *` just to make sure a valid query is produced
    :from   [(-> (merge {:select [:*]}
                        honeysql-query)
-                (update :select deduplicate-identifiers))]
+                (update :select sql.u/select-clause-deduplicate-aliases))]
    :where  [:<= (hsql/raw "rownum") value]})
 
-(defmethod sql.qp/apply-top-level-clause [:oracle :page] [driver _ honeysql-query {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:oracle :page]
+  [driver _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can use use the single-nesting implementation for `apply-limit`
@@ -291,8 +244,7 @@
   (apply driver.common/current-db-time args))
 
 (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  (set/union
-   #{"ANONYMOUS"
+  #{"ANONYMOUS"
      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
      "APEX_040200"
      "APPQOSSYS"
@@ -317,12 +269,7 @@
      "SYSTEM"
      "WMSYS"
      "XDB"
-     "XS$NULL"}
-   (when config/is-test?
-     ;; DIRTY HACK (!) This is similar hack we do for Redshift, see the explanation there we just want to ignore all
-     ;; the test "session schemas" that don't match the current test
-     (require 'metabase.test.data.oracle)
-     ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
+     "XS$NULL"})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
   "ALTER session SET time_zone = %s")

@@ -7,15 +7,15 @@ import Query from "metabase/lib/query";
 
 export default class SegmentItem extends Component {
   static propTypes = {
+    onRetire: PropTypes.func.isRequired,
     segment: PropTypes.object.isRequired,
     tableMetadata: PropTypes.object.isRequired,
-    onRetire: PropTypes.func.isRequired,
   };
 
   render() {
-    let { segment, tableMetadata } = this.props;
+    const { onRetire, segment, tableMetadata } = this.props;
 
-    let description = Query.generateQueryDescription(
+    const description = Query.generateQueryDescription(
       tableMetadata,
       segment.definition,
       { sections: ["filter"], jsx: true },
@@ -39,7 +39,7 @@ export default class SegmentItem extends Component {
           <ObjectActionSelect
             object={segment}
             objectType="segment"
-            onRetire={this.props.onRetire}
+            onRetire={onRetire}
           />
         </td>
       </tr>

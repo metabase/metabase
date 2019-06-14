@@ -242,7 +242,7 @@ class GroupPermissionCell extends Component {
     const warning =
       permission.warning && permission.warning(group.id, entity.id);
 
-    let isEditable =
+    const isEditable =
       this.props.isEditable &&
       options.filter(option => option.value !== value).length > 0;
     const option = _.findWhere(options, { value }) || DEFAULT_OPTION;
@@ -278,31 +278,30 @@ class GroupPermissionCell extends Component {
                     : option.iconColor,
                 }}
               />
-              {confirmations &&
-                confirmations.length > 0 && (
-                  <Modal>
-                    <ConfirmContent
-                      {...confirmations[0]}
-                      onAction={() =>
-                        // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
-                        confirmations.length === 1
-                          ? this.setState(
-                              { confirmations: null, confirmAction: null },
-                              this.state.confirmAction,
-                            )
-                          : this.setState({
-                              confirmations: confirmations.slice(1),
-                            })
-                      }
-                      onCancel={() =>
-                        this.setState({
-                          confirmations: null,
-                          confirmAction: null,
-                        })
-                      }
-                    />
-                  </Modal>
-                )}
+              {confirmations && confirmations.length > 0 && (
+                <Modal>
+                  <ConfirmContent
+                    {...confirmations[0]}
+                    onAction={() =>
+                      // if it's the last one call confirmAction, otherwise remove the confirmation that was just confirmed
+                      confirmations.length === 1
+                        ? this.setState(
+                            { confirmations: null, confirmAction: null },
+                            this.state.confirmAction,
+                          )
+                        : this.setState({
+                            confirmations: confirmations.slice(1),
+                          })
+                    }
+                    onCancel={() =>
+                      this.setState({
+                        confirmations: null,
+                        confirmAction: null,
+                      })
+                    }
+                  />
+                </Modal>
+              )}
               {warning && (
                 <div className="absolute top right p1">
                   <Tooltip tooltip={warning} maxWidth="24em">
@@ -328,7 +327,7 @@ class GroupPermissionCell extends Component {
                 postAction: permission.postAction,
               });
             };
-            let confirmations = (
+            const confirmations = (
               (permission.confirm &&
                 permission.confirm(group.id, entity.id, value)) ||
               []

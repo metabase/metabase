@@ -1,10 +1,11 @@
 (ns metabase.query-processor-test.failure-test
   "Tests for how the query processor as a whole handles failures."
-  (:require [expectations :refer [expect]]
-            [medley.core :as m]
-            [metabase.query-processor :as qp]
+  (:require [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -29,44 +30,36 @@
                 "LIMIT 1048576")
    :params nil})
 
-(def ^:private ^{:arglists '([stacktrace])} valid-stacktrace?
-  (complement (partial s/check [su/NonBlankString])))
-
 ;; running a bad query via `process-query` should return stacktrace, query, preprocessed query, and native query
-(expect
-  {:status       :failed
-   :class        Exception
-   :error        true
-   :stacktrace   true
+(tu/expect-schema
+  {:status       (s/eq :failed)
+   :class        (s/eq Exception)
+   :error        s/Str
+   :stacktrace   [su/NonBlankString]
    ;; `:database` is removed by the catch-exceptions middleware for historical reasons
-   :query        (dissoc (bad-query) :database)
-   :preprocessed (bad-query:preprocessed)
-   :native       bad-query:native}
-  (-> (qp/process-query (bad-query))
-      (update :error (every-pred string? seq))
-      (update :stacktrace valid-stacktrace?)
-      ;; don't care about query hash + type
-      (m/dissoc-in [:query :info])
-      (m/dissoc-in [:preprocessed :info])))
+   :query        (s/eq (dissoc (bad-query) :database))
+   :preprocessed (s/eq (bad-query:preprocessed))
+   :native       (s/eq bad-query:native)
+   :cause        {:class (s/eq org.h2.jdbc.JdbcSQLException)
+                  :error #"Cannot parse \"TIMESTAMP\" constant \"1\"; SQL statement:.*"
+                  :cause {:class (s/eq java.lang.IllegalArgumentException)
+                          :error (s/eq "1")}}}
+  (tu.log/suppress-output
+    (qp/process-query (bad-query))))
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
-(expect
-  {:database_id  (data/id)
-   :started_at   true
-   :json_query   (assoc-in (bad-query) [:middleware :userland-query?] true)
-   :native       bad-query:native
-   :status       :failed
-   :stacktrace   true
-   :context      :question
-   :error        true
-   :row_count    0
-   :running_time true
-   :preprocessed (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true)
-   :data         {:rows [], :cols [], :columns []}}
-  (-> (qp/process-query-and-save-execution! (bad-query) {:context :question})
-      (update :error (every-pred string? seq))
-      (update :started_at (partial instance? java.util.Date))
-      (update :stacktrace valid-stacktrace?)
-      (update :running_time (complement neg?))
-      (m/dissoc-in [:query :info])
-      (m/dissoc-in [:preprocessed :info])))
+(tu/expect-schema
+  {:database_id  (s/eq (data/id))
+   :started_at   java.util.Date
+   :json_query   (s/eq (assoc-in (bad-query) [:middleware :userland-query?] true))
+   :native       (s/eq bad-query:native)
+   :status       (s/eq :failed)
+   :stacktrace   [su/NonBlankString]
+   :context      (s/eq :question)
+   :error        su/NonBlankString
+   :row_count    (s/eq 0)
+   :running_time (s/constrained s/Int (complement neg?))
+   :preprocessed (s/eq (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true))
+   :data         (s/eq {:rows [], :cols [], :columns []})}
+  (tu.log/suppress-output
+    (qp/process-query-and-save-execution! (bad-query) {:context :question})))

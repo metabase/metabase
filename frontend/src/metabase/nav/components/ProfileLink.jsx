@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -57,7 +57,7 @@ export default class ProfileLink extends Component {
       {
         title: t`Help`,
         icon: null,
-        link: `https://metabase.com/docs/${tag}/`,
+        link: MetabaseSettings.docsUrl(),
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },

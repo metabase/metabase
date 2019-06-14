@@ -130,9 +130,9 @@ export const drillFilter = (card, value, column) => {
 };
 
 export const addOrUpdateFilter = (card, filter) => {
-  let newCard = clone(card);
+  const newCard = clone(card);
   // replace existing filter, if it exists
-  let filters = Query.getFilters(newCard.dataset_query.query);
+  const filters = Query.getFilters(newCard.dataset_query.query);
   for (let index = 0; index < filters.length; index++) {
     if (
       Filter.isFieldFilter(filters[index]) &&
@@ -157,9 +157,9 @@ export const addOrUpdateFilter = (card, filter) => {
 };
 
 export const addOrUpdateBreakout = (card, breakout) => {
-  let newCard = clone(card);
+  const newCard = clone(card);
   // replace existing breakout, if it exists
-  let breakouts = Query.getBreakouts(newCard.dataset_query.query);
+  const breakouts = Query.getBreakouts(newCard.dataset_query.query);
   for (let index = 0; index < breakouts.length; index++) {
     if (
       fieldIdsEq(
@@ -241,8 +241,8 @@ export const distribution = (card, column) => {
   const breakout = isDate(column)
     ? ["datetime-field", getFieldRefFromColumn(column), "month"]
     : isNumber(column)
-      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
-      : getFieldRefFromColumn(column);
+    ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+    : getFieldRefFromColumn(column);
 
   const newCard = startNewCard("query");
   newCard.dataset_query = Utils.copy(card.dataset_query);
@@ -260,7 +260,7 @@ const MIN_INTERVALS = 4;
 export const updateDateTimeFilter = (card, column, start, end): CardObject => {
   let newCard = clone(card);
 
-  let fieldRef = getFieldRefFromColumn(column);
+  const fieldRef = getFieldRefFromColumn(column);
   start = moment(start);
   end = moment(end);
   if (column.unit) {

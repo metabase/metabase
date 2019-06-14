@@ -1,21 +1,21 @@
 (ns metabase.driver.sparksql
   (:require [clojure
              [set :as set]
-             [string :as s]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
+            [metabase.driver.sql
+             [query-processor :as sql.qp]
+             [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
@@ -32,14 +32,11 @@
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
 
+;; use `source-table-alias` for the source Table, e.g. `t1.field` instead of the normal `schema.table.field`
 (defmethod sql.qp/->honeysql [:sparksql (class Field)]
   [driver field]
-  (let [table            (qp.store/table (:table_id field))
-        table-name       (if (:alias? table)
-                           (:name table)
-                           source-table-alias)
-        field-identifier (keyword (hx/qualify-and-escape-dots table-name (:name field)))]
-    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
+  (binding [sql.qp/*table-alias* (or sql.qp/*table-alias* source-table-alias)]
+    ((get-method sql.qp/->honeysql [:hive-like (class Field)]) driver field)))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :page] [_ _ honeysql-form {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
@@ -57,9 +54,10 @@
             (h/limit items))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
-  [_ _ honeysql-form {source-table-id :source-table}]
+  [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (h/from honeysql-form [(hx/qualify-and-escape-dots schema table-name) source-table-alias])))
+    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
@@ -69,10 +67,11 @@
   [{:keys [host port db jdbc-flags]
     :or   {host "localhost", port 10000, db "", jdbc-flags ""}
     :as   opts}]
-  (merge {:classname   "metabase.driver.FixedHiveDriver"
-          :subprotocol "hive2"
-          :subname     (str "//" host ":" port "/" db jdbc-flags)}
-         (dissoc opts :host :port :jdbc-flags)))
+  (merge
+   {:classname   "metabase.driver.FixedHiveDriver"
+    :subprotocol "hive2"
+    :subname     (str "//" host ":" port "/" db jdbc-flags)}
+   (dissoc opts :host :port :jdbc-flags)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql [_ details]
   (-> details
@@ -86,31 +85,36 @@
 
 (defn- dash-to-underscore [s]
   (when s
-    (s/replace s #"-" "_")))
+    (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-database :sparksql [_ {:keys [details] :as database}]
-  {:tables (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-             (set (for [result (jdbc/query {:connection conn}
-                                           ["show tables"])]
-                    {:name   (:tablename result)
-                     :schema (when (> (count (:database result)) 0)
-                               (:database result))})))})
+(defmethod driver/describe-database :sparksql
+  [_ {:keys [details] :as database}]
+  {:tables
+   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+     (set
+      (for [{:keys [tablename database]} (jdbc/query {:connection conn} ["show tables"])]
+        {:name   tablename
+         :schema (when (seq database)
+                   database)})))})
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
-(defmethod driver/describe-table :sparksql [_ {:keys [details] :as database} table]
-  (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
-    {:name   (:name table)
-     :schema (:schema table)
-     :fields (set (for [result (jdbc/query {:connection conn}
-                                           [(if (:schema table)
-                                              (format "describe `%s`.`%s`"
-                                                      (dash-to-underscore (:schema table))
-                                                      (dash-to-underscore (:name table)))
-                                              (str "describe " (dash-to-underscore (:name table))))])]
-                    {:name          (:col_name result)
-                     :database-type (:data_type result)
-                     :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword (:data_type result)))}))}))
+(defmethod driver/describe-table :sparksql
+  [driver {:keys [details] :as database} {table-name :name, schema :schema, :as table}]
+  {:name   table-name
+   :schema schema
+   :fields
+   (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
+     (let [results (jdbc/query {:connection conn} [(format
+                                                    "describe %s"
+                                                    (sql.u/quote-name driver :table
+                                                      (dash-to-underscore schema)
+                                                      (dash-to-underscore table-name)))])]
+       (set
+        (for [{col-name :col_name, data-type :data_type} results]
+          {:name          col-name
+           :database-type data-type
+           :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
 
 ;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
@@ -136,7 +140,6 @@
 (defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
 
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true)
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)

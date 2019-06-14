@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
@@ -38,7 +38,10 @@ const mapDispatchToProps = {
   onSave: savePermissions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class CollectionPermissionsModal extends Component {
   componentWillMount() {

@@ -50,7 +50,9 @@
     (and (= unit :day) (= amount 0))  "today"
     (and (= unit :day) (= amount -1)) "yesterday"
     (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-    :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
+    :else                             (du/format-date
+                                        "yyyy-MM-dd"
+                                        (du/date-trunc unit (du/relative-date unit amount)))))
 
 (defmethod ->rvalue :value [[_ value _]]
   value)

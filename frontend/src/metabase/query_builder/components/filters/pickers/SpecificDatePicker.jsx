@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Calendar from "metabase/components/Calendar";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Icon from "metabase/components/Icon";
@@ -45,7 +45,7 @@ export default class SpecificDatePicker extends Component {
   };
 
   onChange = (date: ?string, hours: ?number, minutes: ?number) => {
-    let m = moment(date);
+    const m = moment(date);
     if (!m.isValid()) {
       this.props.onChange(null);
     }
@@ -97,7 +97,7 @@ export default class SpecificDatePicker extends Component {
               }}
               value={date ? date.format("MM/DD/YYYY") : ""}
               onBlurChange={({ target: { value } }) => {
-                let date = moment(value, "MM/DD/YYYY");
+                const date = moment(value, "MM/DD/YYYY");
                 if (date.isValid()) {
                   this.onChange(date, hours, minutes);
                 } else {

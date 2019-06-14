@@ -2,7 +2,7 @@
   "Tests for the remapping results"
   (:require [metabase
              [query-processor :as qp]
-             [query-processor-test :refer :all]]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.models
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
@@ -10,16 +10,14 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :as datasets]]
+            [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
 
 (qp-expect-with-all-drivers
-  {:rows        [["20th Century Cafe" 12 "Café Sweets"]
-                 ["25°" 11 "Café"]
-                 ["33 Taps" 7 "Beer Garden"]
-                 ["800 Degrees Neapolitan Pizzeria" 58 "Ramen"]]
+  {:rows        [["20th Century Cafe"               12 "Café"]
+                 ["25°"                             11 "Burger"]
+                 ["33 Taps"                          7 "Bar"]
+                 ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
    :columns     [(data/format-name "name")
                  (data/format-name "category_id")
                  "Foo"]
@@ -27,14 +25,14 @@
                  (assoc (venues-col :category_id) :remapped_to "Foo")
                  (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:fields   [$name $category_id]
             :order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [str int str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [str int str])
          tu/round-fingerprint-cols)))
 
 (defn- select-columns
@@ -73,13 +71,13 @@
                    :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [int str int double double int str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [int str int double double int str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
          data)))
@@ -101,14 +99,14 @@
                    :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:fields   [$name $price $category_id]
             :order-by [[:asc $name]]
             :limit    4})
-         booleanize-native-form
-         (format-rows-by [str int str str])
+         qp.test/booleanize-native-form
+         (qp.test/format-rows-by [str int str str])
          (select-columns (set (map data/format-name ["name" "price" "name_2"])))
          tu/round-fingerprint-cols
          :data)))
@@ -116,7 +114,7 @@
 ;; Test that we can remap inside an MBQL nested query
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
-  (data/with-data
+  (data/with-temp-objects
     (fn []
       [(db/insert! Dimension {:field_id                (data/id :checkins :venue_id)
                               :name                    "venue-remapping"
@@ -132,7 +130,7 @@
 ;; from Categories
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (qp/process-query
            {:database (data/id)
@@ -151,8 +149,8 @@
 ;; this is https://github.com/metabase/metabase/issues/8510
 (datasets/expect-with-drivers (disj (non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-  (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
-    (data/with-data
+  (data/dataset test-data-self-referencing-user
+    (data/with-temp-objects
       (fn []
         [(db/insert! Dimension {:field_id (data/id :users :created_by)
                                 :name "created-by-mapping"

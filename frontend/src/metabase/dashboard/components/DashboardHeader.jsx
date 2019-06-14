@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ActionButton from "metabase/components/ActionButton";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
 import ArchiveDashboardModal from "./ArchiveDashboardModal";
@@ -258,15 +258,14 @@ export default class DashboardHeader extends Component {
             </a>
           </Tooltip>
 
-          {this.state.modal &&
-            this.state.modal === "parameters" && (
-              <Popover onClose={() => this.setState({ modal: null })}>
-                <ParametersPopover
-                  onAddParameter={this.props.addParameter}
-                  onClose={() => this.setState({ modal: null })}
-                />
-              </Popover>
-            )}
+          {this.state.modal && this.state.modal === "parameters" && (
+            <Popover onClose={() => this.setState({ modal: null })}>
+              <ParametersPopover
+                onAddParameter={this.props.addParameter}
+                onClose={() => this.setState({ modal: null })}
+              />
+            </Popover>
+          )}
         </span>,
       );
 
@@ -354,7 +353,7 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    let { dashboard } = this.props;
+    const { dashboard } = this.props;
 
     return (
       <Header

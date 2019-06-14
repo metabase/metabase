@@ -7,7 +7,7 @@ import styles from "./Text.css";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -123,14 +123,14 @@ export default class Text extends Component {
   }
 
   render() {
-    let {
+    const {
       className,
       actionButtons,
       gridSize,
       settings,
       isEditing,
     } = this.props;
-    let isSmall = gridSize && gridSize.width < 4;
+    const isSmall = gridSize && gridSize.width < 4;
 
     if (isEditing) {
       return (
@@ -164,7 +164,7 @@ export default class Text extends Component {
                 styles["text-card-textarea"],
               )}
               name="text"
-              placeholder={t`Write here, and use Markdown if you''d like`}
+              placeholder={t`Write here, and use Markdown if you'd like`}
               value={settings.text}
               onChange={e => this.handleTextChange(e.target.value)}
             />

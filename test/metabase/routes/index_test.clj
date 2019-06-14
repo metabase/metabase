@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [expectations :refer [expect]]
             [metabase.routes.index :as index]
+            [metabase.test.util.log :as tu.log]
             [puppetlabs.i18n.core :refer [*locale*]]))
 
 ;; make sure `load-localization` is correctly loading i18n files (#9938)
@@ -24,10 +25,11 @@
 (expect
   {"headers"      {"language" "xx", "plural-forms" "nplurals=2; plural=(n != 1);"}
    "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
-  (some->
-   (binding [*locale* "xx"]
-     (#'index/load-localization))
-   json/parse-string))
+  (tu.log/suppress-output
+    (some->
+     (binding [*locale* "xx"]
+       (#'index/load-localization))
+     json/parse-string)))
 
 ;; english should return the fallback localization (english)
 (expect

@@ -25,7 +25,7 @@ export function initChart(chart, element) {
 }
 
 export function makeIndexMap(values: Array<Value>): Map<Value, number> {
-  let indexMap = new Map();
+  const indexMap = new Map();
   for (const [index, key] of values.entries()) {
     indexMap.set(key, index);
   }
@@ -107,7 +107,7 @@ export function HACK_parseTimestamp(value, unit, warn) {
     warn(NULL_DIMENSION_WARNING);
     return null;
   } else {
-    let m = parseTimestamp(value, unit);
+    const m = parseTimestamp(value, unit);
     m.toString = moment_fast_toString;
     return m;
   }
@@ -132,10 +132,8 @@ export const isOrdinal = settings =>
 export const isHistogramBar = ({ settings, chartType }) =>
   isHistogram(settings) && chartType === "bar";
 
-export const isStacked = (settings, datas) =>
-  settings["stackable.stack_type"] && datas.length > 1;
+export const isStacked = (settings, datas) => settings["stackable.stack_type"];
 export const isNormalized = (settings, datas) =>
-  isStacked(settings, datas) &&
   settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series

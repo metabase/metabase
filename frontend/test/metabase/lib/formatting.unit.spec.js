@@ -19,8 +19,7 @@ describe("formatting", () => {
       expect(formatNumber(-10)).toEqual("-10");
       expect(formatNumber(-99999999)).toEqual("-99,999,999");
     });
-    // FIXME: failing on CI
-    xit("should format to 2 significant digits", () => {
+    it("should format to 2 significant digits", () => {
       expect(formatNumber(1 / 3)).toEqual("0.33");
       expect(formatNumber(-1 / 3)).toEqual("-0.33");
       expect(formatNumber(0.0001 / 3)).toEqual("0.000033");
@@ -46,9 +45,49 @@ describe("formatting", () => {
         expect(formatNumber(1000, { compact: true })).toEqual("1.0k");
         expect(formatNumber(1111, { compact: true })).toEqual("1.1k");
       });
+      it("should format percentages", () => {
+        const options = { compact: true, number_style: "percent" };
+        expect(formatNumber(0, options)).toEqual("0%");
+        expect(formatNumber(0.001, options)).toEqual("0.1%");
+        expect(formatNumber(0.0001, options)).toEqual("~ 0%");
+        expect(formatNumber(0.001234, options)).toEqual("0.12%");
+        expect(formatNumber(0.1, options)).toEqual("10%");
+        expect(formatNumber(0.1234, options)).toEqual("12%");
+        expect(formatNumber(0.019, options)).toEqual("2%");
+        expect(formatNumber(0.021, options)).toEqual("2%");
+        expect(formatNumber(11.11, options)).toEqual("1.1k%");
+        expect(formatNumber(-0.22, options)).toEqual("-22%");
+      });
+      it("should format scientific notation", () => {
+        const options = { compact: true, number_style: "scientific" };
+        expect(formatNumber(0, options)).toEqual("0.0e+0");
+        expect(formatNumber(0.0001, options)).toEqual("1.0e-4");
+        expect(formatNumber(0.01, options)).toEqual("1.0e-2");
+        expect(formatNumber(0.5, options)).toEqual("5.0e-1");
+        expect(formatNumber(123456.78, options)).toEqual("1.2e+5");
+        expect(formatNumber(-123456.78, options)).toEqual("-1.2e+5");
+      });
+      it("should format currency values", () => {
+        const options = {
+          compact: true,
+          number_style: "currency",
+          currency: "USD",
+        };
+        expect(formatNumber(0, options)).toEqual("$0");
+        expect(formatNumber(0.001, options)).toEqual("~$0");
+        expect(formatNumber(7.24, options)).toEqual("$7");
+        expect(formatNumber(1234.56, options)).toEqual("$1.2k");
+        expect(formatNumber(1234567.89, options)).toEqual("$1.2M");
+        expect(formatNumber(-1234567.89, options)).toEqual("$-1.2M");
+        expect(
+          formatNumber(1234567.89, { ...options, currency: "CNY" }),
+        ).toEqual("CN¥1.2M");
+        expect(
+          formatNumber(1234567.89, { ...options, currency_style: "name" }),
+        ).toEqual("$1.2M");
+      });
     });
-    // FIXME: failing on CI
-    xit("should format to correct number of decimal places", () => {
+    it("should format to correct number of decimal places", () => {
       expect(formatNumber(0.1)).toEqual("0.1");
       expect(formatNumber(0.11)).toEqual("0.11");
       expect(formatNumber(0.111)).toEqual("0.11");

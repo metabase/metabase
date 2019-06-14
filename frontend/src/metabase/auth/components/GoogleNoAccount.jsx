@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AuthScene from "./AuthScene.jsx";
 import LogoIcon from "metabase/components/LogoIcon.jsx";
 import BackToLogin from "./BackToLogin.jsx";

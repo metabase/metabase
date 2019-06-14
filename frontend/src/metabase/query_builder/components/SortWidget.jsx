@@ -59,7 +59,7 @@ export default class SortWidget extends Component {
   }
 
   render() {
-    let directionOptions = [
+    const directionOptions = [
       { key: "ascending", val: "asc" },
       { key: "descending", val: "desc" },
     ];

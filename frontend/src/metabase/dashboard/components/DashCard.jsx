@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
@@ -286,7 +286,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 
 function getSeriesIconName(series) {
   try {
-    let display = series[0].card.display;
+    const display = series[0].card.display;
     return visualizations.get(display === "scalar" ? "bar" : display).iconName;
   } catch (e) {
     return "bar";

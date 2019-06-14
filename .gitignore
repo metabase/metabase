@@ -60,3 +60,5 @@ bin/node_modules/
 .vscode
 target/checksum.txt
 /resources/frontend_client/app/locales
+*.iml
+.idea/

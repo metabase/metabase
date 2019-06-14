@@ -1,23 +1,26 @@
 (ns metabase.driver.mysql-test
   (:require [clj-time.core :as t]
             [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qpt]
+             [query-processor-test :as qp.test]
              [sync :as sync]
              [util :as u]]
             [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.database :refer [Database]]
+            [metabase.models
+             [database :refer [Database]]
+             [field :refer [Field]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data
              [datasets :refer [expect-with-driver]]
-             [interface :as tx :refer [def-database-definition]]]
+             [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]
@@ -47,14 +50,14 @@
           (sync/sync-database! database)
           (data/with-db database
             ;; run the query
-            (-> (data/run-mbql-query exciting-moments-in-history)
-                qpt/rows)))))))
+            (qp.test/rows
+             (data/run-mbql-query exciting-moments-in-history))))))))
 
 
 ;; Test how TINYINT(1) columns are interpreted. By default, they should be interpreted as integers, but with the
 ;; correct additional options, we should be able to change that -- see
 ;; https://github.com/metabase/metabase/issues/3506
-(def-database-definition ^:private ^:const tiny-int-ones
+(tx/defdataset ^:private tiny-int-ones
   [["number-of-cans"
      [{:field-name "thing",          :base-type :type/Text}
       {:field-name "number-of-cans", :base-type {:native "tinyint(1)"}}]
@@ -64,24 +67,24 @@
 
 (defn- db->fields [db]
   (let [table-ids (db/select-ids 'Table :db_id (u/get-id db))]
-    (set (map (partial into {}) (db/select ['Field :name :base_type :special_type] :table_id [:in table-ids])))))
+    (set (map (partial into {}) (db/select [Field :name :base_type :special_type] :table_id [:in table-ids])))))
 
 ;; By default TINYINT(1) should be a boolean
 (expect-with-driver :mysql
   #{{:name "number-of-cans", :base_type :type/Boolean, :special_type :type/Category}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
-    (db->fields db)))
+  (data/dataset tiny-int-ones
+    (db->fields (data/db))))
 
 ;; if someone says specifies `tinyInt1isBit=false`, it should come back as a number instead
 (expect-with-driver :mysql
   #{{:name "number-of-cans", :base_type :type/Integer, :special_type :type/Quantity}
     {:name "id",             :base_type :type/Integer, :special_type :type/PK}
     {:name "thing",          :base_type :type/Text,    :special_type :type/Category}}
-  (data/with-temp-db [db tiny-int-ones]
+  (data/dataset tiny-int-ones
     (tt/with-temp Database [db {:engine "mysql"
-                                :details (assoc (:details db)
+                                :details (assoc (:details (data/db))
                                            :additional-options "tinyInt1isBit=false")}]
       (sync/sync-database! db)
       (db->fields db))))
@@ -92,12 +95,12 @@
 
 (expect-with-driver :mysql
   "-02:00"
-  (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-09 18:39:08.000000 -02"]]})]
+  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-09 18:39:08.000000 -02"]]})]
     (tu/db-timezone-id)))
 
 (expect-with-driver :mysql
   "Europe/Paris"
-  (with-redefs [metabase.driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
+  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
     (tu/db-timezone-id)))
 
 
@@ -145,9 +148,9 @@
   ["2018-04-18T00:00:00.000+08:00"]
   (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
-      (qpt/first-row
-        (du/with-effective-timezone (Database (data/id))
-          (qp/process-query
+      (qp.test/first-row
+       (du/with-effective-timezone (data/db)
+         (qp/process-query
            {:database   (data/id)
             :type       :native
             :settings   {:report-timezone "UTC"}
@@ -168,15 +171,15 @@
   ["2018-04-18T00:00:00.000-07:00"]
   (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (qpt/first-row
-        (du/with-effective-timezone (Database (data/id))
-          (qp/process-query
-            {:database   (data/id)
-             :type       :native
-             :settings   {:report-timezone "UTC"}
-             :native     {:query         "SELECT cast({{date}} as date)"
-                          :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
-             :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
+      (qp.test/first-row
+       (du/with-effective-timezone (data/db)
+         (qp/process-query
+           {:database   (data/id)
+            :type       :native
+            :settings   {:report-timezone "UTC"}
+            :native     {:query         "SELECT cast({{date}} as date)"
+                         :template-tags {:date {:name "date" :display_name "Date" :type "date" }}}
+            :parameters [{:type "date/single" :target ["variable" ["template-tag" "date"]] :value "2018-04-18"}]}))))))
 
 (def ^:private sample-connection-details
   {:db "my_db", :host "localhost", :port "3306", :user "cam", :password "bad-password"})

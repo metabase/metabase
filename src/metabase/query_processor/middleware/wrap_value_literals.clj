@@ -34,8 +34,8 @@
 (defmethod type-info :field-id [[_ field-id]]
   (type-info (qp.store/field field-id)))
 
-(defmethod type-info :fk-> [[_ _ dest-field]]
-  (type-info dest-field))
+(defmethod type-info :joined-field [[_ _ field]]
+  (type-info field))
 
 (defmethod type-info :datetime-field [[_ field unit]]
   (assoc (type-info field) :unit unit))
@@ -87,7 +87,7 @@
   [{:keys [source-query], :as inner-query}]
   (let [inner-query (cond-> inner-query
                       source-query (update :source-query wrap-value-literals-in-mbql-query))]
-    (mbql.u/replace-in inner-query [:filter]
+    (mbql.u/replace inner-query
       [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
       [clause field (add-type-info x (type-info field))]
 

@@ -2,8 +2,9 @@ import React from "react";
 
 import inflection from "inflection";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Utils from "metabase/lib/utils";
+import Field from "metabase-lib/lib/metadata/Field";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
@@ -33,7 +34,7 @@ export const NEW_QUERY_TEMPLATES = {
 };
 
 export function createQuery(type = "query", databaseId, tableId) {
-  let dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
+  const dataset_query = Utils.copy(NEW_QUERY_TEMPLATES[type]);
 
   if (databaseId) {
     dataset_query.database = databaseId;
@@ -97,7 +98,7 @@ const Query = {
     }
     // check that the table supports this aggregation, if we have tableMetadata
     if (tableMetadata) {
-      let aggs = Query.getAggregations(query);
+      const aggs = Query.getAggregations(query);
       if (aggs.length === 0) {
         if (
           !_.findWhere(tableMetadata.aggregation_options, { short: "rows" })
@@ -164,13 +165,13 @@ const Query = {
               return s;
             }
           } else if (Query.hasValidBreakout(query)) {
-            let exactMatches = query.breakout.filter(b =>
+            const exactMatches = query.breakout.filter(b =>
               Query.isSameField(b, field, true),
             );
             if (exactMatches.length > 0) {
               return s;
             }
-            let targetMatches = query.breakout.filter(b =>
+            const targetMatches = query.breakout.filter(b =>
               Query.isSameField(b, field, false),
             );
             if (targetMatches.length > 0) {
@@ -212,7 +213,7 @@ const Query = {
   },
 
   canAddDimensions(query) {
-    let MAX_DIMENSIONS = 2;
+    const MAX_DIMENSIONS = 2;
     return query && query.breakout && query.breakout.length < MAX_DIMENSIONS;
   },
 
@@ -267,7 +268,7 @@ const Query = {
       return fields;
     } else if (Query.hasValidBreakout(query)) {
       // further filter field list down to only fields in our breakout clause
-      let breakoutFieldList = [];
+      const breakoutFieldList = [];
 
       const breakouts = Query.getBreakouts(query);
       breakouts.map(function(breakoutField) {
@@ -306,7 +307,7 @@ const Query = {
 
   setExpression(query, name, expression) {
     if (name && expression) {
-      let expressions = query.expressions || {};
+      const expressions = query.expressions || {};
       expressions[name] = expression;
       query.expressions = expressions;
     }
@@ -341,10 +342,10 @@ const Query = {
       return isExpressionReference(obj)
         ? null
         : obj.constructor === Array
-          ? _.map(obj, removeExpressionReferences)
-          : typeof obj === "object"
-            ? _.mapObject(obj, removeExpressionReferences)
-            : obj;
+        ? _.map(obj, removeExpressionReferences)
+        : typeof obj === "object"
+        ? _.mapObject(obj, removeExpressionReferences)
+        : obj;
     }
 
     return this.cleanQuery(removeExpressionReferences(query));
@@ -430,6 +431,8 @@ const Query = {
       return Query.getFieldTargetId(field[1]);
     } else if (Query.isBinningStrategy(field)) {
       return Query.getFieldTargetId(field[1]);
+    } else if (Query.isExpressionField(field)) {
+      return field;
     } else if (Query.isFieldLiteral(field)) {
       return field;
     }
@@ -460,11 +463,14 @@ const Query = {
       return Query.getFieldTarget(field[1], tableDef, path);
     } else if (Query.isExpressionField(field)) {
       // hmmm, since this is a dynamic field we'll need to build this here
-      let fieldDef = {
+      // but base it on Field object, since some functions are used, when adding as filter
+      const fieldDef = new Field({
         display_name: field[1],
         name: field[1],
+        expression_name: field[1],
+        metadata: tableDef.metadata,
         // TODO: we need to do something better here because filtering depends on knowing a sensible type for the field
-        base_type: TYPE.Integer,
+        base_type: TYPE.Float,
         operators_lookup: {},
         operators: [],
         active: true,
@@ -474,7 +480,7 @@ const Query = {
         special_type: null,
         target: null,
         visibility_type: "normal",
-      };
+      });
       fieldDef.operators = getOperators(fieldDef, tableDef);
       fieldDef.operators_lookup = createLookupByProperty(
         fieldDef.operators,
@@ -494,9 +500,9 @@ const Query = {
   },
 
   getFieldPath(fieldId, tableDef) {
-    let path = [];
+    const path = [];
     while (fieldId != null) {
-      let field = Table.getField(tableDef, fieldId);
+      const field = Table.getField(tableDef, fieldId);
       path.unshift(field);
       fieldId = field && field.parent_id;
     }
@@ -523,7 +529,7 @@ const Query = {
     filterFn = _.identity,
     usedFields = {},
   ) {
-    let results = {
+    const results = {
       count: 0,
       fields: null,
       fks: [],
@@ -537,7 +543,7 @@ const Query = {
       results.fks = fields
         .filter(f => isFK(f.special_type) && f.target)
         .map(joinField => {
-          let targetFields = filterFn(joinField.target.table.fields).filter(
+          const targetFields = filterFn(joinField.target.table.fields).filter(
             f =>
               (!Array.isArray(f.id) || f.id[0] !== "aggregation") &&
               !usedFields[f.id],
@@ -555,14 +561,14 @@ const Query = {
   },
 
   formatField(fieldDef, options = {}) {
-    let name = stripId(fieldDef && (fieldDef.display_name || fieldDef.name));
+    const name = stripId(fieldDef && (fieldDef.display_name || fieldDef.name));
     return name;
   },
 
   getFieldName(tableMetadata, field, options) {
     try {
-      let target = Query.getFieldTarget(field, tableMetadata);
-      let components = [];
+      const target = Query.getFieldTarget(field, tableMetadata);
+      const components = [];
       if (target.path) {
         for (const fieldDef of target.path) {
           components.push(Query.formatField(fieldDef, options), " → ");
@@ -595,10 +601,10 @@ const Query = {
           return [NamedClause.getName(aggregation)];
         }
         if (AggregationClause.isMetric(aggregation)) {
-          let metric = _.findWhere(tableMetadata.metrics, {
+          const metric = _.findWhere(tableMetadata.metrics, {
             id: AggregationClause.getMetric(aggregation),
           });
-          let name = metric ? metric.name : "[Unknown Metric]";
+          const name = metric ? metric.name : "[Unknown Metric]";
           return [
             options.jsx ? (
               <span className="text-green text-bold">{name}</span>
@@ -671,7 +677,7 @@ const Query = {
 
   getFilterDescription(tableMetadata, query, options) {
     // getFilters returns list of filters without the implied "and"
-    let filters = ["and"].concat(Query.getFilters(query));
+    const filters = ["and"].concat(Query.getFilters(query));
     if (filters && filters.length > 1) {
       return [
         t`Filtered by `,
@@ -682,13 +688,13 @@ const Query = {
 
   getFilterClauseDescription(tableMetadata, filter, options) {
     if (filter[0] === "and" || filter[0] === "or") {
-      let clauses = filter
+      const clauses = filter
         .slice(1)
         .map(f => Query.getFilterClauseDescription(tableMetadata, f, options));
       return conjunctList(clauses, filter[0].toLowerCase());
     } else if (filter[0] === "segment") {
-      let segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
-      let name = segment ? segment.name : "[Unknown Segment]";
+      const segment = _.findWhere(tableMetadata.segments, { id: filter[1] });
+      const name = segment ? segment.name : "[Unknown Segment]";
       return options.jsx ? (
         <span className="text-purple text-bold">{name}</span>
       ) : (
@@ -751,7 +757,7 @@ const Query = {
     };
 
     // these array gymnastics are needed to support JSX formatting
-    let sections = options.sections
+    const sections = options.sections
       .map(section =>
         _.flatten(sectionFns[section](tableMetadata, query, options)).filter(
           s => !!s,
@@ -759,7 +765,7 @@ const Query = {
       )
       .filter(s => s && s.length > 0);
 
-    let description = _.flatten(joinList(sections, ", "));
+    const description = _.flatten(joinList(sections, ", "));
     if (options.jsx) {
       return <span>{description}</span>;
     } else {
@@ -780,8 +786,8 @@ const Query = {
   },
 
   getQueryColumn(tableMetadata, field) {
-    let target = Query.getFieldTarget(field, tableMetadata);
-    let column = { ...target.field };
+    const target = Query.getFieldTarget(field, tableMetadata);
+    const column = { ...target.field };
     if (Query.isDatetimeField(field)) {
       column.unit = Query.getDatetimeFieldUnit(field);
     }
@@ -789,7 +795,7 @@ const Query = {
   },
 
   getQueryColumns(tableMetadata, query) {
-    let columns = Query.getBreakouts(query).map(b =>
+    const columns = Query.getBreakouts(query).map(b =>
       Query.getQueryColumn(tableMetadata, b),
     );
     if (Query.isBareRows(query)) {
