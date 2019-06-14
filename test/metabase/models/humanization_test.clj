@@ -34,6 +34,15 @@
 (expect "User Social Auth"            (humanization/name->human-readable-name :advanced "usersocialauth"))
 
 
+;;;  sql
+(expect "Sum Subtotal"                (humanization/name->human-readable-name :advanced "sum(subtotal)"))
+(expect "Sum(subtotal)"               (humanization/name->human-readable-name :simple "sum(subtotal)"))
+(expect "sum(subtotal)"               (humanization/name->human-readable-name :none "sum(subtotal)"))
+(expect "Created At::date"            (humanization/name->human-readable-name :advanced "created_at::date"))
+(expect "Created At::date"            (humanization/name->human-readable-name :simple "created_at::date"))
+(expect "created_at::date"            (humanization/name->human-readable-name :none "created_at::date"))
+
+
 ;;; :simple humanization
 (expect nil                         (humanization/name->human-readable-name :simple nil))
 (expect nil                         (humanization/name->human-readable-name :simple ""))
