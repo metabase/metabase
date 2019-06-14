@@ -23,7 +23,7 @@ driver:
       placeholder: Optional database to use when authenticating
     - name: use-srv
       type: boolean
-      display-name: Use DNS SRV when connecting.  Using SRV requires host be an FQDN.
+      display-name: Use DNS SRV when connecting.  Using SRV requires host be an FQDN.  If you don't know what this means, leave it disabled.
       default: false
     - merge:
         - additional-options
