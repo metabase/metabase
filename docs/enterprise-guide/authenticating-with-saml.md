@@ -6,9 +6,22 @@ The open source edition of Metabase includes the option to [set up SSO with Goog
 
 There are slightly different steps to take depending on whether your SSO solution uses SAML or JWT. We'll cover SAML first.
 
-### Enabling SAML authentication
+### Setting Up Your SAML Provider
 
-First, head over to the Settings section of the Admin Panel, then click on the Authentication tab. Click the `Configure` button in the SAML section of the Authentication page, and you'll see this form:
+Before you get started, you'll need to make sure things are configured correctly with your SAML provider. Each provider handles this differently, so here are some links that may help:
+
+[Click here if you use OKTA!](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
+
+[Click here if you use Auth0!](https://auth0.com/docs/protocols/saml/saml-idp-generic)
+
+[Click here if you use OneLogin!](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
+
+Once you've configured your SAML provider, leave it open - we're going to need some information for the next step.
+
+
+### Enabling SAML authentication in Metabase
+
+Head over to the Settings section of the Admin Panel, then click on the Authentication tab. Click the `Configure` button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
 
@@ -16,9 +29,22 @@ Click the toggle at the top of the form to enable SAML authentication, then fill
 
 Here's a breakdown of each of the settings:
 
-**Identity Provider (IDP) URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in to your SSO.
+**Identity Provider (IDP) URI:** This is where Metabase will redirect login requests. That is, it's where your users go to log in to your SSO. Your SAML provider may label it a little differently. Here are some of the names we've found:
 
-**Identity Provider Certificate:** This is a an encoded certificate that we will use when connecting to the IDP provider URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
+| Provider      | Name |
+| ----------- | ----------- |
+|   Auth0   | Identity Provider Login URL      |
+| Okta | Identity Provider Single-Sign On URL |
+| OneLogin   | Issuer URL       |
+
+**Identity Provider Certificate:** This is a an encoded certificate that we will use when connecting to the IDP provider URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Again, different providers may have slightly different labels:
+
+| Provider      | Name |
+| ----------- | ----------- |
+|   Auth0   | Signing Certificate      |
+| Okta | X.509 Certificate |
+| OneLogin   | X.509 Certificate    |
+
 
 #### Configuring your SAML identity provider
 
@@ -78,6 +104,14 @@ see the section below. The important thing is that first name (given
 name), last name (surname), and email address are included as
 attributes of the first assertion returned in the identity provider's
 SAML response.
+
+We've pulled the attributes out of the XML above for easy copy/pasting into your SAML identity provider:
+
+| Name      | Value |
+| ----------- | ----------- |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname```      | user.firstName       |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress``` | user.email |
+| ```http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname```   | user.lastName        |
 
 ##### IMPORTANT NOTE!
 

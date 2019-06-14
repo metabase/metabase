@@ -82,7 +82,7 @@
           :when   (not (#{:common :util :query-processor :google}
                         driver))]
     (try
-      (#'driver/load-driver-namespace-if-needed driver)
+      (#'driver/load-driver-namespace-if-needed! driver)
       (catch Throwable e
         (log/error e (trs "Error loading namespace"))))))
 

@@ -107,7 +107,7 @@
                  (qp.test/aggregate-col :count)
                  (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (fn []
       (let [venue-names (data/dataset-field-values "categories" "name")]
         [(db/insert! Dimension {:field_id (data/id :venues :category_id)
@@ -127,7 +127,7 @@
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
   [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
    ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
-  (data/with-data
+  (data/with-temp-objects
     (fn []
       [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
                               :name                    "Foo"

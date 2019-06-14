@@ -43,7 +43,7 @@
 
 (defn check
   "Assertion mechanism for use inside API functions.
-  Checks that TEST is true, or throws an `ExceptionInfo` with STATUS-CODE and MESSAGE.
+  Checks that `test` is true, or throws an `ExceptionInfo` with `status-code` and `message`.
 
   MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
   details, such as an `:error_code`.
@@ -101,7 +101,7 @@
 
 (defn checkp
   "Assertion mechanism for use inside API functions that validates individual input params.
-  Checks that TEST is true, or throws an `ExceptionInfo` with FIELD-NAME and MESSAGE.
+  Checks that `test` is true, or throws an `ExceptionInfo` with `field-name` and `message`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
   generated.
@@ -114,40 +114,6 @@
    (when-not tst
      (throw-invalid-param-exception (str field-name) message))))
 
-(defn checkp-with
-  "Check (F VALUE), or throw an exception with STATUS-CODE (default is 400).
-   SYMB is passed in order to give the user a relevant error message about which parameter was bad.
-
-   Returns VALUE upon success.
-
-    (checkp-with (partial? contains? {:all :mine}) f :all)
-      -> :all
-    (checkp-with (partial? contains {:all :mine}) f :bad)
-      -> ExceptionInfo: Invalid value ':bad' for 'f': test failed: (partial? contains?) {:all :mine}
-
-   You may optionally pass a MESSAGE to append to the exception upon failure;
-   this will be used in place of the \"test failed: ...\" message.
-
-   MESSAGE may be either a string or a pair like `[status-code message]`."
-  ([f symb value]
-   (checkp-with f symb value (str "test failed: " f)))
-  ([f symb value message]
-   {:pre [(symbol? symb)]}
-   (checkp (f value) symb (tru "Invalid value ''{0}'' for ''{1}'': {2}" (str value) symb message))
-   value))
-
-(defn checkp-contains?
-  "Check that the VALUE of parameter SYMB is in VALID-VALUES, or throw a 400.
-   Returns VALUE upon success.
-
-    (checkp-contains? #{:fav :all :mine} 'f f)
-    -> (check (contains? #{:fav :all :mine} f)
-         [400 (str \"Invalid value '\" f \"' for 'f': must be one of: #{:fav :all :mine}\")])"
-  [valid-values-set symb value]
-  {:pre [(set? valid-values-set) (symbol? symb)]}
-  (checkp-with (partial contains? valid-values-set) symb value
-               (tru "must be one of: {0}" valid-values-set)))
-
 
 ;;; ---------------------------------------------- api-let, api->, etc. ----------------------------------------------
 
@@ -158,22 +124,19 @@
 ;;
 ;;     (let [binding x] ...) -> (api-let [500 \"Not OK!\"] [binding x] ...)
 
-(defmacro api-let
-  "If TEST is true, bind it to BINDING and evaluate BODY.
+(defmacro do-api-let
+  "If `test` is true, bind it to `binding` and evaluate `body`. Intended for internal use only by macros such as
+  `let-400` below.
 
     (api-let [404 \"Not found.\"] [user @*current-user*]
       (:id user))"
-  {:arglists '([[status-code message] [binding test] & body]), :style/indent 2}
-  [response-pair [binding test & more] & body]
-  (if (seq more)
-    `(api-let ~response-pair ~[binding test]
-       (api-let ~response-pair ~more
-         ~@body))
-    `(let [test# ~test] ; bind ~test so doesn't get evaluated more than once (e.g. in case it's an expensive funcall)
-       (check test# ~response-pair)
-       (let [~binding test#
-             ~@more]
-         ~@body))))
+  [response-pair bindings & body]
+  ;; so `response-pair` doesn't get evaluated more than once
+  (let [response-pair-symb (gensym "response-pair-")]
+    `(let [~response-pair-symb ~response-pair
+           ~@(vec (apply concat (for [[binding test] (partition-all 2 bindings)]
+                                  [binding `(check ~test ~response-pair-symb)])))]
+       ~@body)))
 
 
 ;;; ### GENERIC RESPONSE HELPERS
@@ -192,7 +155,7 @@
   "Bind a form as with `let`; throw a 400 if it is `nil` or `false`."
   {:style/indent 1}
   [& body]
-  `(api-let ~generic-400 ~@body))
+  `(do-api-let ~generic-400 ~@body))
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
@@ -206,8 +169,8 @@
 (defmacro let-404
   "Bind a form as with `let`; throw a 404 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let ~generic-404 ~@body))
+  [bindings & body]
+  `(do-api-let ~generic-404 ~bindings ~@body))
 
 ;; #### GENERIC 403 RESPONSE HELPERS
 ;; If you can't be bothered to write a custom error message
@@ -218,11 +181,12 @@
   "Throw a `403` (no permissions) if `arg` is `false` or `nil`, otherwise return as-is."
   [arg]
   (check arg (generic-403)))
+
 (defmacro let-403
   "Bind a form as with `let`; throw a 403 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let (generic-403) ~@body))
+  [bindings & body]
+  `(do-api-let (generic-403) ~bindings ~@body))
 
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
@@ -242,8 +206,8 @@
 (defmacro let-500
   "Bind a form as with `let`; throw a 500 if it is `nil` or `false`."
   {:style/indent 1}
-  [& body]
-  `(api-let   ~generic-500 ~@body))
+  [bindings & body]
+  `(do-api-let ~generic-500 ~bindings ~@body))
 
 (def ^:const generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
