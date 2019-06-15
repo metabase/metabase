@@ -55,6 +55,7 @@ export default class Tooltip extends Component {
   static defaultProps = {
     isEnabled: true,
     verticalAttachments: ["top", "bottom"],
+    horizontalAttachments: ["center", "left", "right"],
   };
 
   componentDidMount() {
@@ -84,6 +85,7 @@ export default class Tooltip extends Component {
         <TooltipPopover
           isOpen={true}
           target={this}
+          hasArrow
           {...this.props}
           children={this.props.tooltip}
         />,

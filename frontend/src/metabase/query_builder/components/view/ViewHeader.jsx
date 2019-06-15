@@ -19,8 +19,7 @@ import QuestionLineage from "./QuestionLineage";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionAlertWidget from "./QuestionAlertWidget";
-
-import QueryModeButton from "metabase/query_builder/components/QueryModeButton.jsx";
+import NativeQueryButton from "./NativeQueryButton";
 
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
@@ -91,9 +90,12 @@ export const ViewTitleHeader = ({
         </div>
       )}
       <div className="ml-auto flex align-center">
-        {/* {!question.isNative() && isShowingNotebook && (
-          <QueryModeButton size={20} />
-        )} */}
+        {!question.isNative() &&
+          isShowingNotebook &&
+          question.database() &&
+          question.database().native_permissions === "write" && (
+            <NativeQueryButton size={20} question={question} />
+          )}
         {isDirty ? (
           <Button
             medium

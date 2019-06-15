@@ -344,6 +344,10 @@ export default class Question {
     return this.setVisualizationSettings({ ...this.settings(), ...settings });
   }
 
+  type(): string {
+    return this.datasetQuery().type;
+  }
+
   isEmpty(): boolean {
     return this.query().isEmpty();
   }
