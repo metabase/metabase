@@ -6,14 +6,14 @@
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.mock.util :as mock.u]
-            [toucan.util.test :as tt]
-            [metabase.query-processor.test-util :as qp.test-util]))
+            [toucan.util.test :as tt]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata
