@@ -7,6 +7,7 @@
              [config :as config]
              [db :as mdb]
              [handler :as handler]
+             [metabot :as metabot]
              [plugins :as plugins]
              [server :as server]
              [task :as task]
@@ -108,6 +109,7 @@
   []
   (log/info "Shutting down Metabase unit test runner")
   (server/stop-web-server!)
+  (metabot/stop-metabot!)
   (when config/is-test?
     (shutdown-threads!)))
 

@@ -190,7 +190,8 @@
 (expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
   (vec
    (sort-by
-    (fn [{db-name :name, driver :engine}] (mapv (comp str/lower-case name) [db-name driver]))
+    (fn [{db-name :name, driver :engine}]
+      [(str/lower-case db-name) (str/lower-case (name driver))])
     (cons
      (merge
       default-db-details
