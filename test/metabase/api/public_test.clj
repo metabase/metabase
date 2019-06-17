@@ -1,10 +1,10 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
-             [config :as config]
              [http-client :as http]
              [query-processor-test :as qp.test]
              [util :as u]]
@@ -219,7 +219,7 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
+      (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (http/client :get 200 (str "public/question/" uuid ".csv")
                      :parameters (json/encode [{:type   :date/quarter-year
                                                 :target [:dimension [:template-tag :date]]
