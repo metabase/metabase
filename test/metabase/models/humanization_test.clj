@@ -34,7 +34,7 @@
 (expect "User Social Auth"            (humanization/name->human-readable-name :advanced "usersocialauth"))
 
 
-;;;  sql
+;;;  db-inspired
 (expect "Sum Subtotal"                (humanization/name->human-readable-name :advanced "sumsubtotal"))
 (expect "Sum(subtotal)"               (humanization/name->human-readable-name :advanced "sum(subtotal)"))
 (expect "Sum(subtotal)"               (humanization/name->human-readable-name :simple "sum(subtotal)"))
@@ -46,14 +46,24 @@
 (expect "Datecreated"                 (humanization/name->human-readable-name :simple "datecreated"))
 (expect "datecreated"                 (humanization/name->human-readable-name :none "datecreated"))
 (expect "Created At"                  (humanization/name->human-readable-name :advanced "createdat"))
+(expect "Create At"                   (humanization/name->human-readable-name :advanced "createat"))
 (expect "Createdat"                   (humanization/name->human-readable-name :simple "createdat"))
 (expect "createdat"                   (humanization/name->human-readable-name :none "createdat"))
 (expect "Updated At"                  (humanization/name->human-readable-name :advanced "updatedat"))
+(expect "Update At"                   (humanization/name->human-readable-name :advanced "updateat"))
 (expect "Updatedat"                   (humanization/name->human-readable-name :simple "updatedat"))
 (expect "updatedat"                   (humanization/name->human-readable-name :none "updatedat"))
 (expect "Cast Created At As Date"     (humanization/name->human-readable-name :advanced "castcreatedatasdate"))
 (expect "Cast(createdatasdate)"       (humanization/name->human-readable-name :simple "cast(createdatasdate)"))
 (expect "cast(createdatasdate)"       (humanization/name->human-readable-name :none "cast(createdatasdate)"))
+
+
+(expect "All Alter"                 (humanization/name->human-readable-name :advanced "allalter"))
+(expect "Alter All"                 (humanization/name->human-readable-name :advanced "alterall"))
+(expect "And Any Or"                (humanization/name->human-readable-name :advanced "andanyor"))
+(expect "Ascdesc"                   (humanization/name->human-readable-name :advanced "ascdesc"))
+
+;;TODO try to incorporate some of the other reported issues like `paid_to_sparkify` and `CPI` into test cases too
 
 
 ;;; :simple humanization
