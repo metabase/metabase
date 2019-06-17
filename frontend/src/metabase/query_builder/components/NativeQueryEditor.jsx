@@ -318,7 +318,7 @@ export default class NativeQueryEditor extends Component {
         dataSelectors.push(
           <div
             key="db_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center"
+            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
             <DatabaseDataSelector
               databases={databases}
@@ -342,7 +342,7 @@ export default class NativeQueryEditor extends Component {
         dataSelectors.push(
           <div
             key="table_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center"
+            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
             <SchemaAndTableDataSelector
               selectedTableId={selectedTable ? selectedTable.id : null}
