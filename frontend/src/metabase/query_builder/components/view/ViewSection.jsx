@@ -6,14 +6,7 @@ import cx from "classnames";
 import Subhead from "metabase/components/Subhead";
 
 const ViewSection = ({ bottom, trim, className, style, ...props }) => (
-  <Flex
-    align="center"
-    px={3}
-    py={trim ? 1 : 2}
-    className={cx(bottom ? "border-top" : "border-bottom", className)}
-    style={style}
-    {...props}
-  />
+  <Flex align="center" px={3} style={style} {...props} />
 );
 
 export const ViewHeading = ({ ...props }) => <Subhead {...props} />;

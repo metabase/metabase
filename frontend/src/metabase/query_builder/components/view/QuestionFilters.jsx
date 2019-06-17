@@ -30,7 +30,7 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
       {filters.map((filter, index) => (
         <PopoverWithTrigger
           triggerElement={
-            <Button medium key={index} purple mr={1}>
+            <Button borderless key={index} mr={1} className="text-purple">
               {filter.displayName()}
               <Icon
                 name="close"
@@ -55,7 +55,6 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
       ))}
       <PopoverWithTrigger
         triggerElement={<Button medium icon="add" color="#7172AD" />}
-        triggerClasses="flex align-stretch"
       >
         <ViewFilterPopover
           query={query}
@@ -85,10 +84,7 @@ export const questionHasFilters = question =>
   question.query().topLevelFilters().length > 0;
 
 const FilterContainer = ({ children }) => (
-  <div
-    className="flex align-stretch scroll-x"
-    style={{ width: 0, minWidth: "100%", whiteSpace: "nowrap" }}
-  >
+  <div style={{ width: 0, minWidth: "100%", whiteSpace: "nowrap" }}>
     {children}
   </div>
 );

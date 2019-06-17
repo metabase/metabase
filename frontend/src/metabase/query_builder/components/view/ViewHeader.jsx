@@ -1,5 +1,4 @@
 import React from "react";
-
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
@@ -73,9 +72,7 @@ export const ViewTitleHeader = ({
           </ViewHeading>
           {question.isStructured() &&
             question.query().aggregations().length > 0 && (
-              <div className="pt1">
-                <QuestionDataSource question={question} subHead />
-              </div>
+              <QuestionDataSource question={question} subHead />
             )}
           {QuestionLineage.shouldRender({ question, originalQuestion }) && (
             <div className="mt1">
@@ -173,22 +170,18 @@ export class ViewSubHeader extends React.Component {
       );
     }
 
-    if (
-      !isFiltersExpanded &&
-      QuestionFilters.shouldRender({ question, queryBuilderMode })
-    ) {
-      left.push(
-        <QuestionFilters
-          key="filters"
-          question={question}
-          onOpenAddFilter={this.props.onOpenAddFilter}
-          onCloseFilter={this.props.onCloseFilter}
-          onExpand={this.expandFilters}
+    if (isPreviewable) {
+      right.push(
+        <QuestionPreviewToggle
+          key="preview"
+          className="mx2"
+          isPreviewing={isPreviewing}
+          setIsPreviewing={setIsPreviewing}
         />,
       );
     }
     if (isRunnable) {
-      middle.push(
+      right.push(
         <RunButtonWithTooltip
           key="run"
           result={result}
@@ -201,84 +194,25 @@ export class ViewSubHeader extends React.Component {
         />,
       );
     }
-    if (QuestionRowCount.shouldRender(this.props) && !isPreviewing) {
-      right.push(
-        <QuestionRowCount key="row_count" className="mx1" {...this.props} />,
-      );
-    }
-    if (isPreviewable) {
-      right.push(
-        <QuestionPreviewToggle
-          key="preview"
-          className="mx2"
-          isPreviewing={isPreviewing}
-          setIsPreviewing={setIsPreviewing}
-        />,
-      );
-    }
-    if (QueryDownloadWidget.shouldRender({ result, isResultDirty })) {
-      right.push(
-        <QueryDownloadWidget
-          key="download"
-          className="mx1 hide sm-show"
-          card={question.card()}
-          result={result}
-        />,
-      );
-    }
-    if (QuestionEmbedWidget.shouldRender({ question, isAdmin })) {
-      right.push(
-        <QuestionEmbedWidget
-          key="embed"
-          className="mx1 hide sm-show"
-          card={question.card()}
-        />,
-      );
-    }
-    if (
-      QuestionAlertWidget.shouldRender({
-        question,
-        visualizationSettings,
-      })
-    ) {
-      right.push(
-        <QuestionAlertWidget
-          key="alerts"
-          className="mx1 hide sm-show"
-          question={question}
-          questionAlerts={questionAlerts}
-          onCreateAlert={() =>
-            question.isSaved()
-              ? onOpenModal("create-alert")
-              : onOpenModal("save-question-before-alert")
-          }
-        />,
-      );
-    }
 
     return (
-      <div>
-        {isFiltersExpanded &&
-          QuestionFilters.shouldRender({ question, queryBuilderMode }) && (
-            <ViewSection>
-              <QuestionFilters
-                question={question}
-                expanded
-                onOpenAddFilter={this.props.onOpenAddFilter}
-                onOpenEditFilter={this.props.onOpenEditFilter}
-                onCloseFilter={this.props.onCloseFilter}
-              />
-            </ViewSection>
-          )}
+      <div className="border-top">
         {(left.length > 0 || middle.length > 0 || right.length > 0) && (
-          <ViewSection className="flex text-medium text-bold borderless">
-            <div className="flex-full flex-basis-none flex align-center">
+          <ViewSection>
+            <div className="flex align-center">
               {left}
+              {QuestionFilters.shouldRender({ question, queryBuilderMode }) && (
+                <QuestionFilters
+                  question={question}
+                  expanded
+                  onOpenAddFilter={this.props.onOpenAddFilter}
+                  onOpenEditFilter={this.props.onOpenEditFilter}
+                  onCloseFilter={this.props.onCloseFilter}
+                />
+              )}
             </div>
             <div>{middle}</div>
-            <div className="flex-full flex-basis-none flex align-center justify-end">
-              {right}
-            </div>
+            <div className="ml-auto">{right}</div>
           </ViewSection>
         )}
       </div>

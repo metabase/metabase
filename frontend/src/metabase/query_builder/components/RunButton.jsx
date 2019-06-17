@@ -46,7 +46,6 @@ export default class RunButton extends Component {
       buttonText = (
         <div className="flex align-center">
           <Icon className="sm-mr1" name="refresh" />
-          <span className="hide sm-show">{t`Refresh`}</span>
         </div>
       );
     }

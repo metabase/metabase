@@ -524,12 +524,6 @@
   position: relative;
 }
 
-@media screen and (--breakpoint-min-sm) {
-  .RunButton {
-    min-width: 8em;
-  }
-}
-
 .RunButton.RunButton--hidden {
   transform: translateY(-65px);
   opacity: 0;
