@@ -58,12 +58,29 @@
 (expect "cast(createdatasdate)"       (humanization/name->human-readable-name :none "cast(createdatasdate)"))
 
 
-(expect "All Alter"                 (humanization/name->human-readable-name :advanced "allalter"))
-(expect "Alter All"                 (humanization/name->human-readable-name :advanced "alterall"))
-(expect "And Any Or"                (humanization/name->human-readable-name :advanced "andanyor"))
-(expect "Ascdesc"                   (humanization/name->human-readable-name :advanced "ascdesc"))
+(expect "All Alter"                   (humanization/name->human-readable-name :advanced "allalter"))
+(expect "Alter All"                   (humanization/name->human-readable-name :advanced "alterall"))
+(expect "And Any Or"                  (humanization/name->human-readable-name :advanced "andanyor"))
+(expect "Ascdesc"                     (humanization/name->human-readable-name :advanced "ascdesc"))
+(expect "Decimal Default Delete"      (humanization/name->human-readable-name :advanced "decimaldefaultdelete"))
+(expect "Else End Exist"              (humanization/name->human-readable-name :advanced "elseendexist"))
+(expect "For From"                    (humanization/name->human-readable-name :advanced "forfrom"))
+(expect "Goto Grant Group"            (humanization/name->human-readable-name :advanced "gotograntgroup"))
+(expect "If In Insert Is"             (humanization/name->human-readable-name :advanced "ifininsertis"))
+(expect "Not Null"                    (humanization/name->human-readable-name :advanced "notnull"))
+(expect "Of On Order"                 (humanization/name->human-readable-name :advanced "ofonorder"))
+(expect "Range Select"                (humanization/name->human-readable-name :advanced "rangeselect"))
+(expect "Table Then To Type"          (humanization/name->human-readable-name :advanced "tablethentotype"))
+(expect "Union Unique Update"         (humanization/name->human-readable-name :advanced "unionuniqueupdate"))
+(expect "Values Where With"           (humanization/name->human-readable-name :advanced "valueswherewith"))
+
+
+(expect "Changelog"                   (humanization/name->human-readable-name :advanced "changelog"))
+(expect "Dataflow"                    (humanization/name->human-readable-name :advanced "dataflow"))
+(expect "Bestseller"                  (humanization/name->human-readable-name :advanced "bestseller"))
 
 ;;TODO try to incorporate some of the other reported issues like `paid_to_sparkify` and `CPI` into test cases too
+;;TODO test on csvs: load two lists, split on underscores, flatten/dedup them, and run the humanization on the whole set
 
 
 ;;; :simple humanization
