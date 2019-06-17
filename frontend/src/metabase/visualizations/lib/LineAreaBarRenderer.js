@@ -524,7 +524,7 @@ function getCharts(
         // shift bar/line and dots
         .selectAll(".stack, .dc-tooltip")
         .each(function() {
-          this.style.transform = `translate(${spacing / 2}px, 0)`;
+          this.setAttribute("transform", `translate(${spacing / 2}, 0)`);
         });
     });
   }
