@@ -242,7 +242,7 @@ class GroupPermissionCell extends Component {
     const warning =
       permission.warning && permission.warning(group.id, entity.id);
 
-    let isEditable =
+    const isEditable =
       this.props.isEditable &&
       options.filter(option => option.value !== value).length > 0;
     const option = _.findWhere(options, { value }) || DEFAULT_OPTION;
@@ -327,7 +327,7 @@ class GroupPermissionCell extends Component {
                 postAction: permission.postAction,
               });
             };
-            let confirmations = (
+            const confirmations = (
               (permission.confirm &&
                 permission.confirm(group.id, entity.id, value)) ||
               []

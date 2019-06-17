@@ -26,12 +26,7 @@
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    ;;
-    ;; TODO - I really need to audit all the places we call `require` and make sure they call `the-classloader` first,
-    ;; to make sure the classes get loaded into the right classloader. Actually maybe we should consider adding an
-    ;; injection into each `ns` to remove the mapping for `clojure.core/require` so you have to use the right one
-    (classloader/the-classloader)
-    (require 'metabase.task.sync-databases)
+    (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/schedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error scheduling tasks for DB")))))
@@ -44,7 +39,7 @@
   [database]
   (try
     (classloader/the-classloader)
-    (require 'metabase.task.sync-databases)
+    (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
@@ -53,7 +48,7 @@
   [database]
   (try
     (classloader/the-classloader)
-    (require 'metabase.query-processor.middleware.async-wait)
+    (classloader/require 'metabase.query-processor.middleware.async-wait)
     ((resolve 'metabase.query-processor.middleware.async-wait/destroy-thread-pool!) database)
     (catch Throwable e
       (log/error e (trs "Error destroying thread pool for DB.")))))

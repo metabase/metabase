@@ -19,7 +19,7 @@ export default class RunButton extends Component {
   };
 
   render() {
-    let {
+    const {
       isRunnable,
       isRunning,
       isDirty,

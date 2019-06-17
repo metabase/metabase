@@ -22,7 +22,7 @@ export default class PreferencesStep extends Component {
   };
 
   toggleTracking() {
-    let { allowTracking } = this.props;
+    const { allowTracking } = this.props;
 
     this.props.setAllowTracking(!allowTracking);
   }
@@ -41,7 +41,7 @@ export default class PreferencesStep extends Component {
   }
 
   render() {
-    let {
+    const {
       activeStep,
       allowTracking,
       setupComplete,

@@ -3,7 +3,8 @@
              [io :as io]
              [shell :as shell]]
             [clojure.string :as str]
-            [environ.core :as environ])
+            [environ.core :as environ]
+            [metabase.plugins.classloader :as classloader])
   (:import clojure.lang.Keyword))
 
 (def ^Boolean is-windows?
@@ -106,7 +107,7 @@
 ;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
 ;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
 (try
-  (require 'expectations)
+  (classloader/require 'expectations)
   ((resolve 'expectations/disable-run-on-shutdown))
   ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
   (catch Throwable _))

@@ -7,7 +7,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import moment from "moment";
 
 function formatDate(date) {
-  let m = moment(date);
+  const m = moment(date);
   if (m.isSame(moment(), "day")) {
     return t`Today, ` + m.format("h:mm a");
   } else if (m.isSame(moment().subtract(1, "day"), "day")) {

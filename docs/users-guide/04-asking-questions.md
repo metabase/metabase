@@ -74,7 +74,6 @@ If you've [saved some questions](06-sharing-answers.html), in the Data menu you'
 You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
 
 **Note:** there are some kinds of saved questions that can't be used as source data:
-- BigQuery questions
 - Druid questions
 - Google Analytics questions
 - Mongo questions

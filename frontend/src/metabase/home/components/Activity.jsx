@@ -43,8 +43,8 @@ export default class Activity extends Component {
 
   componentWillReceiveProps(nextProps) {
     // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
-    let { activity, user } = nextProps;
-    let { userColors } = this.state;
+    const { activity, user } = nextProps;
+    const { userColors } = this.state;
 
     const colors = [1, 2, 3, 4, 5];
     const maxColorUsed = _.isEmpty(userColors)
@@ -54,7 +54,7 @@ export default class Activity extends Component {
       maxColorUsed && maxColorUsed < colors.length ? maxColorUsed : 0;
 
     if (user && activity) {
-      for (let item of activity) {
+      for (const item of activity) {
         if (!(item.user_id in userColors)) {
           // assign the user a color
           if (item.user_id === user.id) {
@@ -505,7 +505,7 @@ export default class Activity extends Component {
   }
 
   initialsCssClasses(user) {
-    let { userColors } = this.state;
+    const { userColors } = this.state;
 
     if (user) {
       const userColorIndex = userColors[user.id];
@@ -516,8 +516,8 @@ export default class Activity extends Component {
   }
 
   render() {
-    let { activity, user } = this.props;
-    let { error } = this.state;
+    const { activity, user } = this.props;
+    const { error } = this.state;
 
     return (
       <LoadingAndErrorWrapper loading={!activity} error={error}>

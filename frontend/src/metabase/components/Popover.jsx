@@ -215,25 +215,26 @@ export default class Popover extends Component {
     let best = { ...options };
     let bestOffScreen = -Infinity;
     // try each attachment until one is entirely on screen, or pick the least bad one
-    for (let attachment of attachments) {
+    for (const attachment of attachments) {
       // compute the options for this attachment position then set it
-      let options = getAttachmentOptions(best, attachment);
+      const options = getAttachmentOptions(best, attachment);
       this._setTetherOptions(tetherOptions, options);
 
       // get bounds within *document*
-      let elementRect = Tether.Utils.getBounds(tetherOptions.element);
+      const elementRect = Tether.Utils.getBounds(tetherOptions.element);
 
       // get bounds within *window*
-      let doc = document.documentElement;
-      let left = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
-      let top = (window.pageYOffset || doc.scrollTop) - (doc.clientTop || 0);
+      const doc = document.documentElement;
+      const left =
+        (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+      const top = (window.pageYOffset || doc.scrollTop) - (doc.clientTop || 0);
       elementRect.top -= top;
       elementRect.bottom += top;
       elementRect.left -= left;
       elementRect.right += left;
 
       // test to see how much of the popover is off-screen
-      let offScreen = offscreenProps
+      const offScreen = offscreenProps
         .map(prop => Math.min(elementRect[prop], 0))
         .reduce((a, b) => a + b);
       // if none then we're done, otherwise check to see if it's the best option so far
@@ -283,7 +284,7 @@ export default class Popover extends Component {
     );
 
     if (isOpen) {
-      let tetherOptions = {
+      const tetherOptions = {
         element: popoverElement,
         target: this._getTargetElement(),
       };

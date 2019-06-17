@@ -132,7 +132,7 @@ export default class ChartClickActions extends Component {
       return null;
     }
 
-    let { popoverAction } = this.state;
+    const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
       const PopoverContent = popoverAction.popover;

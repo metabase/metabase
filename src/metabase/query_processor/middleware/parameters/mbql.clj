@@ -17,9 +17,9 @@
   convert the parameters to integers or floating-point numbers."
   [param-type param-value, field-id :- su/IntGreaterThanZero]
   (cond
-    ;; for `id` type params look up the base-type of the Field and see if it's a number or not. If it *is* a number
-    ;; then recursively call this function and parse the param value as a number as appropriate.
-    (and (= param-type :id)
+    ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
+    ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
+    (and (#{:id :category} param-type)
          (isa? (db/select-one-field :base_type Field :id field-id) :type/Number))
     (recur :number param-value field-id)
 

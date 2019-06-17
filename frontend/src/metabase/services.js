@@ -156,7 +156,7 @@ export const MetabaseApi = {
     async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
-        let GA = await getGAMetadata();
+        const GA = await getGAMetadata();
         table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
         table.metrics.push(...GA.metrics);
         table.segments.push(...GA.segments);
@@ -196,6 +196,7 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
+  native: POST("/api/dataset/native"),
 };
 
 export const PulseApi = {

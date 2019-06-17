@@ -88,6 +88,7 @@
   },
   "devDependencies": {
     "@slack/client": "^3.5.4",
+    "@testing-library/react": "^8.0.1",
     "babel-cli": "^6.11.4",
     "babel-core": "^6.20.0",
     "babel-eslint": "^7.1.1",
@@ -135,6 +136,7 @@
     "jasmine-reporters": "^2.2.0",
     "jasmine-spec-reporter": "^3.0.0",
     "jest": "^19.0.2",
+    "jest-dom": "^3.5.0",
     "jest-localstorage-mock": "^2.2.0",
     "jscodeshift": "0.5.0",
     "jsonwebtoken": "^7.2.1",
@@ -192,6 +194,7 @@
     "precommit": "lint-staged",
     "preinstall": "echo $npm_execpath | grep -q yarn || echo '\\033[0;33mSorry, npm is not supported. Please use Yarn (https://yarnpkg.com/).\\033[0m'",
     "prettier": "prettier --write 'frontend/**/*.{js,jsx,css}'",
+    "eslint-fix": "yarn && eslint --fix --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules frontend/src frontend/test",
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",

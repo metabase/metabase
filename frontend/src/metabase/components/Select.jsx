@@ -321,13 +321,13 @@ class LegacySelect extends Component {
       disabled,
     } = this.props;
 
-    let selectedName = value
+    const selectedName = value
       ? optionNameFn(value)
       : options && options.length > 0
       ? placeholder
       : emptyPlaceholder;
 
-    let triggerElement = (
+    const triggerElement = (
       <div
         className={cx(
           "flex align-center",
@@ -352,7 +352,7 @@ class LegacySelect extends Component {
 
     let sections = {};
     options.forEach(function(option) {
-      let sectionName = option.section || "";
+      const sectionName = option.section || "";
       sections[sectionName] = sections[sectionName] || {
         title: sectionName || undefined,
         items: [],
@@ -361,7 +361,7 @@ class LegacySelect extends Component {
     });
     sections = Object.keys(sections).map(sectionName => sections[sectionName]);
 
-    let columns = [
+    const columns = [
       {
         selectedItem: value,
         selectedItems: values,

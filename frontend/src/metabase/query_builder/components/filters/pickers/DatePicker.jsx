@@ -151,7 +151,7 @@ function getDateTimeField(
   field: ConcreteField,
   bucketing: ?DatetimeUnit,
 ): ConcreteField {
-  let target = getDateTimeFieldTarget(field);
+  const target = getDateTimeFieldTarget(field);
   if (bucketing) {
     // $FlowFixMe
     return ["datetime-field", target, bucketing];

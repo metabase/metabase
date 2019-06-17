@@ -84,7 +84,7 @@ export function getComputedSettings(
   extra?: ExtraProps = {},
 ) {
   const computedSettings = {};
-  for (let settingId in settingsDefs) {
+  for (const settingId in settingsDefs) {
     getComputedSetting(
       computedSettings,
       settingsDefs,
@@ -111,7 +111,7 @@ function getComputedSetting(
 
   const settingDef = settingDefs[settingId] || {};
 
-  for (let dependentId of settingDef.readDependencies || []) {
+  for (const dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
       computedSettings,
       settingDefs,
@@ -234,8 +234,8 @@ export function getPersistableDefaultSettings(
   settingsDefs: SettingDefs,
   completeSettings: Settings,
 ): Settings {
-  let persistableDefaultSettings = {};
-  for (let settingId in settingsDefs) {
+  const persistableDefaultSettings = {};
+  for (const settingId in settingsDefs) {
     const settingDef = settingsDefs[settingId];
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];

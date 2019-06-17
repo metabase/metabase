@@ -94,7 +94,7 @@ export default class PinMap extends Component {
   }
 
   updateSettings = () => {
-    let newSettings = {};
+    const newSettings = {};
     if (this.state.lat != null) {
       newSettings["map.center_latitude"] = this.state.lat;
     }
@@ -170,7 +170,7 @@ export default class PinMap extends Component {
 
   render() {
     const { className, settings, isEditing, isDashboard } = this.props;
-    let { lat, lng, zoom } = this.state;
+    const { lat, lng, zoom } = this.state;
     const disableUpdateButton = lat == null && lng == null && zoom == null;
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];

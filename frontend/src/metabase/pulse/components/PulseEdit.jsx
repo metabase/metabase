@@ -50,7 +50,7 @@ export default class PulseEdit extends Component {
   }
 
   handleSave = async () => {
-    let pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
+    const pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
     await this.props.updateEditingPulse(pulse);
     await this.props.saveEditingPulse();
 

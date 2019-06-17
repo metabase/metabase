@@ -93,7 +93,7 @@ const StandardAggregation = ({
 }) => {
   const fieldId = AggregationClause.getField(aggregation);
 
-  let selectedAggregation = getAggregator(
+  const selectedAggregation = getAggregator(
     AggregationClause.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one

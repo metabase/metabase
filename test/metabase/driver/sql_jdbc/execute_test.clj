@@ -198,10 +198,11 @@
    :query      s/Any
    :cause      {:class (s/eq org.h2.jdbc.JdbcSQLException)
                 :error #"Column \"ADSASDASD\" not found; SQL statement:.*"}}
-  (qp/process-query
-    {:database (data/id)
-     :type     :native
-     :native   {:query "SELECT adsasdasd;"}}))
+  (tu.log/suppress-output
+    (qp/process-query
+      {:database (data/id)
+       :type     :native
+       :native   {:query "SELECT adsasdasd;"}})))
 
 ;; do we run query with a timezone if one is present in the Settings?
 (defn- ran-with-timezone? [driver query]

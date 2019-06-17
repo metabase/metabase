@@ -148,7 +148,7 @@ export default class Filter extends MBQLClause {
     const dimension = this.dimension();
     const operator = dimension.operator(operatorName);
 
-    let filter: FieldFilter = [operatorName, dimension.mbql()];
+    const filter: FieldFilter = [operatorName, dimension.mbql()];
 
     if (operator) {
       for (let i = 0; i < operator.fields.length; i++) {
@@ -166,8 +166,8 @@ export default class Filter extends MBQLClause {
       if (oldOperator) {
         // copy over values of the same type
         for (let i = 0; i < oldFilter.length - 2; i++) {
-          let field = operator.multi ? operator.fields[0] : operator.fields[i];
-          let oldField = oldOperator.multi
+          const field = operator.multi ? operator.fields[0] : operator.fields[i];
+          const oldField = oldOperator.multi
             ? oldOperator.fields[0]
             : oldOperator.fields[i];
           if (

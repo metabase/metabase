@@ -35,7 +35,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
     return [];
   }
 
-  let dimensions = (clicked && clicked.dimensions) || [];
+  const dimensions = (clicked && clicked.dimensions) || [];
 
   const breakoutOptions = query.breakoutOptions(null, fieldFilter);
   if (breakoutOptions.count === 0) {

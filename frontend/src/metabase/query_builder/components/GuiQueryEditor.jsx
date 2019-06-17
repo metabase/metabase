@@ -91,7 +91,7 @@ export default class GuiQueryEditor extends React.Component {
   };
 
   renderAdd(text: ?string, onClick: ?() => void, targetRefName?: string) {
-    let className =
+    const className =
       "AddButton text-light text-bold flex align-center text-medium-hover cursor-pointer no-decoration transition-color";
     if (onClick) {
       return (
@@ -132,7 +132,7 @@ export default class GuiQueryEditor extends React.Component {
     if (query.isEditable()) {
       enabled = true;
 
-      let filters = query.filters();
+      const filters = query.filters();
       if (filters && filters.length > 0) {
         filterList = (
           <FilterWidgetList
@@ -206,7 +206,7 @@ export default class GuiQueryEditor extends React.Component {
     // aggregation clause.  must have table details available
     if (query.isEditable()) {
       // $FlowFixMe
-      let aggregations: (Aggregation | null)[] = query.aggregations();
+      const aggregations: (Aggregation | null)[] = query.aggregations();
 
       if (aggregations.length === 0) {
         // add implicit rows aggregation
@@ -218,7 +218,7 @@ export default class GuiQueryEditor extends React.Component {
         aggregations.push(null);
       }
 
-      let aggregationList = [];
+      const aggregationList = [];
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
@@ -409,17 +409,17 @@ export default class GuiQueryEditor extends React.Component {
     }
 
     // HACK: magic number "5" accounts for the borders between the sections?
-    let contentWidth =
+    const contentWidth =
       ["data", "filter", "view", "groupedBy", "sortLimit"].reduce(
         (acc, ref) => {
-          let node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
+          const node = ReactDOM.findDOMNode(this.refs[`${ref}Section`]);
           return acc + (node ? node.offsetWidth : 0);
         },
         0,
       ) + 5;
-    let guiBuilderWidth = guiBuilder.offsetWidth;
+    const guiBuilderWidth = guiBuilder.offsetWidth;
 
-    let expanded = contentWidth < guiBuilderWidth;
+    const expanded = contentWidth < guiBuilderWidth;
     if (this.state.expanded !== expanded) {
       this.setState({ expanded });
     }

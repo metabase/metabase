@@ -344,6 +344,10 @@ export default class Question {
     return this.setVisualizationSettings({ ...this.settings(), ...settings });
   }
 
+  type(): string {
+    return this.datasetQuery().type;
+  }
+
   isEmpty(): boolean {
     return this.query().isEmpty();
   }
@@ -587,8 +591,8 @@ export default class Question {
   }
 
   setResultsMetadata(resultsMetadata) {
-    let metadataColumns = resultsMetadata && resultsMetadata.columns;
-    let metadataChecksum = resultsMetadata && resultsMetadata.checksum;
+    const metadataColumns = resultsMetadata && resultsMetadata.columns;
+    const metadataChecksum = resultsMetadata && resultsMetadata.checksum;
 
     return this.setCard({
       ...this.card(),

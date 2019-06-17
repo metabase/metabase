@@ -1,3 +1,5 @@
+import { formatSQL } from "metabase/lib/formatting";
+
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
@@ -36,6 +38,12 @@ export function formatJsonQuery(query, engine) {
   } else {
     return JSON.stringify(query);
   }
+}
+
+export function formatNativeQuery(query, engine) {
+  return getEngineNativeType(engine) === "json"
+    ? formatJsonQuery(query, engine)
+    : formatSQL(query);
 }
 
 const GA_ORDERED_PARAMS = [

@@ -45,7 +45,7 @@ export default class PasswordResetApp extends Component {
   }
 
   validateForm() {
-    let { credentials } = this.state;
+    const { credentials } = this.state;
 
     let valid = true;
 
@@ -60,7 +60,7 @@ export default class PasswordResetApp extends Component {
 
   async componentWillMount() {
     try {
-      let result = await SessionApi.password_reset_token_valid({
+      const result = await SessionApi.password_reset_token_valid({
         token: this.props.token,
       });
       if (result && result.valid) {
@@ -88,8 +88,8 @@ export default class PasswordResetApp extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { token, passwordReset } = this.props;
-    let { credentials } = this.state;
+    const { token, passwordReset } = this.props;
+    const { credentials } = this.state;
 
     passwordReset(token, credentials);
   }

@@ -76,7 +76,7 @@ export default class VisualizationResult extends Component {
                   className="Button"
                   onClick={() => window.history.back()}
                 >
-                  {t`Back to last run`}
+                  {t`Back to previous results`}
                 </button>
               </div>
             }

@@ -19,6 +19,7 @@
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [set-locale trs]]
             [toucan.db :as db]))
 
@@ -127,7 +128,7 @@
       (System/exit 1))))
 
 (defn- run-cmd [cmd args]
-  (require 'metabase.cmd)
+  (classloader/require 'metabase.cmd)
   ((resolve 'metabase.cmd/run-cmd) cmd args))
 
 

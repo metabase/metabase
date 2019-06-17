@@ -19,14 +19,14 @@ export default function DefaultPicker({
 }) {
   const operator = filter.operator();
   const field = filter.dimension().field();
-  let fieldWidgets =
+  const fieldWidgets =
     operator &&
     operator.fields.map((operatorField, index) => {
       if (!operator) {
         return null;
       }
       let values, onValuesChange;
-      let placeholder =
+      const placeholder =
         (operator && operator.placeholders && operator.placeholders[index]) ||
         undefined;
       if (operator.multi) {

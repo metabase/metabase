@@ -120,7 +120,8 @@
    [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]]    ; Model layer, hydration, and DB utilities
+   [toucan "1.11.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
 
   :main ^:skip-aot metabase.core
 
@@ -178,6 +179,7 @@
    ;; start the dev HTTP server with 'lein ring server'
    :ring
    [:exclude-tests
+    :include-all-drivers
     {:dependencies
      ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
      [[ns-tracker "0.4.0"]]
@@ -194,7 +196,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.5"]]
+    [[metabase/lein-include-drivers "1.0.8"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}

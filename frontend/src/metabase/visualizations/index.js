@@ -32,7 +32,7 @@ export function registerVisualization(visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
-  let identifier = visualization.identifier;
+  const identifier = visualization.identifier;
   if (identifier == null) {
     throw new Error(
       t`Visualization must define an 'identifier' static variable: ` +
@@ -46,7 +46,7 @@ export function registerVisualization(visualization) {
     );
   }
   visualizations.set(identifier, visualization);
-  for (let alias of visualization.aliases || []) {
+  for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
 }

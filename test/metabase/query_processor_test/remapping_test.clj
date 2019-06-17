@@ -10,9 +10,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [datasets :as datasets]]
+            [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
 
 (qp-expect-with-all-drivers
@@ -27,7 +25,7 @@
                  (assoc (venues-col :category_id) :remapped_to "Foo")
                  (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:fields   [$name $category_id]
@@ -73,7 +71,7 @@
                    :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:order-by [[:asc $name]]
@@ -101,7 +99,7 @@
                    :name          (data/format-name "name_2")
                    :remapped_from (data/format-name "category_id"))]
    :native_form true}
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (data/run-mbql-query venues
            {:fields   [$name $price $category_id]
@@ -116,7 +114,7 @@
 ;; Test that we can remap inside an MBQL nested query
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
-  (data/with-data
+  (data/with-temp-objects
     (fn []
       [(db/insert! Dimension {:field_id                (data/id :checkins :venue_id)
                               :name                    "venue-remapping"
@@ -132,7 +130,7 @@
 ;; from Categories
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
   ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (->> (qp/process-query
            {:database (data/id)
@@ -151,8 +149,8 @@
 ;; this is https://github.com/metabase/metabase/issues/8510
 (datasets/expect-with-drivers (disj (non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
-  (data/with-db (data/get-or-create-database! defs/test-data-self-referencing-user)
-    (data/with-data
+  (data/dataset test-data-self-referencing-user
+    (data/with-temp-objects
       (fn []
         [(db/insert! Dimension {:field_id (data/id :users :created_by)
                                 :name "created-by-mapping"

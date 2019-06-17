@@ -165,7 +165,8 @@
           notification->pulse))
 
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
-  "Fetch an Alert or Pulse, and do the 'standard' hydrations."
+  "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
+  `:cards`."
   [notification-or-id & additional-condtions]
   (some-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
           hydrate-notification))

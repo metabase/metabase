@@ -161,11 +161,11 @@ function breakoutTemplatesMatchDimensions(breakoutTemplates, dimensions) {
 
 // Evaluates a breakout template, returning a completed breakout clause
 function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
-  let fieldFilter = Array.isArray(breakoutTemplate)
+  const fieldFilter = Array.isArray(breakoutTemplate)
     ? breakoutTemplate[1]
     : breakoutTemplate;
-  let dimensionColumns = dimensions.map(d => d.column);
-  let field =
+  const dimensionColumns = dimensions.map(d => d.column);
+  const field =
     _.find(dimensionColumns, fieldFilter) || _.find(table.fields, fieldFilter);
   if (!field) {
     return null;
@@ -217,7 +217,7 @@ function columnToBreakout(column) {
   if (column.unit) {
     return ["datetime-field", column.id, column.unit];
   } else if (column.binning_info) {
-    let binningStrategy = column.binning_info.binning_strategy;
+    const binningStrategy = column.binning_info.binning_strategy;
 
     switch (binningStrategy) {
       case "bin-width":
