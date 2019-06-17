@@ -48,7 +48,9 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))
+  (for [column (-> default-card-results
+                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))]
+    (assoc column :display_name (:name column))))
 
 ;; test that Card result metadata is saved after running a Card
 (expect

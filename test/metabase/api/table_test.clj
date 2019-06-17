@@ -450,7 +450,7 @@
      :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                    with-field-literal-id)
                              [{:name         "NAME"
-                               :display_name "Name"
+                               :display_name "NAME"
                                :base_type    "type/Text"
                                :special_type "type/Name"
                                :fingerprint  (:name mutil/venue-fingerprints)}
@@ -461,13 +461,13 @@
                                :fingerprint  (:id mutil/venue-fingerprints)}
                               (with-numeric-dimension-options
                                 {:name         "PRICE"
-                                 :display_name "Price"
+                                 :display_name "PRICE"
                                  :base_type    "type/Integer"
                                  :special_type nil
                                  :fingerprint  (:price mutil/venue-fingerprints)})
                               (with-coordinate-dimension-options
                                 {:name         "LATITUDE"
-                                 :display_name "Latitude"
+                                 :display_name "LATITUDE"
                                  :base_type    "type/Float"
                                  :special_type "type/Latitude"
                                  :fingerprint  (:latitude mutil/venue-fingerprints)})])})
@@ -496,7 +496,7 @@
      :description       nil
      :dimension_options (default-dimension-options)
      :fields            [{:name                     "NAME"
-                          :display_name             "Name"
+                          :display_name             "NAME"
                           :base_type                "type/Text"
                           :table_id                 card-virtual-table-id
                           :id                       ["field-literal" "NAME" "type/Text"]
@@ -508,7 +508,7 @@
                                                      :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                                                           :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
-                          :display_name             "Last Login"
+                          :display_name             "LAST_LOGIN"
                           :base_type                "type/DateTime"
                           :table_id                 card-virtual-table-id
                           :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
