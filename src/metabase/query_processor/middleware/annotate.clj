@@ -44,8 +44,7 @@
   (vec (for [i    (range (count columns))
              :let [col (nth columns i)]]
          {:name         (name col)
-          :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
-                            (u/keyword->qualified-name col))
+          :display_name (u/keyword->qualified-name col)
           :base_type    (or (driver.common/values->base-type (for [row rows]
                                                                (nth row i)))
                             :type/*)
