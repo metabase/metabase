@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
   (:require [metabase
-             [query-processor-test :refer :all]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.test
@@ -11,7 +11,7 @@
 ;;; ---------------------------------------------- :details-only fields ----------------------------------------------
 
 ;; make sure that rows where visibility_type = details-only are included and properly marked up
-(defn- get-col-names []
+(defn- venues-cols-from-query []
   (-> (data/run-mbql-query venues
         {:order-by [[:asc $id]]
          :limit    1})
@@ -20,27 +20,27 @@
       :cols
       set))
 
-(expect-with-non-timeseries-dbs
-  (u/key-by :id (venues-cols))
-  (u/key-by :id (get-col-names)))
+(qp.test/expect-with-non-timeseries-dbs
+  (u/key-by :id (qp.test/venues-cols))
+  (u/key-by :id (venues-cols-from-query)))
 
-(expect-with-non-timeseries-dbs
-  (u/key-by :id (for [col (venues-cols)]
+(qp.test/expect-with-non-timeseries-dbs
+  (u/key-by :id (for [col (qp.test/venues-cols)]
                   (if (= (data/id :venues :price) (u/get-id col))
                     (assoc col :visibility_type :details-only)
                     col)))
   (tu/with-temp-vals-in-db Field (data/id :venues :price) {:visibility_type :details-only}
-    (u/key-by :id (get-col-names))))
+    (u/key-by :id (venues-cols-from-query))))
 
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
 ;;; Make sure :sensitive information fields are never returned by the QP
-(qp-expect-with-all-drivers
-  {:columns     (->columns "id" "name" "last_login")
-   :cols        [(users-col :id)
-                 (users-col :name)
-                 (users-col :last_login)]
+(qp.test/qp-expect-with-all-drivers
+  {:columns     (qp.test/->columns "id" "name" "last_login")
+   :cols        [(qp.test/users-col :id)
+                 (qp.test/users-col :name)
+                 (qp.test/users-col :last_login)]
    :rows        [[ 1 "Plato Yeshua"]
                  [ 2 "Felipinho Asklepios"]
                  [ 3 "Kaneonuskatew Eiran"]
@@ -60,7 +60,7 @@
   ;; Filter out the timestamps from the results since they're hard to test :/
   (-> (data/run-mbql-query users
         {:order-by [[:asc $id]]})
-      booleanize-native-form
+      qp.test/booleanize-native-form
       tu/round-fingerprint-cols
       (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
                                                [(int id) name])))))
