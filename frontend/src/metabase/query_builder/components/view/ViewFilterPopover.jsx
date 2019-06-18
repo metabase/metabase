@@ -47,16 +47,19 @@ export default class ViewFilterPopover extends Component {
   }
 
   handleCommit = () => {
-    this.handleCommitFilter(this.state.filter);
+    this.handleCommitFilter(this.state.filter, this.props.query);
   };
 
   handleCommitOnEnter = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.handleCommitFilter(this.state.filter);
+      this.handleCommitFilter(this.state.filter, this.props.query);
     }
   };
 
-  handleCommitFilter = (filter: ?FieldFilter) => {
+  handleCommitFilter = (filter: ?FieldFilter, query: StructuredQuery) => {
+    if (filter && !(filter instanceof Filter)) {
+      filter = new Filter(filter, null, query);
+    }
     if (filter && filter.isValid()) {
       this.props.onChangeFilter(filter);
       if (this.props.onClose) {
