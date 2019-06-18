@@ -142,13 +142,13 @@ Each of these input boxes needs a URI that points to the location of a SAML attr
 
 ### Group Schema
 
-The group schema setting allows you to set Metabase groups based on an attribute of your user in your SAML provider. Please note that this may not correlate to group functionality provided by your SAML provider - you may need to create a separate attribute on your users.
+The group schema setting allows you to set Metabase groups based on an attribute of your user in your SAML provider. Please note that this may not correlate to group functionality provided by your SAML provider - you may need to create a separate attribute on your users to set their Metabse group, like `metabaseGroups`.
 
 #### Configuring the group schema in your SAML provider
 
-First, you will need to create a user attribute that you will use to indicate which Metabase groups the user should be a part of. Different SAML providers have different ways of handling this, but you will likely need to edit your user profiles. For the rest of this example, let's say that you named your attribute metabaseGroups.
+First, you will need to create a user attribute that you will use to indicate which Metabase groups the user should be a part of. Different SAML providers have different ways of handling this, but you will likely need to edit your user profiles. For the rest of this example, let's say that you named your attribute `metabaseGroups`.
 
-Once you've created your metabaseGroups attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
+Once you've created your `metabaseGroups` attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
 
 After that, you will need to add an additional SAML attribute to the ones we added above. The screenshot below is for Okta, but may vary dependng on your SAML provider.
 
@@ -163,7 +163,7 @@ Once you've gotten everything set up in your SAML provider, it's just a few simp
 
 To start, make sure the toggle is set to "Enabled." Then, click Edit Mappings -> Create a Mapping. This will allow you to enter the group name(s) you entered as your metabaseGroup attribute values and the Metabase group it should correlate to.
 
-After that, add the name of the user attribute you added in your SAML provider. In this case, we told Okta that the metabaseGroups attribute should be named MetabaseGroupName, so that's what we'll enter in the Group Attribute Name field in Metabase.
+After that, add the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
 ### Troubleshooting Tips
 
