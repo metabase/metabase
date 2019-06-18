@@ -85,6 +85,10 @@ executors:
       - image: circleci/clojure:lein-2.8.1-node-browsers
       - image: sumitchawla/vertica
 
+  mbql:
+    working_directory: /home/circleci/metabase/metabase/mbql/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
 
 
 ########################################################################################################################
@@ -599,30 +603,68 @@ workflows:
           e: mysql-5-7
           db-type: mysql
 
+      - lein:
+          name: mbql-tests
+          requires:
+            - be-deps
+          lein-command: test
+
+      - lein:
+          name: mbql-linter-eastwood
+          requires:
+            - be-deps
+          lein-command: eastwood
+
+      - lein:
+          name: mbql-linter-docstring-checker
+          requires:
+            - be-deps
+          lein-command: docstring-checker
+
+      - lein:
+          name: mbql-linter-namespace-decls
+          requires:
+            - be-deps
+          lein-command: check-namespace-decls
+
+      - lein:
+          name: mbql-linter-bikeshed
+          requires:
+            - be-deps
+          lein-command: bikeshed
+
       - fe-deps:
           requires:
             - checkout
+
       - fe-linter-eslint:
           requires:
             - fe-deps
+
       - fe-linter-prettier:
           requires:
             - fe-deps
+
       - fe-linter-flow:
           requires:
             - fe-deps
+
       - fe-tests-karma:
           requires:
             - fe-deps
+
       - fe-tests-unit:
           requires:
             - fe-deps
+
       - fe-tests-integration:
           requires:
             - fe-deps
+
       - build-uberjar:
           requires:
             - be-deps
+
       - fe-tests-e2e:
           requires:
             - build-uberjar
@@ -655,6 +697,12 @@ workflows:
             - be-tests-sqlite
             - be-tests-sqlserver
             - be-tests-vertica
+
+            - mbql-linter-bikeshed
+            - mbql-linter-docstring-checker
+            - mbql-linter-eastwood
+            - mbql-linter-namespace-decls
+            - mbql-tests
 
             - be-tests-migrate-to-mysql
             - be-tests-migrate-to-postgres

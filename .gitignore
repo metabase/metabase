@@ -1,6 +1,7 @@
 \#*\#
 .\#*
 /target
+/mbql/target
 /modules/drivers/*/target
 /lein-plugins/*/target
 /classes
