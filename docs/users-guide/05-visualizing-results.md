@@ -140,7 +140,7 @@ Another useful option for line, area, bar, and scatter charts is trend lines. If
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
-#### Line + Bar charts <a name="line-plus-bar-charts">
+#### Line + Bar charts <a name="line-plus-bar-charts"></a>
 
 Also called Combo Charts, the Line + Bar chart lets you combine bars and lines (or areas) on the same chart.
 
