@@ -167,15 +167,17 @@ const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
   }
   return (
     // wrap in a span since we want to be able to click anywhere to toggle
-    <span
-      className="text-brand-hover cursor-pointer"
-      onClick={() => onShowTable(!isShowingTable)}
-    >
-      <IconToggle
-        icons={["table", vizIcon]}
-        value={isShowingTable ? "table" : vizIcon}
-      />
-    </span>
+    <Tooltip tooltip={isShowingTable? t`Show visualization` : t`Show data`}>
+      <span
+        className="text-brand-hover cursor-pointer"
+        onClick={() => onShowTable(!isShowingTable)}
+      >
+        <IconToggle
+          icons={["table", vizIcon]}
+          value={isShowingTable ? "table" : vizIcon}
+        />
+      </span>
+    </Tooltip>
   );
 };
 
