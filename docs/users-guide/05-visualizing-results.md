@@ -4,20 +4,20 @@ While tables are useful for looking up information or finding specific numbers, 
 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
-* Number
-* Smart number
-* Progress bar
-* Gauge
-* Table
-* Line chart
-* Bar chart
-* Line + bar chart
-* Row chart
-* Area chart
-* Scatterplot or bubble chart
-* Pie/donut chart
-* Funnel
-* Map
+* [Number](#numbers)
+* [Smart number](#smart-numbers)
+* [Progress bar](#progress-bars)
+* [Gauge](#gauges)
+* [Table](#tables)
+* [Line chart](#line-bar-and-area-charts)
+* [Bar chart](#line-bar-and-area-charts)
+* [Line + bar chart](#line-plus-bar-charts)
+* [Row chart](#row-charts)
+* [Area chart](#line-bar-and-area-charts)
+* [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
+* [Pie/donut chart](#pie-or-donut-charts)
+* [Funnel](#funnel)
+* [Map](#maps)
 
 To change how the answer to your question is displayed, click on the Visualization dropdown menu beneath the question builder bar.
 
@@ -140,7 +140,7 @@ Another useful option for line, area, bar, and scatter charts is trend lines. If
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
-#### Line + Bar charts
+#### Line Plus Bar charts
 Also called Combo Charts, the Line + Bar chart lets you combine bars and lines (or areas) on the same chart.
 
 ![Line + bar](images/visualizations/combo-chart.png)
