@@ -605,30 +605,35 @@ workflows:
 
       - lein:
           name: mbql-tests
+          e: mbql
           requires:
             - be-deps
           lein-command: test
 
       - lein:
           name: mbql-linter-eastwood
+          e: mbql
           requires:
             - be-deps
           lein-command: eastwood
 
       - lein:
           name: mbql-linter-docstring-checker
+          e: mbql
           requires:
             - be-deps
           lein-command: docstring-checker
 
       - lein:
           name: mbql-linter-namespace-decls
+          e: mbql
           requires:
             - be-deps
           lein-command: check-namespace-decls
 
       - lein:
           name: mbql-linter-bikeshed
+          e: mbql
           requires:
             - be-deps
           lein-command: bikeshed
