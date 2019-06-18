@@ -183,7 +183,12 @@ export default class View extends React.Component {
           >
             {({ opacity }) => (
               <div className="flex-no-shrink z3 bg-white relative">
-                <ViewTitleHeader {...this.props} style={{ opacity }} />
+                <ViewTitleHeader
+                  {...this.props}
+                  style={{ opacity }}
+                  py={1}
+                  className="border-bottom"
+                />
                 {opacity < 1 && (
                   <NewQuestionHeader
                     className="spread"

@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Button from "metabase/components/Button";
 
@@ -35,7 +36,11 @@ export const ViewTitleHeader = ({
   const description = question.description();
 
   return (
-    <ViewSection className={className} style={style}>
+    <ViewSection
+      className={cx("border-bottom", className)}
+      style={style}
+      py={[1]}
+    >
       {question.isSaved() ? (
         <div>
           <div className="flex align-center">
@@ -185,9 +190,9 @@ export class ViewSubHeader extends React.Component {
     }
 
     return (
-      <div className="border-top">
+      <div>
         {(left.length > 0 || right.length > 0) && (
-          <ViewSection>
+          <ViewSection pt={1}>
             <div className="flex align-center">
               {left}
               {QuestionFilters.shouldRender({ question, queryBuilderMode }) && (
