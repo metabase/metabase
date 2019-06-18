@@ -15,13 +15,8 @@ import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
-import QuestionRowCount from "./QuestionRowCount";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
-import QuestionAlertWidget from "./QuestionAlertWidget";
 import NativeQueryButton from "./NativeQueryButton";
-
-import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 
@@ -129,11 +124,9 @@ export class ViewSubHeader extends React.Component {
   render() {
     const {
       question,
-      onOpenModal,
       onOpenAddAggregation,
 
       result,
-      isAdmin,
       isRunnable,
       isRunning,
       isResultDirty,
@@ -145,9 +138,6 @@ export class ViewSubHeader extends React.Component {
       runQuestionQuery,
       cancelQuery,
 
-      questionAlerts,
-      visualizationSettings,
-
       queryBuilderMode,
     } = this.props;
 
@@ -156,7 +146,6 @@ export class ViewSubHeader extends React.Component {
       (this.state.isFiltersExpanded || !question.isSaved());
 
     const left = [];
-    const middle = [];
     const right = [];
 
     if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
@@ -197,7 +186,7 @@ export class ViewSubHeader extends React.Component {
 
     return (
       <div className="border-top">
-        {(left.length > 0 || middle.length > 0 || right.length > 0) && (
+        {(left.length > 0 || right.length > 0) && (
           <ViewSection>
             <div className="flex align-center">
               {left}
@@ -211,7 +200,6 @@ export class ViewSubHeader extends React.Component {
                 />
               )}
             </div>
-            <div>{middle}</div>
             <div className="ml-auto">{right}</div>
           </ViewSection>
         )}
