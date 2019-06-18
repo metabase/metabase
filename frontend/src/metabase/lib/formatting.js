@@ -657,7 +657,11 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    return formatStringFallback(value, options);
+    if (column && column.special_type != null) {
+      return value;
+    } else {
+      return formatStringFallback(value, options);
+    }
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, options.column);
     if (range && !options.noRange) {
