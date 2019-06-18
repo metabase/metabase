@@ -146,9 +146,7 @@ export default class DashCardCardParameterMapper extends Component {
     }
 
     return (
-      <div
-        className="mx1 flex flex-column align-center drag-disabled"
-      >
+      <div className="mx1 flex flex-column align-center drag-disabled">
         {dashcard.series && dashcard.series.length > 0 && (
           <div
             className="h5 mb1 text-bold"
