@@ -536,8 +536,9 @@ function getUrlProtocol(url) {
 }
 
 function isSafeProtocol(protocol) {
-  // for security reasons display javascript and data urls as strings
-  return protocol != null && protocol !== "javascript:" && protocol !== "data:";
+  return (
+    protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
+  );
 }
 
 function isDefaultLinkProtocol(protocol) {
@@ -563,6 +564,8 @@ export function formatUrl(
     jsx &&
     rich &&
     (view_as === "link" || view_as === "auto") &&
+    // undefined protocol means url didn't parse
+    protocol &&
     // if the column type is URL, we show any safe url as a link
     // otherwise, we just show the most common protocols
     (urlSpecialType
