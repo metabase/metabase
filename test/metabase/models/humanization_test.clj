@@ -81,6 +81,8 @@
 (expect "Ctr"                         (humanization/name->human-readable-name :advanced "ctr"))
 (expect "Paid To Sparkify"            (humanization/name->human-readable-name :advanced "paid_to_sparkify"))
 (expect "Paid To Sparkify"            (humanization/name->human-readable-name :advanced "paidtosparkify"))
+(expect "Assassinate"                 (humanization/name->human-readable-name :advanced "assassinate"))
+(expect "An Album Cover"              (humanization/name->human-readable-name :advanced "analbumcover"))
 
 
 ;;; :simple humanization
