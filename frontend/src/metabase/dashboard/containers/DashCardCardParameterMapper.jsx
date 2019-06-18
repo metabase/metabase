@@ -147,8 +147,7 @@ export default class DashCardCardParameterMapper extends Component {
 
     return (
       <div
-        className="mx1 flex flex-column align-center"
-        onMouseDown={e => e.stopPropagation()}
+        className="mx1 flex flex-column align-center drag-disabled"
       >
         {dashcard.series && dashcard.series.length > 0 && (
           <div
