@@ -288,7 +288,7 @@ If you have an SSL certificate and would prefer to have Metabase run over HTTPS 
     export MB_JETTY_SSL_KEYSTORE_PASSWORD="storepass"
     java -jar metabase.jar
     
-Be sure to replace `MB_JETTY_SSL_KEYSTORE` and `MB_JETTY_SSL_KEYSTORE_PASSWORD` with the correct path and password, respectively, to your [Java KeyStore](https://www.digitalocean.com/community/tutorials/java-keytool-essentials-working-with-java-keystores). With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.
+Be sure to replace `path/to/keystore.jks` and `storepass` with the correct path to and password for your [Java KeyStore](https://www.digitalocean.com/community/tutorials/java-keytool-essentials-working-with-java-keystores). With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.
 
 No idea how to generate a Java KeyStore yourself? This is sort of an advanced topic, but if you're feeling froggy you can read more about how to configure SSL in Jetty [here](https://www.eclipse.org/jetty/documentation/current/configuring-ssl.html). Otherwise, you'll probably find it easiest to handle SSL termination outside of Metabase, for example by the Elastic Load Balancer if deploying via Elastic Beanstalk.
 
