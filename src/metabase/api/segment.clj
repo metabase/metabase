@@ -61,17 +61,14 @@
   "Check whether current user has write permissions, then update Segment with values in `body`. Publishes appropriate
   event and returns updated/hydrated Segment."
   [id {:keys [revision_message archived], :as body}]
-  (let [existing  (api/write-check Segment id)
-        [changes] (data/diff
-                   (u/select-keys-when body
+  (let [existing   (api/write-check Segment id)
+        clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-                   existing)
-        archive?  (:archived changes)
-        new-def   (->> body (normalize/normalize-fragment [:definition :filter] ) :definition)
-        changes   (if (= new-def (:definition existing))
-                    (dissoc changes :definition)
-                    (assoc changes :definition new-def))]
+        norm-body  (->> clean-body (normalize/normalize-fragment [:definition]) )
+        changes    (when-not (= norm-body existing)
+                     norm-body)
+        archive?   (:archived changes)]
     (when changes
       (db/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
