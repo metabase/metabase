@@ -962,6 +962,10 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
+  joinedDimensions(): Dimension[] {
+    return [].concat(...this.joins().map(join => join.joinedDimensions()));
+  }
+
   breakoutDimensions() {
     return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   }
@@ -990,6 +994,7 @@ export default class StructuredQuery extends AtomicQuery {
       return [...breakouts, ...aggregations, ...fields];
     } else {
       const expressions = this.expressionDimensions();
+      const joined = this.joinedDimensions();
       const table = this.tableDimensions();
       const sorted = _.chain(table)
         .filter(d => d.field().visibility_type !== "hidden")
@@ -1000,7 +1005,7 @@ export default class StructuredQuery extends AtomicQuery {
         })
         .sortBy(d => d.field().position)
         .value();
-      return [...sorted, ...expressions];
+      return [...sorted, ...expressions, ...joined];
     }
   }
 
