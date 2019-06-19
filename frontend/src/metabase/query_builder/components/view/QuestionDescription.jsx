@@ -28,8 +28,8 @@ const QuestionDescription = ({ question }) => {
         ? null
         : breakouts.length > 2
         ? ngettext(
-            msgid`${breakouts.length} metric`,
-            `${breakouts.length} metrics`,
+            msgid`${breakouts.length} breakout`,
+            `${breakouts.length} breakouts`,
             breakouts.length,
           )
         : breakouts.map(breakout => breakout.displayName()).join(t` and `);
