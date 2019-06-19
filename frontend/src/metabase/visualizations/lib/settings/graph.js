@@ -215,11 +215,13 @@ export const GRAPH_BUBBLE_SETTINGS = {
     section: t`Data`,
     title: t`Bubble size`,
     widget: "field",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        [card.visualization_settings["scatter.bubble"]],
-        data,
-        isNumeric,
+    isValid: (series, vizSettings) =>
+      series.some(({ card, data }) =>
+        columnsAreValid(
+          [card.visualization_settings["scatter.bubble"]],
+          data,
+          isNumeric,
+        ),
       ),
     getDefault: series => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {
