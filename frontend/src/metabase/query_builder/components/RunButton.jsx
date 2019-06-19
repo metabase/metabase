@@ -43,11 +43,7 @@ export default class RunButton extends Component {
         buttonText = t`Get Answer`;
       }
     } else if (isRunnable && !isDirty) {
-      buttonText = (
-        <div className="flex align-center">
-          <Icon className="sm-mr1" name="refresh" />
-        </div>
-      );
+      buttonText = <Icon name="refresh" />;
     }
     return (
       <Button
