@@ -14,7 +14,7 @@ If you come across something that looks like a bug, we suggest collecting the fo
 While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, you can also access them from the gear drop down menu in the upper right hand corner -> Admin -> Troubleshooting -> Logs.
 
 ### Checking for Javascript console errors
-Metabase will show debugging information and errors to your browser's developer console.
+Metabase will send debugging information and errors to your browser's developer console.
 
 #### Chrome
 You can open the console in Chrome by following the instructions at 
