@@ -146,7 +146,7 @@ export default class Filter extends MBQLClause {
 
   setOperator(operatorName) {
     const dimension = this.dimension();
-    const operator = dimension.operator(operatorName);
+    const operator = dimension && dimension.operator(operatorName);
 
     const filter: FieldFilter = [operatorName, dimension.mbql()];
 
@@ -166,7 +166,9 @@ export default class Filter extends MBQLClause {
       if (oldOperator) {
         // copy over values of the same type
         for (let i = 0; i < oldFilter.length - 2; i++) {
-          const field = operator.multi ? operator.fields[0] : operator.fields[i];
+          const field = operator.multi
+            ? operator.fields[0]
+            : operator.fields[i];
           const oldField = oldOperator.multi
             ? oldOperator.fields[0]
             : oldOperator.fields[i];
@@ -198,7 +200,11 @@ export default class Filter extends MBQLClause {
         (useDefaultOperator && dimension.defaultOperator()) ||
         null;
 
-      const filter = this.set([this[0], dimension.mbql(), ...this.slice(2)]);
+      const filter = this.set(
+        this.isFieldFilter()
+          ? [this[0], dimension.mbql(), ...this.slice(2)]
+          : [null, dimension.mbql()],
+      );
       if (filter.operatorName() !== operatorName) {
         return filter.setOperator(operatorName);
       } else {

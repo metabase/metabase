@@ -102,11 +102,12 @@ export default class ChartSettingOrderedColumns extends Component {
 
   render() {
     const { value, question, columns } = this.props;
+    const query = question && question.query();
 
     let additionalFieldOptions = { count: 0 };
-    if (columns && question && question.query() instanceof StructuredQuery) {
+    if (columns && query instanceof StructuredQuery) {
       const fieldRefs = columns.map(column => fieldRefForColumn(column));
-      additionalFieldOptions = question.query().fieldsOptions(dimension => {
+      additionalFieldOptions = query.fieldsOptions(dimension => {
         const mbql = dimension.mbql();
         return !_.find(fieldRefs, fieldRef => _.isEqual(fieldRef, mbql));
       });
@@ -162,7 +163,9 @@ export default class ChartSettingOrderedColumns extends Component {
             {additionalFieldOptions.fks.map(fk => (
               <div>
                 <div className="my2 text-medium text-bold text-uppercase text-small">
-                  {fk.field.target.table.display_name}
+                  {fk.field.target
+                    ? fk.field.target.table.display_name
+                    : fk.field.display_name}
                 </div>
                 {fk.dimensions.map((dimension, index) => (
                   <ColumnItem

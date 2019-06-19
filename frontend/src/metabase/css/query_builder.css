@@ -562,31 +562,6 @@
   padding-right: 0.6em;
 }
 
-/* object detail */
-.ObjectDetail {
-  width: 100%;
-  margin: 0 auto;
-  margin-bottom: 2rem;
-  border: 1px solid var(--color-border);
-}
-
-@media screen and (--breakpoint-min-xl) {
-  /* prevent the object detail from getting too wide on large screens */
-  .ObjectDetail {
-    max-width: 1140px;
-  }
-}
-
-.ObjectDetail-headingGroup {
-  border-bottom: 1px solid var(--color-border);
-}
-
-.ObjectDetail-infoMain {
-  border-right: 1px solid var(--color-border);
-  margin-left: 2.4rem;
-  font-size: 1rem;
-}
-
 .ObjectJSON {
   max-height: 200px;
   overflow: scroll;

@@ -28,7 +28,7 @@ type State = {
 };
 
 // NOTE: this is duplicated from FilterPopover. Consider merging them
-export default class ViewFilters extends React.Component {
+export default class FilterPopover extends React.Component {
   props: Props;
   state: State;
 
@@ -64,7 +64,11 @@ export default class ViewFilters extends React.Component {
   };
 
   handleCommitFilter = (filter: FieldFilter) => {
-    if (filter.isValid()) {
+    const { query } = this.props;
+    if (filter && !(filter instanceof Filter)) {
+      filter = new Filter(filter, null, query);
+    }
+    if (filter && filter.isValid()) {
       this.props.onChangeFilter(filter);
       if (this.props.onClose) {
         this.props.onClose();

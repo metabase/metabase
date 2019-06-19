@@ -17,6 +17,7 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
           {`Filter`}
         </Button>
       }
+      sizeToFit
     >
       <ViewFilterPopover
         query={query}
@@ -43,6 +44,7 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
               />
             </Button>
           }
+          sizeToFit
         >
           <ViewFilterPopover
             query={query}
@@ -55,6 +57,7 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
       ))}
       <PopoverWithTrigger
         triggerElement={<Button medium icon="add" color="#7172AD" />}
+        sizeToFit
       >
         <ViewFilterPopover
           query={query}

@@ -289,52 +289,65 @@ export class ObjectDetail extends Component {
     const idValue = this.getIdValue();
 
     return (
-      <div className="ObjectDetail rounded mt2">
-        <div className="Grid ObjectDetail-headingGroup">
-          <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 arrow-right">
-            <div className="text-brand text-bold">
-              <span>{tableName}</span>
-              <h1>{idValue}</h1>
-            </div>
-          </div>
-          <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-            <div className="p4 flex align-center text-bold text-medium">
-              <Icon name="connections" size={17} />
-              <div className="ml2">
-                {jt`This ${(
-                  <span className="text-dark">{tableName}</span>
-                )} is connected to:`}
+      <div className="scroll-y pt2 px4">
+        <div className="ObjectDetail bordered rounded">
+          <div className="Grid border-bottom relative">
+            <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
+              <div className="text-brand text-bold">
+                <span>{tableName}</span>
+                <h1>{idValue}</h1>
               </div>
             </div>
+            <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
+              <div className="p4 flex align-center text-bold text-medium">
+                <Icon name="connections" size={17} />
+                <div className="ml2">
+                  {jt`This ${(
+                    <span className="text-dark">{tableName}</span>
+                  )} is connected to:`}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={cx(
+                "absolute left cursor-pointer text-brand-hover lg-ml2",
+                { disabled: idValue <= 1 },
+              )}
+              style={{
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <DirectionalButton
+                direction="back"
+                onClick={this.props.viewPreviousObjectDetail}
+              />
+            </div>
+            <div
+              className="absolute right cursor-pointer text-brand-hover lg-ml2"
+              style={{
+                top: "50%",
+                transform: "translate(50%, -50%)",
+              }}
+            >
+              <DirectionalButton
+                direction="forward"
+                onClick={this.props.viewNextObjectDetail}
+              />
+            </div>
           </div>
-        </div>
-        <div className="Grid">
-          <div className="Grid-cell ObjectDetail-infoMain p4">
-            {this.renderDetailsTable()}
+          <div className="Grid">
+            <div
+              className="Grid-cell p4"
+              style={{ marginLeft: "2.4rem", fontSize: "1rem" }}
+            >
+              {this.renderDetailsTable()}
+            </div>
+            <div className="Grid-cell Cell--1of3 bg-alt">
+              {this.renderRelationships()}
+            </div>
           </div>
-          <div className="Grid-cell Cell--1of3 bg-alt">
-            {this.renderRelationships()}
-          </div>
-        </div>
-        <div
-          className={cx("fixed left cursor-pointer text-brand-hover lg-ml2", {
-            disabled: idValue <= 1,
-          })}
-          style={{ top: "50%", left: "1em", transform: "translate(0, -50%)" }}
-        >
-          <DirectionalButton
-            direction="back"
-            onClick={this.props.viewPreviousObjectDetail}
-          />
-        </div>
-        <div
-          className="fixed right cursor-pointer text-brand-hover lg-ml2"
-          style={{ top: "50%", right: "1em", transform: "translate(0, -50%)" }}
-        >
-          <DirectionalButton
-            direction="forward"
-            onClick={this.props.viewNextObjectDetail}
-          />
         </div>
       </div>
     );

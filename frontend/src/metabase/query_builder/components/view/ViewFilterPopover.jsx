@@ -4,6 +4,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 
 import FieldList from "../FieldList";
+import DimensionList from "../DimensionList";
 
 import FilterPopoverHeader from "../filters/FilterPopoverHeader";
 import FilterPopoverPicker from "../filters/FilterPopoverPicker";
@@ -83,38 +84,27 @@ export default class ViewFilterPopover extends Component {
     this.setState({ filter: this.state.filter.setDimension(null) });
   };
 
-  _queries() {
-    const queries = this.props.query.queries().slice(-2);
-    if (queries.length === 1 && queries[0].breakouts().length > 0) {
-      queries.push(queries[0].nest());
-    }
-    return queries.reverse();
-  }
-
   render() {
-    const { className, style } = this.props;
+    const { className, style, query } = this.props;
     const { filter } = this.state;
 
-    if (!filter || (!filter.isSegmentFilter() && !filter.dimension())) {
-      const dimension = filter && filter.dimension();
-      const queries = this.props.filter
-        ? [this.props.filter.query()]
-        : this._queries();
+    const dimension = filter && filter.dimension();
+    if (!dimension) {
       return (
         <div className={className} style={style}>
-          {queries.map(query => (
-            <FieldList
-              className="text-purple"
-              width={410}
-              maxHeight={Infinity} // just implement scrolling ourselves
-              field={dimension && dimension.mbql()}
-              fieldOptions={query.filterFieldOptions(filter)}
-              segmentOptions={query.filterSegmentOptions(filter)}
-              table={query.table()}
-              onFieldChange={field => this.handleFieldChange(field, query)}
-              onFilterChange={filter => this.handleCommitFilter(filter, query)}
-            />
-          ))}
+          <DimensionList
+            className="text-purple"
+            width={410}
+            dimension={dimension}
+            sections={query.topLevelFilterFieldOptionSections()}
+            onChangeDimension={dimension =>
+              this.handleFieldChange(dimension.mbql(), dimension.query())
+            }
+            onChange={item => {
+              this.handleCommitFilter(item.filter, item.query);
+            }}
+            alwaysExpanded
+          />
         </div>
       );
     } else {

@@ -11,6 +11,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 
 import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
+import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import _ from "underscore";
 
@@ -95,8 +96,19 @@ export default class AggregationPopover extends Component {
     }
   }
 
+  _getAggregation() {
+    const { aggregation, query } = this.props;
+    if (aggregation && !(aggregation instanceof Aggregation)) {
+      return new Aggregation(aggregation, null, query);
+    } else {
+      return aggregation;
+    }
+  }
+
   onPickAggregation(item) {
-    const { dimension, aggregation } = this.props;
+    const { dimension } = this.props;
+    const aggregation = this._getAggregation();
+
     if (dimension) {
       if (item.aggregation && item.aggregation.requiresField) {
         this.commitAggregation(
@@ -104,8 +116,8 @@ export default class AggregationPopover extends Component {
         );
       }
     } else if (item.custom) {
-      // use the existing aggregation as the starting point unless it's "rows"
-      const value = !_.isEqual(aggregation, ["rows"]) ? aggregation : null;
+      // use the existing aggregation if it's valid
+      const value = aggregation && aggregation.isValid() ? aggregation : null;
       this.setState({
         aggregation: value,
         editingAggregation: true,

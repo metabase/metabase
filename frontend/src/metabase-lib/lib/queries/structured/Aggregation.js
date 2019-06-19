@@ -40,7 +40,7 @@ export default class Aggregation extends MBQLClause {
    * Removes the aggregation in the parent query and returns the new StructuredQuery
    */
   remove(): StructuredQuery {
-    return this._query.removeFilter(this._index);
+    return this._query.removeAggregation(this._index);
   }
 
   /**

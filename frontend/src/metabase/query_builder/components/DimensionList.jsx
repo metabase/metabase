@@ -125,13 +125,16 @@ export default class DimensionList extends Component {
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
           >
-            <DimensionPicker
-              dimension={dimension}
-              dimensions={subDimensions}
-              onChangeDimension={dimension =>
-                this.props.onChangeDimension(dimension)
-              }
-            />
+            {({ onClose }) => (
+              <DimensionPicker
+                dimension={dimension}
+                dimensions={subDimensions}
+                onChangeDimension={dimension => {
+                  this.props.onChangeDimension(dimension);
+                  onClose();
+                }}
+              />
+            )}
           </PopoverWithTrigger>
         ) : null}
         {!isSelected && onAddDimension && (

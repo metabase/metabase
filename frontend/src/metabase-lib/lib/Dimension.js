@@ -281,7 +281,9 @@ export default class Dimension {
    * TODO: rename filterOperator()
    */
   operatorOptions() {
-    return this.baseDimension().field().operators || [];
+    return this.baseDimension()
+      .field()
+      .operatorOptions();
   }
 
   /**
@@ -357,6 +359,10 @@ export default class Dimension {
    */
   icon(): ?IconName {
     return null;
+  }
+
+  query(): ?StructuredQuery {
+    return this._query;
   }
 
   /**
@@ -734,14 +740,22 @@ export class BinnedDimension extends FieldDimension {
 export class ExpressionDimension extends Dimension {
   tag = "Custom";
 
-  static parseMBQL(mbql: any, metadata?: ?Metadata): ?Dimension {
+  static parseMBQL(
+    mbql: any,
+    metadata?: ?Metadata,
+    query?: ?StructuredQuery,
+  ): ?Dimension {
     if (Array.isArray(mbql) && mbql[0] === "expression") {
-      return new ExpressionDimension(null, mbql.slice(1));
+      return new ExpressionDimension(null, mbql.slice(1), metadata, query);
     }
   }
 
   mbql(): ExpressionReference {
     return ["expression", this._args[0]];
+  }
+
+  name() {
+    return this._args[0];
   }
 
   displayName(): string {
@@ -750,6 +764,18 @@ export class ExpressionDimension extends Dimension {
 
   columnName() {
     return this._args[0];
+  }
+
+  field() {
+    return new Field({
+      id: this.mbql(),
+      name: this.name(),
+      display_name: this.displayName(),
+      base_type: "type/Float",
+      // HACK: need to thread the query through to this fake Field
+      query: this._query,
+      table: this._query.table(),
+    });
   }
 
   icon(): IconName {
