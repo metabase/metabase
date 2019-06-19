@@ -311,9 +311,12 @@ export const getIsNativeEditorOpen = createSelector(
  * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
  */
 export const getIsPreviewable = createSelector(
-  [getIsNativeEditorOpen, getQuestion],
-  (isNativeEditorOpen, question) =>
-    isNativeEditorOpen && question && question.display() === "table",
+  [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
+  (isNativeEditorOpen, question, isNew, isDirty) =>
+    isNativeEditorOpen &&
+    question &&
+    question.display() === "table" &&
+    (isNew || isDirty),
 );
 
 /**
