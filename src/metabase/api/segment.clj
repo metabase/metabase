@@ -8,6 +8,7 @@
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
              [revision :as revision]
@@ -66,7 +67,11 @@
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
                    existing)
-        archive?  (:archived changes)]
+        archive?  (:archived changes)
+        new-def   (->> body (normalize/normalize-fragment [:definition :filter] ) :definition)
+        changes   (if (= new-def (:definition existing))
+                    (dissoc changes :definition)
+                    (assoc changes :definition new-def))]
     (when changes
       (db/update! Segment id changes))
     (u/prog1 (hydrated-segment id)
