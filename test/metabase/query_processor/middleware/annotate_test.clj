@@ -19,8 +19,8 @@
 
 ;; make sure that `add-native-column-info` can still infer types even if the initial value(s) are `nil` (#4256)
 (expect
-  [{:name "a", :display_name "A", :base_type :type/Integer, :source :native}
-   {:name "b", :display_name "B", :base_type :type/Integer, :source :native}]
+  [{:name "a", :display_name "a", :base_type :type/Integer, :source :native}
+   {:name "b", :display_name "b", :base_type :type/Integer, :source :native}]
   (:cols (#'annotate/add-native-column-info {:columns [:a :b], :rows [[1 nil]
                                                                       [2 nil]
                                                                       [3 nil]
@@ -30,7 +30,7 @@
 ;; make sure that `add-native-column-info` defaults `base_type` to `type/*` if there are no non-nil
 ;; values when we peek.
 (expect
-  [{:name "a", :display_name "A", :base_type :type/*, :source :native}]
+  [{:name "a", :display_name "a", :base_type :type/*, :source :native}]
   (:cols (#'annotate/add-native-column-info {:columns [:a], :rows [[nil]]})))
 
 

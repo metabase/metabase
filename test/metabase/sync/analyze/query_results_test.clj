@@ -6,6 +6,7 @@
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test
@@ -55,9 +56,9 @@
 ;; Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields
 (expect
   mock.u/venue-fingerprints
-  (tu/throw-if-called fprint/with-global-fingerprinter
-    (tt/with-temp Card [card {:dataset_query (data/mbql-query venues)}]
-      ;; check for a "proper" fingerprinter, fallthrough for PKs is fine.
+  (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query (data/mbql-query venues))]
+    ;; check for a "proper" fingerprinter, fallthrough for PKs is fine.
+    (tu/throw-if-called fprint/with-global-fingerprinter
       (name->fingerprints
        (query->result-metadata (query-for-card card))))))
 
@@ -94,7 +95,7 @@
 ;; Limiting to just 1 column on an MBQL query should still get the result metadata from the Field
 (expect
   (select-keys mock.u/venue-fingerprints [:longitude])
-  (tt/with-temp Card [card {:dataset_query (data/mbql-query venues)}]
+  (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query (data/mbql-query venues))]
     (tu/throw-if-called fprint/fingerprinter
       (name->fingerprints
        (query->result-metadata (assoc-in (query-for-card card) [:query :fields] [[:field-id (data/id :venues :longitude)]]))))))

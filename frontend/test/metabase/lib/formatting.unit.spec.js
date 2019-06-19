@@ -185,6 +185,15 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
+    it("should not add mailto prefix if there's a different special type", () => {
+      expect(
+        formatValue("foobar@example.com", {
+          jsx: true,
+          rich: true,
+          column: { special_type: "type/PK" },
+        }),
+      ).toEqual("foobar@example.com");
+    });
   });
 
   describe("formatUrl", () => {

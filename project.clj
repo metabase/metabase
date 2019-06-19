@@ -32,10 +32,10 @@
   ;; !!                                   AND ADD A COMMENT EXPLAINING THEIR PURPOSE                                  !!
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   :dependencies
-  [[org.clojure/clojure "1.10.0"]
+  [[org.clojure/clojure "1.10.1"]
    [org.clojure/core.async "0.4.490"
     :exclusions [org.clojure/tools.reader]]
-   [org.clojure/core.match "0.3.0-alpha4"]                            ; optimized pattern matching library for Clojure
+   [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
    [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
@@ -98,7 +98,8 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
-   [medley "1.0.0"]                                                   ; lightweight lib of useful functions
+   [medley "1.2.0"]                                                   ; lightweight lib of useful functions
+   [metabase/mbql "1.0.2"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -112,7 +113,7 @@
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
-   [prismatic/schema "1.1.9"]                                         ; Data schema declaration and validation library
+   [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [ring/ring-core "1.7.1"]
