@@ -68,8 +68,8 @@ export const uiControls = handleActions(
 
     [INITIALIZE_QB]: {
       next: (state, { payload }) => ({
-        ...DEFAULT_UI_CONTROLS,
         ...state,
+        ...DEFAULT_UI_CONTROLS,
         ...payload.uiControls,
       }),
     },
