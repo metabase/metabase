@@ -40,7 +40,9 @@ If applicable, add screenshots to help explain your problem.
 - Metabase internal database: (e.x. H2 (default), MySQL, Postgres)
 
 **Severity**
-Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
+How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
+
+Note: the more honest and specific you are here the more we will take you seriously. 
 
 **Additional context**
 Add any other context about the problem here.
