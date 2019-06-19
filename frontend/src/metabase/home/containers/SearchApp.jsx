@@ -64,96 +64,46 @@ export default class SearchApp extends React.Component {
               return (
                 <Box>
                   {types.dashboard && (
-                    <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-medium text-small text-bold my1">
-                        {t`Dashboards`}
-                      </div>
-                      <Card>
-                        {types.dashboard.map(item => (
-                          <Link
-                            to={item.getUrl()}
-                            key={item.id}
-                            data-metabase-event="Search Results;Item Click;Dashboard"
-                          >
-                            <EntityItem
-                              variant="list"
-                              name={item.getName()}
-                              iconName={item.getIcon()}
-                              iconColor={item.getColor()}
-                            />
-                          </Link>
-                        ))}
-                      </Card>
-                    </Box>
+                    <SearchResultSection
+                      title={t`Dashboards`}
+                      items={types.dashboard}
+                      eventObjectType="Dashboard"
+                    />
                   )}
                   {types.collection && (
-                    <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-medium text-small text-bold my1">
-                        {t`Collections`}
-                      </div>
-                      <Card>
-                        {types.collection.map(item => (
-                          <Link
-                            to={item.getUrl()}
-                            key={item.id}
-                            data-metabase-event="Search Results;Item Click;Collection"
-                          >
-                            <EntityItem
-                              variant="list"
-                              name={item.getName()}
-                              iconName={item.getIcon()}
-                              iconColor={item.getColor()}
-                            />
-                          </Link>
-                        ))}
-                      </Card>
-                    </Box>
+                    <SearchResultSection
+                      title={t`Collections`}
+                      items={types.collection}
+                      eventObjectType="Collection"
+                    />
                   )}
                   {types.card && (
-                    <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-medium text-small text-bold my1">
-                        {t`Questions`}
-                      </div>
-                      <Card>
-                        {types.card.map(item => (
-                          <Link
-                            to={item.getUrl()}
-                            key={item.id}
-                            data-metabase-event="Search Results;Item Click;Question"
-                          >
-                            <EntityItem
-                              variant="list"
-                              name={item.getName()}
-                              iconName={item.getIcon()}
-                              iconColor={item.getColor()}
-                            />
-                          </Link>
-                        ))}
-                      </Card>
-                    </Box>
+                    <SearchResultSection
+                      title={t`Questions`}
+                      items={types.card}
+                      eventObjectType="Question"
+                    />
                   )}
+                  {/* {types.metric && (
+                    <SearchResultSection
+                      title={t`Metrics`}
+                      items={types.metric}
+                      eventObjectType="Pulse"
+                    />
+                  )}
+                  {types.segment && (
+                    <SearchResultSection
+                      title={t`Segments`}
+                      items={types.segment}
+                      eventObjectType="Segment"
+                    />
+                  )} */}
                   {types.pulse && (
-                    <Box mt={2} mb={3}>
-                      <div className="text-uppercase text-medium text-small text-bold my1">
-                        {t`Pulse`}
-                      </div>
-                      <Card>
-                        {types.pulse.map(item => (
-                          <Link
-                            to={item.getUrl()}
-                            key={item.id}
-                            data-metabase-event="Search Results;Item Click;Pulse"
-                          >
-                            <EntityItem
-                              variant="list"
-                              name={item.getName()}
-                              iconName={item.getIcon()}
-                              iconColor={item.getColor()}
-                            />
-                          </Link>
-                        ))}
-                      </Card>
-                    </Box>
+                    <SearchResultSection
+                      title={t`Pulses`}
+                      items={types.pulse}
+                      eventObjectType="Pulse"
+                    />
                   )}
                 </Box>
               );
@@ -164,3 +114,27 @@ export default class SearchApp extends React.Component {
     );
   }
 }
+
+const SearchResultSection = ({ title, items, eventObjectType }) => (
+  <Box mt={2} mb={3}>
+    <div className="text-uppercase text-medium text-small text-bold my1">
+      {title}
+    </div>
+    <Card>
+      {items.map(item => (
+        <Link
+          to={item.getUrl()}
+          key={item.id}
+          data-metabase-event={`Search Results;Item Click;${eventObjectType}`}
+        >
+          <EntityItem
+            variant="list"
+            name={item.getName()}
+            iconName={item.getIcon()}
+            iconColor={item.getColor()}
+          />
+        </Link>
+      ))}
+    </Card>
+  </Box>
+);
