@@ -657,6 +657,30 @@ export default class StructuredQuery extends AtomicQuery {
     return [].concat(...queries.map(q => q.filters()));
   }
 
+  filterFieldOptionSections(filter?: Filter) {
+    const filterFieldOptions = this.filterFieldOptions(filter);
+    const filterSegmentOptions = this.filterSegmentOptions(filter);
+    return filterFieldOptions.sections({
+      extraItems: filterSegmentOptions.map(segment => ({
+        name: segment.name,
+        icon: "staroutline",
+        filter: ["segment", segment.id],
+        query: this,
+      })),
+    });
+  }
+
+  topLevelFilterFieldOptionSections(stages = 2) {
+    const queries = this.queries().slice(-stages);
+    // allow post-aggregation filtering
+    if (queries.length < stages && this.breakouts().length > 0) {
+      queries.push(queries[queries.length - 1].nest());
+    }
+    queries.reverse();
+
+    return [].concat(...queries.map(q => q.filterFieldOptionSections()));
+  }
+
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
@@ -667,9 +691,13 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns @type {Segment}s that can be used as filters.
    */
-  filterSegmentOptions(): Segment[] {
+  filterSegmentOptions(filter?: Filter): Segment[] {
+    const currentSegmentId =
+      filter && filter.isSegmentFilter() && filter.segmentId();
     return this.table().segments.filter(
-      sgmt => sgmt.archived === false && !this.segments().includes(sgmt),
+      segment =>
+        (currentSegmentId != null && currentSegmentId === segment.id) ||
+        (!segment.archived && !this.segments().includes(segment)),
     );
   }
 
@@ -913,7 +941,12 @@ export default class StructuredQuery extends AtomicQuery {
 
   tableDimensions(): Dimension[] {
     const table: Table = this.table();
-    return table ? table.dimensions() : [];
+    return table
+      ? // HACK: ensure the dimensions are associated with this query
+        table
+          .dimensions()
+          .map(d => (d._query ? d : this.parseFieldReference(d.mbql())))
+      : [];
   }
 
   expressionDimensions(): Dimension[] {

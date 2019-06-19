@@ -29,6 +29,7 @@ import {
   isFK,
   isEntityName,
   getIconForField,
+  getOperators,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
@@ -160,10 +161,16 @@ export default class Field extends Base {
     return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
-  operator(op) {
+  operator(operatorName) {
     if (this.operators_lookup) {
-      return this.operators_lookup[op];
+      return this.operators_lookup[operatorName];
+    } else {
+      return this.operatorOptions().find(o => o.name === operatorName);
     }
+  }
+
+  operatorOptions() {
+    return this.operators || getOperators(this, this.table);
   }
 
   aggregations() {
