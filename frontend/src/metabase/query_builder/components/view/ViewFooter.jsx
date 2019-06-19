@@ -2,9 +2,12 @@ import React from "react";
 
 import { t } from "ttag";
 import cx from "classnames";
+import styled from "styled-components";
+import { Box, Flex } from "grid-styled";
+import colors, { darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 
 import ViewSection from "./ViewSection";
 
@@ -46,6 +49,7 @@ const ViewFooter = ({
     <ViewSection
       className={cx(className, "flex align-center text-medium border-top")}
       trim
+      py={1}
     >
       <div className="flex align-center">
         <VizTypeButton
@@ -160,47 +164,49 @@ const VizSettingsButton = ({ className, selected, onClick }) => (
   </Tooltip>
 );
 
+const Well = styled(Flex)`
+  border-radius: 99px;
+  &:hover {
+    background-color: ${darken(colors["bg-medium"], 0.05)};
+  }
+  transition: background 300ms linear;
+`;
+
+Well.defaultProps = {
+  px: "6px",
+  py: "4px",
+  align: "center",
+  bg: colors["bg-medium"],
+};
+
+const ToggleIcon = styled(Flex)`
+  cursor: pointer;
+  background-color: ${props =>
+    props.active ? colors["brand"] : "transparent"};
+  color: ${props => (props.active ? "white" : "inherit")};
+  border-radius: 99px;
+`;
+
+ToggleIcon.defaultProps = {
+  p: "4px",
+  px: "8px",
+};
+
 const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
   let vizIcon = getIconForVisualizationType(question.display());
   if (!vizIcon || vizIcon === "table") {
     vizIcon = "lineandbar";
   }
   return (
-    // wrap in a span since we want to be able to click anywhere to toggle
-    <Tooltip tooltip={isShowingTable? t`Show visualization` : t`Show data`}>
-      <span
-        className="text-brand-hover cursor-pointer"
-        onClick={() => onShowTable(!isShowingTable)}
-      >
-        <IconToggle
-          icons={["table", vizIcon]}
-          value={isShowingTable ? "table" : vizIcon}
-        />
-      </span>
-    </Tooltip>
+    <Well onClick={() => onShowTable(!isShowingTable)}>
+      <ToggleIcon active={isShowingTable}>
+        <Icon name="table" />
+      </ToggleIcon>
+      <ToggleIcon active={!isShowingTable}>
+        <Icon name={vizIcon} />
+      </ToggleIcon>
+    </Well>
   );
 };
-
-// TODO: move to it's own file
-const IconToggle = ({ className, icons, value, onChange }) => (
-  <span
-    className={cx(
-      className,
-      "circular bg-medium text-medium px2 py1 flex align-center",
-    )}
-  >
-    {icons.map(icon => (
-      <Icon
-        key={icon}
-        name={icon}
-        className={cx("mx1", {
-          "text-brand": value === icon,
-          "text-brand-hover cursor-pointer": value !== icon && onChange,
-        })}
-        onClick={onChange && value !== icon ? () => onChange(icon) : null}
-      />
-    ))}
-  </span>
-);
 
 export default ViewFooter;
