@@ -64,9 +64,12 @@
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-        norm-body  (->> clean-body (normalize/normalize-fragment [:definition]))
-        changes    (when-not (= norm-body existing)
-                     norm-body)
+        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-body   (merge
+                     (dissoc clean-body :revision_message)
+                     {:definition new-def})
+        changes    (when-not (= new-body existing)
+                     new-body)
         archive?   (:archived changes)]
     (when changes
       (db/update! Segment id changes))
