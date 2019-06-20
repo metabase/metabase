@@ -10,3 +10,6 @@ The Enterprise Edition of Metabase provides added functionality and solutions fo
 * [Customizing how Metabase looks with white labeling](whitelabeling.md)
 * [Customizing drill-through for charts and tables](customizing-drill-through.md)
 * [Copying contents of one Metabase instance to another (serialization)](serialization.md)
+
+
+[Click here](release-notes.md) to find release notes for our latest version of Metabase Enterprise.
