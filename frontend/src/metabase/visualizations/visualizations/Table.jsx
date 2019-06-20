@@ -40,12 +40,12 @@ import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { Series } from "metabase/meta/types/Visualization";
 import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
-  card: Card,
-  data: DatasetData,
+  series: Series,
   settings: VisualizationSettings,
   isDashboard: boolean,
 };
@@ -299,7 +299,7 @@ export default class Table extends Component {
   componentWillReceiveProps(newProps: Props) {
     // TODO: remove use of deprecated "card" and "data" props
     if (
-      newProps.data !== this.props.data ||
+      newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
     ) {
       this._updateData(newProps);
@@ -307,10 +307,10 @@ export default class Table extends Component {
   }
 
   _updateData({
-    data,
+    series: [{ data }],
     settings,
   }: {
-    data: DatasetData,
+    series: Series,
     settings: VisualizationSettings,
   }) {
     if (settings["table.pivot"]) {
@@ -336,7 +336,7 @@ export default class Table extends Component {
         ),
       });
     } else {
-      const { cols, rows, columns } = data;
+      const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(columnSetting => columnSetting.enabled)
@@ -348,7 +348,6 @@ export default class Table extends Component {
       this.setState({
         data: {
           cols: columnIndexes.map(i => cols[i]),
-          columns: columnIndexes.map(i => columns[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
         },
       });
@@ -375,7 +374,11 @@ export default class Table extends Component {
   };
 
   render() {
-    const { card, isDashboard, settings } = this.props;
+    const {
+      series: [{ card }],
+      isDashboard,
+      settings,
+    } = this.props;
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
