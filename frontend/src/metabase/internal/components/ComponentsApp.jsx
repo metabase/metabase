@@ -8,6 +8,8 @@ import cx from "classnames";
 
 // $FlowFixMe: react-virtualized ignored
 import reactElementToJSXString from "react-element-to-jsx-string";
+import prettier from "prettier/standalone";
+import prettierParserBabylon from "prettier/parser-babylon";
 
 import COMPONENTS from "../lib/components-webpack";
 
@@ -145,10 +147,19 @@ class SourcePane extends React.Component {
   render() {
     const { element } = this.props;
     const { isOpen } = this.state;
-    const source = reactElementToJSXString(element, {
+    let source = reactElementToJSXString(element, {
       showFunctions: true,
       showDefaultProps: false,
     });
+    try {
+      source = prettier.format(source, {
+        parser: "babel",
+        plugins: [prettierParserBabylon],
+      });
+    } catch (e) {
+      console.log(e);
+    }
+
     const scratchUrl = "/_internal/scratch#" + btoa(source);
     return (
       <div
@@ -187,12 +198,12 @@ class SourcePane extends React.Component {
             <Link className="link ml1" to={scratchUrl}>
               Open in Scratch
             </Link>
-            <Link
+            <span
               className="link ml1"
               onClick={() => this.setState({ isOpen: true })}
             >
               View Source
-            </Link>
+            </span>
           </div>
         )}
       </div>
