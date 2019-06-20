@@ -11,7 +11,7 @@
 (def ^:const ^:private special-words ["checkins"])
 
 (defn- slurp-words-by-frequency []
-  (concat special-words (str/split-lines (slurp (io/resource "words-by-frequency.txt")))))
+  (concat special-words (str/split-lines (slurp (io/resource "words-by-inv-frequency.txt")))))
 
 ;; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
 (defn- make-cost-map
