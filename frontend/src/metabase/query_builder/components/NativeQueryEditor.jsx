@@ -39,7 +39,7 @@ const LINE_HEIGHT = 16;
 const MIN_HEIGHT_LINES = 1;
 const MAX_AUTO_SIZE_LINES = 12;
 
-const ICON_SIZE = 16;
+const ICON_SIZE = 18;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
@@ -396,7 +396,6 @@ export default class NativeQueryEditor extends Component {
                 <DataReferenceButton
                   {...this.props}
                   size={ICON_SIZE}
-                  className="mx1"
                 />
               )}
             {isNativeEditorOpen &&
@@ -404,17 +403,17 @@ export default class NativeQueryEditor extends Component {
                 <NativeVariablesButton
                   {...this.props}
                   size={ICON_SIZE}
-                  className="mx1"
+                  className="mx3 flex align-center"
                 />
               )}
             <a
-              className="Query-label no-decoration flex align-center mx1"
+              className="Query-label no-decoration flex align-center mx3 text-brand-hover transition-all"
               onClick={this.toggleEditor}
             >
-              <span className="mr2" style={{ minWidth: 70 }}>
+              <span className="mr1" style={{ minWidth: 70 }}>
                 {toggleEditorText}
               </span>
-              <Icon name={toggleEditorIcon} size={20} />
+              <Icon name={toggleEditorIcon} size={18} />
             </a>
           </div>
         </div>
