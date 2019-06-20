@@ -1,7 +1,6 @@
 (ns metabase.api.segment
   "/api/segment endpoints."
-  (:require [clojure.data :as data]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
@@ -65,7 +64,7 @@
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-        norm-body  (->> clean-body (normalize/normalize-fragment [:definition]) )
+        norm-body  (->> clean-body (normalize/normalize-fragment [:definition]))
         changes    (when-not (= norm-body existing)
                      norm-body)
         archive?   (:archived changes)]
