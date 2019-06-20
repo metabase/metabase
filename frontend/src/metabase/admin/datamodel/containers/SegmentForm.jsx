@@ -92,12 +92,13 @@ export default class SegmentForm extends Component {
   render() {
     const {
       fields: { id, name, description, definition, revision_message },
-      segment,
       metadata,
       table,
       handleSubmit,
       previewSummary,
     } = this.props;
+
+    const isNewRecord = id.value === "";
 
     return (
       <LoadingAndErrorWrapper loading={!table}>
@@ -106,16 +107,14 @@ export default class SegmentForm extends Component {
             <div className="wrapper py4">
               <FormLabel
                 title={
-                  segment && segment.id != null
-                    ? t`Edit Your Segment`
-                    : t`Create Your Segment`
+                  isNewRecord ? t`Create Your Segment` : t`Edit Your Segment`
                 }
                 description={
-                  segment && segment.id != null
-                    ? t`Make changes to your segment and leave an explanatory note.`
-                    : t`Select and add filters to create your new segment for the ${
+                  isNewRecord
+                    ? t`Select and add filters to create your new segment for the ${
                         table.display_name
                       } table`
+                    : t`Make changes to your segment and leave an explanatory note.`
                 }
               >
                 <PartialQueryBuilder
@@ -169,7 +168,7 @@ export default class SegmentForm extends Component {
                     placeholder={t`This is a good place to be more specific about less obvious segment rules`}
                   />
                 </FormLabel>
-                {id.value != null && (
+                {!isNewRecord && (
                   <FieldSet legend={t`Reason For Changes`}>
                     <FormLabel
                       description={t`Leave a note to explain what changes you made and why they were required.`}
@@ -187,7 +186,7 @@ export default class SegmentForm extends Component {
               </div>
             </div>
 
-            {id.value == null && (
+            {isNewRecord && (
               <div className="border-top py4">
                 <div className="wrapper">{this.renderActionButtons()}</div>
               </div>

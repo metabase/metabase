@@ -90,12 +90,13 @@ export default class MetricForm extends Component {
   render() {
     const {
       fields: { id, name, description, definition, revision_message },
-      metric,
       metadata,
       table,
       handleSubmit,
       previewSummary,
     } = this.props;
+
+    const isNewRecord = id.value === "";
 
     return (
       <LoadingAndErrorWrapper loading={!table && !table.aggregation_options}>
@@ -104,14 +105,12 @@ export default class MetricForm extends Component {
             <div className="wrapper py4">
               <FormLabel
                 title={
-                  metric && metric.id != null
-                    ? t`Edit Your Metric`
-                    : t`Create Your Metric`
+                  isNewRecord ? t`Create Your Metric` : t`Edit Your Metric`
                 }
                 description={
-                  metric && metric.id != null
-                    ? t`Make changes to your metric and leave an explanatory note.`
-                    : t`You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+                  isNewRecord
+                    ? t`You can create saved metrics to add a named metric option to this table. Saved metrics include the aggregation type, the aggregated field, and optionally any filter you add. As an example, you might use this to create something like the official way of calculating "Average Price" for an Orders table.`
+                    : t`Make changes to your metric and leave an explanatory note.`
                 }
               >
                 <PartialQueryBuilder
@@ -169,7 +168,7 @@ export default class MetricForm extends Component {
                     placeholder={t`This is a good place to be more specific about less obvious metric rules`}
                   />
                 </FormLabel>
-                {id.value != null && (
+                {!isNewRecord && (
                   <FieldSet legend={t`Reason For Changes`}>
                     <FormLabel
                       description={t`Leave a note to explain what changes you made and why they were required.`}
@@ -187,7 +186,7 @@ export default class MetricForm extends Component {
               </div>
             </div>
 
-            {id.value == null && (
+            {isNewRecord && (
               <div className="border-top py4">
                 <div className="wrapper">{this.renderActionButtons()}</div>
               </div>
