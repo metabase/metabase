@@ -46,6 +46,9 @@ Community support only at this time, but learn how to deploy Metabase as a servi
 #### [Running on Kubernetes](running-metabase-on-kubernetes.md)
 Community Helm chart for running Metabase on Kubernetes
 
+#### [Running on D2C](running-metabase-on-d2c.md)
+Community support for running Metabase on D2C
+
 # Upgrading Metabase
 
 Before you attempt to upgrade Metabase, you should make a backup of the application database just in case. While it is unlikely you will need to roll back, it will do wonders for your peace of mind.
