@@ -220,13 +220,33 @@ describe("formatting", () => {
         ),
       ).toEqual(true);
     });
-    it("should not return a link component for unrecognized links in jsx mode", () => {
+    it("should return a component for custom protocols if the column type is URL", () => {
       expect(
         isElementOfType(
-          formatUrl("nonexistent://metabase.com/", { jsx: true, rich: true }),
+          formatUrl("myproto:some-custom-thing", {
+            jsx: true,
+            rich: true,
+            column: { special_type: TYPE.URL },
+          }),
           ExternalLink,
         ),
-      ).toEqual(false);
+      ).toEqual(true);
+    });
+    it("should not return a component for bad urls if the column type is URL", () => {
+      expect(
+        formatUrl("invalid-blah-blah-blah", {
+          jsx: true,
+          rich: true,
+          column: { special_type: TYPE.URL },
+        }),
+      ).toEqual("invalid-blah-blah-blah");
+    });
+    it("should not return a component for custom protocols if the column type isn't URL", () => {
+      expect(
+        formatUrl("myproto:some-custom-thing", { jsx: true, rich: true }),
+      ).toEqual("myproto:some-custom-thing");
+    });
+    it("should not return a link component for unrecognized links in jsx mode", () => {
       expect(
         isElementOfType(
           formatUrl("metabase.com", { jsx: true, rich: true }),
