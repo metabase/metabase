@@ -67,7 +67,7 @@
         new-def    (->> clean-body :definition (normalize/normalize-fragment []))
         new-body   (merge
                      (dissoc clean-body :revision_message)
-                     {:definition new-def})
+                     (when new-def {:definition new-def}))
         changes    (when-not (= new-body existing)
                      new-body)
         archive?   (:archived changes)]
