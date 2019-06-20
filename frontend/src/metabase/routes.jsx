@@ -341,7 +341,7 @@ export const getRoutes = store => (
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
         // $FlowFixMe: flow doesn't know about require.ensure
-        require.ensure([], require => {
+        require.ensure([], function(require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

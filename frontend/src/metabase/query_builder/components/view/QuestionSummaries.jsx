@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Button from "metabase/components/Button";
 
@@ -51,7 +52,7 @@ const SummarizeButton = ({ className, children, onClick }) => (
     medium
     icon="insight"
     color="#84BB4C"
-    className={className}
+    className={cx(className, "flex-no-shrink")}
     onClick={onClick}
   >
     {children}

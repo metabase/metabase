@@ -178,6 +178,7 @@ function applyChartTooltips(
                   ? formatValue(d.data.value, {
                       number_style: "percent",
                       column: cols[1],
+                      decimals: cols[1].decimals,
                     })
                   : d.data.value,
                 col: { ...cols[1] },

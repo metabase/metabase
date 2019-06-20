@@ -150,6 +150,7 @@ export class ViewSubHeader extends React.Component {
       questionHasFilters(question) &&
       (this.state.isFiltersExpanded || !question.isSaved());
 
+    const middle = [];
     const left = [];
     const right = [];
 
@@ -168,14 +169,14 @@ export class ViewSubHeader extends React.Component {
       right.push(
         <QuestionPreviewToggle
           key="preview"
-          className="mx2"
+          className="ml2"
           isPreviewing={isPreviewing}
           setIsPreviewing={setIsPreviewing}
         />,
       );
     }
     if (isRunnable) {
-      right.push(
+      const runButton = (
         <RunButtonWithTooltip
           key="run"
           result={result}
@@ -185,27 +186,34 @@ export class ViewSubHeader extends React.Component {
           isPreviewing={isPreviewing}
           onRun={() => runQuestionQuery({ ignoreCache: true })}
           onCancel={() => cancelQuery()}
+        />
+      );
+      if (question.isNative()) {
+        middle.push(runButton);
+      } else {
+        right.push(runButton);
+      }
+    }
+
+    if (QuestionFilters.shouldRender({ question, queryBuilderMode })) {
+      left.push(
+        <QuestionFilters
+          question={question}
+          expanded
+          onOpenAddFilter={this.props.onOpenAddFilter}
+          onOpenEditFilter={this.props.onOpenEditFilter}
+          onCloseFilter={this.props.onCloseFilter}
         />,
       );
     }
 
     return (
       <div>
-        {(left.length > 0 || right.length > 0) && (
+        {(left.length > 0 || (middle.length > 0 && right.length > 0)) && (
           <ViewSection pt={1}>
-            <div className="flex align-center">
-              {left}
-              {QuestionFilters.shouldRender({ question, queryBuilderMode }) && (
-                <QuestionFilters
-                  question={question}
-                  expanded
-                  onOpenAddFilter={this.props.onOpenAddFilter}
-                  onOpenEditFilter={this.props.onOpenEditFilter}
-                  onCloseFilter={this.props.onCloseFilter}
-                />
-              )}
-            </div>
-            <div className="ml-auto">{right}</div>
+            <div className="mr-auto flex align-center">{left}</div>
+            {middle}
+            <div className="ml-auto flex align-center">{right}</div>
           </ViewSection>
         )}
       </div>
