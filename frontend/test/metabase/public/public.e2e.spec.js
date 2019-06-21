@@ -72,10 +72,10 @@ import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 const PEOPLE_TABLE_ID = 2;
 const PEOPLE_ID_FIELD_ID = 13;
 
-async function updateQueryText(store, queryText) {
+async function setQueryText(store, queryText) {
   // We don't have Ace editor so we have to trigger the Redux action manually
   const newDatasetQuery = getQuery(store.getState())
-    .updateQueryText(queryText)
+    .setQueryText(queryText)
     .datasetQuery();
 
   return store.dispatch(setDatasetQuery(newDatasetQuery));
@@ -152,7 +152,7 @@ describe("public/embedded", () => {
       click(app.find(".Icon-sql"));
       await store.waitForActions([SET_QUERY_MODE]);
 
-      await updateQueryText(
+      await setQueryText(
         store,
         "select count(*) from products where {{category}}",
       );

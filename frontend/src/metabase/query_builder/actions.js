@@ -25,7 +25,6 @@ import {
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
 import { formatSQL } from "metabase/lib/formatting";
 import { createQuery } from "metabase/lib/query";
-import { syncQueryFields, getExistingFields } from "metabase/lib/dataset";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
@@ -70,6 +69,7 @@ import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
+import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 
 type UiControls = {
   isEditing?: boolean,
@@ -236,7 +236,7 @@ export const updateEmbeddingParams = createAction(
 );
 
 export const UPDATE_URL = "metabase/qb/UPDATE_URL";
-export const updateUrl = (window.updateUrl = createThunkAction(
+export const updateUrl = createThunkAction(
   UPDATE_URL,
   (
     card,
@@ -309,7 +309,7 @@ export const updateUrl = (window.updateUrl = createThunkAction(
       dispatch(push(locationDescriptor));
     }
   },
-));
+);
 
 export const REDIRECT_TO_NEW_QUESTION_FLOW =
   "metabase/qb/REDIRECT_TO_NEW_QUESTION_FLOW";
@@ -599,112 +599,62 @@ export const loadMetadataForCard = createThunkAction(
   },
 );
 
-function updateVisualizationSettings(
-  card,
-  isEditing,
-  display,
-  vizSettings,
-  result,
-) {
-  // don't need to store undefined
-  vizSettings = Utils.copy(vizSettings);
-  for (const name in vizSettings) {
-    if (vizSettings[name] === undefined) {
-      delete vizSettings[name];
-    }
-  }
-
-  // make sure that something actually changed
+function syncTableColumnsIfNeeded(question, newQuestion) {
   if (
-    card.display === display &&
-    _.isEqual(card.visualization_settings, vizSettings)
+    !_.isEqual(
+      question.settings()["table.columns"],
+      newQuestion.settings()["table.columns"],
+    )
   ) {
-    return card;
+    return syncTableColumnsToQuery(newQuestion);
+  } else {
+    return newQuestion;
   }
-
-  const updatedCard = Utils.copy(card);
-
-  // when the visualization changes on saved card we change this into a new card w/ a known starting point
-  if (!isEditing && updatedCard.id) {
-    delete updatedCard.id;
-    delete updatedCard.name;
-    delete updatedCard.description;
-  }
-
-  updatedCard.display = display;
-  updatedCard.visualization_settings = vizSettings;
-
-  if (result && result.data && result.data.cols) {
-    syncQueryFields(updatedCard, result.data.cols);
-  }
-
-  return updatedCard;
+}
+function hasNewColumns(question, queryResult) {
+  // NOTE: this assume column names will change
+  // technically this is wrong because you could add and remove two columns with the same name
+  const query = question.query();
+  const previousColumns =
+    (queryResult && queryResult.data.cols.map(col => col.name)) || [];
+  const nextColumns =
+    query instanceof StructuredQuery ? query.columnNames() : [];
+  return _.difference(nextColumns, previousColumns).length > 0;
 }
 
-export const SET_CARD_VISUALIZATION = "metabase/qb/SET_CARD_VISUALIZATION";
-export const setCardVisualization = createThunkAction(
-  SET_CARD_VISUALIZATION,
-  display => {
-    return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-      const updatedCard = updateVisualizationSettings(
-        card,
-        uiControls.isEditing,
-        display,
-        card.visualization_settings,
-        getFirstQueryResult(getState()),
-      );
-      dispatch(updateUrl(updatedCard, { dirty: true }));
-      return updatedCard;
-    };
-  },
-);
+export const updateCardVisualizationSettings = settings => async (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  const queryResult = getFirstQueryResult(getState());
 
-export const UPDATE_CARD_VISUALIZATION_SETTINGS =
-  "metabase/qb/UPDATE_CARD_VISUALIZATION_SETTINGS";
-export const updateCardVisualizationSettings = createThunkAction(
-  UPDATE_CARD_VISUALIZATION_SETTINGS,
-  settings => {
-    return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-      const updatedCard = updateVisualizationSettings(
-        card,
-        uiControls.isEditing,
-        card.display,
-        { ...card.visualization_settings, ...settings },
-        getFirstQueryResult(getState()),
-      );
-      dispatch(updateUrl(updatedCard, { dirty: true }));
-      return updatedCard;
-    };
-  },
-);
+  const newQuestion = syncTableColumnsIfNeeded(
+    question,
+    question.updateSettings(settings),
+  );
+  const shouldRun = hasNewColumns(newQuestion, queryResult);
 
-export const REPLACE_ALL_CARD_VISUALIZATION_SETTINGS =
-  "metabase/qb/REPLACE_ALL_CARD_VISUALIZATION_SETTINGS";
-export const replaceAllCardVisualizationSettings = createThunkAction(
-  REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
-  settings => {
-    return (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-      const updatedCard = updateVisualizationSettings(
-        card,
-        uiControls.isEditing,
-        card.display,
-        settings,
-        getFirstQueryResult(getState()),
-      );
-      dispatch(updateUrl(updatedCard, { dirty: true, replaceState: true }));
-      return updatedCard;
-    };
-  },
-);
+  await dispatch(updateQuestion(newQuestion, { run: shouldRun }));
+  dispatch(updateUrl(null, { dirty: true }));
+};
+
+export const replaceAllCardVisualizationSettings = settings => async (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  const queryResult = getFirstQueryResult(getState());
+
+  const newQuestion = syncTableColumnsIfNeeded(
+    question,
+    question.setSettings(settings),
+  );
+  const run = hasNewColumns(newQuestion, queryResult);
+
+  await dispatch(updateQuestion(newQuestion, { run }));
+  dispatch(updateUrl(null, { dirty: true }));
+};
 
 export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
 export const updateTemplateTag = createThunkAction(
@@ -951,224 +901,6 @@ export const apiUpdateQuestion = question => {
   };
 };
 
-// setDatasetQuery
-// TODO Atte Keinänen 6/1/17: Deprecated, superseded by updateQuestion
-export const SET_DATASET_QUERY = "metabase/qb/SET_DATASET_QUERY";
-export const setDatasetQuery = createThunkAction(
-  SET_DATASET_QUERY,
-  (datasetQuery, run = false) => (dispatch, getState) => {
-    const question = getQuestion(getState());
-    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), { run }));
-  },
-);
-
-// setQueryMode
-export const SET_QUERY_MODE = "metabase/qb/SET_QUERY_MODE";
-export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
-  return (dispatch, getState) => {
-    // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const {
-      qb: { card, uiControls },
-    } = getState();
-    const queryResult = getFirstQueryResult(getState());
-    const tableMetadata = getTableMetadata(getState());
-
-    // if the type didn't actually change then nothing has been modified
-    if (type === card.dataset_query.type) {
-      return card;
-    }
-
-    // if we are going from MBQL -> Native then attempt to carry over the query
-    if (
-      type === "native" &&
-      queryResult &&
-      queryResult.data &&
-      queryResult.data.native_form
-    ) {
-      const updatedCard = Utils.copy(card);
-      const datasetQuery = updatedCard.dataset_query;
-      const nativeQuery = _.pick(
-        queryResult.data.native_form,
-        "query",
-        "collection",
-      );
-
-      // when the driver requires JSON we need to stringify it because it's been parsed already
-      if (getEngineNativeType(tableMetadata.db.engine) === "json") {
-        nativeQuery.query = formatJsonQuery(
-          queryResult.data.native_form.query,
-          tableMetadata.db.engine,
-        );
-      } else {
-        nativeQuery.query = formatSQL(nativeQuery.query);
-      }
-
-      datasetQuery.type = "native";
-      datasetQuery.native = nativeQuery;
-      delete datasetQuery.query;
-
-      // when the query changes on saved card we change this into a new query w/ a known starting point
-      if (!uiControls.isEditing && updatedCard.id) {
-        delete updatedCard.id;
-        delete updatedCard.name;
-        delete updatedCard.description;
-      }
-
-      updatedCard.dataset_query = datasetQuery;
-
-      dispatch(loadMetadataForCard(updatedCard));
-
-      MetabaseAnalytics.trackEvent("QueryBuilder", "MBQL->Native");
-
-      return updatedCard;
-
-      // we are translating an empty query
-    } else {
-      let databaseId = card.dataset_query.database;
-
-      // only carry over the database id if the user can write native queries
-      if (type === "native") {
-        const nativeDatabases = getNativeDatabases(getState());
-        if (!_.findWhere(nativeDatabases, { id: databaseId })) {
-          databaseId =
-            nativeDatabases.length > 0 ? nativeDatabases[0].id : null;
-        }
-      }
-
-      const newCard = startNewCard(type, databaseId);
-
-      dispatch(loadMetadataForCard(newCard));
-
-      return newCard;
-    }
-  };
-});
-
-// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
-// Question.js could possibly provide a helper method like `Question.setDatabaseId` that delegates it to respective query classes
-
-// setQueryDatabase
-export const SET_QUERY_DATABASE = "metabase/qb/SET_QUERY_DATABASE";
-export const setQueryDatabase = createThunkAction(
-  SET_QUERY_DATABASE,
-  databaseId => {
-    return async (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-
-      // picking the same database doesn't change anything
-      if (databaseId === card.dataset_query.database) {
-        return card;
-      }
-
-      const existingQuery = card.dataset_query.native
-        ? card.dataset_query.native.query
-        : undefined;
-      if (!uiControls.isEditing) {
-        const updatedCard = startNewCard(card.dataset_query.type, databaseId);
-        if (existingQuery) {
-          updatedCard.dataset_query.native.query = existingQuery;
-          updatedCard.dataset_query.native["template-tags"] =
-            card.dataset_query.native["template-tags"];
-        }
-
-        // set the initial collection for the query if this is a native query
-        // this is only used for Mongo queries which need to be ran against a specific collection
-        const question = new Question(getMetadata(getState()), updatedCard);
-        const query = question.query();
-        if (query instanceof NativeQuery && query.requiresTable()) {
-          const tables = query.tables();
-          if (tables && tables.length > 0) {
-            updatedCard.dataset_query.native.collection = tables[0].name;
-          }
-        }
-
-        dispatch(loadMetadataForCard(updatedCard));
-
-        return updatedCard;
-      } else {
-        // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
-        // TODO: should this clear the visualization as well?
-        const updatedCard = Utils.copy(card);
-        updatedCard.dataset_query = createQuery(
-          card.dataset_query.type,
-          databaseId,
-        );
-        if (existingQuery) {
-          updatedCard.dataset_query.native.query = existingQuery;
-          updatedCard.dataset_query.native["template-tags"] =
-            card.dataset_query.native["template-tags"];
-        }
-
-        dispatch(loadMetadataForCard(updatedCard));
-
-        return updatedCard;
-      }
-    };
-  },
-);
-
-// TODO Atte Keinänen: The heavy lifting should be moved to StructuredQuery and NativeQuery
-// Question.js could possibly provide a helper method like `Question.setSourceTable` that delegates it to respective query classes
-
-// setQuerySourceTable
-export const SET_QUERY_SOURCE_TABLE = "metabase/qb/SET_QUERY_SOURCE_TABLE";
-export const setQuerySourceTable = createThunkAction(
-  SET_QUERY_SOURCE_TABLE,
-  sourceTable => {
-    return async (dispatch, getState) => {
-      const {
-        qb: { card, uiControls },
-      } = getState();
-
-      // this will either be the id or an object with an id
-      const tableId = sourceTable.id || sourceTable;
-
-      // if the table didn't actually change then nothing is modified
-      if (tableId === card.dataset_query.query["source-table"]) {
-        return card;
-      }
-
-      // find the database associated with this table
-      let databaseId;
-      if (_.isObject(sourceTable)) {
-        databaseId = sourceTable.db_id;
-      } else {
-        const table = getMetadata(getState()).table(tableId);
-        if (table) {
-          databaseId = table.db_id;
-        }
-      }
-
-      let updatedCard;
-      if (!uiControls.isEditing) {
-        updatedCard = startNewCard(
-          card.dataset_query.type,
-          databaseId,
-          tableId,
-        );
-      } else {
-        // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
-        // TODO: should this clear the visualization as well?
-        updatedCard = {
-          ...card,
-          dataset_query: createQuery(
-            card.dataset_query.type,
-            databaseId,
-            tableId,
-          ),
-        };
-      }
-
-      // load up all the table metadata
-      dispatch(loadMetadataForCard(updatedCard));
-
-      return updatedCard;
-    };
-  },
-);
-
 /**
  * Queries the result for the currently active question or alternatively for the card provided in `overrideWithCard`.
  * The API queries triggered by this action creator can be cancelled using the deferred provided in RUN_QUERY action.
@@ -1244,7 +976,7 @@ export const runQuestionQuery = ({
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
-export const getDisplayTypeForCard = (card, queryResults) => {
+const getDisplayTypeForCard = (card, queryResults) => {
   // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
   // This method seems to has been a candidate for a rewrite anyway
   const queryResult = queryResults[0];
@@ -1298,7 +1030,7 @@ export const queryCompleted = (card, queryResults) => {
  * Needed for persisting visualization columns for pulses/alerts, see #6749.
  */
 const getQuestionWithDefaultVisualizationSettings = (question, series) => {
-  const oldVizSettings = question.visualizationSettings();
+  const oldVizSettings = question.settings();
   const newVizSettings = {
     ...oldVizSettings,
     ...getPersistableDefaultSettingsForSeries(series),
@@ -1307,7 +1039,7 @@ const getQuestionWithDefaultVisualizationSettings = (question, series) => {
   // Don't update the question unnecessarily
   // (even if fields values haven't changed, updating the settings will make the question appear dirty)
   if (!_.isEqual(oldVizSettings, newVizSettings)) {
-    return question.setVisualizationSettings(newVizSettings);
+    return question.setSettings(newVizSettings);
   } else {
     return question;
   }
@@ -1449,37 +1181,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
   },
 );
 
-const ADD_FIELD = "metabase/qb/ADD_FIELD";
-export const addField = createThunkAction(
-  ADD_FIELD,
-  (field, run = true) => (dispatch, getState) => {
-    const {
-      qb: { card },
-    } = getState();
-    const queryResult = getFirstQueryResult(getState());
-    if (
-      card.dataset_query.type === "query" &&
-      queryResult &&
-      queryResult.data
-    ) {
-      dispatch(
-        setDatasetQuery(
-          {
-            ...card.dataset_query,
-            query: {
-              ...card.dataset_query.query,
-              fields: getExistingFields(card, queryResult.data.cols).concat([
-                field,
-              ]),
-            },
-          },
-          true,
-        ),
-      );
-    }
-  },
-);
-
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
@@ -1549,8 +1250,5 @@ export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 
 // these are just temporary mappings to appease the existing QB code and it's naming prefs
-export const setDatabaseFn = setQueryDatabase;
-export const setSourceTableFn = setQuerySourceTable;
-export const setDisplayFn = setCardVisualization;
 export const onUpdateVisualizationSettings = updateCardVisualizationSettings;
 export const onReplaceAllVisualizationSettings = replaceAllCardVisualizationSettings;

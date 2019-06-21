@@ -8,10 +8,7 @@ import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import {
-  getColumnCardinality,
-  columnsAreValid,
-} from "metabase/visualizations/lib/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
 import Query from "metabase/lib/query";
@@ -156,16 +153,20 @@ export default class Table extends Component {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
+    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+    //   { name: "COLUMN_NAME", enabled: true }
+    //   { fieldRef: ["fk->", 1, 2], enabled: true }
+    //   { fieldRef: ["fk->", ["field-id", 1], ["field-id", 2]], enabled: true }
     "table.columns": {
       section: t`Columns`,
       title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
-        card.visualization_settings["table.columns"] &&
-        columnsAreValid(
-          card.visualization_settings["table.columns"].map(x => x.name),
-          data,
+        _.all(
+          card.visualization_settings["table.columns"],
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
       getDefault: ([
         {

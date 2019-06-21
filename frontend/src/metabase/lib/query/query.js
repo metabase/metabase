@@ -16,6 +16,7 @@ import type {
   ExpressionClause,
   ExpressionName,
   Expression,
+  Field,
   FieldsClause,
 } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
@@ -27,6 +28,7 @@ import * as J from "./join";
 import * as L from "./limit";
 import * as O from "./order_by";
 import * as E from "./expression";
+import * as FIELD from "./field";
 
 import Query from "metabase/lib/query";
 import _ from "underscore";
@@ -111,7 +113,15 @@ export const clearOrderBy = (query: SQ) =>
   setOrderByClause(query, O.clearOrderBy(query["order-by"]));
 
 // FIELD
-export const clearFields = (query: SQ) => setFieldsClause(query, null);
+export const getFields = (query: SQ) => FIELD.getFields(query.fields);
+export const addField = (query: SQ, field: Field) =>
+  setFieldsClause(query, FIELD.addField(query.fields, field));
+export const updateField = (query: SQ, index: number, field: Field) =>
+  setFieldsClause(query, FIELD.updateField(query.fields, index, field));
+export const removeField = (query: SQ, index: number) =>
+  setFieldsClause(query, FIELD.removeField(query.fields, index));
+export const clearFields = (query: SQ) =>
+  setFieldsClause(query, FIELD.clearFields(query.fields));
 
 // LIMIT
 

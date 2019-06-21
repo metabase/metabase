@@ -45,7 +45,10 @@ import { MetabaseApi, CardApi } from "metabase/services";
 import Questions from "metabase/entities/questions";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import { DatetimeFieldDimension } from "metabase-lib/lib/Dimension";
+import {
+  DatetimeFieldDimension,
+  BinnedDimension,
+} from "metabase-lib/lib/Dimension";
 
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
@@ -57,7 +60,6 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { BinnedDimension } from "./Dimension";
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
@@ -325,15 +327,6 @@ export default class Question {
     return this.setDisplay("table");
   }
 
-  // DEPRECATED: use settings
-  visualizationSettings(...args) {
-    return this.settings(...args);
-  }
-  // DEPRECATED: use setSettings
-  setVisualizationSettings(...args) {
-    return this.setSettings(...args);
-  }
-
   settings(): VisualizationSettings {
     return this._card && this._card.visualization_settings;
   }
@@ -341,7 +334,7 @@ export default class Question {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
   updateSettings(settings: VisualizationSettings) {
-    return this.setVisualizationSettings({ ...this.settings(), ...settings });
+    return this.setSettings({ ...this.settings(), ...settings });
   }
 
   type(): string {

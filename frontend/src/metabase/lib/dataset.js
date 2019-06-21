@@ -8,8 +8,10 @@ import type {
   ColumnName,
   DatasetData,
 } from "metabase/meta/types/Dataset";
-import type { Card } from "metabase/meta/types/Card";
 import type { Field as FieldReference } from "metabase/meta/types/Query";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Dimension from "metabase-lib/lib/Dimension";
 
 type ColumnSetting = {
   name: ColumnName,
@@ -40,6 +42,10 @@ export const rangeForValue = (
 
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
+ *
+ * NOTE: this returns non-normalized ["fk->", 1, 2] style fk field references
+ * which is unfortunately used in table.columns visualization_settings
+ *
  * @param  {Column} column Dataset result column
  * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?FieldReference} MBQL field reference
@@ -94,15 +100,21 @@ export function findColumnForColumnSetting(
   }
 }
 
+function normalizeFieldRef(fieldRef: ?FieldReference): ?FieldReference {
+  const dimension = Dimension.parseMBQL(fieldRef);
+  return dimension && dimension.mbql();
+}
+
 export function findColumnIndexForColumnSetting(
   columns: Column[],
   columnSetting: ColumnSetting,
 ): number {
-  const { fieldRef } = columnSetting;
+  // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
+  const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
   if (fieldRef != null) {
     const index = _.findIndex(columns, col =>
-      _.isEqual(fieldRef, fieldRefForColumn(col)),
+      _.isEqual(fieldRef, normalizeFieldRef(fieldRefForColumn(col))),
     );
     if (index >= 0) {
       return index;
@@ -112,42 +124,45 @@ export function findColumnIndexForColumnSetting(
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-/**
- * Synchronizes the "table.columns" visualization setting to the structured
- * query's `fields`
- * @param  {[type]} card Card to synchronize `fields`. Mutates value
- * @param  {[type]} cols Columns in last run results
- */
-export function syncQueryFields(card: Card, cols: Column[]): void {
-  if (
-    card.dataset_query.type === "query" &&
-    card.visualization_settings["table.columns"]
-  ) {
-    const visibleColumns = card.visualization_settings["table.columns"]
-      .filter(columnSetting => columnSetting.enabled)
-      .map(columnSetting => findColumnForColumnSetting(cols, columnSetting));
-    const fields = visibleColumns
-      .map(column => column && fieldRefForColumn(column))
-      .filter(field => field);
-    if (!_.isEqual(card.dataset_query.query.fields, fields)) {
-      console.log("fields actual", card.dataset_query.query.fields);
-      console.log("fields expected", fields);
-      card.dataset_query.query.fields = fields;
+export function syncTableColumnsToQuery(question) {
+  let query = question.query();
+  const columnSettings = question.settings()["table.columns"];
+  if (columnSettings && query instanceof StructuredQuery) {
+    // clear `fields` first
+    query = query.clearFields();
+    const columnDimensions = query.columnDimensions();
+    const columnNames = query.columnNames();
+    for (const columnSetting of columnSettings) {
+      if (columnSetting.enabled) {
+        if (columnSetting.fieldRef) {
+          query = query.addField(columnSetting.fieldRef);
+        } else if (columnSetting.name) {
+          const index = _.findIndex(
+            columnNames,
+            name => name === columnSetting.name,
+          );
+          if (index >= 0) {
+            query = query.addField(columnDimensions[index].mbql());
+          } else {
+            console.warn("Unknown column", columnSetting);
+          }
+        } else {
+          console.warn("Unknown column", columnSetting);
+        }
+      }
+    }
+    // if removing `fields` wouldn't change the resulting columns, just remove it
+    const newColumnDimensions = query.columnDimensions();
+    if (
+      columnDimensions.length === newColumnDimensions.length &&
+      _.all(columnDimensions, (d, i) =>
+        d.isSameBaseDimension(newColumnDimensions[i]),
+      )
+    ) {
+      return query.clearFields().question();
+    } else {
+      return query.question();
     }
   }
-}
-
-export function getExistingFields(
-  card: Card,
-  cols: Column[],
-): FieldReference[] {
-  const query = card.dataset_query.query;
-  if (query.fields && query.fields > 0) {
-    return query.fields;
-  } else if (!query.aggregation && !query.breakout) {
-    // $FlowFixMe:
-    return cols.map(col => fieldRefForColumn(col)).filter(id => id != null);
-  } else {
-    return [];
-  }
+  return question;
 }

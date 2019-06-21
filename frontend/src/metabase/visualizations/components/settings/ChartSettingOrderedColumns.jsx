@@ -82,15 +82,9 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleAddNewField = fieldRef => {
-    const { value, onChange, addField } = this.props;
-    onChange([
-      // remove duplicates
-      ...value.filter(
-        columnSetting => !_.isEqual(columnSetting.fieldRef, fieldRef),
-      ),
-      { fieldRef, enabled: true },
-    ]);
-    addField(fieldRef);
+    const { value, onChange } = this.props;
+    const columnSettings = [...value, { fieldRef, enabled: true }];
+    onChange(columnSettings);
   };
 
   getColumnName = columnSetting =>
@@ -108,8 +102,9 @@ export default class ChartSettingOrderedColumns extends Component {
     if (columns && query instanceof StructuredQuery) {
       const fieldRefs = columns.map(column => fieldRefForColumn(column));
       additionalFieldOptions = query.fieldsOptions(dimension => {
-        const mbql = dimension.mbql();
-        return !_.find(fieldRefs, fieldRef => _.isEqual(fieldRef, mbql));
+        return !_.find(fieldRefs, fieldRef =>
+          dimension.isSameBaseDimension(fieldRef),
+        );
       });
     }
 

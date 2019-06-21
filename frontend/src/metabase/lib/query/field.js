@@ -1,6 +1,49 @@
-import type { Field as FieldReference } from "metabase/meta/types/Query";
+import type {
+  Field as FieldReference,
+  FieldsClause,
+} from "metabase/meta/types/Query";
 import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
+
+import { add, update, remove, clear } from "./util";
+
+// returns canonical list of Fields, with nulls removed
+export function getFields(fields: ?FieldsClause): FieldReference[] {
+  return (fields || []).filter(b => b != null);
+}
+
+// turns a list of Fields into the canonical FieldClause
+export function getFieldClause(fields: FieldReference[]): ?FieldsClause {
+  fields = getFields(fields);
+  if (fields.length === 0) {
+    return undefined;
+  } else {
+    return fields;
+  }
+}
+
+export function addField(
+  fields: ?FieldsClause,
+  newField: FieldReference,
+): ?FieldsClause {
+  return getFieldClause(add(getFields(fields), newField));
+}
+export function updateField(
+  fields: ?FieldsClause,
+  index: number,
+  updatedField: FieldReference,
+): ?FieldsClause {
+  return getFieldClause(update(getFields(fields), index, updatedField));
+}
+export function removeField(
+  fields: ?FieldsClause,
+  index: number,
+): ?FieldsClause {
+  return getFieldClause(remove(getFields(fields), index));
+}
+export function clearFields(fields: ?FieldsClause): ?FieldsClause {
+  return getFieldClause(clear());
+}
 
 // gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
 export function getFieldTargetId(field: FieldReference): ?FieldId {

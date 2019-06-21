@@ -125,7 +125,7 @@ describe("Alerts", () => {
         .addBreakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
-        .setVisualizationSettings({
+        .setSettings({
           "graph.dimensions": ["CREATED_AT"],
           "graph.metrics": ["count"],
         })
@@ -140,7 +140,7 @@ describe("Alerts", () => {
         .addBreakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
-        .setVisualizationSettings({
+        .setSettings({
           "graph.show_goal": true,
           "graph.goal_value": 10,
           "graph.dimensions": ["CREATED_AT"],
@@ -158,7 +158,7 @@ describe("Alerts", () => {
         .addBreakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
-        .setVisualizationSettings({
+        .setSettings({
           "graph.show_goal": true,
           "graph.goal_value": 10,
           "graph.dimensions": ["CREATED_AT"],
@@ -174,7 +174,7 @@ describe("Alerts", () => {
         .addAggregation(["count"])
         .question()
         .setDisplay("progress")
-        .setVisualizationSettings({ "progress.goal": 50 })
+        .setSettings({ "progress.goal": 50 })
         .setDisplayName("Progress bar question")
         .setCollectionId(collection.id),
     );

@@ -74,7 +74,6 @@ type Props = {
   runQuestionQuery: (options?: RunQueryParams) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
-  setDatabaseFn: (databaseId: DatabaseId) => void,
   setParameterValue: (parameterId: ParameterId, value: string) => void,
 
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
@@ -171,7 +170,7 @@ export default class NativeQueryEditor extends Component {
         const selectedText = this._editor.getSelectedText();
         if (selectedText) {
           const temporaryCard = query
-            .updateQueryText(selectedText)
+            .setQueryText(selectedText)
             .question()
             .card();
           runQuestionQuery({
@@ -264,7 +263,7 @@ export default class NativeQueryEditor extends Component {
       this._updateSize();
       if (query.queryText() !== this._editor.getValue()) {
         query
-          .updateQueryText(this._editor.getValue())
+          .setQueryText(this._editor.getValue())
           .update(this.props.setDatasetQuery);
       }
     }
@@ -276,16 +275,21 @@ export default class NativeQueryEditor extends Component {
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    // TODO: use metabase-lib
-    this.props.setDatabaseFn(databaseId);
+    const { query } = this.props;
+    if (query.databaseId() !== databaseId) {
+      query
+        .setDatabaseId(databaseId)
+        .setDefaultCollection()
+        .update(this.props.setDatasetQuery);
+    }
   };
 
   setTableId = (tableId: TableId) => {
     // TODO: push more of this into metabase-lib?
     const { query } = this.props;
-    const table = query._metadata.tables[tableId];
+    const table = query.metadata().table(tableId);
     if (table && table.name !== query.collection()) {
-      query.updateCollection(table.name).update(this.props.setDatasetQuery);
+      query.setCollectionName(table.name).update(this.props.setDatasetQuery);
     }
   };
 

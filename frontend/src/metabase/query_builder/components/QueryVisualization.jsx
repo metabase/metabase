@@ -29,7 +29,6 @@ type Props = {
   tableMetadata?: TableMetadata,
   tableForeignKeys?: [],
   tableForeignKeyReferences?: {},
-  setDisplayFn: any => void,
   onUpdateVisualizationSettings: any => void,
   onReplaceAllVisualizationSettings: any => void,
   onOpenChartSettings: any => void,

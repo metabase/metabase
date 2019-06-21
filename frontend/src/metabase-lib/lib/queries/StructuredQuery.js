@@ -853,8 +853,20 @@ export default class StructuredQuery extends AtomicQuery {
     return this.query().fields || [];
   }
 
+  addField(name, expression) {
+    return this._updateQuery(Q.addField, arguments);
+  }
+
+  updateField(name, expression, oldName) {
+    return this._updateQuery(Q.updateField, arguments);
+  }
+
+  removeField(name) {
+    return this._updateQuery(Q.removeField, arguments);
+  }
+
   clearFields() {
-    return this._updateQuery(query => dissoc(query, "fields"));
+    return this._updateQuery(Q.clearFields, arguments);
   }
 
   /**
@@ -1037,6 +1049,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   fieldReferenceForColumn(column) {
     if (column.fk_field_id != null) {
+      // NOTE: this isn't normalized MBQL
       return ["fk->", column.fk_field_id, column.id];
     } else if (column.id != null) {
       return ["field-id", column.id];

@@ -14,14 +14,8 @@ import {
   API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   SET_CARD_AND_RUN,
-  SET_CARD_VISUALIZATION,
-  UPDATE_CARD_VISUALIZATION_SETTINGS,
-  REPLACE_ALL_CARD_VISUALIZATION_SETTINGS,
   UPDATE_TEMPLATE_TAG,
   SET_PARAMETER_VALUE,
-  SET_QUERY_DATABASE,
-  SET_QUERY_SOURCE_TABLE,
-  SET_QUERY_MODE,
   UPDATE_QUESTION,
   RUN_QUERY,
   CLEAR_QUERY_RESULT,
@@ -143,19 +137,8 @@ export const card = handleActions(
     [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
     [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
 
-    [SET_CARD_VISUALIZATION]: { next: (state, { payload }) => payload },
-    [UPDATE_CARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload }) => payload,
-    },
-    [REPLACE_ALL_CARD_VISUALIZATION_SETTINGS]: {
-      next: (state, { payload }) => payload,
-    },
-
     [UPDATE_TEMPLATE_TAG]: { next: (state, { payload }) => payload },
 
-    [SET_QUERY_MODE]: { next: (state, { payload }) => payload },
-    [SET_QUERY_DATABASE]: { next: (state, { payload }) => payload },
-    [SET_QUERY_SOURCE_TABLE]: { next: (state, { payload }) => payload },
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {

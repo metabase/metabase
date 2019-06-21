@@ -101,15 +101,28 @@ export default class NativeQuery extends AtomicQuery {
    * @returns a new query with the provided Database set.
    */
   setDatabase(database: Database): NativeQuery {
-    if (database.id !== this.databaseId()) {
+    return this.setDatabaseId(database.id);
+  }
+  setDatabaseId(databaseId: DatabaseId): NativeQuery {
+    if (databaseId !== this.databaseId()) {
       // TODO: this should reset the rest of the query?
       return new NativeQuery(
         this._originalQuestion,
-        assoc(this.datasetQuery(), "database", database.id),
+        assoc(this.datasetQuery(), "database", databaseId),
       );
     } else {
       return this;
     }
+  }
+
+  setDefaultCollection(): NativeQuery {
+    if (this.requiresTable()) {
+      const tables = this.tables();
+      if (tables && tables.length > 0) {
+        return this.setCollectionName(tables[0].name);
+      }
+    }
+    return this;
   }
 
   hasWritePermission(): boolean {
@@ -137,7 +150,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }
 
-  updateQueryText(newQueryText: string): Query {
+  setQueryText(newQueryText: string): Query {
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
@@ -154,7 +167,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "collection"]);
   }
 
-  updateCollection(newCollection: string) {
+  setCollectionName(newCollection: string) {
     return new NativeQuery(
       this._originalQuestion,
       assocIn(this._datasetQuery, ["native", "collection"], newCollection),
