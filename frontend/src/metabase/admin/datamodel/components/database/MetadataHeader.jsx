@@ -63,7 +63,7 @@ export default class MetadataHeader extends Component {
           },
         },
       ];
-      let triggerElement = (
+      const triggerElement = (
         <span className="text-bold cursor-pointer text-default text-wrap mr2">
           {database.name}
           <Icon className="ml1" name="chevrondown" size={8} />
