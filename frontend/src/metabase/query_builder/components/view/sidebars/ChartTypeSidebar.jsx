@@ -44,7 +44,7 @@ const ChartTypeSidebar = ({
       onClose={onCloseChartType}
     >
       {layout.map(row => (
-        <Flex py={2} mx={3} mb={1} className="flex-wrap">
+        <Flex mx={3} mb={1} className="flex-wrap">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
@@ -96,7 +96,6 @@ const ChartTypeOption = ({
         { "text-white": isSelected },
       )}
       style={{
-        height: 70,
         borderRadius: 18,
       }}
     >

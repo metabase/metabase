@@ -71,9 +71,12 @@ const ActiveSearchColor = color(colors.brand)
   .string();
 
 const SearchWrapper = Flex.extend`
-  ${width} background-color: ${props =>
-  props.active ? ActiveSearchColor : DefaultSearchColor};
+  background-color: ${props =>
+    props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
+  max-width: 50em;
+  min-width: 25em;
+  width: 100%;
   align-items: center;
   color: white;
   transition: background 300ms ease-in;
@@ -289,18 +292,10 @@ export default class Navbar extends Component {
         >
           <LogoIcon dark />
         </Link>
-        <Flex
-          className="absolute top left right bottom z1"
-          px={4}
-          align="center"
-        >
-          <Box w={2 / 3}>
-            <SearchBar
-              location={this.props.location}
-              onChangeLocation={this.props.onChangeLocation}
-            />
-          </Box>
-        </Flex>
+        <SearchBar
+          location={this.props.location}
+          onChangeLocation={this.props.onChangeLocation}
+        />
         <Flex ml="auto" align="center" className="relative z2">
           {hasDataAccess && (
             <Link
@@ -319,13 +314,13 @@ export default class Navbar extends Component {
             <Link
               mr={[1, 2]}
               to={this.props.plainNativeQuery.question().getUrl()}
-              className="flex align-center"
+              className="flex align-center hide sm-show"
               data-metabase-event={`NavBar;Data Browse`}
             >
               <Tooltip tooltip={t`Write SQL`}>
                 <Icon size={17} name="sql" mr={1} />
               </Tooltip>
-              <h4 className="hide sm-show">{t`Write SQL`}</h4>
+              <h4>{t`Write SQL`}</h4>
             </Link>
           )}
           <EntityMenu
