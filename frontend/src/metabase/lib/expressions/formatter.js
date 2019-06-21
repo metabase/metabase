@@ -74,7 +74,7 @@ function formatExpressionReference([, expressionName]) {
 }
 
 function formatMath([operator, ...args], info, parens) {
-  let formatted = args
+  const formatted = args
     .map(arg => format(arg, info, true))
     .join(` ${operator} `);
   return parens ? `(${formatted})` : formatted;

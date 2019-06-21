@@ -57,7 +57,7 @@ export default class FilterOptions extends Component {
 
   getOptionValue(name) {
     const { filter } = this.props;
-    let value = getFilterOptions(filter)[name];
+    const value = getFilterOptions(filter)[name];
     if (value !== undefined) {
       return value;
     }

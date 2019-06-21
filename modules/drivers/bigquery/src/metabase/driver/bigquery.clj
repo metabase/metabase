@@ -10,7 +10,6 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver
@@ -396,17 +395,17 @@
     (hx/identifier :field table-name field-name)))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
-  [driver _ honeysql-form {breakout-field-clauses :breakout, fields-field-clauses :fields}]
+  [driver _ honeysql-form {breakouts :breakout, fields :fields}]
   (-> honeysql-form
       ;; Group by all the breakout fields.
       ;;
       ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
       ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakout-field-clauses))
+      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakouts))
       ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
       ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field-clause breakout-field-clauses
-                                            :when        (not (contains? (set fields-field-clauses) field-clause))]
+      ((partial apply h/merge-select) (for [field-clause breakouts
+                                            :when        (not (contains? (set fields) field-clause))]
                                         (sql.qp/as driver field-clause)))))
 
 ;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
@@ -467,14 +466,7 @@
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 
-;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
-;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
-;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
-;; tests are not appropriate for BigQuery, so they're disabled for the time being.
-;;
-;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
-;; relationships for FK tables
-(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] true)
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
 (defmethod driver.common/current-db-time-date-formatters :bigquery [_]

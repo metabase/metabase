@@ -18,12 +18,12 @@ import cx from "classnames";
 import { getIn } from "icepick";
 
 function getQueryColumns(card, databases) {
-  let dbId = card.dataset_query.database;
+  const dbId = card.dataset_query.database;
   if (card.dataset_query.type !== "query") {
     return null;
   }
-  let query = card.dataset_query.query;
-  let table =
+  const query = card.dataset_query.query;
+  const table =
     databases &&
     databases[dbId] &&
     databases[dbId].tables_lookup[query["source-table"]];
@@ -90,7 +90,9 @@ export default class AddSeriesModal extends Component {
 
   async onCardChange(card, e) {
     const { dashcard, dashcardData } = this.props;
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { CardVisualization } = getVisualizationRaw([
+      { card: dashcard.card },
+    ]);
     try {
       if (e.target.checked) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -100,11 +102,11 @@ export default class AddSeriesModal extends Component {
             clear: true,
           });
         }
-        let sourceDataset = getIn(this.props.dashcardData, [
+        const sourceDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           dashcard.card.id,
         ]);
-        let seriesDataset = getIn(this.props.dashcardData, [
+        const seriesDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           card.id,
         ]);
@@ -177,7 +179,9 @@ export default class AddSeriesModal extends Component {
       data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
     };
 
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { CardVisualization } = getVisualizationRaw([
+      { card: dashcard.card },
+    ]);
 
     return cards.filter(card => {
       try {
@@ -230,14 +234,14 @@ export default class AddSeriesModal extends Component {
       });
     }
 
-    let badCards = this.state.badCards;
+    const badCards = this.state.badCards;
 
-    let enabledCards = {};
-    for (let c of this.state.series) {
+    const enabledCards = {};
+    for (const c of this.state.series) {
       enabledCards[c.id] = true;
     }
 
-    let series = [dashcard.card]
+    const series = [dashcard.card]
       .concat(this.state.series)
       .map(card => ({
         card: card,

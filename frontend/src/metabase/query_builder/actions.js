@@ -127,8 +127,8 @@ export const updateUrl = createThunkAction(
     if (!card) {
       return;
     }
-    let copy = cleanCopyCard(card);
-    let newState = {
+    const copy = cleanCopyCard(card);
+    const newState = {
       card: copy,
       cardId: copy.id,
       serializedCard: serializeCardForUrl(copy),
@@ -140,7 +140,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    let url = urlForCardState(newState, dirty);
+    const url = urlForCardState(newState, dirty);
 
     // if the serialized card is identical replace the previous state instead of adding a new one
     // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
@@ -194,7 +194,7 @@ export const initializeQB = (location, params) => {
     const { currentUser } = getState();
 
     let card, databasesList, originalCard;
-    let uiControls: UiControls = {
+    const uiControls: UiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
     };
@@ -218,7 +218,7 @@ export const initializeQB = (location, params) => {
     let serializedCard;
     // hash can contain either query params starting with ? or a base64 serialized card
     if (location.hash) {
-      let hash = location.hash.replace(/^#/, "");
+      const hash = location.hash.replace(/^#/, "");
       if (hash.charAt(0) === "?") {
         options = querystring.parse(hash.substring(1));
       } else {
@@ -423,7 +423,7 @@ export const CANCEL_EDITING = "metabase/qb/CANCEL_EDITING";
 export const cancelEditing = createThunkAction(CANCEL_EDITING, () => {
   return (dispatch, getState) => {
     // clone
-    let card = Utils.copy(getOriginalCard(getState()));
+    const card = Utils.copy(getOriginalCard(getState()));
 
     dispatch(loadMetadataForCard(card));
 
@@ -544,7 +544,7 @@ function updateVisualizationSettings(
     return card;
   }
 
-  let updatedCard = Utils.copy(card);
+  const updatedCard = Utils.copy(card);
 
   // when the visualization changes on saved card we change this into a new card w/ a known starting point
   if (!isEditing && updatedCard.id) {
@@ -577,7 +577,7 @@ export const setCardVisualization = createThunkAction(
       const {
         qb: { card, uiControls },
       } = getState();
-      let updatedCard = updateVisualizationSettings(
+      const updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
         display,
@@ -599,7 +599,7 @@ export const updateCardVisualizationSettings = createThunkAction(
       const {
         qb: { card, uiControls },
       } = getState();
-      let updatedCard = updateVisualizationSettings(
+      const updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
         card.display,
@@ -621,7 +621,7 @@ export const replaceAllCardVisualizationSettings = createThunkAction(
       const {
         qb: { card, uiControls },
       } = getState();
-      let updatedCard = updateVisualizationSettings(
+      const updatedCard = updateVisualizationSettings(
         card,
         uiControls.isEditing,
         card.display,
@@ -643,7 +643,7 @@ export const updateTemplateTag = createThunkAction(
         qb: { card, uiControls },
       } = getState();
 
-      let updatedCard = Utils.copy(card);
+      const updatedCard = Utils.copy(card);
 
       // when the query changes on saved card we change this into a new query w/ a known starting point
       if (!uiControls.isEditing && updatedCard.id) {
@@ -675,7 +675,7 @@ export const RELOAD_CARD = "metabase/qb/RELOAD_CARD";
 export const reloadCard = createThunkAction(RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     // clone
-    let card = Utils.copy(getOriginalCard(getState()));
+    const card = Utils.copy(getOriginalCard(getState()));
 
     dispatch(loadMetadataForCard(card));
 
@@ -800,7 +800,7 @@ export const apiCreateQuestion = question => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    let resultsMetadata = getResultsMetadata(getState());
+    const resultsMetadata = getResultsMetadata(getState());
     const createdQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
@@ -833,7 +833,7 @@ export const apiUpdateQuestion = question => {
       ? getQuestionWithDefaultVisualizationSettings(question, series)
       : question;
 
-    let resultsMetadata = getResultsMetadata(getState());
+    const resultsMetadata = getResultsMetadata(getState());
     const updatedQuestion = await questionWithVizSettings
       .setQuery(question.query().clean())
       .setResultsMetadata(resultsMetadata)
@@ -926,9 +926,9 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
       queryResult.data &&
       queryResult.data.native_form
     ) {
-      let updatedCard = Utils.copy(card);
-      let datasetQuery = updatedCard.dataset_query;
-      let nativeQuery = _.pick(
+      const updatedCard = Utils.copy(card);
+      const datasetQuery = updatedCard.dataset_query;
+      const nativeQuery = _.pick(
         queryResult.data.native_form,
         "query",
         "collection",
@@ -969,14 +969,14 @@ export const setQueryMode = createThunkAction(SET_QUERY_MODE, type => {
 
       // only carry over the database id if the user can write native queries
       if (type === "native") {
-        let nativeDatabases = getNativeDatabases(getState());
+        const nativeDatabases = getNativeDatabases(getState());
         if (!_.findWhere(nativeDatabases, { id: databaseId })) {
           databaseId =
             nativeDatabases.length > 0 ? nativeDatabases[0].id : null;
         }
       }
 
-      let newCard = startNewCard(type, databaseId);
+      const newCard = startNewCard(type, databaseId);
 
       dispatch(loadMetadataForCard(newCard));
 
@@ -1003,11 +1003,11 @@ export const setQueryDatabase = createThunkAction(
         return card;
       }
 
-      let existingQuery = card.dataset_query.native
+      const existingQuery = card.dataset_query.native
         ? card.dataset_query.native.query
         : undefined;
       if (!uiControls.isEditing) {
-        let updatedCard = startNewCard(card.dataset_query.type, databaseId);
+        const updatedCard = startNewCard(card.dataset_query.type, databaseId);
         if (existingQuery) {
           updatedCard.dataset_query.native.query = existingQuery;
           updatedCard.dataset_query.native["template-tags"] =
@@ -1031,7 +1031,7 @@ export const setQueryDatabase = createThunkAction(
       } else {
         // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
         // TODO: should this clear the visualization as well?
-        let updatedCard = Utils.copy(card);
+        const updatedCard = Utils.copy(card);
         updatedCard.dataset_query = createQuery(
           card.dataset_query.type,
           databaseId,
@@ -1090,9 +1090,9 @@ export const setQuerySourceTable = createThunkAction(
       } else {
         // if we are editing a saved query we don't want to replace the card, so just start a fresh query only
         // TODO: should this clear the visualization as well?
-        let query = createQuery(card.dataset_query.type, databaseId, tableId);
+        const query = createQuery(card.dataset_query.type, databaseId, tableId);
 
-        let updatedCard = Utils.copy(card);
+        const updatedCard = Utils.copy(card);
         updatedCard.dataset_query = query;
         return updatedCard;
       }
@@ -1240,6 +1240,7 @@ export const runQuestionQuery = ({
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
+        ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
       .then(queryResults =>
@@ -1386,7 +1387,7 @@ export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
     }
 
     // action is on an FK column
-    let newCard = startNewCard("query", card.dataset_query.database);
+    const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
     newCard.dataset_query.query.aggregation = ["rows"];
@@ -1414,7 +1415,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
 
       function getObjectDetailIdValue(data) {
         for (let i = 0; i < data.cols.length; i++) {
-          let coldef = data.cols[i];
+          const coldef = data.cols[i];
           if (isPK(coldef.special_type)) {
             return data.rows[0][i];
           }
@@ -1422,7 +1423,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       }
 
       async function getFKCount(card, queryResult, fk) {
-        let fkQuery = createQuery("query");
+        const fkQuery = createQuery("query");
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
@@ -1431,10 +1432,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
           ["=", fk.origin.id, getObjectDetailIdValue(queryResult.data)],
         ];
 
-        let info = { status: 0, value: null };
+        const info = { status: 0, value: null };
 
         try {
-          let result = await MetabaseApi.dataset(fkQuery);
+          const result = await MetabaseApi.dataset(fkQuery);
           if (
             result &&
             result.status === "completed" &&
@@ -1458,10 +1459,10 @@ export const loadObjectDetailFKReferences = createThunkAction(
       // skipping that for now because it's easier to just run this each time
 
       // run a query on FK origin table where FK origin field = objectDetailIdValue
-      let fkReferences = {};
+      const fkReferences = {};
       for (let i = 0; i < tableForeignKeys.length; i++) {
-        let fk = tableForeignKeys[i],
-          info = await getFKCount(card, queryResult, fk);
+        const fk = tableForeignKeys[i];
+        const info = await getFKCount(card, queryResult, fk);
         fkReferences[fk.origin.id] = info;
       }
 
@@ -1506,7 +1507,7 @@ export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
 export const archiveQuestion = createThunkAction(
   ARCHIVE_QUESTION,
   (questionId, archived = true) => async (dispatch, getState) => {
-    let card = getState().qb.card;
+    const card = getState().qb.card;
 
     await dispatch(Questions.actions.setArchived({ id: card.id }, archived));
 
@@ -1518,9 +1519,9 @@ export const VIEW_NEXT_OBJECT_DETAIL = "metabase/qb/VIEW_NEXT_OBJECT_DETAIL";
 export const viewNextObjectDetail = () => {
   return (dispatch, getState) => {
     const question = getQuestion(getState());
-    let filter = question.query().filters()[0];
+    const filter = question.query().filters()[0];
 
-    let newFilter = ["=", filter[1], filter[2] + 1];
+    const newFilter = ["=", filter[1], filter[2] + 1];
 
     dispatch.action(VIEW_NEXT_OBJECT_DETAIL);
 
@@ -1543,13 +1544,13 @@ export const VIEW_PREVIOUS_OBJECT_DETAIL =
 export const viewPreviousObjectDetail = () => {
   return (dispatch, getState) => {
     const question = getQuestion(getState());
-    let filter = question.query().filters()[0];
+    const filter = question.query().filters()[0];
 
     if (filter[2] === 1) {
       return false;
     }
 
-    let newFilter = ["=", filter[1], filter[2] - 1];
+    const newFilter = ["=", filter[1], filter[2] - 1];
 
     dispatch.action(VIEW_PREVIOUS_OBJECT_DETAIL);
 

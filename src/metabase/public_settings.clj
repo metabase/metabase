@@ -9,6 +9,7 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util
              [i18n :refer [available-locales-with-names set-locale trs tru]]
@@ -88,7 +89,7 @@
 
 (defsetting map-tile-server-url
   (tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
   (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
@@ -201,7 +202,7 @@
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
    :custom_formatting     (setting/get :custom-formatting)
-   :email_configured      (do (require 'metabase.email)
+   :email_configured      (do (classloader/require 'metabase.email)
                               ((resolve 'metabase.email/email-configured?)))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
@@ -212,7 +213,7 @@
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (do (require 'metabase.integrations.ldap)
+   :ldap_configured       (do (classloader/require 'metabase.integrations.ldap)
                               ((resolve 'metabase.integrations.ldap/ldap-configured?)))
    :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
@@ -222,7 +223,7 @@
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           (do
-                            (require 'metabase.setup)
+                            (classloader/require 'metabase.setup)
                             ((resolve 'metabase.setup/token-value)))
    :site_name             (site-name)
    :site_url              (site-url)

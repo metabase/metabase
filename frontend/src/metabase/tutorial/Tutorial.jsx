@@ -16,7 +16,7 @@ export function qs(selector) {
 }
 
 export function qsWithContent(selector, content) {
-  for (let element of document.querySelectorAll(selector)) {
+  for (const element of document.querySelectorAll(selector)) {
     if (element.textContent === content) {
       return element;
     }
@@ -62,7 +62,7 @@ export default class Tutorial extends Component {
   }
 
   mouseEventInterceptHandler(e) {
-    let step = this.props.steps[this.state.step];
+    const step = this.props.steps[this.state.step];
 
     // don't intercept if we've somehow gotten into a weird state
     if (!step) {
@@ -75,7 +75,7 @@ export default class Tutorial extends Component {
     }
 
     // don't intercept events within the modal screens
-    for (let modal of document.querySelectorAll(".TutorialModalContent")) {
+    for (const modal of document.querySelectorAll(".TutorialModalContent")) {
       if (modal.contains(e.target)) {
         return;
       }
@@ -227,7 +227,7 @@ export default class Tutorial extends Component {
   }
 
   render() {
-    let step = this.props.steps[this.state.step];
+    const step = this.props.steps[this.state.step];
 
     if (!step) {
       return null;
@@ -259,8 +259,8 @@ export default class Tutorial extends Component {
 
     let modal;
     if (step.getModal) {
-      let modalSteps = this.props.steps.filter(s => !!s.getModal);
-      let modalStepIndex = modalSteps.indexOf(step);
+      const modalSteps = this.props.steps.filter(s => !!s.getModal);
+      const modalStepIndex = modalSteps.indexOf(step);
       modal = (
         <TutorialModal
           modalStepIndex={modalStepIndex}

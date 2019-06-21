@@ -7,10 +7,12 @@
             [compojure.core :refer [POST]]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
              [util :as qputil]]
@@ -41,7 +43,7 @@
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
   ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
-  (when-not (= database database/virtual-id)
+  (when-not (= database mbql.s/saved-questions-virtual-database-id)
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
@@ -142,7 +144,7 @@
   {query         su/JSONString
    export-format ExportFormat}
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database database/virtual-id)
+    (when-not (= database mbql.s/saved-questions-virtual-database-id)
       (api/read-check Database database))
     (as-format-async export-format respond raise
       (qp.async/process-query-and-save-execution!
@@ -167,6 +169,11 @@
                    [query
                     (assoc query :constraints constraints/default-query-constraints)])
              0)})
+
+(api/defendpoint POST "/native"
+  "Fetch a native version of an MBQL query."
+  [:as {query :body}]
+  (qp/query->native query))
 
 
 (api/define-routes)

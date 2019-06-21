@@ -184,7 +184,7 @@ export function applyParameters(
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
-    let value = parameterValues[parameter.id];
+    const value = parameterValues[parameter.id];
     if (value == null) {
       continue;
     }

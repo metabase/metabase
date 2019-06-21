@@ -79,12 +79,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Segments State", async () => {
-      let segmentIds = [];
+      const segmentIds = [];
 
       beforeAll(async () => {
         // Create some segments to have something to look at
-        let segment = await SegmentApi.create(segmentDef);
-        let anotherSegment = await SegmentApi.create(anotherSegmentDef);
+        const segment = await SegmentApi.create(segmentDef);
+        const anotherSegment = await SegmentApi.create(anotherSegmentDef);
         segmentIds.push(segment.id);
         segmentIds.push(anotherSegment.id);
       });
@@ -158,7 +158,7 @@ describe("The Reference Section", () => {
           ["dataset_query", "query", "filter", 1],
           segmentIds[0],
         );
-        let card = await CardApi.create(cardDef);
+        const card = await CardApi.create(cardDef);
 
         expect(card.name).toBe(segmentCardDef.name);
 

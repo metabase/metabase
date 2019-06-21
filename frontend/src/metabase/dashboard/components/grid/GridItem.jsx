@@ -30,9 +30,9 @@ export default class GridItem extends Component {
       }
 
       // track vertical scroll. we don't need horizontal  allow horizontal scrolling
-      let scrollTopDelta = document.body.scrollTop - dragStartScrollTop;
+      const scrollTopDelta = document.body.scrollTop - dragStartScrollTop;
       // compute new position
-      let pos = {
+      const pos = {
         x: x - dragStartPosition.x,
         y: y - dragStartPosition.y + scrollTopDelta,
       };
@@ -73,7 +73,7 @@ export default class GridItem extends Component {
       height = Math.max(minSize.height, this.state.resizing.height);
     }
 
-    let style = {
+    const style = {
       width,
       height,
       top,
@@ -81,7 +81,7 @@ export default class GridItem extends Component {
       position: "absolute",
     };
 
-    let child = React.Children.only(this.props.children);
+    const child = React.Children.only(this.props.children);
     return (
       <DraggableCore
         cancel=".react-resizable-handle, .drag-disabled"

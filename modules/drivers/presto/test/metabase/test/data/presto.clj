@@ -4,6 +4,9 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [metabase
+             [config :as config]
+             [driver :as driver]]
             [metabase.driver.presto :as presto]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -13,6 +16,9 @@
   (:import java.util.Date))
 
 (sql.tx/add-test-extensions! :presto)
+
+;; during unit tests don't treat presto as having FK support
+(defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
 
 ;;; IDriverTestExtensions implementation
 

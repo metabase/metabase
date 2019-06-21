@@ -11,9 +11,9 @@
   https://www.javaworld.com/article/2077344/core-java/find-a-way-out-of-the-classloader-maze.html.
 
   <3 Cam"
+  (:refer-clojure :exclude [require])
   (:require [clojure.tools.logging :as log]
             [dynapath.util :as dynapath]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]])
   (:import [clojure.lang DynamicClassLoader RT]
            java.net.URL))
@@ -80,9 +80,22 @@
      (when (has-shared-context-classloader-as-ancestor? current-thread-context-classloader)
        current-thread-context-classloader))
    ;; otherwise set the current thread's context classloader to the shared context classloader
-   (u/prog1 @shared-context-classloader
-     (log/debug (trs "Setting current thread context classloader to shared classloader {0}..." <>))
-     (.setContextClassLoader (Thread/currentThread) <>))))
+   (let [shared-classloader @shared-context-classloader]
+     (log/debug (trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
+     (.setContextClassLoader (Thread/currentThread) shared-classloader)
+     shared-classloader)))
+
+(defn require
+  "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
+  `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
+  errors."
+  [& args]
+  ;; done for side-effects to ensure context classloader is the right one
+  (the-classloader)
+  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
+  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
+  (binding [*use-context-classloader* true]
+    (apply clojure.core/require args)))
 
 
 (defn- classloader-hierarchy
@@ -120,4 +133,4 @@
     ;; `add-classpath-url` will return non-truthy if it couldn't add the URL, e.g. because the classloader wasn't one
     ;; that allowed it
     (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
-    (log/info (u/format-color 'blue (trs "Added URL {0} to classpath" url)))))
+    (log/info (trs "Added URL {0} to classpath" url))))

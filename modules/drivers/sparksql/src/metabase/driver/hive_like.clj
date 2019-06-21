@@ -22,25 +22,27 @@
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like [_ database-type]
-  ({ ;; Numeric types
-    :tinyint                     :type/Integer
-    :smallint                    :type/Integer
-    :int                         :type/Integer
-    :integer                     :type/Integer
-    :bigint                      :type/BigInteger
-    :float                       :type/Float
-    :double                      :type/Float
-    (keyword "double precision") :type/Float
-    :decimal                     :type/Decimal
-    ;; Date/Time types
-    :timestamp                   :type/DateTime
-    :date                        :type/Date
-    :interval                    :type/*
-    :string                      :type/Text
-    :varchar                     :type/Text
-    :char                        :type/Text
-    :boolean                     :type/Boolean
-    :binary                      :type/*} database-type))
+  (condp re-matches (name database-type)
+    #"boolean"          :type/Boolean
+    #"tinyint"          :type/Integer
+    #"smallint"         :type/Integer
+    #"int"              :type/Integer
+    #"bigint"           :type/BigInteger
+    #"float"            :type/Float
+    #"double"           :type/Float
+    #"double precision" :type/Double
+    #"decimal.*"        :type/Decimal
+    #"char.*"           :type/Text
+    #"varchar.*"        :type/Text
+    #"string.*"         :type/Text
+    #"binary*"          :type/*
+    #"date"             :type/Date
+    #"time"             :type/Time
+    #"timestamp"        :type/DateTime
+    #"interval"         :type/*
+    #"array.*"          :type/Array
+    #"map"              :type/Dictionary
+    #".*"               :type/*))
 
 (defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
 

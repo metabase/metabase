@@ -57,7 +57,7 @@ export default class TablePane extends Component {
   }
 
   setQueryAllRows() {
-    let card = createCard();
+    const card = createCard();
     card.dataset_query = createQuery(
       "query",
       this.state.table.db_id,
@@ -69,13 +69,13 @@ export default class TablePane extends Component {
   render() {
     const { table, error } = this.state;
     if (table) {
-      let panes = {
+      const panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
         // "segments": table.segments.length,
         connections: this.state.tableForeignKeys.length,
       };
-      let tabs = Object.entries(panes).map(([name, count]) => (
+      const tabs = Object.entries(panes).map(([name, count]) => (
         <a
           key={name}
           className={cx("Button Button--small", {
@@ -89,9 +89,8 @@ export default class TablePane extends Component {
       ));
 
       let pane;
-      let description;
       const descriptionClasses = cx({ "text-medium": !table.description });
-      description = (
+      const description = (
         <p className={"text-spaced " + descriptionClasses}>
           {table.description || t`No description set.`}
         </p>

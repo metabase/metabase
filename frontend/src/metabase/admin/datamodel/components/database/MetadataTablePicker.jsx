@@ -32,10 +32,10 @@ export default class MetadataTablePicker extends Component {
 
   componentWillReceiveProps({ tables: allTables, databaseId, tableId }) {
     const tables = allTables.filter(({ db_id }) => db_id === databaseId);
-    let schemas = {};
+    const schemas = {};
     let selectedSchema;
-    for (let table of tables) {
-      let name = table.schema || ""; // possibly null
+    for (const table of tables) {
+      const name = table.schema || ""; // possibly null
       schemas[name] = schemas[name] || {
         name: titleize(humanize(name)),
         tables: [],

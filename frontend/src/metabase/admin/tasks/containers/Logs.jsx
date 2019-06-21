@@ -41,8 +41,8 @@ export default class Logs extends Component {
       this._onScrollDebounced();
     };
     this._onScrollDebounced = _.debounce(() => {
-      let elem = ReactDOM.findDOMNode(this).parentNode;
-      let scrollToBottom =
+      const elem = ReactDOM.findDOMNode(this).parentNode;
+      const scrollToBottom =
         Math.abs(elem.scrollTop - (elem.scrollHeight - elem.offsetHeight)) < 10;
       this.setState({ scrollToBottom }, () => {
         this.scrolling = false;
@@ -51,7 +51,7 @@ export default class Logs extends Component {
   }
 
   async fetchLogs() {
-    let logs = await UtilApi.logs();
+    const logs = await UtilApi.logs();
     this.setState({ logs: logs.reverse() });
   }
 
@@ -60,12 +60,12 @@ export default class Logs extends Component {
   }
 
   componentDidMount() {
-    let elem = ReactDOM.findDOMNode(this).parentNode;
+    const elem = ReactDOM.findDOMNode(this).parentNode;
     elem.addEventListener("scroll", this._onScroll, false);
   }
 
   componentDidUpdate() {
-    let elem = ReactDOM.findDOMNode(this).parentNode;
+    const elem = ReactDOM.findDOMNode(this).parentNode;
     if (!this.scrolling && this.state.scrollToBottom) {
       if (elem.scrollTop !== elem.scrollHeight - elem.offsetHeight) {
         elem.scrollTop = elem.scrollHeight - elem.offsetHeight;
@@ -74,13 +74,13 @@ export default class Logs extends Component {
   }
 
   componentWillUnmount() {
-    let elem = ReactDOM.findDOMNode(this).parentNode;
+    const elem = ReactDOM.findDOMNode(this).parentNode;
     elem.removeEventListener("scroll", this._onScroll, false);
     clearTimeout(this.timer);
   }
 
   render() {
-    let { logs } = this.state;
+    const { logs } = this.state;
     return (
       <LoadingAndErrorWrapper loading={!logs || logs.length === 0}>
         {() => (

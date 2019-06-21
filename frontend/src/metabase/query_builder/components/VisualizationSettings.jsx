@@ -31,12 +31,12 @@ export default class VisualizationSettings extends React.Component {
   };
 
   renderChartTypePicker() {
-    let { result, question } = this.props;
-    let { CardVisualization } = getVisualizationRaw([
+    const { result, question } = this.props;
+    const { CardVisualization } = getVisualizationRaw([
       { card: question.card(), data: result.data },
     ]);
 
-    let triggerElement = (
+    const triggerElement = (
       <div className="p1 text-bold cursor-pointer text-default flex align-center">
         <Icon className="mr1" name={CardVisualization.iconName} size={12} />
         {CardVisualization.uiName}

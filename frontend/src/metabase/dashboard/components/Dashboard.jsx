@@ -236,7 +236,7 @@ export default class Dashboard extends Component {
       isNightMode,
       hideParameters,
     } = this.props;
-    let { error } = this.state;
+    const { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;

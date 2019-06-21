@@ -34,7 +34,7 @@ export const createMembership = createAction(
   CREATE_MEMBERSHIP,
   async ({ userId, groupId }) => {
     // pull the membership_id from the list of all memberships of the group
-    let groupMemberships = await PermissionsApi.createMembership({
+    const groupMemberships = await PermissionsApi.createMembership({
       user_id: userId,
       group_id: groupId,
     });

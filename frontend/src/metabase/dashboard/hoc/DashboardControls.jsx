@@ -87,7 +87,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       loadDashboardParams = () => {
         const { location } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         this.setRefreshPeriod(
           Number.isNaN(options.refresh) || options.refresh === 0
             ? null
@@ -101,7 +101,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       updateDashboardParams = () => {
         const { location, replace } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         const setValue = (name, value) => {
           if (value) {
             options[name] = value;
@@ -177,7 +177,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       };
 
       _tickRefreshClock = async () => {
-        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
+        const refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
         if (
           this.state.refreshPeriod &&
           refreshElapsed >= this.state.refreshPeriod

@@ -54,7 +54,7 @@ describe("utils", () => {
 
   describe("compareVersions", () => {
     it("should compare versions correctly", () => {
-      let expected = [
+      const expected = [
         "0.0.9",
         "0.0.10-snapshot",
         "0.0.10-alpha1",
@@ -67,7 +67,7 @@ describe("utils", () => {
         "0.10.0",
         "1.1.0",
       ];
-      let shuffled = expected.slice();
+      const shuffled = expected.slice();
       shuffle(shuffled);
       shuffled.sort(MetabaseUtils.compareVersions);
       expect(shuffled).toEqual(expected);
@@ -93,7 +93,7 @@ describe("utils", () => {
 
 function shuffle(a) {
   for (let i = a.length; i; i--) {
-    let j = Math.floor(Math.random() * i);
+    const j = Math.floor(Math.random() * i);
     [a[i - 1], a[j]] = [a[j], a[i - 1]];
   }
 }

@@ -226,8 +226,8 @@ export default class NativeQuery extends AtomicQuery {
       // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
       // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-      let match,
-        re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
+      let match;
+      const re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
@@ -236,14 +236,14 @@ export default class NativeQuery extends AtomicQuery {
       const existingTemplateTags = this.templateTagsMap();
 
       tags = _.uniq(tags);
-      let existingTags = Object.keys(existingTemplateTags);
+      const existingTags = Object.keys(existingTemplateTags);
 
       // if we ended up with any variables in the query then update the card parameters list accordingly
       if (tags.length > 0 || existingTags.length > 0) {
-        let newTags = _.difference(tags, existingTags);
-        let oldTags = _.difference(existingTags, tags);
+        const newTags = _.difference(tags, existingTags);
+        const oldTags = _.difference(existingTags, tags);
 
-        let templateTags = { ...existingTemplateTags };
+        const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
           templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
@@ -261,7 +261,7 @@ export default class NativeQuery extends AtomicQuery {
           }
 
           // create new vars
-          for (let tagName of newTags) {
+          for (const tagName of newTags) {
             templateTags[tagName] = {
               id: Utils.uuid(),
               name: tagName,

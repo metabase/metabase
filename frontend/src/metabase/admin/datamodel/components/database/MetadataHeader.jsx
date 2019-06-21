@@ -48,11 +48,11 @@ export default class MetadataHeader extends Component {
   }
 
   renderDbSelector() {
-    let database = this.props.databases.filter(
+    const database = this.props.databases.filter(
       db => db.id === this.props.databaseId,
     )[0];
     if (database) {
-      let columns = [
+      const columns = [
         {
           selectedItem: database,
           items: this.props.databases,

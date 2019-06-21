@@ -13,6 +13,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -38,8 +39,8 @@
 ;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
 ;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
 (when-not *compile-files*
-  (require 'monger.joda-time
-           'monger.json))
+  (classloader/require 'monger.joda-time
+                       'monger.json))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -592,8 +593,8 @@
      [k (keyword unescaped)])))
 
 (defn- unescape-names
-  "Restore the original, unescaped nested Field names in the keys of RESULTS.
-   E.g. `:source___service` becomes `:source.service`"
+  "Restore the original, unescaped nested Field names in the keys of `results`.
+  e.g. `:source___service` becomes `:source.service`"
   [results]
   ;; Build a map of escaped key -> unescaped key by looking at the keys in the first result
   ;; e.g. {:source___username :source.username}
@@ -608,7 +609,7 @@
 
 (defn- unstringify-dates
   "Convert string dates, which we wrap in dictionaries like `{:___date <str>}`, back to `Timestamps`.
-   This can't be done within the Mongo aggregation framework itself."
+  This can't be done within the Mongo aggregation framework itself."
   [results]
   (for [row results]
     (into
@@ -647,8 +648,8 @@
 ;; we're missing NumberDecimal but not sure how that's supposed to be converted to a Java type
 
 (defn- form->encoded-fn-name
-  "If FORM is an encoded fn call form return the key representing the fn call that was encoded.
-   If it doesn't represent an encoded fn, return `nil`.
+  "If `form` is an encoded fn call form return the key representing the fn call that was encoded.
+  If it doesn't represent an encoded fn, return `nil`.
 
      (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
   [form]
@@ -668,7 +669,7 @@
   (walk/postwalk maybe-decode-fncall query))
 
 (defn- encode-fncalls-for-fn
-  "Walk QUERY-STRING and replace fncalls to fn with FN-NAME with encoded forms that can be parsed as valid JSON.
+  "Walk `query-string` and replace fncalls to fn with `fn-name` with encoded forms that can be parsed as valid JSON.
 
      (encode-fncalls-for-fn \"ObjectId\" \"{\\\"$match\\\":ObjectId(\\\"583327789137b2700a1621fb\\\")}\")
      ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
@@ -683,7 +684,7 @@
   "Replace occurances of `ISODate(...)` and similary function calls (invalid JSON, but legal in Mongo)
    with legal JSON forms like `[:___ISODate ...]` that we can decode later.
 
-   Walks QUERY-STRING and encodes all the various fncalls we support."
+   Walks `query-string` and encodes all the various fncalls we support."
   [query-string]
   (loop [query-string query-string, [fn-name & more] (keys fn-name->decoder)]
     (if-not fn-name

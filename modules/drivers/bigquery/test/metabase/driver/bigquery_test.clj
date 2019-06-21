@@ -54,9 +54,9 @@
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-driver :bigquery
   {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    [{:name "venue_id",    :display_name "Venue ID",    :source :native, :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID",    :source :native, :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID", :source :native, :base_type :type/Integer}]}
+   :cols    [{:name "venue_id",    :display_name "venue_id",    :source :native, :base_type :type/Integer}
+             {:name "user_id",     :display_name "user_id",     :source :native, :base_type :type/Integer}
+             {:name "checkins_id", :display_name "checkins_id", :source :native, :base_type :type/Integer}]}
 
   (select-keys (:data (qp/process-query
                         {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
@@ -196,7 +196,7 @@
   "2018-08-31T00:00:00.000-05:00"
    (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
 
@@ -205,7 +205,7 @@
   "2018-08-31T00:00:00.000+07:00"
   (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
 

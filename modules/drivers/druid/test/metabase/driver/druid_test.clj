@@ -103,12 +103,12 @@
                :rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
                :cols        (mapv #(merge col-defaults %)
-                                  [{:name "timestamp",   :source :native, :display_name "Timestamp"}
-                                   {:name "id",          :source :native, :display_name "ID"}
-                                   {:name "user_name",   :source :native, :display_name "User Name"}
-                                   {:name "venue_price", :source :native, :display_name "Venue Price"}
-                                   {:name "venue_name",  :source :native, :display_name "Venue Name"}
-                                   {:name "count",       :source :native, :display_name "Count", :base_type :type/Integer}])
+                                  [{:name "timestamp",   :source :native, :display_name "timestamp"}
+                                   {:name "id",          :source :native, :display_name "id"}
+                                   {:name "user_name",   :source :native, :display_name "user_name"}
+                                   {:name "venue_price", :source :native, :display_name "venue_price"}
+                                   {:name "venue_name",  :source :native, :display_name "venue_name"}
+                                   {:name "count",       :source :native, :display_name "count", :base_type :type/Integer}])
                :native_form {:query native-query-1}}}
   (-> (process-native-query native-query-1)
       (m/dissoc-in [:data :insights])))

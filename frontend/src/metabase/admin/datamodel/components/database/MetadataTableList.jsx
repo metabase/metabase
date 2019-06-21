@@ -37,14 +37,14 @@ export default class MetadataTableList extends Component {
 
   render() {
     let queryableTablesHeader, hiddenTablesHeader;
-    let queryableTables = [];
-    let hiddenTables = [];
+    const queryableTables = [];
+    const hiddenTables = [];
 
     if (this.props.tables) {
-      let tables = _.sortBy(this.props.tables, "display_name");
+      const tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
         const selected = this.props.tableId === table.id;
-        let row = (
+        const row = (
           <li key={table.id}>
             <a
               className={cx(
@@ -59,7 +59,7 @@ export default class MetadataTableList extends Component {
             </a>
           </li>
         );
-        let regex = this.state.searchRegex;
+        const regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||

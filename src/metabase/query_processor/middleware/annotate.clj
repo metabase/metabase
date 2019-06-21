@@ -44,8 +44,7 @@
   (vec (for [i    (range (count columns))
              :let [col (nth columns i)]]
          {:name         (name col)
-          :display_name (or (humanization/name->human-readable-name (u/keyword->qualified-name col))
-                            (u/keyword->qualified-name col))
+          :display_name (u/keyword->qualified-name col)
           :base_type    (or (driver.common/values->base-type (for [row rows]
                                                                (nth row i)))
                             :type/*)
@@ -63,7 +62,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private join-with-alias :- (s/maybe mbql.s/Join)
-  [{{:keys [joins]} :query} :- su/Map, join-alias :- su/NonBlankString]
+  [{:keys [joins]} :- su/Map, join-alias :- su/NonBlankString]
   (some
    (fn [{:keys [alias], :as join}]
      (when (= alias join-alias)
@@ -73,25 +72,25 @@
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [query :- su/Map, clause :- mbql.s/Field]
+  [inner-query :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
     [:binning-strategy field strategy _ resolved-options]
-    (assoc (col-info-for-field-clause query field)
+    (assoc (col-info-for-field-clause inner-query field)
       :binning_info (assoc (u/snake-keys resolved-options)
                       :binning_strategy strategy))
 
     [:datetime-field field unit]
-    (assoc (col-info-for-field-clause query field) :unit unit)
+    (assoc (col-info-for-field-clause inner-query field) :unit unit)
 
     [:joined-field alias field]
-    (let [{:keys [fk-field-id]} (join-with-alias query alias)]
-      (assoc (col-info-for-field-clause query field) :fk_field_id fk-field-id))
+    (let [{:keys [fk-field-id]} (join-with-alias inner-query alias)]
+      (assoc (col-info-for-field-clause inner-query field) :fk_field_id fk-field-id))
 
     ;; TODO - should be able to remove this now
     [:fk-> [:field-id source-field-id] field]
-    (assoc (col-info-for-field-clause query field) :fk_field_id source-field-id)
+    (assoc (col-info-for-field-clause inner-query field) :fk_field_id source-field-id)
 
     ;; TODO - should be able to remove this now
     ;; for FKs where source is a :field-literal don't include `:fk_field_id`
@@ -115,12 +114,13 @@
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
       (if-not parent-id
         field
-        (let [parent (col-info-for-field-clause query [:field-id parent-id])]
+        (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
           (update field :name #(str (:name parent) \. %)))))
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
-    _ (throw (Exception. (str (tru "Don't know how to get information about Field:") " " &match)))))
+    _ (throw (ex-info (str (tru "Don't know how to get information about Field:") " " &match)
+               {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
@@ -190,19 +190,19 @@
   "Return appropriate column metadata for an `:aggregation` clause."
   ; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ; `match` pattern for field clauses below
-  [query :- su/Map, clause]
+  [inner-query :- su/Map, clause]
   (mbql.u/match-one clause
     ;; ok, if this is a named aggregation recurse so we can get information about the ag we are naming
     [:named ag _]
     (merge
-     (col-info-for-aggregation-clause query ag)
+     (col-info-for-aggregation-clause inner-query ag)
      (ag->name-info &match))
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
     [(_ :guard #{:count :distinct}) & args]
     (merge
-     (col-info-for-aggregation-clause query args)
+     (col-info-for-aggregation-clause inner-query args)
      {:base_type    :type/Integer
       :special_type :type/Number}
      (ag->name-info &match))
@@ -223,7 +223,7 @@
     ;; get info from a Field if we can (theses Fields are matched when ag clauses recursively call
     ;; `col-info-for-ag-clause`, and this info is added into the results)
     (_ :guard mbql.preds/Field?)
-    (select-keys (col-info-for-field-clause query &match) [:base_type :special_type :settings])
+    (select-keys (col-info-for-field-clause inner-query &match) [:base_type :special_type :settings])
 
     ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
     ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
@@ -239,14 +239,14 @@
     ;; get name/display-name of this ag
     [(_ :guard keyword?) arg & args]
     (merge
-     (col-info-for-aggregation-clause query arg)
+     (col-info-for-aggregation-clause inner-query arg)
      (ag->name-info &match))))
 
 
 ;;; ----------------------------------------- Putting it all together (MBQL) -----------------------------------------
 
-(defn- check-correct-number-of-columns-returned [mbql-cols results]
-  (let [expected-count (count mbql-cols)
+(defn- check-correct-number-of-columns-returned [returned-mbql-columns results]
+  (let [expected-count (count returned-mbql-columns)
         actual-count   (count (:columns results))]
     (when (seq (:rows results))
       (when-not (= expected-count actual-count)
@@ -256,40 +256,63 @@
                " "
                (tru "Expected {0} fields, got {1}" expected-count actual-count)
                "\n"
-               (tru "Expected: {0}" (mapv :name mbql-cols))
+               (tru "Expected: {0}" (mapv :name returned-mbql-columns))
                "\n"
                (tru "Actual: {0}" (vec (:columns results))))))))))
 
 (s/defn ^:private cols-for-fields
-  [{{fields-clause :fields} :query, :as query} :- su/Map]
-  (for [field fields-clause]
-    (assoc (col-info-for-field-clause query field) :source :fields)))
+  [{:keys [fields], :as inner-query} :- su/Map]
+  (for [field fields]
+    (assoc (col-info-for-field-clause inner-query field) :source :fields)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
-  [{{aggregations :aggregation, breakouts :breakout} :query, :as query} :- su/Map]
+  [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
   (concat
    (for [breakout breakouts]
-     (assoc (col-info-for-field-clause query breakout) :source :breakout))
+     (assoc (col-info-for-field-clause inner-query breakout) :source :breakout))
    (for [aggregation aggregations]
-     (assoc (col-info-for-aggregation-clause query aggregation) :source :aggregation))))
+     (assoc (col-info-for-aggregation-clause inner-query aggregation) :source :aggregation))))
+
+(s/defn cols-for-mbql-query
+  "Return results metadata about the expected columns in an 'inner' MBQL query."
+  [inner-query :- su/Map]
+  (concat
+   (cols-for-ags-and-breakouts inner-query)
+   (cols-for-fields inner-query)))
 
 (declare mbql-cols)
 
-(defn- cols-for-source-query [{native-source-query :native, :as source-query} results]
-  (if native-source-query
-    (native-cols results)
-    (mbql-cols {:query source-query} results)))
+(defn- maybe-merge-source-metadata
+  "Merge information from `source-metadata` into the returned `cols` for queries that return the columns of a source
+  query as-is (i.e., the parent query does not have breakouts, aggregations, or an explicit`:fields` clause --
+  excluding the one added automatically by `add-source-metadata`)."
+  [source-metadata cols]
+  (if (= (count cols) (count source-metadata))
+    (map merge source-metadata cols)
+    cols))
 
-(defn- mbql-cols [{{:keys [source-query]} :query, :as query}, results]
-  (let [cols (concat
-              (cols-for-ags-and-breakouts query)
-              (cols-for-fields query))]
-    (if (and (empty? cols) source-query)
-      (cols-for-source-query source-query results)
+(defn- cols-for-source-query
+  [{:keys [source-metadata], {native-source-query :native, :as source-query} :source-query} results]
+  (if native-source-query
+    (maybe-merge-source-metadata source-metadata (native-cols results))
+    (mbql-cols source-query results)))
+
+(defn ^:private mbql-cols
+  "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the query."
+  [{:keys [source-metadata source-query fields], :as inner-query} results]
+  (let [cols (cols-for-mbql-query inner-query)]
+    (cond
+      (and (empty? cols) source-query)
+      (cols-for-source-query inner-query results)
+
+      (every? (partial mbql.u/is-clause? :field-literal) fields)
+      (maybe-merge-source-metadata source-metadata cols)
+
+      :else
       cols)))
 
-(defn- add-mbql-column-info [query results]
-  (let [cols (mbql-cols query results)]
+(defn- add-mbql-column-info [{inner-query :query, :as query} results]
+  (let [cols (mbql-cols inner-query results)]
     (check-correct-number-of-columns-returned cols results)
     (assoc results :cols cols)))
 
@@ -343,14 +366,14 @@
 ;;; |                                     result-rows-maps-to-vectors middleware                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- uniquify-aggregations [query]
-  (update-in query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations aggregation-name)))
+(defn- uniquify-aggregations [inner-query]
+  (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations aggregation-name)))
 
 (s/defn ^:private expected-column-sort-order :- [s/Keyword]
   "Determine query result row column names (as keywords) sorted in the appropriate order based on a `query`."
-  [{query-type :type, :as query} {[first-row] :rows, :as results}]
+  [{query-type :type, inner-query :query, :as query} {[first-row] :rows, :as results}]
   (if (= query-type :query)
-    (map (comp keyword :name) (mbql-cols (uniquify-aggregations query) results))
+    (map (comp keyword :name) (mbql-cols (uniquify-aggregations inner-query) results))
     (map keyword (keys first-row))))
 
 (defn- result-rows-maps->vectors* [query {[first-row :as rows] :rows, columns :columns, :as results}]

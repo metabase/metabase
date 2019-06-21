@@ -171,8 +171,8 @@ export default class PieChart extends Component {
   };
 
   componentDidUpdate() {
-    let groupElement = ReactDOM.findDOMNode(this.refs.group);
-    let detailElement = ReactDOM.findDOMNode(this.refs.detail);
+    const groupElement = ReactDOM.findDOMNode(this.refs.group);
+    const detailElement = ReactDOM.findDOMNode(this.refs.detail);
     if (groupElement.getBoundingClientRect().width < 100) {
       detailElement.classList.add("hide");
     } else {
@@ -232,12 +232,12 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    let sliceThreshold =
+    const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
         : SLICE_THRESHOLD;
 
-    let [slices, others] = _.chain(rows)
+    const [slices, others] = _.chain(rows)
       .map((row, index) => ({
         key: row[dimensionIndex],
         value: row[metricIndex],
@@ -247,35 +247,32 @@ export default class PieChart extends Component {
       .partition(d => d.percentage > sliceThreshold)
       .value();
 
-    let otherSlice;
-    if (others.length > 1) {
-      let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
-      if (otherTotal > 0) {
-        otherSlice = {
-          key: "Other",
-          value: otherTotal,
-          percentage: otherTotal / total,
-          color: colors["text-light"],
-        };
-        slices.push(otherSlice);
+    const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
+    // Multiple others get squashed together under the key "Other"
+    let otherSlice =
+      others.length === 1
+        ? others[0]
+        : {
+            key: "Other",
+            value: otherTotal,
+            percentage: otherTotal / total,
+            color: colors["text-light"],
+          };
+    if (otherSlice.value > 0) {
+      // increase "other" slice so it's barely visible
+      if (otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
+        otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
       }
-    } else {
-      slices.push(...others);
+      slices.push(otherSlice);
     }
 
-    // increase "other" slice so it's barely visible
-    // $FlowFixMe
-    if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
-      otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
-    }
-
-    let legendTitles = slices.map(slice => [
+    const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
         ? formatPercent(slice.percentage, true)
         : undefined,
     ]);
-    let legendColors = slices.map(slice => slice.color);
+    const legendColors = slices.map(slice => slice.color);
 
     // no non-zero slices
     if (slices.length === 0) {

@@ -4,16 +4,15 @@
              [query-processor-test :as qpt]]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [metabase.test.data.dataset-definitions :as defs]))
+             [util :as tu]]))
 
 (defmacro ^:private time-query [additional-clauses]
   `(qpt/rows
-     (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+     (data/dataset ~'test-data-with-time
        (data/run-mbql-query users
          ~(merge
-           {:fields   `[~'$id ~'$name ~'$last_login_time]
-            :order-by `[[:asc ~'$id]]}
+           '{:fields   [$id $name $last_login_time]
+             :order-by [[:asc $id]]}
            additional-clauses)))))
 
 ;; Basic between query on a time field

@@ -42,7 +42,7 @@ export default class LegendHeader extends Component {
   }
 
   componentDidUpdate() {
-    let width = ReactDOM.findDOMNode(this).offsetWidth;
+    const width = ReactDOM.findDOMNode(this).offsetWidth;
     if (width !== this.state.width) {
       this.setState({ width });
     }

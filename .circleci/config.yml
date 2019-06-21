@@ -8,7 +8,7 @@ executors:
   default:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1-node-browsers
 
   build:
     working_directory: /home/circleci/metabase/metabase/
@@ -18,12 +18,12 @@ executors:
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.8.1
+      - image: circleci/clojure:openjdk-11-lein-2.9.1
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -44,7 +44,7 @@ executors:
         default: ""
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -58,17 +58,16 @@ executors:
   mongo:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: circleci/clojure:lein-2.8.1-node-browsers
+       - image: circleci/clojure:lein-2.9.1
        - image: circleci/mongo:3.4
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1
         environment:
           MB_PRESTO_TEST_HOST: localhost
           MB_PRESTO_TEST_PORT: 8080
-
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -76,14 +75,27 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1
       - image: metabase/spark:2.1.1
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1
       - image: sumitchawla/vertica
+
+  sqlserver:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.9.1
+        environment:
+          MB_SQLSERVER_TEST_HOST: localhost
+          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+          MB_SQLSERVER_TEST_USER: SA
+      - image: mcr.microsoft.com/mssql/server:2017-latest
+        environment:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
 
 
 
@@ -573,6 +585,7 @@ workflows:
           name: be-tests-sqlserver
           requires:
             - be-tests
+          e: sqlserver
           driver: sqlserver
 
       - test-driver:

@@ -42,7 +42,7 @@ function s4() {
 }
 
 // provides functions for building urls to things we care about
-let MetabaseUtils = {
+const MetabaseUtils = {
   // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
   // `password_complexity` Setting; must be a map like {total: 6, number: 1}
   generatePassword: function(complexity) {
@@ -61,10 +61,10 @@ let MetabaseUtils = {
     return password;
 
     function isStrongEnough(password) {
-      let uc = password.match(/([A-Z])/g);
-      let lc = password.match(/([a-z])/g);
-      let di = password.match(/([\d])/g);
-      let sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
+      const uc = password.match(/([A-Z])/g);
+      const lc = password.match(/([a-z])/g);
+      const di = password.match(/([\d])/g);
+      const sc = password.match(/([!@#\$%\^\&*\)\(+=._-{}])/g);
 
       return (
         uc &&
@@ -88,7 +88,7 @@ let MetabaseUtils = {
 
   // pretty limited.  just does 0-9 for right now.
   numberToWord: function(num) {
-    let names = [
+    const names = [
       t`zero`,
       t`one`,
       t`two`,
@@ -151,7 +151,7 @@ let MetabaseUtils = {
   },
 
   validEmail: function(email) {
-    let re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
   },
 
@@ -189,11 +189,11 @@ let MetabaseUtils = {
         .map(c => SPECIAL_COMPONENTS[c] || parseInt(c, 10));
     // [1, 2, 3, -2, 1]
 
-    let aComponents = getComponents(aVersion);
-    let bComponents = getComponents(bVersion);
+    const aComponents = getComponents(aVersion);
+    const bComponents = getComponents(bVersion);
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
-      let a = aComponents[i];
-      let b = bComponents[i];
+      const a = aComponents[i];
+      const b = bComponents[i];
       if (b == undefined || a < b) {
         return -1;
       } else if (a == undefined || b < a) {

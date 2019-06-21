@@ -185,7 +185,7 @@ export class SpecialTypeAndTargetPicker extends Component {
   };
 
   render() {
-    const { field, idfields, className, selectSeparator } = this.props;
+    const { field, className, selectSeparator } = this.props;
 
     let specialTypes = MetabaseCore.field_special_types.slice(0);
     specialTypes.push({
@@ -202,10 +202,16 @@ export class SpecialTypeAndTargetPicker extends Component {
 
     const showCurrencyTypeSelect = isCurrency(field);
 
+    let { idfields } = this.props;
+
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
       _.uniq(idfields.map(idField => idField.table.schema)).length > 1;
+
+    idfields = _.sortBy(idfields, field =>
+      field.displayName({ includeTable: true, includeSchema }),
+    );
 
     return (
       <div>

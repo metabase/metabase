@@ -1,14 +1,12 @@
 (ns metabase.driver.sparksql
   (:require [clojure
              [set :as set]
-             [string :as s]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
@@ -87,7 +85,7 @@
 
 (defn- dash-to-underscore [s]
   (when s
-    (s/replace s #"-" "_")))
+    (str/replace s #"-" "_")))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-database :sparksql
@@ -142,7 +140,6 @@
 (defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
 
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true)
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)

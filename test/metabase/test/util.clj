@@ -34,7 +34,6 @@
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
             [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
@@ -50,10 +49,10 @@
     (nil? (s/check schema actual)))
   (expected-message [_ _ _ _]
     (str "Result did not match schema:\n"
-         (u/pprint-to-str (s/explain schema))))
+         (u/pprint-to-str 'green (s/explain schema))))
   (actual-message [_ actual _ _]
     (str "Was:\n"
-         (u/pprint-to-str actual)))
+         (u/pprint-to-str 'red actual)))
   (message [_ actual _ _]
     (u/pprint-to-str (s/check schema actual))))
 
@@ -150,7 +149,7 @@
 
 
 (defn- user-id [username]
-  (require 'metabase.test.data.users)
+  (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
 (defn- rasta-id [] (user-id :rasta))
@@ -306,17 +305,15 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  ;; for saving & restoring the original values we're using `get-string` and `set-string!` to bypass the magic getters
-  ;; & setters which might have some restrictions or other unexpected behavior. We're using these functions rather
-  ;; than manipulating values in the DB directly so we don't have to worry about invalidating the Settings cache
-  ;; ourselves
-  (let [original-value     (setting/get-string setting-k)
-        value-was-default? (not (db/select-one setting/Setting :key (u/keyword->qualified-name setting-k)))]
+  (let [setting        (#'setting/resolve-setting setting-k)
+        original-value (when (or (#'setting/db-or-cache-value setting)
+                                 (#'setting/env-var-value setting))
+                         (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
       (f)
       (finally
-        (setting/set-string! setting-k (when-not value-was-default? original-value))))))
+        (setting/set! setting-k original-value)))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
@@ -598,38 +595,38 @@
 
   `f` should return a future that can be canceled."
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (let [called-cancel? (promise)
-          called-query?  (promise)
-          pause-query    (promise)
-          query-thunk    (fn []
-                           (data/run-mbql-query checkins
-                             {:aggregation [[:count]]}))
-          ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
-          ;; which should cause an interrupt
-          query-future   (f query-thunk called-query? called-cancel? pause-query)]
-      ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
-      ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
-      (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
-        (throw (TimeoutException. "query should have been called by now.")))
-      ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
-      ;; not have been called yet.
-      (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
-      ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
-      ;; method on the prepared statement
-      (future-cancel query-future)
-      (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
-        (throw (TimeoutException. "cancel should have been called by now.")))
-      ;; This releases the fake query function so it finishes
-      (deliver pause-query true)
-      ::success)))
+  (let [called-cancel? (promise)
+        called-query?  (promise)
+        pause-query    (promise)
+        query-thunk    (fn []
+                         (data/run-mbql-query checkins
+                           {:aggregation [[:count]]}))
+        ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
+        ;; which should cause an interrupt
+        query-future   (f query-thunk called-query? called-cancel? pause-query)]
+    ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
+    ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
+    (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
+      (throw (TimeoutException. "query should have been called by now.")))
+    ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
+    ;; not have been called yet.
+    (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
+    ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
+    ;; method on the prepared statement
+    (future-cancel query-future)
+    (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
+      (throw (TimeoutException. "cancel should have been called by now.")))
+    ;; This releases the fake query function so it finishes
+    (deliver pause-query true)
+    ::success))
 
 (defmacro throw-if-called
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
-  [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
+  [fn-symb & body]
+  {:pre [(symbol? fn-symb)]}
+  `(with-redefs [~fn-symb (fn [& ~'_]
+                            (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
 

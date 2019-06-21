@@ -1,4 +1,4 @@
-let webpackConfig = require("../../webpack.config");
+const webpackConfig = require("../../webpack.config");
 console.dir(webpackConfig.module.rules, { depth: null });
 webpackConfig.module.rules.forEach(function(loader) {
   loader.use = loader.use.filter(

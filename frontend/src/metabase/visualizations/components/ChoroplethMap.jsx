@@ -32,11 +32,11 @@ export function getColorplethColorScale(
   color,
   { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
 ) {
-  let lightColor = Color(color)
+  const lightColor = Color(color)
     .lightness(lightness)
     .saturate(saturate);
 
-  let darkColor = Color(color)
+  const darkColor = Color(color)
     .darken(darken)
     .saturate(saturate);
 
@@ -147,7 +147,7 @@ export default class ChoroplethMap extends Component {
       onVisualizationClick,
       settings,
     } = this.props;
-    let { geoJson, minimalBounds } = this.state;
+    const { geoJson, minimalBounds } = this.state;
 
     // special case builtin maps to use legacy choropleth map
     let projection, projectionFrame;
@@ -244,12 +244,13 @@ export default class ChoroplethMap extends Component {
       });
 
     const valuesMap = {};
-    const domain = [];
     for (const row of rows) {
-      valuesMap[getRowKey(row)] =
-        (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
-      domain.push(getRowValue(row));
+      const key = getRowKey(row);
+      const value = getRowValue(row);
+      valuesMap[key] = (valuesMap[key] || 0) + value;
     }
+    const domainSet = new Set(Object.values(valuesMap));
+    const domain = Array.from(domainSet);
 
     const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
     const heatMapColors =
@@ -258,14 +259,15 @@ export default class ChoroplethMap extends Component {
         : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
+    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
-    let colorScale = d3.scale
-      .quantile()
-      .domain(groups.map(cluster => cluster[0]))
+    const colorScale = d3.scale
+      .threshold()
+      .domain(groupBoundaries)
       .range(heatMapColors);
 
-    let legendColors = heatMapColors;
-    let legendTitles = heatMapColors.map((color, index) => {
+    const legendColors = heatMapColors;
+    const legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
@@ -274,7 +276,7 @@ export default class ChoroplethMap extends Component {
     });
 
     const getColor = feature => {
-      let value = getFeatureValue(feature);
+      const value = getFeatureValue(feature);
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 

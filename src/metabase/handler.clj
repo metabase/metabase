@@ -11,6 +11,7 @@
              [misc :as mw.misc]
              [security :as mw.security]
              [session :as mw.session]]
+            [metabase.plugins.classloader :as classloader]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
              [keyword-params :refer [wrap-keyword-params]]
@@ -18,7 +19,7 @@
 
 ;; required here because this namespace is not actually used anywhere but we need it to be loaded because it adds
 ;; impls for handling `core.async` channels as web server responses
-(require 'metabase.async.api-response)
+(classloader/require 'metabase.async.api-response)
 
 (def app
   "The primary entry point to the Ring HTTP server."
