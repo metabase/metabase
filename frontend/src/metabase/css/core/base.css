@@ -76,7 +76,7 @@ textarea {
   opacity: 0.4;
 }
 .fade-in-hover:hover {
-  opacity: 0.4;
+  opacity: 1;
   transition: opacity .3s
 }
 

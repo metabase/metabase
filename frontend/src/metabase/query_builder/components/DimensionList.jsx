@@ -140,9 +140,8 @@ export default class DimensionList extends Component {
         {!isSelected && onAddDimension && (
           <Icon
             name="add"
-            style={{ opacity: 0.5 }}
             size={14}
-            className="mx1 cursor-pointer hover-child"
+            className="mx1 cursor-pointer hover-child faded fade-in-hover"
             onClick={e => {
               e.stopPropagation();
               this.handleAdd(item);
@@ -152,8 +151,7 @@ export default class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer"
-            style={{ opacity: 0.5 }}
+            className="mx1 cursor-pointer faded fade-in-hover transition-all"
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);
@@ -172,10 +170,7 @@ export default class DimensionList extends Component {
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (
       <div
-        className={cx(
-          "FieldList-grouping-trigger flex align-center p1 cursor-pointer",
-          { "FieldList-grouping-trigger--multiSelect": multiSelect },
-        )}
+        className="FieldList-grouping-trigger text-white-hover transition-all flex align-center p1 cursor-pointer"
       >
         {name && <h4>{name}</h4>}
         {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
