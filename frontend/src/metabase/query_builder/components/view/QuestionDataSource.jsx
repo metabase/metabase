@@ -5,6 +5,8 @@ import Link from "metabase/components/Link";
 
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 import cx from "classnames";
 
 const QuestionDataSource = ({
@@ -14,6 +16,10 @@ const QuestionDataSource = ({
   noLink,
 }) => {
   const parts = [];
+
+  if (query instanceof StructuredQuery) {
+    query = query.rootQuery();
+  }
 
   const database = query.database();
   if (database) {
