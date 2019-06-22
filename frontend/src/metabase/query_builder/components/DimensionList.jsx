@@ -151,7 +151,7 @@ export default class DimensionList extends Component {
         {isSelected && onRemoveDimension && (
           <Icon
             name="close"
-            className="mx1 cursor-pointer faded fade-in-hover transition-all"
+            className="mx1 cursor-pointer faded fade-in-hover"
             onClick={e => {
               e.stopPropagation();
               this.handleRemove(item);
@@ -170,7 +170,7 @@ export default class DimensionList extends Component {
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (
       <div
-        className="FieldList-grouping-trigger text-white-hover transition-all flex align-center p1 cursor-pointer"
+        className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer"
       >
         {name && <h4>{name}</h4>}
         {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
