@@ -137,14 +137,14 @@ export default class NotebookStep extends React.Component {
       : null;
 
     return (
-      <Box mb={3} pb={3}>
+      <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
         {(title || onRemove) && (
           <Flex mb={1} width={[8 / 12]} className="text-bold" style={{ color }}>
             {title}
             {onRemove && (
               <Icon
                 name="close"
-                className="ml-auto cursor-pointer text-light text-medium-hover"
+                className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
                 tooltip={t`Remove`}
                 onClick={onRemove}
               />
