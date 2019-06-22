@@ -591,13 +591,6 @@
   border-left: 2px solid color(var(--filter-color) alpha(-90%));
   color: color(var(--color-text-white) alpha(-50%));
 }
-.FieldList-grouping-trigger.FieldList-grouping-trigger--multiSelect {
-  border-left: none;
-  background-color: rgba(255, 255, 255, 0.25);
-  padding: 0.25em 0.5em;
-  border-radius: 99px;
-  color: white;
-}
 
 .List-item:not(.List-item--disabled):hover .FieldList-grouping-trigger,
 .List-item--selected .FieldList-grouping-trigger {
