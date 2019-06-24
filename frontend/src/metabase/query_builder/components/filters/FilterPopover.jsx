@@ -53,6 +53,16 @@ export default class FilterPopover extends React.Component {
     window.removeEventListener("keydown", this.handleCommitOnEnter);
   }
 
+  componentWillReceiveProps(nextProps) {
+    const { filter } = this.state;
+    // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
+    if (filter && this.props.query !== nextProps.query) {
+      this.setState({
+        filter: filter.setQuery(nextProps.query),
+      });
+    }
+  }
+
   handleCommit = () => {
     this.handleCommitFilter(this.state.filter);
   };
