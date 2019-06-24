@@ -213,7 +213,6 @@ export const popState = createThunkAction(
   },
 );
 
-
 const getURL = (location, { includeMode = false } = {}) =>
   // strip off trailing queryBuilderMode
   (includeMode
@@ -223,8 +222,11 @@ const getURL = (location, { includeMode = false } = {}) =>
   location.hash;
 
 // Logic for handling location changes
-export const locationChanged = (location, nextLocation, nextParams) => (dispatch, getState) => {
-  const question = getQuestion(getState())
+export const locationChanged = (location, nextLocation, nextParams) => (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
   if (location !== nextLocation) {
     if (nextLocation.action === "POP") {
       if (
@@ -248,7 +250,7 @@ export const locationChanged = (location, nextLocation, nextParams) => (dispatch
       }
     }
   }
-}
+};
 
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) =>

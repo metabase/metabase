@@ -168,7 +168,11 @@ export default class QueryBuilder extends Component {
     }
 
     if (nextProps.location !== this.props.location) {
-      nextProps.locationChanged(this.props.location, nextProps.location, nextProps.params)
+      nextProps.locationChanged(
+        this.props.location,
+        nextProps.location,
+        nextProps.params,
+      );
     }
 
     // NOTE: not sure if there's a better way to bind an action to something returned in mapStateToProps

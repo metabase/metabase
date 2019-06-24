@@ -238,7 +238,11 @@ function BrowseHeader({ crumbs }) {
           data-metabase-event={`NavBar;Reference`}
         >
           <div className="flex flex-align-center text-medium text-brand-hover">
-            <Icon className="flex flex-align-center" size={18} name="reference" />
+            <Icon
+              className="flex flex-align-center"
+              size={18}
+              name="reference"
+            />
             <h3 className="ml1 flex flex-align-center">Learn about our data</h3>
           </div>
         </Link>

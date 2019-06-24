@@ -397,10 +397,7 @@ export default class NativeQueryEditor extends Component {
           <div className="flex-align-right flex align-center text-medium pr1">
             {isNativeEditorOpen &&
               DataReferenceButton.shouldRender(this.props) && (
-                <DataReferenceButton
-                  {...this.props}
-                  size={ICON_SIZE}
-                />
+                <DataReferenceButton {...this.props} size={ICON_SIZE} />
               )}
             {isNativeEditorOpen &&
               NativeVariablesButton.shouldRender(this.props) && (

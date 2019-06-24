@@ -111,7 +111,12 @@ export class NewQueryOptions extends Component {
   };
 
   render() {
-    const { isAdmin, metricSearchUrl, dataBrowseUrl, newQueryOptions } = this.props;
+    const {
+      isAdmin,
+      metricSearchUrl,
+      dataBrowseUrl,
+      newQueryOptions,
+    } = this.props;
     const {
       loaded,
       hasDatabases,
@@ -132,12 +137,14 @@ export class NewQueryOptions extends Component {
       );
     }
 
-    {/* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */}
+    {
+      /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
+    }
     const NUM_ITEMS = showMetricOption + showSQLOption + 1;
     const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
 
     return (
-      <Box my='auto' mx={PAGE_PADDING}>
+      <Box my="auto" mx={PAGE_PADDING}>
         <Grid className="justifyCenter">
           {showMetricOption && (
             <GridItem w={ITEM_WIDTHS}>
@@ -153,9 +160,7 @@ export class NewQueryOptions extends Component {
             <NewQueryOption
               image="app/img/query_builder_illustration"
               title={
-                showCustomInsteadOfNewQuestionText
-                  ? t`Custom`
-                  : t`New question`
+                showCustomInsteadOfNewQuestionText ? t`Custom` : t`New question`
               }
               description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
               width={180}

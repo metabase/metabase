@@ -119,7 +119,6 @@ AggregationToken.defaultProps = {
   mr: 0,
 };
 
-
 const SummarizeAggregationAdd = ({ className, query }) => {
   return (
     <PopoverWithTrigger
@@ -129,7 +128,8 @@ const SummarizeAggregationAdd = ({ className, query }) => {
           py={10}
           px2
           mt2
-          className="flex-full align-center rounded bg-light bg-medium-hover text-green text-bold transition-all">
+          className="flex-full align-center rounded bg-light bg-medium-hover text-green text-bold transition-all"
+        >
           <Icon className="ml2 mr1" name="add" size="10" />
           <span className="text-small">Add a metric</span>
         </Flex>

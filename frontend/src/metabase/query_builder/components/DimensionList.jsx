@@ -169,9 +169,7 @@ export default class DimensionList extends Component {
       : otherDimension.defaultDimension();
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (
-      <div
-        className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer"
-      >
+      <div className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer">
         {name && <h4>{name}</h4>}
         {!multiSelect && <Icon name="chevronright" className="ml1" size={16} />}
       </div>
