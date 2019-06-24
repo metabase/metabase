@@ -209,7 +209,7 @@ export class ViewSubHeader extends React.Component {
 
     return (
       <div>
-        {(left.length > 0 || (middle.length > 0 && right.length > 0)) && (
+        {(left.length > 0 || middle.length > 0 || right.length > 0) && (
           <ViewSection pt={1}>
             <div className="mr-auto flex align-center">{left}</div>
             {middle}
