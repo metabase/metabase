@@ -314,8 +314,8 @@ export const getIsPreviewable = createSelector(
   [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
   (isNativeEditorOpen, question, isNew, isDirty) =>
     isNativeEditorOpen &&
-    question &&
-    question.display() === "table" &&
+    // question &&
+    // question.display() === "table" &&
     (isNew || isDirty),
 );
 
