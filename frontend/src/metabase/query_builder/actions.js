@@ -213,6 +213,43 @@ export const popState = createThunkAction(
   },
 );
 
+
+const getURL = (location, { includeMode = false } = {}) =>
+  // strip off trailing queryBuilderMode
+  (includeMode
+    ? location.pathname
+    : location.pathname.replace(/\/(notebook|view)$/, "")) +
+  location.search +
+  location.hash;
+
+// Logic for handling location changes
+export const locationChanged = (location, nextLocation, nextParams) => (dispatch, getState) => {
+  const question = getQuestion(getState())
+  if (location !== nextLocation) {
+    if (nextLocation.action === "POP") {
+      if (
+        getURL(nextLocation, { includeMode: true }) !==
+        getURL(location, { includeMode: true })
+      ) {
+        // the browser forward/back button was pressed
+        dispatch(popState(nextLocation));
+      }
+    } else if (nextLocation.action === "PUSH") {
+      // NOTE: this is fairly fragile. we try to make sure we don't reset the query builder unless the
+      // user acutally clicks a link to a different question, but it seems there are some cases where
+      // question and nextLocation can be out of sync. Pushing this logic into an action might help?
+      if (
+        getURL(nextLocation) !== getURL(location) &&
+        question &&
+        getURL(nextLocation) !== question.getUrl()
+      ) {
+        // a link to a different qb url was clicked
+        dispatch(initializeQB(nextLocation, nextParams));
+      }
+    }
+  }
+}
+
 export const CREATE_PUBLIC_LINK = "metabase/card/CREATE_PUBLIC_LINK";
 export const createPublicLink = createAction(CREATE_PUBLIC_LINK, ({ id }) =>
   CardApi.createPublicLink({ id }),

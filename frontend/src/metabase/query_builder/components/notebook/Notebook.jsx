@@ -28,10 +28,11 @@ export default function Notebook({ className, ...props }) {
             if (question.display() === "table") {
               await question.setDisplayDefault().update();
             }
+            // switch mode before running otherwise URL update may cause it to switch back to notebook mode
+            await setQueryBuilderMode("view");
             if (isResultDirty) {
               await runQuestionQuery();
             }
-            setQueryBuilderMode("view");
           }}
         >
           {t`Visualize`}

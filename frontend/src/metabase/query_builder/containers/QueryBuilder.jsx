@@ -126,16 +126,6 @@ const mapStateToProps = (state, props) => {
   };
 };
 
-const getURL = (location, { includeMode = false } = {}) =>
-  // strip off trailing queryBuilderMode
-  (includeMode
-    ? location.pathname
-    : location.pathname.replace(/\/(notebook|view)$/, "")) +
-  location.search +
-  location.hash;
-
-const isSavedQuestionUrl = url => /\/question\/\d+$/.test(url);
-
 const mapDispatchToProps = {
   ...actions,
   onChangeLocation: push,
@@ -178,48 +168,7 @@ export default class QueryBuilder extends Component {
     }
 
     if (nextProps.location !== this.props.location) {
-      if (nextProps.location.action === "POP") {
-        if (
-          getURL(nextProps.location, { includeMode: true }) !==
-          getURL(this.props.location, { includeMode: true })
-        ) {
-          // the browser forward/back button was pressed
-          this.props.popState(nextProps.location);
-          // ----------------------------------------------
-          // TODO -- figure out what's up here. as this is needed for header breadcrumbs to work
-          // ----------------------------------------------
-          // NOTE: Tom Robinson 4/16/2018: disabled for now. this is to enable links
-          // from qb to other qb questions but it's also triggering when changing
-          // the display type
-        }
-      } else if (nextProps.location.action === "PUSH") {
-        if (
-          getURL(nextProps.location) !== getURL(this.props.location) &&
-          nextProps.question &&
-          getURL(nextProps.location) !== nextProps.question.getUrl()
-        ) {
-          // a link to a different qb url was clicked
-          this.props.initializeQB(nextProps.location, nextProps.params);
-        } else if (
-          this.props.location.hash !== "#?tutorial" &&
-          nextProps.location.hash === "#?tutorial"
-        ) {
-          // tutorial link was clicked
-          this.props.initializeQB(nextProps.location, nextProps.params);
-        } else if (
-          getURL(nextProps.location) === "/question" &&
-          getURL(this.props.location) !== "/question"
-        ) {
-          // "New Question" link was clicked
-          this.props.initializeQB(nextProps.location, nextProps.params);
-        } else if (
-          isSavedQuestionUrl(getURL(nextProps.location)) &&
-          getURL(this.props.location) !== getURL(nextProps.location)
-        ) {
-          // a saved question link was clicked, e.x. lineage
-          this.props.initializeQB(nextProps.location, nextProps.params);
-        }
-      }
+      nextProps.locationChanged(this.props.location, nextProps.location, nextProps.params)
     }
 
     // NOTE: not sure if there's a better way to bind an action to something returned in mapStateToProps
