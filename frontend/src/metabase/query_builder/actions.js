@@ -870,6 +870,15 @@ export const updateQuestion = (
   };
 };
 
+// DEPRECATED, still used in a couple places
+export const setDatasetQuery = (datasetQuery, options) => (
+  dispatch,
+  getState,
+) => {
+  const question = getQuestion(getState());
+  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery), options));
+};
+
 export const API_CREATE_QUESTION = "metabase/qb/API_CREATE_QUESTION";
 export const apiCreateQuestion = question => {
   return async (dispatch, getState) => {
