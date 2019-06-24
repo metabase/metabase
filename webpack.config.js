@@ -139,7 +139,7 @@ var config = (module.exports = {
     }),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
-      chunksSortMode: "dependency",
+      chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
@@ -147,7 +147,7 @@ var config = (module.exports = {
     }),
     new HtmlWebpackPlugin({
       filename: "../../public.html",
-      chunksSortMode: "dependency",
+      chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
@@ -155,7 +155,7 @@ var config = (module.exports = {
     }),
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
-      chunksSortMode: "dependency",
+      chunksSortMode: "manual",
       chunks: ["vendor", "styles", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
