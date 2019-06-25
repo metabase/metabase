@@ -31,6 +31,10 @@ export default class MBQLArrayClause extends Array {
     return new this.constructor(this, this._index, query);
   }
 
+  index() {
+    return this._index;
+  }
+
   /**
    * replaces the previous clause with this one and propagates an update, recursively
    */
@@ -77,6 +81,10 @@ export class MBQLObjectClause {
 
   setQuery(query: StructuredQuery) {
     return new this.constructor(this, this._index, query);
+  }
+
+  index() {
+    return this._index;
   }
 
   /**

@@ -2,8 +2,10 @@ import React from "react";
 import { Provider } from "react-redux";
 import { getStore } from "metabase/store";
 
-import Question from "metabase-lib/lib/Question";
+// StructuredQuery import needs to come before Question due to cyclical depedency issue
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Question from "metabase-lib/lib/Question";
+
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
 import _ from "underscore";

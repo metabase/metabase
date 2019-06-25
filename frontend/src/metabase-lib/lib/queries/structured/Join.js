@@ -17,13 +17,6 @@ const JOIN_STRATEGY_OPTIONS = [
 ];
 
 export default class Join extends MBQLObjectClause {
-  constructor(...args) {
-    super(...args);
-    if (!this.alias) {
-      this.alias = MetabaseUtils.uuid();
-    }
-  }
-
   displayName() {
     const table = this.joinedTable();
     return table && table.displayName();
@@ -42,10 +35,12 @@ export default class Join extends MBQLObjectClause {
   }
   setJoinSourceTableId(tableId, { defaultCondition = true } = {}) {
     if (tableId !== this["source-table"]) {
+      const table = this.metadata().table(tableId);
       const join = this.set({
         ...this,
         "source-query": undefined,
         "source-table": tableId,
+        alias: this.uniqueAlias((table && table.name) || `table_${tableId}`),
         condition: null,
       });
       if (defaultCondition) {
@@ -65,8 +60,24 @@ export default class Join extends MBQLObjectClause {
       ...this,
       "source-table": undefined,
       "source-query": query,
+      alias: this.uniqueAlias("source"),
       condition: null,
     });
+  }
+
+  uniqueAlias(name) {
+    const usedAliases = new Set(
+      this.query()
+        .joins()
+        .map(join => join.alias)
+        .filter(alias => alias !== this.alias),
+    );
+    for (let index = 1; ; index++) {
+      const alias = index === 1 ? name : `${name}_${index}`;
+      if (!usedAliases.has(alias)) {
+        return alias;
+      }
+    }
   }
 
   // STRATEGY

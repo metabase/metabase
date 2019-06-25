@@ -5,7 +5,6 @@ import Icon from "metabase/components/Icon";
 
 import { stripId } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-import Query_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
 
@@ -784,7 +783,7 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
-const INTEGER_AGGREGATIONS = new Set("count", "cum-count", "distinct");
+const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
