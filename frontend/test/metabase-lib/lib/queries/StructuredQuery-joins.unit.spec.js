@@ -1,21 +1,10 @@
-// HACK: needed due to cyclical dependency issue
-import "metabase-lib/lib/Question";
-
 import {
-  question,
   ORDERS_TABLE_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_TABLE_ID,
   PRODUCT_PK_FIELD_ID,
-  makeDatasetQuery,
+  makeStructuredQuery,
 } from "__support__/sample_dataset_fixture";
-
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Join from "metabase-lib/lib/queries/structured/Join";
-
-function makeQuery(query) {
-  return new StructuredQuery(question, makeDatasetQuery(query));
-}
 
 const EXAMPLE_JOIN = {
   alias: "join0",
@@ -30,7 +19,7 @@ const EXAMPLE_JOIN = {
 describe("StructuredQuery nesting", () => {
   describe("parentDimension", () => {
     it("should return the correct dimension", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-table": ORDERS_TABLE_ID,
         joins: [EXAMPLE_JOIN],
       }).joins()[0];
@@ -42,7 +31,7 @@ describe("StructuredQuery nesting", () => {
   });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-table": ORDERS_TABLE_ID,
         joins: [EXAMPLE_JOIN],
       }).joins()[0];
@@ -55,7 +44,7 @@ describe("StructuredQuery nesting", () => {
   });
   describe("parentDimensionOptions", () => {
     it("should return correct dimensions for a source-table", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-table": ORDERS_TABLE_ID,
         joins: [{ alias: "join0" }],
       }).joins()[0];
@@ -64,7 +53,7 @@ describe("StructuredQuery nesting", () => {
       expect(options.dimensions[0].mbql()).toEqual(["field-id", 1]);
     });
     it("should return correct dimensions for a source-query", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-query": { "source-table": ORDERS_TABLE_ID },
         joins: [{ alias: "join0" }],
       }).joins()[0];
@@ -79,7 +68,7 @@ describe("StructuredQuery nesting", () => {
   });
   describe("joinDimensionOptions", () => {
     it("should return correct dimensions with a source-table", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-query": { "source-table": ORDERS_TABLE_ID },
         joins: [{ alias: "join0", "source-table": ORDERS_TABLE_ID }],
       }).joins()[0];
@@ -92,7 +81,7 @@ describe("StructuredQuery nesting", () => {
       ]);
     });
     it("should return correct dimensions with a source-query", () => {
-      const j = makeQuery({
+      const j = makeStructuredQuery({
         "source-query": { "source-table": ORDERS_TABLE_ID },
         joins: [
           {
@@ -112,7 +101,7 @@ describe("StructuredQuery nesting", () => {
   });
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
-      const q = makeQuery({
+      const q = makeStructuredQuery({
         "source-table": PRODUCT_TABLE_ID,
         joins: [
           {
