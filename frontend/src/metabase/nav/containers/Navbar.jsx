@@ -296,12 +296,12 @@ export default class Navbar extends Component {
           location={this.props.location}
           onChangeLocation={this.props.onChangeLocation}
         />
-        <Flex ml="auto" align="center" className="relative z2">
+        <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
           {hasDataAccess && (
             <Link
               mr={[1, 2]}
               to="browse"
-              className="flex align-center"
+              className="flex align-center flex-no-shrink"
               data-metabase-event={`NavBar;Data Browse`}
             >
               <Tooltip tooltip={t`Browse data`}>
@@ -314,7 +314,7 @@ export default class Navbar extends Component {
             <Link
               mr={[1, 2]}
               to={this.props.plainNativeQuery.question().getUrl()}
-              className="flex align-center hide sm-show"
+              className="flex align-center hide sm-show flex-no-shrink"
               data-metabase-event={`NavBar;Data Browse`}
             >
               <Tooltip tooltip={t`Write SQL`}>
