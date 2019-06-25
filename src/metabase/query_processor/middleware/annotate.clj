@@ -14,7 +14,8 @@
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [medley.core :as m]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -28,6 +29,8 @@
    (s/optional-key :special_type) (s/maybe su/FieldType)
    ;; where this column came from in the original query.
    :source                        (s/enum :aggregation :fields :breakout :native)
+   ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
+   :field_ref                     mbql.s/FieldOrAggregationReference
    ;; various other stuff from the original Field can and should be included such as `:settings`
    s/Any                          s/Any})
 
@@ -48,13 +51,15 @@
   ;; type information from the original `Field` objects used in the query.
   (vec
    (for [i    (range (count columns))
-         :let [col (nth columns i)]]
+         :let [col       (nth columns i)
+               base-type (or (driver.common/values->base-type (for [row rows]
+                                                                (nth row i)))
+                             :type/*)]]
      {:name         (name col)
       :display_name (u/keyword->qualified-name col)
-      :base_type    (or (driver.common/values->base-type (for [row rows]
-                                                           (nth row i)))
-                        :type/*)
-      :source       :native})))
+      :base_type    base-type
+      :source       :native
+      :field_ref    [:field_literal (name col) base-type]})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -327,15 +332,21 @@
 (s/defn ^:private cols-for-fields
   [{:keys [fields], :as inner-query} :- su/Map]
   (for [field fields]
-    (assoc (col-info-for-field-clause inner-query field) :source :fields)))
+    (assoc (col-info-for-field-clause inner-query field)
+      :source    :fields
+      :field_ref field)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
   [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
   (concat
    (for [breakout breakouts]
-     (assoc (col-info-for-field-clause inner-query breakout) :source :breakout))
-   (for [aggregation aggregations]
-     (assoc (col-info-for-aggregation-clause inner-query aggregation) :source :aggregation))))
+     (assoc (col-info-for-field-clause inner-query breakout)
+       :source    :breakout
+       :field_ref breakout))
+   (for [[i aggregation] (m/indexed aggregations)]
+     (assoc (col-info-for-aggregation-clause inner-query aggregation)
+       :source    :aggregation
+       :field_ref [:aggregation i]))))
 
 (s/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
