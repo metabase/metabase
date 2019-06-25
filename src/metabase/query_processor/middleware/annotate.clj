@@ -71,6 +71,14 @@
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
+(s/defn ^:private display-name-for-joined-field
+  "Return an appropriate display name for a joined field that includes the table it came from if applicable."
+  [field-display-name {:keys [source-table], join-alias :alias}]
+  (let [join-display-name (if (integer? source-table)
+                            (:name (qp.store/table source-table))
+                            join-alias)]
+    (format "%s → %s" join-display-name field-display-name)))
+
 (s/defn ^:private col-info-for-field-clause :- su/Map
   [inner-query :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
@@ -85,8 +93,10 @@
     (assoc (col-info-for-field-clause inner-query field) :unit unit)
 
     [:joined-field alias field]
-    (let [{:keys [fk-field-id]} (join-with-alias inner-query alias)]
-      (assoc (col-info-for-field-clause inner-query field) :fk_field_id fk-field-id))
+    (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query alias)]
+      (-> (col-info-for-field-clause inner-query field)
+          (assoc :fk_field_id fk-field-id)
+          (update :display_name display-name-for-joined-field join)))
 
     ;; TODO - should be able to remove this now
     [:fk-> [:field-id source-field-id] field]
