@@ -8,7 +8,6 @@ import {
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
-  CLOSE_QB_TUTORIAL,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -35,7 +34,6 @@ import {
 const DEFAULT_UI_CONTROLS = {
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
-  isShowingTutorial: false,
   isShowingNewbModal: false,
   isEditing: false,
   isRunning: false,
@@ -88,9 +86,6 @@ export const uiControls = handleActions(
         isShowingTemplateTagsEditor,
         isShowingDataReference: false,
       }),
-    },
-    [CLOSE_QB_TUTORIAL]: {
-      next: (state, { payload }) => ({ ...state, isShowingTutorial: false }),
     },
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),

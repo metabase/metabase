@@ -99,7 +99,7 @@ const mapStateToProps = (state, props) => {
     rawSeries: getRawSeries(state),
 
     uiControls: getUiControls(state),
-    // includes isShowingDataReference, isShowingTutorial, isEditing, isRunning, etc
+    // includes isShowingDataReference, isEditing, isRunning, etc
     // NOTE: should come before other selectors that override these like getIsPreviewing and getIsNativeEditorOpen
     ...state.qb.uiControls,
 

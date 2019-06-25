@@ -75,7 +75,6 @@ type UiControls = {
   isEditing?: boolean,
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
-  isShowingTutorial?: boolean,
   queryBuilderMode?: "view" | "notebook",
 };
 
@@ -462,12 +461,6 @@ export const initializeQB = (location, params) => {
         card = null;
         dispatch(setErrorPage(error));
       }
-    } else if (options.tutorial !== undefined && sampleDataset) {
-      // we are launching the QB tutorial
-      card = startNewCard("query", sampleDataset.id);
-
-      uiControls.isShowingTutorial = true;
-      MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Start", true);
     } else {
       // we are starting a new/empty card
       // if no options provided in the hash, redirect to the new question flow
@@ -587,11 +580,6 @@ export const setIsPreviewing = isPreviewing => ({
 export const setIsNativeEditorOpen = isNativeEditorOpen => ({
   type: SET_UI_CONTROLS,
   payload: { isNativeEditorOpen },
-});
-
-export const CLOSE_QB_TUTORIAL = "metabase/qb/CLOSE_QB_TUTORIAL";
-export const closeQbTutorial = createAction(CLOSE_QB_TUTORIAL, () => {
-  MetabaseAnalytics.trackEvent("QueryBuilder", "Tutorial Close");
 });
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
