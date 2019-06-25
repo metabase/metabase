@@ -7,7 +7,7 @@
             [clojure.string :as str]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [http-client :as http]
              [util :as u]]
@@ -70,8 +70,7 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns  ["count"]
-                 :cols     [{:base_type    "type/Integer"
+   {:data       {:cols     [{:base_type    "type/Integer"
                              :special_type "type/Number"
                              :name         "count"
                              :display_name "count"

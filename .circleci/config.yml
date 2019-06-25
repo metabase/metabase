@@ -5,7 +5,23 @@ version: 2.1
 ########################################################################################################################
 
 executors:
-  default:
+  basic:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: alpine/git
+
+  clojure:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.9.1
+
+  node:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      # - image: circleci/node:7-browsers
+      - image: circleci/clojure:lein-2.9.1-node-browsers
+
+  clojure-and-node:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.9.1-node-browsers
@@ -149,7 +165,7 @@ jobs:
 ########################################################################################################################
 
   checkout:
-    executor: default
+    executor: basic
     steps:
       - restore_cache:
           keys:
@@ -177,7 +193,7 @@ jobs:
             - metabase/metabase
 
   yaml-linter:
-    executor: default
+    executor: node
     steps:
       - attach-workspace
       - run:
@@ -195,7 +211,7 @@ jobs:
 ########################################################################################################################
 
   be-deps:
-    executor: default
+    executor: clojure
     steps:
       - attach-workspace
       - restore-be-deps-cache
@@ -209,7 +225,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: default
+        default: clojure
       lein-command:
         type: string
     executor: << parameters.e >>
@@ -221,7 +237,7 @@ jobs:
           no_output_timeout: 5m
 
   be-linter-reflection-warnings:
-    executor: default
+    executor: clojure
     steps:
       - attach-workspace
       - restore-be-deps-cache
@@ -234,7 +250,7 @@ jobs:
     parameters:
       e:
         type: executor
-        default: default
+        default: clojure
       driver:
         type: string
       timeout:
@@ -327,7 +343,7 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    executor: default
+    executor: node
     steps:
       - attach-workspace
       - restore-fe-deps-cache
@@ -350,49 +366,49 @@ jobs:
             - /home/circleci/yarn.lock.checksum
 
   fe-linter-eslint:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run ESLint linter
           command: lint-eslint
 
   fe-linter-prettier:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run Prettier formatting linter
           command: lint-prettier
 
   fe-linter-flow:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run Flow type checker
           command: flow
 
   fe-tests-karma:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run frontend tests (karma)
           command: run test-karma
 
   fe-tests-unit:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run frontend unit tests
           command: run test-unit
 
   fe-tests-integration:
-    executor: default
+    executor: node
     steps:
       - run-yarn-command:
           command-name: Run frontend integration tests
           command: run test-integration
 
   build-uberjar:
-    executor: default
+    executor: clojure-and-node
     steps:
       - attach-workspace
       - restore-be-deps-cache
@@ -412,7 +428,7 @@ jobs:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
   fe-tests-e2e:
-    executor: default
+    executor: clojure-and-node
     steps:
       - run-yarn-command:
           command-name: Run frontend e2e tests
@@ -431,7 +447,7 @@ jobs:
 ########################################################################################################################
 
   deploy-master:
-    executor: default
+    executor: basic
     steps:
       - attach-workspace
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK

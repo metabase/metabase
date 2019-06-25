@@ -273,7 +273,7 @@
   [[29 "20th Century Cafe" 12  37.775 -122.423 2]
    [ 8 "25°"               11 34.1015 -118.342 2]
    [93 "33 Taps"            7 34.1018 -118.326 2]]
-  (qp.test/formatted-venues-rows
+  (qp.test/format-rows-by :venues
    (qp.test/rows
      (data/run-mbql-query venues
        {:source-table $$venues

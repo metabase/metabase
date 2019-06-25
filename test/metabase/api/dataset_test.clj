@@ -5,7 +5,7 @@
              [generate :as generate]]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -56,7 +56,6 @@
 (expect
   {:api-response
    {:data                   {:rows        [[1000]]
-                             :columns     ["count"]
                              :cols        [{:base_type    "type/Integer"
                                             :special_type "type/Number"
                                             :name         "count"
@@ -104,7 +103,6 @@
 (expect
   {:api-response
    {:data         {:rows    []
-                   :columns []
                    :cols    []}
     :row_count    0
     :status       "failed"

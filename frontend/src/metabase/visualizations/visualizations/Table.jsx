@@ -336,7 +336,7 @@ export default class Table extends Component {
         ),
       });
     } else {
-      const { cols, rows, columns } = data;
+      const { cols, rows } = data;
       const columnSettings = settings["table.columns"];
       const columnIndexes = columnSettings
         .filter(columnSetting => columnSetting.enabled)
@@ -348,7 +348,6 @@ export default class Table extends Component {
       this.setState({
         data: {
           cols: columnIndexes.map(i => cols[i]),
-          columns: columnIndexes.map(i => columns[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
         },
       });

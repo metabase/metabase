@@ -264,8 +264,7 @@
 (expect
   {:row_count 1
    :status    :completed
-   :data      {:columns     [:ga:eventLabel :ga:totalEvents]
-               :rows        [["Toucan Sighting" 1000]]
+   :data      {:rows        [["Toucan Sighting" 1000]]
                :native_form expected-ga-query
                :cols        [{:description     "This is ga:eventLabel"
                               :special_type    nil
