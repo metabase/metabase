@@ -11,7 +11,8 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.test.data :as data]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [expectations :as expectations]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |
@@ -75,9 +76,11 @@
                          [:field-id (data/id :categories :name)]]]}}
       {:columns [:name]}))))
 
-;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses
+;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses; display_name should
+;; include the joined table
 (expect
   [(assoc (info-for-field :categories :name)
+     :display_name "VENUES → Name"
      :fk_field_id (data/id :venues :category_id), :source :fields)]
   (qp.test-util/with-everything-store
     (data/$ids venues
@@ -91,6 +94,25 @@
                            :strategy     :left-join
                            :fk-field-id  %category_id}]}}
         {:columns [:name]})))))
+
+;; when using `:joined-field` clauses for a join a source query (instead of a source table), `display_name` should
+;; include the join alias
+(expect
+ [(assoc (info-for-field :categories :name)
+    :display_name "cats → Name"
+    :fk_field_id (data/id :venues :category_id), :source :fields)]
+ (qp.test-util/with-everything-store
+   (data/$ids venues
+     (doall
+      (annotate/column-info
+       {:type  :query
+        :query {:fields [&cats.categories.name]
+                :joins  [{:alias        "cats"
+                          :source-query {:source-table $$venues}
+                          :condition    [:= $category_id &cats.categories.id]
+                          :strategy     :left-join
+                          :fk-field-id  %category_id}]}}
+       {:columns [:name]})))))
 
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
