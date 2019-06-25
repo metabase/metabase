@@ -1546,6 +1546,7 @@ export const clickedCreatedAtBreakoutHeader = {
   },
 };
 
+// NOTE: defauts to orders table
 export function makeDatasetQuery(query = {}) {
   return {
     type: "query",
@@ -1557,6 +1558,7 @@ export function makeDatasetQuery(query = {}) {
   };
 }
 
+// NOTE: defauts to orders table
 export function makeStructuredQuery(query) {
   return new StructuredQuery(question, makeDatasetQuery(query));
 }
