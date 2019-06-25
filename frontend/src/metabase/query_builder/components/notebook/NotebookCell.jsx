@@ -15,13 +15,15 @@ export const NotebookCell = styled(Flex).attrs({
   background-color: ${props => alpha(props.color, 0.1)};
 `;
 NotebookCell.defaultProps = {
-  p: 2,
+  px: 2,
+  pt: 2,
+  pb: 1,
 };
 
 export const NotebookCellItem = styled(Flex).attrs({
   align: "center",
   children: ({ icon, children }) => [
-    icon && <Icon className="mr1" name={icon} size={12} />,
+    icon && <Icon className="mr1" name={icon} size={10} />,
     children,
   ],
 })`
@@ -37,14 +39,26 @@ export const NotebookCellItem = styled(Flex).attrs({
     border-color: ${props => props.inactive && alpha(props.color, 0.8)};
   }
   transition: background 300ms linear, border 300ms linear;
+  > .Icon {
+    opacity: 0.6;
+  }
 `;
 NotebookCellItem.defaultProps = {
   p: 1,
   mr: 1,
+  mb: 1,
 };
 
 export const NotebookCellAdd = styled(NotebookCellItem).attrs({
   inactive: ({ initialAddText }) => initialAddText,
   children: ({ initialAddText }) =>
     initialAddText || <Icon name="add" className="text-white" />,
-})``;
+})`
+  > .Icon {
+    opacity: 1;
+  }
+`;
+
+NotebookCellAdd.defaultProps = {
+  mb: 1,
+};
