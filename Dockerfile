@@ -64,7 +64,7 @@ ENV LC_CTYPE en_US.UTF-8
 RUN apk add --update bash ttf-dejavu fontconfig
 
 # add fixed cacerts
-COPY --from=builder /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts
+COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
 
 # add Metabase script and uberjar
 RUN mkdir -p bin target/uberjar
