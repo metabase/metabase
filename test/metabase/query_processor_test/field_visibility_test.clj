@@ -15,17 +15,15 @@
   (-> (data/run-mbql-query venues
         {:order-by [[:asc $id]]
          :limit    1})
-      tu/round-fingerprint-cols
-      :data
-      :cols
+      qp.test/cols
       set))
 
 (qp.test/expect-with-non-timeseries-dbs
-  (u/key-by :id (qp.test/venues-cols))
+  (u/key-by :id (qp.test/expected-cols :venues))
   (u/key-by :id (venues-cols-from-query)))
 
 (qp.test/expect-with-non-timeseries-dbs
-  (u/key-by :id (for [col (qp.test/venues-cols)]
+  (u/key-by :id (for [col (qp.test/expected-cols :venues)]
                   (if (= (data/id :venues :price) (u/get-id col))
                     (assoc col :visibility_type :details-only)
                     col)))
@@ -36,11 +34,8 @@
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
 ;;; Make sure :sensitive information fields are never returned by the QP
-(qp.test/qp-expect-with-all-drivers
-  {:columns     (qp.test/->columns "id" "name" "last_login")
-   :cols        [(qp.test/users-col :id)
-                 (qp.test/users-col :name)
-                 (qp.test/users-col :last_login)]
+(qp.test/expect-with-non-timeseries-dbs
+  {:cols        (qp.test/expected-cols :users [:id :name :last_login])
    :rows        [[ 1 "Plato Yeshua"]
                  [ 2 "Felipinho Asklepios"]
                  [ 3 "Kaneonuskatew Eiran"]
@@ -55,12 +50,9 @@
                  [12 "Kfir Caj"]
                  [13 "Dwight Gresham"]
                  [14 "Broen Olujimi"]
-                 [15 "Rüstem Hebel"]]
-   :native_form true}
+                 [15 "Rüstem Hebel"]]}
   ;; Filter out the timestamps from the results since they're hard to test :/
-  (-> (data/run-mbql-query users
-        {:order-by [[:asc $id]]})
-      qp.test/booleanize-native-form
-      tu/round-fingerprint-cols
-      (update-in [:data :rows] (partial mapv (fn [[id name last-login]]
-                                               [(int id) name])))))
+  (qp.test/format-rows-by [int identity]
+    (qp.test/rows-and-cols
+      (data/run-mbql-query users
+        {:order-by [[:asc $id]]}))))

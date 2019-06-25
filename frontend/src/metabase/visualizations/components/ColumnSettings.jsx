@@ -46,7 +46,6 @@ const ColumnSettings = ({
     column = { ...column, unit: "default" };
   }
 
-  // $FlowFixMe
   const settingsDefs = getSettingDefintionsForColumn(series, column);
 
   const computedSettings = getComputedSettings(

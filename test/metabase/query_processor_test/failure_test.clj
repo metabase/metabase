@@ -60,6 +60,7 @@
    :row_count    (s/eq 0)
    :running_time (s/constrained s/Int (complement neg?))
    :preprocessed (s/eq (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true))
-   :data         (s/eq {:rows [], :cols [], :columns []})}
+   :data         {:rows (s/eq [])
+                  :cols (s/eq [])}}
   (tu.log/suppress-output
     (qp/process-query-and-save-execution! (bad-query) {:context :question})))

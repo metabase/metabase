@@ -127,7 +127,7 @@
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
 (defn decompress
-  "Decompress COMPRESSED-BYTES."
+  "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
