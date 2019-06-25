@@ -220,16 +220,11 @@
     (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
-        (try
+        (tu/with-temporary-setting-values [site-url http/*url-prefix*]
           (http/client :get 200 (str "public/question/" uuid ".csv")
                        :parameters (json/encode [{:type   :date/quarter-year
                                                   :target [:dimension [:template-tag :date]]
-                                                  :value  "Q1-2014"}]))
-          ;; this test is failing a lot recently with ConnectExceptions. This is here to debug it
-          (catch java.net.ConnectException e
-            (println "Connection to " http/*url-prefix* "public/question/" uuid ".csv refused.")
-            (println (.getMessage e))
-            (throw e)))))))
+                                                  :value  "Q1-2014"}])))))))
 
 ;; make sure we include all the relevant fields like `:insights`
 (defn- card-with-trendline []
