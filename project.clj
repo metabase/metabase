@@ -33,7 +33,7 @@
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   :dependencies
   [[org.clojure/clojure "1.10.1"]
-   [org.clojure/core.async "0.4.490"
+   [org.clojure/core.async "0.4.500"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
    [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
@@ -152,7 +152,7 @@
   {:dev
    {:dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [expectations "2.2.0-beta2"]                                     ; unit tests
+     [expectations "2.1.10"]                                          ; unit tests
      [ring/ring-mock "0.3.2"]]
 
     :plugins

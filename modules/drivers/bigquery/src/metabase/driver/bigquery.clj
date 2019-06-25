@@ -237,7 +237,7 @@
      (let [^TableSchema schema (.getSchema response)
            parsers             (doall
                                 (for [^TableFieldSchema field (.getFields schema)
-                                      :let [parser-fn (type->parser (.getType field))]]
+                                      :let                    [parser-fn (type->parser (.getType field))]]
                                   (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
                                  (-> column

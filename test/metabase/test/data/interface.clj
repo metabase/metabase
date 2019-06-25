@@ -10,7 +10,7 @@
             [environ.core :refer [env]]
             [medley.core :as m]
             [metabase
-             [db :as db]
+             [db :as mdb]
              [driver :as driver]
              [util :as u]]
             [metabase.models
@@ -18,12 +18,15 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
              [pretty :as pretty]
              [schema :as su]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import clojure.lang.Keyword))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -216,7 +219,7 @@
 (defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
   (assert (string? database-name))
   (assert (keyword? driver-kw))
-  (db/setup-db!)
+  (mdb/setup-db!)
   (Database :name database-name, :engine (name driver-kw)))
 
 
@@ -350,18 +353,18 @@
     :name         "count"
     :display_name "count"
     :source       :aggregation})
-  ([driver aggregation-type {:keys [base_type special_type]}]
+
+  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
    {:pre [base_type special_type]}
-   (merge
-    {:base_type    base_type
-     :special_type special_type
-     :settings     nil
-     :name         (name aggregation-type)
-     :display_name (name aggregation-type)
-     :source       :aggregation}
-    ;; count always gets the same special type regardless
-    (when (= aggregation-type :count)
-      (aggregate-column-info driver :count)))))
+   (driver/with-driver driver
+     (qp.store/with-store
+       (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
+       (qp.store/fetch-and-store-fields! [field-id])
+       (merge
+        (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
+        {:source :aggregation}
+        (when (#{:count :cum-count} aggregation-type)
+          {:base_type :type/Integer, :special_type :type/Number}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

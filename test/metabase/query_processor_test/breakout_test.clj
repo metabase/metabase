@@ -24,89 +24,70 @@
             [toucan.util.test :as tt]))
 
 ;;; single column
-(qp.test/qp-expect-with-all-drivers
-  {:rows        [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
-   :columns     [(data/format-name "user_id")
-                 "count"]
-   :cols        [(qp.test/breakout-col (qp.test/checkins-col :user_id))
-                 (qp.test/aggregate-col :count)]
-   :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :breakout    [$user_id]
-          :order-by    [[:asc $user_id]]})
-       qp.test/booleanize-native-form
-       (qp.test/format-rows-by [int int])
-       tu/round-fingerprint-cols))
+(qp.test/expect-with-non-timeseries-dbs
+  {:rows [[1 31] [2 70] [3 75] [4 77] [5 69] [6 70] [7 76] [8 81] [9 68] [10 78] [11 74] [12 59] [13 76] [14 62] [15 34]]
+   :cols [(qp.test/breakout-col :checkins :user_id)
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
+   (qp.test/format-rows-by [int int]
+     (data/run-mbql-query checkins
+       {:aggregation [[:count]]
+        :breakout    [$user_id]
+        :order-by    [[:asc $user_id]]}))))
 
 ;;; BREAKOUT w/o AGGREGATION
 ;; This should act as a "distinct values" query and return ordered results
-(qp.test/qp-expect-with-all-drivers
-  {:cols        [(qp.test/breakout-col (qp.test/checkins-col :user_id))]
-   :columns     [(data/format-name "user_id")]
-   :rows        [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]
-   :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:breakout [$user_id]
-          :limit    10})
-       qp.test/booleanize-native-form
-       (qp.test/format-rows-by [int])
-       tu/round-fingerprint-cols))
+(qp.test/expect-with-non-timeseries-dbs
+  {:cols [(qp.test/breakout-col :checkins :user_id)]
+   :rows [[1] [2] [3] [4] [5] [6] [7] [8] [9] [10]]}
+  (qp.test/rows-and-cols
+   (qp.test/format-rows-by [int]
+     (data/run-mbql-query checkins
+       {:breakout [$user_id]
+        :limit    10}))))
 
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ IMPLICT "ORDER_BY"
 ;; Fields should be implicitly ordered :ASC for all the fields in `breakout` that are not specified in `order-by`
-(qp.test/qp-expect-with-all-drivers
-  {:rows        [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
-   :columns     [(data/format-name "user_id")
-                 (data/format-name "venue_id")
-                 "count"]
-   :cols        [(qp.test/breakout-col (qp.test/checkins-col :user_id))
-                 (qp.test/breakout-col (qp.test/checkins-col :venue_id))
-                 (qp.test/aggregate-col :count)]
-   :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :breakout    [$user_id $venue_id]
-          :limit       10})
-       qp.test/booleanize-native-form
-       (qp.test/format-rows-by [int int int])
-       tu/round-fingerprint-cols))
+(qp.test/expect-with-non-timeseries-dbs
+  {:rows [[1 1 1] [1 5 1] [1 7 1] [1 10 1] [1 13 1] [1 16 1] [1 26 1] [1 31 1] [1 35 1] [1 36 1]]
+   :cols [(qp.test/breakout-col :checkins :user_id)
+          (qp.test/breakout-col :checkins :venue_id)
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
+   (qp.test/format-rows-by [int int int]
+     (data/run-mbql-query checkins
+       {:aggregation [[:count]]
+        :breakout    [$user_id $venue_id]
+        :limit       10}))))
 
 ;;; "BREAKOUT" - MULTIPLE COLUMNS W/ EXPLICIT "ORDER_BY"
 ;; `breakout` should not implicitly order by any fields specified in `order-by`
-(qp.test/qp-expect-with-all-drivers
-  {:rows        [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
-   :columns     [(data/format-name "user_id")
-                 (data/format-name "venue_id")
-                 "count"]
-   :cols        [(qp.test/breakout-col (qp.test/checkins-col :user_id))
-                 (qp.test/breakout-col (qp.test/checkins-col :venue_id))
-                 (qp.test/aggregate-col :count)]
-   :native_form true}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :breakout    [$user_id $venue_id]
-          :order-by    [[:desc $user_id]]
-          :limit       10})
-       qp.test/booleanize-native-form
-       (qp.test/format-rows-by [int int int])
-       tu/round-fingerprint-cols))
+(qp.test/expect-with-non-timeseries-dbs
+  {:rows [[15 2 1] [15 3 1] [15 7 1] [15 14 1] [15 16 1] [15 18 1] [15 22 1] [15 23 2] [15 24 1] [15 27 1]]
+   :cols [(qp.test/breakout-col :checkins :user_id)
+          (qp.test/breakout-col :checkins :venue_id)
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by [int int int]
+      (data/run-mbql-query checkins
+        {:aggregation [[:count]]
+         :breakout    [$user_id $venue_id]
+         :order-by    [[:desc $user_id]]
+         :limit       10}))))
 
-(qp.test/qp-expect-with-all-drivers
-  {:rows        [[2 8 "Artisan"]
-                 [3 2 "Asian"]
-                 [4 2 "BBQ"]
-                 [5 7 "Bakery"]
-                 [6 2 "Bar"]]
-   :columns     [(data/format-name "category_id")
-                 "count"
-                 "Foo"]
-   :cols        [(assoc (qp.test/breakout-col (qp.test/venues-col :category_id))
-                   :remapped_to "Foo")
-                 (qp.test/aggregate-col :count)
-                 (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
-   :native_form true}
+;; TODO - I have no idea what exactly these tests are testing??? This and the one below. Someone please determine and
+;; then write a description.
+(qp.test/expect-with-non-timeseries-dbs
+  {:rows [[2 8 "Artisan"]
+          [3 2 "Asian"]
+          [4 2 "BBQ"]
+          [5 7 "Bakery"]
+          [6 2 "Bar"]]
+   :cols [(assoc (qp.test/breakout-col :venues :category_id)
+            :remapped_to "Foo")
+          (qp.test/aggregate-col :count)
+          (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]}
   (data/with-temp-objects
     (fn []
       (let [venue-names (data/dataset-field-values "categories" "name")]
@@ -116,107 +97,104 @@
          (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
                                   :values                (json/generate-string (range 0 (count venue-names)))
                                   :human_readable_values (json/generate-string venue-names)})]))
-    (->> (data/run-mbql-query venues
-           {:aggregation [[:count]]
-            :breakout    [$category_id]
-            :limit       5})
-         qp.test/booleanize-native-form
-         (qp.test/format-rows-by [int int str])
-         tu/round-fingerprint-cols)))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int int str]
+        (data/run-mbql-query venues
+          {:aggregation [[:count]]
+           :breakout    [$category_id]
+           :limit       5})))))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
-  [["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
-   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]]
+  {:descending-categories
+   ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+
+   :ascending-categories
+   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]}
   (data/with-temp-objects
     (fn []
       [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
                               :name                    "Foo"
                               :type                    :external
                               :human_readable_field_id (data/id :categories :name)})])
-    [(->> (data/run-mbql-query venues
+    {:descending-categories
+     (->> (data/run-mbql-query venues
             {:order-by [[:desc $category_id]]
              :limit    10})
-           qp.test/rows
-           (map last))
+          qp.test/rows
+          (map last))
+
+     :ascending-categories
      (->> (data/run-mbql-query venues
             {:order-by [[:asc $category_id]]
              :limit    10})
-           qp.test/rows
-           (map last))]))
+          qp.test/rows
+          (map last))}))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :num-bins 20]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :num-bins 20]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[0.0 1] [20.0 90] [40.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :num-bins 3]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :num-bins 3]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :num-bins 20]
-                       [:binning-strategy $longitude :num-bins 20]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) (partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :num-bins 20]
+                     [:binning-strategy $longitude :num-bins 20]]})))
 
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [30.0 90] [40.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :default]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :default]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
-    (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-      (qp.test/rows
-        (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :breakout    [[:binning-strategy $latitude :default]]})))))
+    (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+      (data/run-mbql-query venues
+        {:aggregation [[:count]]
+         :breakout    [[:binning-strategy $latitude :default]]}))))
 
 ;; Testing bin-width
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :bin-width 1]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :bin-width 1]]})))
 
 ;; Testing bin-width using a float
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
-  (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :bin-width 2.5]]}))))
+  (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :breakout    [[:binning-strategy $latitude :bin-width 2.5]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[33.0 4] [34.0 57]]
   (tu/with-temporary-setting-values [breakout-bin-width 1.0]
-    (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]
-      (qp.test/rows
-        (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :filter      [:and
-                         [:< $latitude 35]
-                         [:> $latitude 20]]
-           :breakout    [[:binning-strategy $latitude :default]]})))))
+    (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+      (data/run-mbql-query venues
+        {:aggregation [[:count]]
+         :filter      [:and
+                       [:< $latitude 35]
+                       [:> $latitude 20]]
+         :breakout    [[:binning-strategy $latitude :default]]}))))
 
 (defn- round-binning-decimals [result]
   (let [round-to-decimal #(u/round-to-decimals 4 %)]
@@ -228,23 +206,21 @@
 
 ;;Validate binning info is returned with the binning-strategy
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col (qp.test/venues-col :latitude))
+  (assoc (qp.test/breakout-col :venues :latitude)
     :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width})
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :default]]})
-      tu/round-fingerprint-cols
-      (get-in [:data :cols])
+      qp.test/cols
       first))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col (qp.test/venues-col :latitude))
+  (assoc (qp.test/breakout-col :venues :latitude)
     :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins})
   (-> (data/run-mbql-query venues
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :num-bins 5]]})
-      tu/round-fingerprint-cols
-      (get-in [:data :cols])
+      qp.test/cols
       first))
 
 ;;Validate binning info is returned with the binning-strategy
@@ -272,10 +248,9 @@
   (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
                             (data/mbql-query nil
                               {:source-query {:source-table $$venues}}))]
-    (->> (nested-venues-query card)
-         qp/process-query
-         qp.test/rows
-         (qp.test/format-rows-by [(partial u/round-to-decimals 1) int]))))
+    (qp.test/formatted-rows [(partial u/round-to-decimals 1) int]
+      (qp/process-query
+        (nested-venues-query card)))))
 
 ;; Binning is not supported when there is no fingerprint to determine boundaries
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning :nested-queries)
@@ -286,9 +261,9 @@
     ;; middleware is doing the right thing
     (with-redefs [add-source-metadata/mbql-source-query->metadata (constantly nil)]
       (tt/with-temp Card [card {:dataset_query (data/mbql-query venues)}]
-        (-> (nested-venues-query card)
-            qp/process-query
-            qp.test/rows)))))
+        (qp.test/rows
+          (qp/process-query
+            (nested-venues-query card)))))))
 
 ;; if we include a Field in both breakout and fields, does the query still work? (Normalization should be taking care
 ;; of this) (#8760)
@@ -296,5 +271,5 @@
   :completed
   (:status
    (data/run-mbql-query venues
-     {:breakout [[:field-id %price]]
-      :fields   [["field_id" %price]]})))
+     {:breakout [$price]
+      :fields   [$price]})))

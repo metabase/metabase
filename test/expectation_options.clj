@@ -62,7 +62,7 @@
 
 ;;; ------------------------------------------------- log-slow-tests -------------------------------------------------
 
-(def ^:private slow-test-threshold-ms 2000)
+(def ^:private slow-test-threshold-ms 5000)
 
 (defn- log-slow-tests
   "Log a message about any test that takes longer than `slow-test-threshold-ms` to run. Ideally we'd keep all our tests
