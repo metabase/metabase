@@ -7,6 +7,9 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer [expect]]
             [medley.core :as m]
+            [metabase
+             [query-processor-test :as qp.test]
+             [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
@@ -22,7 +25,6 @@
              [datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -56,11 +58,7 @@
 (expect
   {:api-response
    {:data                   {:rows        [[1000]]
-                             :cols        [{:base_type    "type/Integer"
-                                            :special_type "type/Number"
-                                            :name         "count"
-                                            :display_name "count"
-                                            :source       "aggregation"}]
+                             :cols        [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                              :native_form true}
     :row_count              1
     :status                 "completed"

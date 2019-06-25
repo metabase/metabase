@@ -24,12 +24,12 @@
     :display_name "a"
     :base_type    :type/Integer
     :source       :native
-    :field_ref    [:field_literal "a" :type/Integer]}
+    :field_ref    [:field-literal "a" :type/Integer]}
    {:name         "b"
     :display_name "b"
     :base_type    :type/Integer
     :source       :native
-    :field_ref    [:field_literal "b" :type/Integer]}]
+    :field_ref    [:field-literal "b" :type/Integer]}]
   (annotate/column-info
    {:type :native}
    {:columns [:a :b]
@@ -42,7 +42,7 @@
 ;; make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no non-nil values
 ;; when we peek.
 (expect
-  [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field_literal "a" :type/*]}]
+  [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
   (annotate/column-info {:type :native} {:columns [:a], :rows [[nil]]}))
 
 
@@ -275,7 +275,8 @@
   {:cols [{:name         "totalEvents"
            :display_name "Total Events"
            :base_type    :type/Text
-           :source       :aggregation}]}
+           :source       :aggregation
+           :field_ref    [:aggregation 0]}]}
   (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "totalEvents"
                                                        :display_name "Total Events"
@@ -291,21 +292,25 @@
      :special_type :type/Number
      :name         "count"
      :display_name "count"
-     :source       :aggregation}
+     :source       :aggregation
+     :field_ref    [:aggregation 0]}
     {:source       :aggregation
      :name         "sum"
      :display_name "sum"
-     :base_type    :type/Number}
+     :base_type    :type/Number
+     :field_ref    [:aggregation 1]}
     {:base_type    :type/Number
      :special_type :type/Number
      :name         "count_2"
      :display_name "count"
-     :source       :aggregation}
+     :source       :aggregation
+     :field_ref    [:aggregation 2]}
     {:base_type    :type/Number
      :special_type :type/Number
      :name         "count_2_2"
      :display_name "count_2"
-     :source       :aggregation}]}
+     :source       :aggregation
+     :field_ref    [:aggregation 3]}]}
   (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "count"
                                                        :display_name "count"
@@ -330,7 +335,8 @@
    :base_type       :type/Float
    :special_type    :type/Number
    :expression_name "discount_price"
-   :source          :fields}
+   :source          :fields
+   :field_ref       [:expression "discount_price"]}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues

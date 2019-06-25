@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.annotate
   "Middleware for annotating (adding type information to) the results of a query, under the `:cols` column."
   (:require [clojure.string :as str]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -14,8 +15,7 @@
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [medley.core :as m]))
+            [schema.core :as s]))
 
 (def ^:private Col
   "Schema for a valid map of column info as found in the `:cols` key of the results after this namespace has ran."
@@ -30,7 +30,8 @@
    ;; where this column came from in the original query.
    :source                        (s/enum :aggregation :fields :breakout :native)
    ;; a field clause that can be used to refer to this Field if this query is subsequently used as a source query.
-   :field_ref                     mbql.s/FieldOrAggregationReference
+   ;; Added by this middleware as one of the last steps.
+   (s/optional-key :field_ref)    mbql.s/FieldOrAggregationReference
    ;; various other stuff from the original Field can and should be included such as `:settings`
    s/Any                          s/Any})
 
@@ -59,7 +60,7 @@
       :display_name (u/keyword->qualified-name col)
       :base_type    base-type
       :source       :native
-      :field_ref    [:field_literal (name col) base-type]})))
+      :field_ref    [:field-literal (name col) base-type]})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
