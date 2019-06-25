@@ -20,7 +20,6 @@ const getGuiQueryEditor = query => (
     setDatabaseFn={() => {}}
     setSourceTableFn={() => {}}
     setDatasetQuery={() => {}}
-    isShowingTutorial={false}
     isShowingDataReference={false}
   />
 );

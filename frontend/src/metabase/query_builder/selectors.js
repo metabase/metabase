@@ -26,8 +26,6 @@ export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
-export const getIsShowingTutorial = state =>
-  getUiControls(state).isShowingTutorial;
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 

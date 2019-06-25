@@ -4,8 +4,6 @@ import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
 
-import QueryBuilderTutorial from "metabase/tutorial/QueryBuilderTutorial";
-
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
 import DataReference from "../dataref/DataReference";
@@ -88,7 +86,6 @@ export default class View extends React.Component {
       databases,
       isShowingTemplateTagsEditor,
       isShowingDataReference,
-      isShowingTutorial,
       isShowingNewbModal,
       isShowingChartTypeSidebar,
       isShowingChartSettingsSidebar,
@@ -277,10 +274,6 @@ export default class View extends React.Component {
             </ViewSidebar>
           </div>
         </div>
-
-        {isShowingTutorial && (
-          <QueryBuilderTutorial onClose={() => this.props.closeQbTutorial()} />
-        )}
 
         {isShowingNewbModal && (
           <SavedQuestionIntroModal

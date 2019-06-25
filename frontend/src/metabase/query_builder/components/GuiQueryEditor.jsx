@@ -54,7 +54,6 @@ type Props = {
   setSourceTableFn: (id: TableId) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
-  isShowingTutorial: boolean,
   isShowingDataReference: boolean,
 };
 
@@ -324,8 +323,7 @@ export default class GuiQueryEditor extends React.Component {
     const databaseId = datasetQuery && datasetQuery.database;
     const sourceTableId =
       datasetQuery && datasetQuery.query && datasetQuery.query["source-table"];
-    const isInitiallyOpen =
-      (!datasetQuery.database || !sourceTableId) && !isShowingTutorial;
+    const isInitiallyOpen = !datasetQuery.database || !sourceTableId;
 
     return (
       <div

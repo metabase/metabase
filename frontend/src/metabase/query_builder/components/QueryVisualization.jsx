@@ -1,8 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import { Link } from "react-router";
-import { t, jt, ngettext, msgid } from "ttag";
+import { t } from "ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
@@ -10,10 +9,8 @@ import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 
 import Utils from "metabase/lib/utils";
-import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
-import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 import type { Database } from "metabase/meta/types/Database";
@@ -84,17 +81,11 @@ export default class QueryVisualization extends Component {
   };
 
   render() {
-    const { className, question, databases, isRunning, result } = this.props;
+    const { className, question, isRunning, result } = this.props;
     let viz;
 
     if (!result) {
-      const hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
-      viz = (
-        <VisualizationEmptyState
-          className="spread"
-          showTutorialLink={hasSampleDataset}
-        />
-      );
+      viz = <VisualizationEmptyState className="spread" />;
     } else {
       const error = result.error;
 
@@ -143,14 +134,8 @@ export default class QueryVisualization extends Component {
   }
 }
 
-export const VisualizationEmptyState = ({ className, showTutorialLink }) => (
+export const VisualizationEmptyState = ({ className }) => (
   <div className={cx(className, "flex flex-column layout-centered text-light")}>
     <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
-    {showTutorialLink && (
-      <Link
-        to={Urls.question(null, "?tutorial")}
-        className="link cursor-pointer my2"
-      >{t`How do I use this thing?`}</Link>
-    )}
   </div>
 );
