@@ -11,8 +11,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.test.data :as data]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [expectations :as expectations]))
+            [toucan.util.test :as tt]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |
