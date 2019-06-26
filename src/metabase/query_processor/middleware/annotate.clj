@@ -46,8 +46,23 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- check-driver-native-columns
+  "Double-check that the *driver* returned the correct number of `columns` for native query results."
+  [columns rows]
+  (when (seq rows)
+    (let [expected-count (count columns)
+          actual-count   (count (first rows))]
+      (when-not (= expected-count actual-count)
+        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
+                             "\n"
+                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                                  expected-count actual-count))
+                 {:expected-columns columns
+                  :first-row        (first rows)}))))))
+
 (defmethod column-info :native
   [_ {:keys [columns rows]}]
+  (check-driver-native-columns columns rows)
   ;; Infer the types of columns by looking at the first value for each in the results. Native queries don't have the
   ;; type information from the original `Field` objects used in the query.
   (vec
@@ -56,11 +71,17 @@
                base-type (or (driver.common/values->base-type (for [row rows]
                                                                 (nth row i)))
                              :type/*)]]
-     {:name         (name col)
-      :display_name (u/keyword->qualified-name col)
-      :base_type    base-type
-      :source       :native
-      :field_ref    [:field-literal (name col) base-type]})))
+     (merge
+      {:name         (name col)
+       :display_name (u/keyword->qualified-name col)
+       :base_type    base-type
+       :source       :native}
+      ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
+      ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
+      ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
+      ;; `:field-literal`, omit the `:field_ref`.
+      (when (seq (name col))
+        {:field_ref [:field-literal (name col) base-type]})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -5,9 +5,9 @@
              [query-processor-test :as qp.test]]
             [metabase.models
              [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
+             [field :refer [Field]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
@@ -60,7 +60,7 @@
               :name          (data/format-name "name_2")
               :remapped_from (data/format-name "category_id")
               :field_ref     [:joined-field
-                              (format "%s__via__%s" (:name (Table $$categories)) (:name (Field %category_id)))
+                              (qp.test-util/fk-table-alias-name $$categories %category_id)
                               $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
@@ -85,7 +85,7 @@
                      :name          (data/format-name "name_2")
                      :remapped_from (data/format-name "category_id")
                      :field_ref     [:joined-field
-                                     (format "%s__via__%s" (:name (Table $$categories)) (:name (Field %category_id)))
+                                     (qp.test-util/fk-table-alias-name $$categories %category_id)
                                      $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
