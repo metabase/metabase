@@ -129,6 +129,11 @@ export default class Join extends MBQLObjectClause {
   }
 
   // simplified "=" join condition helpers:
+
+  // NOTE: parentDimension refers to the left-hand side of the join,
+  // and joinDimension refers to the right-hand side
+  // TODO: should we rename them to lhsDimension/rhsDimension etc?
+
   parentDimension() {
     const { condition } = this;
     if (Array.isArray(condition) && condition[0] === "=" && condition[1]) {
@@ -136,12 +141,21 @@ export default class Join extends MBQLObjectClause {
     }
   }
   parentDimensionOptions() {
-    const dimensions = this.query().dimensions();
-    return {
+    const query = this.query();
+    const dimensions = query.dimensions();
+    const options = {
       count: dimensions.length,
       dimensions: dimensions,
       fks: [],
     };
+    // add all previous joined fields
+    const joins = query.joins();
+    for (let i = 0; i < this.index(); i++) {
+      const fkOptions = joins[i].joinedDimensionOptions();
+      options.count += fkOptions.count;
+      options.fks.push(fkOptions);
+    }
+    return options;
   }
   setParentDimension(dimension) {
     if (dimension instanceof Dimension) {
@@ -213,6 +227,17 @@ export default class Join extends MBQLObjectClause {
     return table
       ? table.dimensions().map(dimension => this.joinedDimension(dimension))
       : [];
+  }
+
+  joinedDimensionOptions(dimensionFilter = () => true) {
+    const dimensions = this.joinedDimensions().filter(dimensionFilter);
+    return {
+      name: this.displayName(),
+      icon: "join_left_outer",
+      dimensions: dimensions,
+      fks: [],
+      count: dimensions.length,
+    };
   }
 
   joinedDimension(dimension) {

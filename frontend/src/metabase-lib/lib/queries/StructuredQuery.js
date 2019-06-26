@@ -893,13 +893,11 @@ export default class StructuredQuery extends AtomicQuery {
 
     const joins = this.joins();
     for (const join of joins) {
-      const joinedDimensions = join.joinedDimensions().filter(dimensionFilter);
-      dimensionOptions.count += joinedDimensions.length;
-      dimensionOptions.fks.push({
-        icon: "join_left_outer",
-        field: { display_name: join.displayName() },
-        dimensions: joinedDimensions,
-      });
+      const joinedDimensionOptions = join.joinedDimensionOptions(
+        dimensionFilter,
+      );
+      dimensionOptions.count += joinedDimensionOptions.count;
+      dimensionOptions.fks.push(joinedDimensionOptions);
     }
 
     const table = this.table();
