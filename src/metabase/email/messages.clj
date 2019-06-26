@@ -11,6 +11,7 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.pulse.render :as render]
+            [metabase.pulse.render.style :as render.style]
             [metabase.util
              [date :as du]
              [export :as export]
@@ -195,8 +196,8 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style (render/section-style))
-          :colorGrey4   render/color-gray-4
+          :sectionStyle (render.style/style (render.style/section-style))
+          :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
 
@@ -284,8 +285,8 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle (render/section-style)
-             :colorGrey4   render/color-gray-4
+             :sectionStyle (render.style/section-style)
+             :colorGrey4   render.style/color-gray-4
              :logoFooter   true}
             (random-quote-context)
             (when alert-condition-map

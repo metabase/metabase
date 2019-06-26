@@ -1,6 +1,6 @@
-(ns metabase.pulse.color-test
-  (:require [expectations :refer :all]
-            [metabase.pulse.color :as color :refer :all]))
+(ns metabase.pulse.render.color-test
+  (:require [expectations :refer [expect]]
+            [metabase.pulse.render.color :as color]))
 
 (def ^:private red "#ff0000")
 (def ^:private green "#00ff00")
@@ -30,19 +30,19 @@
 (expect
   [red green red green]
   (with-test-js-engine test-script
-    (let [color-selector (make-color-selector {:cols [{:name "test"}]
+    (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
                                                :rows [[1] [2] [3] [4]]}
                                               {"even" red, "odd" green})]
       (for [row-index (range 0 4)]
-        (get-background-color color-selector "any value" "any column" row-index)))))
+        (color/get-background-color color-selector "any value" "any column" row-index)))))
 
 ;; Same test as above, but make sure we convert any keywords as keywords don't get converted to strings automatically
 ;; when passed to a nashorn function
 (expect
   [red green red green]
   (with-test-js-engine test-script
-    (let [color-selector (make-color-selector {:cols [{:name "test"}]
+    (let [color-selector (color/make-color-selector {:cols [{:name "test"}]
                                                :rows [[1] [2] [3] [4]]}
                                               {:even red, :odd  green})]
       (for [row-index (range 0 4)]
-        (get-background-color color-selector "any value" "any column" row-index)))))
+        (color/get-background-color color-selector "any value" "any column" row-index)))))
