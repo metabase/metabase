@@ -5,16 +5,12 @@
              [query-processor-test :as qp.test]]
             [metabase.models
              [dimension :refer [Dimension]]
-             [table :refer [Table]]
-             [field :refer [Field]]]
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db]
-            [metabase.driver :as driver]
-            [metabase.test.data.interface :as tx]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [toucan.db :as db]))
 
 (qp.test/expect-with-non-timeseries-dbs
  {:rows [["20th Century Cafe"               12 "Café"]
