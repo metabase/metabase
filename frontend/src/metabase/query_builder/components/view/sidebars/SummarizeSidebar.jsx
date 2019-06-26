@@ -28,7 +28,8 @@ function updateAndRun(query) {
 }
 
 const AggregationSidebar = ({ question, index, onClose }) => {
-  const query = question.query();
+  // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
+  const query = question.query().topLevelQuery();
   return (
     <SidebarContent
       title={t`Pick what you want to view`}

@@ -30,12 +30,12 @@ import Button from "metabase/components/Button";
 // );
 
 const QuestionSummaries = ({ className, question, onOpenAddAggregation }) => {
-  const query = question.query();
+  // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
+  const query = question.query().topLevelQuery();
   return (
     <SummarizeButton
       className={className}
       onClick={async () => {
-        const query = question.query();
         if (!query.hasAggregations()) {
           await query.addAggregation(["count"]).update(null, { run: true });
         }

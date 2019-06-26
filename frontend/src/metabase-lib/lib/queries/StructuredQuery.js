@@ -1103,6 +1103,8 @@ export default class StructuredQuery extends AtomicQuery {
         { ...this.datasetQuery(), query: sourceQuery },
         this,
       );
+    } else {
+      return null;
     }
   }
 
@@ -1111,12 +1113,30 @@ export default class StructuredQuery extends AtomicQuery {
    */
   @memoize
   rootQuery(): Query {
-    let query = this;
-    let next;
-    while ((next = query.sourceQuery())) {
-      query = next;
+    const sourceQuery = this.sourceQuery();
+    return sourceQuery ? sourceQuery.rootQuery() : this;
+  }
+
+  /**
+   * Returns the "last" nested query that is already summarized, or `null` if none are
+   * */
+  @memoize
+  lastSummarizedQuery() {
+    if (this.hasAggregations()) {
+      return this;
+    } else {
+      const sourceQuery = this.sourceQuery();
+      return sourceQuery ? sourceQuery.lastSummarizedQuery() : null;
     }
-    return query;
+  }
+
+  /**
+   * Returns the "last" nested query that is already summarized, or the query itself.
+   * Used in "view mode" to effectively ignore post-aggregation filter stages
+   */
+  @memoize
+  topLevelQuery(): Query {
+    return this.lastSummarizedQuery() || this;
   }
 
   /**

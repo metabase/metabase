@@ -1552,7 +1552,7 @@ export function makeDatasetQuery(query = {}) {
     type: "query",
     database: DATABASE_ID,
     query: {
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": query["source-query"] ? undefined : ORDERS_TABLE_ID,
       ...query,
     },
   };

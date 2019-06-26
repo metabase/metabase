@@ -72,4 +72,68 @@ describe("StructuredQuery nesting", () => {
       ]);
     });
   });
+
+  describe("topLevelFilters", () => {
+    it("should return filters for the last two stages", () => {
+      const q = makeStructuredQuery({
+        "source-query": {
+          "source-table": ORDERS_TABLE_ID,
+          aggregation: [["count"]],
+          filter: ["=", ["field-id", ORDERS_PRODUCT_FK_FIELD_ID], 1],
+        },
+        filter: ["=", ["field-literal", "count", "type/Integer"], 2],
+      });
+      const filters = q.topLevelFilters();
+      expect(filters).toHaveLength(2);
+      expect(filters[0]).toEqual([
+        "=",
+        ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+        1,
+      ]);
+      expect(filters[1]).toEqual([
+        "=",
+        ["field-literal", "count", "type/Integer"],
+        2,
+      ]);
+    });
+  });
+
+  describe("topLevelQuery", () => {
+    it("should return the query if it's summarized", () => {
+      const q = makeStructuredQuery({ "source-table": ORDERS_TABLE_ID });
+      expect(q.topLevelQuery().query()).toEqual({
+        "source-table": ORDERS_TABLE_ID,
+      });
+    });
+    it("should return the query if it's not summarized", () => {
+      const q = makeStructuredQuery({
+        "source-table": ORDERS_TABLE_ID,
+        aggregation: [["count"]],
+      });
+      expect(q.topLevelQuery().query()).toEqual({
+        "source-table": ORDERS_TABLE_ID,
+        aggregation: [["count"]],
+      });
+    });
+    it("should return last stage if none are summarized", () => {
+      const q = makeStructuredQuery({
+        "source-query": { "source-table": ORDERS_TABLE_ID },
+      });
+      expect(q.topLevelQuery().query()).toEqual({
+        "source-query": { "source-table": ORDERS_TABLE_ID },
+      });
+    });
+    it("should return last summarized stage if any is summarized", () => {
+      const q = makeStructuredQuery({
+        "source-query": {
+          "source-table": ORDERS_TABLE_ID,
+          aggregation: [["count"]],
+        },
+      });
+      expect(q.topLevelQuery().query()).toEqual({
+        "source-table": ORDERS_TABLE_ID,
+        aggregation: [["count"]],
+      });
+    });
+  });
 });
