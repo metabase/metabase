@@ -5,11 +5,16 @@
              [query-processor-test :as qp.test]]
             [metabase.models
              [dimension :refer [Dimension]]
+             [table :refer [Table]]
              [field :refer [Field]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.driver :as driver]
+            [metabase.test.data.interface :as tx]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (qp.test/expect-with-non-timeseries-dbs
  {:rows [["20th Century Cafe"               12 "Café"]
@@ -58,7 +63,9 @@
               :display_name  "Foo"
               :name          (data/format-name "name_2")
               :remapped_from (data/format-name "category_id")
-              :field_ref     &CATEGORIES__via__CATEGORY_ID.categories.name))]}
+              :field_ref     [:joined-field
+                              (format "%s__via__%s" (:name (Table $$categories)) (:name (Field %category_id)))
+                              $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
@@ -81,7 +88,9 @@
                      :display_name  "Foo"
                      :name          (data/format-name "name_2")
                      :remapped_from (data/format-name "category_id")
-                     :field_ref     &CATEGORIES__via__CATEGORY_ID.categories.name))]}
+                     :field_ref     [:joined-field
+                                     (format "%s__via__%s" (:name (Table $$categories)) (:name (Field %category_id)))
+                                     $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
