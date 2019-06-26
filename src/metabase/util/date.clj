@@ -447,9 +447,10 @@
 (defn str->date-time
   "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date, or `nil` if it
   was unable to be parsed."
-  (^org.joda.time.DateTime [^String date-str]
+  (^DateTime [^String date-str]
    (str->date-time date-str nil))
-  ([^String date-str ^TimeZone tz]
+
+  (^DateTime [^String date-str, ^TimeZone tz]
    (str->date-time-with-formatters ordered-date-parsers date-str tz)))
 
 (def ^:private ordered-time-parsers

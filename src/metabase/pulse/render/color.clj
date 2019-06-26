@@ -1,4 +1,4 @@
-(ns metabase.pulse.color
+(ns metabase.pulse.render.color
   "Namespaces that uses the Nashorn javascript engine to invoke some shared javascript code that we use to determine
   the background color of pulse table cells"
   (:require [cheshire.core :as json]
@@ -56,5 +56,5 @@
 (defn get-background-color
   "Get the correct color for a cell in a pulse table. This is intended to be invoked on each cell of every row in the
   table. See `make-color-selector` for more info."
-  [^JSObject color-selector cell-value column-name row-index]
+  [^JSObject color-selector, cell-value column-name row-index]
   (.call color-selector color-selector (object-array [cell-value row-index column-name])))
