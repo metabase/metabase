@@ -99,6 +99,7 @@ export default class NativeQueryEditor extends Component {
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
+      firstRun: true,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
@@ -152,6 +153,13 @@ export default class NativeQueryEditor extends Component {
       if (aceMode.indexOf("sql") >= 0) {
         this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
       }
+    }
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (this.state.firstRun && nextProps.isRunning && !this.props.isRunning) {
+      this.setState({ firstRun: false });
+      this._updateSize(true);
     }
   }
 
@@ -244,12 +252,12 @@ export default class NativeQueryEditor extends Component {
     });
   }
 
-  _updateSize() {
+  _updateSize(allowShrink = false) {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     const newHeight = getEditorLineHeight(doc.getLength());
     if (
-      newHeight > element.offsetHeight &&
+      (allowShrink || newHeight > element.offsetHeight) &&
       newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES)
     ) {
       element.style.height = newHeight + "px";

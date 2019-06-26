@@ -109,7 +109,12 @@ export default class LoadingAndErrorWrapper extends Component {
     );
 
     if (noWrapper && !error && !loading) {
-      return React.Children.only(this.getChildren());
+      const children = this.getChildren();
+      // special case for loading wrapper with null/undefined child
+      if (children == null) {
+        return null;
+      }
+      return React.Children.only(children);
     }
     return (
       <div className={this.props.className} style={this.props.style}>

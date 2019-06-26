@@ -82,28 +82,102 @@ describe("StructuredQuery", () => {
     });
 
     describe("aggregations", () => {
-      it("should not remove count", () => {
-        const q = makeStructuredQuery({
-          "source-table": ORDERS_TABLE_ID,
-          aggregation: [["count"]],
+      describe("standard aggregations", () => {
+        it("should not remove count", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["count"]],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
         });
-        expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
+        it("should not remove aggregation referencing valid field-id", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["avg", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
+        });
+        it("should remove aggregations referencing invalid field-id", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["avg", ["field-id", 12345]]],
+          });
+          expect(q.clean().query()).toEqual({
+            "source-table": ORDERS_TABLE_ID,
+          });
+        });
       });
-      it("should not remove aggregation referencing valid field-id", () => {
-        const q = makeStructuredQuery({
-          "source-table": ORDERS_TABLE_ID,
-          aggregation: [["avg", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
+
+      describe("named aggregations", () => {
+        it("should not remove valid named aggregations", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["named", ["count"], "foo"]],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
         });
-        expect(q.clean().query()).toEqual(q.query());
-        expect(q.clean() === q).toBe(true);
+        it("should remove invalid named aggregations", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["named", ["casdfaount"], "foo"]],
+          });
+          expect(q.clean().query()).toEqual({
+            "source-table": ORDERS_TABLE_ID,
+          });
+        });
       });
-      it("should remove aggregations referencing invalid field-id", () => {
-        const q = makeStructuredQuery({
-          "source-table": ORDERS_TABLE_ID,
-          aggregation: [["avg", ["field-id", 12345]]],
+
+      describe("metric aggregations", () => {
+        it("should not remove valid metrics", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["metric", 1]],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
         });
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS_TABLE_ID });
+        it("should remove invalid metrics", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["metric", 1234]],
+          });
+          expect(q.clean().query()).toEqual({
+            "source-table": ORDERS_TABLE_ID,
+          });
+        });
+      });
+
+      describe("custom aggregations", () => {
+        it("should not remove count + 1", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["+", ["count"], 1]],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
+        });
+        it("should not remove custom aggregation referencing valid field-id", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [
+              ["+", ["avg", ["field-id", ORDERS_TOTAL_FIELD_ID]], 1],
+            ],
+          });
+          expect(q.clean().query()).toEqual(q.query());
+          expect(q.clean() === q).toBe(true);
+        });
+        xit("should remove aggregations referencing invalid field-id", () => {
+          const q = makeStructuredQuery({
+            "source-table": ORDERS_TABLE_ID,
+            aggregation: [["+", ["avg", ["field-id", 12345]], 1]],
+          });
+          expect(q.clean().query()).toEqual({
+            "source-table": ORDERS_TABLE_ID,
+          });
+        });
       });
     });
 
@@ -187,7 +261,7 @@ describe("StructuredQuery", () => {
           .addAggregation(["count"])
           .addBreakout(["field-id", ORDERS_PRODUCT_FK_FIELD_ID])
           .nest()
-          .addFilter(["=", ["field-literal", "count", "type/Float"], 42]);
+          .addFilter(["=", ["field-literal", "count", "type/Integer"], 42]);
         expect(q.clean().query()).toEqual(q.query());
         expect(q.clean() === q).toBe(true);
       });
@@ -201,7 +275,7 @@ describe("StructuredQuery", () => {
         const q = makeStructuredQuery()
           .addBreakout(["field-id", ORDERS_PRODUCT_FK_FIELD_ID])
           .nest()
-          .addFilter(["=", ["field-literal", "count", "type/Float"], 42]);
+          .addFilter(["=", ["field-literal", "count", "type/Integer"], 42]);
         expect(q.clean().query()).toEqual({
           breakout: [["field-id", ORDERS_PRODUCT_FK_FIELD_ID]],
           "source-table": ORDERS_TABLE_ID,

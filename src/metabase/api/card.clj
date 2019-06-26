@@ -61,6 +61,7 @@
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
+;; TODO - rewrite the functions below as multimethod & impls
 (defn- cards:all
   "Return all `Cards`."
   []

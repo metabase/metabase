@@ -31,9 +31,9 @@
    :actual-message   (when-let [in-a (first (data/diff a e))]
                        (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
    :raw              [str-e str-a]
-   :result           ["\nexpected:\n"
+   :result           [(format "\nexpected: %s\n" (class e))
                       (u/pprint-to-str 'green e)
-                      "\nwas:\n"
+                      (format "\nwas: %s\n" (class a))
                       (u/pprint-to-str 'red a)]})
 
 (defmethod expectations/compare-expr :expectations/maps [e a str-e str-a]
@@ -62,7 +62,7 @@
 
 ;;; ------------------------------------------------- log-slow-tests -------------------------------------------------
 
-(def ^:private slow-test-threshold-ms 2000)
+(def ^:private slow-test-threshold-ms 5000)
 
 (defn- log-slow-tests
   "Log a message about any test that takes longer than `slow-test-threshold-ms` to run. Ideally we'd keep all our tests

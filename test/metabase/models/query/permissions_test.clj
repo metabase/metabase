@@ -260,15 +260,25 @@
     (perms/object-path (data/id) "PUBLIC" (data/id :users))}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                      (data/mbql-query checkins
-                                       {:aggregation [[:sum $id]]
-                                        :breakout    [$user_id]}))]
+                                                      {:aggregation [[:sum $id]]
+                                                       :breakout    [$user_id]}))]
     (query-perms/perms-set
      (data/mbql-query users
-       {:joins [{:fields       :all
-                 :alias        "__alias__"
-                 :source-table (str "card__" card-id)
-                 :condition    [:=
-                                $id
-                                ["joined-field" "__alias__" ["field-literal" "USER_ID" "type/Integer"]]]}]
-        :limit 10})
+                      {:joins [{:fields       :all
+                                :alias        "__alias__"
+                                :source-table (str "card__" card-id)
+                                :condition    [:=
+                                               $id
+                                               ["joined-field" "__alias__" ["field-literal" "USER_ID" "type/Integer"]]]}]
+                       :limit 10})
      :throw-exceptions? true)))
+
+(expect
+  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/object-path (data/id) "PUBLIC" (data/id :users))}
+  (query-perms/perms-set
+   (data/mbql-query users
+     {:joins [{:alias        "c"
+               :source-table $$checkins
+               :condition    [:= $id &c.*USER_ID/Integer]}]})
+   :throw-exceptions? true))

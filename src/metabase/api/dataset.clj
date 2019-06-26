@@ -60,7 +60,7 @@
 
 (defn export-format->context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
-  in EXPORT-FORAMT.
+  in `export-foramt`.
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
@@ -102,14 +102,17 @@
 (defn- as-format-response
   "Return a response containing the `results` of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [columns rows cols]} :data, :keys [status], :as response}]
+  [export-format {{:keys [rows cols]} :data, :keys [status], :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
-       :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
+       :body    ((:export-fn export-conf)
+                 (map #(some % [:display_name :name]) cols)
+                 (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}
+                 "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
+                                               (du/date->iso-8601) (:ext export-conf))}}
       ;; failed query, send error message
       {:status 500
        :body   (:error response)})))

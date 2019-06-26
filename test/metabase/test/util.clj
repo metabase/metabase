@@ -414,18 +414,6 @@
        (finally
          (.setLevel (metabase-logger) orig-log-level#)))))
 
-(defn vectorize-byte-arrays
-  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
-  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
-  equal."
-  {:style/indent 0}
-  [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (vec form)
-                     form))
-                 x))
-
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
   arguments to this function, otherwise, return `M`"
@@ -434,7 +422,7 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
+(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
@@ -442,16 +430,24 @@
                                                      (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
-(defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places"
+(defn ^:deprecated round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 2 decimal places
+
+  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  column instead."
   [field]
   (-> field
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
+      ;; aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols
+(defn ^:deprecated round-fingerprint-cols
+  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
+
+  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  column instead."
   ([query-results]
    (if (map? query-results)
      (let [maybe-data-cols (if (contains? query-results :data)

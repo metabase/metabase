@@ -1,6 +1,3 @@
-// HACK: needed due to cyclical dependency issue
-import "metabase-lib/lib/Question";
-
 import {
   ORDERS_TOTAL_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,

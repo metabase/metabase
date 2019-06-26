@@ -568,11 +568,13 @@
         :quoting             (quote-style driver)
         :allow-dashed-names? true))
     (catch Throwable e
-      (log/error (u/format-color 'red
-                     (str (tru "Invalid HoneySQL form:")
-                          "\n"
-                          (u/pprint-to-str honeysql-form))))
-      (throw e))))
+      (try
+        (log/error (u/format-color 'red
+                       (str (tru "Invalid HoneySQL form:")
+                            "\n"
+                            (u/pprint-to-str honeysql-form))))
+        (finally
+          (throw e))))))
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."

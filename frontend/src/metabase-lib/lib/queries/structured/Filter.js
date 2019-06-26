@@ -94,21 +94,21 @@ export default class Filter extends MBQLClause {
           return false;
         }
       }
+      return true;
+    } else if (this.isSegmentFilter()) {
+      return !!this.segment();
+    } else if (this.isCompoundFilter()) {
+      // TODO: compound filters
+      return true;
     }
-    return true;
+    return false;
   }
+
+  // SEGMENT FILTERS
 
   isSegmentFilter() {
     return isSegmentFilter(this);
   }
-  isFieldFilter() {
-    return isFieldFilter(this);
-  }
-  isCompoundFilter() {
-    return isCompoundFilter(this);
-  }
-
-  // SEGMENT FILTERS
 
   segmentId() {
     if (this.isSegmentFilter()) {
@@ -123,6 +123,10 @@ export default class Filter extends MBQLClause {
   }
 
   // FIELD FILTERS
+
+  isFieldFilter() {
+    return isFieldFilter(this);
+  }
 
   dimension(): ?Dimension {
     if (this.isFieldFilter()) {
@@ -279,5 +283,11 @@ export default class Filter extends MBQLClause {
         ? otherOperator
         : otherOperator && otherOperator.name;
     return operator && operator.name === operatorName;
+  }
+
+  // COMPOUND FILTER
+
+  isCompoundFilter() {
+    return isCompoundFilter(this);
   }
 }

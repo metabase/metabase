@@ -1,15 +1,15 @@
 (ns metabase.query-processor.middleware.expand-macros-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
-             [query-processor-test :refer :all]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [metric :refer [Metric]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.expand-macros :as expand-macros :refer :all]
+            [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [toucan.util.test :as tt]))
@@ -52,30 +52,10 @@
                    [:> [:field-id 4] 1]]]
        :breakout [[:field-id 17]]}))))
 
-;; Does expansion work if :and isn't capitalized? (MBQL is case-insensitive!) (#5706, #5530)
-(expect
-  (mbql-query
-   {:filter   [:and
-               [:= [:field-id 5] "abc"]
-               [:is-null [:field-id 7]]]
-    :breakout [[:field-id 17]]})
-  (tt/with-temp* [Database [{database-id :id}]
-                  Table    [{table-id :id}     {:db_id database-id}]
-                  Segment  [{segment-1-id :id} {:table_id   table-id
-                                                :definition {:filter [:= [:field-id 5] "abc"]}}]
-                  Segment  [{segment-2-id :id} {:table_id   table-id
-                                                :definition {:filter [:is-null [:field-id 7]]}}]]
-    (#'expand-macros/expand-metrics-and-segments
-     (mbql-query
-      {:filter   [:and
-                  [:segment segment-1-id]
-                  [:segment segment-2-id]]
-       :breakout [[:field-id 17]]}))))
-
 ;; just a metric (w/out nested segments)
 (expect
   (mbql-query
-   {:aggregation [[:count]]
+   {:aggregation [[:named [:count] "Toucans in the rainforest"]]
     :filter      [:and
                   [:> [:field-id 4] 1]
                   [:= [:field-id 5] "abc"]]
@@ -83,7 +63,8 @@
     :order-by    [[:asc [:field-id 1]]]})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
-                  Metric   [{metric-1-id :id} {:table_id   table-id
+                  Metric   [{metric-1-id :id} {:name       "Toucans in the rainforest"
+                                               :table_id   table-id
                                                :definition {:aggregation [[:count]]
                                                             :filter      [:and [:= [:field-id 5] "abc"]]}}]]
     (#'expand-macros/expand-metrics-and-segments
@@ -97,13 +78,14 @@
 (expect
   (mbql-query
    {:source-table 1000
-    :aggregation  [[:count]]
+    :aggregation  [[:named [:count] "ABC Fields"]]
     :filter       [:= [:field-id 5] "abc"]
     :breakout     [[:field-id 17]]
     :order-by     [[:asc [:field-id 1]]]})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
-                  Metric   [{metric-1-id :id} {:table_id   table-id
+                  Metric   [{metric-1-id :id} {:name       "ABC Fields"
+                                               :table_id   table-id
                                                :definition {:aggregation [[:count]]
                                                             :filter      [:and [:= [:field-id 5] "abc"]]}}]]
     (#'expand-macros/expand-metrics-and-segments
@@ -116,13 +98,14 @@
 ;; metric w/ no filter definition
 (expect
   (mbql-query
-   {:aggregation [[:count]]
+   {:aggregation [[:named [:count] "My Metric"]]
     :filter      [:= [:field-id 5] "abc"]
     :breakout    [[:field-id 17]]
     :order-by    [[:asc [:field-id 1]]]})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
-                  Metric   [{metric-1-id :id} {:table_id   table-id
+                  Metric   [{metric-1-id :id} {:name       "My Metric"
+                                               :table_id   table-id
                                                :definition {:aggregation [[:count]]}}]]
     (#'expand-macros/expand-metrics-and-segments
      (mbql-query
@@ -135,7 +118,7 @@
 (expect
   (mbql-query
    {:source-table 1000
-    :aggregation  [[:sum [:field-id 18]]]
+    :aggregation  [[:named [:sum [:field-id 18]] "My Metric"]]
     :filter       [:and
                    [:> [:field-id 4] 1]
                    [:is-null [:field-id 7]]
@@ -149,7 +132,8 @@
                                                 :definition {:filter [:and [:between [:field-id 9] 0 25]]}}]
                   Segment  [{segment-2-id :id} {:table_id   table-id
                                                 :definition {:filter [:and [:is-null [:field-id 7]]]}}]
-                  Metric   [{metric-1-id :id}  {:table_id   table-id
+                  Metric   [{metric-1-id :id}  {:name       "My Metric"
+                                                :table_id   table-id
                                                 :definition {:aggregation [[:sum [:field-id 18]]]
                                                              :filter      [:and
                                                                            [:= [:field-id 5] "abc"]
@@ -165,20 +149,21 @@
        :order-by     [[:asc [:field-id 1]]]}))))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
   [[2 118]
    [3  39]
    [4  24]]
   (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [[:sum [:field-id (data/id :venues :price)]]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
-    (format-rows-by [int int]
-      (rows (qp/process-query
-              {:database (data/id)
-               :type     :query
-               :query    {:source-table (data/id :venues)
-                          :aggregation  [[:metric (u/get-id metric)]]
-                          :breakout     [[:field-id (data/id :venues :price)]]}})))))
+    (qp.test/format-rows-by [int int]
+      (qp.test/rows
+        (qp/process-query
+          {:database (data/id)
+           :type     :query
+           :query    {:source-table (data/id :venues)
+                      :aggregation  [[:metric (u/get-id metric)]]
+                      :breakout     [[:field-id (data/id :venues :price)]]}})))))
 
 ;; make sure that we don't try to expand GA "metrics" (#6104)
 (expect
@@ -208,11 +193,21 @@
 ;; make sure we can name a :metric (ick)
 (expect
   (mbql-query
-   {:aggregation [[:named [:sum [:field-id 20]] "My Cool Metric"]]
+   {:aggregation [[:named [:sum [:field-id 20]] "Named Metric"]]
     :breakout    [[:field-id 10]]})
   (tt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
     (#'expand-macros/expand-metrics-and-segments
-     (mbql-query {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
+     (mbql-query {:aggregation [[:named [:metric (u/get-id metric)] "Named Metric"]]
+                  :breakout    [[:field-id 10]]}))))
+
+;; a Metric whose :aggregation is already named should not get wrapped in a `:named` clause
+(expect
+  (mbql-query
+   {:aggregation [[:named [:sum [:field-id 20]] "My Cool Aggregation"]]
+    :breakout    [[:field-id 10]]})
+  (tt/with-temp Metric [metric {:definition {:aggregation [[:named [:sum [:field-id 20]] "My Cool Aggregation"]]}}]
+    (#'expand-macros/expand-metrics-and-segments
+     (mbql-query {:aggregation [[:metric (u/get-id metric)]]
                   :breakout    [[:field-id 10]]}))))
 
 

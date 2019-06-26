@@ -48,11 +48,11 @@ export default class Aggregation extends MBQLClause {
    */
   displayName() {
     if (this.isNamed()) {
-      return NamedClause_DEPRECATED.getName(this);
+      return this[2];
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
     } else if (this.isMetric()) {
-      const metric = this.metadata().metric(this.getMetric());
+      const metric = this.metric();
       if (metric) {
         return metric.displayName();
       }
@@ -75,10 +75,9 @@ export default class Aggregation extends MBQLClause {
    * Predicate function to test if a given aggregation clause is valid
    */
   isValid(): boolean {
-    if (!AggregationClause_DEPRECATED.isValid(this)) {
-      return false;
-    }
-    if (this.isStandard()) {
+    if (this.isNamed()) {
+      return !!this.name() && this.aggregation().isValid();
+    } else if (this.isStandard()) {
       const dimension = this.dimension();
       const aggregation = this.query()
         .table()
@@ -90,9 +89,16 @@ export default class Aggregation extends MBQLClause {
             .aggregationFieldOptions(aggregation)
             .hasDimension(dimension))
       );
+    } else if (this.isMetric()) {
+      return !!this.metric();
+    } else if (this.isCustom()) {
+      // TODO: custom aggregations
+      return true;
     }
-    return true;
+    return false;
   }
+
+  // STANDARD AGGREGATION
 
   /**
    * Returns true if this is a "standard" metric
@@ -100,29 +106,6 @@ export default class Aggregation extends MBQLClause {
   isStandard(): boolean {
     return AggregationClause_DEPRECATED.isStandard(this);
   }
-
-  /**
-   * Returns true if this is a metric
-   */
-  isMetric(): boolean {
-    return AggregationClause_DEPRECATED.isMetric(this);
-  }
-
-  /**
-   * Returns true if this is custom expression created with the expression editor
-   */
-  isCustom(): boolean {
-    return AggregationClause_DEPRECATED.isCustom(this);
-  }
-
-  /**
-   * Returns true if this a named aggregation
-   */
-  isNamed() {
-    return NamedClause_DEPRECATED.isNamed(this);
-  }
-
-  // STANDARD AGGREGATION
 
   dimension(): ?Dimension {
     if (this.isStandard() && this.length > 1) {
@@ -166,16 +149,60 @@ export default class Aggregation extends MBQLClause {
   // METRIC AGGREGATION
 
   /**
+   * Returns true if this is a metric
+   */
+  isMetric(): boolean {
+    return this[0] === "metric";
+  }
+
+  /**
    * Get metricId from a metric aggregation clause
    * Returns `null` if the clause doesn't represent a metric
    */
-  getMetric(): ?MetricId {
-    return AggregationClause_DEPRECATED.getMetric(this);
+  metricId(): ?MetricId {
+    if (this.isMetric()) {
+      return this[1];
+    }
+  }
+
+  metric() {
+    if (this.isMetric()) {
+      return this.metadata().metric(this.metricId());
+    }
+  }
+
+  // CUSTOM
+
+  /**
+   * Returns true if this is custom expression created with the expression editor
+   */
+  isCustom(): boolean {
+    return AggregationClause_DEPRECATED.isCustom(this);
   }
 
   // NAMED
 
-  getAggregation() {
-    return AggregationClause_DEPRECATED.getAggregation(this);
+  /**
+   * Returns true if this a named aggregation
+   */
+  isNamed() {
+    return this[0] === "named";
+  }
+
+  name() {
+    if (this.isNamed()) {
+      return this[2];
+    }
+  }
+
+  /**
+   * Returns the aggregation without "named" clause, if any
+   */
+  aggregation() {
+    if (this.isNamed()) {
+      return new Aggregation(this[1], this._index, this._query);
+    } else {
+      return this;
+    }
   }
 }

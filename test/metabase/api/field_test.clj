@@ -2,7 +2,7 @@
   "Tests for `/api/field` endpoints."
   (:require [expectations :refer :all]
             [metabase
-             [query-processor-test :as qpt]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.api.field :as field-api]
             [metabase.driver.util :as driver.u]
@@ -15,7 +15,7 @@
              [util :as tu]]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util.log :as tu.log]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
+            [metabase.timeseries-query-processor-test.util :as tqp.test]
             [ring.util.codec :as codec]
             [toucan
              [db :as db]
@@ -570,14 +570,14 @@
 
 
 ;; make sure `search-values` works on with our various drivers
-(qpt/expect-with-non-timeseries-dbs
+(qp.test/expect-with-non-timeseries-dbs
   [[1 "Red Medicine"]]
-  (qpt/format-rows-by [int str]
+  (qp.test/format-rows-by [int str]
     (field-api/search-values (Field (data/id :venues :id))
                              (Field (data/id :venues :name))
                              "Red")))
 
-(tqpt/expect-with-timeseries-dbs
+(tqp.test/expect-with-timeseries-dbs
   [["139" "Red Medicine"]
    ["375" "Red Medicine"]
    ["72"  "Red Medicine"]]
@@ -586,7 +586,7 @@
                            "Red"))
 
 ;; make sure it also works if you use the same Field twice
-(qpt/expect-with-non-timeseries-dbs
+(qp.test/expect-with-non-timeseries-dbs
   [["Red Medicine" "Red Medicine"]]
   (field-api/search-values (Field (data/id :venues :name))
                            (Field (data/id :venues :name))
@@ -595,7 +595,7 @@
 ;; disabled for now because for some reason Druid itself is failing to run this query with an “Invalid type marker
 ;; byte 0x3c” error message. The query itself is fine so I suspect this might be an issue with Druid itself. Either
 ;; way, I can find very little information about it online. Try reenabling this test next time we upgrade Druid.
-#_(tqpt/expect-with-timeseries-dbs
+#_(tqp.test/expect-with-timeseries-dbs
   [["Red Medicine" "Red Medicine"]]
   (field-api/search-values (Field (data/id :checkins :venue_name))
                            (Field (data/id :checkins :venue_name))

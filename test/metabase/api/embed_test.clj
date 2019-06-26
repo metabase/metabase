@@ -7,7 +7,7 @@
             [clojure.string :as str]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [http-client :as http]
              [util :as u]]
@@ -70,8 +70,7 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns  ["count"]
-                 :cols     [{:base_type    "type/Integer"
+   {:data       {:cols     [{:base_type    "type/Integer"
                              :special_type "type/Number"
                              :name         "count"
                              :display_name "count"
@@ -326,7 +325,8 @@
     (tt/with-temp Card [card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
-        (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))
+        (tu/with-temporary-setting-values [site-url http/*url-prefix*]
+          (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------

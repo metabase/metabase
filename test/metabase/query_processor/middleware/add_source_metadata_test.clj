@@ -83,7 +83,7 @@
      :source-metadata (concat
                        (venues-source-metadata :price)
                        [{:name         "avg"
-                         :display_name "avg"
+                         :display_name "average of ID"
                          :base_type    :type/BigInteger
                          :special_type :type/PK}])})
   (add-source-metadata
