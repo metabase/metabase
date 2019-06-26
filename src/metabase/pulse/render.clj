@@ -1,6 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [body :as body]
              [common :as common]
@@ -44,6 +45,46 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
+(defn- number-field?
+  [field]
+  (or (isa? (:base_type field)    :type/Number)
+      (isa? (:special_type field) :type/Number)))
+
+;; TODO - rename to detect-pulse-chart-type
+(defn detect-pulse-card-type
+  "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
+  [card data]
+  (let [col-count                 (-> data :cols count)
+        row-count                 (-> data :rows count)
+        [col-1-rowfn col-2-rowfn] (common/graphing-column-row-fns card data)
+        col-1                     (col-1-rowfn (:cols data))
+        col-2                     (col-2-rowfn (:cols data))
+        aggregation               (-> card :dataset_query :query :aggregation first)]
+    (cond
+      (or (zero? row-count)
+          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
+          (= [[nil]] (-> data :rows)))
+      :empty
+
+      (contains? #{:pin_map :state :country} (:display card))
+      nil
+
+      (and (= col-count 1)
+           (= row-count 1))
+      :scalar
+
+      (and (= col-count 2)
+           (> row-count 1)
+           (mbql.u/datetime-field? col-1)
+           (number-field? col-2))
+      :sparkline
+
+      (and (= col-count 2)
+           (number-field? col-2))
+      :bar
+
+      :else :table)))
+
 (defn- is-attached?
   [card]
   (or (:include_csv card)
@@ -55,14 +96,14 @@
     (when error
       (let [^String msg (str (tru "Card has errors: {0}" error))]
         (throw (ex-info msg results))))
-    (let [render-type (or (body/detect-pulse-card-type card data)
+    (let [chart-type (or (detect-pulse-card-type card data)
                           (when (is-attached? card)
                             :attached)
                           :unknown)]
-      (body/render render-type timezone card data))
+      (body/render chart-type render-type timezone card data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
-      (body/render :error timezone card e))))
+      (body/render :error nil nil nil nil))))
 
 (defn- card-href
   [card]
@@ -102,7 +143,7 @@
                                                :margin-bottom :20px}
                                               ;; Don't include the border on cards rendered with a table as the table
                                               ;; will be to larger and overrun the border
-                                              (when-not (= :table (body/detect-pulse-card-type card data))
+                                              (when-not (= :table (detect-pulse-card-type card data))
                                                 {:border           "1px solid #dddddd"
                                                  :border-radius    :2px
                                                  :background-color :white

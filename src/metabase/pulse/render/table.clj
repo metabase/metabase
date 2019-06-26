@@ -51,17 +51,23 @@
     (when bar-width
       [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
 
-(defn- render-table-body [^JSObject color-selector, column-names bar-width rows]
+(defn- render-table-body
+  "Render Hiccup `<tbody>` of a `<table>`.
+
+  `get-background-color` is a function that returned the background color for the current cell; it is invoked like
+
+    (get-background-color cell-value column-name row-index)"
+  [get-background-color column-names rows]
   [:tbody
-   (for [[row-idx row] (m/indexed rows)]
+   (for [[row-idx {:keys [row bar-width]}] (m/indexed rows)]
      [:tr {:style (style/style {:color style/color-gray-3})}
       (for [[col-idx cell] (m/indexed row)]
-        (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
-          [:td {:style (style/style (row-style-for-type cell)
-                                    (merge {:background-color bg-color}
-                                           (when (and bar-width (= col-idx 1))
-                                             {:font-weight 700})))}
-           (h cell)]))
+        [:td {:style (style/style
+                      (row-style-for-type cell)
+                      {:background-color (get-background-color cell (get column-names col-idx) row-idx)}
+                      (when (and bar-width (= col-idx 1))
+                        {:font-weight 700}))}
+         (h cell)])
       (when bar-width
         [:td {:style (style/style (bar-td-style) {:width :99%})}
          [:div {:style (style/style {:background-color style/color-purple
@@ -76,9 +82,9 @@
   background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
   display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
   create."
-  [color-selector column-names [{:keys [bar-width], :as header} & rows]]
+  [^JSObject color-selector, column-names [header & rows]]
   [:table {:style (style/style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
            :cellpadding "0"
            :cellspacing "0"}
    (render-table-head header)
-   (render-table-body color-selector column-names bar-width rows)])
+   (render-table-body (partial color/get-background-color color-selector) column-names rows)])

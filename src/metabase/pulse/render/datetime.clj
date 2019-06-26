@@ -8,7 +8,9 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import [org.joda.time DateTime DateTimeZone]))
+  (:import [org.joda.time DateTime DateTimeZone]
+           org.joda.time.DateMidnight
+           org.joda.time.base.BaseSingleFieldPeriod))
 
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
   (f/unparse (f/with-zone (f/formatter new-format-string)
@@ -41,8 +43,8 @@
 (def ^:private day   (comp t/day   t/now))
 
 (def ^:private RenderableInterval
-  {:interval-start     org.joda.time.DateMidnight
-   :interval           org.joda.time.base.BaseSingleFieldPeriod
+  {:interval-start     DateMidnight
+   :interval           BaseSingleFieldPeriod
    :this-interval-name su/NonBlankString
    :last-interval-name su/NonBlankString})
 
@@ -52,7 +54,8 @@
 
 (defmethod renderable-interval :default [_] nil)
 
-(defmethod renderable-interval :day [_]
+(s/defmethod renderable-interval :day :- RenderableInterval
+  [_]
   {:interval-start     (t/date-midnight (year) (month) (day))
    :interval           (t/days 1)
    :this-interval-name (tru "Today")
@@ -61,13 +64,15 @@
 (defn- start-of-this-week []
   (-> (org.joda.time.LocalDate.) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay))
 
-(defmethod renderable-interval :week [_]
+(s/defmethod renderable-interval :week :- RenderableInterval
+  [_]
   (start-of-this-week)
   (t/weeks 1)
   (tru "This week")
   (tru "Last week"))
 
-(defmethod renderable-interval :month [_]
+(s/defmethod renderable-interval :month :- RenderableInterval
+  [_]
   (t/date-midnight (year) (month))
   (t/months 1)
   (tru "This month")
@@ -77,27 +82,30 @@
   (t/date-midnight (year) (inc (* 3 (Math/floor (/ (dec (month))
                                                    3))))))
 
-(defmethod renderable-interval :quarter [_]
+(s/defmethod renderable-interval :quarter :- RenderableInterval
+  [_]
   (start-of-this-quarter)
   (t/months 3)
   (tru "This quarter")
   (tru "Last quarter"))
 
-(defmethod renderable-interval :year [_]
+(s/defmethod renderable-interval :year :- RenderableInterval
+  [_]
   (t/date-midnight (year))
   (t/years 1)
   (tru "This year")
   (tru "Last year"))
 
 (s/defn ^:private date->interval-name :- (s/maybe su/NonBlankString)
-  [date :- DateTime, unit :- s/Keyword]
-  (when-let [{:keys [interval-start interval this-interval-name last-interval-name]} (renderable-interval unit)]
-    (condp t/within? date
-      (t/interval interval-start (t/plus interval-start interval))
-      this-interval-name
+  [date :- (s/maybe DateTime), unit :- (s/maybe s/Keyword)]
+  (when (and date unit)
+    (when-let [{:keys [interval-start interval this-interval-name last-interval-name]} (renderable-interval unit)]
+      (condp t/within? date
+        (t/interval interval-start (t/plus interval-start interval))
+        this-interval-name
 
-      (t/interval (t/minus interval-start interval) interval-start)
-      last-interval-name)))
+        (t/interval (t/minus interval-start interval) interval-start)
+        last-interval-name))))
 
 (defn format-timestamp-relative
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,

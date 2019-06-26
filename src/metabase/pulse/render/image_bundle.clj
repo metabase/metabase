@@ -5,7 +5,8 @@
   (:require [clojure.java.io :as io])
   (:import java.net.URL
            java.util.Arrays
-           org.apache.commons.io.IOUtils))
+           org.apache.commons.io.IOUtils
+           org.fit.cssbox.misc.Base64Coder))
 
 (defn- hash-bytes
   "Generate a hash to be used in a Content-ID"
@@ -47,7 +48,7 @@
     [render-type (class url-or-bytes)]))
 
 (defmethod make-image-bundle [:attachment java.net.URL]
-  [render-type ^java.net.URL url]
+  [render-type, ^java.net.URL url]
   (let [content-id (mb-hash-str (hash-image-url url))]
     {:content-id  content-id
      :image-url   url
@@ -64,12 +65,12 @@
      :render-type render-type}))
 
 (defmethod make-image-bundle [:inline java.net.URL]
-  [render-type ^java.net.URL url]
+  [render-type, ^java.net.URL url]
   {:image-src   (-> url io/input-stream IOUtils/toByteArray render-img-data-uri)
    :image-url   url
    :render-type render-type})
 
-(defmethod make-image-bundle [:inline (class (byte-array 0))]
+(defmethod make-image-bundle [:inline (Class/forName "[B")]
   [render-type image-bytes]
   {:image-src   (render-img-data-uri image-bytes)
    :render-type render-type})
@@ -93,17 +94,17 @@
 (defn external-link-image-bundle [render-type]
   (case render-type
     :attachment @external-link-image
-    :inline (make-image-bundle render-type external-link-url)))
+    :inline     (make-image-bundle render-type external-link-url)))
 
 (defn no-results-image-bundle [render-type]
   (case render-type
     :attachment @no-results-image
-    :inline (make-image-bundle render-type no-results-url)))
+    :inline     (make-image-bundle render-type no-results-url)))
 
 (defn attached-image-bundle [render-type]
   (case render-type
     :attachment @attached-image
-    :inline (make-image-bundle render-type attached-url)))
+    :inline     (make-image-bundle render-type attached-url)))
 
 (defn image-bundle->attachment [{:keys [render-type content-id image-url]}]
   (case render-type

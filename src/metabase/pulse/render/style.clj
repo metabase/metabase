@@ -2,6 +2,9 @@
   "CSS styles and related helper code for Pulse rendering."
   (:require [clojure.string :as str]))
 
+;; TODO - we should move other CSS definitions from `metabase.pulse.render` namespaces into this one, so they're all
+;; in one place.
+
 (defn style
   "Compile one or more CSS style maps into a string.
 
@@ -11,22 +14,49 @@
                       :let  [v (if (keyword? v) (name v) v)]]
                   (str (name k) ": " v ";"))))
 
-(def ^:const color-brand      "rgb(45,134,212)")
-(def ^:const color-purple     "rgb(135,93,175)")
-(def ^:const color-gold       "#F9D45C")
-(def ^:const color-error      "#EF8C8C")
-(def ^:const color-gray-1     "rgb(248,248,248)")
-(def ^:const color-gray-2     "rgb(189,193,191)")
-(def ^:const color-gray-3     "rgb(124,131,129)")
-(def ^:const color-gray-4 "A ~25% Gray color." "rgb(57,67,64)")
-(def ^:const color-dark-gray  "#616D75")
-(def ^:const color-row-border "#EDF0F1")
+(def ^:const color-brand
+  "Classic Metabase blue."
+  "#2D86D4")
+
+(def ^:const color-purple
+  "Used as background color for cells in bar chart tables."
+  "#875DAF")
+
+(def ^:const color-gold
+  "Used as color for 'We were unable to display this Pulse' messages."
+  "#F9D45C")
+
+(def ^:const color-error
+  "Color for error messages."
+  "#EF8C8C")
+
+(def ^:const color-gray-1
+  "~97% gray."
+  "#F8F8F8")
+
+(def ^:const color-gray-2
+  "~75% gray."
+  "#BDC1BF")
+
+(def ^:const color-gray-3
+  "~50% gray."
+  "#7C8381")
+
+(def ^:const color-gray-4
+  "~25% gray."
+  "#394340")
+
+(def ^:const color-row-border
+  "Used as color for the bottom border of table headers for charts with `:table` vizualization."
+  "#EDF0F1")
 
 
 (defn- primary-color []
   color-brand)
 
-(defn font-style []
+(defn font-style
+  "Font family to use in rendered Pulses."
+  []
   {:font-family "Lato, \"Helvetica Neue\", Helvetica, Arial, sans-serif"})
 
 (defn section-style
@@ -34,7 +64,9 @@
   []
   (font-style))
 
-(defn header-style []
+(defn header-style
+  "Style for a header of a pulse section."
+  []
   (merge
    (font-style)
    {:font-size       :16px
@@ -42,7 +74,9 @@
     :color           color-gray-4
     :text-decoration :none}))
 
-(defn scalar-style []
+(defn scalar-style
+  "Style for a scalar display-type 'chart' in a Pulse."
+  []
   (merge
    (font-style)
    {:font-size   :24px

@@ -6,24 +6,19 @@
              [common :as common]
              [datetime :as datetime]
              [image-bundle :as image-bundle]
+             [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [tru]]
-             [ui-logic :as ui-logic]]
-            [schema.core :as s])
-  (:import [java.awt BasicStroke Color RenderingHints]
-           java.awt.image.BufferedImage
-           java.io.ByteArrayOutputStream
-           java.util.Date
-           javax.imageio.ImageIO))
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]))
 
-(def ^:private ^:const rows-limit 20)
-(def ^:private ^:const cols-limit 10)
-(def ^:private ^:const sparkline-dot-radius 6)
-(def ^:private ^:const sparkline-thickness 3)
-(def ^:private ^:const sparkline-pad 8)
+(def rows-limit
+  "Maximum number of rows to render in a Pulse image."
+  20)
+
+(def cols-limit
+  "Maximum number of columns to render in a Pulse image."
+  10)
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
@@ -31,59 +26,13 @@
 ;;; |                                                   Helper Fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- graphing-columns [card {:keys [cols] :as data}]
-  [(or (ui-logic/x-axis-rowfn card data)
-       first)
-   (or (ui-logic/y-axis-rowfn card data)
-       second)])
-
-(defn- number-field?
-  [field]
-  (or (isa? (:base_type field)    :type/Number)
-      (isa? (:special_type field) :type/Number)))
-
-(defn detect-pulse-card-type
-  "Determine the pulse (visualization) type of a `card`, e.g. `:scalar` or `:bar`."
-  [card data]
-  (let [col-count                 (-> data :cols count)
-        row-count                 (-> data :rows count)
-        [col-1-rowfn col-2-rowfn] (graphing-columns card data)
-        col-1                     (col-1-rowfn (:cols data))
-        col-2                     (col-2-rowfn (:cols data))
-        aggregation               (-> card :dataset_query :query :aggregation first)]
-    (cond
-      (or (zero? row-count)
-          ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
-          (= [[nil]] (-> data :rows)))                             :empty
-      (contains? #{:pin_map :state :country} (:display card))      nil
-      (and (= col-count 1)
-           (= row-count 1))                                        :scalar
-      (and (= col-count 2)
-           (> row-count 1)
-           (mbql.u/datetime-field? col-1)
-           (number-field? col-2))                                  :sparkline
-      (and (= col-count 2)
-           (number-field? col-2))                                  :bar
-      :else                                                        :table)))
-
-(defn- show-in-table? [{:keys [special_type visibility_type] :as column}]
+(defn show-in-table?
+  "Should this column be shown in a rendered table in a Pulse?"
+  [{:keys [special_type visibility_type] :as column}]
   (and (not (isa? special_type :type/Description))
        (not (contains? #{:details-only :retired :sensitive} visibility_type))))
 
-(defn include-csv-attachment?
-  "Returns true if this card and resultset should include a CSV attachment"
-  [card {:keys [cols rows] :as result-data}]
-  (or (:include_csv card)
-      (and (not (:include_xls card))
-           (= :table (detect-pulse-card-type card result-data))
-           (or
-            ;; If some columns are not shown, include an attachment
-            (some (complement show-in-table?) cols)
-            ;; If there are too many rows or columns, include an attachment
-            (< cols-limit (count cols))
-            (< rows-limit (count rows))))))
-
-(defn count-displayed-columns
+(defn- count-displayed-columns
   "Return a count of the number of columns to be included in a table display"
   [cols]
   (count (filter show-in-table? cols)))
@@ -199,7 +148,7 @@
                  (< rows-limit (count rows))))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
-     "More results have been included as a file attachment"]))
+     (str (trs "More results have been included as a file attachment"))]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -207,170 +156,150 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti render
-  {:arglists '([render-type timezone card data])}
-  (fn [render-type _ _ _] render-type))
+  {:arglists '([chart-type render-type timezone card data])}
+  (fn [chart-type _ _ _ _] chart-type))
+
 
 (s/defmethod render :table :- common/RenderedPulseCard
-  [render-type timezone card {:keys [cols rows] :as data}]
+  [_ render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
-                    (table/render-table (color/make-color-selector data (:visualization_settings card))
-                                        (mapv :name (:cols data))
-                                        (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                    (table/render-table
+                     (color/make-color-selector data (:visualization_settings card))
+                     (mapv :name (:cols data))
+                     (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
-    {:attachments nil
-     :content     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
-                    (list results-attached table-body)
-                    (list table-body))}))
+    {:attachments
+     nil
 
-(defn- non-nil-rows
-  "Remove any rows that have a nil value for the `x-axis-fn` OR `y-axis-fn`"
-  [x-axis-fn y-axis-fn rows]
-  (filter (every-pred x-axis-fn y-axis-fn) rows))
+     :content
+     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
+       (list results-attached table-body)
+       (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ timezone card {:keys [cols] :as data}]
-  (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
-        rows (non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
-        max-value (apply max (map y-axis-rowfn rows))]
-    {:attachments nil
-     :content     [:div
-                   (table/render-table (color/make-color-selector data (:visualization_settings card))
-                                 (mapv :name cols)
-                                 (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
-                   (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+  [_ _ timezone card {:keys [cols] :as data}]
+  (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
+        max-value                   (apply max (map y-axis-rowfn rows))]
+    {:attachments
+     nil
+
+     :content
+     [:div
+      (table/render-table (color/make-color-selector data (:visualization_settings card))
+                          (mapv :name cols)
+                          (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+      (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_ timezone card {:keys [cols rows]}]
-  {:attachments nil
-   :content     [:div {:style (style/style (style/scalar-style))}
-                 (h (format-cell timezone (ffirst rows) (first cols)))]})
+  [_ _ timezone card {:keys [cols rows]}]
+  {:attachments
+   nil
 
-(defn- render-sparkline-to-png
-  "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
-  [xs ys width height]
-  (let [os    (ByteArrayOutputStream.)
-        image (BufferedImage. (+ width (* 2 sparkline-pad)) (+ height (* 2 sparkline-pad)) BufferedImage/TYPE_INT_ARGB)
-        xt    (map #(+ sparkline-pad (* width %)) xs)
-        yt    (map #(+ sparkline-pad (- height (* height %))) ys)]
-    (doto (.createGraphics image)
-      (.setRenderingHints (RenderingHints. RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))
-      (.setColor (Color. 211 227 241))
-      (.setStroke (BasicStroke. sparkline-thickness BasicStroke/CAP_ROUND BasicStroke/JOIN_ROUND))
-      (.drawPolyline (int-array (count xt) xt)
-                     (int-array (count yt) yt)
-                     (count xt))
-      (.setColor (Color. 45 134 212))
-      (.fillOval (- (last xt) sparkline-dot-radius)
-                 (- (last yt) sparkline-dot-radius)
-                 (* 2 sparkline-dot-radius)
-                 (* 2 sparkline-dot-radius))
-      (.setColor Color/white)
-      (.setStroke (BasicStroke. 2))
-      (.drawOval (- (last xt) sparkline-dot-radius)
-                 (- (last yt) sparkline-dot-radius)
-                 (* 2 sparkline-dot-radius)
-                 (* 2 sparkline-dot-radius)))
-    (when-not (ImageIO/write image "png" os)                    ; returns `true` if successful -- see JavaDoc
-      (let [^String msg (str (tru "No appropriate image writer found!"))]
-        (throw (Exception. msg))))
-    (.toByteArray os)))
+   :content
+   [:div {:style (style/style (style/scalar-style))}
+    (h (format-cell timezone (ffirst rows) (first cols)))]})
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [render-type timezone card {:keys [rows cols] :as data}]
-  (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
-        ft-row                      (if (mbql.u/datetime-field? (x-axis-rowfn cols))
-                                      #(.getTime ^Date (du/->Timestamp % timezone))
-                                      identity)
-        rows                        (non-nil-rows x-axis-rowfn y-axis-rowfn
-                                                  (if (> (ft-row (x-axis-rowfn (first rows)))
-                                                         (ft-row (x-axis-rowfn (last rows))))
-                                                    (reverse rows)
-                                                    rows))
-        xs                          (map (comp ft-row x-axis-rowfn) rows)
-        xmin                        (apply min xs)
-        xmax                        (apply max xs)
-        xrange                      (- xmax xmin)
-        xs'                         (map #(/ (double (- % xmin)) xrange) xs)
-        ys                          (map y-axis-rowfn rows)
-        ymin                        (apply min ys)
-        ymax                        (apply max ys)
-        yrange                      (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
-        ys'                         (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
-        rows'                       (reverse (take-last 2 rows))
-        values                      (map (comp common/format-number y-axis-rowfn) rows')
-        labels                      (datetime/format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
-        image-bundle                (image-bundle/make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
+  [_ render-type timezone card {:keys [rows cols] :as data}]
+  (let [[x-axis-rowfn
+         y-axis-rowfn] (common/graphing-column-row-fns card data)
+        rows           (sparkline/sparkline-rows timezone card data)
+        last-rows      (reverse (take-last 2 rows))
+        values         (for [row last-rows]
+                         (some-> row y-axis-rowfn common/format-number))
+        labels         (datetime/format-timestamp-pair timezone (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
+        image-bundle   (sparkline/sparkline-image-bundle render-type timezone card {:rows rows, :cols cols})]
+    {:attachments
+     (when image-bundle
+       (image-bundle/image-bundle->attachment image-bundle))
 
-    {:attachments (when image-bundle
-                    (image-bundle/image-bundle->attachment image-bundle))
-     :content     [:div
-                   [:img {:style (style/style {:display :block
-                                               :width   :100%})
-                          :src   (:image-src image-bundle)}]
-                   [:table
-                    [:tr
-                     [:td {:style (style/style {:color         style/color-brand
-                                                :font-size     :24px
-                                                :font-weight   700
-                                                :padding-right :16px})}
-                      (first values)]
-                     [:td {:style (style/style {:color       style/color-gray-3
-                                                :font-size   :24px
-                                                :font-weight 700})}
-                      (second values)]]
-                    [:tr
-                     [:td {:style (style/style {:color         style/color-brand
-                                                :font-size     :16px
-                                                :font-weight   700
-                                                :padding-right :16px})}
-                      (first labels)]
-                     [:td {:style (style/style {:color     style/color-gray-3
-                                                :font-size :16px})}
-                      (second labels)]]]]}))
+     :content
+     [:div
+      [:img {:style (style/style {:display :block
+                                  :width   :100%})
+             :src   (:image-src image-bundle)}]
+      [:table
+       [:tr
+        [:td {:style (style/style {:color         style/color-brand
+                                   :font-size     :24px
+                                   :font-weight   700
+                                   :padding-right :16px})}
+         (first values)]
+        [:td {:style (style/style {:color       style/color-gray-3
+                                   :font-size   :24px
+                                   :font-weight 700})}
+         (second values)]]
+       [:tr
+        [:td {:style (style/style {:color         style/color-brand
+                                   :font-size     :16px
+                                   :font-weight   700
+                                   :padding-right :16px})}
+         (first labels)]
+        [:td {:style (style/style {:color     style/color-gray-3
+                                   :font-size :16px})}
+         (second labels)]]]]}))
+
 
 (s/defmethod render :empty :- common/RenderedPulseCard
-  [render-type _ _ _]
+  [_ render-type _ _ _]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
-    {:attachments (image-bundle/image-bundle->attachment image-bundle)
-     :content     [:div {:style (style/style {:text-align :center})}
-                   [:img {:style (style/style {:width :104px})
-                          :src   (:image-src image-bundle)}]
-                   [:div {:style (style/style
-                                  (style/font-style)
-                                  {:margin-top :8px
-                                   :color      style/color-gray-4})}
-                    "No results"]]}))
+    {:attachments
+     (image-bundle/image-bundle->attachment image-bundle)
+
+     :content
+     [:div {:style (style/style {:text-align :center})}
+      [:img {:style (style/style {:width :104px})
+             :src   (:image-src image-bundle)}]
+      [:div {:style (style/style
+                     (style/font-style)
+                     {:margin-top :8px
+                      :color      style/color-gray-4})}
+       (str (trs "No results"))]]}))
+
 
 (s/defmethod render :attached :- common/RenderedPulseCard
-  [render-type _ _ _]
+  [_ render-type _ _ _]
   (let [image-bundle (image-bundle/attached-image-bundle render-type)]
-    {:attachments (image-bundle/image-bundle->attachment image-bundle)
-     :content     [:div {:style (style/style {:text-align :center})}
-                   [:img {:style (style/style {:width :30px})
-                          :src   (:image-src image-bundle)}]
-                   [:div {:style (style/style
-                                  (style/font-style)
-                                  {:margin-top :8px
-                                   :color      style/color-gray-4})}
-                    "This question has been included as a file attachment"]]}))
+    {:attachments
+     (image-bundle/image-bundle->attachment image-bundle)
+
+     :content
+     [:div {:style (style/style {:text-align :center})}
+      [:img {:style (style/style {:width :30px})
+             :src   (:image-src image-bundle)}]
+      [:div {:style (style/style
+                     (style/font-style)
+                     {:margin-top :8px
+                      :color      style/color-gray-4})}
+       (str (trs "This question has been included as a file attachment"))]]}))
+
 
 (s/defmethod render :unknown :- common/RenderedPulseCard
-  [_ _ _ _]
-  {:attachments nil
-   :content     [:div {:style (style/style
-                               (style/font-style)
-                               {:color       style/color-gold
-                                :font-weight 700})}
-                 "We were unable to display this card."
-                 [:br]
-                 "Please view this card in Metabase."]})
+  [_ _ _ _ _]
+  {:attachments
+   nil
+
+   :content
+   [:div {:style (style/style
+                  (style/font-style)
+                  {:color       style/color-gold
+                   :font-weight 700})}
+    (str (trs "We were unable to display this Pulse."))
+    [:br]
+    (str (trs "Please view this card in Metabase."))]})
+
 
 (s/defmethod render :error :- common/RenderedPulseCard
-  [_ _ _ _]
-  {:attachments nil
-   :content     [:div {:style (style/style
-                               (style/font-style)
-                               {:color       style/color-error
-                                :font-weight 700
-                                :padding     :16px})}
-                 "An error occurred while displaying this card."]})
+  [_ _ _ _ _]
+  {:attachments
+   nil
+
+   :content
+   [:div {:style (style/style
+                  (style/font-style)
+                  {:color       style/color-error
+                   :font-weight 700
+                   :padding     :16px})}
+    (str (trs "An error occurred while displaying this card."))]})

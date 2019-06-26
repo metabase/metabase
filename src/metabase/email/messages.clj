@@ -11,7 +11,9 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.style :as render.style]
+            [metabase.pulse.render
+             [body :as render.body]
+             [style :as render.style]]
             [metabase.util
              [date :as du]
              [export :as export]
@@ -225,21 +227,36 @@
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
-(defn- result-attachments [results]
-  (remove nil?
-          (apply concat
-                 (for [{{card-name :name, :as card} :card :as result} results
-                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
-                       :when (seq rows)]
-                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
-                                              (create-temp-file-or-throw "csv"))]
-                      (export/export-to-csv-writer temp-file result)
-                      (create-result-attachment-map "csv" card-name temp-file))
+(defn- include-csv-attachment?
+  "Should this `card` and `results` include a CSV attachment?"
+  [card {:keys [cols rows] :as result-data}]
+  (or (:include_csv card)
+      (and (not (:include_xls card))
+           (= :table (render/detect-pulse-card-type card result-data))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement render.body/show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (>= (count cols) render.body/cols-limit)
+            (>= (count rows) render.body/rows-limit)))))
 
-                    (when-let [temp-file (and (:include_xls card)
-                                              (create-temp-file-or-throw "xlsx"))]
-                      (export/export-to-xlsx-file temp-file result)
-                      (create-result-attachment-map "xlsx" card-name temp-file))]))))
+(defn- result-attachments [results]
+  (remove
+   nil?
+   (apply
+    concat
+    (for [{{card-name :name, :as card} :card :as result} results
+          :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+          :when (seq rows)]
+      [(when-let [temp-file (and (include-csv-attachment? card result-data)
+                                 (create-temp-file-or-throw "csv"))]
+         (export/export-to-csv-writer temp-file result)
+         (create-result-attachment-map "csv" card-name temp-file))
+
+       (when-let [temp-file (and (:include_xls card)
+                                 (create-temp-file-or-throw "xlsx"))]
+         (export/export-to-xlsx-file temp-file result)
+         (create-result-attachment-map "xlsx" card-name temp-file))]))))
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
