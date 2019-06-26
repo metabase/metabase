@@ -99,24 +99,20 @@
 
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
-(expect
+(datasets/expect-with-driver :postgres
   #"com.jcraft.jsch.JSchException:"
-  (try (let [details {:ssl            false
-                      :password       "changeme"
-                      :tunnel-host    "localhost" ; this test works if sshd is running or not
-                      :tunnel-pass    "BOGUS-BOGUS-BOGUS"
-                      :port           5432
-                      :dbname         "test"
-                      :host           "localhost"
-                      :tunnel-enabled true
-                      :tunnel-port    22
-                      :engine         :postgres
-                      :user           "postgres"
-                      :tunnel-user    "example"}]
-         (tu.log/suppress-output
-           (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+  (try
+    (let [details (merge
+                   (:details (data/db))
+                   {:tunnel-host    "localhost" ; this test works if sshd is running or not
+                    :tunnel-pass    "BOGUS-BOGUS-BOGUS"
+                    :tunnel-enabled true
+                    :tunnel-port    22
+                    :tunnel-user    "example"})]
+      (tu.log/suppress-output
+        (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+    (catch Exception e
+      (.getMessage e))))
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
