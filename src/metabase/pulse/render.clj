@@ -1,15 +1,14 @@
 (ns metabase.pulse.render
-  (:require [clojure.java.io :as io]
-            [clojure.pprint :refer [cl-format]]
-            [clojure.tools.logging :as log]
-            [medley.core :as m]
+  (:require [clojure.tools.logging :as log]
             [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
              [datetime :as datetime]
+             [image-bundle :as image-bundle]
              [png :as png]
-             [style :as style]]
+             [style :as style]
+             [table :as table]]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
@@ -20,12 +19,8 @@
   (:import [java.awt BasicStroke Color RenderingHints]
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
-           java.net.URL
-           [java.util Arrays Date]
-           javax.imageio.ImageIO
-           jdk.nashorn.api.scripting.JSObject
-           org.apache.commons.io.IOUtils
-           org.fit.cssbox.misc.Base64Coder))
+           java.util.Date
+           javax.imageio.ImageIO))
 
 (def ^:private ^:const card-width 400)
 (def ^:private ^:const rows-limit 20)
@@ -98,20 +93,12 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-
-
 (defn- format-cell
   [timezone value col]
   (cond
     (mbql.u/datetime-field? col)                             (datetime/format-timestamp timezone value col)
-    (and (number? value) (not (mbql.u/datetime-field? col))) (format-number value)
+    (and (number? value) (not (mbql.u/datetime-field? col))) (common/format-number value)
     :else                                                    (str value)))
-
-(defn- render-img-data-uri
-  "Takes a PNG byte array and returns a Base64 encoded URI"
-  [img-bytes]
-  (str "data:image/png;base64," (String. (Base64Coder/encode img-bytes))))
-
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
@@ -125,97 +112,13 @@
 
 (def ^:dynamic *render-img-fn*
   "The function that should be used for rendering image bytes. Defaults to `render-img-data-uri`."
-  render-img-data-uri)
+  image-bundle/render-img-data-uri)
 
 (defn- card-href
   [card]
   (h (urls/card-url (:id card))))
 
-(defrecord ^:private NumericWrapper [num-str]
-  hutil/ToString
-  (to-str [_] num-str)
-  java.lang.Object
-  (toString [_] num-str))
 
-(defn- format-number
-  [n]
-  (NumericWrapper. (cl-format nil (if (integer? n) "~:d" "~,2f") n)))
-
-(defn- bar-th-style []
-  (merge (style/font-style) {:font-size :14.22px
-                             :font-weight     700
-                             :color           style/color-gray-4
-                             :border-bottom   (str "1px solid " style/color-row-border)
-                             :padding-top     :20px
-                             :padding-bottom  :5px}))
-
-(defn- bar-td-style []
-  (merge (style/font-style) {:font-size      :14.22px
-                       :font-weight    400
-                       :text-align     :left
-                       :padding-right  :0.5em
-                       :padding-left   :0.5em
-                       :padding-top    :4px
-                       :padding-bottom :4px}))
-
-(defn- bar-th-style-numeric []
-  (merge (style/font-style) (bar-th-style) {:text-align :right}))
-
-(defn- bar-td-style-numeric []
-  (merge (style/font-style) (bar-td-style) {:text-align :right}))
-
-(defn- heading-style-for-type
-  [cell]
-  (if (instance? NumericWrapper cell)
-    (bar-th-style-numeric)
-    (bar-th-style)))
-
-(defn- row-style-for-type
-  [cell]
-  (if (instance? NumericWrapper cell)
-    (bar-td-style-numeric)
-    (bar-td-style)))
-
-(defn- render-table-head [{:keys [bar-width row]}]
-  [:thead
-   [:tr
-    (for [header-cell row]
-      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
-       (h header-cell)])
-    (when bar-width
-      [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
-
-(defn- render-table-body [^JSObject color-selector, column-names bar-width rows]
-  [:tbody
-   (for [[row-idx row] (m/indexed rows)]
-     [:tr {:style (style/style {:color style/color-gray-3})}
-      (for [[col-idx cell] (m/indexed row)]
-        (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
-          [:td {:style (style/style (row-style-for-type cell)
-                                    (merge {:background-color bg-color}
-                                           (when (and bar-width (= col-idx 1))
-                                             {:font-weight 700})))}
-           (h cell)]))
-      (when bar-width
-        [:td {:style (style/style (bar-td-style) {:width :99%})}
-         [:div {:style (style/style {:background-color style/color-purple
-                                     :max-height       :10px
-                                     :height           :10px
-                                     :border-radius    :2px
-                                     :width            (str bar-width "%")})}
-          "&#160;"]])])])
-
-(defn- render-table
-  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
-  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
-  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
-  create."
-  [color-selector column-names [{:keys [bar-width], :as header} & rows]]
-  [:table {:style (style/style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
-           :cellpadding "0"
-           :cellspacing "0"}
-   (render-table-head header)
-   (render-table-body color-selector column-names bar-width rows)])
 
 (defn- create-remapping-lookup
   "Creates a map with from column names to a column index. This is used to figure out what a given column name or value
@@ -240,7 +143,7 @@
               :when (not (:remapped_from maybe-remapped-col))]
           (if (or (isa? base_type :type/Number)
                   (isa? special_type :type/Number))
-            (NumericWrapper. column-name)
+            (common/->NumericWrapper column-name)
             column-name))
    :bar-width (when include-bar? 99)})
 
@@ -271,7 +174,7 @@
      (query-results->row-seq timezone remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
 (defn- strong-limit-text [number]
-  [:strong {:style (style/style {:color style/color-gray-3})} (h (format-number number))])
+  [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
 
 (defn- render-truncation-warning
   [col-limit col-count row-limit row-count]
@@ -317,7 +220,7 @@
 (s/defn ^:private render:table :- common/RenderedPulseCard
   [render-type timezone card {:keys [cols rows] :as data}]
   (let [table-body [:div
-                    (render-table (color/make-color-selector data (:visualization_settings card))
+                    (table/render-table (color/make-color-selector data (:visualization_settings card))
                                   (mapv :name (:cols data))
                                   (prep-for-html-rendering timezone cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
@@ -338,7 +241,7 @@
         max-value (apply max (map y-axis-rowfn rows))]
     {:attachments nil
      :content     [:div
-                   (render-table (color/make-color-selector data (:visualization_settings card))
+                   (table/render-table (color/make-color-selector data (:visualization_settings card))
                                  (mapv :name cols)
                                  (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
                    (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
@@ -379,104 +282,6 @@
         (throw (Exception. msg))))
     (.toByteArray os)))
 
-(defn- hash-bytes
-  "Generate a hash to be used in a Content-ID"
-  [^bytes img-bytes]
-  (Math/abs ^Integer (Arrays/hashCode img-bytes)))
-
-(defn- hash-image-url
-  "Generate a hash to be used in a Content-ID"
-  [^java.net.URL url]
-  (-> url io/input-stream IOUtils/toByteArray hash-bytes))
-
-(defn- content-id-reference [content-id]
-  (str "cid:" content-id))
-
-(defn- mb-hash-str [image-hash]
-  (str image-hash "@metabase"))
-
-(defn- write-byte-array-to-temp-file
-  [^bytes img-bytes]
-  (let [f (doto (java.io.File/createTempFile "metabase_pulse_image_" ".png")
-            .deleteOnExit)]
-    (with-open [fos (java.io.FileOutputStream. f)]
-      (.write fos img-bytes))
-    f))
-
-(defn- byte-array->url [^bytes img-bytes]
-  (-> img-bytes write-byte-array-to-temp-file io/as-url))
-
-(defmulti ^:private make-image-bundle
-  "Create an image bundle. An image bundle contains the data needed to either encode the image inline (when
-  `render-type` is `:inline`), or create the hashes/references needed for an attached image (`render-type` of
-  `:attachment`)"
-  (fn [render-type url-or-bytes]
-    [render-type (class url-or-bytes)]))
-
-(defmethod make-image-bundle [:attachment java.net.URL]
-  [render-type ^java.net.URL url]
-  (let [content-id (mb-hash-str (hash-image-url url))]
-    {:content-id  content-id
-     :image-url   url
-     :image-src   (content-id-reference content-id)
-     :render-type render-type}))
-
-(defmethod make-image-bundle [:attachment (class (byte-array 0))]
-  [render-type image-bytes]
-  (let [image-url (byte-array->url image-bytes)
-        content-id (mb-hash-str (hash-bytes image-bytes))]
-    {:content-id  content-id
-     :image-url   image-url
-     :image-src   (content-id-reference content-id)
-     :render-type render-type}))
-
-(defmethod make-image-bundle [:inline java.net.URL]
-  [render-type ^java.net.URL url]
-  {:image-src   (-> url io/input-stream IOUtils/toByteArray render-img-data-uri)
-   :image-url   url
-   :render-type render-type})
-
-(defmethod make-image-bundle [:inline (class (byte-array 0))]
-  [render-type image-bytes]
-  {:image-src   (render-img-data-uri image-bytes)
-   :render-type render-type})
-
-(def ^:private external-link-url (io/resource "frontend_client/app/assets/img/external_link.png"))
-(def ^:private no-results-url    (io/resource "frontend_client/app/assets/img/pulse_no_results@2x.png"))
-(def ^:private attached-url      (io/resource "frontend_client/app/assets/img/attachment@2x.png"))
-
-(def ^:private external-link-image
-  (delay
-   (make-image-bundle :attachment external-link-url)))
-
-(def ^:private no-results-image
-  (delay
-   (make-image-bundle :attachment no-results-url)))
-
-(def ^:private attached-image
-  (delay
-   (make-image-bundle :attachment attached-url)))
-
-(defn- external-link-image-bundle [render-type]
-  (case render-type
-    :attachment @external-link-image
-    :inline (make-image-bundle render-type external-link-url)))
-
-(defn- no-results-image-bundle [render-type]
-  (case render-type
-    :attachment @no-results-image
-    :inline (make-image-bundle render-type no-results-url)))
-
-(defn- attached-image-bundle [render-type]
-  (case render-type
-    :attachment @attached-image
-    :inline (make-image-bundle render-type attached-url)))
-
-(defn- image-bundle->attachment [{:keys [render-type content-id image-url]}]
-  (case render-type
-    :attachment {content-id image-url}
-    :inline     nil))
-
 (s/defn ^:private render:sparkline :- common/RenderedPulseCard
   [render-type timezone card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (graphing-columns card data)
@@ -499,12 +304,12 @@
         yrange                      (max 1 (- ymax ymin))                    ; `(max 1 ...)` so we don't divide by zero
         ys'                         (map #(/ (double (- % ymin)) yrange) ys) ; cast to double to avoid "Non-terminating decimal expansion" errors
         rows'                       (reverse (take-last 2 rows))
-        values                      (map (comp format-number y-axis-rowfn) rows')
+        values                      (map (comp common/format-number y-axis-rowfn) rows')
         labels                      (datetime/format-timestamp-pair timezone (map x-axis-rowfn rows') (x-axis-rowfn cols))
-        image-bundle                (make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
+        image-bundle                (image-bundle/make-image-bundle render-type (render-sparkline-to-png xs' ys' 524 130))]
 
     {:attachments (when image-bundle
-                    (image-bundle->attachment image-bundle))
+                    (image-bundle/image-bundle->attachment image-bundle))
      :content     [:div
                    [:img {:style (style/style {:display :block
                                                :width   :100%})
@@ -532,8 +337,8 @@
 
 (s/defn ^:private render:empty :- common/RenderedPulseCard
   [render-type _ _]
-  (let [image-bundle (no-results-image-bundle render-type)]
-    {:attachments (image-bundle->attachment image-bundle)
+  (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
+    {:attachments (image-bundle/image-bundle->attachment image-bundle)
      :content     [:div {:style (style/style {:text-align :center})}
                    [:img {:style (style/style {:width :104px})
                           :src   (:image-src image-bundle)}]
@@ -545,8 +350,8 @@
 
 (s/defn ^:private render:attached :- common/RenderedPulseCard
   [render-type _ _]
-  (let [image-bundle (attached-image-bundle render-type)]
-    {:attachments (image-bundle->attachment image-bundle)
+  (let [image-bundle (image-bundle/attached-image-bundle render-type)]
+    {:attachments (image-bundle/image-bundle->attachment image-bundle)
      :content     [:div {:style (style/style {:text-align :center})}
                    [:img {:style (style/style {:width :30px})
                           :src   (:image-src image-bundle)}]
@@ -581,9 +386,9 @@
   [render-type card]
   (when *include-title*
     (let [image-bundle (when *include-buttons*
-                         (external-link-image-bundle render-type))]
+                         (image-bundle/external-link-image-bundle render-type))]
       {:attachments (when image-bundle
-                      (image-bundle->attachment image-bundle))
+                      (image-bundle/image-bundle->attachment image-bundle))
        :content     [:table {:style (style/style {:margin-bottom   :8px
                                                   :border-collapse :collapse
                                                   :width           :100%})}

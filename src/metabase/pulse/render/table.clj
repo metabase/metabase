@@ -1,0 +1,84 @@
+(ns metabase.pulse.render.table
+  (:require [hiccup.core :refer [h]]
+            [medley.core :as m]
+            [metabase.pulse.render
+             [color :as color]
+             [style :as style]])
+  (:import jdk.nashorn.api.scripting.JSObject
+           metabase.pulse.render.common.NumericWrapper))
+
+(defn- bar-th-style []
+  (merge (style/font-style) {:font-size :14.22px
+                             :font-weight     700
+                             :color           style/color-gray-4
+                             :border-bottom   (str "1px solid " style/color-row-border)
+                             :padding-top     :20px
+                             :padding-bottom  :5px}))
+
+(defn- bar-td-style []
+  (merge (style/font-style) {:font-size      :14.22px
+                       :font-weight    400
+                       :text-align     :left
+                       :padding-right  :0.5em
+                       :padding-left   :0.5em
+                       :padding-top    :4px
+                       :padding-bottom :4px}))
+
+(defn- bar-th-style-numeric []
+  (merge (style/font-style) (bar-th-style) {:text-align :right}))
+
+(defn- bar-td-style-numeric []
+  (merge (style/font-style) (bar-td-style) {:text-align :right}))
+
+(defn- heading-style-for-type
+  [cell]
+  (if (instance? NumericWrapper cell)
+    (bar-th-style-numeric)
+    (bar-th-style)))
+
+(defn- row-style-for-type
+  [cell]
+  (if (instance? NumericWrapper cell)
+    (bar-td-style-numeric)
+    (bar-td-style)))
+
+(defn- render-table-head [{:keys [bar-width row]}]
+  [:thead
+   [:tr
+    (for [header-cell row]
+      [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :60px})}
+       (h header-cell)])
+    (when bar-width
+      [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}])]])
+
+(defn- render-table-body [^JSObject color-selector, column-names bar-width rows]
+  [:tbody
+   (for [[row-idx row] (m/indexed rows)]
+     [:tr {:style (style/style {:color style/color-gray-3})}
+      (for [[col-idx cell] (m/indexed row)]
+        (let [bg-color (color/get-background-color color-selector cell (get column-names col-idx) row-idx)]
+          [:td {:style (style/style (row-style-for-type cell)
+                                    (merge {:background-color bg-color}
+                                           (when (and bar-width (= col-idx 1))
+                                             {:font-weight 700})))}
+           (h cell)]))
+      (when bar-width
+        [:td {:style (style/style (bar-td-style) {:width :99%})}
+         [:div {:style (style/style {:background-color style/color-purple
+                                     :max-height       :10px
+                                     :height           :10px
+                                     :border-radius    :2px
+                                     :width            (str bar-width "%")})}
+          "&#160;"]])])])
+
+(defn render-table
+  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
+  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
+  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
+  create."
+  [color-selector column-names [{:keys [bar-width], :as header} & rows]]
+  [:table {:style (style/style {:max-width (str "100%"), :white-space :nowrap, :padding-bottom :8px, :border-collapse :collapse})
+           :cellpadding "0"
+           :cellspacing "0"}
+   (render-table-head header)
+   (render-table-body color-selector column-names bar-width rows)])
