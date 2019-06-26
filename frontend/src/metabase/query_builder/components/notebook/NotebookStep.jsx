@@ -1,10 +1,9 @@
 import React from "react";
 
 import { t } from "ttag";
-import cx from "classnames";
 import _ from "underscore";
 
-import colors, { lighten } from "metabase/lib/colors";
+import colors, { lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -38,7 +37,6 @@ const STEP_UI = {
   },
   expression: {
     title: t`Add column`,
-    color: colors["text-medium"],
     icon: "add_data",
     component: ExpressionStep,
   },
@@ -72,14 +70,12 @@ const STEP_UI = {
   // },
   sort: {
     title: t`Sort`,
-    color: colors["text-medium"],
     icon: "smartscalar",
     component: SortStep,
     compact: true,
   },
   limit: {
     title: t`Row limit`,
-    color: colors["text-medium"],
     icon: "list",
     component: LimitStep,
     compact: true,
@@ -188,24 +184,31 @@ export default class NotebookStep extends React.Component {
   }
 }
 
+const ColorButton = Button.extend`
+  border: none;
+  color: ${({ color }) => (color ? color : colors["text-medium"])}
+  background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
+  &:hover {
+    color: ${({ color }) => (color ? darken(color, 0.115) : colors["brand"])};
+    background-color: ${({ color }) =>
+      color ? lighten(color, 0.5) : lighten(colors["brand"], 0.61)};
+  }
+  transition: background 300ms;
+`;
+
 const ActionButton = ({ icon, title, color, large, onClick, ...props }) => {
   const button = (
-    <Button
+    <ColorButton
+      color={color}
       icon={icon}
-      style={{
-        color,
-        backgroundColor: color ? lighten(color, 0.61) : null,
-        borderColor: lighten(color, 0.35),
-      }}
       small={!large}
       iconVertical={large}
       iconSize={large ? 18 : 14}
-      className="text-medium bg-medium"
       onClick={onClick}
       {...props}
     >
       {large ? title : null}
-    </Button>
+    </ColorButton>
   );
 
   return large ? button : <Tooltip tooltip={title}>{button}</Tooltip>;
