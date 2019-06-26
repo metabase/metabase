@@ -35,11 +35,18 @@ import type { FieldValues } from "metabase/meta/types/Field";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
-  displayName: string;
   description: string;
 
   table: Table;
   name_field: ?Field;
+
+  displayName({ includeSchema, includeTable } = {}) {
+    return (
+      (includeTable && this.table
+        ? this.table.displayName({ includeSchema }) + " → "
+        : "") + this.display_name
+    );
+  }
 
   fieldType() {
     return getFieldType(this);
@@ -218,7 +225,7 @@ export default class Field extends Base {
    * Returns the field to be searched for this field, either the remapped field or itself
    */
   parameterSearchField(): ?Field {
-    let remappedField = this.remappedField();
+    const remappedField = this.remappedField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }

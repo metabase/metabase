@@ -15,7 +15,10 @@ export default class QueryDiff extends Component {
   };
 
   render() {
-    const { diff: { before, after }, tableMetadata } = this.props;
+    const {
+      diff: { before, after },
+      tableMetadata,
+    } = this.props;
     const defintion = after || before;
 
     const filters = Query.getFilters(defintion);

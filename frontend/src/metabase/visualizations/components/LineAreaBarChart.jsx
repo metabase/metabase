@@ -106,18 +106,18 @@ export default class LineAreaBarChart extends Component {
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
-    let initialSettings = getComputedSettingsForSeries([initialSeries]);
-    let newSettings = getComputedSettingsForSeries([newSeries]);
+    const initialSettings = getComputedSettingsForSeries([initialSeries]);
+    const newSettings = getComputedSettingsForSeries([newSeries]);
 
-    let initialDimensions = getColumnsFromNames(
+    const initialDimensions = getColumnsFromNames(
       initialSeries.data.cols,
       initialSettings["graph.dimensions"],
     );
-    let newDimensions = getColumnsFromNames(
+    const newDimensions = getColumnsFromNames(
       newSeries.data.cols,
       newSettings["graph.dimensions"],
     );
-    let newMetrics = getColumnsFromNames(
+    const newMetrics = getColumnsFromNames(
       newSeries.data.cols,
       newSettings["graph.metrics"],
     );
@@ -150,7 +150,7 @@ export default class LineAreaBarChart extends Component {
   }
 
   static transformSeries(series) {
-    let newSeries = [].concat(
+    const newSeries = [].concat(
       ...series.map((s, seriesIndex) =>
         transformSingleSeries(s, series, seriesIndex),
       ),
@@ -174,13 +174,15 @@ export default class LineAreaBarChart extends Component {
   getHoverClasses() {
     const { hovered } = this.props;
     if (hovered && hovered.index != null) {
-      let seriesClasses = _.range(0, MAX_SERIES)
+      const seriesClasses = _.range(0, MAX_SERIES)
         .filter(n => n !== hovered.index)
         .map(n => "mute-" + n);
-      let axisClasses =
+      const axisClasses =
         hovered.axisIndex === 0
           ? "mute-yr"
-          : hovered.axisIndex === 1 ? "mute-yl" : null;
+          : hovered.axisIndex === 1
+          ? "mute-yl"
+          : null;
       return seriesClasses.concat(axisClasses);
     } else {
       return null;
@@ -188,8 +190,8 @@ export default class LineAreaBarChart extends Component {
   }
 
   getFidelity() {
-    let fidelity = { x: 0, y: 0 };
-    let size = this.props.gridSize || { width: Infinity, height: Infinity };
+    const fidelity = { x: 0, y: 0 };
+    const size = this.props.gridSize || { width: Infinity, height: Infinity };
     if (size.width >= 5) {
       fidelity.x = 2;
     } else if (size.width >= 4) {
@@ -205,9 +207,9 @@ export default class LineAreaBarChart extends Component {
   }
 
   getSettings() {
-    let fidelity = this.getFidelity();
+    const fidelity = this.getFidelity();
 
-    let settings = { ...this.props.settings };
+    const settings = { ...this.props.settings };
 
     // smooth interpolation at smallest x/y fidelity
     if (fidelity.x === 0 && fidelity.y === 0) {
@@ -319,7 +321,9 @@ function transformSingleSeries(s, series, seriesIndex) {
     settings["scatter.bubble"] &&
     _.findIndex(cols, col => col.name === settings["scatter.bubble"]);
   const extraColumnIndexes =
-    bubbleColumnIndex && bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
+    bubbleColumnIndex != null && bubbleColumnIndex >= 0
+      ? [bubbleColumnIndex]
+      : [];
 
   if (dimensions.length > 1) {
     const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
@@ -341,7 +345,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         breakoutValues.push(seriesValue);
       }
 
-      let newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
+      const newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
       // $FlowFixMe: _origin not typed
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);

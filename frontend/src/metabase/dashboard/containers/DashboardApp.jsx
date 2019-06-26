@@ -64,7 +64,10 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ dashboard }) => dashboard && dashboard.name)
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
@@ -73,7 +76,7 @@ export default class DashboardApp extends Component {
   };
 
   componentWillMount() {
-    let options = parseHashOptions(window.location.hash);
+    const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });
     }

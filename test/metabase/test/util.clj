@@ -32,8 +32,8 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
@@ -49,10 +49,10 @@
     (nil? (s/check schema actual)))
   (expected-message [_ _ _ _]
     (str "Result did not match schema:\n"
-         (u/pprint-to-str (s/explain schema))))
+         (u/pprint-to-str 'green (s/explain schema))))
   (actual-message [_ actual _ _]
     (str "Was:\n"
-         (u/pprint-to-str actual)))
+         (u/pprint-to-str 'red actual)))
   (message [_ actual _ _]
     (u/pprint-to-str (s/check schema actual))))
 
@@ -149,7 +149,7 @@
 
 
 (defn- user-id [username]
-  (require 'metabase.test.data.users)
+  (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
 (defn- rasta-id [] (user-id :rasta))
@@ -299,13 +299,16 @@
 
 
 (defn do-with-temporary-setting-value
-  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the
-  original value. This works much the same way as `binding`.
+  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
+  the original value. This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  (let [original-value (setting/get setting-k)]
+  (let [setting        (#'setting/resolve-setting setting-k)
+        original-value (when (or (#'setting/db-or-cache-value setting)
+                                 (#'setting/env-var-value setting))
+                         (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
       (f)
@@ -350,9 +353,9 @@
   in the DB for 'permanent' rows (rows that live for the life of the test suite, rather than just a single test). For
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
-      ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-      (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
-        (do-something))"
+    ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
+      (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
@@ -411,18 +414,6 @@
        (finally
          (.setLevel (metabase-logger) orig-log-level#)))))
 
-(defn vectorize-byte-arrays
-  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
-  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
-  equal."
-  {:style/indent 0}
-  [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (vec form)
-                     form))
-                 x))
-
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
   arguments to this function, otherwise, return `M`"
@@ -431,7 +422,7 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
+(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
@@ -439,16 +430,24 @@
                                                      (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
-(defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places"
+(defn ^:deprecated round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 2 decimal places
+
+  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  column instead."
   [field]
   (-> field
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
+      ;; aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols
+(defn ^:deprecated round-fingerprint-cols
+  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
+
+  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  column instead."
   ([query-results]
    (if (map? query-results)
      (let [maybe-data-cols (if (contains? query-results :data)
@@ -494,6 +493,7 @@
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
+  (classloader/the-classloader)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try
@@ -591,38 +591,38 @@
 
   `f` should return a future that can be canceled."
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (let [called-cancel? (promise)
-          called-query?  (promise)
-          pause-query    (promise)
-          query-thunk    (fn []
-                           (data/run-mbql-query checkins
-                             {:aggregation [[:count]]}))
-          ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
-          ;; which should cause an interrupt
-          query-future   (f query-thunk called-query? called-cancel? pause-query)]
-      ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
-      ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
-      (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
-        (throw (TimeoutException. "query should have been called by now.")))
-      ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
-      ;; not have been called yet.
-      (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
-      ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
-      ;; method on the prepared statement
-      (future-cancel query-future)
-      (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
-        (throw (TimeoutException. "cancel should have been called by now.")))
-      ;; This releases the fake query function so it finishes
-      (deliver pause-query true)
-      ::success)))
+  (let [called-cancel? (promise)
+        called-query?  (promise)
+        pause-query    (promise)
+        query-thunk    (fn []
+                         (data/run-mbql-query checkins
+                           {:aggregation [[:count]]}))
+        ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
+        ;; which should cause an interrupt
+        query-future   (f query-thunk called-query? called-cancel? pause-query)]
+    ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
+    ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
+    (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
+      (throw (TimeoutException. "query should have been called by now.")))
+    ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
+    ;; not have been called yet.
+    (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
+    ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
+    ;; method on the prepared statement
+    (future-cancel query-future)
+    (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
+      (throw (TimeoutException. "cancel should have been called by now.")))
+    ;; This releases the fake query function so it finishes
+    (deliver pause-query true)
+    ::success))
 
 (defmacro throw-if-called
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
-  [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
+  [fn-symb & body]
+  {:pre [(symbol? fn-symb)]}
+  `(with-redefs [~fn-symb (fn [& ~'_]
+                            (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
 

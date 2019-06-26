@@ -53,7 +53,10 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
+@connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)
 export default class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
@@ -142,9 +145,9 @@ export default class ParameterValueWidget extends Component {
       focusChanged: parentFocusChanged,
     } = this.props;
 
-    let hasValue = value != null;
+    const hasValue = value != null;
 
-    let Widget = this.getWidget();
+    const Widget = this.getWidget();
 
     const focusChanged = isFocused => {
       if (parentFocusChanged) {
@@ -236,7 +239,7 @@ export default class ParameterValueWidget extends Component {
         </div>
       );
     } else {
-      let placeholderText = isEditing
+      const placeholderText = isEditing
         ? t`Select a default value…`
         : placeholder || t`Select…`;
 

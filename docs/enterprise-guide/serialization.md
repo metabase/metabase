@@ -1,8 +1,9 @@
 ## Copying contents of one Metabase instance to another
 
-Metabase's serialization feature allows you to create a snapshot, called a dump, of the contents of a Metabase instance that can then be loaded into another instance.
+Once you really get rolling with Metabase it's often the case that you'll have more than one instance of it spun up. You might have a couple of testing or development instances and a few production ones, or maybe you have a separate instance per office or region.
 
-This lets you do things like create a set of dashboards in one Metabase instance and then easily copy those dashboards to a number of other Metabase instances that you've set up for your customers. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s). You can even put the dump files into version control and audit changes to them, as the YAML files contained within the dump are pretty readable.
+To help you out in situations like this, Metabase has a serialization feature which lets you create a snapshot, called a dump, of the contents of a Metabase instance that can then be loaded into another instance. This lets you do things like create a set of dashboards and charts in one Metabase instance and then easily copy those items to a number of other Metabase instances. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s). You can even put the dump files into version control and audit changes to them, as the YAML files contained within the dump are pretty readable.
+
 
 ### What gets dumped and loaded
 
@@ -57,4 +58,4 @@ Both of these flags are optional.
 
 ## That's it!
 
-Still need help? Feel free to reach out to us at the support email address you were provided.
+Still need help? Feel free to reach out to us at [support@metabase.com](mailto:support@metabase.com).

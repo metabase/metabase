@@ -10,6 +10,7 @@
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
@@ -23,7 +24,6 @@
              [data :as data]
              [util :as tu :refer [match-$]]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :as datasets]
              [users :refer [user->client]]]
             [metabase.test.mock.util :as mutil]
@@ -205,24 +205,6 @@
             :fields_hash  $}))
   ((user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories))))
 
-
-(def ^:private user-last-login-date-strs
-  "In an effort to be really annoying, the date strings returned by the API are different on Circle than they are
-   locally. Generate strings like '2014-01-01' at runtime so we get matching values."
-  (let [format-inst (fn [^java.util.Date inst]
-                      (format "%d-%02d-%02d"
-                              (+ (.getYear inst) 1900)
-                              (+ (.getMonth inst) 1)
-                              (.getDate inst)))]
-    (->> (defs/field-values defs/test-data-map "users" "last_login")
-         (map format-inst)
-         set
-         sort
-         vec)))
-
-(def ^:private user-full-names
-  (defs/field-values defs/test-data-map "users" "name"))
-
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;; Make sure that getting the User table *does* include info about the password field, but not actual values
 ;; themselves
@@ -344,7 +326,7 @@
 (tt/expect-with-temp [Table [table]]
   (merge (-> (table-defaults)
              (dissoc :segments :field_values :metrics)
-             (assoc-in [:db :details] {:db "mem:test-data;USER=GUEST;PASSWORD=guest"}))
+             (assoc-in [:db :details] (:details (data/db))))
          (match-$ table
            {:description     "What a nice table!"
             :entity_type     nil
@@ -461,14 +443,14 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Go Dubs!"
      :schema            "Everything else"
-     :db_id             database/virtual-id
+     :db_id             mbql.s/saved-questions-virtual-database-id
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
      :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
                                    with-field-literal-id)
                              [{:name         "NAME"
-                               :display_name "Name"
+                               :display_name "NAME"
                                :base_type    "type/Text"
                                :special_type "type/Name"
                                :fingerprint  (:name mutil/venue-fingerprints)}
@@ -479,13 +461,13 @@
                                :fingerprint  (:id mutil/venue-fingerprints)}
                               (with-numeric-dimension-options
                                 {:name         "PRICE"
-                                 :display_name "Price"
+                                 :display_name "PRICE"
                                  :base_type    "type/Integer"
                                  :special_type nil
                                  :fingerprint  (:price mutil/venue-fingerprints)})
                               (with-coordinate-dimension-options
                                 {:name         "LATITUDE"
-                                 :display_name "Latitude"
+                                 :display_name "LATITUDE"
                                  :base_type    "type/Float"
                                  :special_type "type/Latitude"
                                  :fingerprint  (:latitude mutil/venue-fingerprints)})])})
@@ -509,12 +491,12 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Users"
      :schema            "Everything else"
-     :db_id             database/virtual-id
+     :db_id             mbql.s/saved-questions-virtual-database-id
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
      :fields            [{:name                     "NAME"
-                          :display_name             "Name"
+                          :display_name             "NAME"
                           :base_type                "type/Text"
                           :table_id                 card-virtual-table-id
                           :id                       ["field-literal" "NAME" "type/Text"]
@@ -526,7 +508,7 @@
                                                      :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
                                                                           :percent-email 0.0, :average-length 13.27}}}}
                          {:name                     "LAST_LOGIN"
-                          :display_name             "Last Login"
+                          :display_name             "LAST_LOGIN"
                           :base_type                "type/DateTime"
                           :table_id                 card-virtual-table-id
                           :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
@@ -582,7 +564,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Category
@@ -601,7 +583,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Enum
@@ -620,7 +602,7 @@
     :table_id   (data/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-data
+  (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (category-id-special-type
      :type/Category
@@ -650,15 +632,14 @@
           first
           :dimension_options))))
 
-(defn- dimension-options-for-field [response field-name]
+(defn- dimension-options-for-field [response, ^String field-name]
   (->> response
        :fields
-       (m/find-first #(.equalsIgnoreCase field-name (:name %)))
+       (m/find-first #(.equalsIgnoreCase field-name, ^String (:name %)))
        :dimension_options))
 
 (defn- extract-dimension-options
-  "For the given `FIELD-NAME` find it's dimension_options following
-  the indexes given in the field"
+  "For the given `field-name` find it's dimension_options following the indexes given in the field"
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)

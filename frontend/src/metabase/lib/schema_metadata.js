@@ -446,7 +446,7 @@ function dimensionFields(fields) {
   return _.filter(fields, isDimension);
 }
 
-let Aggregators = [
+const Aggregators = [
   {
     name: t`Raw data`,
     short: "rows",
@@ -529,7 +529,7 @@ let Aggregators = [
   },
 ];
 
-let BreakoutAggregator = {
+const BreakoutAggregator = {
   name: t`Break out by dimension`,
   short: "breakout",
   validFieldsFilters: [dimensionFields],
@@ -581,14 +581,14 @@ export const isCompatibleAggregatorForField = (aggregator, field) =>
   aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
 
 export function getBreakouts(fields) {
-  let result = populateFields(BreakoutAggregator, fields);
+  const result = populateFields(BreakoutAggregator, fields);
   result.fields = result.fields[0];
   result.validFieldsFilter = result.validFieldsFilters[0];
   return result;
 }
 
 export function addValidOperatorsToFields(table) {
-  for (let field of table.fields) {
+  for (const field of table.fields) {
     field.operators = getOperators(field, table);
   }
   table.aggregation_options = getAggregatorsWithFields(table);
@@ -643,30 +643,6 @@ export const ICON_MAPPING = {
 
 export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
-}
-
-export function computeMetadataStrength(table) {
-  let total = 0;
-  let completed = 0;
-  function score(value) {
-    total++;
-    if (value) {
-      completed++;
-    }
-  }
-
-  score(table.description);
-  if (table.fields) {
-    table.fields.forEach(function(field) {
-      score(field.description);
-      score(field.special_type);
-      if (isFK(field)) {
-        score(field.target);
-      }
-    });
-  }
-
-  return completed / total;
 }
 
 export function getFilterArgumentFormatOptions(operator, index) {

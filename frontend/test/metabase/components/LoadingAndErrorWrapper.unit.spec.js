@@ -22,6 +22,10 @@ describe("LoadingAndErrorWrapper", () => {
       expect(wrapper.find(Child).length).toEqual(1);
     });
 
+    it("shouldn't fail if loaded with null children and no wrapper", () => {
+      mount(<LoadingAndErrorWrapper loading={false} noWrapper />);
+    });
+
     it("should display a given scene during loading", () => {
       const Scene = () => <div>Fun load animation</div>;
 

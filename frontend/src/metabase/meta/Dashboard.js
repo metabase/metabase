@@ -117,7 +117,7 @@ export const PARAMETER_SECTIONS: Array<ParameterSection> = [
 ];
 
 for (const option of PARAMETER_OPTIONS) {
-  let sectionId = option.type.split("/")[0];
+  const sectionId = option.type.split("/")[0];
   let section = _.findWhere(PARAMETER_SECTIONS, { id: sectionId });
   if (!section) {
     section = _.findWhere(PARAMETER_SECTIONS, { id: "category" });
@@ -182,7 +182,7 @@ export function getCardDimensions(
       return getTableDimensions(table, 1, filter);
     }
   } else if (card.dataset_query.type === "native") {
-    let dimensions = [];
+    const dimensions = [];
     for (const tag of getTemplateTags(card)) {
       if (
         tag.type === "dimension" &&
@@ -191,7 +191,7 @@ export function getCardDimensions(
       ) {
         const field = metadata.fields[tag.dimension[1]];
         if (field && filter(field)) {
-          let fieldDimension = getFieldDimension(field);
+          const fieldDimension = getFieldDimension(field);
           dimensions.push(getTagDimension(tag, fieldDimension));
         }
       }
@@ -216,9 +216,9 @@ export function getTableDimensions(
 ): Array<Dimension> {
   return _.chain(table.fields)
     .map(field => {
-      let targetField = field.target;
+      const targetField = field.target;
       if (targetField && depth > 0) {
-        let targetTable = targetField.table;
+        const targetTable = targetField.table;
         return getTableDimensions(targetTable, depth - 1, filter).map(
           (dimension: Dimension) => ({
             ...dimension,
@@ -246,7 +246,7 @@ export function getCardVariables(
   filter: TemplateTagFilter = () => true,
 ): Array<Variable> {
   if (card.dataset_query.type === "native") {
-    let variables = [];
+    const variables = [];
     for (const tag of getTemplateTags(card)) {
       if (!filter || filter(tag)) {
         variables.push({
@@ -323,7 +323,7 @@ export function getParameterMappingOptions(
   parameter: Parameter,
   card: Card,
 ): Array<ParameterMappingUIOption> {
-  let options = [];
+  const options = [];
 
   // dimensions
   options.push(
@@ -369,7 +369,7 @@ export function createParameter(
   while (_.any(parameters, p => p.name === name)) {
     name = option.name + " " + ++nameIndex;
   }
-  let parameter = {
+  const parameter = {
     name: "",
     slug: "",
     id: Math.floor(Math.random() * Math.pow(2, 32)).toString(16),
@@ -382,7 +382,7 @@ export function setParameterName(
   parameter: Parameter,
   name: string,
 ): Parameter {
-  let slug = slugify(name);
+  const slug = slugify(name);
   return {
     ...parameter,
     name: name,

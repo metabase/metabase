@@ -83,7 +83,7 @@ export function hasFilterOptions(filter: Filter): boolean {
 
 export function getFilterOptions(filter: Filter): FilterOptions {
   // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
-  let _filter: any = filter;
+  const _filter: any = filter;
   if (hasFilterOptions(filter)) {
     return _filter[_filter.length - 1];
   } else {

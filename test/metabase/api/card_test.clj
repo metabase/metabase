@@ -1,6 +1,7 @@
 (ns metabase.api.card-test
   "Tests for /api/card endpoints."
   (:require [cheshire.core :as json]
+            [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [medley.core :as m]
@@ -25,11 +26,13 @@
              [table :refer [Table]]
              [view-log :refer [ViewLog]]]
             [metabase.query-processor.async :as qp.async]
-            [metabase.query-processor.middleware.results-metadata :as results-metadata]
+            [metabase.query-processor.middleware
+             [constraints :as constraints]
+             [results-metadata :as results-metadata]]
             [metabase.test
              [data :as data]
              [util :as tu :refer [match-$ random-name]]]
-            [metabase.test.data.users :refer :all]
+            [metabase.test.data.users :as test-users :refer :all]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -77,7 +80,7 @@
 (defn- do-with-temp-native-card
   {:style/indent 0}
   [f]
-  (tt/with-temp* [Database   [db    {:details (:details (Database (data/id))), :engine :h2}]
+  (tt/with-temp* [Database   [db    {:details (:details (data/db)), :engine :h2}]
                   Table      [table {:db_id (u/get-id db), :name "CATEGORIES"}]
                   Card       [card  {:dataset_query {:database (u/get-id db)
                                                      :type     :native
@@ -120,7 +123,7 @@
 
 (defn- do-with-temp-native-card-with-params {:style/indent 0} [f]
   (tt/with-temp*
-    [Database   [db    {:details (:details (Database (data/id))), :engine :h2}]
+    [Database   [db    {:details (:details (data/db)), :engine :h2}]
      Table      [table {:db_id (u/get-id db), :name "VENUES"}]
      Card       [card  {:dataset_query
                         {:database (u/get-id db)
@@ -258,7 +261,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                CREATING A CARD                                                 |
+;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can make a card
@@ -325,6 +328,16 @@
              :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
           ;; now check the metadata that was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
+
+;; we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)
+(expect
+  (tu/with-model-cleanup [Card]
+    ;; create a card with the metadata
+    ((user->client :rasta) :post 200 "card"
+     (assoc (card-with-name-and-query)
+       :result_metadata    []
+       :metadata_checksum  (#'results-metadata/metadata-checksum [])))))
+
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a
@@ -1245,6 +1258,38 @@
            spreadsheet/load-workbook
            (spreadsheet/select-sheet "Query result")
            (spreadsheet/select-columns {:A :col})))))
+
+;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if the query comes
+;; in with `add-default-userland-constraints` (as will be the case if the query gets saved from one that had it -- see
+;; #9831)
+(expect
+  101
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)}
+                                              :middleware
+                                              {:add-default-userland-constraints? true
+                                               :userland-query?                   true}}}]
+      (with-cards-in-readable-collection card
+        (let [results ((user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card)))]
+          (count (csv/read-csv results)))))))
+
+;; non-"download" queries should still get the default constraints
+;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
+(expect
+  10
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :query
+                                              :query    {:source-table (data/id :venues)}
+                                              :middleware
+                                              {:add-default-userland-constraints? true
+                                               :userland-query?                   true}}}]
+      (with-cards-in-readable-collection card
+        (let [{row-count :row_count, :as result}
+              ((user->client :rasta) :post 200 (format "card/%d/query" (u/get-id card)))]
+          (or row-count result))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

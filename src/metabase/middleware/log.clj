@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.async.util :as async.u]
             [metabase.middleware.util :as middleware.u]
+            [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]]
@@ -40,15 +41,16 @@
     (format "%s (%d DB calls)" elapsed-time db-calls)))
 
 (defn- format-threads-info [{:keys [include-stats?]}]
-  (str
-   (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-     (format "Jetty threads: %s/%s (%s busy, %s idle, %s queued) "
-             (.getMinThreads pool)
-             (.getMaxThreads pool)
-             (.getBusyThreads pool)
-             (.getIdleThreads pool)
-             (.getQueueSize pool)))
-   (format "(%d total active threads)" (Thread/activeCount))))
+  (when include-stats?
+    (str
+     (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
+       (format "Jetty threads: %s/%s (%s idle, %s queued) "
+               (.getBusyThreads pool)
+               (.getMaxThreads pool)
+               (.getIdleThreads pool)
+               (.getQueueSize pool)))
+     (format "(%d total active threads) " (Thread/activeCount))
+     (format "Queries in flight: %d" (qp.middleware.async/in-flight)))))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?

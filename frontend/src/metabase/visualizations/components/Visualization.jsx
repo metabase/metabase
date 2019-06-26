@@ -345,7 +345,7 @@ export default class Visualization extends Component {
     }
 
     let error = this.props.error || this.state.error;
-    let loading = !(
+    const loading = !(
       series &&
       series.length > 0 &&
       _.every(
@@ -401,18 +401,17 @@ export default class Visualization extends Component {
       );
     }
 
-    let extra = (
+    const extra = (
       <span className="flex align-center">
-        {isSlow &&
-          !loading && (
-            <LoadingSpinner
-              size={18}
-              className={cx(
-                "Visualization-slow-spinner",
-                isSlow === "usually-slow" ? "text-gold" : "text-slate",
-              )}
-            />
-          )}
+        {isSlow && !loading && (
+          <LoadingSpinner
+            size={18}
+            className={cx(
+              "Visualization-slow-spinner",
+              isSlow === "usually-slow" ? "text-gold" : "text-slate",
+            )}
+          />
+        )}
         {actionButtons}
       </span>
     );
@@ -426,7 +425,7 @@ export default class Visualization extends Component {
     }
 
     return (
-      <div className={cx(className, "flex flex-column")}>
+      <div className={cx(className, "flex flex-column full-height")}>
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||

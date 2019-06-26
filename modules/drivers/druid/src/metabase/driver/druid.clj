@@ -84,19 +84,20 @@
       @query-fut
       (catch InterruptedException e
         ;; The future has been cancelled, if we ahve a query id, try to cancel the query
-        (if-not query-id
-          (log/warn e (trs "Client closed connection, no queryId found, can't cancel query"))
-          (ssh/with-ssh-tunnel [details-with-tunnel details]
-            (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
-            (try
-              ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
-              ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
-              (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
-              (catch Exception cancel-e
-                (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id)))
-              (finally
-                ;; Propogate the exception, will cause any other catch/finally clauses to fire
-                (throw e)))))))))
+        (try
+          (if-not query-id
+            (log/warn e (trs "Client closed connection, no queryId found, can't cancel query"))
+            (ssh/with-ssh-tunnel [details-with-tunnel details]
+              (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
+              (try
+                ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
+                ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
+                (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+                (catch Exception cancel-e
+                  (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id))))))
+          (finally
+            ;; Propogate the exception, will cause any other catch/finally clauses to fire
+            (throw e)))))))
 
 
 ;;; ### Sync

@@ -26,7 +26,10 @@ const mapDispatchToProps = {
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -66,7 +69,7 @@ export default class FieldPane extends Component {
   // }
 
   groupBy = () => {
-    let { question, metadata, field } = this.props;
+    const { question, metadata, field } = this.props;
     let query = question.query();
 
     if (query instanceof StructuredQuery) {
@@ -88,13 +91,13 @@ export default class FieldPane extends Component {
     const tableId = field.table_id;
     const dbId = metadata.tables[tableId].database.id;
 
-    let card = createCard();
+    const card = createCard();
     card.dataset_query = createQuery("query", dbId, tableId);
     return card;
   };
 
   setQuerySum = () => {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["sum", this.props.field.id];
     this.props.setCardAndRun(card);
   };
@@ -103,7 +106,7 @@ export default class FieldPane extends Component {
     const { metadata, field } = this.props;
     const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
 
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["rows"];
     card.dataset_query.query.breakout = [defaultBreakout];
     this.props.setCardAndRun(card);
@@ -113,7 +116,7 @@ export default class FieldPane extends Component {
     const { metadata, field } = this.props;
     const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
 
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["count"];
     card.dataset_query.query.breakout = [defaultBreakout];
     card.display = chartType;
@@ -127,7 +130,7 @@ export default class FieldPane extends Component {
   };
 
   render() {
-    let { field, question } = this.props;
+    const { field, question } = this.props;
 
     const query = question.query();
 
@@ -136,11 +139,11 @@ export default class FieldPane extends Component {
       query.metadata().fields[field.id] &&
       query.metadata().fields[field.id].values;
 
-    let fieldName = field.name;
-    let tableName = query.table() ? query.table().name : "";
+    const fieldName = field.name;
+    const tableName = query.table() ? query.table().name : "";
 
-    let useForCurrentQuestion = [],
-      usefulQuestions = [];
+    const useForCurrentQuestion = [];
+    const usefulQuestions = [];
 
     // determine if the selected field is a valid dimension on this table
     let validBreakout = false;
@@ -184,7 +187,7 @@ export default class FieldPane extends Component {
         onClick={this.setQueryDistinct}
       />,
     );
-    let queryCountGroupedByText = t`Number of ${inflection.pluralize(
+    const queryCountGroupedByText = t`Number of ${inflection.pluralize(
       tableName,
     )} grouped by ${fieldName}`;
     if (validBreakout) {

@@ -1,24 +1,27 @@
 (ns metabase.driver.bigquery-test
   (:require [clj-time.core :as time]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qptest]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :refer [expect-with-driver]]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
 ;; Test native queries
@@ -50,26 +53,24 @@
 ;; make sure that BigQuery native queries maintain the column ordering specified in the SQL -- post-processing
 ;; ordering shouldn't apply (Issue #2821)
 (expect-with-driver :bigquery
-  {:columns ["venue_id" "user_id" "checkins_id"],
-   :cols    [{:name "venue_id",    :display_name "Venue ID",    :source :native, :base_type :type/Integer}
-             {:name "user_id",     :display_name  "User ID",    :source :native, :base_type :type/Integer}
-             {:name "checkins_id", :display_name "Checkins ID", :source :native, :base_type :type/Integer}]}
-
-  (select-keys (:data (qp/process-query
-                        {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
-                                                "       `test_data.checkins`.`user_id` AS `user_id`, "
-                                                "       `test_data.checkins`.`id` AS `checkins_id` "
-                                                "FROM `test_data.checkins` "
-                                                "LIMIT 2")}
-                         :type     :native
-                         :database (data/id)}))
-               [:cols :columns]))
+  [{:name "venue_id", :display_name "venue_id", :source :native, :base_type :type/Integer}
+   {:name "user_id", :display_name "user_id", :source :native, :base_type :type/Integer}
+   {:name "checkins_id", :display_name "checkins_id", :source :native, :base_type :type/Integer}]
+  (qp.test/cols
+    (qp/process-query
+      {:native   {:query (str "SELECT `test_data.checkins`.`venue_id` AS `venue_id`, "
+                              "       `test_data.checkins`.`user_id` AS `user_id`, "
+                              "       `test_data.checkins`.`id` AS `checkins_id` "
+                              "FROM `test_data.checkins` "
+                              "LIMIT 2")}
+       :type     :native
+       :database (data/id)})))
 
 ;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
 (expect-with-driver :bigquery
   {:rows    [[113]]
    :columns ["User_ID_Plus_Venue_ID"]}
-  (qptest/rows+column-names
+  (qp.test/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
                        :query    {:source-table (data/id :checkins)
@@ -125,7 +126,7 @@
 
 (expect-with-driver :bigquery
   {:rows [[7929 7929]], :columns ["sum" "sum_2"]}
-  (qptest/rows+column-names
+  (qp.test/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
                        :query    {:source-table (data/id :checkins)
@@ -134,7 +135,7 @@
 
 (expect-with-driver :bigquery
   {:rows [[7929 7929 7929]], :columns ["sum" "sum_2" "sum_3"]}
-  (qptest/rows+column-names
+  (qp.test/rows+column-names
     (qp/process-query {:database (data/id)
                        :type     "query"
                        :query    {:source-table (data/id :checkins)
@@ -171,16 +172,6 @@
                                  :breakout     [[:fk-> (data/id :venues :category_id) (data/id :categories :name)]]}})]
         (get-in results [:data :native_form :query] results)))))
 
-;; Make sure the BigQueryIdentifier class works as expected
-(expect
-  ["SELECT `dataset.table`.`field`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier
-                          {:dataset-name "dataset", :table-name "table", :field-name "field"})]}))
-
-(expect
-  ["SELECT `dataset.table`"]
-  (hsql/format {:select [(#'bigquery/map->BigQueryIdentifier {:dataset-name "dataset", :table-name "table"})]}))
-
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
         {:database (u/get-id db-or-db-id)
@@ -203,7 +194,7 @@
   "2018-08-31T00:00:00.000-05:00"
    (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
 
@@ -212,7 +203,7 @@
   "2018-08-31T00:00:00.000+07:00"
   (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
     (tt/with-temp* [Database [db {:engine :bigquery
-                                  :details (assoc (:details (Database (data/id)))
+                                  :details (assoc (:details (data/db))
                                              :use-jvm-timezone true)}]]
       (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
 
@@ -248,3 +239,30 @@
                :limit        1}
     :info     {:executed-by 1000
                :query-hash  (byte-array [1 2 3 4])}}))
+
+;; let's make sure we're generating correct HoneySQL + SQL for aggregations
+(expect-with-driver :bigquery
+  {:select   [[(hx/identifier :field "test_data.venues" "price")                        (hx/identifier :field-alias "price")]
+              [(hsql/call :avg (hx/identifier :field "test_data.venues" "category_id")) (hx/identifier :field-alias "avg")]]
+   :from     [(hx/identifier :table "test_data.venues")]
+   :group-by [(hx/identifier :field-alias "price")]
+   :order-by [[(hx/identifier :field-alias "avg") :asc]]}
+  (qp.test-util/with-everything-store
+    (#'sql.qp/mbql->honeysql
+     :bigquery
+     (data/mbql-query venues
+       {:aggregation [[:avg $category_id]]
+        :breakout    [$price]
+        :order-by    [[:asc [:aggregation 0]]]}))))
+
+(expect-with-driver :bigquery
+  {:query      (str "SELECT `test_data.venues`.`price` AS `price`,"
+                    " avg(`test_data.venues`.`category_id`) AS `avg` "
+                    "FROM `test_data.venues` "
+                    "GROUP BY `price` "
+                    "ORDER BY `avg` ASC, `price` ASC")
+   :table-name "venues"
+   :mbql?      true}
+  (qp/query->native
+    (data/mbql-query venues
+      {:aggregation [[:avg $category_id]], :breakout [$price], :order-by [[:asc [:aggregation 0]]]})))

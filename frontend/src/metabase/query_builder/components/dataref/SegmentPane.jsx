@@ -25,7 +25,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -76,7 +79,7 @@ export default class SegmentPane extends Component {
     const table = metadata && metadata.tables[segment.table_id];
 
     if (table) {
-      let card = createCard();
+      const card = createCard();
       card.dataset_query = createQuery("query", table.db_id, table.id);
       return card;
     } else {
@@ -86,27 +89,27 @@ export default class SegmentPane extends Component {
     }
   }
   setQueryFilteredBy() {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["rows"];
     card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
   setQueryCountFilteredBy() {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["count"];
     card.dataset_query.query.filter = ["segment", this.props.segment.id];
     this.props.setCardAndRun(card);
   }
 
   render() {
-    let { segment, metadata, question } = this.props;
+    const { segment, metadata, question } = this.props;
     const query = question.query();
 
-    let segmentName = segment.name;
+    const segmentName = segment.name;
 
-    let useForCurrentQuestion = [];
-    let usefulQuestions = [];
+    const useForCurrentQuestion = [];
+    const usefulQuestions = [];
 
     if (
       query instanceof StructuredQuery &&

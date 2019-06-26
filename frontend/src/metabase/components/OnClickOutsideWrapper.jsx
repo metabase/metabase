@@ -44,7 +44,7 @@ export default class OnClickOutsideWrapper extends Component {
     // remove from the stack after a delay, if it is removed through some other
     // means this will happen too early causing parent modal to close
     setTimeout(() => {
-      let index = popoverStack.indexOf(this);
+      const index = popoverStack.indexOf(this);
       if (index >= 0) {
         popoverStack.splice(index, 1);
       }

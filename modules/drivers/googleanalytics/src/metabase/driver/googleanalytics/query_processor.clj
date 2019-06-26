@@ -50,7 +50,9 @@
     (and (= unit :day) (= amount 0))  "today"
     (and (= unit :day) (= amount -1)) "yesterday"
     (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-    :else                             (du/format-date "yyyy-MM-dd" (du/date-trunc unit (du/relative-date unit amount)))))
+    :else                             (du/format-date
+                                        "yyyy-MM-dd"
+                                        (du/date-trunc unit (du/relative-date unit amount)))))
 
 (defmethod ->rvalue :value [[_ value _]]
   value)
@@ -175,6 +177,29 @@
 
 ;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
+(defn- date-add-days
+  "Add `n-days` to a datetime clause (`:absolute-datetime` or `:relative-datetime`) Done to fix off-by-one issues with
+  GA. See #9904"
+  [[clause-name time-component unit, :as datetime-clause] n-days]
+  (case clause-name
+    :absolute-datetime
+    [:absolute-datetime (du/relative-date :day n-days (du/date-trunc unit time-component)) unit]
+
+    :relative-datetime
+    (if (= unit :day)
+      [clause-name (+ time-component n-days) unit]
+      [:absolute-datetime
+       (du/relative-date :day n-days (du/date-trunc unit (du/relative-date unit time-component))) :day])
+
+    datetime-clause))
+
+(defn- date-sub-day [datetime-clause]
+  (date-add-days datetime-clause -1))
+
+(defn- date-add-day [datetime-clause]
+  (date-add-days datetime-clause 1))
+
+
 (defmulti ^:private parse-filter:interval mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod parse-filter:interval :default [_] nil)
@@ -183,12 +208,16 @@
   {:start-date (->rvalue min-val), :end-date (->rvalue max-val)})
 
 (defmethod parse-filter:interval :> [[_ field value]]
-  {:start-date (->rvalue value), :end-date latest-date})
+  {:start-date (->rvalue (date-add-day value))})
 
 (defmethod parse-filter:interval :< [[_ field value]]
-  {:start-date earliest-date, :end-date (->rvalue value)})
+  {:end-date (->rvalue (date-sub-day value))})
 
-;; TODO - why we don't support `:>=` or `:<=` in GA?
+(defmethod parse-filter:interval :>= [[_ field value]]
+  {:start-date (->rvalue value)})
+
+(defmethod parse-filter:interval :<= [[_ field value]]
+  {:end-date (->rvalue value)})
 
 (defmethod parse-filter:interval := [[_ field value]]
   {:start-date (->rvalue value)
@@ -205,8 +234,16 @@
       (throw (Exception. (str (tru "Multiple date filters are not supported")))))
     (first filters)))
 
+(defn- try-reduce-filters [[filter1 filter2]]
+  (merge-with
+    (fn [_ _] (throw (Exception. (str (tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
+    filter1 filter2))
+
 (defmethod parse-filter:interval :and [[_ & subclauses]]
-  (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
+  (let [filters (map parse-filter:interval subclauses)]
+    (if (= (count filters) 2)
+      (try-reduce-filters filters)
+      (maybe-get-only-filter-or-throw filters))))
 
 (defmethod parse-filter:interval :or [[_ & subclauses]]
   (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
@@ -219,18 +256,36 @@
   [filter-clause]
   (mbql.u/replace filter-clause
     ;; we don't support any of the following as datetime filters
-    #{:!= :<= :>= :starts-with :ends-with :contains}
+    #{:!= :starts-with :ends-with :contains}
     nil
 
-    [(_ :guard #{:< :> :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
+    [(_ :guard #{:< :> :<= :>= :between :=}) [(_ :guard (partial not= :datetime-field)) & _] & _]
     nil))
+
+(defn- normalize-unit [unit]
+  (if (= unit :default) :day unit))
+
+(defn- normalize-datetime-units
+  "Replace all unsupported datetime units with the default"
+  [filter-clause]
+  (mbql.u/replace filter-clause
+
+    [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
+    [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
+    [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))
+
+(defn- add-start-end-dates [filter-clause]
+  (merge {:start-date earliest-date, :end-date latest-date} filter-clause))
 
 (defn- handle-filter:interval
   "Handle datetime filter clauses. (Anything that *isn't* a datetime filter will be removed by the
   `handle-builtin-segment` logic)."
   [{filter-clause :filter}]
   (or (when filter-clause
-        (parse-filter:interval (remove-non-datetime-filter-clauses filter-clause)))
+        (add-start-end-dates
+          (parse-filter:interval
+            (normalize-datetime-units
+              (remove-non-datetime-filter-clauses filter-clause)))))
       {:start-date earliest-date, :end-date latest-date}))
 
 

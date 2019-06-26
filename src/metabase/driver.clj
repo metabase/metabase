@@ -71,15 +71,30 @@
   hierarchy
   (make-hierarchy))
 
-(defn registered?
+(defn- registered?
   "Is `driver` a valid registered driver?"
   [driver]
-  (isa? hierarchy driver ::driver))
+  (isa? hierarchy (keyword driver) ::driver))
 
-(defn abstract?
-  "Is `driver` an abstract \"base class\"?"
+(defn- concrete?
+  "Is `driver` registered, and non-abstract?"
   [driver]
-  (not (isa? hierarchy driver ::concrete)))
+  (isa? hierarchy (keyword driver) ::concrete))
+
+(defn- abstract?
+  "Is `driver` an abstract \"base class\"? i.e. a driver that you cannot use directly when adding a Database, such as
+  `:sql` or `:sql-jdbc`."
+  [driver]
+  (not (concrete? driver)))
+
+(defn available?
+  "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true`
+  for all registered, non-abstract drivers and false everything else.
+
+  Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
+  when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
+  [driver]
+  ((every-pred registered? concrete?) driver))
 
 (s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
@@ -89,22 +104,19 @@
 (defonce ^:private require-lock (Object.))
 
 (defn- require-driver-ns [driver & require-options]
-  ;; call `the-classloader` for side effects which will make sure the current thread's context classloader is one
-  ;; that has access to any URLs we've added dynamically if not already the case.
-  (classloader/the-classloader)
-  ;; make sure Clojure is using the context classloader to load namespaces. This should normally be the case, but
-  ;; better safe than sorry IMO
-  (binding [*use-context-classloader* true]
-    (let [expected-ns (driver->expected-namespace driver)]
-      ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
-      ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
-      ;; you try to do multithreaded require, at least last time I checked.
-      (locking require-lock
-        (log/debug
-         (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+  (let [expected-ns (driver->expected-namespace driver)]
+    ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
+    ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
+    ;; you try to do multithreaded require, at least last time I checked.
+    (locking require-lock
+      (log/debug
+       (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+      (try
+        (apply classloader/require expected-ns require-options)
+        (catch Throwable _
+          (throw (Exception. (str (tru "Could not find {0} driver." driver)))))))))
 
-(defn- load-driver-namespace-if-needed
+(defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
@@ -142,8 +154,9 @@
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
   [driver :- (s/cond-pre s/Str s/Keyword)]
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
-    (load-driver-namespace-if-needed driver)
+    (load-driver-namespace-if-needed! driver)
     driver))
 
 (defn- check-abstractness-hasnt-changed
@@ -158,8 +171,8 @@
   "Add a new parent to `driver`."
   [driver new-parent]
   (when-not *compile-files*
-    (load-driver-namespace-if-needed driver)
-    (load-driver-namespace-if-needed new-parent)
+    (load-driver-namespace-if-needed! driver)
+    (load-driver-namespace-if-needed! new-parent)
     (alter-var-root #'hierarchy derive driver new-parent)))
 
 (defn register!
@@ -198,7 +211,7 @@
         (derive! ::concrete))
       (doseq [parent (u/one-or-many parent)
               :when  parent]
-        (load-driver-namespace-if-needed parent)
+        (load-driver-namespace-if-needed! parent)
         (derive! parent)))
     ;; ok, log our great success
     (log/info
@@ -327,26 +340,6 @@
 (defmethod initialize! :default [_]) ; no-op
 
 
-(defmulti ^:deprecated available?
-  "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true` by
-  default for all non-abstract driver types and false for abstract ones; some drivers might want to override this to
-  return false even if the driver isn't abstract -- for example, the Oracle driver might return false if the JDBC
-  driver it depends on is not available.
-
-  This method is also used in tests to determine whether the standard set of Query Processor tests should
-  automatically against it; for one-off test drivers to test specific functionality, you should return `false`.
-
-  DEPRECATED -- drivers that require external dependencies are now shipping as plugins; they can declare dependencies
-  on external classes, and we can skip loading them entirely if the dependencies are not available. Please do not
-  implement this method; it will most likely be removed before version 1.0 ships."
-  {:arglists '([driver])}
-  dispatch-on-uninitialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod available? ::driver [driver]
-  (isa? hierarchy driver ::concrete))
-
-
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
   implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
@@ -364,8 +357,10 @@
 
 
 (defmulti can-connect?
-  "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL
-  database might try running a query like `SELECT 1;`. This function should return `true` or `false`."
+  "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
+  database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
+  can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
+  connection cannot be made."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -524,7 +519,12 @@
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
     ;; DEFAULTS TO TRUE.
-    :case-sensitivity-string-filter-options})
+    :case-sensitivity-string-filter-options
+
+    :left-join
+    :right-join
+    :inner-join
+    :full-join})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -619,6 +619,7 @@
   query)
 
 
+;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should

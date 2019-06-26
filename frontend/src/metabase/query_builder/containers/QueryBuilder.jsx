@@ -26,6 +26,7 @@ import title from "metabase/hoc/Title";
 
 import {
   getCard,
+  getDatabasesList,
   getOriginalCard,
   getLastRunCard,
   getFirstQueryResult,
@@ -53,7 +54,7 @@ import {
   getRawSeries,
 } from "../selectors";
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import * as actions from "../actions";
@@ -65,8 +66,8 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 function autocompleteResults(card, prefix) {
-  let databaseId = card && card.dataset_query && card.dataset_query.database;
-  let apiCall = MetabaseApi.db_autocomplete_suggestions({
+  const databaseId = card && card.dataset_query && card.dataset_query.database;
+  const apiCall = MetabaseApi.db_autocomplete_suggestions({
     dbId: databaseId,
     prefix: prefix,
   });
@@ -132,7 +133,10 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ card }) => (card && card.name) || t`Question`)
 @fitViewport
 export default class QueryBuilder extends Component {
@@ -198,7 +202,7 @@ export default class QueryBuilder extends Component {
   }
 
   componentDidUpdate() {
-    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    const viz = ReactDOM.findDOMNode(this.refs.viz);
     if (viz) {
       viz.style.opacity = 1.0;
     }
@@ -215,14 +219,16 @@ export default class QueryBuilder extends Component {
   // Debounce the function to improve resizing performance.
   handleResize = e => {
     this.forceUpdateDebounced();
-    let viz = ReactDOM.findDOMNode(this.refs.viz);
+    const viz = ReactDOM.findDOMNode(this.refs.viz);
     if (viz) {
       viz.style.opacity = 0.2;
     }
   };
 
   render() {
-    return <LegacyQueryBuilder {...this.props} />;
+    return (
+      <LegacyQueryBuilder {...this.props} handleResize={this.handleResize} />
+    );
   }
 }
 

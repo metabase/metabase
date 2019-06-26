@@ -1,45 +1,55 @@
 (ns metabase.test.data.dataset-definitions
-  "Definitions of various datasets for use in tests with `with-temp-db`."
-  (:require [metabase.test.data.interface :as di])
+  "Definitions of various datasets for use in tests with `data/dataset` and the like."
+  (:require [medley.core :as m]
+            [metabase.test.data.interface :as tx])
   (:import java.sql.Time
            [java.util Calendar TimeZone]))
 
-;; ## Datasets
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                Various Datasets                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; The O.G. "Test Database" dataset
-(di/def-database-definition-edn test-data)
+(tx/defdataset-edn test-data
+  "The O.G. \"Test Database\" dataset.")
 
-;; Times when the Toucan cried
-(di/def-database-definition-edn sad-toucan-incidents)
+ (tx/defdataset-edn sad-toucan-incidents
+   "Times when the Toucan cried")
 
-;; Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds
-(di/def-database-definition-edn tupac-sightings)
+(tx/defdataset-edn tupac-sightings
+  "Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds")
 
-;; Dataset with nested columns, for testing a MongoDB-style database
-(di/def-database-definition-edn geographical-tips)
+(tx/defdataset-edn geographical-tips
+  "Dataset with nested columns, for testing a MongoDB-style database")
 
-;; A very tiny dataset with a list of places and a booleans
-(di/def-database-definition-edn places-cam-likes)
+(tx/defdataset-edn places-cam-likes
+  "A very tiny dataset with a list of places and a booleans")
 
-;; A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user --
-;; sender and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.
-(di/def-database-definition-edn avian-singles)
+(tx/defdataset-edn avian-singles
+  "A small dataset with users and a set of messages between them. Each message has *2* foreign keys to user -- sender
+  and receiver -- allowing us to test situations where multiple joins for a *single* table should occur.")
 
-;; A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
-;; expressions to make sure they behave correctly
-;;
-;; As an added "bonus" this dataset has a table with a name in a slash in it, so the driver will need to support that
-;; correctly in order for this to work!
-(di/def-database-definition-edn daily-bird-counts)
+(tx/defdataset-edn daily-bird-counts
+  "A small dataset that includes an integer column with some NULL and ZERO values, meant for testing things like
+  expressions to make sure they behave correctly.
 
-;; A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.
-(di/def-database-definition-edn office-checkins)
+  As an added bonus this dataset has a table with a name in a slash in it, so the driver will need to support that
+  correctly in order for this to work!")
+
+(tx/defdataset-edn office-checkins
+  "A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.")
+
+(tx/defdataset-edn bird-flocks
+  "A small dataset with birds and the flocks they belong to (a many-to-one relationship). Some birds belong to no
+  flocks, and one flock has no birds, so this is useful for testing behavior of various types of joins. (`flock_id` is
+  not explicitly marked as a foreign key, because the test dataset syntax does not yet have a way to support nullable
+  foreign keys.)")
+
 
 (defn- calendar-with-fields ^Calendar [date & fields]
-  (let [cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
-                         (.setTime date))
-        blank-calendar (doto (.clone cal-from-date)
-                         .clear)]
+  (let [^Calendar cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
+                                   (.setTime date))
+        ^Calendar blank-calendar (doto ^Calendar (.clone cal-from-date)
+                                   .clear)]
     (doseq [field fields]
       (.set blank-calendar field (.get cal-from-date field)))
     blank-calendar))
@@ -57,66 +67,72 @@
   [date]
   (Time. (.getTimeInMillis (calendar-with-fields date Calendar/HOUR_OF_DAY Calendar/MINUTE Calendar/SECOND))))
 
-(di/def-database-definition test-data-with-time
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         [(first table-def)
-                          {:field-name "last_login_date", :base-type :type/Date}
-                          {:field-name "last_login_time", :base-type :type/Time}
-                          (peek table-def)])
-                       (fn [rows]
-                         (mapv (fn [[username last-login password-text]]
-                                 [username (date-only last-login) (time-only last-login) password-text])
-                               rows))
-                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
-                             :when (= table-name "users")]
-                         orig-def)))
 
-(di/def-database-definition test-data-with-null-date-checkins
-  (di/update-table-def "checkins"
-                       #(vec (concat % [{:field-name "null_only_date" :base-type :type/Date}]))
-                       (fn [rows]
-                         (mapv #(conj % nil) rows))
-                       (di/slurp-edn-table-def "test-data")))
+(defonce ^{:doc "The main `test-data` dataset, but only the `users` table, and with `last_login_date` and
+  `last_login_time` instead of `last_login`."}
+  test-data-with-time
+  (tx/transformed-dataset-definition "test-data-with-time" test-data
+    (tx/transform-dataset-only-tables "users")
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         (fn [[name-field-def _ password-field-def]]
+           [name-field-def
+            (tx/map->FieldDefinition {:field-name "last_login_date", :base-type :type/Date})
+            (tx/map->FieldDefinition {:field-name "last_login_time", :base-type :type/Time})
+            password-field-def])))
+      :rows
+      (fn [rows]
+        (for [[username last-login password-text] rows]
+          [username (date-only last-login) (time-only last-login) password-text])))))
 
-(di/def-database-definition test-data-with-timezones
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         [(first table-def)
-                          {:field-name "last_login", :base-type :type/DateTimeWithTZ}
-                          (peek table-def)])
-                       identity
-                       (di/slurp-edn-table-def "test-data")))
+(defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
+  test-data-with-null-date-checkins
+  (tx/transformed-dataset-definition "test-data-with-null-date-checkins" test-data
+    (tx/transform-dataset-update-table "checkins"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         concat
+         [(tx/map->FieldDefinition {:field-name "null_only_date" :base-type :type/Date})]))
+      :rows
+      (fn [rows]
+        (for [row rows]
+          (concat row [nil]))))))
 
-(def test-data-map
-  "Converts data from `test-data` to a map of maps like the following:
+(defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
+  test-data-with-timezones
+  (tx/transformed-dataset-definition "test-data-with-timezones" test-data
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update
+         tabledef
+         :field-definitions
+         (fn [[name-field-def _ password-field-def]]
+           [name-field-def
+            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+            password-field-def]))))))
 
-   {<table-name> [{<field-name> <field value> ...}]."
-  (reduce (fn [acc {:keys [table-name field-definitions rows]}]
-            (let [field-names (mapv :field-name field-definitions)]
-              (assoc acc table-name
-                     (for [row rows]
-                       (zipmap field-names row)))))
-          {} (:table-definitions test-data)))
-
-(defn field-values
-  "Returns the field values for the given `TABLE` and `COLUMN` found
-  in the data-map `M`."
-  [m table column]
-  (mapv #(get % column) (get m table)))
-
-;; Takes the `test-data` dataset and adds a `created_by` column to the users table that is self referencing
-(di/def-database-definition test-data-self-referencing-user
-  (di/update-table-def "users"
-                       (fn [table-def]
-                         (conj table-def {:field-name "created_by", :base-type :type/Integer, :fk :users}))
-                       (fn [rows]
-                         (mapv (fn [[username last-login password-text] idx]
-                                 [username last-login password-text (if (= 1 idx)
-                                                                      idx
-                                                                      (dec idx))])
-                               rows
-                               (iterate inc 1)))
-                       (for [[table-name :as orig-def] (di/slurp-edn-table-def "test-data")
-                             :when (= table-name "users")]
-                         orig-def)))
+(defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
+  table that is self referencing."}
+  test-data-self-referencing-user
+  (tx/transformed-dataset-definition "test-data-self-referencing-user" test-data
+    (tx/transform-dataset-only-tables "users")
+    (tx/transform-dataset-update-table "users"
+      :table
+      (fn [tabledef]
+        (update tabledef :field-definitions concat [(tx/map->FieldDefinition
+                                                     {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
+      ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
+      :rows
+      (fn [rows]
+        (for [[idx [username last-login password-text]] (m/indexed rows)]
+          [username last-login password-text (if (zero? idx)
+                                               1
+                                               idx)])))))

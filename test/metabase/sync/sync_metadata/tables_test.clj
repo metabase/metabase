@@ -11,7 +11,7 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(tx/def-database-definition ^:private db-with-some-cruft
+(tx/defdataset ^:private db-with-some-cruft
   [["acquired_toucans"
      [{:field-name "species",              :base-type :type/Text}
       {:field-name "cam_has_acquired_one", :base-type :type/Boolean}]

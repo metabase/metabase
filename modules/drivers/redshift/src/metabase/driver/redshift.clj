@@ -3,14 +3,11 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
-             [sync :as sql-jdbc.sync]]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util.honeysql-extensions :as hx]))
 
@@ -101,20 +98,3 @@
     :ssl                           true
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
-
-;; HACK ! When we test against Redshift we use a session-unique schema so we can run simultaneous tests
-;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
-(def ^:private excluded-schemas
-  (if-not config/is-test?
-    (constantly nil)
-    (memoize
-     (fn []
-       (require 'metabase.test.data.redshift)
-       (let [session-schema-number @(resolve 'metabase.test.data.redshift/session-schema-number)]
-         (set (conj (for [i     (range 240)
-                          :when (not= i session-schema-number)]
-                      (str "schema_" i))
-                    "public")))))))
-
-(defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
-  (excluded-schemas))

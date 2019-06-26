@@ -142,8 +142,8 @@ function setAggregationClause(
   query: SQ,
   aggregationClause: ?AggregationClause,
 ): SQ {
-  let wasBareRows = A.isBareRows(query.aggregation);
-  let isBareRows = A.isBareRows(aggregationClause);
+  const wasBareRows = A.isBareRows(query.aggregation);
+  const isBareRows = A.isBareRows(aggregationClause);
   // when switching to or from bare rows clear out any sorting and fields clauses
   if (isBareRows !== wasBareRows) {
     query = clearFields(query);
@@ -156,9 +156,9 @@ function setAggregationClause(
   return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
-  let breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
+  const breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    let sortId = Query.getFieldTargetId(sort[1]);
+    const sortId = Query.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }

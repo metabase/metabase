@@ -38,8 +38,8 @@ export default class SettingsUpdatesForm extends Component {
   }
 
   renderVersionUpdateNotice() {
-    let versionInfo = _.findWhere(this.props.settings, { key: "version-info" }),
-      currentVersion = MetabaseSettings.get("version").tag;
+    let versionInfo = _.findWhere(this.props.settings, { key: "version-info" });
+    const currentVersion = MetabaseSettings.get("version").tag;
 
     if (versionInfo) {
       versionInfo = versionInfo.value;
@@ -80,6 +80,7 @@ export default class SettingsUpdatesForm extends Component {
 
     if (
       !versionInfo ||
+      !versionInfo.latest ||
       MetabaseUtils.compareVersions(
         currentVersion,
         versionInfo.latest.version,
@@ -126,9 +127,9 @@ export default class SettingsUpdatesForm extends Component {
   }
 
   render() {
-    let { elements, updateSetting } = this.props;
+    const { elements, updateSetting } = this.props;
 
-    let settings = elements.map((setting, index) => (
+    const settings = elements.map((setting, index) => (
       <SettingsSetting
         key={setting.key}
         setting={setting}

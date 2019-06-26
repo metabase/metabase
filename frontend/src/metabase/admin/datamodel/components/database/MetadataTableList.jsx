@@ -1,12 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
 import { t, ngettext, msgid } from "ttag";
-
-import { normal } from "metabase/lib/colors";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -40,14 +37,14 @@ export default class MetadataTableList extends Component {
 
   render() {
     let queryableTablesHeader, hiddenTablesHeader;
-    let queryableTables = [];
-    let hiddenTables = [];
+    const queryableTables = [];
+    const hiddenTables = [];
 
     if (this.props.tables) {
-      let tables = _.sortBy(this.props.tables, "display_name");
+      const tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
         const selected = this.props.tableId === table.id;
-        let row = (
+        const row = (
           <li key={table.id}>
             <a
               className={cx("AdminList-item flex align-center no-decoration", {
@@ -56,16 +53,10 @@ export default class MetadataTableList extends Component {
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}
-              <span className="flex-align-right" style={{ width: 17 }}>
-                <ProgressBar
-                  percentage={table.metadataStrength}
-                  color={selected ? normal.grey2 : normal.grey1}
-                />
-              </span>
             </a>
           </li>
         );
-        let regex = this.state.searchRegex;
+        const regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||
@@ -126,8 +117,9 @@ export default class MetadataTableList extends Component {
                 {t`Schemas`}
               </span>
             )}
-            {this.props.onBack &&
-              this.props.schema && <span className="mx1">-</span>}
+            {this.props.onBack && this.props.schema && (
+              <span className="mx1">-</span>
+            )}
             {this.props.schema && <span> {this.props.schema.name}</span>}
           </h4>
         )}

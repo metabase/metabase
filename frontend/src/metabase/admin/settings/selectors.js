@@ -371,7 +371,7 @@ const SECTIONS = [
             newValue &&
             !settingsValues["embedding-secret-key"]
           ) {
-            let result = await UtilApi.random_token();
+            const result = await UtilApi.random_token();
             await onChangeSetting("embedding-secret-key", result.token);
           }
         },
@@ -456,52 +456,60 @@ export const getSettings = createSelector(
   state => state.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
-    settings.map(
-      setting =>
-        warnings[setting.key]
-          ? { ...setting, warning: warnings[setting.key] }
-          : setting,
+    settings.map(setting =>
+      warnings[setting.key]
+        ? { ...setting, warning: warnings[setting.key] }
+        : setting,
     ),
 );
 
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
+export const getSettingValues = createSelector(
+  getSettings,
+  settings => {
+    const settingValues = {};
+    for (const setting of settings) {
+      settingValues[setting.key] = setting.value;
+    }
+    return settingValues;
+  },
+);
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getNewVersionAvailable = createSelector(
+  getSettings,
+  settings => {
+    return MetabaseSettings.newVersionAvailable(settings);
+  },
+);
 
-export const getSections = createSelector(getSettings, settings => {
-  if (!settings || _.isEmpty(settings)) {
-    return [];
-  }
+export const getSections = createSelector(
+  getSettings,
+  settings => {
+    if (!settings || _.isEmpty(settings)) {
+      return [];
+    }
 
-  let settingsByKey = _.groupBy(settings, "key");
-  return SECTIONS.map(function(section) {
-    let sectionSettings = section.settings.map(function(setting) {
-      const apiSetting =
-        settingsByKey[setting.key] && settingsByKey[setting.key][0];
-      if (apiSetting) {
-        return {
-          placeholder: apiSetting.default,
-          ...apiSetting,
-          ...setting,
-        };
-      } else {
-        return setting;
-      }
+    const settingsByKey = _.groupBy(settings, "key");
+    return SECTIONS.map(function(section) {
+      const sectionSettings = section.settings.map(function(setting) {
+        const apiSetting =
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+        if (apiSetting) {
+          return {
+            placeholder: apiSetting.default,
+            ...apiSetting,
+            ...setting,
+          };
+        } else {
+          return setting;
+        }
+      });
+      return {
+        ...section,
+        settings: sectionSettings,
+      };
     });
-    return {
-      ...section,
-      settings: sectionSettings,
-    };
-  });
-});
+  },
+);
 
 export const getActiveSectionName = (state, props) => props.params.section;
 

@@ -60,7 +60,7 @@ export default class SaveQuestionModal extends Component {
   }
 
   validateForm() {
-    let { details } = this.state;
+    const { details } = this.state;
 
     let valid = true;
 
@@ -89,7 +89,7 @@ export default class SaveQuestionModal extends Component {
         e.preventDefault();
       }
 
-      let { details } = this.state;
+      const { details } = this.state;
       // TODO Atte Keinäenn 31/1/18 Refactor this
       // I think that the primary change should be that
       // SaveQuestionModal uses Question objects instead of directly modifying card objects –
@@ -110,7 +110,9 @@ export default class SaveQuestionModal extends Component {
         description:
           details.saveType === "overwrite"
             ? originalCard.description
-            : details.description ? details.description.trim() : null,
+            : details.description
+            ? details.description.trim()
+            : null,
         collection_id:
           details.saveType === "overwrite"
             ? originalCard.collection_id
@@ -136,7 +138,7 @@ export default class SaveQuestionModal extends Component {
   };
 
   render() {
-    let { error, details } = this.state;
+    const { error, details } = this.state;
     let formError;
     if (error) {
       let errorMessage;
@@ -183,7 +185,7 @@ export default class SaveQuestionModal extends Component {
       );
     }
 
-    let title = this.props.multiStep
+    const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 

@@ -40,12 +40,16 @@ export default class Funnel extends Component {
     height: 4,
   };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length === 2;
   }
 
   static checkRenderable(series, settings) {
-    const [{ data: { rows } }] = series;
+    const [
+      {
+        data: { rows },
+      },
+    ] = series;
     if (series.length > 1) {
       return;
     }
@@ -95,7 +99,12 @@ export default class Funnel extends Component {
   };
 
   static transformSeries(series) {
-    let [{ card, data: { rows, cols } }] = series;
+    const [
+      {
+        card,
+        data: { rows, cols },
+      },
+    ] = series;
 
     const settings = getComputedSettingsForSeries(series);
 
@@ -157,12 +166,15 @@ export default class Funnel extends Component {
               actionButtons={actionButtons}
             />
           )}
-          <LegendHeader
-            className="flex-no-shrink"
-            series={series._raw || series}
-            actionButtons={!hasTitle && actionButtons}
-            onChangeCardAndRun={onChangeCardAndRun}
-          />
+          {!hasTitle &&
+          actionButtons && ( // always show action buttons if we have them
+              <LegendHeader
+                className="flex-no-shrink"
+                series={series._raw || series}
+                actionButtons={actionButtons}
+                onChangeCardAndRun={onChangeCardAndRun}
+              />
+            )}
           <FunnelNormal {...this.props} className="flex-full" />
         </div>
       );

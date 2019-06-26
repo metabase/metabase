@@ -236,7 +236,7 @@ export default class Dashboard extends Component {
       isNightMode,
       hideParameters,
     } = this.props;
-    let { error } = this.state;
+    const { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -284,12 +284,11 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
               />
             </header>
-            {!isFullscreen &&
-              parametersWidget && (
-                <div className="wrapper flex flex-column align-start mt2 relative z2">
-                  {parametersWidget}
-                </div>
-              )}
+            {!isFullscreen && parametersWidget && (
+              <div className="wrapper flex flex-column align-start mt2 relative z2">
+                {parametersWidget}
+              </div>
+            )}
             <div className="wrapper">
               {dashboard.ordered_cards.length === 0 ? (
                 <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>

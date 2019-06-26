@@ -55,7 +55,10 @@ const mapDispatchToProps = {
 };
 const ICON_SIZE = 16;
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class QueryHeader extends Component {
   constructor(props, context) {
     super(props, context);
@@ -154,7 +157,7 @@ export default class QueryHeader extends Component {
 
   onFetchRevisions = async ({ entity, id }) => {
     // TODO: reduxify
-    let revisions = await RevisionApi.list({ entity, id });
+    const revisions = await RevisionApi.list({ entity, id });
     this.setState({ revisions });
   };
 
@@ -184,7 +187,7 @@ export default class QueryHeader extends Component {
       id: card && card.dataset_query && card.dataset_query.database,
     });
 
-    let buttonSections = [];
+    const buttonSections = [];
 
     // A card that is either completely new or it has been derived from a saved question
     if (isNew && isDirty) {
@@ -424,7 +427,7 @@ export default class QueryHeader extends Component {
     ]);
 
     // data reference button
-    let dataReferenceButtonClasses = cx("transition-color", {
+    const dataReferenceButtonClasses = cx("transition-color", {
       "text-brand": this.props.isShowingDataReference,
       "text-brand-hover": !this.state.isShowingDataReference,
     });
@@ -474,7 +477,9 @@ export default class QueryHeader extends Component {
             items={[
               !isNew && Object.values(questionAlerts).length > 0
                 ? updateAlertItem
-                : isNew ? createAlertAfterSavingQuestionItem : createAlertItem,
+                : isNew
+                ? createAlertAfterSavingQuestionItem
+                : createAlertItem,
             ]}
           />
         </div>,

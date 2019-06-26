@@ -129,7 +129,10 @@ export const TableTriggerContent = ({ selectedTable }) =>
     <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchTableMetadata },
+)
 export default class DataSelector extends Component {
   constructor(props) {
     super();
@@ -149,8 +152,8 @@ export default class DataSelector extends Component {
       props.databases &&
       props.databases.map(database => {
         let schemas = {};
-        for (let table of database.tables.filter(isQueryable)) {
-          let name = table.schema || "";
+        for (const table of database.tables.filter(isQueryable)) {
+          const name = table.schema || "";
           schemas[name] = schemas[name] || {
             name: titleize(humanize(name)),
             database: database,
@@ -182,7 +185,7 @@ export default class DataSelector extends Component {
       _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
 
     // remove the schema step if a database is already selected and the database does not have more than one schema.
-    let steps = [...props.steps];
+    const steps = [...props.steps];
     if (
       selectedDatabase &&
       !hasMultipleSchemas &&
@@ -268,13 +271,13 @@ export default class DataSelector extends Component {
         this.switchToStep(TABLE_STEP);
       }
     } else {
-      let firstStep = this.state.steps[0];
+      const firstStep = this.state.steps[0];
       this.switchToStep(firstStep);
     }
   }
 
   nextStep = (stateChange = {}) => {
-    let activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
+    const activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
     if (activeStepIndex + 1 >= this.state.steps.length) {
       this.setState(stateChange);
       this.refs.popover.toggle();
@@ -331,7 +334,7 @@ export default class DataSelector extends Component {
   };
 
   onChangeDatabase = (index, schemaInSameStep) => {
-    let database = this.state.databases[index];
+    const database = this.state.databases[index];
     let schema =
       database && (database.schemas.length > 1 ? null : database.schemas[0]);
     if (database && database.tables.length === 0) {
@@ -575,7 +578,7 @@ const DatabasePicker = ({
     return <DataSelectorLoading />;
   }
 
-  let sections = [
+  const sections = [
     {
       items: databases.map((database, index) => ({
         name: database.name,
@@ -669,7 +672,7 @@ export const SchemaPicker = ({
   onChangeSchema,
   hasAdjacentStep,
 }) => {
-  let sections = [
+  const sections = [
     {
       items: selectedDatabase.schemas,
     },
@@ -762,7 +765,7 @@ export const TablePicker = ({
   }
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
-  let header = (
+  const header = (
     <div className="flex flex-wrap align-center">
       <span
         className={cx("flex align-center", {
@@ -795,7 +798,7 @@ export const TablePicker = ({
       </section>
     );
   } else {
-    let sections = [
+    const sections = [
       {
         name: header,
         items: selectedSchema.tables.map(table => ({

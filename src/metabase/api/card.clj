@@ -61,6 +61,7 @@
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
+;; TODO - rewrite the functions below as multimethod & impls
 (defn- cards:all
   "Return all `Cards`."
   []
@@ -197,7 +198,7 @@
      (cond
        valid-metadata? (trs "Card results metadata passed in to API is VALID. Thanks!")
        metadata        (trs "Card results metadata passed in to API is INVALID. Running query to fetch correct metadata.")
-       :else           (trs "Card results metadata passed in to API is  ISSING. Running query to fetch correct metadata.")))
+       :else           (trs "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata.")))
     (if valid-metadata?
       (a/to-chan [metadata])
       (qp.async/result-metadata-for-query-async query))))
@@ -595,11 +596,13 @@
                   (u/emoji "💾"))
         ttl-seconds))))
 
-(defn- query-for-card [card parameters constraints middleware]
-  (let [query (assoc (:dataset_query card)
-                :constraints constraints
-                :parameters  parameters
-                :middleware  middleware)
+(defn- query-for-card [{query :dataset_query, :as card} parameters constraints middleware]
+  (let [query (-> query
+                  ;; don't want default constraints overridding anything that's already there
+                  (m/dissoc-in [:middleware :add-default-userland-constraints?])
+                  (assoc :constraints constraints
+                         :parameters  parameters
+                         :middleware  middleware))
         ttl   (when (public-settings/enable-query-caching)
                 (or (:cache_ttl card)
                     (query-magic-ttl query)))]

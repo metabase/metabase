@@ -45,11 +45,13 @@ export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(
 
 export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
   return async function(dispatch, getState) {
-    let { setup: { allowTracking, databaseDetails, userDetails } } = getState();
+    const {
+      setup: { allowTracking, databaseDetails, userDetails },
+    } = getState();
 
     try {
       // NOTE: this request will return a Set-Cookie header for the session
-      let response = await SetupApi.create({
+      const response = await SetupApi.create({
         token: MetabaseSettings.get("setup_token"),
         prefs: {
           site_name: userDetails.site_name,

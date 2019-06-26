@@ -42,9 +42,13 @@ export function getDefaultColumns(series) {
   }
 }
 
-function getDefaultScatterColumns([{ data: { cols, rows } }]) {
-  let dimensions = cols.filter(isDimension);
-  let metrics = cols.filter(isMetric);
+function getDefaultScatterColumns([
+  {
+    data: { cols, rows },
+  },
+]) {
+  const dimensions = cols.filter(isDimension);
+  const metrics = cols.filter(isMetric);
   if (dimensions.length === 2 && metrics.length < 2) {
     return {
       dimensions: [dimensions[0].name],
@@ -60,10 +64,14 @@ function getDefaultScatterColumns([{ data: { cols, rows } }]) {
   }
 }
 
-function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
-  let type = getChartTypeFromData(cols, rows, false);
+function getDefaultLineAreaBarColumns([
+  {
+    data: { cols, rows },
+  },
+]) {
+  const type = getChartTypeFromData(cols, rows, false);
   if (type === DIMENSION_DIMENSION_METRIC) {
-    let dimensions = [cols[0], cols[1]];
+    const dimensions = [cols[0], cols[1]];
     if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
       // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();
@@ -96,7 +104,14 @@ function getDefaultLineAreaBarColumns([{ data: { cols, rows } }]) {
 
 export const GRAPH_DATA_SETTINGS = {
   ...columnSettings({
-    getColumns: ([{ data: { cols } }], settings) => cols,
+    getColumns: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      settings,
+    ) => cols,
     hidden: true,
   }),
   "graph._dimension_filter": {
@@ -258,9 +273,6 @@ export const STACKABLE_SETTINGS = {
         ? "stacked"
         : null,
     getHidden: (series, settings) => {
-      if (series.length < 2) {
-        return true;
-      }
       const displays = series.map(single => settings.series(single).display);
       return !_.any(displays, display => STACKABLE_DISPLAY_TYPES.has(display));
     },
@@ -359,7 +371,14 @@ export const GRAPH_AXIS_SETTINGS = {
       ),
   },
   "graph.x_axis._is_histogram": {
-    getDefault: ([{ data: { cols } }], vizSettings) =>
+    getDefault: (
+      [
+        {
+          data: { cols },
+        },
+      ],
+      vizSettings,
+    ) =>
       // matches binned numeric columns
       cols[0].binning_info != null ||
       // matches certain date extracts like day-of-week, etc
@@ -380,8 +399,10 @@ export const GRAPH_AXIS_SETTINGS = {
       vizSettings["graph.x_axis._is_histogram"]
         ? "histogram"
         : vizSettings["graph.x_axis._is_timeseries"]
-          ? "timeseries"
-          : vizSettings["graph.x_axis._is_numeric"] ? "linear" : "ordinal",
+        ? "timeseries"
+        : vizSettings["graph.x_axis._is_numeric"]
+        ? "linear"
+        : "ordinal",
     getProps: (series, vizSettings) => {
       const options = [];
       if (vizSettings["graph.x_axis._is_timeseries"]) {

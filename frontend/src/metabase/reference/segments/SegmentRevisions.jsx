@@ -45,7 +45,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentRevisions extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
@@ -97,22 +100,21 @@ export default class SegmentRevisions extends Component {
               <div className="wrapper wrapper--trim">
                 <div className={R.revisionsWrapper}>
                   {Object.values(revisions)
-                    .map(
-                      revision =>
-                        revision && revision.diff ? (
-                          <Revision
-                            key={revision.id}
-                            revision={revision || {}}
-                            tableMetadata={tables[entity.table_id] || {}}
-                            objectName={entity.name}
-                            currentUser={user || {}}
-                            userColor={
-                              userColorAssignments[
-                                getIn(revision, ["user", "id"])
-                              ]
-                            }
-                          />
-                        ) : null,
+                    .map(revision =>
+                      revision && revision.diff ? (
+                        <Revision
+                          key={revision.id}
+                          revision={revision || {}}
+                          tableMetadata={tables[entity.table_id] || {}}
+                          objectName={entity.name}
+                          currentUser={user || {}}
+                          userColor={
+                            userColorAssignments[
+                              getIn(revision, ["user", "id"])
+                            ]
+                          }
+                        />
+                      ) : null,
                     )
                     .reverse()}
                 </div>

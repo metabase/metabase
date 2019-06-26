@@ -84,9 +84,14 @@
        (merge
         {:same-site :lax
          :http-only true
-         :path      "/"
-         ;; max-session age-is in minutes; Max-Age= directive should be in seconds
-         :max-age   (* 60 (config/config-int :max-session-age))}
+         :path      "/"}
+        ;; If the env var `MB_SESSION_COOKIES=true`, do not set the `Max-Age` directive; cookies with no `Max-Age` and
+        ;; no `Expires` directives are session cookies, and are deleted when the browser is closed
+        ;;
+        ;; See https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies
+        (when-not (config/config-bool :mb-session-cookies)
+          ;; max-session age-is in minutes; Max-Age= directive should be in seconds
+          {:max-age (* 60 (config/config-int :max-session-age))})
         ;; If the authentication request request was made over HTTPS (hopefully always except for local dev instances)
         ;; add `Secure` attribute so the cookie is only sent over HTTPS.
         (when (https-request? request)

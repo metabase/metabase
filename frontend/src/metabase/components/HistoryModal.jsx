@@ -8,7 +8,7 @@ import ModalContent from "metabase/components/ModalContent.jsx";
 import moment from "moment";
 
 function formatDate(date) {
-  let m = moment(date);
+  const m = moment(date);
   if (m.isSame(moment(), "day")) {
     return t`Today, ` + m.format("h:mm a");
   } else if (m.isSame(moment().subtract(1, "day"), "day")) {
@@ -39,7 +39,7 @@ export default class HistoryModal extends Component {
   };
 
   async componentDidMount() {
-    let { entityType, entityId } = this.props;
+    const { entityType, entityId } = this.props;
 
     try {
       await this.props.onFetchRevisions({ entity: entityType, id: entityId });
@@ -49,7 +49,7 @@ export default class HistoryModal extends Component {
   }
 
   async revert(revision) {
-    let { entityType, entityId } = this.props;
+    const { entityType, entityId } = this.props;
     try {
       await this.props.onRevertToRevision({
         entity: entityType,

@@ -23,7 +23,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricPane extends Component {
   constructor(props, context) {
     super(props, context);
@@ -50,7 +53,7 @@ export default class MetricPane extends Component {
     const table = metadata && metadata.tables[metric.table_id];
 
     if (table) {
-      let card = createCard();
+      const card = createCard();
       card.dataset_query = createQuery("query", table.db_id, table.id);
       return card;
     } else {
@@ -61,18 +64,18 @@ export default class MetricPane extends Component {
   }
 
   setQueryMetric() {
-    let card = this.newCard();
+    const card = this.newCard();
     card.dataset_query.query.aggregation = ["metric", this.props.metric.id];
     this.props.setCardAndRun(card);
   }
 
   render() {
-    let { metric, metadata } = this.props;
+    const { metric, metadata } = this.props;
 
-    let metricName = metric.name;
+    const metricName = metric.name;
 
-    let useForCurrentQuestion = [];
-    let usefulQuestions = [];
+    const useForCurrentQuestion = [];
+    const usefulQuestions = [];
 
     usefulQuestions.push(
       <QueryButton

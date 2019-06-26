@@ -25,7 +25,7 @@ export default class SaveStatus extends Component {
 
   setSaved() {
     clearTimeout(this.state.recentlySavedTimeout);
-    let recentlySavedTimeout = setTimeout(
+    const recentlySavedTimeout = setTimeout(
       () => this.setState({ recentlySavedTimeout: null }),
       5000,
     );

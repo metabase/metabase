@@ -565,7 +565,7 @@ export default class StructuredQuery extends AtomicQuery {
     return Q.getOrderBys(this.query());
   }
   sortOptions(sort): DimensionOptions {
-    let sortOptions = { count: 0, dimensions: [], fks: [] };
+    const sortOptions = { count: 0, dimensions: [], fks: [] };
     // in bare rows all fields are sortable, otherwise we only sort by our breakout columns
     if (this.isBareRows()) {
       const usedFields = new Set(
@@ -788,7 +788,7 @@ export default class StructuredQuery extends AtomicQuery {
     // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
     const nameCounts = new Map();
     return this.columnDimensions().map(dimension => {
-      let name = dimension.columnName();
+      const name = dimension.columnName();
       if (nameCounts.has(name)) {
         const count = nameCounts.get(name) + 1;
         nameCounts.set(name, count);

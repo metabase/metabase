@@ -24,6 +24,8 @@ import {
   viewNextObjectDetail,
 } from "metabase/query_builder/actions";
 
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import cx from "classnames";
 import _ from "underscore";
 
@@ -51,6 +53,10 @@ export class ObjectDetail extends Component {
 
   static hidden = true;
 
+  static settings = {
+    ...columnSettings({ hidden: true }),
+  };
+
   componentDidMount() {
     // load up FK references
     this.props.loadObjectDetailFKReferences();
@@ -73,7 +79,9 @@ export class ObjectDetail extends Component {
       return null;
     }
 
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     const columnIndex = _.findIndex(cols, col => isPK(col));
     return rows[0][columnIndex];
   }
@@ -83,7 +91,11 @@ export class ObjectDetail extends Component {
   };
 
   cellRenderer(column, value, isColumn) {
-    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    const {
+      settings,
+      onVisualizationClick,
+      visualizationIsClickable,
+    } = this.props;
 
     let cellValue;
     let clicked;
@@ -99,14 +111,14 @@ export class ObjectDetail extends Component {
       if (value === null || value === undefined || value === "") {
         cellValue = <span className="text-light">{t`Empty`}</span>;
       } else if (isa(column.special_type, TYPE.SerializedJSON)) {
-        let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        const formattedJson = JSON.stringify(JSON.parse(value), null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else if (typeof value === "object") {
-        let formattedJson = JSON.stringify(value, null, 2);
+        const formattedJson = JSON.stringify(value, null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else {
         cellValue = formatValue(value, {
-          column: column,
+          ...settings.column(column),
           jsx: true,
           rich: true,
         });
@@ -145,7 +157,9 @@ export class ObjectDetail extends Component {
   }
 
   renderDetailsTable() {
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     return cols.map((column, columnIndex) => (
       <div className="Grid Grid--1of2 mb2" key={columnIndex}>
         <div className="Grid-cell">
@@ -327,4 +341,7 @@ export class ObjectDetail extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ObjectDetail);

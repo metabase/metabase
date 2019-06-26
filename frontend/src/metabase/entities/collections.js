@@ -94,7 +94,7 @@ const Collections = createEntity({
         placeholder: "My new fantastic collection",
         validate: name =>
           (!name && t`Name is required`) ||
-          (name.length > 100 && t`Name must be 100 characters or less`),
+          (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
       {
         name: "description",
@@ -139,8 +139,10 @@ export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
-      ? "personal"
-      : collectionId !== undefined ? "other" : null;
+    ? "personal"
+    : collectionId !== undefined
+    ? "other"
+    : null;
 
 export const ROOT_COLLECTION = {
   id: "root",
@@ -204,8 +206,8 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-            ? ["root", ...c.location.split("/").filter(l => l)]
-            : null,
+          ? ["root", ...c.location.split("/").filter(l => l)]
+          : null,
       parent: null,
       children: [],
       is_personal: c.personal_owner_id != null,

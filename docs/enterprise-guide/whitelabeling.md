@@ -10,6 +10,7 @@ You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-
 
 ### Change the color palette
 You can customize the colors that Metabase uses throughout the app:
+
 * **Primary color:** by default, this is the lovely blue that is used for the nav bar, links, buttons, and more.
 * **Nav bar color:** you can optionally specify a separate color for the nav bar; otherwise it defaults to the Primary color.
 * **Accent colors:** these are the colors that are used for some icons, secondary buttons, elements of the graphical query builder, and chart colors.

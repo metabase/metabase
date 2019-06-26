@@ -34,6 +34,7 @@ const StandardForm = ({
       {form.fields(values).map(formField => {
         const nameComponents = formField.name.split(".");
         const field = getIn(fields, nameComponents);
+
         return (
           <FormField
             key={formField.name}
@@ -64,7 +65,6 @@ const StandardForm = ({
           type="submit"
           primary={!(submitting || invalid)}
           disabled={submitting || invalid}
-          className="mr1"
         >
           {submitTitle || (values.id != null ? t`Update` : t`Create`)}
         </Button>
@@ -73,6 +73,7 @@ const StandardForm = ({
             type="button"
             disabled={submitting || !dirty}
             onClick={resetForm}
+            className="ml1"
           >
             {t`Reset`}
           </Button>

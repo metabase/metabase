@@ -47,9 +47,9 @@ const Detail = ({
             {description || placeholder || t`No description yet`}
           </span>
         )}
-        {isEditing &&
-          field.error &&
-          field.touched && <span className="text-error">{field.error}</span>}
+        {isEditing && field.error && field.touched && (
+          <span className="text-error">{field.error}</span>
+        )}
       </div>
     </div>
   </div>

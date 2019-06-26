@@ -368,25 +368,24 @@ export class DeleteAlertSection extends Component {
 
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
-    return this.props.alert.channels.map(
-      c =>
-        c.channel_type === "email" ? (
-          <span>{jt`This alert will no longer be emailed to ${(
-            <strong>
-              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                c.recipients.length,
-              )}
-            </strong>
-          )}.`}</span>
-        ) : c.channel_type === "slack" ? (
-          <span>{jt`Slack channel ${(
-            <strong>{c.details && c.details.channel}</strong>
-          )} will no longer get this alert.`}</span>
-        ) : (
-          <span>{jt`Channel ${(
-            <strong>{c.channel_type}</strong>
-          )} will no longer receive this alert.`}</span>
-        ),
+    return this.props.alert.channels.map(c =>
+      c.channel_type === "email" ? (
+        <span>{jt`This alert will no longer be emailed to ${(
+          <strong>
+            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+              c.recipients.length,
+            )}
+          </strong>
+        )}.`}</span>
+      ) : c.channel_type === "slack" ? (
+        <span>{jt`Slack channel ${(
+          <strong>{c.details && c.details.channel}</strong>
+        )} will no longer get this alert.`}</span>
+      ) : (
+        <span>{jt`Channel ${(
+          <strong>{c.channel_type}</strong>
+        )} will no longer receive this alert.`}</span>
+      ),
     );
   }
 
@@ -433,7 +432,10 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
+@connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,

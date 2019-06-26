@@ -118,7 +118,7 @@ export class FieldValuesWidget extends Component {
 
     const fieldId = (field.target || field).id;
     const searchFieldId = searchField.id;
-    let results = await MetabaseApi.field_search(
+    const results = await MetabaseApi.field_search(
       {
         value,
         fieldId,
@@ -172,7 +172,7 @@ export class FieldValuesWidget extends Component {
       cancelDeferred.resolve();
     };
 
-    let results = await this.search(value, cancelDeferred.promise);
+    const results = await this.search(value, cancelDeferred.promise);
 
     this._cancel = null;
 
@@ -368,4 +368,7 @@ const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
-export default connect(null, mapDispatchToProps)(FieldValuesWidget);
+export default connect(
+  null,
+  mapDispatchToProps,
+)(FieldValuesWidget);

@@ -31,7 +31,7 @@ export default class MetadataSchemaList extends Component {
     const { schemas, selectedSchema } = this.props;
     const { searchRegex } = this.state;
 
-    let filteredSchemas = searchRegex
+    const filteredSchemas = searchRegex
       ? schemas.filter(s => searchRegex.test(s.name))
       : schemas;
     return (

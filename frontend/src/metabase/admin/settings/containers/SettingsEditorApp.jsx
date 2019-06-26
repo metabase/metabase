@@ -45,7 +45,10 @@ const mapDispatchToProps = {
   ...settingsActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -98,7 +101,7 @@ export default class SettingsEditorApp extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
-      let message =
+      const message =
         error && (error.message || (error.data && error.data.message));
       this.layout.setSaveError(message);
       MetabaseAnalytics.trackEvent(
@@ -188,9 +191,8 @@ export default class SettingsEditorApp extends Component {
       return (
         <ul>
           {activeSection.settings
-            .filter(
-              setting =>
-                setting.getHidden ? !setting.getHidden(settingValues) : true,
+            .filter(setting =>
+              setting.getHidden ? !setting.getHidden(settingValues) : true,
             )
             .map((setting, index) => (
               <SettingsSetting

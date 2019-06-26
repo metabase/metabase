@@ -161,6 +161,7 @@ const mapDispatchToProps = {
   loadMetadataForCard,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(
-  AdHocQuestionLoader,
-);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(AdHocQuestionLoader);

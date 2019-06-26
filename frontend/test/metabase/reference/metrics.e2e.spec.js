@@ -66,12 +66,12 @@ describe("The Reference Section", () => {
     });
 
     describe("With Metrics State", async () => {
-      let metricIds = [];
+      const metricIds = [];
 
       beforeAll(async () => {
         // Create some metrics to have something to look at
-        let metric = await MetricApi.create(metricDef);
-        let metric2 = await MetricApi.create(anotherMetricDef);
+        const metric = await MetricApi.create(metricDef);
+        const metric2 = await MetricApi.create(anotherMetricDef);
 
         metricIds.push(metric.id);
         metricIds.push(metric2.id);

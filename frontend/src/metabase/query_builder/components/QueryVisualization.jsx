@@ -97,7 +97,9 @@ export default class QueryVisualization extends Component {
   }
 
   runQuery = () => {
-    this.props.runQuestionQuery({ ignoreCache: true });
+    const { isResultDirty } = this.props;
+    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
+    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
   };
 
   renderHeader() {
@@ -232,10 +234,10 @@ export default class QueryVisualization extends Component {
     let viz;
 
     if (!result) {
-      let hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
+      const hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
       viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />;
     } else {
-      let error = result.error;
+      const error = result.error;
 
       if (error) {
         viz = (
@@ -290,8 +292,7 @@ export default class QueryVisualization extends Component {
 
 export const VisualizationEmptyState = ({ showTutorialLink }) => (
   <div className="flex full layout-centered text-light flex-column">
-    <h1
-    >{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
+    <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
     {showTutorialLink && (
       <Link
         to={Urls.question(null, "?tutorial")}

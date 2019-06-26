@@ -24,7 +24,7 @@ export function momentifyTimestamps(
   keys = ["created_at", "updated_at"],
 ) {
   object = { ...object };
-  for (let timestamp of keys) {
+  for (const timestamp of keys) {
     if (object[timestamp]) {
       object[timestamp] = moment(object[timestamp]);
     }
@@ -156,7 +156,7 @@ export function handleEntities(
     if (state === undefined) {
       state = {};
     }
-    let entities = getIn(action, ["payload", "entities", entityType]);
+    const entities = getIn(action, ["payload", "entities", entityType]);
     if (actionPattern.test(action.type) && entities) {
       state = mergeEntities(state, entities);
     }
@@ -201,8 +201,8 @@ export function withAction(actionType) {
         // thunk, return a new thunk
         return async (dispatch, getState) => {
           try {
-            let payload = await payloadOrThunk(dispatch, getState);
-            let dispatchValue = { type: actionType, payload: payload };
+            const payload = await payloadOrThunk(dispatch, getState);
+            const dispatchValue = { type: actionType, payload: payload };
             dispatch(dispatchValue);
 
             return dispatchValue;
@@ -333,4 +333,11 @@ export function withAnalytics(categoryOrFn, actionOrFn, labelOrFn, valueOrFn) {
         }
         return thunkCreator(...args)(dispatch, getState);
       };
+}
+
+import { normalize } from "normalizr";
+
+export function withNormalize(schema) {
+  return thunkCreator => (...args) => async (dispatch, getState) =>
+    normalize(await thunkCreator(...args)(dispatch, getState), schema);
 }

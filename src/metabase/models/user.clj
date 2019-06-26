@@ -89,9 +89,14 @@
   (cond-> user
     reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
 
-(defn- post-select [{:keys [first_name last_name], :as user}]
+(defn add-common-name
+  "Add a `:common_name` key to `user` by combining their first and last names."
+  [{:keys [first_name last_name], :as user}]
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+
+(defn- post-select [user]
+  (add-common-name user))
 
 ;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
 ;; deleting them. In other words the following code is only ever called by tests

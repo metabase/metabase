@@ -44,7 +44,10 @@ const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -117,13 +120,12 @@ class AutomaticDashboardApp extends React.Component {
               <Icon name="bolt" className="text-gold mr2" size={24} />
               <div>
                 <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
-                {dashboard &&
-                  dashboard.transient_filters && (
-                    <TransientFilters
-                      filter={dashboard.transient_filters}
-                      metadata={this.props.metadata}
-                    />
-                  )}
+                {dashboard && dashboard.transient_filters && (
+                  <TransientFilters
+                    filter={dashboard.transient_filters}
+                    metadata={this.props.metadata}
+                  />
+                )}
               </div>
               {savedDashboardId != null ? (
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
@@ -141,21 +143,20 @@ class AutomaticDashboardApp extends React.Component {
           </div>
 
           <div className="wrapper pb4">
-            {parameters &&
-              parameters.length > 0 && (
-                <div className="px1 pt1">
-                  <Parameters
-                    parameters={parameters.map(p => ({
-                      ...p,
-                      value: parameterValues && parameterValues[p.id],
-                    }))}
-                    query={location.query}
-                    setParameterValue={setParameterValue}
-                    syncQueryString
-                    isQB
-                  />
-                </div>
-              )}
+            {parameters && parameters.length > 0 && (
+              <div className="px1 pt1">
+                <Parameters
+                  parameters={parameters.map(p => ({
+                    ...p,
+                    value: parameterValues && parameterValues[p.id],
+                  }))}
+                  query={location.query}
+                  setParameterValue={setParameterValue}
+                  syncQueryString
+                  isQB
+                />
+              </div>
+            )}
             <Dashboard {...this.props} />
           </div>
           {more && (

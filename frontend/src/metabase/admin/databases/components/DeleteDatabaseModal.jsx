@@ -48,7 +48,7 @@ export default class DeleteDatabaseModal extends Component {
     }
 
     // allow English or localized
-    let confirmed =
+    const confirmed =
       confirmValue.toUpperCase() === "DELETE" ||
       confirmValue.toUpperCase() === t`DELETE`;
 

@@ -4,8 +4,10 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [config :as config]
              [db :as mdb]
              [handler :as handler]
+             [metabot :as metabot]
              [plugins :as plugins]
              [server :as server]
              [task :as task]
@@ -50,12 +52,16 @@
   {:expectations-options :before-run}
   []
   ;; We can shave about a second from unit test launch time by doing the various setup stages in on different threads
-  ;; Start Jetty in the BG so if test setup fails we have an easier time debugging it -- it's trickier to debug things
-  ;; on a BG thread
-  (let [start-web-server! (future (server/start-web-server! handler/app))]
+  (let [start-web-server!
+        (future
+          (try
+            (server/start-web-server! handler/app)
+            (catch Throwable e
+              (log/error e "Web server failed to start")
+              (System/exit -2))))]
     (try
       (log/info (format "Setting up %s test DB and running migrations..." (name (mdb/db-type))))
-      (mdb/setup-db! :auto-migrate true)
+      (mdb/setup-db!)
 
       (plugins/load-plugins!)
       (load-plugin-manifests!)
@@ -71,15 +77,36 @@
         (log/error (u/format-color 'red "Test setup failed: %s\n%s" e (u/pprint-to-str (vec (.getStackTrace e)))))
         (System/exit -1)))
 
-    @start-web-server!))
+    (u/deref-with-timeout start-web-server! 10000)
+    nil))
 
+(defn- log-waiting-threads
+  "We have some sort of issue where some sort of mystery thread is running in the background and refusing to die. Until
+  that issue is resolved, at least log the threads that are waiting."
+  []
+  (doseq [[^Thread thread, stacktrace] (Thread/getAllStackTraces)
+          :when                        (and (.isAlive thread)
+                                            (not (.isDaemon thread))
+                                            (not= (.getName thread) "main")
+                                            (= (.getState thread) Thread$State/WAITING))]
+    (println
+     "unfinished thread:"
+     (u/pprint-to-str 'blue
+       {:name        (.getName thread)
+        :state       (.name (.getState thread))
+        :alive?      (.isAlive thread)
+        :interrupted (.isInterrupted thread)
+        :frames      (seq stacktrace)}))))
 
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
   (server/stop-web-server!)
-  (shutdown-agents))
+  (metabot/stop-metabot!)
+  (task/stop-scheduler!)
+  (when config/is-test?
+    (log-waiting-threads)))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test

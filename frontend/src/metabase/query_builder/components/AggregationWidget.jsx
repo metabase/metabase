@@ -49,7 +49,7 @@ export default class AggregationWidget extends Component {
     const { aggregation, tableMetadata } = this.props;
     const fieldId = AggregationClause.getField(aggregation);
 
-    let selectedAggregation = getAggregator(
+    const selectedAggregation = getAggregator(
       AggregationClause.getOperator(aggregation),
     );
     // if this table doesn't support the selected aggregation, prompt the user to select a different one
@@ -86,7 +86,7 @@ export default class AggregationWidget extends Component {
     const { aggregation, tableMetadata } = this.props;
     const metricId = AggregationClause.getMetric(aggregation);
 
-    let selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
+    const selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
     if (selectedMetric) {
       return selectedMetric.name.replace(" of ...", "");
     }
@@ -132,10 +132,10 @@ export default class AggregationWidget extends Component {
         aggregationName = NamedClause.isNamed(aggregation)
           ? NamedClause.getName(aggregation)
           : AggregationClause.isCustom(aggregation)
-            ? this.renderCustomAggregation()
-            : AggregationClause.isMetric(aggregation)
-              ? this.renderMetricAggregation()
-              : this.renderStandardAggregation();
+          ? this.renderCustomAggregation()
+          : AggregationClause.isMetric(aggregation)
+          ? this.renderMetricAggregation()
+          : this.renderStandardAggregation();
       } catch (e) {}
 
       return (
@@ -154,7 +154,9 @@ export default class AggregationWidget extends Component {
                 <span className="View-section-aggregation QueryOption py1 mx1">
                   {aggregationName == null
                     ? t`Choose an aggregation`
-                    : name ? name : aggregationName}
+                    : name
+                    ? name
+                    : aggregationName}
                 </span>
               </div>
             </Clearable>

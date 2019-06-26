@@ -29,7 +29,9 @@ export function canEditMembership(group) {
 export function getGroupColor(group) {
   return isAdminGroup(group)
     ? "text-purple"
-    : isDefaultGroup(group) ? "text-medium" : "text-brand";
+    : isDefaultGroup(group)
+    ? "text-medium"
+    : "text-brand";
 }
 
 export function getGroupNameLocalized(group) {

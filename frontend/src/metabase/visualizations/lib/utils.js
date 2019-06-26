@@ -71,8 +71,8 @@ function generateSplits(list, left = [], right = []) {
 }
 
 function axisCost(seriesExtents, favorUnsplit = true) {
-  let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
-  let axisRange = axisExtent[1] - axisExtent[0];
+  const axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+  const axisRange = axisExtent[1] - axisExtent[0];
   if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
@@ -176,10 +176,10 @@ export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
-      let sameData = a.data === b.data;
-      let sameDisplay =
+      const sameData = a.data === b.data;
+      const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
-      let sameVizSettings =
+      const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
       return acc && (sameData && sameDisplay && sameVizSettings);
@@ -194,16 +194,16 @@ export function colorShades(color, count) {
 }
 
 export function colorShade(hex, shade = 0) {
-  let match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
+  const match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
   if (!match) {
     return hex;
   }
-  let components = (match[1] != null
+  const components = (match[1] != null
     ? match.slice(1, 4)
     : match.slice(4, 7)
   ).map(d => parseInt(d, 16));
-  let min = Math.min(...components);
-  let max = Math.max(...components);
+  const min = Math.min(...components);
+  const max = Math.max(...components);
   return (
     "#" +
     components
@@ -241,7 +241,7 @@ const cardinalityCache = new WeakMap();
 export function getColumnCardinality(cols, rows, index) {
   const col = cols[index];
   if (!cardinalityCache.has(col)) {
-    let dataset = crossfilter(rows);
+    const dataset = crossfilter(rows);
     cardinalityCache.set(
       col,
       dataset
@@ -294,8 +294,10 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         ? // Just recycle the original card id of previous card if there was one
           previousCard.original_card_id
         : // A multi-aggregation or multi-breakout series legend / drill-through action
-          // should always use the id of underlying/previous card
-          isMultiseriesQuestion ? previousCard.id : nextCard.id,
+        // should always use the id of underlying/previous card
+        isMultiseriesQuestion
+        ? previousCard.id
+        : nextCard.id,
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,
@@ -324,5 +326,27 @@ export function getDefaultDimensionAndMetric([{ data }]) {
       dimension: null,
       metric: null,
     };
+  }
+}
+
+// Figure out how many decimal places are needed to represent the smallest
+// values in the chart with a certain number of significant digits.
+export function computeMaxDecimalsForValues(values, options) {
+  try {
+    // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
+    // $FlowFixMe
+    const formatter = Intl.NumberFormat("en", options);
+    let maxDecimalCount = 0;
+    for (const value of values) {
+      const parts = formatter.formatToParts(value);
+      const part = parts.find(p => p.type === "fraction");
+      const decimalCount = part ? part.value.length : 0;
+      if (decimalCount > maxDecimalCount) {
+        maxDecimalCount = decimalCount;
+      }
+    }
+    return maxDecimalCount;
+  } catch (e) {
+    return undefined;
   }
 }

@@ -40,7 +40,7 @@ export default class ChartWithLegend extends Component {
       chartHeight,
       flexChart = false;
     let type, LegendComponent;
-    let isHorizontal =
+    const isHorizontal =
       gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
     if (showLegend === false) {
       type = "small";
@@ -52,11 +52,11 @@ export default class ChartWithLegend extends Component {
       type = "horizontal";
       LegendComponent = LegendVertical;
       if (gridSize && gridSize.width < 6) {
-        legendTitles = legendTitles.map(
-          title => (Array.isArray(title) ? title.slice(0, 1) : title),
+        legendTitles = legendTitles.map(title =>
+          Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
-      let desiredWidth = height * aspectRatio;
+      const desiredWidth = height * aspectRatio;
       if (desiredWidth > width * (2 / 3)) {
         flexChart = true;
       } else {
@@ -69,10 +69,10 @@ export default class ChartWithLegend extends Component {
     ) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(
-        title => (Array.isArray(title) ? title[0] : title),
+      legendTitles = legendTitles.map(title =>
+        Array.isArray(title) ? title[0] : title,
       );
-      let desiredHeight = width * (1 / aspectRatio);
+      const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {
         // chartHeight = height * (3 / 4);
         flexChart = true;

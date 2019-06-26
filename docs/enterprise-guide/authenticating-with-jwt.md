@@ -24,7 +24,8 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
+
 ---
 
-## Next: Copying contents of one Metabase instance to another
-Learn how to use [serialization](serialization.md) to create and load data dumps of the contents of a Metabase instance.
+## Next: Creating data sandboxes for your user groups
+Data sandboxes automatically filter specific tables for your users based on who they are. We'll show you [how to set these up](data-sandboxes.md) next.

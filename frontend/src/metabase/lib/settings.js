@@ -78,8 +78,8 @@ const MetabaseSettings = {
   },
 
   newVersionAvailable: function(settings) {
-    let versionInfo = _.findWhere(settings, { key: "version-info" }),
-      currentVersion = MetabaseSettings.get("version").tag;
+    let versionInfo = _.findWhere(settings, { key: "version-info" });
+    const currentVersion = MetabaseSettings.get("version").tag;
 
     if (versionInfo) {
       versionInfo = versionInfo.value;
@@ -87,6 +87,7 @@ const MetabaseSettings = {
 
     return (
       versionInfo &&
+      versionInfo.latest &&
       MetabaseUtils.compareVersions(
         currentVersion,
         versionInfo.latest.version,
@@ -114,15 +115,15 @@ const MetabaseSettings = {
       }
     };
 
-    let description =
-        capitalize === false
-          ? t`must be` + " " + complexity.total + " " + t`characters long`
-          : t`Must be` + " " + complexity.total + " " + t`characters long`,
-      clauses = [];
+    const description =
+      capitalize === false
+        ? t`must be` + " " + complexity.total + " " + t`characters long`
+        : t`Must be` + " " + complexity.total + " " + t`characters long`;
+    const clauses = [];
 
     ["lower", "upper", "digit", "special"].forEach(function(clause) {
       if (clause in complexity) {
-        let desc =
+        const desc =
           complexity[clause] > 1
             ? inflection.pluralize(clauseDescription(clause))
             : clauseDescription(clause);

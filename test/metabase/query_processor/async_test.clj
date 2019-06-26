@@ -9,20 +9,21 @@
 
 ;; running a query async should give you the same results as running that query synchronously
 (let [query
-      {:database (data/id)
-       :type     :query
-       :query    {:source-table (data/id :venues)
-                  :fields       [[:field-id (data/id :venues :name)]]
-                  :limit        5}}
+      (delay
+       {:database (data/id)
+        :type     :query
+        :query    {:source-table (data/id :venues)
+                   :fields       [[:field-id (data/id :venues :name)]]
+                   :limit        5}})
       ;; Metadata checksum might be encrypted if a encryption key is set on this system (to make it hard for bad
       ;; actors to forge one) in which case the checksums won't be equal.
       maybe-decrypt-checksum
       #(some-> % (update-in [:data :results_metadata :checksum] encrypt/maybe-decrypt))]
   (expect
     (maybe-decrypt-checksum
-     (qp/process-query query))
+     (qp/process-query @query))
     (maybe-decrypt-checksum
-     (tu.async/with-open-channels [result-chan (qp.async/process-query query)]
+     (tu.async/with-open-channels [result-chan (qp.async/process-query @query)]
        (first (a/alts!! [result-chan (a/timeout 1000)]))))))
 
 (expect

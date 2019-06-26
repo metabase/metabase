@@ -35,8 +35,8 @@ export function isObscured(element, offset) {
     top: Math.round(element.offsetHeight / 2),
     left: Math.round(element.offsetWidth / 2),
   };
-  let position = findPosition(element, true);
-  let elem = document.elementFromPoint(
+  const position = findPosition(element, true);
+  const elem = document.elementFromPoint(
     position.left + offset.left,
     position.top + offset.top,
   );
@@ -45,8 +45,8 @@ export function isObscured(element, offset) {
 
 // get the position of an element on the page
 export function findPosition(element, excludeScroll = false) {
-  let offset = { top: 0, left: 0 };
-  let scroll = { top: 0, left: 0 };
+  const offset = { top: 0, left: 0 };
+  const scroll = { top: 0, left: 0 };
   let offsetParent = element;
   while (offsetParent) {
     // we need to check every element for scrollTop/scrollLeft
@@ -144,7 +144,7 @@ export function setSelectionPosition(element, [start, end]) {
 }
 
 export function saveSelection(element) {
-  let range = getSelectionPosition(element);
+  const range = getSelectionPosition(element);
   return () => setSelectionPosition(element, range);
 }
 
@@ -157,12 +157,12 @@ export function setCaretPosition(element, position) {
 }
 
 export function saveCaretPosition(element) {
-  let position = getCaretPosition(element);
+  const position = getCaretPosition(element);
   return () => setCaretPosition(element, position);
 }
 
 function getTextNodeAtPosition(root, index) {
-  let treeWalker = document.createTreeWalker(
+  const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
     elem => {
@@ -173,7 +173,7 @@ function getTextNodeAtPosition(root, index) {
       return NodeFilter.FILTER_ACCEPT;
     },
   );
-  let c = treeWalker.nextNode();
+  const c = treeWalker.nextNode();
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -181,9 +181,9 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-let STYLE_SHEET = (function() {
+const STYLE_SHEET = (function() {
   // Create the <style> tag
-  let style = document.createElement("style");
+  const style = document.createElement("style");
 
   // WebKit hack :(
   style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
@@ -207,16 +207,16 @@ export function constrainToScreen(element, direction, padding) {
     return false;
   }
   if (direction === "bottom") {
-    let screenBottom = window.innerHeight + getScrollY();
-    let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+    const screenBottom = window.innerHeight + getScrollY();
+    const overflowY = element.getBoundingClientRect().bottom - screenBottom;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
       return true;
     }
   } else if (direction === "top") {
-    let screenTop = getScrollY();
-    let overflowY = screenTop - element.getBoundingClientRect().top;
+    const screenTop = getScrollY();
+    const overflowY = screenTop - element.getBoundingClientRect().top;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";

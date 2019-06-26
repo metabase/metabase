@@ -60,21 +60,20 @@ export default class VisualizationResult extends Component {
             message={t`This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific.`}
             action={
               <div>
-                {supportsRowsPresentAlert &&
-                  !isDirty && (
-                    <p>
-                      {jt`You can also ${(
-                        <a className="link" onClick={this.showCreateAlertModal}>
-                          {t`get an alert`}
-                        </a>
-                      )} when there are some results.`}
-                    </p>
-                  )}
+                {supportsRowsPresentAlert && !isDirty && (
+                  <p>
+                    {jt`You can also ${(
+                      <a className="link" onClick={this.showCreateAlertModal}>
+                        {t`get an alert`}
+                      </a>
+                    )} when there are some results.`}
+                  </p>
+                )}
                 <button
                   className="Button"
                   onClick={() => window.history.back()}
                 >
-                  {t`Back to last run`}
+                  {t`Back to previous results`}
                 </button>
               </div>
             }

@@ -5,37 +5,44 @@
              [generate :as generate]]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
-             [database :as database]
+             [permissions :as perms]
+             [permissions-group :as group]
              [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (defn- format-response [m]
-  (into {} (for [[k v] (-> m
-                           (m/dissoc-in [:data :results_metadata])
-                           (m/dissoc-in [:data :insights]))]
-             (cond
-               (contains? #{:id :started_at :running_time :hash} k)
-               [k (boolean v)]
+  (into
+   {}
+   (for [[k v] (-> m
+                   (m/dissoc-in [:data :results_metadata])
+                   (m/dissoc-in [:data :insights]))]
+     (cond
+       (contains? #{:id :started_at :running_time :hash} k)
+       [k (boolean v)]
 
-               (and (= :data k) (contains? v :native_form))
-               [k (update v :native_form boolean)]
+       (and (= :data k) (contains? v :native_form))
+       [k (update v :native_form boolean)]
 
-               :else
-               [k v]))))
+       :else
+       [k v]))))
 
 (defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
 
@@ -49,7 +56,6 @@
 (expect
   {:api-response
    {:data                   {:rows        [[1000]]
-                             :columns     ["count"]
                              :cols        [{:base_type    "type/Integer"
                                             :special_type "type/Number"
                                             :name         "count"
@@ -97,7 +103,6 @@
 (expect
   {:api-response
    {:data         {:rows    []
-                   :columns []
                    :cols    []}
     :row_count    0
     :status       "failed"
@@ -194,7 +199,7 @@
    ["3" "2014-09-15" "" "8" "56"]
    ["4" "2014-03-11" "" "5" "4"]
    ["5" "2013-05-05" "" "3" "49"]]
-  (data/with-db (data/get-or-create-database! defs/test-data-with-null-date-checkins)
+  (data/dataset defs/test-data-with-null-date-checkins
     (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
                   (json/generate-string (data/mbql-query checkins)))]
       (take 5 (parse-and-sort-csv result)))))
@@ -229,7 +234,72 @@
                                             :native   {:query "SELECT * FROM USERS;"}}}]
     (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
-                          {:database database/virtual-id
+                          {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
                            :query    {:source-table (str "card__" (u/get-id card))}}))]
       (count (csv/read-csv result)))))
+
+;; POST /api/dataset/:format Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
+;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
+;; from one that had it -- see #9831)
+(expect
+  101
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
+                  :query (json/generate-string
+                          {:database   (data/id)
+                           :type       :query
+                           :query      {:source-table (data/id :venues)}
+                           :middleware
+                           {:add-default-userland-constraints? true
+                            :userland-query?                   true}}))]
+      (count (csv/read-csv result)))))
+
+;; non-"download" queries should still get the default constraints
+;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
+(expect
+  10
+  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+    (let [{row-count :row_count, :as result}
+          ((test-users/user->client :rasta) :post 200 "dataset"
+           {:database (data/id)
+            :type     :query
+            :query    {:source-table (data/id :venues)}})]
+      (or row-count result))))
+
+;; make sure `POST /dataset` calls check user permissions
+(tu/expect-schema
+ {:status   (s/eq "failed")
+  :error    (s/eq "You do not have permissions to run this query.")
+  s/Keyword s/Any}
+ (data/with-temp-copy-of-db
+   ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
+   ;; the Database
+   (perms/revoke-permissions! (group/all-users) (data/id))
+   (perms/grant-permissions! (group/all-users) (data/id) "schema_that_does_not_exist")
+   ((test-users/user->client :rasta) :post "dataset"
+    (data/mbql-query venues {:limit 1}))))
+
+;; Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?
+(expect
+  {:query (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
+               "FROM \"PUBLIC\".\"VENUES\" "
+               "LIMIT 1048576")
+   :params nil}
+  ((test-users/user->client :rasta) :post "dataset/native"
+   (data/mbql-query venues
+     {:fields [$id $name]})))
+
+;; `POST /api/dataset/native` should require that the user have ad-hoc native perms for the DB
+(tu/expect-schema
+  {:permissions-error? (s/eq true)
+   :message            (s/eq "You do not have permissions to run this query.")
+   s/Any               s/Any}
+  (tu.log/suppress-output
+    (data/with-temp-copy-of-db
+      ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+      (perms/revoke-permissions! (group/all-users) (data/id))
+      (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
+      ((test-users/user->client :rasta) :post "dataset/native"
+       (data/mbql-query venues
+         {:fields [$id $name]})))))

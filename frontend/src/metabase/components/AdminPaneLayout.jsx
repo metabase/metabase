@@ -12,23 +12,21 @@ const AdminPaneTitle = ({
   buttonLink,
 }) => (
   <section className="clearfix px2">
-    {buttonText &&
-      buttonLink && (
-        <Link to={buttonLink} className="inline-block float-right">
-          <Button primary>{buttonText}</Button>
-        </Link>
-      )}
-    {buttonText &&
-      buttonAction && (
-        <Button
-          className="float-right"
-          primary={!buttonDisabled}
-          disabled={buttonDisabled}
-          onClick={buttonAction}
-        >
-          {buttonText}
-        </Button>
-      )}
+    {buttonText && buttonLink && (
+      <Link to={buttonLink} className="inline-block float-right">
+        <Button primary>{buttonText}</Button>
+      </Link>
+    )}
+    {buttonText && buttonAction && (
+      <Button
+        className="float-right"
+        primary={!buttonDisabled}
+        disabled={buttonDisabled}
+        onClick={buttonAction}
+      >
+        {buttonText}
+      </Button>
+    )}
     <h2 className="PageTitle">{title}</h2>
     {description && <p className="text-measure">{description}</p>}
   </section>

@@ -14,7 +14,9 @@
              [common :as api]
              [table :as table-api]]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -127,7 +129,7 @@
   (when (public-settings/enable-nested-queries)
     (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
       {:name               "Saved Questions"
-       :id                 database/virtual-id
+       :id                 mbql.s/saved-questions-virtual-database-id
        :features           #{:basic-aggregations}
        :tables             virtual-tables
        :is_saved_questions true})))
@@ -190,7 +192,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []

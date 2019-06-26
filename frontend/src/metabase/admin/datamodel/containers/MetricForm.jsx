@@ -10,7 +10,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.j
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
-import { metricFormSelectors } from "../selectors";
 import { reduxForm } from "redux-form";
 
 import Query from "metabase/lib/query";
@@ -44,7 +43,7 @@ import Table from "metabase-lib/lib/metadata/Table";
           errors.revision_message = t`Revision message is required`;
         }
       }
-      let aggregations =
+      const aggregations =
         values.definition && Query.getAggregations(values.definition);
       if (!aggregations || aggregations.length === 0) {
         errors.definition = t`Aggregation is required`;
@@ -52,7 +51,7 @@ import Table from "metabase-lib/lib/metadata/Table";
       return errors;
     },
   },
-  (state, props) => metricFormSelectors(state, props),
+  (state, { metric }) => ({ initialValues: metric }),
 )
 export default class MetricForm extends Component {
   updatePreviewSummary(datasetQuery) {
@@ -66,7 +65,11 @@ export default class MetricForm extends Component {
   }
 
   renderActionButtons() {
-    const { invalid, handleSubmit, tableMetadata } = this.props;
+    const {
+      invalid,
+      handleSubmit,
+      table: { db_id: databaseId, id: tableId },
+    } = this.props;
     return (
       <div>
         <button
@@ -77,12 +80,7 @@ export default class MetricForm extends Component {
           onClick={handleSubmit}
         >{t`Save changes`}</button>
         <Link
-          to={
-            "/admin/datamodel/database/" +
-            tableMetadata.db_id +
-            "/table/" +
-            tableMetadata.id
-          }
+          to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
           className="Button ml2"
         >{t`Cancel`}</Link>
       </div>
@@ -94,13 +92,13 @@ export default class MetricForm extends Component {
       fields: { id, name, description, definition, revision_message },
       metric,
       metadata,
-      tableMetadata,
+      table,
       handleSubmit,
       previewSummary,
     } = this.props;
 
     return (
-      <LoadingAndErrorWrapper loading={!tableMetadata}>
+      <LoadingAndErrorWrapper loading={!table && !table.aggregation_options}>
         {() => (
           <form className="full" onSubmit={handleSubmit}>
             <div className="wrapper py4">
@@ -123,26 +121,26 @@ export default class MetricForm extends Component {
                   }}
                   metadata={
                     metadata &&
-                    tableMetadata &&
+                    table &&
                     metadata.tables &&
-                    metadata.tables[tableMetadata.id].fields &&
+                    metadata.tables[table.id].fields &&
                     Object.assign(new Metadata(), metadata, {
                       tables: {
                         ...metadata.tables,
-                        [tableMetadata.id]: Object.assign(
+                        [table.id]: Object.assign(
                           new Table(),
-                          metadata.tables[tableMetadata.id],
+                          metadata.tables[table.id],
                           {
-                            aggregation_options: tableMetadata.aggregation_options.filter(
-                              a => a.short !== "rows",
-                            ),
+                            aggregation_options: (
+                              table.aggregation_options || []
+                            ).filter(a => a.short !== "rows"),
                             metrics: [],
                           },
                         ),
                       },
                     })
                   }
-                  tableMetadata={tableMetadata}
+                  tableMetadata={table}
                   previewSummary={
                     previewSummary == null
                       ? ""

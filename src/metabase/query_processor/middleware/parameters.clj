@@ -38,7 +38,8 @@
           (assoc-in [:query :source-query :native] (unprepare/unprepare driver/*driver* (cons new-query new-params)))))))
 
 (defn- expand-parameters
-  "Expand parameters in the OUTER-QUERY, and if the query is using a native source query, expand params in that as well."
+  "Expand parameters in the `outer-query`, and if the query is using a native source query, expand params in that as
+  well."
   [outer-query]
   (cond-> (expand-parameters* outer-query)
     (get-in outer-query [:query :source-query :native]) expand-params-in-native-source-query))
