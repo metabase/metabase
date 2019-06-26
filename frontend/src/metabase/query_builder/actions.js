@@ -220,12 +220,11 @@ const getURL = (location, { includeMode = false } = {}) =>
   location.search +
   location.hash;
 
-// Logic for handling location changes
+// Logic for handling location changes, dispatched by top-level QueryBuilder component
 export const locationChanged = (location, nextLocation, nextParams) => (
   dispatch,
   getState,
 ) => {
-  const question = getQuestion(getState());
   if (location !== nextLocation) {
     if (nextLocation.action === "POP") {
       if (
@@ -235,18 +234,13 @@ export const locationChanged = (location, nextLocation, nextParams) => (
         // the browser forward/back button was pressed
         dispatch(popState(nextLocation));
       }
-    } else if (nextLocation.action === "PUSH") {
-      // NOTE: this is fairly fragile. we try to make sure we don't reset the query builder unless the
-      // user acutally clicks a link to a different question, but it seems there are some cases where
-      // question and nextLocation can be out of sync. Pushing this logic into an action might help?
-      if (
-        getURL(nextLocation) !== getURL(location) &&
-        question &&
-        getURL(nextLocation) !== question.getUrl()
-      ) {
-        // a link to a different qb url was clicked
-        dispatch(initializeQB(nextLocation, nextParams));
-      }
+    } else if (
+      (nextLocation.action === "PUSH" || nextLocation.action === "REPLACE") &&
+      // ignore PUSH/REPLACE with `state` because they were initiated by the `updateUrl` action
+      nextLocation.state === undefined
+    ) {
+      // a link to a different qb url was clicked
+      dispatch(initializeQB(nextLocation, nextParams));
     }
   }
 };
