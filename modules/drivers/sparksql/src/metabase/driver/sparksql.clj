@@ -100,8 +100,8 @@
 
 ;; Hive describe table result has commented rows to distinguish partitions
 (defn- valid-describe-table-row? [{:keys [col_name data_type]}]
-  (every? (every-pred (complement s/blank?)
-                      (complement #(s/starts-with? % "#")))
+  (every? (every-pred (complement str/blank?)
+                      (complement #(str/starts-with? % "#")))
           [col_name data_type]))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
@@ -117,8 +117,8 @@
                                                       (dash-to-underscore schema)
                                                       (dash-to-underscore table-name)))])]
        (set
-        (for [{col-name :col_name, data-type :data_type} results
-              :when (valid-describe-table-row? result)]
+        (for [{col-name :col_name, data-type :data_type, :as result} results
+              :when                                                  (valid-describe-table-row? result)]
           {:name          col-name
            :database-type data-type
            :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
