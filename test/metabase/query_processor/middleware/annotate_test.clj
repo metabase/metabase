@@ -171,24 +171,24 @@
        :display_name (annotate/aggregation-display-name ag-clause)})))
 
 (expect
-  {:name "count", :display_name "count"}
+  {:name "count", :display_name "Count"}
   (aggregation-names [:count]))
 
 (expect
-  {:name "count", :display_name "distinct count of ID"}
+  {:name "count", :display_name "Distinct values of ID"}
   (aggregation-names [:distinct [:field-id (data/id :venues :id)]]))
 
 (expect
-  {:name "sum", :display_name "sum of ID"}
+  {:name "sum", :display_name "Sum of ID"}
   (aggregation-names [:sum [:field-id (data/id :venues :id)]]))
 
 (expect
-  {:name "count + 1", :display_name "count + 1"}
+  {:name "count + 1", :display_name "Count + 1"}
   (aggregation-names [:+ [:count] 1]))
 
 (expect
   {:name         "min + (2 * avg)"
-   :display_name "minimum value of ID + (2 * average of Price)"}
+   :display_name "Min of ID + (2 * Average of Price)"}
   (aggregation-names
    [:+
     [:min [:field-id (data/id :venues :id)]]
@@ -196,7 +196,7 @@
 
 (expect
   {:name         "min + (2 * avg * 3 * (max - 4))"
-   :display_name "minimum value of ID + (2 * average of Price * 3 * (maximum value of Category ID - 4))"}
+   :display_name "Min of ID + (2 * Average of Price * 3 * (Max of Category ID - 4))"}
   (aggregation-names
    [:+
     [:min [:field-id (data/id :venues :id)]]
@@ -228,14 +228,14 @@
   {:base_type    :type/Float
    :special_type :type/Number
    :name         "count / 2"
-   :display_name "count / 2"}
+   :display_name "Count / 2"}
   (col-info-for-aggregation-clause [:/ [:count] 2]))
 
 (expect
   {:base_type    :type/Float
    :special_type :type/Number
    :name         "sum"
-   :display_name "sum of Price + 1"}
+   :display_name "Sum of Price + 1"}
   (qp.test-util/with-everything-store
     (data/$ids venues
       (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))

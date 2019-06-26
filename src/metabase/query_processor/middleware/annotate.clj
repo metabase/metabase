@@ -221,24 +221,22 @@
     (str/join (format " %s " (name operator))
               (map (partial expression-ag-arg->name aggregation-arg-display-name) args))
 
-    [:count]
-    (str (tru "count"))
-
-    [:distinct    arg]   (str (tru "distinct count of {0}"     (aggregation-arg-display-name arg)))
-    [:count       arg]   (str (tru "count of {0}"              (aggregation-arg-display-name arg)))
-    [:avg         arg]   (str (tru "average of {0}"            (aggregation-arg-display-name arg)))
+    [:count]             (str (tru "Count"))
+    [:distinct    arg]   (str (tru "Distinct values of {0}" (aggregation-arg-display-name arg)))
+    [:count       arg]   (str (tru "Count of {0}"           (aggregation-arg-display-name arg)))
+    [:avg         arg]   (str (tru "Average of {0}"         (aggregation-arg-display-name arg)))
     ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (str (tru "count of {0}"              (aggregation-arg-display-name arg)))
-    [:cum-sum     arg]   (str (tru "sum of {0}"                (aggregation-arg-display-name arg)))
-    [:stddev      arg]   (str (tru "standard deviation of {0}" (aggregation-arg-display-name arg)))
-    [:sum         arg]   (str (tru "sum of {0}"                (aggregation-arg-display-name arg)))
-    [:min         arg]   (str (tru "minimum value of {0}"      (aggregation-arg-display-name arg)))
-    [:max         arg]   (str (tru "maximum value of {0}"      (aggregation-arg-display-name arg)))
+    [:cum-count   arg]   (str (tru "Count of {0}"           (aggregation-arg-display-name arg)))
+    [:cum-sum     arg]   (str (tru "Sum of {0}"             (aggregation-arg-display-name arg)))
+    [:stddev      arg]   (str (tru "SD of {0}"              (aggregation-arg-display-name arg)))
+    [:sum         arg]   (str (tru "Sum of {0}"             (aggregation-arg-display-name arg)))
+    [:min         arg]   (str (tru "Min of {0}"             (aggregation-arg-display-name arg)))
+    [:max         arg]   (str (tru "Max of {0}"             (aggregation-arg-display-name arg)))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
-    [:sum-where   arg _] (str (tru "sum of {0} matching condition" (aggregation-arg-display-name arg)))
-    [:share       _]     (str (tru "share of rows matching condition"))
-    [:count-where _]     (str (tru "count of rows matching condition"))
+    [:sum-where   arg _] (str (tru "Sum of {0} matching condition" (aggregation-arg-display-name arg)))
+    [:share       _]     (str (tru "Share of rows matching condition"))
+    [:count-where _]     (str (tru "Count of rows matching condition"))
 
     (_ :guard mbql.preds/Field?)
     (:display_name (col-info-for-field-clause nil ag-clause))
