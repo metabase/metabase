@@ -113,7 +113,7 @@
 
   serialized-dashboard)
 
-(defn diff-dashboards-str
+(defn- diff-dashboards-str
   "Describe the difference between two Dashboard instances."
   [_ dashboard₁ dashboard₂]
   (when dashboard₁
