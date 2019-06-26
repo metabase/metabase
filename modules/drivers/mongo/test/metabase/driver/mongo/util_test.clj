@@ -2,10 +2,9 @@
   (:require [expectations :refer [expect]]
             [metabase.driver.mongo.util :as mongo-util]
             [metabase.driver.util :as driver.u]
+            [metabase.test.data :as data]
             [metabase.test.util.log :as tu.log])
-  (:import com.mongodb.ReadPreference
-           (com.mongodb MongoClient DB ServerAddress MongoClientException)))
-
+  (:import [com.mongodb DB MongoClient MongoClientException ReadPreference ServerAddress]))
 
 (defn- connect-mongo [opts]
   (let [connection-info (#'mongo-util/details->mongo-connection-info
@@ -218,17 +217,14 @@
 (expect
   #"We couldn't connect to the ssh tunnel host"
   (try
-    (let [engine :mongo
-          details {:ssl            false
-                   :password       "changeme"
-                   :tunnel-host    "localhost"
-                   :tunnel-pass    "BOGUS-BOGUS"
-                   :port           5432
-                   :dbname         "test"
-                   :host           "localhost"
-                   :tunnel-enabled true
-                   :tunnel-port    22
-                   :tunnel-user    "bogus"}]
+    (let [engine  :mongo
+          details (merge
+                   (:details (data/db))
+                   {:tunnel-enabled true
+                    :tunnel-host    "localhost"
+                    :tunnel-pass    "BOGUS-BOGUS"
+                    :tunnel-port    22
+                    :tunnel-user    "bogus"})]
       (tu.log/suppress-output
         (driver.u/can-connect-with-details? engine details :throw-exceptions)))
     (catch Exception e

@@ -52,7 +52,7 @@
 (defmethod tx/create-db! :sqlserver [driver {:keys [database-name], :as db-def} & options]
   (if (database-exists? database-name)
     (printf "SQL Server database '%s' already exists.\n" database-name)
-    (apply (get-method tx/create-db! :sql-jdbc) driver db-def options)))
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
 (defmethod sql.tx/qualified-name-components :sqlserver
   ([_ db-name]                       [db-name])

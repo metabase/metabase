@@ -102,9 +102,10 @@
 (datasets/expect-with-driver :postgres
   #"com.jcraft.jsch.JSchException:"
   (try
+    ;; this test works if sshd is running or not
     (let [details (merge
                    (:details (data/db))
-                   {:tunnel-host    "localhost" ; this test works if sshd is running or not
+                   {:tunnel-host    "localhost"
                     :tunnel-pass    "BOGUS-BOGUS-BOGUS"
                     :tunnel-enabled true
                     :tunnel-port    22
