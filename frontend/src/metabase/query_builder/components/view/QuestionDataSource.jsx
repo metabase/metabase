@@ -26,7 +26,7 @@ const QuestionDataSource = ({
     parts.push({
       icon: "database",
       name: database.displayName(),
-      href: !noLink && browseDatabase(database),
+      href: !noLink && database.id >= 0 && browseDatabase(database),
     });
   }
 
