@@ -91,22 +91,30 @@
   (delay
     (make-image-bundle :attachment attached-url)))
 
-(defn external-link-image-bundle [render-type]
+(defn external-link-image-bundle
+  "Image bundle for an external link icon."
+  [render-type]
   (case render-type
     :attachment @external-link-image
     :inline     (make-image-bundle render-type external-link-url)))
 
-(defn no-results-image-bundle [render-type]
+(defn no-results-image-bundle
+  "Image bundle for the 'No results' image."
+  [render-type]
   (case render-type
     :attachment @no-results-image
     :inline     (make-image-bundle render-type no-results-url)))
 
-(defn attached-image-bundle [render-type]
+(defn attached-image-bundle
+  "Image bundle for paperclip 'attachment' image."
+  [render-type]
   (case render-type
     :attachment @attached-image
     :inline     (make-image-bundle render-type attached-url)))
 
-(defn image-bundle->attachment [{:keys [render-type content-id image-url]}]
+(defn image-bundle->attachment
+  "Convert an image bundle into an email attachment."
+  [{:keys [render-type content-id image-url]}]
   (case render-type
     :attachment {content-id image-url}
     :inline     nil))

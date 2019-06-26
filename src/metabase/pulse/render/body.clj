@@ -156,6 +156,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti render
+  "Render a Pulse as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
   {:arglists '([chart-type render-type timezone card data])}
   (fn [chart-type _ _ _ _] chart-type))
 

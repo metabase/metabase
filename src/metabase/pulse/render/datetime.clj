@@ -8,8 +8,8 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import [org.joda.time DateTime DateTimeZone]
-           org.joda.time.DateMidnight
+  (:import metabase.util.i18n.UserLocalizedString
+           [org.joda.time DateMidnight DateTime DateTimeZone]
            org.joda.time.base.BaseSingleFieldPeriod))
 
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
@@ -45,8 +45,8 @@
 (def ^:private RenderableInterval
   {:interval-start     DateMidnight
    :interval           BaseSingleFieldPeriod
-   :this-interval-name su/NonBlankString
-   :last-interval-name su/NonBlankString})
+   :this-interval-name UserLocalizedString
+   :last-interval-name UserLocalizedString})
 
 (defmulti ^:private renderable-interval
   {:arglists '([unit])}
@@ -105,9 +105,11 @@
         this-interval-name
 
         (t/interval (t/minus interval-start interval) interval-start)
-        last-interval-name))))
+        last-interval-name
 
-(defn format-timestamp-relative
+        nil))))
+
+(s/defn format-timestamp-relative :- (s/maybe su/NonBlankString)
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
   otherwie returns nil"
   [timezone timestamp {:keys [unit]}]
