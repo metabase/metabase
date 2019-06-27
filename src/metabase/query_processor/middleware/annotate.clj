@@ -75,7 +75,7 @@
   "Return an appropriate display name for a joined field that includes the table it came from if applicable."
   [field-display-name {:keys [source-table], join-alias :alias}]
   (let [join-display-name (if (integer? source-table)
-                            (:name (qp.store/table source-table))
+                            (some (qp.store/table source-table) [:display_name :name])
                             join-alias)]
     (format "%s → %s" join-display-name field-display-name)))
 
