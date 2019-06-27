@@ -10,6 +10,7 @@
             [expectations :refer [expect]]
             [metabase
              [http-client :as http]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.api
              [embed :as embed-api]
@@ -70,11 +71,7 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:cols     [{:base_type    "type/Integer"
-                             :special_type "type/Number"
-                             :name         "count"
-                             :display_name "count"
-                             :source       "aggregation"}]
+   {:data       {:cols     [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                  :rows     [[100]]
                  :insights nil}
     :json_query {:parameters nil}

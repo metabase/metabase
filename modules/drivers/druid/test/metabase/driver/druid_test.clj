@@ -102,12 +102,31 @@
    :data      {:rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
                              ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
                :cols        (mapv #(merge col-defaults %)
-                                  [{:name "timestamp",   :source :native, :display_name "timestamp"}
-                                   {:name "id",          :source :native, :display_name "id"}
-                                   {:name "user_name",   :source :native, :display_name "user_name"}
-                                   {:name "venue_price", :source :native, :display_name "venue_price"}
-                                   {:name "venue_name",  :source :native, :display_name "venue_name"}
-                                   {:name "count",       :source :native, :display_name "count", :base_type :type/Integer}])
+                                  [{:name         "timestamp"
+                                    :source       :native
+                                    :display_name "timestamp"
+                                    :field_ref    [:field-literal "timestamp" :type/Text]}
+                                   {:name         "id"
+                                    :source       :native
+                                    :display_name "id"
+                                    :field_ref    [:field-literal "id" :type/Text]}
+                                   {:name         "user_name"
+                                    :source       :native
+                                    :display_name "user_name"
+                                    :field_ref    [:field-literal "user_name" :type/Text]}
+                                   {:name         "venue_price"
+                                    :source       :native
+                                    :display_name "venue_price"
+                                    :field_ref    [:field-literal "venue_price" :type/Text]}
+                                   {:name         "venue_name"
+                                    :source       :native
+                                    :display_name "venue_name"
+                                    :field_ref    [:field-literal "venue_name" :type/Text]}
+                                   {:name         "count"
+                                    :source       :native
+                                    :display_name "count"
+                                    :base_type    :type/Integer
+                                    :field_ref    [:field-literal "count" :type/Integer]}])
                :native_form {:query native-query-1}}}
   (-> (process-native-query native-query-1)
       (m/dissoc-in [:data :insights])))
@@ -338,7 +357,7 @@
                       :breakout     [[:field-id (data/id :checkins :venue_price)]]}})))))
 
 (expect
-  #"com.jcraft.jsch.JSchException:"
+  com.jcraft.jsch.JSchException
   (try
     (let [engine  :druid
           details {:ssl            false
@@ -352,9 +371,12 @@
                    :tunnel-port    22
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+       (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+    (catch Throwable e
+      (loop [^Throwable e e]
+        (or (when (instance? com.jcraft.jsch.JSchException e)
+              e)
+            (some-> (.getCause e) recur))))))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together

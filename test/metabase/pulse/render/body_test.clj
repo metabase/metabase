@@ -1,11 +1,11 @@
-(ns metabase.pulse.render-test
+(ns metabase.pulse.render.body-test
   (:require [clojure.walk :as walk]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [hiccup.core :refer [html]]
-            [metabase.pulse
-             [color :as color]
-             [render :as render :refer :all]]
-            [metabase.test.util :as tu])
+            [metabase.pulse.render
+             [body :as body]
+             [common :as common]
+             [test-util :as render.tu]])
   (:import java.util.TimeZone))
 
 (def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
@@ -41,7 +41,7 @@
   (set (map (comp count :row) results)))
 
 (defn- number [x]
-  (#'render/map->NumericWrapper {:num-str x}))
+  (common/map->NumericWrapper {:num-str x}))
 
 (def ^:private default-header-result
   [{:row       [(number "ID") (number "Latitude") "Last Login" "Name"]
@@ -50,7 +50,7 @@
 
 (defn- prep-for-html-rendering'
   [cols rows bar-column max-value]
-  (let [results (#'render/prep-for-html-rendering pacific-tz cols rows bar-column max-value (count cols))]
+  (let [results (#'body/prep-for-html-rendering pacific-tz cols rows bar-column max-value (count cols))]
     [(first results)
      (col-counts results)]))
 
@@ -111,7 +111,7 @@
   (assoc-in default-header-result [0 :bar-width] 99)
   (prep-for-html-rendering' test-columns test-data second 40.0))
 
-;; When there are too many columns, #'render/prep-for-html-rendering show narrow it
+;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
 (expect
   [{:row [(number "ID") (number "Latitude")]
     :bar-width 99}
@@ -123,14 +123,14 @@
   [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'render/prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
+  (rest (#'body/prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (expect
   [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'render/prep-for-html-rendering pacific-tz test-columns test-data second 40 (count test-columns))))
+  (rest (#'body/prep-for-html-rendering pacific-tz test-columns test-data second 40 (count test-columns))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -160,7 +160,7 @@
         [1 2 3]
         ["Bad" "Ok" "Good"]))
 
-;; With a remapped column, the header should contain the name of the remapped column (not the original)
+;; With a remapped column, the header should contain the name of the remapped column (not the original)1
 (expect
   [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
     :bar-width nil}
@@ -172,24 +172,24 @@
   [[(number "1") (number "34.10") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
    [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
    [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
-  (map :row (rest (#'render/prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping)))))
+  (map :row (rest (#'body/prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping)))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (expect
   ""
-  (html (#'render/render-truncation-warning 100 10 100 10)))
+  (html (#'body/render-truncation-warning 100 10 100 10)))
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (expect
   [true false]
-  (let [html-output (html (#'render/render-truncation-warning 100 10 10 100))]
+  (let [html-output (html (#'body/render-truncation-warning 100 10 10 100))]
     [(boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))
      (boolean (re-find #"Showing .* of .* columns" html-output))]))
 
 ;; When there are more columns than the limit, check to ensure a truncation warning is present
 (expect
   [true false]
-  (let [html-output (html (#'render/render-truncation-warning 10 100 100 10))]
+  (let [html-output (html (#'body/render-truncation-warning 10 100 100 10))]
     [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
      (boolean (re-find #"Showing .* of .* rows" html-output))]))
 
@@ -201,10 +201,10 @@
   [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
    {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
    {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'render/prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
+  (rest (#'body/prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
 
 (defn- render-scalar-value [results]
-  (-> (#'render/render:scalar pacific-tz nil results)
+  (-> (body/render :scalar nil pacific-tz nil results)
       :content
       last))
 
@@ -247,7 +247,7 @@
                      maybe-map)) hiccup-map))
 
 (def ^:private render-truncation-warning'
-  (comp replace-style-maps #'render/render-truncation-warning))
+  (comp replace-style-maps #'body/render-truncation-warning))
 
 (expect
   nil
@@ -285,90 +285,12 @@
 
 (expect
   4
-  (count-displayed-columns test-columns))
+  (#'body/count-displayed-columns test-columns))
 
 (expect
   4
-  (count-displayed-columns
+  (#'body/count-displayed-columns
    (concat test-columns [description-col detail-col sensitive-col retired-col])))
-
-(defn- postwalk-collect
-  "Invoke `collect-fn` on each node satisfying `pred`. If `collect-fn` returns a value, accumulate that and return the
-  results."
-  [pred collect-fn form]
-  (let [results (atom [])]
-    (tu/postwalk-pred pred
-                      (fn [node]
-                        (when-let [result (collect-fn node)]
-                          (swap! results conj result))
-                        node)
-                      form)
-    @results))
-
-(defn- find-table-body
-  "Given the hiccup data structure, find the table body and return it"
-  [results]
-  (postwalk-collect (every-pred vector? #(= :tbody (first %)))
-                    ;; The Hiccup form is [:tbody (...rows...)], so grab the second item
-                    second
-                    results))
-
-(defn- style-map->background-color
-  "Finds the background color in the style string of a Hiccup style map"
-  [{:keys [style]}]
-  (let [[_ color-str] (re-find #".*background-color: ([^;]*);" style)]
-    color-str))
-
-(defn- cell-value->background-color
-  "Returns a map of cell values to background colors of the pulse table found in the hiccup `results` data
-  structure. This only includes the data cell values, not the header values."
-  [results]
-  (into {} (postwalk-collect (every-pred vector? #(= :td (first %)))
-                             (fn [[_ style-map cell-value]]
-                               [cell-value (style-map->background-color style-map)])
-                             results)))
-
-(defn- query-results->header+rows
-  "Makes pulse header and data rows with no bar-width. Including bar-width just adds extra HTML that will be ignored."
-  [{:keys [cols rows]}]
-  (for [row-values (cons (map :name cols) rows)]
-    {:row row-values
-     :bar-width nil}))
-
-(def ^:private default-test-card
-  {:visualization_settings
-   {"table.column_formatting" [{:columns       ["a"]
-                                :type          :single
-                                :operator      ">"
-                                :value         5
-                                :color         "#ff0000"
-                                :highlight_row true}
-                               {:columns       ["c"]
-                                :type          "range"
-                                :min_type      "custom"
-                                :min_value     3
-                                :max_type      "custom"
-                                :max_value     9
-                                :colors        ["#00ff00" "#0000ff"]}]}})
-
-;; Smoke test for background color selection. Background color decided by some shared javascript code. It's being
-;; invoked and included in the cell color of the pulse table. This is somewhat fragile code as the only way to find
-;; that style information is to crawl the clojure-ized HTML datastructure and pick apart the style string associated
-;; with the cell value. The script right now is hard coded to always return #ff0000. Once the real script is in place,
-;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
-;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
-(expect
-   {"1" "",                     "2" "",                     "3" "rgba(0, 255, 0, 0.75)"
-    "4" "",                     "5" "",                     "6" "rgba(0, 128, 128, 0.75)"
-    "7" "rgba(255, 0, 0, 0.65)" "8" "rgba(255, 0, 0, 0.2)"  "9" "rgba(0, 0, 255, 0.75)"}
-  (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
-                       :rows [[1 2 3]
-                              [4 5 6]
-                              [7 8 9]]}]
-    (-> (color/make-color-selector query-results (:visualization_settings default-test-card))
-        (#'render/render-table ["a" "b" "c"] (query-results->header+rows query-results))
-        find-table-body
-        cell-value->background-color)))
 
 ;; Test rendering a bar graph
 ;;
@@ -382,7 +304,7 @@
 
 (defn- render-bar-graph [results]
   ;; `doall` here as the flatten won't force lazy-seqs
-  (doall (flatten-html-data (#'render/render:bar pacific-tz default-test-card results))))
+  (doall (flatten-html-data (body/render :bar nil pacific-tz render.tu/test-card results))))
 
 (def ^:private default-columns
   [{:name         "Price",
@@ -433,36 +355,41 @@
 ;; attachment is included
 
 (defn- render-sparkline [results]
-  (-> (#'render/render:sparkline :attachment pacific-tz default-test-card results)
-      :attachments
-      count))
+  (some-> (body/render :sparkline :attachment pacific-tz render.tu/test-card results)
+          :attachments
+          count))
 
 ;; Test that we can render a sparkline with all valid values
 (expect
   1
-  (render-sparkline {:cols default-columns
-                     :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))
+  (render-sparkline
+   {:cols default-columns
+    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))
 
 ;; Tex that we can have a nil value in the middle
 (expect
   1
-  (render-sparkline {:cols default-columns
-                     :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))
+  (render-sparkline
+   {:cols default-columns
+    :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))
 
 ;; Test that we can have a nil value for the y-axis at the end of the results
 (expect
   1
-  (render-sparkline {:cols default-columns
-                     :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))
+  (render-sparkline
+   {:cols default-columns
+    :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))
 
 ;; Test that we can have a nil value for the x-axis at the end of the results
 (expect
   1
-  (render-sparkline {:cols default-columns
-                     :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))
+  (render-sparkline
+   {:cols default-columns
+    :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))
 
 ;; Test that we can have a nil value for both x and y axis for different rows
 (expect
   1
-  (render-sparkline {:cols default-columns
-                     :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]}))
+  (render-sparkline
+   {:cols default-columns
+    :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]}))

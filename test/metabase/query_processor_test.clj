@@ -90,8 +90,10 @@
    (col-defaults)
    (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
+   {:field_ref [:field-id (data/id table-kw field-kw)]}
    (when (= field-kw :last_login)
-     {:unit :default})))
+     {:unit      :default
+      :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
 
 (defn- expected-column-names
   "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."

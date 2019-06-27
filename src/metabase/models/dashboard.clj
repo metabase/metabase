@@ -86,7 +86,7 @@
 
 (defn- revert-dashboard!
   "Revert a Dashboard to the state defined by `serialized-dashboard`."
-  [dashboard-id user-id serialized-dashboard]
+  [_ dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
@@ -113,9 +113,9 @@
 
   serialized-dashboard)
 
-(defn diff-dashboards-str
+(defn- diff-dashboards-str
   "Describe the difference between two Dashboard instances."
-  [dashboard₁ dashboard₂]
+  [_ dashboard₁ dashboard₂]
   (when dashboard₁
     (let [[removals changes]  (diff dashboard₁ dashboard₂)
           check-series-change (fn [idx card-changes]
@@ -155,8 +155,8 @@
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision! (u/drop-first-arg revert-dashboard!)
-          :diff-str            (u/drop-first-arg diff-dashboards-str)}))
+          :revert-to-revision! revert-dashboard!
+          :diff-str            diff-dashboards-str}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

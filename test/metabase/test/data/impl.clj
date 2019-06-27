@@ -96,7 +96,8 @@
       ;; make sure we're returing an up-to-date copy of the DB
       (Database (u/get-id db)))
     (catch Throwable e
-      (log/error e (format "Failed to create %s '%s' test database" driver database-name))
+      (printf "Failed to create %s '%s' test database:\n" driver database-name)
+      (println e)
       (when config/is-test?
         (System/exit -1)))))
 

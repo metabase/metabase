@@ -99,24 +99,29 @@
 
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
-(expect
-  #"com.jcraft.jsch.JSchException:"
-  (try (let [details {:ssl            false
-                      :password       "changeme"
-                      :tunnel-host    "localhost" ; this test works if sshd is running or not
-                      :tunnel-pass    "BOGUS-BOGUS-BOGUS"
-                      :port           5432
-                      :dbname         "test"
-                      :host           "localhost"
-                      :tunnel-enabled true
-                      :tunnel-port    22
-                      :engine         :postgres
-                      :user           "postgres"
-                      :tunnel-user    "example"}]
-         (tu.log/suppress-output
-           (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+(datasets/expect-with-driver :postgres
+  com.jcraft.jsch.JSchException
+  (try
+    ;; this test works if sshd is running or not
+    (let [details {:dbname         "test"
+                   :engine         :postgres
+                   :host           "localhost"
+                   :password       "changeme"
+                   :port           5432
+                   :ssl            false
+                   :tunnel-enabled true
+                   :tunnel-host    "localhost" ; this test works if sshd is running or not
+                   :tunnel-pass    "BOGUS-BOGUS-BOGUS"
+                   :tunnel-port    22
+                   :tunnel-user    "example"
+                   :user           "postgres"}]
+      (tu.log/suppress-output
+        (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+    (catch Throwable e
+      (loop [^Throwable e e]
+        (or (when (instance? com.jcraft.jsch.JSchException e)
+              e)
+            (some-> (.getCause e) recur))))))
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 

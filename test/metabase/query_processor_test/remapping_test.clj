@@ -7,6 +7,7 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
@@ -52,11 +53,15 @@
           ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
    :cols [(qp.test/col :venues :name)
           (qp.test/col :venues :price)
-          (assoc (qp.test/col :categories :name)
-            :fk_field_id   (data/id :venues :category_id)
-            :display_name  "Foo"
-            :name          (data/format-name "name_2")
-            :remapped_from (data/format-name "category_id"))]}
+          (data/$ids venues
+            (assoc (qp.test/col :categories :name)
+              :fk_field_id   %category_id
+              :display_name  "Foo"
+              :name          (data/format-name "name_2")
+              :remapped_from (data/format-name "category_id")
+              :field_ref     [:joined-field
+                              (qp.test-util/fk-table-alias-name $$categories %category_id)
+                              $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
@@ -73,11 +78,15 @@
                  ["800 Degrees Neapolitan Pizzeria" 2 "Pizza"]]
    :cols        [(qp.test/col :venues :name)
                  (qp.test/col :venues :price)
-                 (assoc (qp.test/col :categories :name)
-                   :fk_field_id   (data/id :venues :category_id)
-                   :display_name  "Foo"
-                   :name          (data/format-name "name_2")
-                   :remapped_from (data/format-name "category_id"))]}
+                 (data/$ids venues
+                   (assoc (qp.test/col :categories :name)
+                     :fk_field_id   %category_id
+                     :display_name  "Foo"
+                     :name          (data/format-name "name_2")
+                     :remapped_from (data/format-name "category_id")
+                     :field_ref     [:joined-field
+                                     (qp.test-util/fk-table-alias-name $$categories %category_id)
+                                     $categories.name]))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))

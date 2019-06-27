@@ -352,7 +352,8 @@
     :special_type :type/Number
     :name         "count"
     :display_name "count"
-    :source       :aggregation})
+    :source       :aggregation
+    :field_ref    [:aggregation 0]})
 
   ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
    {:pre [base_type special_type]}
@@ -362,7 +363,8 @@
        (qp.store/fetch-and-store-fields! [field-id])
        (merge
         (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
-        {:source :aggregation}
+        {:source    :aggregation
+         :field_ref [:aggregation 0]}
         (when (#{:count :cum-count} aggregation-type)
           {:base_type :type/Integer, :special_type :type/Number}))))))
 
