@@ -20,8 +20,16 @@
 ;; make sure that `column-info` for `:native` queries can still infer types even if the initial value(s) are `nil`
 ;; (#4256)
 (expect
-  [{:name "a", :display_name "a", :base_type :type/Integer, :source :native}
-   {:name "b", :display_name "b", :base_type :type/Integer, :source :native}]
+  [{:name         "a"
+    :display_name "a"
+    :base_type    :type/Integer
+    :source       :native
+    :field_ref    [:field-literal "a" :type/Integer]}
+   {:name         "b"
+    :display_name "b"
+    :base_type    :type/Integer
+    :source       :native
+    :field_ref    [:field-literal "b" :type/Integer]}]
   (annotate/column-info
    {:type :native}
    {:columns [:a :b]
@@ -34,7 +42,7 @@
 ;; make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no non-nil values
 ;; when we peek.
 (expect
-  [{:name "a", :display_name "a", :base_type :type/*, :source :native}]
+  [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
   (annotate/column-info {:type :native} {:columns [:a], :rows [[nil]]}))
 
 
@@ -45,13 +53,15 @@
 (defn- info-for-field
   ([field-id]
    (db/select-one (into [Field] (disj (set @#'qp.store/field-columns-to-fetch) :database_type)) :id field-id))
+
   ([table-key field-key]
    (info-for-field (data/id table-key field-key))))
 
 ;; make sure columns are comming back the way we'd expect
 (expect
   [(assoc (info-for-field :venues :price)
-     :source :fields)]
+     :source    :fields
+     :field_ref [:field-id (data/id :venues :price)])]
   (qp.test-util/with-everything-store
     (vec
      (annotate/column-info
@@ -64,23 +74,27 @@
 ;; TODO - this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses before the
 ;; query ever makes it to the 'annotate' stage
 (expect
-  [(assoc (info-for-field :categories :name)
-     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :fk_field_id %category_id
+       :source      :fields
+       :field_ref   $category_id->categories.name))]
   (qp.test-util/with-everything-store
     (doall
      (annotate/column-info
       {:type  :query
-       :query {:fields [[:fk->
-                         [:field-id (data/id :venues :category_id)]
-                         [:field-id (data/id :categories :name)]]]}}
+       :query {:fields (data/$ids venues [$category_id->categories.name])}}
       {:columns [:name]}))))
 
 ;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses; display_name should
 ;; include the joined table
 (expect
-  [(assoc (info-for-field :categories :name)
-     :display_name "VENUES → Name"
-     :fk_field_id (data/id :venues :category_id), :source :fields)]
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "VENUES → Name"
+       :fk_field_id  %category_id
+       :source       :fields
+       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
   (qp.test-util/with-everything-store
     (data/$ids venues
       (doall
@@ -97,9 +111,12 @@
 ;; when using `:joined-field` clauses for a join a source query (instead of a source table), `display_name` should
 ;; include the join alias
 (expect
- [(assoc (info-for-field :categories :name)
-    :display_name "cats → Name"
-    :fk_field_id (data/id :venues :category_id), :source :fields)]
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "cats → Name"
+       :fk_field_id  %category_id
+       :source       :fields
+       :field_ref    &cats.categories.name))]
  (qp.test-util/with-everything-store
    (data/$ids venues
      (doall
@@ -115,23 +132,27 @@
 
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
-  [(assoc (info-for-field :venues :price)
-     :unit   :month
-     :source :fields)]
+  [(data/$ids venues
+     (assoc (info-for-field :venues :price)
+       :unit      :month
+       :source    :fields
+       :field_ref !month.price))]
   (qp.test-util/with-everything-store
     (doall
      (annotate/column-info
       {:type  :query
-       :query {:fields [[:datetime-field [:field-id (data/id :venues :price)] :month]]}}
+       :query {:fields (data/$ids venues [!month.price])}}
       {:columns [:price]}))))
 
 ;; datetime unit should work on field literals too
 (expect
-  [{:name         "price"
-    :base_type    :type/Number
-    :display_name "Price"
-    :unit         :month
-    :source       :fields}]
+  [(data/$ids venues
+     {:name         "price"
+      :base_type    :type/Number
+      :display_name "Price"
+      :unit         :month
+      :source       :fields
+      :field_ref    !month.*price/Number})]
   (doall
    (annotate/column-info
     {:type  :query
@@ -149,7 +170,15 @@
                    :bin_width        5
                    :min_value        -100
                    :max_value        100
-                   :binning_strategy :num-bins}}]
+                   :binning_strategy :num-bins}
+    :field_ref    [:binning-strategy
+                   [:datetime-field [:field-literal "price" :type/Number] :month]
+                   :num-bins
+                   10
+                   {:num-bins  10
+                    :bin-width 5
+                    :min-value -100
+                    :max-value 100}]}]
   (doall
    (annotate/column-info
     {:type  :query
@@ -246,7 +275,8 @@
   {:cols [{:name         "totalEvents"
            :display_name "Total Events"
            :base_type    :type/Text
-           :source       :aggregation}]}
+           :source       :aggregation
+           :field_ref    [:aggregation 0]}]}
   (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "totalEvents"
                                                        :display_name "Total Events"
@@ -262,21 +292,25 @@
      :special_type :type/Number
      :name         "count"
      :display_name "count"
-     :source       :aggregation}
+     :source       :aggregation
+     :field_ref    [:aggregation 0]}
     {:source       :aggregation
      :name         "sum"
      :display_name "sum"
-     :base_type    :type/Number}
+     :base_type    :type/Number
+     :field_ref    [:aggregation 1]}
     {:base_type    :type/Number
      :special_type :type/Number
      :name         "count_2"
      :display_name "count"
-     :source       :aggregation}
+     :source       :aggregation
+     :field_ref    [:aggregation 2]}
     {:base_type    :type/Number
      :special_type :type/Number
      :name         "count_2_2"
      :display_name "count_2"
-     :source       :aggregation}]}
+     :source       :aggregation
+     :field_ref    [:aggregation 3]}]}
   (binding [driver/*driver* :h2]
     ((annotate/add-column-info (constantly {:cols    [{:name         "count"
                                                        :display_name "count"
@@ -301,7 +335,8 @@
    :base_type       :type/Float
    :special_type    :type/Number
    :expression_name "discount_price"
-   :source          :fields}
+   :source          :fields
+   :field_ref       [:expression "discount_price"]}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues

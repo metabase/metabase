@@ -294,7 +294,7 @@
              query   (query-with-some-fields objects)]
          (-> (tu/doall-recursive (qp query))
              (update-in [:data :cols] #(for [col %]
-                                         (dissoc col :table_id :id)))
+                                         (dissoc col :table_id :id :field_ref)))
              (m/dissoc-in [:data :results_metadata])
              (m/dissoc-in [:data :insights])))))))
 

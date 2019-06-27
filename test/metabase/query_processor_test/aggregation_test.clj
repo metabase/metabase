@@ -142,7 +142,7 @@
 ;; so we can use it with Mongo
 (datasets/expect-with-drivers (disj qp.test/non-timeseries-drivers :mongo)
   [(qp.test/aggregate-col :count)
-   (assoc (qp.test/aggregate-col :count) :name "count_2")]
+   (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
   (qp.test/cols
     (data/run-mbql-query venues
       {:aggregation [[:count] [:count]]})))
