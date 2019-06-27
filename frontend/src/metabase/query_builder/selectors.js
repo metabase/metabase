@@ -239,12 +239,9 @@ export const getRawSeries = createSelector(
     let settings = question && question.settings();
     if (isObjectDetail) {
       display = "object";
-    } else if (uiControls.isShowingTable && display !== "scalar") {
+    } else if (uiControls.isShowingRawTable) {
       display = "table";
-      settings = {
-        ...settings,
-        "table.pivot": false,
-      };
+      settings = { "table.pivot": false };
     }
 
     // we want to provide the visualization with a card containing the latest
@@ -323,4 +320,16 @@ export const getIsPreviewable = createSelector(
 export const getIsPreviewing = createSelector(
   [getIsPreviewable, getUiControls],
   (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
+);
+
+export const getIsVisualized = createSelector(
+  [getQuestion, getVisualizationSettings],
+  (question, settings) =>
+    question &&
+    // table is the default
+    (question.display() !== "table" ||
+      // any "table." settings has been explcitly set
+      Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
+      // "table.pivot" setting has been implicitly set to true
+      (settings && settings["table.pivot"])),
 );

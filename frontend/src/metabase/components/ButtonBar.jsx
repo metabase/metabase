@@ -1,24 +1,40 @@
-import React, { Component } from "react";
+import React from "react";
 
-export default class ButtonBar extends Component {
-  static defaultProps = {
-    buttons: [],
-    className: "",
-  };
+import { Flex } from "grid-styled";
 
-  render() {
-    const { buttons, className } = this.props;
-
-    return (
-      <div className="flex align-center">
-        {buttons
-          .filter(v => v && v.length > 0)
-          .map((section, sectionIndex) => (
-            <span key={sectionIndex} className={className}>
-              {section}
-            </span>
-          ))}
-      </div>
-    );
+export default function ButtonBar({
+  children,
+  left = children,
+  center,
+  right,
+  ...props
+}) {
+  if (Array.isArray(left) && left.length === 0) {
+    left = null;
   }
+  if (Array.isArray(center) && center.length === 0) {
+    center = null;
+  }
+  if (Array.isArray(right) && right.length === 0) {
+    right = null;
+  }
+  return (
+    <Flex align="center" {...props}>
+      <Flex
+        align="center"
+        justifyContent="flex-start"
+        className={center ? "flex-full flex-basis-none" : "mr-auto"}
+      >
+        {left}
+      </Flex>
+      {center && <Flex align="center">{center}</Flex>}
+      <Flex
+        align="center"
+        justifyContent="flex-end"
+        className={center ? "flex-full flex-basis-none" : "ml-auto"}
+      >
+        {right}
+      </Flex>
+    </Flex>
+  );
 }

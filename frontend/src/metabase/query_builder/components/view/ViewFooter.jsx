@@ -9,6 +9,8 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
+import ButtonBar from "metabase/components/ButtonBar";
+
 import ViewSection from "./ViewSection";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
@@ -27,7 +29,7 @@ const ViewFooter = ({
   className,
   isShowingChartTypeSidebar,
   isShowingChartSettingsSidebar,
-  isShowingTable,
+  isShowingRawTable,
   onOpenChartType,
   onOpenModal,
   onCloseChartType,
@@ -40,6 +42,7 @@ const ViewFooter = ({
   isAdmin,
   isPreviewing,
   isResultDirty,
+  isVisualized,
 }) => {
   if (!result || isObjectDetail) {
     return null;
@@ -47,87 +50,84 @@ const ViewFooter = ({
 
   return (
     <ViewSection
-      className={cx(className, "flex align-center text-medium border-top")}
+      className={cx(className, "text-medium border-top")}
       trim
       py={1}
     >
-      <div className="flex align-center">
-        <VizTypeButton
-          question={question}
-          result={result}
-          selected={isShowingChartTypeSidebar}
-          onClick={
-            isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-          }
-        />
-        <VizSettingsButton
-          selected={isShowingChartSettingsSidebar}
-          onClick={
-            isShowingChartSettingsSidebar
-              ? onCloseChartSettings
-              : onOpenChartSettings
-          }
-        />
-        {question.display() !== "scalar" && (
-          <VizTableToggle
+      <ButtonBar
+        left={[
+          <VizTypeButton
             question={question}
-            isShowingTable={
-              (isShowingTable || question.display() === "table") &&
-              !isShowingChartTypeSidebar
+            result={result}
+            selected={isShowingChartTypeSidebar}
+            onClick={
+              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
             }
-            onShowTable={isShowingTable => {
-              if (question.display() === "table" && !isShowingTable) {
-                onOpenChartType();
-              } else {
-                setUIControls({ isShowingTable });
-              }
-            }}
-          />
-        )}
-      </div>
-      <div className="ml-auto flex align-center">
-        {QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
-          !isPreviewing && (
-            <QuestionRowCount
-              key="row_count"
-              className="mx1"
+          />,
+          <VizSettingsButton
+            selected={isShowingChartSettingsSidebar}
+            onClick={
+              isShowingChartSettingsSidebar
+                ? onCloseChartSettings
+                : onOpenChartSettings
+            }
+          />,
+        ]}
+        center={
+          isVisualized && (
+            <VizTableToggle
               question={question}
-              isResultDirty={isResultDirty}
+              isShowingRawTable={isShowingRawTable}
+              onShowTable={isShowingRawTable => {
+                setUIControls({ isShowingRawTable });
+              }}
+            />
+          )
+        }
+        right={[
+          QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
+            !isPreviewing && (
+              <QuestionRowCount
+                key="row_count"
+                className="mx1"
+                question={question}
+                isResultDirty={isResultDirty}
+                result={result}
+              />
+            ),
+          QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
+            <QueryDownloadWidget
+              key="download"
+              className="mx1 hide sm-show"
+              card={question.card()}
               result={result}
             />
-          )}
-        {QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
-          <QueryDownloadWidget
-            key="download"
-            className="mx1 hide sm-show"
-            card={question.card()}
-            result={result}
-          />
-        )}
-        {QuestionAlertWidget.shouldRender({
-          question,
-          visualizationSettings,
-        }) && (
-          <QuestionAlertWidget
-            key="alerts"
-            className="mx1 hide sm-show"
-            question={question}
-            questionAlerts={questionAlerts}
-            onCreateAlert={() =>
-              question.isSaved()
-                ? onOpenModal("create-alert")
-                : onOpenModal("save-question-before-alert")
-            }
-          />
-        )}
-        {QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
-          <QuestionEmbedWidget
-            key="embed"
-            className="mx1 hide sm-show"
-            card={question.card()}
-          />
-        )}
-      </div>
+          ),
+          QuestionAlertWidget.shouldRender({
+            question,
+            visualizationSettings,
+          }) && (
+            <QuestionAlertWidget
+              key="alerts"
+              className="mx1 hide sm-show"
+              question={question}
+              questionAlerts={questionAlerts}
+              onCreateAlert={() =>
+                question.isSaved()
+                  ? onOpenModal("create-alert")
+                  : onOpenModal("save-question-before-alert")
+              }
+            />
+          ),
+          QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
+            <QuestionEmbedWidget
+              key="embed"
+              className="mx1 hide sm-show"
+              card={question.card()}
+            />
+          ),
+        ]}
+      />
     </ViewSection>
   );
 };
@@ -192,17 +192,14 @@ ToggleIcon.defaultProps = {
   px: "8px",
 };
 
-const VizTableToggle = ({ question, isShowingTable, onShowTable }) => {
-  let vizIcon = getIconForVisualizationType(question.display());
-  if (!vizIcon || vizIcon === "table") {
-    vizIcon = "lineandbar";
-  }
+const VizTableToggle = ({ question, isShowingRawTable, onShowTable }) => {
+  const vizIcon = getIconForVisualizationType(question.display());
   return (
-    <Well onClick={() => onShowTable(!isShowingTable)}>
-      <ToggleIcon active={isShowingTable}>
-        <Icon name="table" />
+    <Well onClick={() => onShowTable(!isShowingRawTable)}>
+      <ToggleIcon active={isShowingRawTable}>
+        <Icon name="table2" />
       </ToggleIcon>
-      <ToggleIcon active={!isShowingTable}>
+      <ToggleIcon active={!isShowingRawTable}>
         <Icon name={vizIcon} />
       </ToggleIcon>
     </Well>

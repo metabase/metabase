@@ -47,7 +47,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartSettingsSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
-  isShowingTable: false, // table/viz toggle
+  isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" or "notebook"
 };
 
