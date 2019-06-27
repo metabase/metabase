@@ -1,8 +1,19 @@
-###################
-# STAGE 1: builder
-###################
+ARG BUILD_TYPE=docker
 
-FROM openjdk:8-jdk-alpine as builder
+#############################
+# STAGE 1: builder-external #
+#############################
+
+FROM alpine as builder-external
+
+RUN mkdir -p /app/source
+COPY . /app/source
+
+###########################
+# STAGE 1: builder-docker #
+###########################
+
+FROM openjdk:8-jdk-alpine as builder-docker
 
 WORKDIR /app/source
 
@@ -12,7 +23,7 @@ ENV LC_CTYPE en_US.UTF-8
 # bash:    various shell scripts
 # wget:    installing lein
 # git:     ./bin/version
-# yarn:  frontend building
+# yarn:    frontend building
 # make:    backend building
 # gettext: translations
 
@@ -39,6 +50,18 @@ ADD . .
 # build the app
 RUN bin/build
 
+####################
+# STAGE 1: builder #
+####################
+
+FROM builder-${BUILD_TYPE} as builder
+
+######################
+# STAGE 1.5: cacerts #
+######################
+
+FROM openjdk:8-jdk-alpine as cacerts
+
 # install updated cacerts to /etc/ssl/certs/java/cacerts
 RUN apk add --update java-cacerts
 
@@ -49,9 +72,9 @@ RUN keytool -noprompt -import -trustcacerts -alias aws-rds \
   -keystore /etc/ssl/certs/java/cacerts \
   -keypass changeit -storepass changeit
 
-# ###################
-# # STAGE 2: runner
-# ###################
+###################
+# STAGE 2: runner #
+###################
 
 FROM adoptopenjdk/openjdk11:alpine-jre as runner
 
@@ -64,7 +87,7 @@ ENV LC_CTYPE en_US.UTF-8
 RUN apk add --update bash ttf-dejavu fontconfig
 
 # add fixed cacerts
-COPY --from=builder /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
+COPY --from=cacerts /etc/ssl/certs/java/cacerts /opt/java/openjdk/lib/security/cacerts
 
 # add Metabase script and uberjar
 RUN mkdir -p bin target/uberjar

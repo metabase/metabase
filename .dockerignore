@@ -10,3 +10,5 @@ target/*
 
 .dockerignore
 Dockerfile
+
+!target/uberjar/metabase.jar
