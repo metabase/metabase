@@ -357,7 +357,7 @@
                       :breakout     [[:field-id (data/id :checkins :venue_price)]]}})))))
 
 (expect
-  #"com.jcraft.jsch.JSchException:"
+  com.jcraft.jsch.JSchException
   (try
     (let [engine  :druid
           details {:ssl            false
@@ -371,9 +371,12 @@
                    :tunnel-port    22
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
-        (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+       (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+    (catch Throwable e
+      (loop [^Throwable e e]
+        (or (when (instance? com.jcraft.jsch.JSchException e)
+              e)
+            (some-> (.getCause e) recur))))))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
