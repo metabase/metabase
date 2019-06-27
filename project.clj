@@ -98,8 +98,8 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.2.0"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.0.2"]                                ; MBQL language schema & util fns
+   [com.github.nikita2206/mbql "d0e32ae585"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -123,6 +123,8 @@
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.12.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
    [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
+
+  :repositories [["jitpack" "https://jitpack.io"]]
 
   :main ^:skip-aot metabase.core
 
