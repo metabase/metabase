@@ -49,12 +49,9 @@ const ViewFooter = ({
   }
 
   return (
-    <ViewSection
-      className={cx(className, "text-medium border-top")}
-      trim
-      py={1}
-    >
+    <ViewSection className={cx(className, "text-medium border-top")} py={1}>
       <ButtonBar
+        className="flex-full"
         left={[
           <VizTypeButton
             question={question}
