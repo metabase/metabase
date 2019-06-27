@@ -9,7 +9,6 @@ import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
 import {
-  computeSplit,
   computeMaxDecimalsForValues,
   getFriendlyName,
   getXValues,
@@ -276,72 +275,17 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
 
 ///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
 
-function getYAxisSplit(
-  { settings, chartType, isScalarSeries, series },
-  datas,
-  yExtents,
-) {
-  const seriesAxis = series.map(single => settings.series(single)["axis"]);
-  const left = [];
-  const right = [];
-  const auto = [];
-  for (const [index, axis] of seriesAxis.entries()) {
-    if (axis === "left") {
-      left.push(index);
-    } else if (axis === "right") {
-      right.push(index);
-    } else {
-      auto.push(index);
-    }
-  }
+function getYAxisProps({ series, settings }, groups) {
+  const yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+  const yAxisSplit = settings["graph.y_axis._split_indexes"];
 
-  // don't auto-split if the metric columns are all identical, i.e. it's a breakout multiseries
-  const hasDifferentYAxisColumns =
-    _.uniq(series.map(s => JSON.stringify(s.data.cols[1]))).length > 1;
-  if (
-    !isScalarSeries &&
-    chartType !== "scatter" &&
-    !isStacked(settings, datas) &&
-    hasDifferentYAxisColumns &&
-    settings["graph.y_axis.auto_split"] !== false
-  ) {
-    // NOTE: this version computes the split after assigning fixed left/right
-    // which causes other series to move around when changing the setting
-    // return computeSplit(yExtents, left, right);
-
-    // NOTE: this version computes a split with all axis unassigned, then moves
-    // assigned ones to their correct axis
-    const [autoLeft, autoRight] = computeSplit(yExtents);
-    return [
-      _.uniq([...left, ...autoLeft.filter(index => !seriesAxis[index])]),
-      _.uniq([...right, ...autoRight.filter(index => !seriesAxis[index])]),
-    ];
-  } else {
-    // assign all auto to the left
-    return [[...left, ...auto], right];
-  }
-}
-
-function getYAxisSplitLeftAndRight(series, yAxisSplit, yExtents) {
-  return yAxisSplit.map(indexes => ({
+  // The _split_indexes setting has the indexes of the series assigned to the
+  // left and right. The next line grabs the series and creates a merged
+  // yExtent.
+  const [yLeftSplit, yRightSplit] = yAxisSplit.map(indexes => ({
     series: indexes.map(index => series[index]),
     extent: d3.extent([].concat(...indexes.map(index => yExtents[index]))),
   }));
-}
-
-function getIsSplitYAxis(left, right) {
-  return right && right.series.length && (left && left.series.length > 0);
-}
-
-function getYAxisProps(props, groups, datas) {
-  const yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
-  const yAxisSplit = getYAxisSplit(props, datas, yExtents);
-
-  const [yLeftSplit, yRightSplit] = getYAxisSplitLeftAndRight(
-    props.series,
-    yAxisSplit,
-    yExtents,
-  );
 
   return {
     yExtents,
@@ -349,7 +293,7 @@ function getYAxisProps(props, groups, datas) {
     yExtent: d3.extent([].concat(...yExtents)),
     yLeftSplit,
     yRightSplit,
-    isSplit: getIsSplitYAxis(yLeftSplit, yRightSplit),
+    isSplit: yLeftSplit.length > 0 && yRightSplit.length > 0,
   };
 }
 
@@ -808,7 +752,7 @@ export default function lineAreaBar(
     groups,
   } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
-  const yAxisProps = getYAxisProps(props, groups, datas);
+  const yAxisProps = getYAxisProps(props, groups);
 
   // Don't apply to linear or timeseries X-axis since the points are always plotted in order
   if (!isTimeseries(settings) && !isQuantitative(settings)) {
