@@ -35,8 +35,9 @@ export default function getYAxisSplit(series, settings) {
     // NOTE: this version computes a split with all axis unassigned, then moves
     // assigned ones to their correct axis
 
-    // This definition of yExtents is only valid for charts besides scatter
-    // plots that are not normalized
+    // This definition of yExtents is only valid for charts that are:
+    // 1. not scatter plots
+    // 2. not stacked
     const yExtents = datas.map(d => d3.extent(d.map(row => row[1])));
     const [autoLeft, autoRight] = computeSplit(yExtents);
     return [
