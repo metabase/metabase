@@ -1,4 +1,6 @@
-import getYAxisSplit from "metabase/visualizations/lib/y_axis_split";
+import getYAxisSplit, {
+  computeSplit,
+} from "metabase/visualizations/lib/y_axis_split";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 
@@ -120,4 +122,17 @@ describe("getYAxisSplit", () => {
     expect(getYAxisSplit(series, settings)).toEqual([[1], [0]]);
   });
 });
+
+describe("computeSplit", () => {
+  it("should pair up similar extents", () => {
+    const extents = [[1, 2], [100, 200], [2, 3], [150, 200]];
+    expect(computeSplit(extents)).toEqual([[0, 2], [1, 3]]);
+  });
+
+  it("should accept left/right pinning", () => {
+    const extents = [[1, 2], [100, 200], [2, 3], [150, 200]];
+    const left = [1];
+    const right = [];
+    expect(computeSplit(extents, left, right)).toEqual([[1, 3], [0, 2]]);
+  });
 });

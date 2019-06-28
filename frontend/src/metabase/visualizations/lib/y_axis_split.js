@@ -81,7 +81,8 @@ function axisCost(seriesExtents, favorUnsplit = true) {
   }
 }
 
-function computeSplit(extents, left = [], right = []) {
+// only exported for testing
+export function computeSplit(extents, left = [], right = []) {
   const unassigned = extents
     .map((e, i) => i)
     .filter(i => left.indexOf(i) < 0 && right.indexOf(i) < 0);
