@@ -28,8 +28,8 @@ const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
       />
     </PopoverWithTrigger>
   ) : expanded ? (
-    <div className="flex align-center mr1">
-      <FilterButton icon="filter" invert onClick={onCollapse} />
+    <div className="flex align-center">
+      <FilterButton invert icon="filter" className="mr1" onClick={onCollapse} />
       {filters.map((filter, index) => (
         <PopoverWithTrigger
           triggerElement={<FilterButton>{filter.displayName()}</FilterButton>}
@@ -60,7 +60,7 @@ const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
     </div>
   ) : (
     <Tooltip tooltip={`Show filters`}>
-      <FilterButton icon="filter" invert onClick={onExpand}>
+      <FilterButton invert icon="filter" onClick={onExpand}>
         {filters.length}
       </FilterButton>
     </Tooltip>
@@ -81,9 +81,9 @@ const FilterButton = ({
       "cursor-pointer": onClick,
     })}
     style={{
-      padding: "2px 6px",
-      paddingLeft: icon ? 6 : 8,
-      paddingRight: children ? 8 : 6,
+      padding: 2,
+      paddingLeft: icon ? 5 : 8,
+      paddingRight: children ? 8 : 5,
       ...(invert
         ? { backgroundColor: "#7172AD", color: "white" }
         : { backgroundColor: alpha("#7172AD", 0.2), color: "#7172AD" }),

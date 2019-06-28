@@ -51,7 +51,7 @@ const SummarizeButton = ({ className, children, onClick }) => (
   <Button
     medium
     icon="insight"
-    color="#84BB4C"
+    // color="#84BB4C"
     className={cx(className, "flex-no-shrink")}
     onClick={onClick}
   >

@@ -118,8 +118,9 @@ export default class LegendHeader extends Component {
         {onAddSeries && (
           <Icon
             name="add"
-            className="mx1 p1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
-            height={14}
+            className="mx1 flex-no-shrink text-medium text-brand-hover bg-medium rounded cursor-pointer"
+            size={12}
+            style={{ padding: 5 }}
             onClick={e => onAddSeries(e)}
           />
         )}

@@ -5,6 +5,7 @@ import cx from "classnames";
 import Button from "metabase/components/Button";
 
 import Icon from "metabase/components/Icon";
+import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
@@ -48,6 +49,14 @@ export class ViewTitleHeader extends React.Component {
       isNew,
       queryBuilderMode,
       setQueryBuilderMode,
+      result,
+      isRunnable,
+      isRunning,
+      isResultDirty,
+      isPreviewing,
+      runQuestionQuery,
+      cancelQuery,
+      onOpenAddAggregation,
     } = this.props;
     const isShowingNotebook = queryBuilderMode === "notebook";
     const description = question.description();
@@ -66,6 +75,8 @@ export class ViewTitleHeader extends React.Component {
       question.query().hasFilters() &&
       this.state.isFiltersExpanded;
 
+    const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
+
     return (
       <ViewSection
         className={cx("border-bottom", className)}
@@ -75,7 +86,7 @@ export class ViewTitleHeader extends React.Component {
         {isSaved ? (
           <div>
             <div className="flex align-center">
-              <ViewHeading className="mr1">
+              <ViewHeading className="my1 mr1">
                 {question.displayName()}
               </ViewHeading>
               {description && (
@@ -108,14 +119,14 @@ export class ViewTitleHeader extends React.Component {
         ) : (
           <div>
             <div className="flex align-center">
-              <ViewHeading>
+              <ViewHeading className="my1">
                 {isNative ? (
                   t`New question`
                 ) : (
                   <QuestionDescription question={question} />
                 )}
               </ViewHeading>
-              {isFiltersVisible && (!isSummarized && !isFiltersExpanded) && (
+              {isFiltersVisible && showFiltersInHeading && (
                 <QuestionFilters
                   question={question}
                   expanded={isFiltersExpanded}
@@ -128,7 +139,7 @@ export class ViewTitleHeader extends React.Component {
               {isSummarized && (
                 <QuestionDataSource question={question} subHead />
               )}
-              {isFiltersVisible && (isSummarized || isFiltersExpanded) && (
+              {isFiltersVisible && !showFiltersInHeading && (
                 <QuestionFilters
                   question={question}
                   expanded={isFiltersExpanded}
@@ -150,8 +161,8 @@ export class ViewTitleHeader extends React.Component {
           </div>
         )}
         <div className="ml-auto flex align-center">
-          {!question.isNative() &&
-            isShowingNotebook &&
+          {isShowingNotebook &&
+            question.isStructured() &&
             question.database() &&
             question.database().native_permissions === "write" && (
               <NativeQueryButton size={20} question={question} />
@@ -163,7 +174,16 @@ export class ViewTitleHeader extends React.Component {
               onClick={() => onOpenModal("save")}
             >{t`Save`}</Button>
           ) : null}
-          {!question.isNative() && (
+          {!isShowingNotebook &&
+            QuestionSummaries.shouldRender({ question, queryBuilderMode }) && (
+              <QuestionSummaries
+                key="summarize"
+                className="ml1"
+                question={question}
+                onOpenAddAggregation={onOpenAddAggregation}
+              />
+            )}
+          {question.isStructured() && (
             <Button
               icon="list"
               medium
@@ -176,6 +196,19 @@ export class ViewTitleHeader extends React.Component {
             >
               {isShowingNotebook ? t`Hide editor` : t`Show editor`}
             </Button>
+          )}
+          {!isShowingNotebook && !question.isNative() && isRunnable && (
+            <RunButtonWithTooltip
+              compact
+              className="ml1"
+              result={result}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isDirty={isResultDirty}
+              isPreviewing={isPreviewing}
+              onRun={() => runQuestionQuery({ ignoreCache: true })}
+              onCancel={() => cancelQuery()}
+            />
           )}
         </div>
       </ViewSection>
@@ -193,7 +226,6 @@ export class ViewSubHeader extends React.Component {
   render() {
     const {
       question,
-      onOpenAddAggregation,
 
       result,
       isRunnable,
@@ -206,28 +238,11 @@ export class ViewSubHeader extends React.Component {
 
       runQuestionQuery,
       cancelQuery,
-
-      queryBuilderMode,
     } = this.props;
-
-    const isFiltersExpanded =
-      questionHasFilters(question) &&
-      (this.state.isFiltersExpanded || !question.isSaved());
 
     const middle = [];
     const left = [];
     const right = [];
-
-    if (QuestionSummaries.shouldRender({ question, queryBuilderMode })) {
-      left.push(
-        <QuestionSummaries
-          key="summarize"
-          className="mr2"
-          question={question}
-          onOpenAddAggregation={onOpenAddAggregation}
-        />,
-      );
-    }
 
     if (isPreviewable) {
       right.push(
@@ -239,10 +254,11 @@ export class ViewSubHeader extends React.Component {
         />,
       );
     }
-    if (isRunnable) {
-      const runButton = (
+    if (isRunnable && question.isNative()) {
+      middle.push(
         <RunButtonWithTooltip
           key="run"
+          circular
           result={result}
           isRunnable={isRunnable}
           isRunning={isRunning}
@@ -250,25 +266,19 @@ export class ViewSubHeader extends React.Component {
           isPreviewing={isPreviewing}
           onRun={() => runQuestionQuery({ ignoreCache: true })}
           onCancel={() => cancelQuery()}
-        />
+        />,
       );
-      if (question.isNative()) {
-        middle.push(runButton);
-      } else {
-        right.push(runButton);
-      }
     }
 
-    return (
-      <div>
-        {(left.length > 0 || middle.length > 0 || right.length > 0) && (
-          <ViewSection pt={1}>
-            <div className="mr-auto flex align-center">{left}</div>
-            {middle}
-            <div className="ml-auto flex align-center">{right}</div>
-          </ViewSection>
-        )}
-      </div>
-    );
+    return left.length > 0 || middle.length > 0 || right.length > 0 ? (
+      <ViewSection pt={1}>
+        <ButtonBar
+          className="flex-full"
+          left={left}
+          center={middle}
+          right={right}
+        />
+      </ViewSection>
+    ) : null;
   }
 }

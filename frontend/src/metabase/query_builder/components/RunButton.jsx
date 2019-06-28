@@ -3,7 +3,6 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
@@ -18,6 +17,8 @@ export default class RunButton extends Component {
     onCancel: PropTypes.func,
   };
 
+  static defaultProps = {};
+
   render() {
     const {
       isRunnable,
@@ -27,37 +28,34 @@ export default class RunButton extends Component {
       onRun,
       onCancel,
       className,
+      compact,
+      circular,
     } = this.props;
     let buttonText = null;
+    let buttonIcon = null;
     if (isRunning) {
-      buttonText = (
-        <div className="flex align-center">
-          <Icon className="sm-mr1" name="close" />
-          <span className="hide sm-show">{t`Cancel`}</span>
-        </div>
-      );
+      buttonIcon = "close";
+      if (!compact) {
+        buttonText = t`Cancel`;
+      }
     } else if (isRunnable && isDirty) {
-      if (isPreviewing) {
-        buttonText = t`Get Preview`;
+      if (compact) {
+        buttonIcon = "right";
       } else {
-        buttonText = t`Get Answer`;
+        buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
       }
     } else if (isRunnable && !isDirty) {
-      buttonText = <Icon name="refresh" />;
+      buttonIcon = "refresh";
+    }
+    if (!buttonIcon && !buttonText) {
+      return null;
     }
     return (
       <Button
         medium
+        icon={buttonIcon}
         primary={isDirty}
-        className={cx(
-          "RunButton circular",
-          {
-            "RunButton--hidden": !buttonText,
-            "text-medium": !isDirty,
-            "text-brand-hover": !isDirty,
-          },
-          className,
-        )}
+        className={cx(className, { circular: circular })}
         onClick={isRunning ? onCancel : onRun}
       >
         {buttonText}
