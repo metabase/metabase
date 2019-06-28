@@ -2,9 +2,8 @@ import d3 from "d3";
 import _ from "underscore";
 
 import { isStacked } from "./renderer_utils";
-import { computeSplit } from "./utils";
 
-function getYAxisSplit(series, settings) {
+export default function getYAxisSplit(series, settings) {
   const datas = series.map(s => s.data.rows);
   const yExtents = datas.map(d => d3.extent(d.map(row => row[1])));
 
@@ -47,4 +46,68 @@ function getYAxisSplit(series, settings) {
   }
 }
 
-export default getYAxisSplit;
+function generateSplits(list, left = [], right = []) {
+  // NOTE: currently generates all permutations, some of which are equivalent
+  if (list.length === 0) {
+    return [[left, right]];
+  } else {
+    return [
+      ...generateSplits(list.slice(1), left.concat([list[0]]), right),
+      ...generateSplits(list.slice(1), left, right.concat([list[0]])),
+    ];
+  }
+}
+
+const SPLIT_AXIS_UNSPLIT_COST = -100;
+const SPLIT_AXIS_COST_FACTOR = 2;
+
+function axisCost(seriesExtents, favorUnsplit = true) {
+  const axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+  const axisRange = axisExtent[1] - axisExtent[0];
+  if (favorUnsplit && seriesExtents.length === 0) {
+    return SPLIT_AXIS_UNSPLIT_COST;
+  } else if (axisRange === 0) {
+    return 0;
+  } else {
+    return seriesExtents.reduce(
+      (sum, seriesExtent) =>
+        sum +
+        Math.pow(
+          axisRange / (seriesExtent[1] - seriesExtent[0]),
+          SPLIT_AXIS_COST_FACTOR,
+        ),
+      0,
+    );
+  }
+}
+
+function computeSplit(extents, left = [], right = []) {
+  const unassigned = extents
+    .map((e, i) => i)
+    .filter(i => left.indexOf(i) < 0 && right.indexOf(i) < 0);
+
+  // if any are assigned to right we have decided to split so don't favor unsplit
+  const favorUnsplit = right.length > 0;
+
+  const cost = split =>
+    axisCost(split[0].map(i => extents[i]), favorUnsplit) +
+    axisCost(split[1].map(i => extents[i]), favorUnsplit);
+
+  const splits = generateSplits(unassigned, left, right);
+
+  let best, bestCost;
+  for (const split of splits) {
+    const splitCost = cost(split);
+    if (!best || splitCost < bestCost) {
+      best = split;
+      bestCost = splitCost;
+    }
+  }
+
+  // don't sort if we provided an initial left/right
+  if (left.length > 0 || right.length > 0) {
+    return best;
+  } else {
+    return best && best.sort((a, b) => a[0] - b[0]);
+  }
+}
