@@ -89,4 +89,35 @@ describe("getYAxisSplit", () => {
 
     expect(getYAxisSplit(series, settings)).toEqual([[0, 1], []]);
   });
+
+  it("should use series settings of `axis: left/right`", () => {
+    const series = [
+      {
+        data: {
+          cols: [{ name: "Category" }, { name: "Price" }],
+          rows: [["a", 1], ["b", 2]],
+        },
+        card: { display: "bar", name: "Series 1" },
+      },
+      {
+        data: {
+          cols: [{ name: "Category" }, { name: "Not Price" }],
+          rows: [["a", 1], ["b", 4]],
+        },
+        card: { display: "bar", name: "Series 2" },
+      },
+    ];
+    const series_settings = {
+      "Series 1": { axis: "right" },
+      "Series 2": { axis: "left" },
+    };
+    const settingsDefs = seriesSetting({
+      getInheritedSettingsForObject: series =>
+        series_settings[series.card.name],
+    });
+    const settings = getComputedSettings(settingsDefs, [], {});
+
+    expect(getYAxisSplit(series, settings)).toEqual([[1], [0]]);
+  });
+});
 });
