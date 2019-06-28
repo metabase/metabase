@@ -1,22 +1,23 @@
 import React from "react";
 
-import Button from "metabase/components/Button";
+import cx from "classnames";
+
+import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import ViewFilterPopover from "metabase/query_builder/components/view/ViewFilterPopover";
 
-const QuestionFilters = ({ question, expanded, onExpand }) => {
+import { alpha } from "metabase/lib/colors";
+
+const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
   const query = question.query();
   const filters = query.topLevelFilters();
   return filters.length === 0 ? (
     <PopoverWithTrigger
-      triggerElement={
-        <Button medium icon="filter" color="#7172AD">
-          {`Filter`}
-        </Button>
-      }
+      triggerElement={<FilterButton icon="filter">{`Filter`}</FilterButton>}
+      triggerClasses="flex align-center"
       sizeToFit
     >
       <ViewFilterPopover
@@ -27,23 +28,12 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
       />
     </PopoverWithTrigger>
   ) : expanded ? (
-    <FilterContainer>
+    <div className="flex align-center mr1">
+      <FilterButton icon="filter" invert onClick={onCollapse} />
       {filters.map((filter, index) => (
         <PopoverWithTrigger
-          triggerElement={
-            <Button borderless key={index} mr={1} className="text-purple">
-              {filter.displayName()}
-              <Icon
-                name="close"
-                ml={1}
-                size={12}
-                onClick={e => {
-                  e.stopPropagation(); // prevent parent button from triggering
-                  filter.remove().update(null, { run: true });
-                }}
-              />
-            </Button>
-          }
+          triggerElement={<FilterButton>{filter.displayName()}</FilterButton>}
+          triggerClasses="flex align-center mr1"
           sizeToFit
         >
           <ViewFilterPopover
@@ -56,7 +46,8 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
         </PopoverWithTrigger>
       ))}
       <PopoverWithTrigger
-        triggerElement={<Button medium icon="add" color="#7172AD" />}
+        triggerElement={<FilterButton icon="add" />}
+        triggerClasses="flex align-center"
         sizeToFit
       >
         <ViewFilterPopover
@@ -66,30 +57,54 @@ const QuestionFilters = ({ question, expanded, onExpand }) => {
           }
         />
       </PopoverWithTrigger>
-    </FilterContainer>
+    </div>
   ) : (
-    <Button medium icon="filter" purple onClick={onExpand}>
-      {`${filters.length} filters`}
-    </Button>
+    <Tooltip tooltip={`Show filters`}>
+      <FilterButton icon="filter" invert onClick={onExpand}>
+        {filters.length}
+      </FilterButton>
+    </Tooltip>
   );
 };
+
+const FilterButton = ({
+  className,
+  style = {},
+  invert,
+  children,
+  onClick,
+  icon,
+  ...props
+}) => (
+  <span
+    className={cx("rounded flex-align center text-bold", className, {
+      "cursor-pointer": onClick,
+    })}
+    style={{
+      padding: "2px 6px",
+      paddingLeft: icon ? 6 : 8,
+      paddingRight: children ? 8 : 6,
+      ...(invert
+        ? { backgroundColor: "#7172AD", color: "white" }
+        : { backgroundColor: alpha("#7172AD", 0.2), color: "#7172AD" }),
+      ...style,
+    }}
+    onClick={onClick}
+  >
+    {icon && <Icon name={icon} size={12} className={cx({ mr1: !!children })} />}
+    {children}
+  </span>
+);
 
 QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
   question &&
   question.query() instanceof StructuredQuery &&
   question.query().table() &&
-  // NOTE: remove queryBuilderMode check once legacy query builder is removed
   queryBuilderMode !== "notebook";
 
 export const questionHasFilters = question =>
   question &&
   question.query() instanceof StructuredQuery &&
   question.query().topLevelFilters().length > 0;
-
-const FilterContainer = ({ children }) => (
-  <div style={{ width: 0, minWidth: "100%", whiteSpace: "nowrap" }}>
-    {children}
-  </div>
-);
 
 export default QuestionFilters;
