@@ -5,7 +5,6 @@ import { isStacked } from "./renderer_utils";
 
 export default function getYAxisSplit(series, settings) {
   const datas = series.map(s => s.data.rows);
-  const yExtents = datas.map(d => d3.extent(d.map(row => row[1])));
 
   const cardType = series[0].card.display;
 
@@ -35,6 +34,10 @@ export default function getYAxisSplit(series, settings) {
   ) {
     // NOTE: this version computes a split with all axis unassigned, then moves
     // assigned ones to their correct axis
+
+    // This definition of yExtents is only valid for charts besides scatter
+    // plots that are not normalized
+    const yExtents = datas.map(d => d3.extent(d.map(row => row[1])));
     const [autoLeft, autoRight] = computeSplit(yExtents);
     return [
       _.uniq([...left, ...autoLeft.filter(index => !seriesAxis[index])]),
