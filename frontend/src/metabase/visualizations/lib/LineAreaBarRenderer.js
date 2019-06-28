@@ -276,7 +276,9 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
 ///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
 
 function getYAxisProps({ series, settings }, groups) {
-  const yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+  const yExtents = series.map(single =>
+    d3.extent(single.data.rows.map(row => row[1])),
+  );
   const yAxisSplit = settings["graph.y_axis._split_indexes"];
 
   // The _split_indexes setting has the indexes of the series assigned to the
@@ -743,9 +745,12 @@ export default function lineAreaBar(
   datas = fillMissingValuesInDatas(props, xAxisProps, datas);
   xAxisProps = getXAxisProps(props, datas);
 
+  console.log("xValues - before", xAxisProps.xValues);
+  console.log({ datas });
   if (isScalarSeries) {
     xAxisProps.xValues = datas.map(data => data[0][0]);
   } // TODO - what is this for?
+  console.log("xValues - after", xAxisProps.xValues);
 
   const {
     dimension,
@@ -837,8 +842,10 @@ export const lineRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "line" });
 export const areaRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "area" });
-export const barRenderer = (element, props) =>
-  lineAreaBar(element, { ...props, chartType: "bar" });
+export const barRenderer = (element, props) => {
+  console.log("bar renderer", props);
+  return lineAreaBar(element, { ...props, chartType: "bar" });
+};
 export const comboRenderer = (element, props) =>
   lineAreaBar(element, { ...props, chartType: "combo" });
 export const scatterRenderer = (element, props) =>
