@@ -22,7 +22,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import getYAxisSplit from "metabase/visualizations/lib/yAxisSplit";
+import getYAxisSplit from "metabase/visualizations/lib/y_axis_split";
 
 import _ from "underscore";
 
