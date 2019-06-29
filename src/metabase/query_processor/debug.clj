@@ -41,33 +41,27 @@
      (raise e))))
 
 (defn- debug-sync
-  [{:keys [pre post exception]} qp middleware-var before-query]
-  (println "qp:" qp) ; NOCOMMIT
-  (println "middleware-var:" middleware-var) ; NOCOMMIT
+  [{:keys [pre post exception]} qp middleware before-query]
   (let [after-query   (promise)
         before-result (promise)
-        wrapped-qp    (fn [query]
-                        (println "query:" query) ; NOCOMMIT
+        wrapped-qp    (fn [query & args]
                         (deliver after-query query)
                         (when pre (pre before-query query))
-                        (u/prog1 (qp query)
-                          (println "<>:" <>) ; NOCOMMIT
+                        (u/prog1 (apply qp query args)
                           (deliver before-result <>)))]
-    (println "wrapped-qp:" wrapped-qp)  ; NOCOMMIT
     (try
-      (u/prog1 ((middleware-var wrapped-qp) before-query)
-        (println "here")                ; NOCOMMIT
-        #_(when post (post (u/deref-with-timeout before-result *timeout*) <>)))
+      (u/prog1 ((middleware wrapped-qp) before-query)
+        (when post (post (u/deref-with-timeout before-result *timeout*) <>)))
       (catch Throwable e
         (rethrow "Middleware threw Exception."
           {:query {:before before-query, :after after-query}, :result before-result}
           e exception)))))
 
 (defn- debug-async
-  [{:keys [pre post exception]} qp middleware-var before-query respond raise & args]
+  [{:keys [pre post exception]} qp middleware before-query respond raise & args]
   (let [after-query        (promise)
         before-result      (promise)
-        middleware-var-qp-args (promise)
+        middleware-qp-args (promise)
 
         wrapped-raise
         (fn [e]
@@ -76,17 +70,17 @@
             e exception raise))
 
         placeholder-qp
-        (fn [& args] (deliver middleware-var-qp-args args))
+        (fn [& args] (deliver middleware-qp-args args))
 
         _
         (try
-          (apply (middleware-var placeholder-qp) before-query identity wrapped-raise args)
+          (apply (middleware placeholder-qp) before-query identity wrapped-raise args)
           (catch Throwable e
             (rethrow "Middleware threw Exception during preprocessing."
               {:query {:before before-query}}
               e exception)))
 
-        [query mw-respond mw-raise & args] (u/deref-with-timeout middleware-var-qp-args *timeout*)
+        [query mw-respond mw-raise & args] (u/deref-with-timeout middleware-qp-args *timeout*)
 
         wrapped-respond
         (fn [result]
@@ -114,8 +108,7 @@
   [fns qp middleware]
   (fn
     ([before-query]
-     ((middleware qp) before-query)
-     #_(debug-sync fns qp middleware before-query))
+     (debug-sync fns qp middleware before-query))
 
     ([before-query & args]
      (apply debug-async fns qp middleware before-query args))))
@@ -143,7 +136,7 @@
 
 (defn- validate-query [middleware-var after-query]
   ;; mbql->native is allowed to have both a `:query` and a `:native` key for whatever reason
-  #_(when-not (= middleware-var #'mbql-to-native/mbql->native)
+  (when-not (= middleware-var #'mbql-to-native/mbql->native)
     (s/validate mbql.s/Query after-query)))
 
 (defn- debug-pre [middleware-var before-query after-query]
