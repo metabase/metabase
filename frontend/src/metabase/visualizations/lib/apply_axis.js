@@ -102,7 +102,6 @@ export function applyChartTimeseriesXAxis(
 
   // compute the data interval
   const dataInterval = xInterval;
-  let tickInterval = dataInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
@@ -120,24 +119,6 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
 
-    // special handling for weeks
-    // TODO: are there any other cases where we should do this?
-    if (dataInterval.interval === "week") {
-      // if tick interval is compressed then show months instead of weeks because they're nicer formatted
-      const newTickInterval = computeTimeseriesTicksInterval(
-        xDomain,
-        tickInterval,
-        chart.width(),
-      );
-      if (
-        newTickInterval.interval !== tickInterval.interval ||
-        newTickInterval.count !== tickInterval.count
-      ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
-      }
-    }
-
     chart.xAxis().tickFormat(timestamp => {
       // timestamp is a plain Date object which discards the timezone,
       // so add it back in so it's formatted correctly
@@ -152,9 +133,9 @@ export function applyChartTimeseriesXAxis(
     });
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
+    const tickInterval = computeTimeseriesTicksInterval(
       xDomain,
-      tickInterval,
+      xInterval,
       chart.width(),
     );
     chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
