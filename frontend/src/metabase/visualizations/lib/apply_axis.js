@@ -129,7 +129,7 @@ export function applyChartTimeseriesXAxis(
       });
     });
 
-    // Update the xInterval to take into account chart width
+    // Compute tick interval, which maybe drops xInterval ticks on narrow charts
     const tickInterval = computeTimeseriesTicksInterval(
       xDomain,
       xInterval,
