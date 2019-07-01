@@ -1,6 +1,7 @@
 import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
+  computeTimeseriesTicksInterval,
 } from "metabase/visualizations/lib/timeseries";
 
 import { TYPE } from "metabase/lib/types";
@@ -143,5 +144,54 @@ describe("visualization.lib.timeseries", () => {
         expect(count).toBe(expectedCount);
       });
     });
+  });
+
+  describe("computeTimeseriesTicksInterval", () => {
+    const TEST_CASES = [
+      // on a wide chart, 12 month ticks shouldn't be changed
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 1920,
+        },
+        { expectedInterval: "month", expectedCount: 1 },
+      ],
+      // it should be bump to quarters on a narrower chart
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 800,
+        },
+        { expectedInterval: "month", expectedCount: 3 },
+      ],
+      // even narrower and we should show yearly ticks
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 500,
+        },
+        { expectedInterval: "year", expectedCount: 1 },
+      ],
+    ];
+
+    TEST_CASES.map(
+      ([
+        { xDomain, xInterval, chartWidth },
+        { expectedInterval, expectedCount },
+      ]) => {
+        it("should return " + expectedCount + " " + expectedInterval, () => {
+          const { interval, count } = computeTimeseriesTicksInterval(
+            xDomain,
+            xInterval,
+            chartWidth,
+          );
+          expect(interval).toBe(expectedInterval);
+          expect(count).toBe(expectedCount);
+        });
+      },
+    );
   });
 });

@@ -129,7 +129,7 @@ export function applyChartTimeseriesXAxis(
       });
     });
 
-    // Compute a sane interval to display based on the data granularity, domain, and chart width
+    // Update the xInterval to take into account chart width
     const tickInterval = computeTimeseriesTicksInterval(
       xDomain,
       xInterval,
