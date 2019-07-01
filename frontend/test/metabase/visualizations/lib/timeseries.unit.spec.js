@@ -175,6 +175,15 @@ describe("visualization.lib.timeseries", () => {
         },
         { expectedInterval: "year", expectedCount: 1 },
       ],
+      // shouldn't move to a more granular interval than what was passed
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 3 },
+          chartWidth: 1920,
+        },
+        { expectedInterval: "month", expectedCount: 3 },
+      ],
     ];
 
     TEST_CASES.map(
