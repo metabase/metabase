@@ -9,8 +9,9 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 const QuestionDescription = ({ question }) => {
   const query = question.query();
   if (query instanceof StructuredQuery) {
-    const aggregations = query.aggregations();
-    const breakouts = query.breakouts();
+    const topQuery = query.topLevelQuery();
+    const aggregations = topQuery.aggregations();
+    const breakouts = topQuery.breakouts();
     const aggregationDescription =
       aggregations.length === 0
         ? null
