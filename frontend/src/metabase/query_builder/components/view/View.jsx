@@ -111,26 +111,22 @@ export default class View extends React.Component {
     const onEditBreakout =
       isStructured && query.hasBreakouts() ? this.handleEditBreakout : null;
 
-    const leftSideBar =
+    const leftSideBar = isShowingChartSettingsSidebar ? (
+      <ChartSettingsSidebar
+        {...this.props}
+        onClose={this.props.onCloseChartSettings}
+      />
+    ) : isShowingChartTypeSidebar ? (
+      <ChartTypeSidebar {...this.props} onClose={this.props.onCloseChartType} />
+    ) : null;
+
+    const rightSideBar =
       isStructured && isEditingSummary ? (
         <SummarizeSidebar
           question={question}
           onClose={this.props.onCloseSummary}
         />
-      ) : isShowingChartSettingsSidebar ? (
-        <ChartSettingsSidebar
-          {...this.props}
-          onClose={this.props.onCloseChartSettings}
-        />
-      ) : isShowingChartTypeSidebar ? (
-        <ChartTypeSidebar
-          {...this.props}
-          onClose={this.props.onCloseChartType}
-        />
-      ) : null;
-
-    const rightSideBar =
-      isShowingTemplateTagsEditor && query instanceof NativeQuery ? (
+      ) : isShowingTemplateTagsEditor && query instanceof NativeQuery ? (
         <TagEditorSidebar
           {...this.props}
           onClose={() => this.props.toggleTemplateTagsEditor()}
