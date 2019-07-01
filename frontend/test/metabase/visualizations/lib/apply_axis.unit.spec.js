@@ -8,9 +8,9 @@ describe("visualization.lib.apply_axis", () => {
   describe("stretchTimeseriesDomain", () => {
     it("should extend a partial month", () => {
       const domain = ["2020-04-01", "2020-06-01"].map(s => moment.utc(s));
-      const dataInterval = { interval: "month", count: 1 };
+      const xInterval = { interval: "month", count: 1 };
 
-      const newDomain = stretchTimeseriesDomain(domain, dataInterval);
+      const newDomain = stretchTimeseriesDomain(domain, xInterval);
 
       expect(newDomain.map(d => d.toISOString())).toEqual([
         "2020-03-09T00:00:00.000Z",
@@ -20,9 +20,9 @@ describe("visualization.lib.apply_axis", () => {
 
     it("should extend a partial week", () => {
       const domain = ["2020-04-01", "2020-04-15"].map(s => moment.utc(s));
-      const dataInterval = { interval: "week", count: 1 };
+      const xInterval = { interval: "week", count: 1 };
 
-      const newDomain = stretchTimeseriesDomain(domain, dataInterval);
+      const newDomain = stretchTimeseriesDomain(domain, xInterval);
 
       expect(newDomain.map(d => d.toISOString())).toEqual([
         "2020-03-27T00:00:00.000Z",
@@ -32,9 +32,9 @@ describe("visualization.lib.apply_axis", () => {
 
     it("should extend a partial day", () => {
       const domain = ["2020-04-01", "2020-04-05"].map(s => moment.utc(s));
-      const dataInterval = { interval: "day", count: 1 };
+      const xInterval = { interval: "day", count: 1 };
 
-      const newDomain = stretchTimeseriesDomain(domain, dataInterval);
+      const newDomain = stretchTimeseriesDomain(domain, xInterval);
 
       expect(newDomain.map(d => d.toISOString())).toEqual([
         "2020-03-31T06:00:00.000Z",
