@@ -100,9 +100,6 @@ export function applyChartTimeseriesXAxis(
   const dataOffset =
     parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
-  // compute the data interval
-  const dataInterval = xInterval;
-
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
       chart.settings["graph.x_axis.title_text"] ||
@@ -116,7 +113,7 @@ export function applyChartTimeseriesXAxis(
     );
 
     if (dimensionColumn.unit == null) {
-      dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
+      dimensionColumn = { ...dimensionColumn, unit: xInterval.interval };
     }
 
     chart.xAxis().tickFormat(timestamp => {
@@ -144,15 +141,15 @@ export function applyChartTimeseriesXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
+  xDomain = stretchTimeseriesDomain(xDomain, xInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  chart.x(d3.time.scale.utc().domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
     Math.ceil(
-      1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count,
+      1 + moment(stop).diff(start, xInterval.interval) / xInterval.count,
     ),
   );
 }
