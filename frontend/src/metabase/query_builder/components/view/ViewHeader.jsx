@@ -17,9 +17,7 @@ import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
-import QuestionSummaries, {
-  QuestionSummarizeWidget,
-} from "./QuestionSummaries";
+import { QuestionSummarizeWidget } from "./QuestionSummaries";
 
 import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
@@ -106,13 +104,7 @@ export class ViewTitleHeader extends React.Component {
             <ViewSubHeading className="flex align-center">
               <CollectionBadge collectionId={question.collectionId()} />
               <span className="mx2 text-light text-smaller">•</span>
-              {QuestionSummaries.shouldRender(this.props) && (
-                <QuestionSummaries
-                  className="mr1"
-                  question={question}
-                  onEditSummary={onEditSummary}
-                />
-              )}
+
               <QuestionDataSource question={question} subHead />
               {QuestionFilters.shouldRender(this.props) && (
                 <QuestionFilters
@@ -145,13 +137,6 @@ export class ViewTitleHeader extends React.Component {
                 )}
             </div>
             <div className="flex align-center">
-              {QuestionSummaries.shouldRender(this.props) && (
-                <QuestionSummaries
-                  className="mr1"
-                  question={question}
-                  onEditSummary={onEditSummary}
-                />
-              )}
               {isSummarized && (
                 <QuestionDataSource question={question} subHead />
               )}
