@@ -3,11 +3,11 @@
   wraps each middleware function for debugging purposes."
   (:require [clojure.data :as data]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.query-processor.middleware.mbql-to-native :as mbql-to-native]
+            [metabase.query-processor.middleware
+             [async :as async]
+             [mbql-to-native :as mbql-to-native]]
             [metabase.util :as u]
-            [schema.core :as s]
-            [clojure.core.async :as a]
-            [metabase.query-processor.middleware.async :as async]))
+            [schema.core :as s]))
 
 (def ^:private ^:dynamic *timeout* 5000)
 
