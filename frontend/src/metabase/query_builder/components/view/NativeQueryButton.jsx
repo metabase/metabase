@@ -105,3 +105,9 @@ export default class NativeQueryButton extends React.Component {
     );
   }
 }
+
+NativeQueryButton.shouldRender = ({ question, queryBuilderMode }) =>
+  queryBuilderMode === "notebook" &&
+  question.isStructured() &&
+  question.database() &&
+  question.database().native_permissions === "write";

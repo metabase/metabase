@@ -10,17 +10,19 @@ import CollectionBadge from "metabase/questions/components/CollectionBadge";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
-import QuestionFilters, { questionHasFilters } from "./QuestionFilters";
-import QuestionSummaries from "./QuestionSummaries";
-
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
-import NativeQueryButton from "./NativeQueryButton";
 
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
+import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
+import QuestionSummaries, {
+  QuestionSummarizeWidget,
+} from "./QuestionSummaries";
+
+import NativeQueryButton from "./NativeQueryButton";
+import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -46,7 +48,6 @@ export class ViewTitleHeader extends React.Component {
       onOpenModal,
       originalQuestion,
       isDirty,
-      isNew,
       queryBuilderMode,
       setQueryBuilderMode,
       result,
@@ -56,24 +57,24 @@ export class ViewTitleHeader extends React.Component {
       isPreviewing,
       runQuestionQuery,
       cancelQuery,
-      onOpenAddAggregation,
+      isEditingSummary,
+      onEditSummary,
+      onCloseSummary,
     } = this.props;
+    const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
     const description = question.description();
 
     const isStructured = question.isStructured();
     const isNative = question.isNative();
     const isSaved = question.isSaved();
-    const isSummarized = isStructured && question.query().hasAggregations();
 
-    const isFiltersVisible = QuestionFilters.shouldRender({
-      question,
-      queryBuilderMode,
-    });
-    const isFiltersExpanded =
-      isFiltersVisible &&
-      question.query().hasFilters() &&
-      this.state.isFiltersExpanded;
+    const isSummarized =
+      isStructured &&
+      question
+        .query()
+        .topLevelQuery()
+        .hasAggregations();
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
 
@@ -105,8 +106,15 @@ export class ViewTitleHeader extends React.Component {
             <ViewSubHeading className="flex align-center">
               <CollectionBadge collectionId={question.collectionId()} />
               <span className="mx2 text-light text-smaller">•</span>
+              {QuestionSummaries.shouldRender(this.props) && (
+                <QuestionSummaries
+                  className="mr1"
+                  question={question}
+                  onEditSummary={onEditSummary}
+                />
+              )}
               <QuestionDataSource question={question} subHead />
-              {isFiltersVisible && (
+              {QuestionFilters.shouldRender(this.props) && (
                 <QuestionFilters
                   question={question}
                   expanded={isFiltersExpanded}
@@ -126,29 +134,38 @@ export class ViewTitleHeader extends React.Component {
                   <QuestionDescription question={question} />
                 )}
               </ViewHeading>
-              {isFiltersVisible && showFiltersInHeading && (
-                <QuestionFilters
-                  question={question}
-                  expanded={isFiltersExpanded}
-                  onExpand={this.expandFilters}
-                  onCollapse={this.collapseFilters}
-                />
-              )}
+              {showFiltersInHeading &&
+                QuestionFilters.shouldRender(this.props) && (
+                  <QuestionFilters
+                    question={question}
+                    expanded={isFiltersExpanded}
+                    onExpand={this.expandFilters}
+                    onCollapse={this.collapseFilters}
+                  />
+                )}
             </div>
             <div className="flex align-center">
+              {QuestionSummaries.shouldRender(this.props) && (
+                <QuestionSummaries
+                  className="mr1"
+                  question={question}
+                  onEditSummary={onEditSummary}
+                />
+              )}
               {isSummarized && (
                 <QuestionDataSource question={question} subHead />
               )}
-              {isFiltersVisible && !showFiltersInHeading && (
-                <QuestionFilters
-                  question={question}
-                  expanded={isFiltersExpanded}
-                  onExpand={this.expandFilters}
-                  onCollapse={this.collapseFilters}
-                />
-              )}
+              {!showFiltersInHeading &&
+                QuestionFilters.shouldRender(this.props) && (
+                  <QuestionFilters
+                    question={question}
+                    expanded={isFiltersExpanded}
+                    onExpand={this.expandFilters}
+                    onCollapse={this.collapseFilters}
+                  />
+                )}
             </div>
-            {QuestionLineage.shouldRender({ question, originalQuestion }) && (
+            {QuestionLineage.shouldRender(this.props) && (
               <div className="mt1">
                 <ViewSubHeading>
                   <QuestionLineage
@@ -161,12 +178,9 @@ export class ViewTitleHeader extends React.Component {
           </div>
         )}
         <div className="ml-auto flex align-center">
-          {isShowingNotebook &&
-            question.isStructured() &&
-            question.database() &&
-            question.database().native_permissions === "write" && (
-              <NativeQueryButton size={20} question={question} />
-            )}
+          {NativeQueryButton.shouldRender(this.props) && (
+            <NativeQueryButton size={20} question={question} />
+          )}
           {isDirty ? (
             <Button
               medium
@@ -174,42 +188,46 @@ export class ViewTitleHeader extends React.Component {
               onClick={() => onOpenModal("save")}
             >{t`Save`}</Button>
           ) : null}
-          {!isShowingNotebook &&
-            QuestionSummaries.shouldRender({ question, queryBuilderMode }) && (
-              <QuestionSummaries
-                key="summarize"
-                className="ml1"
-                question={question}
-                onOpenAddAggregation={onOpenAddAggregation}
-              />
-            )}
+          {QuestionFilterWidget.shouldRender(this.props) && (
+            <QuestionFilterWidget ml={1} query={question.query()} />
+          )}
+          {QuestionSummarizeWidget.shouldRender(this.props) && (
+            <QuestionSummarizeWidget
+              ml={1}
+              question={question}
+              isEditingSummary={isEditingSummary}
+              onEditSummary={onEditSummary}
+              onCloseSummary={onCloseSummary}
+            />
+          )}
           {question.isStructured() && (
             <Button
-              icon="list"
+              borderless={!isShowingNotebook}
+              primary={isShowingNotebook}
               medium
               ml={1}
-              primary={isShowingNotebook}
-              style={{ minWidth: 115 }}
+              icon="notebook"
               onClick={() =>
                 setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
               }
-            >
-              {isShowingNotebook ? t`Hide editor` : t`Show editor`}
-            </Button>
-          )}
-          {!isShowingNotebook && !question.isNative() && isRunnable && (
-            <RunButtonWithTooltip
-              compact
-              className="ml1"
-              result={result}
-              isRunnable={isRunnable}
-              isRunning={isRunning}
-              isDirty={isResultDirty}
-              isPreviewing={isPreviewing}
-              onRun={() => runQuestionQuery({ ignoreCache: true })}
-              onCancel={() => cancelQuery()}
             />
           )}
+          <RunButtonWithTooltip
+            className={cx({
+              hidden: isShowingNotebook || isNative || !isRunnable,
+            })}
+            medium
+            borderless
+            ml={1}
+            compact
+            result={result}
+            isRunnable={isRunnable}
+            isRunning={isRunning}
+            isDirty={isResultDirty}
+            isPreviewing={isPreviewing}
+            onRun={() => runQuestionQuery({ ignoreCache: true })}
+            onCancel={() => cancelQuery()}
+          />
         </div>
       </ViewSection>
     );
@@ -258,6 +276,7 @@ export class ViewSubHeader extends React.Component {
       middle.push(
         <RunButtonWithTooltip
           key="run"
+          medium
           circular
           result={result}
           isRunnable={isRunnable}

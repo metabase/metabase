@@ -30,6 +30,7 @@ export default class RunButton extends Component {
       className,
       compact,
       circular,
+      ...props,
     } = this.props;
     let buttonText = null;
     let buttonIcon = null;
@@ -52,7 +53,7 @@ export default class RunButton extends Component {
     }
     return (
       <Button
-        medium
+        {...props}
         icon={buttonIcon}
         primary={isDirty}
         className={cx(className, { circular: circular })}

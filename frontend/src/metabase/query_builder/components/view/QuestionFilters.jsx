@@ -3,36 +3,45 @@ import React from "react";
 import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
-import Icon from "metabase/components/Icon";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
+import Button from "metabase/components/Button";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import ViewFilterPopover from "metabase/query_builder/components/view/ViewFilterPopover";
 
-import { alpha } from "metabase/lib/colors";
+import ViewFilterPopover from "./ViewFilterPopover";
+import ViewPill from "./ViewPill";
 
-const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
+import colors from "metabase/lib/colors";
+
+const FilterPill = props => <ViewPill color={colors["accent2"]} {...props} />;
+
+const FilterButton = props => (
+  <Button
+    medium
+    icon="filter"
+    color={colors["accent2"]}
+    {...props}
+  >{`Filter`}</Button>
+);
+
+export default function QuestionFilters({
+  question,
+  expanded,
+  onExpand,
+  onCollapse,
+}) {
   const query = question.query();
   const filters = query.topLevelFilters();
-  return filters.length === 0 ? (
-    <PopoverWithTrigger
-      triggerElement={<FilterButton icon="filter">{`Filter`}</FilterButton>}
-      triggerClasses="flex align-center"
-      sizeToFit
-    >
-      <ViewFilterPopover
-        query={query}
-        onChangeFilter={newFilter =>
-          newFilter.add().update(null, { run: true })
-        }
-      />
-    </PopoverWithTrigger>
-  ) : expanded ? (
+  return filters.length === 0 ? null : expanded ? (
     <div className="flex align-center">
-      <FilterButton invert icon="filter" className="mr1" onClick={onCollapse} />
+      <FilterPill invert icon="filter" className="mr1" onClick={onCollapse} />
       {filters.map((filter, index) => (
         <PopoverWithTrigger
-          triggerElement={<FilterButton>{filter.displayName()}</FilterButton>}
+          triggerElement={
+            <FilterPill
+              onRemove={() => filter.remove().update(null, { run: true })}
+            >
+              {filter.displayName()}
+            </FilterPill>
+          }
           triggerClasses="flex align-center mr1"
           sizeToFit
         >
@@ -45,8 +54,8 @@ const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
           />
         </PopoverWithTrigger>
       ))}
-      <PopoverWithTrigger
-        triggerElement={<FilterButton icon="add" />}
+      {/* <PopoverWithTrigger
+        triggerElement={<FilterPill icon="add" />}
         triggerClasses="flex align-center"
         sizeToFit
       >
@@ -56,55 +65,40 @@ const QuestionFilters = ({ question, expanded, onExpand, onCollapse }) => {
             newFilter.add().update(null, { run: true })
           }
         />
-      </PopoverWithTrigger>
+      </PopoverWithTrigger> */}
     </div>
   ) : (
     <Tooltip tooltip={`Show filters`}>
-      <FilterButton invert icon="filter" onClick={onExpand}>
+      <FilterPill invert icon="filter" onClick={onExpand}>
         {filters.length}
-      </FilterButton>
+      </FilterPill>
     </Tooltip>
   );
-};
+}
 
-const FilterButton = ({
-  className,
-  style = {},
-  invert,
-  children,
-  onClick,
-  icon,
-  ...props
-}) => (
-  <span
-    className={cx("rounded flex-align center text-bold", className, {
-      "cursor-pointer": onClick,
-    })}
-    style={{
-      padding: 2,
-      paddingLeft: icon ? 5 : 8,
-      paddingRight: children ? 8 : 5,
-      ...(invert
-        ? { backgroundColor: "#7172AD", color: "white" }
-        : { backgroundColor: alpha("#7172AD", 0.2), color: "#7172AD" }),
-      ...style,
-    }}
-    onClick={onClick}
-  >
-    {icon && <Icon name={icon} size={12} className={cx({ mr1: !!children })} />}
-    {children}
-  </span>
-);
+export function QuestionFilterWidget({ query, ...props }) {
+  return (
+    <PopoverWithTrigger
+      triggerElement={<FilterButton {...props} />}
+      triggerClasses="flex align-center"
+      sizeToFit
+    >
+      <ViewFilterPopover
+        query={query}
+        onChangeFilter={newFilter =>
+          newFilter.add().update(null, { run: true })
+        }
+      />
+    </PopoverWithTrigger>
+  );
+}
 
 QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
-  question &&
-  question.query() instanceof StructuredQuery &&
-  question.query().table() &&
-  queryBuilderMode !== "notebook";
-
-export const questionHasFilters = question =>
-  question &&
-  question.query() instanceof StructuredQuery &&
+  queryBuilderMode === "view" &&
+  question.isStructured() &&
   question.query().topLevelFilters().length > 0;
 
-export default QuestionFilters;
+QuestionFilterWidget.shouldRender = ({ question, queryBuilderMode }) =>
+  queryBuilderMode === "view" &&
+  question.isStructured() &&
+  question.query().table();

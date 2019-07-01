@@ -74,26 +74,28 @@ const mapStateToProps = (state, props) => {
     isAdmin: getUserIsAdmin(state, props),
     fromUrl: props.location.query.from,
 
-    question: getQuestion(state),
-    query: getQuery(state),
-
     mode: getMode(state),
 
-    card: getCard(state),
-    originalCard: getOriginalCard(state),
+    question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),
     lastRunCard: getLastRunCard(state),
 
     parameterValues: getParameterValues(state),
 
+    tableForeignKeys: getTableForeignKeys(state),
+    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+
+    // TODO: legacy
+    card: getCard(state),
+    originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
     nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
     tableMetadata: getTableMetadata(state),
-    metadata: getMetadata(state),
 
-    tableForeignKeys: getTableForeignKeys(state),
-    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+    // TODO: redundant, accessible through question
+    query: getQuery(state),
+    metadata: getMetadata(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),

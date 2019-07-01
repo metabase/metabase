@@ -328,7 +328,7 @@ export function getDefaultDimensionsAndMetrics(
       // if the series dimension is a date but the axis dimension is not then swap them
       dimensions.reverse();
     } else if (
-      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) >
+      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) <
       getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]))
     ) {
       // if the series dimension is higher cardinality than the axis dimension then swap them

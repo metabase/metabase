@@ -27,7 +27,7 @@ function updateAndRun(query) {
     .update(null, { run: true });
 }
 
-const AggregationSidebar = ({ question, index, onClose }) => {
+export default function SummarizeSidebar({ question, onClose, className }) {
   // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
   const query = question.query().topLevelQuery();
   return (
@@ -35,7 +35,7 @@ const AggregationSidebar = ({ question, index, onClose }) => {
       title={t`Pick what you want to view`}
       onClose={onClose}
       onDone={onClose}
-      className="full-height"
+      className={cx(className, "full-height")}
     >
       <div className="px4 pt1">
         {query.aggregations().map((aggregation, index) => (
@@ -57,7 +57,7 @@ const AggregationSidebar = ({ question, index, onClose }) => {
       )}
     </SidebarContent>
   );
-};
+}
 
 const SummarizeAggregation = ({ className, aggregation, index, query }) => {
   return (
@@ -181,7 +181,3 @@ const SummarizeBreakouts = ({ className, query }) => {
     />
   );
 };
-
-const SectionTitle = styled.h3.attrs({ className: "text-medium" })``;
-
-export default AggregationSidebar;

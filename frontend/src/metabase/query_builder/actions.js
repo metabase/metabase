@@ -105,57 +105,17 @@ export const setQueryBuilderMode = (
 
 // NOTE: technically these should be in the reducer but ¯\_(ツ)_/¯
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  isAddingFilter: false,
-  isEditingFilterIndex: null,
-  isAddingAggregation: false,
-  isEditingAggregationIndex: null,
-  isAddingBreakout: false,
-  isEditingBreakoutIndex: null,
+  isEditingSummary: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
 };
-// FILTER
-export const onOpenAddFilter = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isAddingFilter: true,
-  });
-export const onOpenEditFilter = index =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isEditingFilterIndex: index,
-  });
-export const onCloseFilter = index =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
 // AGGREGATION
-export const onOpenAddAggregation = () =>
+export const onEditSummary = () =>
   setUIControls({
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isAddingAggregation: true,
+    isEditingSummary: true,
   });
-export const onOpenEditAggregation = index =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isEditingAggregationIndex: index,
-  });
-export const onCloseAggregation = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
-// BREAKOUT
-export const onOpenAddBreakout = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isAddingBreakout: true,
-  });
-export const onOpenEditBreakout = index =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isEditingBreakoutIndex: index || 0,
-  });
-export const onCloseBreakout = () =>
+export const onCloseSummary = () =>
   setUIControls({
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
   });

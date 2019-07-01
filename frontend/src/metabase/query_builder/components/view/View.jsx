@@ -3,6 +3,7 @@ import React from "react";
 import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
+import DebouncedFrame from "metabase/components/DebouncedFrame";
 
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -13,8 +14,6 @@ import SavedQuestionIntroModal from "../SavedQuestionIntroModal";
 import AggregationPopover from "../AggregationPopover";
 import BreakoutPopover from "../BreakoutPopover";
 
-import DebouncedFrame from "metabase/components/DebouncedFrame";
-
 import QueryModals from "../QueryModals";
 import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
@@ -23,10 +22,6 @@ import ViewSidebar from "./ViewSidebar";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
-
-import FilterSidebar from "./sidebars/FilterSidebar";
-// import AggregationSidebar from "./sidebars/AggregationSidebar";
-// import BreakoutSidebar from "./sidebars/BreakoutSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
 import Notebook from "../notebook/Notebook";
@@ -89,12 +84,7 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingChartTypeSidebar,
       isShowingChartSettingsSidebar,
-      isAddingFilter,
-      isEditingFilterIndex,
-      isAddingAggregation,
-      isEditingAggregationIndex,
-      isAddingBreakout,
-      isEditingBreakoutIndex,
+      isEditingSummary,
       queryBuilderMode,
       mode,
     } = this.props;
@@ -122,25 +112,10 @@ export default class View extends React.Component {
       isStructured && query.hasBreakouts() ? this.handleEditBreakout : null;
 
     const leftSideBar =
-      isStructured && (isEditingFilterIndex != null || isAddingFilter) ? (
-        <FilterSidebar
-          question={question}
-          index={isEditingFilterIndex}
-          onClose={this.props.onCloseFilter}
-        />
-      ) : isStructured &&
-        (isEditingAggregationIndex != null || isAddingAggregation) ? (
+      isStructured && isEditingSummary ? (
         <SummarizeSidebar
           question={question}
-          initialAggregationIndex={isEditingAggregationIndex}
-          onClose={this.props.onCloseAggregation}
-        />
-      ) : isStructured &&
-        (isEditingBreakoutIndex != null || isAddingBreakout) ? (
-        <SummarizeSidebar
-          question={question}
-          initialBreakoutIndex={isEditingBreakoutIndex}
-          onClose={this.props.onCloseBreakout}
+          onClose={this.props.onCloseSummary}
         />
       ) : isShowingChartSettingsSidebar ? (
         <ChartSettingsSidebar

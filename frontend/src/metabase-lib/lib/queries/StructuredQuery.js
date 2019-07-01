@@ -949,6 +949,7 @@ export default class StructuredQuery extends AtomicQuery {
     return [...this.expressionDimensions(), ...this.tableDimensions()];
   }
 
+  @memoize
   tableDimensions(): Dimension[] {
     const table: Table = this.table();
     return table
@@ -959,6 +960,7 @@ export default class StructuredQuery extends AtomicQuery {
       : [];
   }
 
+  @memoize
   expressionDimensions(): Dimension[] {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
@@ -972,14 +974,17 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
+  @memoize
   joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.joinedDimensions()));
   }
 
+  @memoize
   breakoutDimensions() {
     return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   }
 
+  @memoize
   aggregationDimensions() {
     return this.aggregations().map(
       (aggregation, index) =>
@@ -987,6 +992,7 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
+  @memoize
   fieldDimensions() {
     return this.fields().map((fieldClause, index) =>
       this.parseFieldReference(fieldClause),

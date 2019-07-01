@@ -3,63 +3,76 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import Button from "metabase/components/Button";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-// import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-// import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
-// const QuestionSummaries = ({ question, triggerElement }) => (
-//   <PopoverWithTrigger
-//     triggerElement={
-//       <Button
-//         medium
-//         icon="insight"
-//         color="#84BB4C"
-//         className="mr2"
-//       >{t`Summarize`}</Button>
-//     }
-//   >
-//     <AggregationPopover
-//       query={question.query()}
-//       onChangeAggregation={newAggregation => {
-//         question
-//           .query()
-//           .addAggregation(newAggregation)
-//           .update(null, { run: true });
-//       }}
-//     />
-//   </PopoverWithTrigger>
-// );
+import ViewPill from "./ViewPill";
 
-const QuestionSummaries = ({ className, question, onOpenAddAggregation }) => {
+import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+
+import colors from "metabase/lib/colors";
+
+const SummarizePill = props => (
+  <ViewPill icon="insight" color={colors["accent1"]} {...props} />
+);
+
+const SummarizeButton = props => (
+  <Button medium icon="insight" color={colors["accent1"]} {...props} />
+);
+
+export default function QuestionSummaries({
+  question,
+  onEditSummary,
+  ...props
+}) {
+  return (
+    <PopoverWithTrigger
+      triggerElement={<SummarizePill {...props}>{t`Summarized`}</SummarizePill>}
+      sizeToFit
+    >
+      <SummarizeSidebar className="scroll-y" question={question} />
+    </PopoverWithTrigger>
+  );
+}
+
+export function QuestionSummarizeWidget({
+  question,
+  isEditingSummary,
+  onEditSummary,
+  onCloseSummary,
+  ...props
+}) {
   // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
   const query = question.query().topLevelQuery();
   return (
     <SummarizeButton
-      className={className}
       onClick={async () => {
-        if (!query.hasAggregations()) {
-          await query.addAggregation(["count"]).update(null, { run: true });
+        if (isEditingSummary) {
+          onCloseSummary();
+        } else {
+          if (!query.hasAggregations()) {
+            await query.addAggregation(["count"]).update(null, { run: false });
+          }
+          onEditSummary();
         }
-        onOpenAddAggregation();
       }}
+      {...props}
     >
-      {query.hasAggregations() ? t`Edit summary` : t`Summarize`}
+      {t`Summarize`}
     </SummarizeButton>
   );
-};
-
-const SummarizeButton = ({ className, children, onClick }) => (
-  <Button
-    medium
-    icon="insight"
-    // color="#84BB4C"
-    className={cx(className, "flex-no-shrink")}
-    onClick={onClick}
-  >
-    {children}
-  </Button>
-);
+}
 
 QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
-  question.isStructured() /*&& question.query().aggregations().length === 0*/;
+  queryBuilderMode === "view" &&
+  question &&
+  question.isStructured() &&
+  question
+    .query()
+    .topLevelQuery()
+    .hasAggregations();
 
-export default QuestionSummaries;
+QuestionSummarizeWidget.shouldRender = ({ question, queryBuilderMode }) =>
+  queryBuilderMode === "view" &&
+  question &&
+  question.isStructured() &&
+  question.query().table();
