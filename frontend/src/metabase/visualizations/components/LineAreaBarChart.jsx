@@ -91,6 +91,11 @@ export default class LineAreaBarChart extends Component {
     );
   }
 
+  static isLiveResizable(series) {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
+  }
+
   static checkRenderable(series, settings) {
     const singleSeriesHasNoRows = ({ data: { cols, rows } }) => rows.length < 1;
     if (_.every(series, singleSeriesHasNoRows)) {

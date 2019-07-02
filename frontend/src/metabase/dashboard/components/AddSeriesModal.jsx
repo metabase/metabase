@@ -90,9 +90,7 @@ export default class AddSeriesModal extends Component {
 
   async onCardChange(card, e) {
     const { dashcard, dashcardData } = this.props;
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     try {
       if (e.target.checked) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -111,7 +109,7 @@ export default class AddSeriesModal extends Component {
           card.id,
         ]);
         if (
-          CardVisualization.seriesAreCompatible(
+          visualization.seriesAreCompatible(
             { card: dashcard.card, data: sourceDataset.data },
             { card: card, data: seriesDataset.data },
           )
@@ -179,9 +177,7 @@ export default class AddSeriesModal extends Component {
       data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
     };
 
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
     return cards.filter(card => {
       try {
@@ -191,7 +187,7 @@ export default class AddSeriesModal extends Component {
         }
         if (card.dataset_query.type === "query") {
           if (
-            !CardVisualization.seriesAreCompatible(initialSeries, {
+            !visualization.seriesAreCompatible(initialSeries, {
               card: card,
               data: { cols: getQueryColumns(card, databases), rows: [] },
             })

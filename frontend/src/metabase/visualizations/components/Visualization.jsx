@@ -100,7 +100,7 @@ type Props = {
 
 type State = {
   series: ?Series,
-  CardVisualization: ?(Component<void, VisualizationSettings, void> & {
+  visualization: ?(Component<void, VisualizationSettings, void> & {
     checkRenderable: (any, any) => void,
     noHeader: boolean,
   }),
@@ -131,7 +131,7 @@ export default class Visualization extends Component {
       warnings: [],
       yAxisSplit: null,
       series: null,
-      CardVisualization: null,
+      visualization: null,
     };
   }
 
@@ -336,7 +336,7 @@ export default class Visualization extends Component {
       replacementContent,
       onOpenChartSettings,
     } = this.props;
-    const { CardVisualization } = this.state;
+    const { visualization } = this.state;
     const small = width < 330;
 
     // these may be overridden below
@@ -366,23 +366,23 @@ export default class Visualization extends Component {
 
     if (!loading && !error) {
       settings = this.props.settings || getComputedSettingsForSeries(series);
-      if (!CardVisualization) {
+      if (!visualization) {
         error = t`Could not find visualization`;
       } else {
         try {
-          if (CardVisualization.checkRenderable) {
-            CardVisualization.checkRenderable(series, settings);
+          if (visualization.checkRenderable) {
+            visualization.checkRenderable(series, settings);
           }
         } catch (e) {
           error = e.message || t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            CardVisualization.placeholderSeries &&
+            visualization.placeholderSeries &&
             !isDashboard
           ) {
             // hide the error and replace series with the placeholder series
             error = null;
-            series = CardVisualization.placeholderSeries;
+            series = visualization.placeholderSeries;
             settings = getComputedSettingsForSeries(series);
             isPlaceholder = true;
           } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
@@ -447,6 +447,8 @@ export default class Visualization extends Component {
       };
     }
 
+    const CardVisualization = visualization;
+
     return (
       <div
         className={cx(className, "flex flex-column full-height")}
@@ -457,7 +459,7 @@ export default class Visualization extends Component {
           (loading ||
             error ||
             noResults ||
-            !(CardVisualization && CardVisualization.noHeader))) ||
+            !(visualization && visualization.noHeader))) ||
         replacementContent ? (
           <div className="p1 flex-no-shrink">
             <LegendHeader

@@ -81,6 +81,7 @@ export default class View extends React.Component {
       card,
       isDirty,
       isResultDirty,
+      isLiveResizable,
       runQuestionQuery,
       databases,
       isShowingTemplateTagsEditor,
@@ -232,7 +233,11 @@ export default class View extends React.Component {
 
               <ViewSubHeader {...this.props} />
 
-              <DebouncedFrame className="flex-full" style={{ flexGrow: 1 }}>
+              <DebouncedFrame
+                className="flex-full"
+                style={{ flexGrow: 1 }}
+                enabled={!isLiveResizable}
+              >
                 <QueryVisualization
                   {...this.props}
                   onAddSeries={onAddSeries}

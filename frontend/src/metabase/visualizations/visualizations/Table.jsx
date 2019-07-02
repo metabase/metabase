@@ -64,6 +64,10 @@ export default class Table extends Component {
     return true;
   }
 
+  static isLiveResizable(series) {
+    return false;
+  }
+
   static checkRenderable([
     {
       data: { cols, rows },

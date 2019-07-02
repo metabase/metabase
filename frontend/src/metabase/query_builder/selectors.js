@@ -1,12 +1,17 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
 
+import { getMode as getMode_ } from "metabase/modes/lib/modes";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-
 import { getParametersWithExtras } from "metabase/meta/Card";
 
 import Utils from "metabase/lib/utils";
@@ -16,9 +21,8 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 import Databases from "metabase/entities/databases";
 
-import { getIn } from "icepick";
-
 import { getMetadata } from "metabase/selectors/metadata";
+import { getAlerts } from "metabase/alert/selectors";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -103,13 +107,6 @@ export const getDatabaseFields = createSelector(
   [getDatabaseId, state => state.qb.databaseFields],
   (databaseId, databaseFields) => [], // FIXME!
 );
-
-import { getMode as getMode_ } from "metabase/modes/lib/modes";
-import { getAlerts } from "metabase/alert/selectors";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 
 export const getMode = createSelector(
   [getLastRunCard, getTableMetadata],
@@ -262,15 +259,24 @@ export const getRawSeries = createSelector(
   },
 );
 
+const _getVisualizationTransformed = createSelector(
+  [getRawSeries],
+  rawSeries =>
+    rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)),
+);
+
 /**
  * Returns the final series data that all visualization (starting from the root-level
  * `Visualization.jsx` component) code uses for rendering visualizations.
  */
 export const getTransformedSeries = createSelector(
-  [getRawSeries],
-  rawSeries =>
-    rawSeries &&
-    getVisualizationTransformed(extractRemappings(rawSeries)).series,
+  [_getVisualizationTransformed],
+  transformed => transformed && transformed.series,
+);
+
+export const getTransformedVisualization = createSelector(
+  [_getVisualizationTransformed],
+  transformed => transformed && transformed.visualization,
 );
 
 /**
@@ -332,4 +338,13 @@ export const getIsVisualized = createSelector(
       Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
       // "table.pivot" setting has been implicitly set to true
       (settings && settings["table.pivot"])),
+);
+
+export const getIsLiveResizable = createSelector(
+  [getTransformedSeries, getTransformedVisualization],
+  (series, visualization) =>
+    !series ||
+    !visualization ||
+    !visualization.isLiveResizable ||
+    visualization.isLiveResizable(series),
 );

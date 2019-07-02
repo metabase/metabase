@@ -131,7 +131,7 @@ const ViewFooter = ({
 
 const VizTypeButton = ({ className, question, result, selected, onClick }) => {
   // TODO: move this to QuestionResult or something
-  const { CardVisualization } = getVisualizationRaw([
+  const { visualization } = getVisualizationRaw([
     { card: question.card(), data: result.data },
   ]);
 

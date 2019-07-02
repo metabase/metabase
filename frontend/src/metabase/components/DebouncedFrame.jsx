@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-const DEBOUNCE_PERIOD = 250;
+const DEBOUNCE_PERIOD = 150;
 
 /**
  * This component prevents children elements from being rerendered while it's being resized (currently hard-coded debounce period of 250ms)
@@ -18,6 +18,10 @@ export default class DebouncedFrame extends React.Component {
   // Instead manually modify the style in _updateTransitionStyle
   // There's probably a better way to block renders of children though
   _transition = false;
+
+  static defaultProps = {
+    enabled: true,
+  };
 
   constructor(props) {
     super(props);
@@ -35,6 +39,10 @@ export default class DebouncedFrame extends React.Component {
   setSizeDebounced = _.debounce(this.setSize, DEBOUNCE_PERIOD);
 
   componentWillReceiveProps(nextProps) {
+    if (!nextProps.enabled) {
+      this._updateTransitionStyle();
+      return;
+    }
     if (
       this.props.width !== nextProps.width ||
       this.props.height !== nextProps.height
@@ -59,14 +67,16 @@ export default class DebouncedFrame extends React.Component {
 
   _updateTransitionStyle = () => {
     if (this._container) {
-      this._container.style.opacity = this._transition ? "0.5" : null;
-      this._container.style.pointerEvents = this._transition ? "none" : null;
+      const transition = this._transition && this.props.enabled;
+      this._container.style.opacity = transition ? "0.5" : null;
+      this._container.style.pointerEvents = transition ? "none" : null;
     }
   };
 
   render() {
-    const { children, className, style = {} } = this.props;
-    const { width, height } = this.state;
+    const { children, className, style = {}, enabled } = this.props;
+    // if disabled use width and height from props directly
+    const { width, height } = enabled ? this.state : this.props;
     return (
       <div
         ref={r => (this._container = r)}

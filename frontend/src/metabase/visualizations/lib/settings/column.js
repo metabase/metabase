@@ -441,11 +441,11 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefintionsForColumn(series: Series, column: Column) {
-  const { CardVisualization } = getVisualizationRaw(series);
+  const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
-    typeof CardVisualization.columnSettings === "function"
-      ? CardVisualization.columnSettings(column)
-      : CardVisualization.columnSettings || {};
+    typeof visualization.columnSettings === "function"
+      ? visualization.columnSettings(column)
+      : visualization.columnSettings || {};
 
   if (isDate(column)) {
     return {

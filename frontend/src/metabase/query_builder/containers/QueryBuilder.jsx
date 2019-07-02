@@ -49,6 +49,7 @@ import {
   getIsPreviewing,
   getIsPreviewable,
   getIsVisualized,
+  getIsLiveResizable,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -113,6 +114,7 @@ const mapStateToProps = (state, props) => {
     isPreviewable: getIsPreviewable(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isVisualized: getIsVisualized(state),
+    isLiveResizable: getIsLiveResizable(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
