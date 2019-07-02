@@ -304,7 +304,7 @@
    [37 "bigmista's barbecue" 5 34.118 -118.26 2]
    [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
    [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-  (qp.test/format-rows-by [int str int 4.0 4.0 int]
+  (qp.test/format-rows-by :venues
     (qp.test/rows
       (qp/process-query
         (data/query venues

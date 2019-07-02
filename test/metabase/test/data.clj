@@ -251,13 +251,6 @@
 
 (defn id-field-type  [] (tx/id-field-type (tx/driver)))
 
-(defn expected-base-type->actual
-  "Return actual `base_type` that will be used for the given driver if we asked for BASE-TYPE. Mainly for Oracle
-  because it doesn't have `INTEGER` types and uses decimals instead."
-  [base-type]
-  (tx/expected-base-type->actual (tx/driver) base-type))
-
-
 ;; The functions below are used so infrequently they hardly belong in this namespace.
 
 (defn dataset-field-values

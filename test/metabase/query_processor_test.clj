@@ -6,9 +6,13 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -161,6 +165,40 @@
 
   ([table-kw field-kw]
    (field-literal-col (col table-kw field-kw))))
+
+(defn fk-col
+  "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
+  [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
+  (let [source-col      (col source-table-kw source-field-kw)
+        dest-col        (col dest-table-kw dest-field-kw)
+        dest-table-name (db/select-one-field :name Table :id (data/id dest-table-kw))
+        join-alias      (#'add-implicit-joins/join-alias dest-table-name (:name source-col))]
+    (-> dest-col
+        (update :display_name (partial format "%s → %s" dest-table-name))
+        (assoc :field_ref   [:joined-field join-alias [:field-id (:id dest-col)]]
+               :fk_field_id (:id source-col)))))
+
+(declare cols)
+
+(def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
+  (memoize
+   (fn [db-id table-id field-id]
+     (first
+      (cols
+       (qp/process-query
+         {:database db-id
+          :type     :native
+          :native   (qp/query->native
+                      {:database db-id
+                       :type     :query
+                       :query    {:source-table table-id
+                                  :fields       [[:field_id field-id]]
+                                  :limit        1}})}))))))
+
+(defn native-query-col
+  "Return expected `:cols` info for a Field from a native query or native source query."
+  [table-kw field-kw]
+  (native-query-col* (data/id) (data/id table-kw) (data/id table-kw field-kw)))
 
 (defn ^:deprecated booleanize-native-form
   "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
