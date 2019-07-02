@@ -131,7 +131,10 @@ payload = {
   :params => {
     ${Object.entries(params)
       .map(
-        ([key, value]) => JSON.stringify(key) + " => " + (value === null ? "nil" : JSON.stringify(value)),
+        ([key, value]) =>
+          JSON.stringify(key) +
+          " => " +
+          (value === null ? "nil" : JSON.stringify(value)),
       )
       .join(",\n    ")}
   },
