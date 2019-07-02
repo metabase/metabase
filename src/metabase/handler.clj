@@ -14,6 +14,7 @@
             [metabase.plugins.classloader :as classloader]
             [ring.middleware
              [cookies :refer [wrap-cookies]]
+             [gzip :refer [wrap-gzip]]
              [keyword-params :refer [wrap-keyword-params]]
              [params :refer [wrap-params]]]))
 
@@ -43,10 +44,9 @@
    mw.session/wrap-session-id              ; looks for a Metabase Session ID and assoc as :metabase-session-id
    mw.auth/wrap-api-key                    ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
    mw.misc/maybe-set-site-url              ; set the value of `site-url` if it hasn't been set yet
-   ;; Disabled for now because some things like CSV download buttons don't work with this on.
    mw.misc/bind-user-locale                ; Binds *locale* for i18n
    wrap-cookies                            ; Parses cookies in the request map and assocs as :cookies
    mw.misc/add-content-type                ; Adds a Content-Type header for any response that doesn't already have one
    mw.misc/disable-streaming-buffering     ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes
-   mw.misc/wrap-gzip))                     ; GZIP response if client can handle it
+   wrap-gzip))                             ; GZIP response if client can handle it
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP
