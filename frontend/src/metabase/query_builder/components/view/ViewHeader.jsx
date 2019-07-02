@@ -197,22 +197,22 @@ export class ViewTitleHeader extends React.Component {
               }
             />
           )}
-          <RunButtonWithTooltip
-            className={cx({
-              hidden: isShowingNotebook || isNative || !isRunnable,
-            })}
-            medium
-            borderless
-            ml={1}
-            compact
-            result={result}
-            isRunnable={isRunnable}
-            isRunning={isRunning}
-            isDirty={isResultDirty}
-            isPreviewing={isPreviewing}
-            onRun={() => runQuestionQuery({ ignoreCache: true })}
-            onCancel={() => cancelQuery()}
-          />
+          {isRunnable && !isNative && (
+            <RunButtonWithTooltip
+              className={cx({ hidden: isShowingNotebook })}
+              medium
+              borderless
+              ml={1}
+              compact
+              result={result}
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isDirty={isResultDirty}
+              isPreviewing={isPreviewing}
+              onRun={() => runQuestionQuery({ ignoreCache: true })}
+              onCancel={() => cancelQuery()}
+            />
+          )}
         </div>
       </ViewSection>
     );
