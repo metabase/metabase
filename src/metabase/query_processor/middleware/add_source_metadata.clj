@@ -9,7 +9,8 @@
              [store :as qp.store]]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as add-implicit-clauses]
-             [annotate :as annotate]]
+             [annotate :as annotate]
+             [pre-alias-aggregations :as pre-alias-ags]]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -21,7 +22,7 @@
   (let [field-ids (mbql.u/match (concat breakouts aggregations fields) [:field-id id] id)]
     (qp.store/fetch-and-store-fields! field-ids))
   (for [col (annotate/cols-for-mbql-query source-query)]
-    (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint])))
+    (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -78,11 +79,22 @@
          {:source-query source-query}))
       nil)))
 
+(defn- partially-preprocess-source-query
+  "Unfortunately there are a few middleware transformations that would normally come later but need to be done here for
+  nested source queries before proceeding. This middleware applies those transformations.
+
+  TODO - in a nicer world there would be no need to do such things. It defeats the purpose of having distinct
+  middleware stages."
+  [source-query]
+  (-> source-query
+      pre-alias-ags/pre-alias-aggregations-in-inner-query
+      add-implicit-clauses/add-implicit-mbql-clauses))
+
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
   (let [source-query (if native-source-query?
                        source-query
-                       (add-implicit-clauses/add-implicit-mbql-clauses source-query))
+                       (partially-preprocess-source-query source-query))
         metadata     (source-query->metadata source-query)]
     (assoc inner-query :source-metadata metadata)))
 

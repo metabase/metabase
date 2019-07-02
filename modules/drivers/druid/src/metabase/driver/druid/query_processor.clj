@@ -581,8 +581,8 @@
   [query-type ag-clause updated-query]
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
-                                    [:named ag _] (recur ag)
-                                    [_ _ & _]     &match)]
+                                    [:named ag & _] (recur ag)
+                                    [_ _ & _]       &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
@@ -661,21 +661,20 @@
 
 (defn- handle-aggregations
   [query-type {aggregations :aggregation} updated-query]
-  (let [aggregations (mbql.u/pre-alias-and-uniquify-aggregations annotate/aggregation-name aggregations)]
-    (loop [[ag & more] aggregations, query updated-query]
-      (cond
-        (and (mbql.u/is-clause? :named ag)
-             (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
-        (handle-expression-aggregation query-type ag query)
+  (loop [[ag & more] aggregations, query updated-query]
+    (cond
+      (and (mbql.u/is-clause? :named ag)
+           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
+      (handle-expression-aggregation query-type ag query)
 
-        (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-        (handle-expression-aggregation query-type ag query)
+      (mbql.u/is-clause? #{:+ :- :/ :*} ag)
+      (handle-expression-aggregation query-type ag query)
 
-        (not ag)
-        query
+      (not ag)
+      query
 
-        :else
-        (recur more (handle-aggregation query-type ag query))))))
+      :else
+      (recur more (handle-aggregation query-type ag query)))))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------

@@ -107,7 +107,7 @@
     (format "%s → %s" join-display-name field-display-name)))
 
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [inner-query :- su/Map, clause :- mbql.s/Field]
+  [{:keys [source-metadata], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
@@ -134,10 +134,13 @@
     [:fk-> _ field]
     (recur field)
 
+    ;; for field literals, look for matching `source-metadata`, and use that if we can find it; otherwise generate
+    ;; basic info based on the content of the field literal
     [:field-literal field-name field-type]
-    {:name         field-name
-     :base_type    field-type
-     :display_name (humanization/name->human-readable-name field-name)}
+    (or (some #(when (= (:name %) field-name) %) source-metadata)
+        {:name         field-name
+         :base_type    field-type
+         :display_name (humanization/name->human-readable-name field-name)})
 
     [:expression expression-name]
     {:name            expression-name
@@ -198,7 +201,7 @@
   (mbql.u/match-one ag-clause
     ;; if a custom name was provided use it. Some drivers have limits on column names, so call
     ;; `format-custom-field-name` so they can modify it as needed.
-    [:named _ ag-name]
+    [:named _ ag-name & _]
     (driver/format-custom-field-name driver/*driver* ag-name)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
@@ -240,8 +243,13 @@
   "Return an appropriate user-facing display name for an aggregation clause."
   [ag-clause]
   (mbql.u/match-one ag-clause
-    ;; if a custom name was provided use it
-    [:named _ ag-name]
+    ;; if the `named` clause has options, and *explicity* specifies {:use-as-display-name? false}, generate a name based
+    ;; on the wrapped clause instead
+    [:named wrapped-clause _ (_ :guard #(false? (:use-as-display-name? %)))]
+    (aggregation-display-name wrapped-clause)
+
+    ;; otherwise for a `named` aggregation use the supplied name as the display name
+    [:named _ ag-name & _]
     ag-name
 
     [(operator :guard #{:+ :- :/ :*}) & args]
@@ -284,7 +292,7 @@
   [inner-query :- su/Map, clause]
   (mbql.u/match-one clause
     ;; ok, if this is a named aggregation recurse so we can get information about the ag we are naming
-    [:named ag _]
+    [:named ag & _]
     (merge
      (col-info-for-aggregation-clause inner-query ag)
      (ag->name-info &match))
@@ -394,9 +402,9 @@
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
-(defn ^:private mbql-cols
+(s/defn ^:private mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the query."
-  [{:keys [source-metadata source-query fields], :as inner-query} results]
+  [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
       (and (empty? cols) source-query)
@@ -466,14 +474,11 @@
 ;;; |                                     result-rows-maps-to-vectors middleware                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- uniquify-aggregations [inner-query]
-  (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations aggregation-name)))
-
 (s/defn ^:private expected-column-sort-order :- [s/Keyword]
   "Determine query result row column names (as keywords) sorted in the appropriate order based on a `query`."
-  [{query-type :type, inner-query :query, :as query} {[first-row] :rows, :as results}]
+  [{query-type :type, inner-query :query, :as query} :- su/Map, {[first-row] :rows, :as results}]
   (if (= query-type :query)
-    (map (comp keyword :name) (mbql-cols (uniquify-aggregations inner-query) results))
+    (map (comp keyword :name) (mbql-cols inner-query results))
     (map keyword (keys first-row))))
 
 (defn- result-rows-maps->vectors* [query {[first-row :as rows] :rows, columns :columns, :as results}]
@@ -511,11 +516,6 @@
   *  For obvious reasons, drivers that returns rows as maps cannot support duplicate column names. Thus it is expected
      that drivers that use functionality provided by this middleware return deduplicated column names, e.g. `:sum` and
      `:sum_2` for queries with multiple `:sum` aggregations.
-
-     Call `mbql.u/pre-alias-and-uniquify-aggregations` on your query before processing it tp add appropriate aliases to
-     aggregations. Currently this assumes you are passing `annotate/aggregation-name` as the function to generate
-     aggregation names; if your driver is doing something drastically different, you may need to tweak the keys in the
-     result row maps so they match up with the keys generated by that function.
 
   *  For *nested* Fields, this namespace assumes result row maps will come back flattened, and Field name keys will
      come back qualified by names of their ancestors, e.g. `parent.child`, `grandparent.parent.child`, etc. This is done

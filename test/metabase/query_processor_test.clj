@@ -91,7 +91,7 @@
    (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
      :id (data/id table-kw field-kw))
    {:field_ref [:field-id (data/id table-kw field-kw)]}
-   (when (= field-kw :last_login)
+   (when (#{:last_login :date} field-kw)
      {:unit      :default
       :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
 
@@ -138,17 +138,36 @@
    (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw))))
 
 (defn breakout-col
+  "Return expected `:cols` info for a Field used as a breakout.
+
+    (breakout-col :venues :price)"
   ([col]
    (assoc col :source :breakout))
 
   ([table-kw field-kw]
    (breakout-col (col table-kw field-kw))))
 
+(defn field-literal-col
+  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`.
+
+    (field-literal-col :venues :price)
+    (field-literal-col (aggregate-col :count))"
+  {:arglists '([col] [table-kw field-kw])}
+  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+   (-> col
+       (assoc :field_ref [:field-literal field-name base-type]
+              :source    :fields)
+       (dissoc :description :parent_id :visibility_type)))
+
+  ([table-kw field-kw]
+   (field-literal-col (col table-kw field-kw))))
+
 (defn ^:deprecated booleanize-native-form
   "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
   as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled.
 
-  DEPRECATED: Just use `qp.test/rows` or `qp.test/row-and-cols` instead."
+  DEPRECATED: Just use `qp.test/rows`, `qp.test/row-and-cols`, or `qp.test/rows+column-names` instead, combined with
+  functions like `col` as needed."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
@@ -160,8 +179,16 @@
     :categories [int identity]
     :checkins   [int identity int int]
     :users      [int identity identity]
-    :venues     [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
-    (throw (IllegalArgumentException. (format "Sorry, we don't have default format-rows-by fns for Table %s." table-kw)))))
+    :venues     [int identity int 4.0 4.0 int]
+    (throw
+     (IllegalArgumentException. (format "Sorry, we don't have default format-rows-by fns for Table %s." table-kw)))))
+
+(defn- format-rows-fn
+  "Handle a value formatting function passed to `format-rows-by`."
+  [x]
+  (if (float? x)
+    (partial u/round-to-decimals (int x))
+    x))
 
 (defn format-rows-by
   "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
@@ -172,7 +199,12 @@
   `format-fns` can be a sequence of functions, or may be the name of one of the 'big four' test data Tables to use
   their defaults:
 
-    (format-rows-by :venue (data/run-mbql-query :venues))
+    (format-rows-by :venues (data/run-mbql-query :venues))
+
+  Additionally, you may specify an floating-point number in the rounding functions vector as shorthand for formatting
+  with `u/round-to-decimals`:
+
+    (format-rows-by [identity 4.0] ...) ;-> (format-rows-by [identity (partial u/round-to-decimals 4)] ...)
 
   By default, does't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
   this behavior."
@@ -185,9 +217,11 @@
      (println "Error running query:" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
-   (let [format-fns (if (keyword? format-fns)
-                      (default-format-rows-by-fns format-fns)
-                      format-fns)]
+   (let [format-fns (map
+                     format-rows-fn
+                     (if (keyword? format-fns)
+                       (default-format-rows-by-fns format-fns)
+                       format-fns))]
      (-> response
          ((fn format-rows [rows]
             (cond

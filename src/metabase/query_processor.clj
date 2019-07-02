@@ -38,6 +38,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [pre-alias-aggregations :as pre-alias-ags]
              [process-userland-query :as process-userland-query]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database :as resolve-database]
@@ -107,6 +108,7 @@
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
+   #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
    ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
    #'resolve-joins/resolve-joins
