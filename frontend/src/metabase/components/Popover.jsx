@@ -276,14 +276,14 @@ export default class Popover extends Component {
 
   _renderPopover(isOpen) {
     // popover is open, lets do this!
-    const popoverElement = this._getPopoverElement();
-    ReactDOM.unstable_renderSubtreeIntoContainer(
-      this,
-      <span>{isOpen ? this._popoverComponent() : null}</span>,
-      popoverElement,
-    );
-
     if (isOpen) {
+      const popoverElement = this._getPopoverElement();
+      ReactDOM.unstable_renderSubtreeIntoContainer(
+        this,
+        <span>{isOpen ? this._popoverComponent() : null}</span>,
+        popoverElement,
+      );
+
       const tetherOptions = {
         element: popoverElement,
         target: this._getTargetElement(),
@@ -366,6 +366,10 @@ export default class Popover extends Component {
             body.classList.add("scroll-show");
           }
         }
+      }
+    } else {
+      if (this._popoverElement) {
+        ReactDOM.unmountComponentAtNode(this._popoverElement);
       }
     }
   }
