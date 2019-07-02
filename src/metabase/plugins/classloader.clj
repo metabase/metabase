@@ -119,9 +119,10 @@
   ultimately have access to that URL."
   (^DynamicClassLoader []
    (the-top-level-classloader (the-classloader)))
+
   (^DynamicClassLoader [^DynamicClassLoader classloader]
    (some #(when (instance? DynamicClassLoader %) %)
-         (classloader-hierarchy (.getContextClassLoader (Thread/currentThread))))))
+         (classloader-hierarchy classloader))))
 
 (defonce ^:private already-added (atom #{}))
 

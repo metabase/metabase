@@ -653,13 +653,13 @@
    :cols
    [(assoc (qp.test/field-literal-col :checkins :date)
       :unit :month)
-    (assoc (qp.test/aggregate-col :sum (qp.test/field-literal-col :checkins :user_id))
-      :source    :fields
-      :field_ref [:field-literal "sum" :type/Integer])
-    (assoc (qp.test/aggregate-col :sum (qp.test/field-literal-col :checkins :venue_id))
-      :name      "sum_2"
-      :source    :fields
-      :field_ref [:field-literal "sum_2" :type/Integer])]}
+    (let [{field-ref :field_ref, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
+      (assoc (qp.test/aggregate-col :sum literal-col) :source :fields, :field_ref field-ref))
+    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
+      (assoc (qp.test/aggregate-col :sum literal-col)
+        :name      "sum_2"
+        :source    :fields
+        :field_ref [:field-literal "sum_2" base-type]))]}
   (qp.test/format-rows-by [identity int int]
     (qp.test/rows-and-cols
       (data/run-mbql-query checkins
