@@ -95,7 +95,7 @@ export default class ViewFilterPopover extends Component {
   };
 
   render() {
-    const { className, style, query } = this.props;
+    const { className, style, query, maxHeight } = this.props;
     const { filter } = this.state;
 
     const dimension = filter && filter.dimension();
@@ -105,6 +105,7 @@ export default class ViewFilterPopover extends Component {
           <DimensionList
             className="text-purple"
             width={410}
+            maxHeight={maxHeight}
             dimension={dimension}
             sections={query.topLevelFilterFieldOptionSections()}
             onChangeDimension={dimension =>

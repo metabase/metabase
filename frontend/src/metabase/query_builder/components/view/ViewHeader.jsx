@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Button from "metabase/components/Button";
+import Button from "./ViewButton";
 
 import Icon from "metabase/components/Icon";
 import ButtonBar from "metabase/components/ButtonBar";
@@ -21,6 +21,8 @@ import { QuestionSummarizeWidget } from "./QuestionSummaries";
 
 import NativeQueryButton from "./NativeQueryButton";
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
+
+import colors from "metabase/lib/colors";
 
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
@@ -55,9 +57,12 @@ export class ViewTitleHeader extends React.Component {
       isPreviewing,
       runQuestionQuery,
       cancelQuery,
-      isEditingSummary,
+      isShowingSummarySidebar,
       onEditSummary,
       onCloseSummary,
+      isShowingFilterSidebar,
+      onAddFilter,
+      onCloseFilter,
     } = this.props;
     const { isFiltersExpanded } = this.state;
     const isShowingNotebook = queryBuilderMode === "notebook";
@@ -170,17 +175,24 @@ export class ViewTitleHeader extends React.Component {
             <Button
               medium
               ml={3}
+              color={colors["brand"]}
               onClick={() => onOpenModal("save")}
             >{t`Save`}</Button>
           ) : null}
           {QuestionFilterWidget.shouldRender(this.props) && (
-            <QuestionFilterWidget ml={1} query={question.query()} />
+            <QuestionFilterWidget
+              ml={1}
+              query={question.query()}
+              isShowingFilterSidebar={isShowingFilterSidebar}
+              onAddFilter={onAddFilter}
+              onCloseFilter={onCloseFilter}
+            />
           )}
           {QuestionSummarizeWidget.shouldRender(this.props) && (
             <QuestionSummarizeWidget
               ml={1}
               question={question}
-              isEditingSummary={isEditingSummary}
+              isShowingSummarySidebar={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
               onCloseSummary={onCloseSummary}
             />

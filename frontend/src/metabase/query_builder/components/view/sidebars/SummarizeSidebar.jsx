@@ -35,7 +35,7 @@ export default function SummarizeSidebar({ question, onClose, className }) {
       title={t`Pick what you want to view`}
       onClose={onClose}
       onDone={onClose}
-      className={cx(className, "full-height")}
+      className={cx(className, "spread")}
     >
       <div className="px4 pt1">
         {query.aggregations().map((aggregation, index) => (

@@ -1,16 +1,21 @@
 import React from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
-import ViewFilters from "../ViewFilterPopover";
+import ViewFilterPopover from "../ViewFilterPopover";
 
 /** FilterSidebar operates on filters from topLevelFilters */
-const FilterSidebar = ({ question, index, onClose }) => {
+const FilterSidebar = ({ className, question, index, onClose }) => {
   const query = question.query();
   const filter = index != null ? query.topLevelFilters()[index] : null;
   return (
-    <SidebarContent icon="filter" title={t`Filter`} onClose={onClose}>
-      <ViewFilters
+    <SidebarContent
+      title={t`Pick a column to filter`}
+      onClose={onClose}
+      className={cx(className, "spread")}
+    >
+      <ViewFilterPopover
         key={index}
         query={question.query()}
         filter={filter}
@@ -23,6 +28,8 @@ const FilterSidebar = ({ question, index, onClose }) => {
           onClose();
         }}
         onClose={onClose}
+        maxHeight={Infinity}
+        width={410}
       />
     </SidebarContent>
   );

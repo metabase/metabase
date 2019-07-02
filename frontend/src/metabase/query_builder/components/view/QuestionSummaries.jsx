@@ -2,10 +2,10 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Button from "metabase/components/Button";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import ViewPill from "./ViewPill";
+import ViewButton from "./ViewButton";
 
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
@@ -16,7 +16,7 @@ const SummarizePill = props => (
 );
 
 const SummarizeButton = props => (
-  <Button medium icon="insight" color={colors["accent1"]} {...props} />
+  <ViewButton medium icon="insight" color={colors["accent1"]} {...props} />
 );
 
 export default function QuestionSummaries({
@@ -36,7 +36,7 @@ export default function QuestionSummaries({
 
 export function QuestionSummarizeWidget({
   question,
-  isEditingSummary,
+  isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
   ...props
@@ -46,7 +46,7 @@ export function QuestionSummarizeWidget({
   return (
     <SummarizeButton
       onClick={async () => {
-        if (isEditingSummary) {
+        if (isShowingSummarySidebar) {
           onCloseSummary();
         } else {
           if (!query.hasAggregations()) {
@@ -55,6 +55,7 @@ export function QuestionSummarizeWidget({
           onEditSummary();
         }
       }}
+      active={isShowingSummarySidebar}
       {...props}
     >
       {t`Summarize`}

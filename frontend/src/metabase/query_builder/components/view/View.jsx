@@ -23,6 +23,7 @@ import ViewSidebar from "./ViewSidebar";
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
+import FilterSidebar from "./sidebars/FilterSidebar";
 
 import Notebook from "../notebook/Notebook";
 import { Motion, spring } from "react-motion";
@@ -84,7 +85,8 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingChartTypeSidebar,
       isShowingChartSettingsSidebar,
-      isEditingSummary,
+      isShowingSummarySidebar,
+      isShowingFilterSidebar,
       queryBuilderMode,
       mode,
     } = this.props;
@@ -102,6 +104,7 @@ export default class View extends React.Component {
 
     const ModeFooter = mode && mode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
+    const isNative = query instanceof NativeQuery;
 
     // only allow editing of series for structured queries
     const onAddSeries = isStructured ? this.handleAddSeries : null;
@@ -121,17 +124,19 @@ export default class View extends React.Component {
     ) : null;
 
     const rightSideBar =
-      isStructured && isEditingSummary ? (
+      isStructured && isShowingSummarySidebar ? (
         <SummarizeSidebar
           question={question}
           onClose={this.props.onCloseSummary}
         />
-      ) : isShowingTemplateTagsEditor && query instanceof NativeQuery ? (
+      ) : isStructured && isShowingFilterSidebar ? (
+        <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
+      ) : isNative && isShowingTemplateTagsEditor ? (
         <TagEditorSidebar
           {...this.props}
           onClose={() => this.props.toggleTemplateTagsEditor()}
         />
-      ) : isShowingDataReference ? (
+      ) : isNative && isShowingDataReference ? (
         <DataReference
           {...this.props}
           onClose={() => this.props.toggleDataReference()}

@@ -1,25 +1,21 @@
 import React from "react";
 
 import cx from "classnames";
+import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/components/Button";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
 import ViewFilterPopover from "./ViewFilterPopover";
 import ViewPill from "./ViewPill";
+import ViewButton from "./ViewButton";
 
 import colors from "metabase/lib/colors";
 
 const FilterPill = props => <ViewPill color={colors["accent2"]} {...props} />;
 
 const FilterButton = props => (
-  <Button
-    medium
-    icon="filter"
-    color={colors["accent2"]}
-    {...props}
-  >{`Filter`}</Button>
+  <ViewButton medium icon="filter" color={colors["accent2"]} {...props} />
 );
 
 export default function QuestionFilters({
@@ -76,20 +72,37 @@ export default function QuestionFilters({
   );
 }
 
-export function QuestionFilterWidget({ query, ...props }) {
+// export function QuestionFilterWidget({ query, ...props }) {
+//   return (
+//     <PopoverWithTrigger
+//       triggerElement={<FilterButton {...props} >{t`Filter}</FilterButton>}
+//       triggerClasses="flex align-center"
+//       sizeToFit
+//     >
+//       <ViewFilterPopover
+//         query={query}
+//         onChangeFilter={newFilter =>
+//           newFilter.add().update(null, { run: true })
+//         }
+//       />
+//     </PopoverWithTrigger>
+//   );
+// }
+export function QuestionFilterWidget({
+  question,
+  isShowingFilterSidebar,
+  onAddFilter,
+  onCloseFilter,
+  ...props
+}) {
   return (
-    <PopoverWithTrigger
-      triggerElement={<FilterButton {...props} />}
-      triggerClasses="flex align-center"
-      sizeToFit
+    <FilterButton
+      onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
+      active={isShowingFilterSidebar}
+      {...props}
     >
-      <ViewFilterPopover
-        query={query}
-        onChangeFilter={newFilter =>
-          newFilter.add().update(null, { run: true })
-        }
-      />
-    </PopoverWithTrigger>
+      {t`Filter`}
+    </FilterButton>
   );
 }
 

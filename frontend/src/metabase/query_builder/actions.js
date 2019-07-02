@@ -105,7 +105,8 @@ export const setQueryBuilderMode = (
 
 // NOTE: technically these should be in the reducer but ¯\_(ツ)_/¯
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  isEditingSummary: false,
+  isShowingSummarySidebar: false,
+  isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
 };
@@ -113,9 +114,19 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
 export const onEditSummary = () =>
   setUIControls({
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isEditingSummary: true,
+    isShowingSummarySidebar: true,
   });
 export const onCloseSummary = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+  });
+// FILTER
+export const onAddFilter = () =>
+  setUIControls({
+    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    isShowingFilterSidebar: true,
+  });
+export const onCloseFilter = () =>
   setUIControls({
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
   });
