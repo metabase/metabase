@@ -653,9 +653,11 @@
    :cols
    [(assoc (qp.test/field-literal-col :checkins :date)
       :unit :month)
-    (let [{field-ref :field_ref, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
-      (assoc (qp.test/aggregate-col :sum literal-col) :source :fields, :field_ref field-ref))
     (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
+      (assoc (qp.test/aggregate-col :sum literal-col)
+        :source    :fields
+        :field_ref [:field-literal "sum" base-type]))
+    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :venue_id)]
       (assoc (qp.test/aggregate-col :sum literal-col)
         :name      "sum_2"
         :source    :fields
