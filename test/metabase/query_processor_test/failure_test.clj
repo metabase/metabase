@@ -21,8 +21,7 @@
    :query    {:source-table (data/id :venues)
               :fields       [[:datetime-field [:field-id (data/id :venues :id)] :month]]
               :limit        qp.i/absolute-max-results}
-   :driver   :h2
-   :settings {}})
+   :driver   :h2})
 
 (def ^:private bad-query:native
   {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "

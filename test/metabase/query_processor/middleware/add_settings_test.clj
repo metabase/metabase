@@ -10,7 +10,7 @@
 
 (driver/register! ::no-timezone-driver, :abstract? true)
 
-(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] false)
+(defmethod driver/supports? [::no-timezone-driver :set-timezone] [_ _] false)
 
 (defn- add-settings [driver query]
   (driver/with-driver driver
