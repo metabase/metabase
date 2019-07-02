@@ -4,6 +4,7 @@ import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQueryEditor from "../NativeQueryEditor";
 import QueryVisualization from "../QueryVisualization";
@@ -79,6 +80,8 @@ export default class View extends React.Component {
       query,
       card,
       isDirty,
+      isResultDirty,
+      runQuestionQuery,
       databases,
       isShowingTemplateTagsEditor,
       isShowingDataReference,
@@ -89,6 +92,7 @@ export default class View extends React.Component {
       isShowingFilterSidebar,
       queryBuilderMode,
       mode,
+      fitClassNames,
     } = this.props;
     const {
       aggregationIndex,
@@ -99,7 +103,7 @@ export default class View extends React.Component {
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
-      return <div />;
+      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
     }
 
     const ModeFooter = mode && mode.ModeFooter;
@@ -128,6 +132,8 @@ export default class View extends React.Component {
         <SummarizeSidebar
           question={question}
           onClose={this.props.onCloseSummary}
+          isResultDirty={isResultDirty}
+          runQuestionQuery={runQuestionQuery}
         />
       ) : isStructured && isShowingFilterSidebar ? (
         <FilterSidebar question={question} onClose={this.props.onCloseFilter} />
@@ -146,7 +152,7 @@ export default class View extends React.Component {
     const newQuestion = query instanceof StructuredQuery && !query.table();
 
     return (
-      <div className={this.props.fitClassNames}>
+      <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
           <Motion
             defaultStyle={newQuestion ? { opacity: 0 } : { opacity: 1 }}

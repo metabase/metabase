@@ -27,14 +27,24 @@ function updateAndRun(query) {
     .update(null, { run: true });
 }
 
-export default function SummarizeSidebar({ question, onClose, className }) {
+export default function SummarizeSidebar({
+  question,
+  isResultDirty,
+  runQuestionQuery,
+  onClose,
+  className,
+}) {
   // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
   const query = question.query().topLevelQuery();
   return (
     <SidebarContent
       title={t`Pick what you want to view`}
-      onClose={onClose}
-      onDone={onClose}
+      onClose={() => {
+        if (isResultDirty) {
+          runQuestionQuery();
+        }
+        onClose();
+      }}
       className={cx(className, "spread")}
     >
       <div className="px4 pt1">
