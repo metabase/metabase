@@ -8,6 +8,7 @@ export default function FilterPopoverPicker({
   filter,
   onFilterChange,
   onCommit,
+  width = 440,
 }) {
   const setValue = (index: number, value: any) => {
     onFilterChange(filter.setArgument(index, value));
@@ -23,12 +24,14 @@ export default function FilterPopoverPicker({
       className="mt1"
       filter={filter}
       onFilterChange={onFilterChange}
+      width={width}
     />
   ) : field.isDate() ? (
     <DatePicker
       className="mt1"
       filter={filter}
       onFilterChange={onFilterChange}
+      width={width}
     />
   ) : (
     <DefaultPicker
@@ -36,6 +39,7 @@ export default function FilterPopoverPicker({
       setValue={setValue}
       setValues={setValues}
       onCommit={onCommit}
+      width={width}
     />
   );
 }

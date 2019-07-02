@@ -95,7 +95,7 @@ export default class ViewFilterPopover extends Component {
   };
 
   render() {
-    const { className, style, query, maxHeight } = this.props;
+    const { className, style, query, width = 410, maxHeight } = this.props;
     const { filter } = this.state;
 
     const dimension = filter && filter.dimension();
@@ -104,7 +104,7 @@ export default class ViewFilterPopover extends Component {
         <div className={className} style={style}>
           <DimensionList
             className="text-purple"
-            width={410}
+            width={width}
             maxHeight={maxHeight}
             dimension={dimension}
             sections={query.topLevelFilterFieldOptionSections()}
@@ -133,6 +133,7 @@ export default class ViewFilterPopover extends Component {
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}
+            width={null}
           />
           <FilterPopoverFooter
             className="p1"

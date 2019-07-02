@@ -16,6 +16,7 @@ export default function DefaultPicker({
   setValue,
   setValues,
   onCommit,
+  width = 440,
 }) {
   const operator = filter.operator();
   const field = filter.dimension().field();
@@ -64,8 +65,8 @@ export default function DefaultPicker({
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
-            minWidth={440}
-            maxWidth={440}
+            minWidth={width}
+            maxWidth={width}
           />
         );
       } else if (operatorField.type === "text") {
