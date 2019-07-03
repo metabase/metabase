@@ -174,7 +174,7 @@ QueryDownloadWidget.propTypes = {
 
 QueryDownloadWidget.defaultProps = {
   result: {},
-  icon: "downarrow",
+  icon: "down_arrow",
   params: {},
 };
 

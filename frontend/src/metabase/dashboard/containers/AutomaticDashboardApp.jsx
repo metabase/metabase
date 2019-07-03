@@ -224,11 +224,11 @@ const RELATED_CONTENT = {
   },
   "zoom-in": {
     title: t`Zoom in`,
-    icon: "zoom-in",
+    icon: "zoom_in",
   },
   "zoom-out": {
     title: t`Zoom out`,
-    icon: "zoom-out",
+    icon: "zoom_out",
   },
   related: {
     title: t`Related`,

@@ -21,7 +21,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom-in",
+    icon: "zoom_in",
   },
   records: {
     icon: "table2",
@@ -42,7 +42,7 @@ const SECTIONS = {
     icon: "curve",
   },
   filter: {
-    icon: "funneloutline",
+    icon: "funnel_outline",
   },
   dashboard: {
     icon: "dashboard",

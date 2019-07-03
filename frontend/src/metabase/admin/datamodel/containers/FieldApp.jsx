@@ -394,7 +394,7 @@ export const BackButton = ({
     className="circle text-white p2 flex align-center justify-center inline"
     style={{ backgroundColor: colors["bg-dark"] }}
   >
-    <Icon name="backArrow" />
+    <Icon name="arrow_back" />
   </Link>
 );
 

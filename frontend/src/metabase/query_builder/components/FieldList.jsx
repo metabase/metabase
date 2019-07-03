@@ -76,7 +76,7 @@ export default class FieldList extends Component {
       extraItems: segmentOptions.map(segment => ({
         filter: ["segment", segment.id],
         name: segment.name,
-        icon: "staroutline",
+        icon: "star_outline",
         className: "List-item--segment",
       })),
     });

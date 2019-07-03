@@ -10,7 +10,7 @@ const QuestionEntityMenu = ({ className, onOpenModal }) => (
     className={cx("text-light", className)}
     items={[
       {
-        icon: "editdocument",
+        icon: "edit_document",
         title: `Edit this question`,
         action: () => onOpenModal("edit"),
       },

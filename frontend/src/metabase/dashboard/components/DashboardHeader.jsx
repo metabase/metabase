@@ -253,7 +253,7 @@ export default class DashboardHeader extends Component {
               title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}
             >
-              <Icon name="funneladd" size={16} />
+              <Icon name="funnel_add" size={16} />
             </a>
           </Tooltip>
 

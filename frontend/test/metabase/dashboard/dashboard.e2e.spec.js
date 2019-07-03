@@ -201,7 +201,7 @@ describe("Dashboard", () => {
       // Test parameter filter creation
       click(app.find(".Icon.Icon-pencil"));
       await store.waitForActions([SET_EDITING_DASHBOARD]);
-      click(app.find(".Icon.Icon-funneladd"));
+      click(app.find(".Icon.Icon-funnel_add"));
       // Choose Time filter type
       click(
         app

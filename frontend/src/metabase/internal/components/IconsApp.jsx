@@ -15,14 +15,22 @@ export default class IconsApp extends Component {
   props: Props;
   state: State = {
     size: 32,
+    search: "",
   };
   render() {
-    const sizes = SIZES.concat(this.state.size);
+    const { size, searchText } = this.state;
+    const sizes = SIZES.concat(size);
     return (
       <table className="Table m4" style={{ width: "inherit" }}>
         <thead>
           <tr>
-            <th>Name</th>
+            <th>
+              <input
+                placeholder="Name"
+                value={searchText}
+                onChange={e => this.setState({ searchText: e.target.value })}
+              />
+            </th>
             {sizes.map((size, index) => (
               <th>
                 <div>{size}px</div>
@@ -30,7 +38,7 @@ export default class IconsApp extends Component {
                   <input
                     style={{ width: 60 }}
                     type="range"
-                    value={this.state.size}
+                    value={size}
                     max={64}
                     onChange={e => this.setState({ size: e.target.value })}
                   />
@@ -40,16 +48,18 @@ export default class IconsApp extends Component {
           </tr>
         </thead>
         <tbody>
-          {Object.keys(require("metabase/icon_paths").ICON_PATHS).map(name => (
-            <tr>
-              <td>{name}</td>
-              {sizes.map(size => (
-                <td>
-                  <Icon name={name} size={size} />
-                </td>
-              ))}
-            </tr>
-          ))}
+          {Object.keys(require("metabase/icon_paths").ICON_PATHS)
+            .filter(name => !searchText || name.indexOf(searchText) >= 0)
+            .map(name => (
+              <tr>
+                <td>{name}</td>
+                {sizes.map(size => (
+                  <td>
+                    <Icon name={name} size={size} />
+                  </td>
+                ))}
+              </tr>
+            ))}
         </tbody>
       </table>
     );

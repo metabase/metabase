@@ -259,7 +259,7 @@ export default class TableSimple extends Component {
               })}
               onClick={() => this.setState({ page: page - 1 })}
             >
-              <Icon name="left" size={10} />
+              <Icon name="triangle_left" size={10} />
             </span>
             <span
               className={cx("text-brand-hover pr1 cursor-pointer", {
@@ -267,7 +267,7 @@ export default class TableSimple extends Component {
               })}
               onClick={() => this.setState({ page: page + 1 })}
             >
-              <Icon name="right" size={10} />
+              <Icon name="triangle_right" size={10} />
             </span>
           </div>
         ) : null}

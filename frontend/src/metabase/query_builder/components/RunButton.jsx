@@ -41,7 +41,7 @@ export default class RunButton extends Component {
       }
     } else if (isRunnable && isDirty) {
       if (compact) {
-        buttonIcon = "right";
+        buttonIcon = "play";
       } else {
         buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
       }

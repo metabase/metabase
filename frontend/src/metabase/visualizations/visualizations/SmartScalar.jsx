@@ -190,7 +190,7 @@ export default class Smart extends React.Component {
           ) : (
             <Flex align="center" mt={1} flexWrap="wrap">
               <Flex align="center" color={color}>
-                <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
+                <Icon name={isNegative ? "arrow_down" : "arrow_up"} />
                 {changeDisplay}
               </Flex>
               <h4

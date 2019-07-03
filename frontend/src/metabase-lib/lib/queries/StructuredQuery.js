@@ -663,7 +663,7 @@ export default class StructuredQuery extends AtomicQuery {
     return filterFieldOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
-        icon: "staroutline",
+        icon: "star_outline",
         filter: ["segment", segment.id],
         query: this,
       })),

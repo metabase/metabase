@@ -162,7 +162,7 @@ export default class NotebookStep extends React.Component {
               <ActionButton
                 ml={2}
                 className={!showPreviewButton ? "hidden disabled" : null}
-                icon="right"
+                icon="play"
                 title={t`Preview`}
                 color={colors["text-medium"]}
                 onClick={() => this.setState({ showPreview: true })}

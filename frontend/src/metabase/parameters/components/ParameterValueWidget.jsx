@@ -192,7 +192,7 @@ export default class ParameterValueWidget extends Component {
       } else if (Widget.noPopover && this.state.isFocused) {
         return (
           <Icon
-            name="enterorreturn"
+            name="enter_or_return"
             className="flex-align-right flex-no-shrink"
             size={12}
           />
