@@ -27,7 +27,10 @@ function getFiltersForColumn(column) {
   }
 }
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default function QuickFilterDrill({
+  question,
+  clicked,
+}: ClickActionProps): ClickAction[] {
   const query = question.query();
   if (
     !(query instanceof StructuredQuery) ||
@@ -68,4 +71,4 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     title: <span className="h2">{name}</span>,
     question: () => question.filter(operator, column, value),
   }));
-};
+}
