@@ -111,25 +111,6 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartTypeSidebar: false,
 };
 // AGGREGATION
-
-// adds a aggregation and opens the sidebar
-export const onAddAggregation = (
-  aggregation = null,
-  { openSummarySidebar = true } = {},
-) => (dispatch, getState) => {
-  if (aggregation) {
-    const question = getQuestion(getState());
-    const newQuestion = question
-      .query()
-      .addAggregation(aggregation)
-      .question();
-    dispatch(updateQuestion(newQuestion));
-  }
-  if (openSummarySidebar) {
-    dispatch(onEditSummary());
-  }
-};
-
 export const onEditSummary = () =>
   setUIControls({
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
