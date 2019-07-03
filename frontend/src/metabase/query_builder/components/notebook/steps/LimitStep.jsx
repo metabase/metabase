@@ -4,6 +4,8 @@ import Input from "metabase/components/Input";
 import Icon from "metabase/components/Icon";
 import { Flex } from "grid-styled";
 
+import { NotebookCell } from "../NotebookCell";
+
 export default function LimitStep({
   color,
   query,
@@ -12,9 +14,10 @@ export default function LimitStep({
   ...props
 }) {
   return (
-    <Flex align="center">
+    <NotebookCell color={color}>
       <Input
         small
+        className="mb1"
         type="number"
         value={query.limit() == null ? "" : query.limit()}
         placeholder="Enter a limit"
@@ -25,13 +28,6 @@ export default function LimitStep({
           }
         }}
       />
-      {query.limit() != null && (
-        <Icon
-          name="close"
-          onClick={() => query.clearLimit().update(updateQuery)}
-          className="ml2 text-light text-medium-hover cursor-pointer"
-        />
-      )}
-    </Flex>
+    </NotebookCell>
   );
 }

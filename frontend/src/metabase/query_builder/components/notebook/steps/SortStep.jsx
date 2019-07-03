@@ -1,7 +1,8 @@
 import React from "react";
 
+import Icon from "metabase/components/Icon";
+
 import ClauseStep from "./ClauseStep";
-import SortWidget from "metabase/query_builder/components/SortWidget";
 import FieldName from "metabase/query_builder/components/FieldName";
 
 export default function SortStep({
@@ -15,14 +16,30 @@ export default function SortStep({
     <ClauseStep
       color={color}
       items={query.sorts()}
-      renderName={(sort, index) => <SortName sort={sort} query={query} />}
+      renderName={(sort, index) => (
+        <span
+          className="flex align-center"
+          onClick={e => {
+            e.stopPropagation();
+            query
+              .updateSort(index, [sort[0] === "asc" ? "desc" : "asc", sort[1]])
+              .update(updateQuery);
+          }}
+        >
+          <Icon
+            name={sort[0] === "asc" ? "up_arrow" : "down_arrow"}
+            className="text-white mr1"
+          />
+          <SortName sort={sort} query={query} />
+        </span>
+      )}
       renderPopover={(sort, index) => (
         <SortPopover
           query={query}
           sort={sort}
           onChangeSort={newSort =>
             sort
-              ? query.updateSort(index, newSort).updateupdateQuery()
+              ? query.updateSort(index, newSort).update(updateQuery)
               : query.addSort(newSort).update(updateQuery)
           }
         />

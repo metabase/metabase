@@ -37,6 +37,7 @@ const STEP_UI = {
   },
   expression: {
     title: t`Add column`,
+    color: colors["bg-dark"],
     icon: "add_data",
     component: ExpressionStep,
   },
@@ -70,12 +71,14 @@ const STEP_UI = {
   // },
   sort: {
     title: t`Sort`,
+    color: colors["bg-dark"],
     icon: "smartscalar",
     component: SortStep,
     compact: true,
   },
   limit: {
     title: t`Row limit`,
+    color: colors["bg-dark"],
     icon: "list",
     component: LimitStep,
     compact: true,
