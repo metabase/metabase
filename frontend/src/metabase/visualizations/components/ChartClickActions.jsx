@@ -41,19 +41,19 @@ const SECTIONS = {
   averages: {
     icon: "curve",
   },
+  distribution: {
+    icon: "bar",
+  },
   filter: {
     icon: "funnel_outline",
   },
   dashboard: {
     icon: "dashboard",
   },
-  distribution: {
-    icon: "bar",
-  },
   auto: {
     icon: "bolt",
   },
-  Formatting: {
+  formatting: {
     icon: "pencil",
   },
 };
