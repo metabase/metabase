@@ -1,7 +1,10 @@
 (ns metabase.query-processor.debug
   "Functions for debugging QP code. Enable QP debugging by binding `qp/*debug*`; the `debug-middleware` function below
   wraps each middleware function for debugging purposes."
-  (:require [clojure.data :as data]
+  (:require [clojure
+             [data :as data]
+             [pprint :as pprint]
+             [string :as str]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor.middleware
              [async :as async]
@@ -9,7 +12,10 @@
             [metabase.util :as u]
             [schema.core :as s]))
 
-(def ^:private ^:dynamic *timeout* 5000)
+(def ^:private ^:dynamic *timeout*
+  "Timeout (in milliseconds) for async middleware to return a response."
+  5000)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Generic Middleware Debugging Utils                                       |
@@ -51,7 +57,8 @@
                           (deliver before-result <>)))]
     (try
       (u/prog1 ((middleware wrapped-qp) before-query)
-        (when post (post (u/deref-with-timeout before-result *timeout*) <>)))
+        (when (and post (realized? before-result))
+          (post @before-result <>)))
       (catch Throwable e
         (rethrow "Middleware threw Exception."
           {:query {:before before-query, :after after-query}, :result before-result}
@@ -124,15 +131,15 @@
 (defn- print-diff [message middleware-var before after]
   (when-not (= before after)
     (let [[only-in-before only-in-after] (data/diff before after)]
-      (println (u/format-color 'yellow (middleware-name middleware-var)) message "\n"
-               "before" (u/pprint-to-str 'blue before)
-               "after " (u/pprint-to-str 'green after)
-               (if only-in-before
-                 (str "only in before: " (u/pprint-to-str 'cyan only-in-before))
-                 "")
-               (if only-in-after
-                 (str "only in after: " (u/pprint-to-str 'magenta only-in-after))
-                 "")))))
+      (println
+       (str
+        (u/format-color 'yellow (middleware-name middleware-var)) " " message "\n"
+        "before:\n" (u/pprint-to-str 'blue before)
+        "after:\n" (u/pprint-to-str 'green after)
+        (when only-in-before
+          (str "only in before:\n" (u/pprint-to-str 'cyan only-in-before)))
+        (when only-in-after
+          (str "only in after:\n" (u/pprint-to-str 'magenta only-in-after))))))))
 
 (defn- validate-query [middleware-var after-query]
   ;; mbql->native is allowed to have both a `:query` and a `:native` key for whatever reason
@@ -148,10 +155,46 @@
   ;; TODO - validate results as well
   )
 
-(defn- debug-exception [middleware-var e]
-  (println (u/format-color 'red "Exception in %s middleware" (middleware-name middleware-var)))
-  (println (u/pprint-to-str 'red e))
-  (throw e))
+(defn- exception-causes-seq
+  "Sequence of all causes of `e`. Does not include `e` itself."
+  [e]
+  (rest (take-while some? (iterate #(some-> ^Throwable % .getCause) e))))
+
+(defn- ex-data-excluding-schema-errors [e]
+  (let [data (ex-data e)]
+    (when-not (= (:type data) :schema.core/error)
+      data)))
+
+(defn- format-exception [^Throwable e]
+  {:type  (class e)
+   :cause (.getMessage e)
+   :data  (ex-data-excluding-schema-errors e)
+   :via   (vec (for [^Throwable cause (exception-causes-seq e)]
+                 {:type    (class cause)
+                  :message (.getMessage cause)
+                  :data    (ex-data-excluding-schema-errors cause)
+                  :at      (first (seq (.getStackTrace e)))}))
+   :trace (vec
+           (for [frame (seq (.getStackTrace e))
+                 :let  [frame (str frame)]
+                 :when (and (not (str/starts-with? frame "clojure"))
+                            (not (str/starts-with? frame "metabase.query_processor.debug")))]
+             frame))})
+
+(def ^:private already-logged-exception
+  "An Exception that we can use to signify that we don't need to do any more logging (because we've already logged the
+  Exception somewhere else.)"
+  (Exception. "[Already logged]"))
+
+(defn- debug-exception [middleware-var, ^Throwable e]
+  ;; only log Exceptions the first time we see them
+  (if (some (partial identical? already-logged-exception)
+            (cons e (exception-causes-seq e)))
+    (throw e)
+    (do
+      (println (u/format-color 'red "Exception in %s middleware" (middleware-name middleware-var)))
+      (pprint/pprint (format-exception e))
+      (throw already-logged-exception))))
 
 
 (defn debug-middleware
@@ -167,7 +210,9 @@
   ;; don't try to wrap `async->sync` for debugging because it switches from async to sync right in the middle of
   ;; things which is much to hairy to try to deal with in the code above. (It also doesn't modify the query or results
   ;; anyway.)
-  (if (= middleware-var #'async/async->sync)
+  ;;
+  ;; `async-setup` also produces weird unhelpful logging so skip that too.
+  (if (#{#'async/async->sync #'async/async-setup} middleware-var)
     ((var-get middleware-var) qp)
     (debug-with-fns
      {:pre       (partial debug-pre middleware-var)
