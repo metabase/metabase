@@ -10,7 +10,7 @@ import type {
   ClickAction,
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
-import { onAddAggregation } from "metabase/query_builder/actions";
+import { onEditSummary } from "metabase/query_builder/actions";
 
 const AGGREGATIONS = {
   sum: {
@@ -60,9 +60,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     .map(([aggregator, action]: [any, { section: string, title: string }]) => ({
       name: action.title.toLowerCase(),
       ...action,
-      // question: () =>
-      //   question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
-      action: () =>
-        onAddAggregation([aggregator.short, getFieldRefFromColumn(column)]),
+      question: () =>
+        question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
+      action: () => onEditSummary(),
     }));
 };
