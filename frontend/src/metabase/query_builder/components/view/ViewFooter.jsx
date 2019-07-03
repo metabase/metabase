@@ -139,18 +139,16 @@ const VizTypeButton = ({ question, result, ...props }) => {
   const icon = visualization && visualization.iconName;
 
   return (
-    <ViewButton icon={icon} {...props}>
+    <ViewButton medium icon={icon} {...props}>
       {t`Visualization`}
     </ViewButton>
   );
 };
 
 const VizSettingsButton = ({ ...props }) => (
-  <Tooltip tooltip={t`Visualization settings`}>
-    <ViewButton icon="gear" {...props}>
+    <ViewButton medium icon="gear" {...props}>
       {t`Settings`}
     </ViewButton>
-  </Tooltip>
 );
 
 const Well = styled(Flex)`
