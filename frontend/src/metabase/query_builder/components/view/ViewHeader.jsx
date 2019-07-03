@@ -5,6 +5,7 @@ import cx from "classnames";
 import ViewButton from "./ViewButton";
 
 import Icon from "metabase/components/Icon";
+import Button from "metabase/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import Tooltip from "metabase/components/Tooltip.jsx";
@@ -199,10 +200,11 @@ export class ViewTitleHeader extends React.Component {
             <Tooltip
               tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
             >
-              <ViewButton
+              <Button
+                borderless={!isShowingNotebook}
+                primary={isShowingNotebook}
                 medium
                 icon="notebook"
-                active={isShowingNotebook}
                 ml={1}
                 onClick={() =>
                   setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
