@@ -82,39 +82,11 @@ export default class QueryVisualization extends Component {
 
   render() {
     const { className, question, isRunning, result } = this.props;
-    let viz;
-
-    if (!result) {
-      viz = <VisualizationEmptyState className="spread" />;
-    } else {
-      const error = result.error;
-
-      if (error) {
-        viz = (
-          <VisualizationError
-            className="spread"
-            error={error}
-            card={question.card()}
-            duration={result.duration}
-          />
-        );
-      } else if (result.data) {
-        viz = (
-          <VisualizationResult
-            {...this.props}
-            className="spread"
-            lastRunDatasetQuery={this.state.lastRunDatasetQuery}
-            onUpdateWarnings={warnings => this.setState({ warnings })}
-            showTitle={false}
-          />
-        );
-      }
-    }
 
     return (
       <div className={cx(className, "relative")}>
         {isRunning && (
-          <div className="Loading spread flex flex-column layout-centered text-brand z2">
+          <div className="Loading-message spread flex flex-column layout-centered text-brand z2">
             <LoadingSpinner />
             <h2 className="Loading-message text-brand text-uppercase my3">
               {t`Doing science`}...
@@ -127,7 +99,24 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {viz}
+          {result && result.error ? (
+            <VisualizationError
+              className="spread"
+              error={result.error}
+              card={question.card()}
+              duration={result.duration}
+            />
+          ) : result && result.data ? (
+            <VisualizationResult
+              {...this.props}
+              className="spread"
+              lastRunDatasetQuery={this.state.lastRunDatasetQuery}
+              onUpdateWarnings={warnings => this.setState({ warnings })}
+              showTitle={false}
+            />
+          ) : !isRunning ? (
+            <VisualizationEmptyState className="spread" />
+          ) : null}
         </div>
       </div>
     );

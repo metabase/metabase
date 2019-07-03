@@ -39,9 +39,20 @@ const QuestionDataSource = ({
     });
   }
   if (table) {
+    let name = table.displayName();
+    if (query instanceof StructuredQuery) {
+      name = query.joins().reduce((name, join) => {
+        const joinedTable = join.joinedTable();
+        if (joinedTable) {
+          return name + " + " + joinedTable.displayName();
+        } else {
+          return name;
+        }
+      }, name);
+    }
     parts.push({
       icon: "table2",
-      name: table.displayName(),
+      name: name,
       href: !noLink && subHead && table.newQuestion().getUrl(),
     });
   }

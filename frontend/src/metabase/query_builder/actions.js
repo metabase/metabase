@@ -494,7 +494,8 @@ export const initializeQB = (location, params) => {
     const question = card && new Question(getMetadata(getState()), card);
 
     // if we have loaded up a card that we can run then lets kick that off as well
-    if (question) {
+    // but don't bother for "notebook" mode
+    if (question && uiControls.queryBuilderMode !== "notebook") {
       if (question.canRun()) {
         // NOTE: timeout to allow Parameters widget to set parameterValues
         setTimeout(
