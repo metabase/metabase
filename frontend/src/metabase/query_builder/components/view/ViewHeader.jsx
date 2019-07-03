@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import Button from "./ViewButton";
+import ViewButton from "./ViewButton";
 
 import Icon from "metabase/components/Icon";
 import ButtonBar from "metabase/components/ButtonBar";
@@ -172,12 +172,9 @@ export class ViewTitleHeader extends React.Component {
             <NativeQueryButton size={20} question={question} />
           )}
           {isDirty ? (
-            <Button
-              medium
-              ml={3}
-              color={colors["brand"]}
-              onClick={() => onOpenModal("save")}
-            >{t`Save`}</Button>
+            <ViewButton medium ml={3} onClick={() => onOpenModal("save")}>
+              {t`Save`}
+            </ViewButton>
           ) : null}
           {QuestionFilterWidget.shouldRender(this.props) && (
             <QuestionFilterWidget
@@ -198,12 +195,11 @@ export class ViewTitleHeader extends React.Component {
             />
           )}
           {question.isStructured() && (
-            <Button
-              borderless={!isShowingNotebook}
-              primary={isShowingNotebook}
+            <ViewButton
               medium
-              ml={1}
               icon="notebook"
+              active={isShowingNotebook}
+              ml={1}
               onClick={() =>
                 setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
               }

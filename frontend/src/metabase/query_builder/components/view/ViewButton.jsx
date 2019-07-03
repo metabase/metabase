@@ -1,9 +1,14 @@
 import React from "react";
 
 import Button from "metabase/components/Button";
-import { alpha } from "metabase/lib/colors";
+import colors, { alpha } from "metabase/lib/colors";
 
-export default function ViewButton({ color, active, style = {}, ...props }) {
+export default function ViewButton({
+  color = colors["brand"],
+  active,
+  style = {},
+  ...props
+}) {
   return (
     <Button
       style={{

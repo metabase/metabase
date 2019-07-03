@@ -12,6 +12,7 @@ import Tooltip from "metabase/components/Tooltip";
 import ButtonBar from "metabase/components/ButtonBar";
 
 import ViewSection from "./ViewSection";
+import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -56,13 +57,14 @@ const ViewFooter = ({
           <VizTypeButton
             question={question}
             result={result}
-            selected={isShowingChartTypeSidebar}
+            active={isShowingChartTypeSidebar}
             onClick={
               isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
             }
           />,
           <VizSettingsButton
-            selected={isShowingChartSettingsSidebar}
+            ml={1}
+            active={isShowingChartSettingsSidebar}
             onClick={
               isShowingChartSettingsSidebar
                 ? onCloseChartSettings
@@ -129,35 +131,25 @@ const ViewFooter = ({
   );
 };
 
-const VizTypeButton = ({ className, question, result, selected, onClick }) => {
+const VizTypeButton = ({ question, result, ...props }) => {
   // TODO: move this to QuestionResult or something
   const { visualization } = getVisualizationRaw([
     { card: question.card(), data: result.data },
   ]);
+  const icon = visualization && visualization.iconName;
 
   return (
-    <span
-      className="text-bold flex align-center text-brand bg-light-hover transition-background rounded px1 py1 cursor-pointer"
-      onClick={onClick}
-    >
-      {`Change visualization`}
-    </span>
+    <ViewButton icon={icon} {...props}>
+      {t`Visualization`}
+    </ViewButton>
   );
 };
 
-const VizSettingsButton = ({ className, selected, onClick }) => (
-  <Tooltip tooltip={t`Visualization options`}>
-    <Icon
-      name="gear"
-      className={cx(
-        className,
-        "cursor-pointer text-light text-brand-hover bg-light-hover transition-all rounded px1 py1",
-        {
-          "text-brand": selected,
-        },
-      )}
-      onClick={onClick}
-    />
+const VizSettingsButton = ({ ...props }) => (
+  <Tooltip tooltip={t`Visualization settings`}>
+    <ViewButton icon="gear" {...props}>
+      {t`Settings`}
+    </ViewButton>
   </Tooltip>
 );
 
