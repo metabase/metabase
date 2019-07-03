@@ -7,6 +7,7 @@ import Button from "./ViewButton";
 import Icon from "metabase/components/Icon";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import Tooltip from "metabase/components/Tooltip.jsx";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
@@ -198,16 +199,18 @@ export class ViewTitleHeader extends React.Component {
             />
           )}
           {question.isStructured() && (
-            <Button
-              borderless={!isShowingNotebook}
-              primary={isShowingNotebook}
-              medium
-              ml={1}
-              icon="notebook"
-              onClick={() =>
-                setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
-              }
-            />
+            <Tooltip tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}>
+              <Button
+                borderless={!isShowingNotebook}
+                primary={isShowingNotebook}
+                medium
+                ml={1}
+                icon="notebook"
+                onClick={() =>
+                  setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
+                }
+              />
+            </Tooltip>
           )}
           {isRunnable && !isNative && (
             <RunButtonWithTooltip
