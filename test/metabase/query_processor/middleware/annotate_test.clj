@@ -47,7 +47,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              add-mbql-column-info                                              |
+;;; |                                       (MBQL) Col info for Field clauses                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- info-for-field
@@ -192,6 +192,58 @@
                         :max-value 100}]]}}
     {:columns [:price]})))
 
+;; For fields with parents we should return them with a combined name including parent's name
+(tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
+                      Field [child  {:name "child",  :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+  {:description     nil
+   :table_id        (data/id :venues)
+   :special_type    nil
+   :name            "parent.child"
+   :settings        nil
+   :parent_id       (u/get-id parent)
+   :id              (u/get-id child)
+   :visibility_type :normal
+   :display_name    "Child"
+   :fingerprint     nil
+   :base_type       :type/Text}
+  (qp.test-util/with-everything-store
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
+
+;; nested-nested fields should include grandparent name (etc)
+(tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
+                      Field [parent      {:name "parent",      :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
+                      Field [child       {:name "child",       :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+  {:description     nil
+   :table_id        (data/id :venues)
+   :special_type    nil
+   :name            "grandparent.parent.child"
+   :settings        nil
+   :parent_id       (u/get-id parent)
+   :id              (u/get-id child)
+   :visibility_type :normal
+   :display_name    "Child"
+   :fingerprint     nil
+   :base_type       :type/Text}
+  (qp.test-util/with-everything-store
+    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
+
+;; datetime literals should get the information from the matching `:source-metadata` if it was supplied
+(expect
+  {:name         "sum"
+   :display_name "sum of User ID"
+   :base_type    :type/Integer
+   :special_type :type/FK}
+  (qp.test-util/with-everything-store
+    (#'annotate/col-info-for-field-clause
+     {:source-metadata [{:name "abc", :display_name "another Field",  :base_type :type/Integer, :special_type :type/FK}
+                        {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :special_type :type/FK}]}
+     [:field-literal "sum" :type/Integer])))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 ;; test that added information about aggregations looks the way we'd expect
 (defn- aggregation-names [ag-clause]
   (binding [driver/*driver* :h2]
@@ -269,6 +321,32 @@
     (data/$ids venues
       (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
+;; if a `:named` aggregation supplies optional `:use-as-display-name?` `options` we should respect that
+;; `use-as-disply-name?` is `true` by default, e.g. in cases where the user supplies the names themselves
+(expect
+  {:base_type    :type/Integer
+   :special_type :type/Category
+   :settings     nil
+   :name         "sum"
+   :display_name "sum"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? true}]))))
+
+;; `use-as-display-name?` will normally be `false` when the `:named` clause is generated automatically, e.g. by the
+;; `pre-alias-aggregations` middleware. In this case we want to use the name internally in the query to prevent
+;; duplicate column names, but do not want to use them as display names. See
+;; https://github.com/metabase/mbql/releases/tag/1.2.0 for detailed explanation.
+(expect
+  {:base_type    :type/Integer
+   :special_type :type/Category
+   :settings     nil
+   :name         "sum"
+   :display_name "sum of Price"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? false}]))))
+
 ;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
 ;; that information in the results. Their information should be preferred over ours
 (expect
@@ -285,7 +363,12 @@
      (data/mbql-query venues
        {:aggregation [[:metric "ga:totalEvents"]]}))))
 
-;; Make sure columns always come back with a unique `:name` key (#8759)
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Other MBQL col info tests                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure `:cols` always come back with a unique `:name` key (#8759)
 (expect
   {:cols
    [{:base_type    :type/Number
@@ -400,60 +483,3 @@
         ((annotate/result-rows-maps->vectors (constantly results))
          {:database (data/id)
           :type     :native})))))
-
-;; Does `result-rows-maps->vectors` handle multiple aggregations of the same type? Should assume column keys are
-;; deduplicated using the MBQL lib logic
-(expect
-  {:rows    [[2 409 20]
-             [3  56  4]]
-   :columns ["CATEGORY_ID" "sum" "sum_2"]}
-  (qp.test-util/with-everything-store
-    (driver/with-driver :h2
-      (let [results {:rows [{:CATEGORY_ID 2
-                             :sum         409
-                             :sum_2       20}
-                            {:CATEGORY_ID 3
-                             :sum         56
-                             :sum_2       4}]}]
-        ((annotate/result-rows-maps->vectors (constantly results))
-         (data/mbql-query venues
-           {:source-table $$venues
-            :aggregation  [[:sum $id]
-                           [:sum $price]]
-            :breakout     [$category_id]
-            :limit        2}))))))
-
-;; For fields with parents we should return them with a combined name including parent's name
-(tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
-                      Field [child  {:name "child",  :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
-  {:description     nil
-   :table_id        (data/id :venues)
-   :special_type    nil
-   :name            "parent.child"
-   :settings        nil
-   :parent_id       (u/get-id parent)
-   :id              (u/get-id child)
-   :visibility_type :normal
-   :display_name    "Child"
-   :fingerprint     nil
-   :base_type       :type/Text}
-  (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
-
-;; nested-nested fields should include grandparent name (etc)
-(tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
-                      Field [parent      {:name "parent",      :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
-                      Field [child       {:name "child",       :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
-  {:description     nil
-   :table_id        (data/id :venues)
-   :special_type    nil
-   :name            "grandparent.parent.child"
-   :settings        nil
-   :parent_id       (u/get-id parent)
-   :id              (u/get-id child)
-   :visibility_type :normal
-   :display_name    "Child"
-   :fingerprint     nil
-   :base_type       :type/Text}
-  (qp.test-util/with-everything-store
-    (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))

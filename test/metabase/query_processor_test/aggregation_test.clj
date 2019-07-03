@@ -1,10 +1,8 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
   (:require [expectations :refer [expect]]
-            [metabase
-             [query-processor-test :as qp.test]
-             [util :as u]]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -35,7 +33,7 @@
   {:rows [[35.5059]]
    :cols [(qp.test/aggregate-col :avg  :venues :latitude)]}
   (qp.test/rows-and-cols
-    (qp.test/format-rows-by [(partial u/round-to-decimals 4)]
+    (qp.test/format-rows-by [4.0]
       (data/run-mbql-query venues
         {:aggregation [[:avg $latitude]]}))))
 
@@ -72,7 +70,7 @@
   {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
    :rows [[3.4]]}
   (qp.test/rows-and-cols
-    (qp.test/format-rows-by [(partial u/round-to-decimals 1)]
+    (qp.test/format-rows-by [1.0]
       (data/run-mbql-query venues {:aggregation [[:stddev $latitude]]}))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
@@ -104,14 +102,14 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   [[1 34.0071] [2 33.7701] [3 10.0646] [4 33.983]]
-  (qp.test/formatted-rows [int (partial u/round-to-decimals 4)]
+  (qp.test/formatted-rows [int 4.0]
     (data/run-mbql-query venues
       {:aggregation [[:min $latitude]]
        :breakout    [$price]})))
 
 (qp.test/expect-with-non-timeseries-dbs
   [[1 37.8078] [2 40.7794] [3 40.7262] [4 40.7677]]
-  (qp.test/formatted-rows [int (partial u/round-to-decimals 4)]
+  (qp.test/formatted-rows [int 4.0]
     (data/run-mbql-query venues
       {:aggregation [[:max $latitude]]
        :breakout    [$price]})))

@@ -54,11 +54,6 @@
   (let [db (sql.tx/qualify-and-quote driver database-name)]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
 
-(defmethod tx/expected-base-type->actual :snowflake [_ base-type]
-  (if (isa? base-type :type/Integer)
-    :type/Number
-    base-type))
-
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
   []
