@@ -22,7 +22,8 @@
             [metabase.automagic-dashboards
              [filters :as filters]
              [populate :as populate]
-             [rules :as rules]]
+             [rules :as rules]
+             [visualization-macros :as visualization]]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
@@ -488,9 +489,9 @@
               {})))
 
 (defn- build-order-by
-  [dimensions metrics order-by]
-  (let [dimensions (set dimensions)]
-    (for [[identifier ordering] (map first order-by)]
+  [{:keys [dimensions metrics order_by]}]
+  (let [dimensions (into #{} (map ffirst) dimensions)]
+    (for [[identifier ordering] (map first order_by)]
       [(if (= ordering "ascending")
          :asc
          :desc)
@@ -572,11 +573,12 @@
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (string? form)
-           (let [new-form (fill-templates :string context bindings form)]
-             (if (not= new-form form)
-               (capitalize-first new-form)
-               new-form))
+         (if (ui18n/localized-string? form)
+           (let [s     (str form)
+                 new-s (fill-templates :string context bindings s)]
+             (if (not= new-s s)
+               (capitalize-first new-s)
+               s))
            form))
        x)
       (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
@@ -604,9 +606,8 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
-  (let [order_by        (build-order-by dimensions metrics order_by)
-        metrics         (map (partial get (:metrics context)) metrics)
+  [context {:keys [metrics filters dimensions score limit query] :as card}]
+  (let [metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
                           (:query-filter context) (conj {:filter (:query-filter context)}))
         score           (if query
@@ -632,23 +633,29 @@
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
-                (let [query (if query
-                              (build-query context bindings query)
-                              (build-query context bindings
-                                           filters
-                                           metrics
-                                           dimensions
-                                           limit
-                                           order_by))]
+                (let [metrics (for [metric metrics]
+                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                                 :metric (:metric metric)
+                                 :op     (-> metric :metric metric-op)})
+                      card    (visualization/expand-visualization
+                               card
+                               (map (comp bindings second) dimensions)
+                               metrics)
+                      query   (if query
+                                (build-query context bindings query)
+                                (build-query context bindings
+                                             filters
+                                             metrics
+                                             dimensions
+                                             limit
+                                             (build-order-by card)))]
                   (-> card
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       (for [metric metrics]
-                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
-                                               :op   (-> metric :metric metric-op)})
+                             :metrics       metrics
                              :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
@@ -1122,14 +1129,14 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (and (filters/periodic-datetime? field) unit) (tru "{0} of {1}" (unit-name unit)))))
+     (some-> unit date/date-extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (if (or (filters/datetime? field)
-            (filters/periodic-datetime? field))
+    (if (or (isa? (:base_type field) :type/DateTime)
+            (field/unix-timestamp? field))
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))
 
@@ -1229,6 +1236,7 @@
                                         :group-by [:table_id]
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
+          ;; Table comprised entierly of join keys
           link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                       :from     [Field]
                                       :where    [:and [:in :table_id (keys field-count)]
@@ -1268,7 +1276,7 @@
                    schema (concat [:schema schema])))
           (filter mi/can-read?)
           enhance-table-stats
-          (remove (comp (some-fn :link-table? :list-like? (comp zero? :num-fields)) :stats))
+          (remove (comp (some-fn :link-table? (comp zero? :num-fields)) :stats))
           (map (fn [table]
                  (let [root      (->root table)
                        rule      (->> root
@@ -1278,7 +1286,10 @@
                    {:url         (format "%stable/%s" public-endpoint (u/get-id table))
                     :title       (:full-name root)
                     :score       (+ (math/sq (:specificity rule))
-                                    (math/log (-> table :stats :num-fields)))
+                                    (math/log (-> table :stats :num-fields))
+                                    (if (-> table :stats :list-like?)
+                                      -10
+                                      0))
                     :description (:description dashboard)
                     :table       table
                     :rule        (:rule rule)})))

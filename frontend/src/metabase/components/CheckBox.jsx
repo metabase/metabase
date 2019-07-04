@@ -55,14 +55,13 @@ export default class CheckBox extends Component {
           style={checkboxStyle}
           className="flex align-center justify-center rounded"
         >
-          {(checked || indeterminate) &&
-            !noIcon && (
-              <Icon
-                style={{ color: checked ? "white" : uncheckedColor }}
-                name={indeterminate ? "dash" : "check"}
-                size={size - padding * 2}
-              />
-            )}
+          {(checked || indeterminate) && !noIcon && (
+            <Icon
+              style={{ color: checked ? "white" : uncheckedColor }}
+              name={indeterminate ? "dash" : "check"}
+              size={size - padding * 2}
+            />
+          )}
         </div>
       </div>
     );

@@ -25,12 +25,12 @@ export function channelIsValid(channel, channelSpec) {
       return false;
   }
   if (channelSpec.recipients) {
-    if (!channel.recipients /* || channel.recipients.length === 0*/) {
+    if (!channel.recipients) {
       return false;
     }
   }
   if (channelSpec.fields) {
-    for (let field of channelSpec.fields) {
+    for (const field of channelSpec.fields) {
       if (
         field.required &&
         channel.details &&

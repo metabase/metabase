@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
@@ -15,7 +15,7 @@ export default class RunButton extends Component {
   };
 
   render() {
-    let { isRunnable, isRunning, isDirty, onRun, onCancel } = this.props;
+    const { isRunnable, isRunning, isDirty, onRun, onCancel } = this.props;
     let buttonText = null;
     if (isRunning) {
       buttonText = (
@@ -34,8 +34,8 @@ export default class RunButton extends Component {
         </div>
       );
     }
-    let actionFn = isRunning ? onCancel : onRun;
-    let classes = cx(
+    const actionFn = isRunning ? onCancel : onRun;
+    const classes = cx(
       "Button Button--medium circular RunButton ml-auto mr-auto block",
       {
         "RunButton--hidden": !buttonText,

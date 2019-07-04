@@ -1,9 +1,7 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
   (:require [buddy.core.codecs :as codecs]
-            [buddy.sign
-             [jwt :as jwt]
-             [util :as buddy-util]]
+            [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clojure.string :as str]
             [hiccup.core :refer [html]]
@@ -92,9 +90,8 @@
                   (or (embedding-secret-key)
                       (throw (ex-info (str (tru "The embedding secret key has not been set.")) {:status-code 400})))
                   ;; The library will reject tokens with a created at timestamp in the future, so to account for clock
-                  ;; skew tell the library that "now" is actually two minutes ahead of whatever the system time is so
-                  ;; tokens don't get inappropriately rejected
-                  {:now (+ (buddy-util/now) 120)})
+                  ;; skew tell the library to allow for 60 seconds of leeway
+                  {:leeway 60})
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
         (throw (ex-info (.getMessage e) {:status-code 400}))))))

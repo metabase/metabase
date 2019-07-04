@@ -18,6 +18,11 @@
 (defmethod driver/supports? [:sql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sql :binning]                         [_ _] true)
 
+(defmethod driver/supports? [:sql :left-join]  [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :right-join] [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :inner-join] [driver _] (driver/supports? driver :foreign-keys))
+(defmethod driver/supports? [:sql :full-join]  [driver _] (driver/supports? driver :foreign-keys))
+
 (defmethod driver/mbql->native :sql [driver query]
   (sql.qp/mbql->native driver query))
 
@@ -31,7 +36,7 @@
   SQL replacement text (usually just ?). The param value is already prepared and ready for inlcusion in the query,
   such as what's needed for SQLite and timestamps."
   {:arglists '([driver x])}
-  (fn [driver x] [(driver/dispatch-on-driver driver) (class x)])
+  (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
 
 

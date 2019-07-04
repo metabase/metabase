@@ -11,12 +11,15 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const Collections = createEntity({
   name: "collections",
   path: "/api/collection",
   schema: CollectionSchema,
+
+  displayNameOne: t`collection`,
+  displayNameMany: t`collections`,
 
   objectActions: {
     setArchived: ({ id }, archived, opts) =>
@@ -32,6 +35,18 @@ const Collections = createEntity({
         { parent_id: canonicalCollectionId(collection && collection.id) },
         undo(opts, "collection", "moved"),
       ),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
+  },
+
+  objectSelectors: {
+    getName: collection => collection && collection.name,
+    getUrl: collection =>
+      collection &&
+      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
+    getIcon: collection => "all",
   },
 
   selectors: {
@@ -67,14 +82,6 @@ const Collections = createEntity({
     ),
   },
 
-  objectSelectors: {
-    getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
-    getIcon: collection => "all",
-  },
-
   form: {
     fields: (
       values = {
@@ -87,7 +94,7 @@ const Collections = createEntity({
         placeholder: "My new fantastic collection",
         validate: name =>
           (!name && t`Name is required`) ||
-          (name.length > 100 && t`Name must be 100 characters or less`),
+          (name && name.length > 100 && t`Name must be 100 characters or less`),
       },
       {
         name: "description",
@@ -111,7 +118,7 @@ const Collections = createEntity({
     ],
   },
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.parent_id, getState());
     return type && `collection=${type}`;
   },
@@ -132,8 +139,10 @@ export const getCollectionType = (collectionId: string, state: {}) =>
   collectionId === null || collectionId === "root"
     ? "root"
     : collectionId === getUserPersonalCollectionId(state)
-      ? "personal"
-      : collectionId !== undefined ? "other" : null;
+    ? "personal"
+    : collectionId !== undefined
+    ? "other"
+    : null;
 
 export const ROOT_COLLECTION = {
   id: "root",
@@ -197,8 +206,8 @@ function getExpandedCollectionsById(
         c.id === "root"
           ? []
           : c.location != null
-            ? ["root", ...c.location.split("/").filter(l => l)]
-            : null,
+          ? ["root", ...c.location.split("/").filter(l => l)]
+          : null,
       parent: null,
       children: [],
       is_personal: c.personal_owner_id != null,

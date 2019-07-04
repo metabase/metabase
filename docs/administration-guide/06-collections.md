@@ -59,5 +59,5 @@ You can always *unarchive* things by clicking on the More menu from a collection
 
 ---
 
-## Next: data sandboxing
-To set even more advanced data permissions based on user attributes, check out [data sandboxes](17-data-sandboxes.md).
+## Next: sharing and embedding with public links
+Want to share certain dashboards or questions with the world? You can do that with [public links](12-public-links.md).

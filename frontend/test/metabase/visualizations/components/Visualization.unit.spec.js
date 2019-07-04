@@ -1,0 +1,153 @@
+import React from "react";
+import ReactDOM from "react-dom";
+
+import {
+  NumberColumn,
+  StringColumn,
+  createFixture,
+  cleanupFixture,
+} from "../__support__/visualizations";
+
+import colors from "metabase/lib/colors";
+import Visualization from "metabase/visualizations/components/Visualization";
+
+describe("Visualization", () => {
+  // eslint-disable-next-line no-unused-vars
+  let element, viz;
+  const qs = s => element.querySelector(s);
+  const qsa = s => [...element.querySelectorAll(s)];
+
+  const renderViz = series => {
+    ReactDOM.render(
+      <Visualization ref={ref => (viz = ref)} rawSeries={series} />,
+      element,
+    );
+  };
+
+  beforeEach(() => {
+    element = createFixture();
+  });
+  afterEach(() => {
+    ReactDOM.unmountComponentAtNode(element);
+    cleanupFixture(element);
+  });
+
+  describe("scalar", () => {
+    it("should render", () => {
+      renderViz([
+        {
+          card: { display: "scalar" },
+          data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
+        },
+      ]);
+      expect(qs("h1").textContent).toEqual("1");
+    });
+  });
+
+  describe("bar", () => {
+    const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
+    describe("single series", () => {
+      it("should have correct colors", () => {
+        renderViz([
+          {
+            card: { name: "Card", display: "bar" },
+            data: {
+              cols: [
+                StringColumn({ name: "Dimension" }),
+                NumberColumn({ name: "Count" }),
+              ],
+              rows: [["foo", 1], ["bar", 2]],
+            },
+          },
+        ]);
+        expect(getBarColors()).toEqual([
+          colors.brand, // "count"
+          colors.brand, // "count"
+        ]);
+      });
+    });
+    describe("multiseries: multiple metrics", () => {
+      it("should have correct colors", () => {
+        renderViz([
+          {
+            card: { name: "Card", display: "bar" },
+            data: {
+              cols: [
+                StringColumn({ name: "Dimension" }),
+                NumberColumn({ name: "Count" }),
+                NumberColumn({ name: "Sum" }),
+              ],
+              rows: [["foo", 1, 3], ["bar", 2, 4]],
+            },
+          },
+        ]);
+        expect(getBarColors()).toEqual([
+          colors.brand, // "count"
+          colors.brand, // "count"
+          colors.accent1, // "sum"
+          colors.accent1, // "sum"
+        ]);
+      });
+    });
+    describe("multiseries: multiple breakouts", () => {
+      it("should have correct colors", () => {
+        renderViz([
+          {
+            card: { name: "Card", display: "bar" },
+            data: {
+              cols: [
+                StringColumn({ name: "Dimension1" }),
+                StringColumn({ name: "Dimension2" }),
+                NumberColumn({ name: "Count" }),
+              ],
+              rows: [
+                ["foo", "a", 1],
+                ["bar", "a", 2],
+                ["foo", "b", 1],
+                ["bar", "b", 2],
+              ],
+            },
+          },
+        ]);
+        expect(getBarColors()).toEqual([
+          colors.accent1, // "a"
+          colors.accent1, // "a"
+          colors.accent2, // "b"
+          colors.accent2, // "b"
+        ]);
+      });
+    });
+    describe("multiseries: dashcard", () => {
+      it("should have correct colors", () => {
+        renderViz([
+          {
+            card: { name: "Card1", display: "bar" },
+            data: {
+              cols: [
+                StringColumn({ name: "Dimension" }),
+                NumberColumn({ name: "Count" }),
+              ],
+              rows: [["foo", 1], ["bar", 2]],
+            },
+          },
+          {
+            card: { name: "Card2", display: "bar" },
+            data: {
+              cols: [
+                StringColumn({ name: "Dimension" }),
+                NumberColumn({ name: "Count" }),
+              ],
+              rows: [["foo", 3], ["bar", 4]],
+            },
+          },
+        ]);
+        expect(getBarColors()).toEqual([
+          colors.brand, // "count"
+          colors.brand, // "count"
+          colors.accent2, // "Card2"
+          colors.accent2, // "Card2"
+        ]);
+      });
+    });
+  });
+});

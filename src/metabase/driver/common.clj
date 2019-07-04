@@ -84,13 +84,33 @@
   {:name         "additional-options"
    :display-name (tru "Additional JDBC connection string options")})
 
+(def default-options
+  "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
+  properties for drivers shipped as separate modules, e.g.:
+
+    connection-properties:
+      - db-name
+      - host
+
+  See the [plugin manifest reference](https://github.com/metabase/metabase/wiki/Metabase-Plugin-Manifest-Reference)
+  for more details."
+  {:additional-options default-additional-options-details
+   :dbname             default-dbname-details
+   :host               default-host-details
+   :password           default-password-details
+   :port               default-port-details
+   :ssl                default-ssl-details
+   :user               default-user-details})
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Fetching Current Timezone                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private ParseDateTimeString
-  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+  (^:private parse
+   ^DateTime [this date-time-str]
+   "Parse the `date-time-str` and return a `DateTime` instance."))
 
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
@@ -120,7 +140,7 @@
 (defn- first-successful-parse
   "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
   successful parses throws the exception that the last formatter threw."
-  [date-formatters time-str]
+  ^DateTime [date-formatters time-str]
   (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
       (doseq [formatter (reverse date-formatters)]
         (parse formatter time-str))))
@@ -129,7 +149,7 @@
   "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
   implementation below."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmulti current-db-time-date-formatters
@@ -137,7 +157,7 @@
   `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
   formatters for a date format string."
   {:arglists '([driver])}
-  driver/dispatch-on-driver
+  driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defn current-db-time
@@ -145,7 +165,7 @@
   `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
   the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
   aforementioned multimethods; no default implementation is provided."
-  [driver database]
+  ^DateTime [driver database]
   {:pre [(map? database)]}
   (let [native-query    (current-db-time-native-query driver)
         date-formatters (current-db-time-date-formatters driver)
@@ -155,7 +175,7 @@
                           ;; need to initialize the store sicne we're calling `execute-query` directly instead of
                           ;; going thru normal QP pipeline
                           (qp.store/with-store
-                            (qp.store/store-database! database)
+                            (qp.store/fetch-and-store-database! (u/get-id database))
                             (->
                              (driver/execute-query driver
                                (merge settings {:database (u/get-id database), :native {:query native-query}}))
@@ -203,7 +223,6 @@
              [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
              [clojure.lang.IPersistentMap    :type/Dictionary]
              [clojure.lang.IPersistentVector :type/Array]
-             [org.bson.types.ObjectId        :type/MongoBSONID]
              [org.postgresql.util.PGobject   :type/*]
              [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))

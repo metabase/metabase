@@ -4,7 +4,7 @@ import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CopyToClipboard from "react-copy-to-clipboard";
 
 type Props = {

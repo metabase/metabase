@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.cache-backend.db-test
   (:require [expectations :refer :all]
-            [metabase.query-processor.middleware.cache-backend.db :as cache-db]
-            [metabase.test.util :as tu]))
+            [metabase.query-processor.middleware.cache-backend.db :as cache-db]))
 
 (defn- in-kb [x]
   (* 1024 x))

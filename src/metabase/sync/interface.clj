@@ -11,8 +11,8 @@
 
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name          su/NonBlankString
-   :schema        (s/maybe su/NonBlankString)
+  {:name                         su/NonBlankString
+   :schema                       (s/maybe su/NonBlankString)
    (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata
@@ -165,7 +165,8 @@
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
   {1 #{:type/*}
    2 #{:type/Number}
-   3 #{:type/DateTime}})
+   3 #{:type/DateTime}
+   4 #{:type/*}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

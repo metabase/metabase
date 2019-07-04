@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
+import { t } from "ttag";
 import List from "metabase/components/List.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
@@ -95,7 +95,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -231,19 +234,18 @@ export default class SegmentDetail extends Component {
                     field={caveats}
                   />
                 </li>
-                {table &&
-                  !isEditing && (
-                    <li className="relative">
-                      <Formula
-                        type="segment"
-                        entity={entity}
-                        table={table}
-                        isExpanded={isFormulaExpanded}
-                        expandFormula={expandFormula}
-                        collapseFormula={collapseFormula}
-                      />
-                    </li>
-                  )}
+                {table && !isEditing && (
+                  <li className="relative">
+                    <Formula
+                      type="segment"
+                      entity={entity}
+                      table={table}
+                      isExpanded={isFormulaExpanded}
+                      expandFormula={expandFormula}
+                      collapseFormula={collapseFormula}
+                    />
+                  </li>
+                )}
                 {!isEditing && (
                   <li className="relative">
                     <UsefulQuestions

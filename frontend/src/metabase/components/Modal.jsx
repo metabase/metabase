@@ -71,7 +71,7 @@ export class WindowModal extends Component {
     );
     return (
       <OnClickOutsideWrapper handleDismissal={this.handleDismissal.bind(this)}>
-        <div className={cx(className, "relative bordered bg-white rounded")}>
+        <div className={cx(className, "relative bg-white rounded")}>
           {getModalContent({
             ...this.props,
             fullPageModal: false,
@@ -135,7 +135,7 @@ export class FullPageModal extends Component {
 
   componentDidUpdate() {
     // set the top of the modal to the bottom of the nav
-    let nav = document.body.querySelector(".Nav");
+    const nav = document.body.querySelector(".Nav");
     if (nav) {
       this._modalElement.style.top = nav.getBoundingClientRect().bottom + "px";
     }

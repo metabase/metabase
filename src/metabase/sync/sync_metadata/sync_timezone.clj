@@ -12,8 +12,11 @@
   (-> dt .getChronology .getZone .getID))
 
 (s/defn sync-timezone!
-  "Query `DATABASE` for it's current time to determine it's
-  timezone. Update that timezone if it's different."
+  "Query `database` for it' current time to determine its timezone. The results of this function are used by the sync
+  process to update the timezone if it's different.
+
+  Catches and logs Exceptions if querying for current timezone fails. Returns timezone as `{:timezone-id <timezone>}`
+  upon success, `nil` if query failed."
   [database :- i/DatabaseInstance]
   (try
     (let [tz-id (some-> database

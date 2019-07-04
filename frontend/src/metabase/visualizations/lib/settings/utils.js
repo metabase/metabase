@@ -37,7 +37,7 @@ export function getChartTypeFromData(cols, rows, strict = true) {
 }
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
-// are able to avoid circular dependency errors in integrated tests
+// are able to avoid circular dependency errors in e2e tests
 export function columnsAreValid(colNames, data, filter = () => true) {
   if (typeof colNames === "string") {
     colNames = [colNames];
@@ -111,7 +111,15 @@ export function fieldSetting(
       widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getProps: ([{ card, data: { cols } }], vizSettings) => ({
+      getProps: (
+        [
+          {
+            card,
+            data: { cols },
+          },
+        ],
+        vizSettings,
+      ) => ({
         options: cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: cols,
         showColumnSetting: showColumnSetting,

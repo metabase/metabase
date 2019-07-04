@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 
 const GroupName = ({ group }) => (
@@ -18,7 +18,11 @@ const TableAccessChange = ({ tables, verb, color }) => {
       {verb}
       <Tooltip
         tooltip={
-          <div className="p1">{tableNames.map(name => <div>{name}</div>)}</div>
+          <div className="p1">
+            {tableNames.map(name => (
+              <div>{name}</div>
+            ))}
+          </div>
         }
       >
         <span>

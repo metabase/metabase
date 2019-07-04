@@ -148,7 +148,7 @@
 
 (s/defn ^:private fields-to-fingerprint :- (s/maybe [i/FieldInstance])
   "Return a sequences of Fields belonging to TABLE for which we should generate (and save) fingerprints.
-   This should include NEW fields that are active and visibile."
+   This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (db/select Field
          (honeysql-for-fields-that-need-fingerprint-updating table))))

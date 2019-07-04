@@ -7,7 +7,7 @@ import {
   createThunkAction,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -139,7 +139,7 @@ export const addSampleDataset = createThunkAction(
   function() {
     return async function(dispatch, getState) {
       try {
-        let sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        const sampleDataset = await MetabaseApi.db_add_sample_dataset();
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {
@@ -283,7 +283,7 @@ export const syncDatabaseSchema = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
+        const call = await MetabaseApi.db_sync_schema({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -299,7 +299,7 @@ export const rescanDatabaseFields = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
+        const call = await MetabaseApi.db_rescan_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {
@@ -315,7 +315,7 @@ export const discardSavedFieldValues = createThunkAction(
   function(databaseId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.db_discard_values({ dbId: databaseId });
+        const call = await MetabaseApi.db_discard_values({ dbId: databaseId });
         MetabaseAnalytics.trackEvent("Databases", "Manual Sync");
         return call;
       } catch (error) {

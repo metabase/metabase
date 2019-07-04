@@ -13,13 +13,14 @@ import type { SchemaName } from "metabase/meta/types/Table";
 import type { FieldMetadata } from "metabase/meta/types/Metadata";
 import type { ConcreteField, DatetimeUnit } from "metabase/meta/types/Query";
 
+import { titleize, humanize } from "metabase/lib/formatting";
+
 import Dimension from "../Dimension";
 
 import _ from "underscore";
 
 /** This is the primary way people interact with tables */
 export default class Table extends Base {
-  displayName: string;
   description: string;
 
   schema: ?SchemaName;
@@ -39,6 +40,14 @@ export default class Table extends Base {
 
   dimensions(): Dimension[] {
     return this.fields.map(field => field.dimension());
+  }
+
+  displayName({ includeSchema } = {}) {
+    return (
+      (includeSchema && this.schema
+        ? titleize(humanize(this.schema)) + "."
+        : "") + this.display_name
+    );
   }
 
   dateFields(): Field[] {

@@ -2,7 +2,8 @@
 /* eslint-disable import/no-commonjs */
 
 require("babel-register");
-require("babel-polyfill");
+require("core-js/stable");
+require("regenerator-runtime/runtime");
 
 var webpack = require("webpack");
 

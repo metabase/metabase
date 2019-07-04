@@ -39,7 +39,7 @@ export function decimalCount(a) {
 export function computeNumericDataInverval(xValues) {
   let bestPrecision = Infinity;
   for (const value of xValues) {
-    let p = precision(value) || 1;
+    const p = precision(value) || 1;
     if (p < bestPrecision) {
       bestPrecision = p;
     }
@@ -49,13 +49,13 @@ export function computeNumericDataInverval(xValues) {
 
 // logTickFormat(chart.xAxis())
 export function logTickFormat(axis) {
-  let superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  let formatPower = d =>
+  const superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  const formatPower = d =>
     (d + "")
       .split("")
       .map(c => superscript[c])
       .join("");
-  let formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
+  const formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
   axis.tickFormat(formatTick);
 }
 

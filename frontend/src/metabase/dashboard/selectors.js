@@ -120,11 +120,12 @@ export const getMappingsByParameter = createSelector(
     }
 
     let mappingsByParameter: MappingsByParameter = {};
-    let mappings: Array<AugmentedParameterMapping> = [];
-    let countsByParameter = {};
+    const mappings: Array<AugmentedParameterMapping> = [];
+    const countsByParameter = {};
     for (const dashcard of dashboard.ordered_cards) {
       const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
-      for (let mapping: ParameterMapping of dashcard.parameter_mappings || []) {
+      for (const mapping: ParameterMapping of dashcard.parameter_mappings ||
+        []) {
         const card = _.findWhere(cards, { id: mapping.card_id });
         const fieldId =
           card && getParameterTargetFieldId(mapping.target, card.dataset_query);
@@ -139,7 +140,7 @@ export const getMappingsByParameter = createSelector(
             (countsByParameter[mapping.parameter_id][value] || 0) + 1;
         }
 
-        let augmentedMapping: AugmentedParameterMapping = {
+        const augmentedMapping: AugmentedParameterMapping = {
           ...mapping,
           parameter_id: mapping.parameter_id,
           dashcard_id: dashcard.id,
@@ -155,11 +156,11 @@ export const getMappingsByParameter = createSelector(
         mappings.push(augmentedMapping);
       }
     }
-    let mappingsWithValuesByParameter = {};
+    const mappingsWithValuesByParameter = {};
     // update max values overlap for each mapping
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       if (mapping.values && mapping.values.length > 0) {
-        let overlapMax = Math.max(
+        const overlapMax = Math.max(
           ...mapping.values.map(
             value => countsByParameter[mapping.parameter_id][value],
           ),
@@ -179,7 +180,7 @@ export const getMappingsByParameter = createSelector(
       }
     }
     // update count of mappings with values
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       mappingsByParameter = setIn(
         mappingsByParameter,
         [

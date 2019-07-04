@@ -1,14 +1,11 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
-  (:require [expectations :refer :all]
-            [metabase
-             [sync :as sync]
-             [util :as u]]
+  (:require [expectations :refer [expect]]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [field-values :as field-values :refer [FieldValues]]
              [table :refer [Table]]]
+            [metabase.sync :as sync]
             [metabase.sync.util-test :as sut]
             [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -26,7 +23,7 @@
 (expect
   {1 [1 2 3 4]
    2 nil
-   3 (repeat 2 {:errors 0, :created 1, :updated 5, :deleted 0})
+   3 (repeat 2 {:errors 0, :created 1, :updated 0, :deleted 0})
    4 [1 2 3 4]}
   {;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)
@@ -34,7 +31,7 @@
    2 (do (db/delete! FieldValues :field_id (data/id :venues :price))
          (venues-price-field-values))
    ;; 3. After the delete, a field values should be created, the rest updated
-   3 (sync-database!' "update-field-values" (Database (data/id)))
+   3 (sync-database!' "update-field-values" (data/db))
    ;; 4. Now re-sync the table and make sure they're back
    4 (do (sync/sync-table! (Table (data/id :venues)))
          (venues-price-field-values))})
@@ -43,7 +40,7 @@
 (expect
   {1 [1 2 3 4]
    2 [1 2 3]
-   3 (repeat 2 {:errors 0, :created 0, :updated 6, :deleted 0})
+   3 (repeat 2 {:errors 0, :created 0, :updated 1, :deleted 0})
    4 [1 2 3 4]}
   { ;; 1. Check that we have expected field values to start with
    1 (venues-price-field-values)
@@ -52,7 +49,7 @@
            :values [1 2 3])
          (venues-price-field-values))
    ;; 3. Now re-sync the table and validate the field values updated
-   3 (sync-database!' "update-field-values" (Database (data/id)))
+   3 (sync-database!' "update-field-values" (data/db))
    ;; 4. Make sure the value is back
    4 (venues-price-field-values)})
 

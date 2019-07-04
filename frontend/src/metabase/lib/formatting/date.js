@@ -98,8 +98,10 @@ const UNITS_WITH_DAY: DatetimeUnit[] = [
 const UNITS_WITH_HOUR_SET = new Set(UNITS_WITH_HOUR);
 const UNITS_WITH_DAY_SET = new Set(UNITS_WITH_DAY);
 
-export const hasHour = (unit: ?DatetimeUnit) => UNITS_WITH_HOUR_SET.has(unit);
-export const hasDay = (unit: ?DatetimeUnit) => UNITS_WITH_DAY_SET.has(unit);
+export const hasHour = (unit: ?DatetimeUnit) =>
+  unit == null || UNITS_WITH_HOUR_SET.has(unit);
+export const hasDay = (unit: ?DatetimeUnit) =>
+  unit == null || UNITS_WITH_DAY_SET.has(unit);
 
 export const DEFAULT_TIME_STYLE: TimeStyle = "h:mm A";
 
@@ -108,7 +110,7 @@ export function getTimeFormatFromStyle(
   unit: DatetimeUnit,
   timeEnabled: ?TimeEnabled,
 ): TimeFormat {
-  let format = style;
+  const format = style;
   if (!timeEnabled || timeEnabled === "milliseconds") {
     return format.replace(/mm/, "mm:ss.SSS");
   } else if (timeEnabled === "seconds") {

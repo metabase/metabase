@@ -1,0 +1,33 @@
+info:
+  name: Metabase SQL Server Driver
+  version: 1.0.0-SNAPSHOT-7.0.0-jre8
+  description: Allows Metabase to connect to SQL Server databases.
+driver:
+  name: sqlserver
+  display-name: SQL Server
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - placeholder: 1433
+    - merge:
+        - dbname
+        - name: db
+          placeholder: BirdsOfTheWorld
+    - name: instance
+      display-name: Database instance name
+      placeholder: N/A
+    - user
+    - password
+    - ssl
+    - merge:
+        - additional-options
+        - placeholder: "trustServerCertificate=false"
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.sqlserver
+  - step: register-jdbc-driver
+    class: com.microsoft.sqlserver.jdbc.SQLServerDriver

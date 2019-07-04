@@ -13,7 +13,7 @@ export default class FormLabel extends Component {
   };
 
   render() {
-    let { title, description, children } = this.props;
+    const { title, description, children } = this.props;
     return (
       <div className="mb3">
         <div style={{ maxWidth: "575px" }}>

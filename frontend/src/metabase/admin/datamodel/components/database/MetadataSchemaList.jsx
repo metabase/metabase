@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import { t, ngettext, msgid } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -31,7 +31,7 @@ export default class MetadataSchemaList extends Component {
     const { schemas, selectedSchema } = this.props;
     const { searchRegex } = this.state;
 
-    let filteredSchemas = searchRegex
+    const filteredSchemas = searchRegex
       ? schemas.filter(s => searchRegex.test(s.name))
       : schemas;
     return (

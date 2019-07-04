@@ -9,11 +9,13 @@
   when the application goes through normal startup procedures. Inside this function you can do any work needed and add
   your events subscribers to the bus as usual via `start-event-listener!`."
   (:require [clojure.core.async :as async]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            (metabase [config :as config]
-                      [util :as u])))
-
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.util.i18n :refer [trs]]))
 
 ;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 
@@ -28,10 +30,10 @@
   (when-not config/is-test?
     (doseq [ns-symb @u/metabase-namespace-symbols
             :when   (.startsWith (name ns-symb) "metabase.events.")]
-      (require ns-symb)
+      (classloader/require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-        (log/info "Starting events listener:" (u/format-color 'blue ns-symb) (u/emoji "👂"))
+        (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
         (init-fn)))))
 
 (defn initialize-events!
@@ -91,7 +93,7 @@
     (try
       (handler-fn (async/<! channel))
       (catch Throwable e
-        (log/error "Unexpected error listening on events" e)))
+        (log/error e (trs "Unexpected error listening on events"))))
     (recur)))
 
 
@@ -101,7 +103,7 @@
   "Determine a valid `model` identifier for the given TOPIC."
   [topic]
   ;; just take the first part of the topic name after splitting on dashes.
-  (first (s/split (name topic) #"-")))
+  (first (str/split (name topic) #"-")))
 
 (defn object->model-id
   "Determine the appropriate `model_id` (if possible) for a given OBJECT."

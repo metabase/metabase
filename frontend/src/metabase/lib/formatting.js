@@ -5,7 +5,7 @@ import inflection from "inflection";
 import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
@@ -33,7 +33,7 @@ import {
   hasHour,
 } from "metabase/lib/formatting/date";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -124,7 +124,8 @@ const getDayFormat = options =>
 const RANGE_SEPARATOR = ` – `;
 
 // for extracting number portion from a formatted currency string
-const NUMBER_REGEX = /[\+\-]?[0-9\., ]+/;
+// NOTE: match minus/plus and number separately to handle interposed currency symbol -$1.23
+const NUMBER_REGEX = /([\+\-])?[^0-9]*([0-9\., ]+)/;
 
 const DEFAULT_NUMBER_SEPARATORS = ".,";
 
@@ -155,7 +156,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 
   if (options.compact) {
-    return formatNumberCompact(number);
+    return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -190,7 +191,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
       ) {
         const match = formatted.match(NUMBER_REGEX);
         if (match) {
-          formatted = match[0].trim();
+          formatted = (match[1] || "").trim() + (match[2] || "").trim();
         }
       }
 
@@ -247,7 +248,41 @@ function formatNumberScientific(
   }
 }
 
-function formatNumberCompact(value: number) {
+function formatNumberCompact(value: number, options: FormattingOptions) {
+  if (options.number_style === "percent") {
+    return formatNumberCompactWithoutOptions(value * 100) + "%";
+  }
+  if (options.number_style === "currency") {
+    try {
+      const { value: currency } = numberFormatterForOptions({
+        ...options,
+        currency_style: "symbol",
+      })
+        .formatToParts(value)
+        .find(p => p.type === "currency");
+
+      // this special case ensures the "~" comes before the currency
+      if (value !== 0 && value >= -0.01 && value <= 0.01) {
+        return `~${currency}0`;
+      }
+      return currency + formatNumberCompactWithoutOptions(value);
+    } catch (e) {
+      // Intl.NumberFormat failed, so we fall back to a non-currency number
+      return formatNumberCompactWithoutOptions(value);
+    }
+  }
+  if (options.number_style === "scientific") {
+    return formatNumberScientific(value, {
+      ...options,
+      // unsetting maximumFractionDigits prevents truncation of small numbers
+      maximumFractionDigits: undefined,
+      minimumFractionDigits: 1,
+    });
+  }
+  return formatNumberCompactWithoutOptions(value);
+}
+
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
@@ -260,7 +295,7 @@ function formatNumberCompact(value: number) {
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 
@@ -284,8 +319,8 @@ export function formatCoordinate(
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-      : DECIMAL_DEGREES_FORMATTER(value);
+    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+    : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
@@ -336,7 +371,7 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -389,7 +424,7 @@ function replaceDateFormatNames(format, options) {
 }
 
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
+  const m = parseTimestamp(value, options.column && options.column.unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -405,25 +440,7 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 }
 
 function formatDateTime(value, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
-  if (!m.isValid()) {
-    return String(value);
-  }
-
-  if (options.date_format || options.time_format) {
-    formatDateTimeWithFormats(
-      value,
-      options.date_format,
-      options.time_format,
-      options,
-    );
-  } else {
-    if (options.time_enabled === false) {
-      return m.format(options.date_abbreviate ? "ll" : "LL");
-    } else {
-      return m.format(options.date_abbreviate ? "llll" : "LLLL");
-    }
-  }
+  return formatDateTimeWithUnit(value, "minute", options);
 }
 
 export function formatDateTimeWithUnit(
@@ -431,7 +448,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
     return String(value);
   }
@@ -479,7 +496,7 @@ export function formatDateTimeWithUnit(
 }
 
 export function formatTime(value: Value) {
-  let m = parseTime(value);
+  const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
@@ -509,19 +526,51 @@ export function formatEmail(
   }
 }
 
-// based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
-const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
+function getUrlProtocol(url) {
+  try {
+    const { protocol } = new URL(url);
+    return protocol;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+function isSafeProtocol(protocol) {
+  return (
+    protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
+  );
+}
+
+function isDefaultLinkProtocol(protocol) {
+  return (
+    protocol === "http:" || protocol === "https:" || protocol === "mailto:"
+  );
+}
 
 export function formatUrl(
   value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  {
+    jsx,
+    rich,
+    view_as = "auto",
+    link_text,
+    column: { special_type } = {},
+  }: FormattingOptions = {},
 ) {
   const url = String(value);
+  const urlSpecialType = isa(special_type, TYPE.URL);
+  const protocol = getUrlProtocol(url);
   if (
     jsx &&
     rich &&
     (view_as === "link" || view_as === "auto") &&
-    URL_WHITELIST_REGEX.test(url)
+    // undefined protocol means url didn't parse
+    protocol &&
+    // if the column type is URL, we show any safe url as a link
+    // otherwise, we just show the most common protocols
+    (urlSpecialType
+      ? isSafeProtocol(protocol)
+      : isDefaultLinkProtocol(protocol))
   ) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
@@ -538,7 +587,9 @@ export function formatImage(
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
-  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+  const protocol = getUrlProtocol(url);
+  const acceptedProtocol = protocol === "http:" || protocol === "https:";
+  if (jsx && rich && view_as === "image" && acceptedProtocol) {
     return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
@@ -601,7 +652,7 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
 }
 
 export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  let column = options.column;
+  const column = options.column;
 
   options = {
     jsx: false,
@@ -640,7 +691,11 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    return formatStringFallback(value, options);
+    if (column && column.special_type != null) {
+      return value;
+    } else {
+      return formatStringFallback(value, options);
+    }
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, options.column);
     if (range && !options.noRange) {
@@ -720,10 +775,10 @@ export function humanize(...args) {
 
 export function duration(milliseconds: number) {
   if (milliseconds < 60000) {
-    let seconds = Math.round(milliseconds / 1000);
+    const seconds = Math.round(milliseconds / 1000);
     return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
   } else {
-    let minutes = Math.round(milliseconds / 1000 / 60);
+    const minutes = Math.round(milliseconds / 1000 / 60);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
 }
@@ -734,7 +789,7 @@ export function stripId(name: string) {
 }
 
 export function slugify(name: string) {
-  return name && name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+  return name && name.toLowerCase().replace(/[^a-z\u0400-\u04ff0-9_]/g, "_");
 }
 
 export function assignUserColors(
@@ -749,13 +804,13 @@ export function assignUserColors(
     "bg-medium",
   ],
 ) {
-  let assignments = {};
+  const assignments = {};
 
   const currentUserColor = colorClasses[0];
   const otherUserColors = colorClasses.slice(1);
   let otherUserColorIndex = 0;
 
-  for (let userId of userIds) {
+  for (const userId of userIds) {
     if (!(userId in assignments)) {
       if (userId === currentUserId) {
         assignments[userId] = currentUserColor;

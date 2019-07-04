@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 
 import _ from "underscore";
@@ -30,6 +30,7 @@ type State = {
   showAddRow: boolean,
   groups: Object[],
   mappings: { [string]: number[] },
+  saveError: ?Object,
 };
 
 export default class LdapGroupMappingsWidget extends React.Component {
@@ -43,6 +44,7 @@ export default class LdapGroupMappingsWidget extends React.Component {
       showAddRow: false,
       groups: [],
       mappings: {},
+      saveError: null,
     };
   }
 
@@ -110,17 +112,31 @@ export default class LdapGroupMappingsWidget extends React.Component {
 
   _saveClick = (e: Event) => {
     e.preventDefault();
-    const { state: { mappings }, props: { onChangeSetting } } = this;
+    const {
+      state: { mappings },
+      props: { onChangeSetting },
+    } = this;
     SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(
       () => {
         onChangeSetting("ldap-group-mappings", mappings);
-        this.setState({ showEditModal: false, showAddRow: false });
+        this.setState({
+          showEditModal: false,
+          showAddRow: false,
+          saveError: null,
+        });
       },
+      e => this.setState({ saveError: e }),
     );
   };
 
   render() {
-    const { showEditModal, showAddRow, groups, mappings } = this.state;
+    const {
+      showEditModal,
+      showAddRow,
+      groups,
+      mappings,
+      saveError,
+    } = this.state;
 
     return (
       <div className="flex align-center">
@@ -175,6 +191,11 @@ export default class LdapGroupMappingsWidget extends React.Component {
                 </AdminContentTable>
               </div>
               <ModalFooter>
+                {saveError && saveError.data && saveError.data.message ? (
+                  <span className="text-error text-bold">
+                    {saveError.data.message}
+                  </span>
+                ) : null}
                 <Button
                   type="button"
                   onClick={this._cancelClick}

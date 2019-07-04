@@ -4,36 +4,48 @@ import React from "react";
 import PropTypes from "prop-types";
 
 import { reduxForm, getValues } from "redux-form";
+import { getIn } from "icepick";
 
 import StandardForm from "metabase/components/form/StandardForm";
 
 type FormFieldName = string;
-type FormFieldType = "input" | "password" | "select" | "textarea" | "color";
+type FormFieldTitle = string;
+type FormFieldType =
+  | "input"
+  | "password"
+  | "select"
+  | "text"
+  | "color"
+  | "hidden"
+  | "collection";
 
 type FormValue = any;
 type FormError = string;
 type FormValues = { [name: FormFieldName]: FormValue };
 type FormErrors = { [name: FormFieldName]: FormError };
 
-type FormFieldDef = {
+export type FormFieldDefinition = {
   name: FormFieldName,
-  type: FormFieldType,
-  initial?: (() => FormValue) | FormValue,
+  type?: FormFieldType,
+  title?: FormFieldTitle,
+  initial?: FormValue | (() => FormValue),
   normalize?: (value: FormValue) => FormValue,
-  validate?: (value: FormValue) => ?FormError,
+  validate?: (value: FormValue) => ?FormError | boolean,
 };
 
-type FormDef = {
+export type FormDefinition = {
+  fields:
+    | ((values: FormValues) => FormFieldDefinition[])
+    // $FlowFixMe
+    | FormFieldDefinition[],
   // $FlowFixMe
-  fields: ((values: FormValues) => FormFieldDef[]) | FormFieldDef[],
-  // $FlowFixMe
-  initial?: (() => FormValues) | FormValues,
+  initial?: FormValues | (() => FormValues),
   normalize?: (values: FormValues) => FormValues,
   validate?: (values: FormValues) => FormErrors,
 };
 
-type Form = {
-  fields: (values: FormValues) => FormFieldDef[],
+type FormObject = {
+  fields: (values: FormValues) => FormFieldDefinition[],
   fieldNames: (values: FormValues) => FormFieldName[],
   initial: () => FormValues,
   normalize: (values: FormValues) => FormValues,
@@ -41,7 +53,7 @@ type Form = {
 };
 
 type Props = {
-  form: FormDef,
+  form: FormDefinition,
   initialValues?: ?FormValues,
   formName?: string,
   onSubmit: (values: FormValues) => Promise<any>,
@@ -50,7 +62,7 @@ type Props = {
 
 let FORM_ID = 0;
 
-export default class Form_ extends React.Component {
+export default class Form extends React.Component {
   props: Props;
 
   _formName: ?string;
@@ -145,7 +157,7 @@ export default class Form_ extends React.Component {
 // form.fields[0] is { name: "foo", initial: () => "bar" }
 //
 function makeFormMethod(
-  form: Form,
+  form: FormObject,
   methodName: string,
   defaultValues: any = {},
 ) {
@@ -154,9 +166,12 @@ function makeFormMethod(
     const values =
       getValue(originalMethod, object) || getValue(defaultValues, object);
     for (const field of form.fields(object)) {
-      const value = getValue(field[methodName], object && object[field.name]);
+      const value = getValue(
+        field[methodName],
+        object && getValueAtPath(object, field.name),
+      );
       if (value !== undefined) {
-        values[field.name] = value;
+        setValueAtPath(values, field.name, value);
       }
     }
     return values;
@@ -166,7 +181,7 @@ function makeFormMethod(
 function getValue(fnOrValue, ...args): any {
   return typeof fnOrValue === "function" ? fnOrValue(...args) : fnOrValue;
 }
-function makeForm(formDef: FormDef): Form {
+function makeForm(formDef: FormDefinition): FormObject {
   const form = {
     ...formDef,
     fields: values => getValue(formDef.fields, values),
@@ -182,4 +197,22 @@ function makeForm(formDef: FormDef): Form {
   // for normalizeing the object before submitting, or normalizeing individual values
   makeFormMethod(form, "normalize", object => object);
   return form;
+}
+
+function getObjectPath(path) {
+  return typeof path === "string" ? path.split(".") : path;
+}
+
+function getValueAtPath(object, path) {
+  return getIn(object, getObjectPath(path));
+}
+function setValueAtPath(object, path, value) {
+  path = getObjectPath(path);
+  for (let i = 0; i < path.length; i++) {
+    if (i === path.length - 1) {
+      object[path[i]] = value;
+    } else {
+      object = object[path[i]] = object[path[i]] || {};
+    }
+  }
 }

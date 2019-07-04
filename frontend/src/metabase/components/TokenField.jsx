@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
-import cxs from "cxs";
 
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
@@ -22,9 +21,9 @@ import {
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
 
-const inputBoxClasses = cxs({
+const inputBoxStyles = {
   maxHeight: 130,
-});
+};
 
 type Value = any;
 type Option = any;
@@ -205,7 +204,7 @@ export default class TokenField extends Component {
   _updateFilteredValues = (props: Props) => {
     let { options, value, removeSelected, filterOption } = props;
     let { searchValue, selectedOptionValue } = this.state;
-    let selectedValues = new Set(value.map(v => JSON.stringify(v)));
+    const selectedValues = new Set(value.map(v => JSON.stringify(v)));
 
     if (!filterOption) {
       filterOption = (option, searchValue) =>
@@ -213,7 +212,7 @@ export default class TokenField extends Component {
     }
 
     let selectedCount = 0;
-    let filteredOptions = options.filter(option => {
+    const filteredOptions = options.filter(option => {
       const isSelected = selectedValues.has(
         JSON.stringify(this._value(option)),
       );
@@ -313,7 +312,7 @@ export default class TokenField extends Component {
     } else if (event.keyCode === KEYCODE_UP) {
       // up arrow
       event.preventDefault();
-      let index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, option =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index > 0) {
@@ -324,7 +323,7 @@ export default class TokenField extends Component {
     } else if (keyCode === KEYCODE_DOWN) {
       // down arrow
       event.preventDefault();
-      let index = _.findIndex(filteredOptions, option =>
+      const index = _.findIndex(filteredOptions, option =>
         this._valueIsEqual(selectedOptionValue, this._value(option)),
       );
       if (index >= 0 && index < filteredOptions.length - 1) {
@@ -334,7 +333,7 @@ export default class TokenField extends Component {
       }
     } else if (keyCode === KEYCODE_BACKSPACE) {
       // backspace
-      let { value } = this.props;
+      const { value } = this.props;
       if (!this.state.inputValue && value.length > 0) {
         this.removeValue(value[value.length - 1]);
       }
@@ -385,7 +384,7 @@ export default class TokenField extends Component {
   };
 
   onMouseDownCapture = (e: SyntheticMouseEvent) => {
-    let input = findDOMNode(this.refs.input);
+    const input = findDOMNode(this.refs.input);
     input.focus();
     // prevents clicks from blurring input while still allowing text selection:
     if (input !== e.target) {
@@ -400,8 +399,8 @@ export default class TokenField extends Component {
   addSelectedOption(e: SyntheticKeyboardEvent) {
     const { multi } = this.props;
     const { filteredOptions, selectedOptionValue } = this.state;
-    let input = findDOMNode(this.refs.input);
-    let option = _.find(filteredOptions, option =>
+    const input = findDOMNode(this.refs.input);
+    const option = _.find(filteredOptions, option =>
       this._valueIsEqual(selectedOptionValue, this._value(option)),
     );
     if (option) {
@@ -488,7 +487,7 @@ export default class TokenField extends Component {
     }
     // if we added a valkue then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
-      let input = findDOMNode(this.refs.input);
+      const input = findDOMNode(this.refs.input);
       if (input && isObscured(input)) {
         input.scrollIntoView(input);
       }
@@ -549,11 +548,8 @@ export default class TokenField extends Component {
 
     const valuesList = (
       <ul
-        className={cx(
-          "border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y",
-          inputBoxClasses,
-        )}
-        style={this.props.style}
+        className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
+        style={{ ...this.props.style, inputBoxStyles }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (

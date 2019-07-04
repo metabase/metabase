@@ -6,7 +6,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import Button from "metabase/components/Button";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import { getIn } from "icepick";
 
@@ -34,6 +34,7 @@ const StandardForm = ({
       {form.fields(values).map(formField => {
         const nameComponents = formField.name.split(".");
         const field = getIn(fields, nameComponents);
+
         return (
           <FormField
             key={formField.name}
@@ -52,6 +53,7 @@ const StandardForm = ({
     </div>
     <div className={cx("flex", { "Form-offset": !newForm })}>
       <div className="ml-auto flex align-center">
+        {error && <FormMessage message={error} formError />}
         {onClose && (
           <Button
             type="button"
@@ -63,7 +65,6 @@ const StandardForm = ({
           type="submit"
           primary={!(submitting || invalid)}
           disabled={submitting || invalid}
-          className="mr1"
         >
           {submitTitle || (values.id != null ? t`Update` : t`Create`)}
         </Button>
@@ -72,11 +73,11 @@ const StandardForm = ({
             type="button"
             disabled={submitting || !dirty}
             onClick={resetForm}
+            className="ml1"
           >
             {t`Reset`}
           </Button>
         )}
-        {error && <FormMessage message={error} formError />}
       </div>
     </div>
   </form>

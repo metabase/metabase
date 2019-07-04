@@ -2,14 +2,14 @@
 
 import _ from "underscore";
 import d3 from "d3";
-import { t } from "c-3po";
+import { t } from "ttag";
 import crossfilter from "crossfilter";
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
-// are able to avoid circular dependency errors in integrated tests
+// are able to avoid circular dependency errors in e2e tests
 export function columnsAreValid(colNames, data, filter = () => true) {
   if (typeof colNames === "string") {
     colNames = [colNames];
@@ -71,8 +71,8 @@ function generateSplits(list, left = [], right = []) {
 }
 
 function axisCost(seriesExtents, favorUnsplit = true) {
-  let axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
-  let axisRange = axisExtent[1] - axisExtent[0];
+  const axisExtent = d3.extent([].concat(...seriesExtents)); // concat to flatten the array
+  const axisRange = axisExtent[1] - axisExtent[0];
   if (favorUnsplit && seriesExtents.length === 0) {
     return SPLIT_AXIS_UNSPLIT_COST;
   } else if (axisRange === 0) {
@@ -121,13 +121,26 @@ export function computeSplit(extents, left = [], right = []) {
   }
 }
 
-const FRIENDLY_NAME_MAP = {
+const AGGREGATION_NAME_MAP = {
   avg: t`Average`,
   count: t`Count`,
   sum: t`Sum`,
   distinct: t`Distinct`,
   stddev: t`Standard Deviation`,
 };
+const AGGREGATION_NAME_REGEX = new RegExp(
+  `^(${Object.keys(AGGREGATION_NAME_MAP).join("|")})(_\\d+)?$`,
+);
+
+export function getFriendlyName(column) {
+  if (AGGREGATION_NAME_REGEX.test(column.name)) {
+    const friendly = AGGREGATION_NAME_MAP[column.display_name.toLowerCase()];
+    if (friendly) {
+      return friendly;
+    }
+  }
+  return column.display_name;
+}
 
 export function getXValues(datas) {
   let xValues = _.chain(datas)
@@ -159,29 +172,14 @@ export function getXValues(datas) {
   return xValues;
 }
 
-export function getFriendlyName(column) {
-  if (column.display_name && column.display_name !== column.name) {
-    return column.display_name;
-  } else {
-    // NOTE Atte Keinänen 8/7/17:
-    // Values `display_name` and `name` are same for breakout columns so check FRIENDLY_NAME_MAP
-    // before returning either `display_name` or `name`
-    return (
-      FRIENDLY_NAME_MAP[column.name.toLowerCase().trim()] ||
-      column.display_name ||
-      column.name
-    );
-  }
-}
-
 export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
     _.zip(seriesA, seriesB).reduce((acc, [a, b]) => {
-      let sameData = a.data === b.data;
-      let sameDisplay =
+      const sameData = a.data === b.data;
+      const sameDisplay =
         (a.card && a.card.display) === (b.card && b.card.display);
-      let sameVizSettings =
+      const sameVizSettings =
         (a.card && JSON.stringify(a.card.visualization_settings)) ===
         (b.card && JSON.stringify(b.card.visualization_settings));
       return acc && (sameData && sameDisplay && sameVizSettings);
@@ -196,16 +194,16 @@ export function colorShades(color, count) {
 }
 
 export function colorShade(hex, shade = 0) {
-  let match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
+  const match = hex.match(/#(?:(..)(..)(..)|(.)(.)(.))/);
   if (!match) {
     return hex;
   }
-  let components = (match[1] != null
+  const components = (match[1] != null
     ? match.slice(1, 4)
     : match.slice(4, 7)
   ).map(d => parseInt(d, 16));
-  let min = Math.min(...components);
-  let max = Math.max(...components);
+  const min = Math.min(...components);
+  const max = Math.max(...components);
   return (
     "#" +
     components
@@ -243,7 +241,7 @@ const cardinalityCache = new WeakMap();
 export function getColumnCardinality(cols, rows, index) {
   const col = cols[index];
   if (!cardinalityCache.has(col)) {
-    let dataset = crossfilter(rows);
+    const dataset = crossfilter(rows);
     cardinalityCache.set(
       col,
       dataset
@@ -296,8 +294,10 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
         ? // Just recycle the original card id of previous card if there was one
           previousCard.original_card_id
         : // A multi-aggregation or multi-breakout series legend / drill-through action
-          // should always use the id of underlying/previous card
-          isMultiseriesQuestion ? previousCard.id : nextCard.id,
+        // should always use the id of underlying/previous card
+        isMultiseriesQuestion
+        ? previousCard.id
+        : nextCard.id,
     };
   } else {
     // Even though the card is currently clean, we might still apply dashboard parameters to it,
@@ -326,5 +326,27 @@ export function getDefaultDimensionAndMetric([{ data }]) {
       dimension: null,
       metric: null,
     };
+  }
+}
+
+// Figure out how many decimal places are needed to represent the smallest
+// values in the chart with a certain number of significant digits.
+export function computeMaxDecimalsForValues(values, options) {
+  try {
+    // Intl.NumberFormat isn't supported on all browsers, so wrap in try/catch
+    // $FlowFixMe
+    const formatter = Intl.NumberFormat("en", options);
+    let maxDecimalCount = 0;
+    for (const value of values) {
+      const parts = formatter.formatToParts(value);
+      const part = parts.find(p => p.type === "fraction");
+      const decimalCount = part ? part.value.length : 0;
+      if (decimalCount > maxDecimalCount) {
+        maxDecimalCount = decimalCount;
+      }
+    }
+    return maxDecimalCount;
+  } catch (e) {
+    return undefined;
   }
 }

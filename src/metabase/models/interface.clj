@@ -81,7 +81,7 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
-;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
+;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when definition
     (normalize/normalize-fragment [:query] definition)))
@@ -93,9 +93,8 @@
 
 ;; For DashCard parameter lists
 (defn- normalize-parameter-mapping-targets [parameter-mappings]
-  (for [{:keys [target], :as mapping} parameter-mappings]
-    (cond-> mapping
-      target (update :target normalize/normalize-tokens :ignore-path))))
+  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
+      []))
 
 (models/add-type! :parameter-mappings
   :in  (comp json-in normalize-parameter-mapping-targets)
@@ -128,7 +127,7 @@
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
 (defn decompress
-  "Decompress COMPRESSED-BYTES."
+  "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
@@ -204,11 +203,26 @@
      *  `superuser?`
      *  `(partial current-user-has-full-permissions? :write)` (you must also implement `perms-objects-set` to use this)
      *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
-        this)"))
+        this)")
+
+  (^{:added "0.32.0"} can-create? ^Boolean [entity m]
+    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+    `m`.
+
+    Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
+    for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
+    Implement this method as you come across models that are missing it."))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
-  {:perms-objects-set (constantly nil)})
+  {:perms-objects-set
+   (constantly nil)
+
+   :can-create?
+   (fn [entity _]
+     (throw
+      (NoSuchMethodException.
+       (format "%s does not yet have an implementation for `can-create?`. Feel free to add one!" (name entity)))))})
 
 (defn superuser?
   "Is `*current-user*` is a superuser? Ignores args.

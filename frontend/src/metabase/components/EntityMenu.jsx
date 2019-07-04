@@ -67,10 +67,10 @@ class EntityMenu extends Component {
           targetOffsetY={0}
         >
           {/* Note: @kdoh 10/12/17
-            * React Motion has a flow type problem with children see
-            * https://github.com/chenglou/react-motion/issues/375
-            * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
-            */}
+           * React Motion has a flow type problem with children see
+           * https://github.com/chenglou/react-motion/issues/375
+           * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
+           */}
           <Motion
             defaultStyle={{
               opacity: 0,
@@ -92,7 +92,9 @@ class EntityMenu extends Component {
                   {menuItemContent || (
                     <ol className="py1" style={{ minWidth: 210 }}>
                       {items.map(item => {
-                        if (item.content) {
+                        if (!item) {
+                          return null;
+                        } else if (item.content) {
                           return (
                             <li key={item.title}>
                               <EntityMenuItem

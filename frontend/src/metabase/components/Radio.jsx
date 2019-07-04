@@ -56,15 +56,18 @@ export default class Radio extends Component {
           "text-bold h3": !showButtons,
         })}
       >
-        {options.map(option => {
+        {options.map((option, index) => {
           const selected = value === optionValueFn(option);
 
           return (
             <li
               key={optionKeyFn(option)}
               className={cx(
-                "flex align-center cursor-pointer mr3",
-                { "text-brand-hover": !showButtons },
+                "flex align-center cursor-pointer",
+                {
+                  "text-brand-hover": !showButtons,
+                  mr3: index !== options.length - 1,
+                },
                 py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
               )}
               style={{

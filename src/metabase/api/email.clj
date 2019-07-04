@@ -3,7 +3,7 @@
   (:require [clojure
              [data :as data]
              [set :as set]
-             [string :as string]]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE POST PUT]]
             [metabase
@@ -11,9 +11,11 @@
              [email :as email]]
             [metabase.api.common :as api]
             [metabase.models.setting :as setting]
-            [metabase.util.schema :as su]))
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]))
 
-(def ^:private ^:const mb-to-smtp-settings
+(def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host
    :email-smtp-username :user
    :email-smtp-password :pass
@@ -55,24 +57,26 @@
         #".*"
         {:message "Sorry, something went wrong.  Please try again."}))))
 
-(defn humanize-email-corrections
-  "formats warnings when security settings are autocorrected"
+(defn- humanize-email-corrections
+  "Formats warnings when security settings are autocorrected."
   [corrections]
-  (into {}
-        (mapv (fn [[k v]]
-                [k (format "%s was autocorrected to %s"
-                           (name (mb-to-smtp-settings k))
-                           (string/upper-case v))])
-              corrections)))
+  (into
+   {}
+   (for [[k v] corrections]
+     [k (tru "{0} was autocorrected to {1}"
+             (name (mb-to-smtp-settings k))
+             (str/upper-case v))])))
 
 (api/defendpoint PUT "/"
-  "Update multiple `Settings` values.  You must be a superuser to do this."
+  "Update multiple email Settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
   (api/check-superuser)
   (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)
-                           (assoc :port (Integer/parseInt (:email-smtp-port settings))))
+                           (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
+        ;; TODO - this is :thumbs_down`, we should just use `with-redefs` for `email/test-smtp-connection` where
+        ;; needed in the tests. FIXME!
         response       (if-not config/is-test?
                          ;; in normal conditions, validate connection
                          (email/test-smtp-connection smtp-settings)

@@ -7,7 +7,7 @@ import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import Icon from "metabase/components/Icon.jsx";
 import Modal from "metabase/components/Modal.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class QueryModeButton extends Component {
   constructor(props, context) {
@@ -41,7 +41,7 @@ export default class QueryModeButton extends Component {
     } = this.props;
 
     // determine the type to switch to based on the type
-    let targetType = mode === "query" ? "native" : "query";
+    const targetType = mode === "query" ? "native" : "query";
 
     const engine = tableMetadata && tableMetadata.db.engine;
     const nativeQueryName =

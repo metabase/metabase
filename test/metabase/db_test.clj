@@ -1,6 +1,7 @@
 (ns metabase.db-test
   (:require [expectations :refer [expect]]
-            [metabase.db :as mdb]))
+            [metabase.db :as mdb]
+            [metabase.test.util.log :as tu.log]))
 
 ;; parse minimal connection string
 (expect
@@ -16,12 +17,14 @@
 (expect
   {:type :postgres, :user "tom", :password "1234", :host "localhost", :port "5432", :dbname "toms_cool_db",
    :ssl "true", :sslfactory "org.postgresql.ssl.NonValidatingFactory"}
-  (#'mdb/parse-connection-string (str "postgres://tom:1234@localhost:5432/toms_cool_db"
-                                      "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))
+  (tu.log/suppress-output
+    (#'mdb/parse-connection-string (str "postgres://tom:1234@localhost:5432/toms_cool_db"
+                                        "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"))))
 
 ;; the leading "jdbc" found in driver JDBC docs should be ignored
 (expect
   {:type :postgres, :user "tom", :password "1234", :host "localhost", :port "5432", :dbname "toms_cool_db",
    :ssl "true", :sslfactory "org.postgresql.ssl.NonValidatingFactory"}
-  (#'mdb/parse-connection-string (str "jdbc:postgres://tom:1234@localhost:5432/toms_cool_db"
-                                      "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory")))
+  (tu.log/suppress-output
+    (#'mdb/parse-connection-string (str "jdbc:postgres://tom:1234@localhost:5432/toms_cool_db"
+                                        "?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"))))

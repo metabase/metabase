@@ -140,6 +140,11 @@
   line-height: 1.5em;
 }
 
+.text-spaced,
+:local(.text-spaced) {
+  line-height: 1.5em;
+}
+
 .text-small {
   font-size: 0.875em;
 }

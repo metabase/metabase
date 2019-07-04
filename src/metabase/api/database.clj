@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
-            [metabase.util.i18n :refer [tru]]
             [metabase
              [config :as config]
              [driver :as driver]
@@ -11,11 +10,13 @@
              [public-settings :as public-settings]
              [sample-data :as sample-data]
              [util :as u]]
-            [metabase.driver.util :as driver.u]
             [metabase.api
              [common :as api]
              [table :as table-api]]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -30,6 +31,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -127,7 +129,7 @@
   (when (public-settings/enable-nested-queries)
     (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
       {:name               "Saved Questions"
-       :id                 database/virtual-id
+       :id                 mbql.s/saved-questions-virtual-database-id
        :features           #{:basic-aggregations}
        :tables             virtual-tables
        :is_saved_questions true})))
@@ -190,7 +192,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -313,7 +315,7 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver.u/can-connect-with-details? engine details :rethrow-exceptions)
+          (driver.u/can-connect-with-details? engine details :throw-exceptions)
           nil
 
           (and host port (u/host-port-up? host port))

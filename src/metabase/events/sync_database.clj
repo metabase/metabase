@@ -3,9 +3,11 @@
             [clojure.tools.logging :as log]
             [metabase
              [events :as events]
-             [sync :as sync]]
+             [sync :as sync]
+             [util :as u]]
             [metabase.models.database :refer [Database]]
-            [metabase.sync.sync-metadata :as sync-metadata]))
+            [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.util.i18n :refer [trs]]))
 
 (def ^:const sync-database-topics
   "The `Set` of event topics which are subscribed to for use in database syncing."
@@ -17,7 +19,7 @@
   (async/chan))
 
 
-;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------
+;;; ------------------------------------------------ EVENT PROCESSING ------------------------------------------------
 
 
 (defn process-sync-database-event
@@ -33,15 +35,13 @@
                   (if (:is_full_sync database)
                     (sync/sync-database! database)
                     (sync-metadata/sync-db-metadata! database))
-                  (catch Throwable t
-                    (log/error (format "Error syncing Database: %d" (:id database)) t))))))
+                  (catch Throwable e
+                    (log/error e (trs "Error syncing Database {0}" (u/get-id database))))))))
     (catch Throwable e
-      (log/warn (format "Failed to process sync-database event. %s" (:topic sync-database-event)) e))))
+      (log/warn e (trs "Failed to process sync-database event.") (:topic sync-database-event)))))
 
 
-
-;;; ## ---------------------------------------- LIFECYLE ----------------------------------------
-
+;;; ---------------------------------------------------- LIFECYLE ----------------------------------------------------
 
 (defn events-init
   "Automatically called during startup; start event listener for database sync events."

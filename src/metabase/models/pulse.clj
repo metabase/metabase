@@ -69,14 +69,18 @@
 
 (u/strict-extend (class Pulse)
   models/IModel
-  (merge models/IModelDefaults
-         {:hydration-keys (constantly [:pulse])
-          :properties     (constantly {:timestamped? true})
-          :pre-delete     pre-delete})
+  (merge
+   models/IModelDefaults
+   {:hydration-keys (constantly [:pulse])
+    :properties     (constantly {:timestamped? true})
+    :pre-delete     pre-delete})
   i/IObjectPermissions
-  {:can-read?         (partial i/current-user-has-full-permissions? :read)
-   :can-write?        (partial i/current-user-has-full-permissions? :write)
-   :perms-objects-set perms-objects-set})
+  (merge
+   i/IObjectPermissionsDefaults
+   {:can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-write?        (partial i/current-user-has-full-permissions? :write)
+    :perms-objects-set perms-objects-set}))
+
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
@@ -161,7 +165,8 @@
           notification->pulse))
 
 (s/defn retrieve-notification :- (s/maybe PulseInstance)
-  "Fetch an Alert or Pulse, and do the 'standard' hydrations."
+  "Fetch an Alert or Pulse, and do the 'standard' hydrations, adding `:channels` with `:recipients`, `:creator`, and
+  `:cards`."
   [notification-or-id & additional-condtions]
   (some-> (apply Pulse :id (u/get-id notification-or-id), additional-condtions)
           hydrate-notification))
