@@ -340,6 +340,15 @@
       {:aggregation [[:named [:- [:sum $venue_price] 41] "Sum-41"]]
        :breakout    [$venue_price]})))
 
+;; distinct count of two dimensions
+(datasets/expect-with-driver :druid
+   {:rows [[98]]
+    :columns ["count"]}
+   (qp.test/rows+column-names
+    (druid-query
+     {:aggregation [[:distinct [:+  [:field-id (data/id :checkins :venue_category_name)]
+                                    [:field-id (data/id :checkins :venue_name)]]]]})))
+
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
 (datasets/expect-with-driver :druid
   [["2" 1231.0]
