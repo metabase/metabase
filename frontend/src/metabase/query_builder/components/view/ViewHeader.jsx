@@ -34,6 +34,18 @@ export class ViewTitleHeader extends React.Component {
     };
   }
 
+  componentWillReceiveProps(nextProps) {
+    const query = this.props.question.query();
+    const nextQuery = nextProps.question.query();
+    const filtersCount =
+      query instanceof StructuredQuery ? query.filters().length : 0;
+    const nextFiltersCount =
+      nextQuery instanceof StructuredQuery ? nextQuery.filters().length : 0;
+    if (nextFiltersCount > filtersCount) {
+      this.expandFilters();
+    }
+  }
+
   expandFilters = () => {
     this.setState({ isFiltersExpanded: true });
   };
@@ -235,12 +247,6 @@ export class ViewTitleHeader extends React.Component {
 }
 
 export class ViewSubHeader extends React.Component {
-  state = {
-    isFiltersExpanded: false,
-  };
-
-  expandFilters = () => this.setState({ isFiltersExpanded: true });
-
   render() {
     const {
       question,
