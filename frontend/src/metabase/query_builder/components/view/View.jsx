@@ -111,13 +111,15 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
+    const topQuery = isStructured && query.topLevelQuery();
+
     // only allow editing of series for structured queries
-    const onAddSeries = isStructured ? this.handleAddSeries : null;
-    const onEditSeries = isStructured ? this.handleEditSeries : null;
+    const onAddSeries = topQuery ? this.handleAddSeries : null;
+    const onEditSeries = topQuery ? this.handleEditSeries : null;
     const onRemoveSeries =
-      isStructured && query.hasAggregations() ? this.handleRemoveSeries : null;
+      topQuery && topQuery.hasAggregations() ? this.handleRemoveSeries : null;
     const onEditBreakout =
-      isStructured && query.hasBreakouts() ? this.handleEditBreakout : null;
+      topQuery && topQuery.hasBreakouts() ? this.handleEditBreakout : null;
 
     const leftSideBar = isShowingChartSettingsSidebar ? (
       <ChartSettingsSidebar
@@ -150,15 +152,15 @@ export default class View extends React.Component {
         />
       ) : null;
 
-    const newQuestion = query instanceof StructuredQuery && !query.table();
+    const isNewQuestion = query instanceof StructuredQuery && !query.table();
 
     return (
       <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
           <Motion
-            defaultStyle={newQuestion ? { opacity: 0 } : { opacity: 1 }}
+            defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
             style={
-              newQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
+              isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
             }
           >
             {({ opacity }) => (
@@ -183,7 +185,7 @@ export default class View extends React.Component {
             {query instanceof StructuredQuery && (
               <Motion
                 defaultStyle={
-                  newQuestion
+                  isNewQuestion
                     ? { opacity: 1, translateY: 0 }
                     : { opacity: 0, translateY: -100 }
                 }

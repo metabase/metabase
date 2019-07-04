@@ -86,7 +86,7 @@ export default class QueryVisualization extends Component {
     return (
       <div className={cx(className, "relative")}>
         {isRunning && (
-          <div className="Loading-message spread flex flex-column layout-centered text-brand z2">
+          <div className="Loading spread flex flex-column layout-centered text-brand z2">
             <LoadingSpinner />
             <h2 className="Loading-message text-brand text-uppercase my3">
               {t`Doing science`}...

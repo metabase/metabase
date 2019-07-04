@@ -38,9 +38,7 @@ export default class LegendHeader extends Component {
     const {
       series,
       hovered,
-      onAddSeries,
-      onEditSeries,
-      onRemoveSeries,
+
       actionButtons,
       onHoverChange,
       onChangeCardAndRun,
@@ -51,6 +49,13 @@ export default class LegendHeader extends Component {
       classNameWidgets,
       width,
     } = this.props;
+
+    const isBreakoutSeries = !!series[0].card._breakoutColumn;
+
+    // disable these actions for breakout series
+    const { onAddSeries, onEditSeries, onRemoveSeries } = isBreakoutSeries
+      ? {}
+      : this.props;
 
     const showDots = !!onAddSeries || series.length > 1;
     const isNarrow = width < MIN_WIDTH_PER_SERIES * series.length;
@@ -105,7 +110,7 @@ export default class LegendHeader extends Component {
             }
             infoClassName={classNameWidgets}
           />,
-          onRemoveSeries && (
+          onRemoveSeries && series.length > 1 && (
             <Icon
               name="close"
               className="text-light text-medium-hover flex-no-shrink mr2 cursor-pointer"
