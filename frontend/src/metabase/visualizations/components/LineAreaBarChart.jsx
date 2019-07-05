@@ -282,7 +282,7 @@ export default class LineAreaBarChart extends Component {
           {...this.props}
           series={series}
           settings={settings}
-          className="renderer flex-full"
+          className="renderer flex-full flex-basis-zero"
           maxSeries={MAX_SERIES}
           renderer={this.constructor.renderer}
         />
