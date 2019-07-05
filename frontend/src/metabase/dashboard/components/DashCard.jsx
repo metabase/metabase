@@ -239,7 +239,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     triggerElement={
       <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
     }
-    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1"
+    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
     <ChartSettingsWithState
       series={series}
@@ -251,7 +251,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-medium-hover "
+    className="text-light text-medium-hover drag-disabled"
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -263,7 +263,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1"
+    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >
