@@ -13,7 +13,10 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 type DeregisterFunction = () => void;
 
 type Props = VisualizationProps & {
-  renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
+  renderer: (
+    element: Element,
+    props: VisualizationProps,
+  ) => { deregister: DeregisterFunction, resize: Function },
 };
 
 @ExplicitSize()
@@ -28,6 +31,7 @@ export default class CardRenderer extends Component {
   };
 
   _deregister: ?DeregisterFunction;
+  _resize: ?Function;
 
   shouldComponentUpdate(nextProps: Props) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
@@ -42,8 +46,13 @@ export default class CardRenderer extends Component {
     this.renderChart();
   }
 
-  componentDidUpdate() {
-    this.renderChart();
+  componentDidUpdate(prevProps: Props) {
+    if (isSameSeries(this.props.series, prevProps.series) && this._resize) {
+      // if we updated with the same series, then only the size has changed
+      this._resize();
+    } else {
+      this.renderChart();
+    }
   }
 
   componentWillUnmount() {
@@ -79,7 +88,9 @@ export default class CardRenderer extends Component {
     parent.appendChild(element);
 
     try {
-      this._deregister = this.props.renderer(element, this.props);
+      const rendererResult = this.props.renderer(element, this.props);
+      this._resize = rendererResult.resize;
+      this._deregister = rendererResult.deregister;
     } catch (err) {
       console.error(err);
       this.props.onRenderError(err.message || err);

@@ -11,6 +11,8 @@ import { lighten } from "metabase/lib/colors";
 import {
   computeSplit,
   computeMaxDecimalsForValues,
+  getAvailableCanvasWidth,
+  getAvailableCanvasHeight,
   getFriendlyName,
   getXValues,
   colorShades,
@@ -775,7 +777,7 @@ type DeregisterFunction = () => void;
 export default function lineAreaBar(
   element: Element,
   props: LineAreaBarProps,
-): DeregisterFunction {
+): { deregister: DeregisterFunction, resize: Function } {
   const { onRender, isScalarSeries, settings, series } = props;
 
   const warnings = {};
@@ -883,10 +885,19 @@ export default function lineAreaBar(
     });
   }
 
-  // return an unregister function
-  return () => {
+  const deregister = () => {
     dc.chartRegistry.deregister(parent);
   };
+  const resize = () => {
+    parent.width(getAvailableCanvasWidth(element));
+    parent.height(getAvailableCanvasHeight(element));
+    // I think this is always defined, but the dc.js examples check before calling
+    if (parent.rescale) {
+      parent.rescale();
+    }
+    parent.redraw();
+  };
+  return { deregister, resize };
 }
 
 export const lineRenderer = (element, props) =>
