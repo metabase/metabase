@@ -102,13 +102,20 @@ function moment_fast_toString() {
   return this._i;
 }
 
+const parseTimestampCache = new Map();
+
 export function HACK_parseTimestamp(value, unit, warn) {
   if (value == null) {
     warn(NULL_DIMENSION_WARNING);
     return null;
   } else {
+    const cacheKey = value + unit;
+    if (parseTimestampCache.has(cacheKey)) {
+      return parseTimestampCache.get(cacheKey);
+    }
     const m = parseTimestamp(value, unit);
     m.toString = moment_fast_toString;
+    parseTimestampCache.set(cacheKey, m);
     return m;
   }
 }
