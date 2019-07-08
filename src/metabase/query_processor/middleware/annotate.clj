@@ -152,7 +152,7 @@
 
     [:expression expression-name]
     (merge
-     (infer-expression-type (expressions expression-name))
+     (infer-expression-type (-> expression-name keyword expressions))
      {:name            expression-name
       :display_name    expression-name
       ;; provided so the FE can add easily add sorts and the like when someone clicks a column header

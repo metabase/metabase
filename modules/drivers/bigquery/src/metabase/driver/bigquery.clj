@@ -408,7 +408,7 @@
 
 (defmethod driver/date-add :bigquery
   [driver dt amount unit]
-  (hsql/call :dateadd (hx/->timestamp dt) amount (hx/literal unit)))
+  (hsql/call :date_add (hx/->timestamp dt) amount (hx/literal unit)))
 
 (defmethod driver/mbql->native :bigquery
   [driver

@@ -2,10 +2,12 @@
   "Tests for expressions (calculated columns)."
   (:require [clj-time
              [core :as time]
+             [coerce :as tcoerce]
              [format :as tformat]]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
+            [metabase.util.date :as du]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -197,20 +199,28 @@
 
 (def ^:private utc-tz (time/time-zone-for-id "UTC"))
 
+(defn- maybe-truncate
+  [dt]
+  (if (= :sqlite driver/*driver*)
+    (->> dt (du/date-trunc :day) tcoerce/from-sql-date)
+    dt))
+
 (defn- robust-dates
-  [output-format dates]
-  (map (comp vector
-             (partial tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz))
-             (partial tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz)))
-       dates))
+  [dates]
+  (let [output-format (if (= :sqlite driver/*driver*)
+                        :mysql
+                        :date-time)]
+    (for [d dates]
+      [(->> d
+            (tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz))
+            maybe-truncate
+            (tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz)))])))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
-  (robust-dates (if (= :sqlite driver/*driver*)
-                  :mysql
-                  :date-time)
-                ["2014-09-02T13:45:00.000"
-                 "2014-07-02T09:30:00.000"
-                 "2014-07-01T10:30:00.000"])
+  (robust-dates
+   ["2014-09-02T13:45:00.000"
+    "2014-07-02T09:30:00.000"
+    "2014-07-01T10:30:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (-> (data/run-mbql-query users
             {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
