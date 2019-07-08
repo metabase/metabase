@@ -7,11 +7,11 @@
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
-            [metabase.util.date :as du]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util.date :as du]))
 
 ;; Do a basic query including an expression
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
