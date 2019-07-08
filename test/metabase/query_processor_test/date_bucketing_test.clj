@@ -777,24 +777,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; RELATIVE DATES
-(deftype ^:private TimestampDatasetDef [intervalSeconds])
-
-(defmethod tx/get-dataset-definition TimestampDatasetDef
-  [^TimestampDatasetDef this]
-  (let [interval-seconds (.intervalSeconds this)]
-    (tx/dataset-definition (str "checkins_interval_" interval-seconds)
-      ["checkins"
-       [{:field-name "timestamp"
-         :base-type  :type/DateTime}]
-       (vec (for [i (range -15 15)]
-              ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
-              ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
-              ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (driver/date-interval driver/*driver* :second (* i interval-seconds))
-                 (assert <>))]))])))
+(defmethod tx/get-dataset-definition ::timestamp
+  [{:keys [interval-seconds]}]
+  (tx/dataset-definition (str "checkins_interval_" interval-seconds)
+    ["checkins"
+     [{:field-name "timestamp"
+       :base-type  :type/DateTime}]
+     (vec (for [i (range -15 15)]
+            ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
+            ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
+            ;; the same timezone we're running the tests from *cough* SQL Server *cough*
+            [(u/prog1 (driver/date-interval driver/*driver* :second (* i interval-seconds))
+               (assert <>))]))]))
 
 (defn- dataset-def-with-timestamps [interval-seconds]
-  (TimestampDatasetDef. interval-seconds))
+  {::tx/type ::timestamp, :interval-seconds interval-seconds})
 
 (def ^:private checkins:4-per-minute (dataset-def-with-timestamps 15))
 (def ^:private checkins:4-per-hour   (dataset-def-with-timestamps (* 60 15)))
