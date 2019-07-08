@@ -3,8 +3,7 @@
   (:require [clojure.string :as str]
             [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.test.data.interface :as tx])
-  (:import metabase.test.data.interface.FieldDefinition))
+            [metabase.test.data.interface :as tx]))
 
 (driver/register! :sql/test-extensions, :abstract? true)
 
@@ -217,7 +216,7 @@
 
 (defmulti add-fk-sql
   "Return a `ALTER TABLE ADD CONSTRAINT FOREIGN KEY` statement."
-  {:arglists '([driver dbdef tabledef, ^FieldDefinition fielddef])}
+  {:arglists '([driver dbdef tabledef fielddef])}
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

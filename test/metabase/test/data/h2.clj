@@ -1,5 +1,5 @@
 (ns metabase.test.data.h2
-  "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
+  "Test extensions for H2."
   (:require [clojure.string :as str]
             [metabase.db.spec :as dbspec]
             [metabase.driver.sql.util :as sql.u]

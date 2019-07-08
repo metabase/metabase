@@ -52,13 +52,13 @@
   [{:keys [table-definitions], :as database-definition} db]
   {:pre [(seq table-definitions)]}
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
-    (let [table (delay (or (tx/metabase-instance table-definition db)
+    (let [table (delay (or (tx/metabase-table db table-definition)
                            (throw (Exception. (format "Table '%s' not loaded from definiton:\n%s\nFound:\n%s"
                                                       table-name
                                                       (u/pprint-to-str (dissoc table-definition :rows))
                                                       (u/pprint-to-str (db/select [Table :schema :name], :db_id (:id db))))))))]
       (doseq [{:keys [field-name visibility-type special-type], :as field-definition} (:field-definitions table-definition)]
-        (let [field (delay (or (tx/metabase-instance field-definition @table)
+        (let [field (delay (or (tx/metabase-field @table field-definition)
                                (throw (Exception. (format "Field '%s' not loaded from definition:\n"
                                                           field-name
                                                           (u/pprint-to-str field-definition))))))]
@@ -105,10 +105,10 @@
 (defmethod get-or-create-database! :default [driver dbdef]
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
-     (tx/metabase-instance dbdef driver)
+     (tx/metabase-database driver dbdef)
      (locking (driver->create-database-lock driver)
        (or
-        (tx/metabase-instance dbdef driver)
+        (tx/metabase-database driver dbdef)
         (create-database! driver dbdef))))))
 
 (defn- get-or-create-test-data-db!

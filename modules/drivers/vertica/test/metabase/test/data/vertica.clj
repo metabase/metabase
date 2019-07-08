@@ -1,5 +1,5 @@
 (ns metabase.test.data.vertica
-  "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
+  "Test extensions for Vertica."
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test.data

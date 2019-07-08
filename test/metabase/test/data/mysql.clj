@@ -1,5 +1,5 @@
 (ns metabase.test.data.mysql
-  "Code for creating / destroying a MySQL database from a `DatabaseDefinition`."
+  "Test extensions for MySQL."
   (:require [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]

@@ -81,8 +81,8 @@
          :field-definitions
          (fn [[name-field-def _ password-field-def]]
            [name-field-def
-            (tx/map->FieldDefinition {:field-name "last_login_date", :base-type :type/Date})
-            (tx/map->FieldDefinition {:field-name "last_login_time", :base-type :type/Time})
+            {:field-name "last_login_date", :base-type :type/Date}
+            {:field-name "last_login_time", :base-type :type/Time}
             password-field-def])))
       :rows
       (fn [rows]
@@ -99,7 +99,7 @@
          tabledef
          :field-definitions
          concat
-         [(tx/map->FieldDefinition {:field-name "null_only_date" :base-type :type/Date})]))
+         [{:field-name "null_only_date" :base-type :type/Date}]))
       :rows
       (fn [rows]
         (for [row rows]
@@ -116,7 +116,7 @@
          :field-definitions
          (fn [[name-field-def _ password-field-def]]
            [name-field-def
-            (tx/map->FieldDefinition {:field-name "last_login", :base-type :type/DateTimeWithTZ})
+            {:field-name "last_login", :base-type :type/DateTimeWithTZ}
             password-field-def]))))))
 
 (defonce ^{:doc "The usual `test-data` dataset, but only the `users` table; adds a `created_by` column to the users
@@ -127,8 +127,7 @@
     (tx/transform-dataset-update-table "users"
       :table
       (fn [tabledef]
-        (update tabledef :field-definitions concat [(tx/map->FieldDefinition
-                                                     {:field-name "created_by", :base-type :type/Integer, :fk :users})]))
+        (update tabledef :field-definitions concat [                                                     {:field-name "created_by", :base-type :type/Integer, :fk :users}]))
       ;; created_by = user.id - 1, except for User 1, who was created by himself (?)
       :rows
       (fn [rows]

@@ -82,11 +82,11 @@
 ;; Tests for table comments: ------------------
 
 (defn- basic-table [table-name comment]
-  (tx/map->DatabaseDefinition {:database-name     (str table-name "_db")
-                               :table-definitions [{:table-name        table-name
-                                                    :field-definitions [{:field-name "foo", :base-type :type/Text}]
-                                                    :rows              [["bar"]]
-                                                    :table-comment     comment}]}))
+  {:database-name     (str table-name "_db")
+   :table-definitions [{:table-name        table-name
+                        :field-definitions [{:field-name "foo", :base-type :type/Text}]
+                        :rows              [["bar"]]
+                        :table-comment     comment}]})
 
 (defn- db->tables [db]
   (set (map (partial into {}) (db/select ['Table :name :description] :db_id (u/get-id db)))))

@@ -1,5 +1,5 @@
 (ns metabase.test.data.sqlserver
-  "Code for creating / destroying a SQLServer database from a `DatabaseDefinition`."
+  "Test extensions for SQLServer."
   (:require [clojure.java.jdbc :as jdbc]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test.data

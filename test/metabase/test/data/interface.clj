@@ -1,8 +1,8 @@
 (ns metabase.test.data.interface
   "`Definition` types for databases, tables, fields; related protocols, helper functions.
 
-   Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
-   actual physical RDMS database. This functionality allows us to easily test with multiple datasets.
+   Drivers with test extensions know how to load a `DatasetDefinition` into an actual physical RDMS database. This
+  functionality allows us to easily test with multiple datasets.
 
    TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require [clojure.string :as str]
@@ -23,7 +23,6 @@
             [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
-             [pretty :as pretty]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -35,33 +34,33 @@
 
 (defmulti get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
-  {:arglists '([this])}
-  class)
+  {:arglists '([m])}
+  ::type)
 
 
-(s/defrecord FieldDefinition [field-name      :- su/NonBlankString
-                              base-type       :- (s/cond-pre {:native su/NonBlankString}
-                                                             su/FieldType)
-                              special-type    :- (s/maybe su/FieldType)
-                              visibility-type :- (s/maybe (apply s/enum field/visibility-types))
-                              fk              :- (s/maybe s/Keyword)
-                              field-comment   :- (s/maybe su/NonBlankString)]
-  nil
-  :load-ns true)
+(def FieldDefinition
+  "Schema for the definition of a single Field in a test dataset."
+  {:field-name                       su/NonBlankString
+   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
+   (s/optional-key :special-type)    (s/maybe su/FieldType)
+   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
+   (s/optional-key :fk)              (s/maybe s/Keyword)
+   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
 
-(s/defrecord TableDefinition [table-name        :- su/NonBlankString
-                              field-definitions :- [FieldDefinition]
-                              rows              :- [[s/Any]]
-                              table-comment     :- (s/maybe su/NonBlankString)]
-  nil
-  :load-ns true)
+(def TableDefinition
+  "Schema for the definition of a single Table in a test dataset."
+  {:table-name        su/NonBlankString
+   :field-definitions [FieldDefinition]
+   :rows              [[s/Any]]
+   (s/optional-key
+    :table-comment)     (s/maybe su/NonBlankString)})
 
-(s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]]
-  nil
-  :load-ns true)
+(def DatasetDefinition
+  "Schema for the definition of a test dataset."
+  {:database-name     su/NonBlankString
+   :table-definitions [TableDefinition]})
 
-(defmethod get-dataset-definition DatabaseDefinition [this] this)
+(defmethod get-dataset-definition :default [m] m)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -167,19 +166,17 @@
   []
   (the-driver-with-test-extensions (or driver/*driver* :h2)))
 
-(defn escaped-name
+(s/defn escaped-name :- s/Str
   "Return escaped version of database name suitable for use as a filename / database name / etc."
-  ^String [^DatabaseDefinition {:keys [database-name]}]
-  {:pre [(string? database-name)]}
+  [{:keys [database-name]} :- DatasetDefinition]
   (str/replace database-name #"\s+" "_"))
 
-(defn db-qualified-table-name
+(s/defn db-qualified-table-name :- s/Str
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
   DB; thus their names must be qualified to differentiate them effectively.)"
-  ^String [^String database-name, ^String table-name]
-  {:pre [(string? database-name) (string? table-name)]}
+  [database-name :- s/Str, table-name :- s/Str]
   ;; take up to last 30 characters because databases like Oracle have limits on the lengths of identifiers
   (apply str (take-last 30 (str/replace (str/lower-case (str database-name \_ table-name)) #"-" "_"))))
 
@@ -199,28 +196,30 @@
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
 
+(s/defn metabase-database
+  "Return the actual Metabase Database associated with `dataset-def`, if it exists."
+  [driver :- s/Keyword, dbdef]
+  (mdb/setup-db!)
+  (let [{:keys [database-name], :as dbdef} (get-dataset-definition dbdef)]
+    (s/validate DatasetDefinition dbdef)
+    (Database :name database-name, :engine (name driver))))
 
-(defmulti metabase-instance
-  "Return the Metabase object associated with this definition, if applicable. CONTEXT should be the parent object (the
-  actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
-  `FieldDefintion`). For a `DatabaseDefinition`, pass the driver keyword."
-  {:arglists '([db-or-table-or-field-def context])}
-  (fn [db-or-table-or-field-def context] (class db-or-table-or-field-def)))
+(s/defn metabase-field
+  "Return the actual Metabase Field associated with `field-def`, if it exists."
+  {:arglists '([table field-def])}
+  [{table-id :id} :- {:id s/Int, s/Keyword s/Any}, {:keys [field-name]} :- FieldDefinition]
+  (Field :table_id table-id, :%lower.name (str/lower-case field-name)))
 
-(defmethod metabase-instance FieldDefinition [this table]
-  (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
-
-(defmethod metabase-instance TableDefinition [this database]
+(s/defn metabase-table
+  "Return the actual Metabase Table associated with `table-def`, if it exists."
+  {:arglists '([database table-def])}
+  [{db-id :id, db-name :name} :- {:id s/Int, s/Keyword s/Any}, {:keys [table-name]} :- TableDefinition]
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
-  (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
-      (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
-
-(defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
-  (assert (string? database-name))
-  (assert (keyword? driver-kw))
-  (mdb/setup-db!)
-  (Database :name database-name, :engine (name driver-kw)))
+  (some
+   (partial Table :db_id db-id, :%lower.name)
+   [(str/lower-case table-name)
+    (db-qualified-table-name db-name table-name)]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -361,28 +360,19 @@
 ;;; |                                 Helper Functions for Creating New Definitions                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private DatasetFieldDefinition
-  "Schema for a Field in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  {:field-name                       su/NonBlankString
-   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :special-type)    (s/maybe su/FieldType)
-   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)              (s/maybe s/Keyword)
-   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
-
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
   [(s/one su/NonBlankString "table name")
-   (s/one [DatasetFieldDefinition] "fields")
+   (s/one [FieldDefinition] "fields")
    (s/one [[s/Any]] "rows")])
 
 ;; TODO - not sure everything below belongs in this namespace
 
 (s/defn ^:private dataset-field-definition :- FieldDefinition
-  [field-definition-map :- DatasetFieldDefinition]
+  [field-definition-map :- FieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
-  (s/validate FieldDefinition (map->FieldDefinition field-definition-map)))
+  (s/validate FieldDefinition field-definition-map))
 
 (s/defn ^:private dataset-table-definition :- TableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
@@ -393,22 +383,20 @@
   ([table-name :- su/NonBlankString, field-definition-maps, rows]
    (s/validate
     TableDefinition
-    (map->TableDefinition
-     {:table-name        table-name
-      :rows              rows
-      :field-definitions (mapv dataset-field-definition field-definition-maps)}))))
+    {:table-name        table-name
+     :rows              rows
+     :field-definitions (mapv dataset-field-definition field-definition-maps)})))
 
-(s/defn dataset-definition :- DatabaseDefinition
-  "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
+(s/defn dataset-definition :- DatasetDefinition
+  "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatasetDefinition instance for
   comsumption by various test-data-loading methods."
   {:style/indent 1}
   [database-name :- su/NonBlankString, & definition]
   (s/validate
-   DatabaseDefinition
-   (map->DatabaseDefinition
-    {:database-name     database-name
-     :table-definitions (for [table definition]
-                          (dataset-table-definition table))})))
+   DatasetDefinition
+   {:database-name     database-name
+    :table-definitions (for [table definition]
+                         (dataset-table-definition table))}))
 
 (defmacro defdataset
   "Define a new dataset to test against."
@@ -417,7 +405,7 @@
 
   ([dataset-name docstring definition]
    {:pre [(symbol? dataset-name)]}
-   `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `DatabaseDefinition)
+   `(defonce ~(vary-meta dataset-name assoc :doc docstring)
       (apply dataset-definition ~(name dataset-name) ~definition))))
 
 
@@ -427,14 +415,9 @@
 
 (def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
-(deftype ^:private EDNDatasetDefinition [dataset-name def]
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list 'edn-dataset-definition dataset-name)))
-
-(defmethod get-dataset-definition EDNDatasetDefinition
-  [^EDNDatasetDefinition this]
-  @(.def this))
+(defmethod get-dataset-definition :edn
+  [{:keys [def]}]
+  @def)
 
 (s/defn edn-dataset-definition
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
@@ -447,24 +430,19 @@
                   (edn/read-string
                    (slurp
                     (str edn-definitions-dir dataset-name ".edn")))))]
-    (EDNDatasetDefinition. dataset-name get-def)))
+    {::type :edn, :dataset-name dataset-name, :def get-def}))
 
 (defmacro defdataset-edn
   "Define a new test dataset using the definition in an EDN file in the `test/metabase/test/data/dataset_definitions/`
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name & [docstring]]
-  `(defonce ~(vary-meta dataset-name assoc :doc docstring, :tag `EDNDatasetDefinition)
+  `(defonce ~(vary-meta dataset-name assoc :doc docstring)
      (edn-dataset-definition ~(name dataset-name))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Transformed Dataset Definitions                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftype ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
-  pretty/PrettyPrintable
-  (pretty [_]
-    (list 'transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
@@ -476,11 +454,11 @@
                       (transform-fn
                        (assoc (get-dataset-definition wrapped-definition)
                          :database-name new-name)))]
-    (TransformedDatasetDefinition. new-name wrapped-definition get-def)))
+    {::type :transformed, :name new-name, :def get-def}))
 
-(defmethod get-dataset-definition TransformedDatasetDefinition
-  [^TransformedDatasetDefinition this]
-  @(.def this))
+(defmethod get-dataset-definition :transformed
+  [{:keys [def]}]
+  @def)
 
 (defn transform-dataset-update-tabledefs [f & args]
   (fn [dbdef]
@@ -519,7 +497,7 @@
 
 (s/defn ^:private tabledef-with-name :- TableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
-  [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [{:keys [table-definitions]} :- DatasetDefinition, table-name :- su/NonBlankString]
   (some
    (fn [{this-name :table-name, :as tabledef}]
      (when (= table-name this-name)
@@ -528,7 +506,7 @@
 
 (s/defn ^:private fielddefs-for-table-with-name :- [FieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- DatasetDefinition, table-name :- su/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
 (s/defn ^:private tabledef->id->row :- {su/IntGreaterThanZero {su/NonBlankString s/Any}}
@@ -539,12 +517,12 @@
 
 (s/defn ^:private dbdef->table->id->row :- {su/NonBlankString {su/IntGreaterThanZero {su/NonBlankString s/Any}}}
   "Return a map of table name -> map of row ID -> map of column key -> value."
-  [{:keys [table-definitions]} :- DatabaseDefinition]
+  [{:keys [table-definitions]} :- DatasetDefinition]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
 (s/defn ^:private nest-fielddefs
-  [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+  [dbdef :- DatasetDefinition, table-name :- su/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
                         (if-not fk
                           [fielddef]
@@ -553,7 +531,8 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(s/defn ^:private flatten-rows [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
+(s/defn ^:private flatten-rows
+  [dbdef :- DatasetDefinition, table-name :- su/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)
         table->id->k->v  (dbdef->table->id->row dbdef)
         resolve-field    (fn resolve-field [table id field-name]
@@ -583,11 +562,10 @@
     (fn [dbdef]
       (assoc dbdef
         :table-definitions
-        [(map->TableDefinition
-          {:table-name        table-name
-           :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
-                                (update fielddef :field-name flatten-field-name))
-           :rows              (flatten-rows dbdef table-name)})]))))
+        [{:table-name        table-name
+          :field-definitions (for [fielddef (nest-fielddefs dbdef table-name)]
+                               (update fielddef :field-name flatten-field-name))
+          :rows              (flatten-rows dbdef table-name)}]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
