@@ -116,7 +116,7 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: xInterval.interval };
     }
 
-    chart.xAxis().tickFormat(timestamp => {
+    const tickFormat = timestamp => {
       // timestamp is a plain Date object which discards the timezone,
       // so add it back in so it's formatted correctly
       const timestampFixed = moment(timestamp)
@@ -127,13 +127,16 @@ export function applyChartTimeseriesXAxis(
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
-    });
+    };
+
+    chart.xAxis().tickFormat(tickFormat);
 
     // Compute tick interval, which maybe drops xInterval ticks on narrow charts
     const tickInterval = computeTimeseriesTicksInterval(
       xDomain,
       xInterval,
       chart.width(),
+      tickFormat,
     );
     chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
   } else {

@@ -147,6 +147,8 @@ describe("visualization.lib.timeseries", () => {
   });
 
   describe("computeTimeseriesTicksInterval", () => {
+    // computeTimeseriesTicksInterval just uses tickFormat to measure the character length of the current formatting style
+    const fakeTickFormat = () => "2020-01-01";
     const TEST_CASES = [
       // on a wide chart, 12 month ticks shouldn't be changed
       [
@@ -154,6 +156,7 @@ describe("visualization.lib.timeseries", () => {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 1 },
           chartWidth: 1920,
+          tickFormat: fakeTickFormat,
         },
         { expectedInterval: "month", expectedCount: 1 },
       ],
@@ -163,6 +166,7 @@ describe("visualization.lib.timeseries", () => {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 1 },
           chartWidth: 800,
+          tickFormat: fakeTickFormat,
         },
         { expectedInterval: "month", expectedCount: 3 },
       ],
@@ -172,6 +176,7 @@ describe("visualization.lib.timeseries", () => {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 1 },
           chartWidth: 500,
+          tickFormat: fakeTickFormat,
         },
         { expectedInterval: "year", expectedCount: 1 },
       ],
@@ -181,14 +186,27 @@ describe("visualization.lib.timeseries", () => {
           xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
           xInterval: { interval: "month", count: 3 },
           chartWidth: 1920,
+          tickFormat: fakeTickFormat,
         },
         { expectedInterval: "month", expectedCount: 3 },
+      ],
+      // Long date formats should update the interval to have fewer ticks
+      [
+        {
+          xDomain: [new Date("2020-01-01"), new Date("2021-01-01")],
+          xInterval: { interval: "month", count: 1 },
+          chartWidth: 1920,
+          tickFormat: () =>
+            // thankfully no date format is actually this long
+            "The eigth day of July in the year of our Lord 2019",
+        },
+        { expectedInterval: "year", expectedCount: 1 },
       ],
     ];
 
     TEST_CASES.map(
       ([
-        { xDomain, xInterval, chartWidth },
+        { xDomain, xInterval, chartWidth, tickFormat },
         { expectedInterval, expectedCount },
       ]) => {
         it("should return " + expectedCount + " " + expectedInterval, () => {
@@ -196,6 +214,7 @@ describe("visualization.lib.timeseries", () => {
             xDomain,
             xInterval,
             chartWidth,
+            tickFormat,
           );
           expect(interval).toBe(expectedInterval);
           expect(count).toBe(expectedCount);
