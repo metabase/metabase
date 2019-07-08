@@ -104,7 +104,7 @@
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    (hx/->timestamp field)))
+    (hx/->timestamp dt)))
 
 (defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))

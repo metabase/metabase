@@ -72,7 +72,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-interval :redshift [_ dt amount unit]
+(defmethod driver/date-add :redshift [_ dt amount unit]
   (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp dt)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds] [_ _ expr]
