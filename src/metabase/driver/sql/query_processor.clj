@@ -308,7 +308,7 @@
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-fn driver)
-                      (driver/date-add driver (current-datetime-fn driver) unit amount))))
+                      (driver/date-add driver (current-datetime-fn driver) amount unit))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
