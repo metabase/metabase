@@ -379,8 +379,8 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod date-add ::driver [_ dt amount unit]
-  (assert (= dt :now))
+;; TODO - should this support full arithmetics now (Clojure-land)?
+(defmethod date-add ::driver [_ amount unit]
   (du/relative-date unit amount))
 
 
