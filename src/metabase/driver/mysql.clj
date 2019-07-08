@@ -54,9 +54,9 @@
        :placeholder  "tinyInt1isBit=false")]))
 
 
-(defmethod driver/date-interval :mysql [_ unit amount]
+(defmethod driver/date-add :mysql [_ dt amount unit]
   (hsql/call :date_add
-    :%now
+    dt
     (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 

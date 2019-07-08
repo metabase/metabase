@@ -1,9 +1,14 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [metabase
+  (:require [clj-time
+             [core :as time]
+             [format :as tformat]]
+            [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.datasets :as datasets]))
 
 ;; Do a basic query including an expression
@@ -184,3 +189,32 @@
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
   (calculate-bird-scarcity [:* 1 [:field-id $count]]))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           DATETIME EXTRACTION AND MANIPULATION                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private utc-tz (time/time-zone-for-id "UTC"))
+
+(defn- robust-dates
+  [output-format dates]
+  (map (comp vector
+             (partial tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz))
+             (partial tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz)))
+       dates))
+
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
+  (robust-dates (if (= :sqlite driver/*driver*)
+                  :mysql
+                  :date-time)
+                ["2014-09-02T13:45:00.000"
+                 "2014-07-02T09:30:00.000"
+                 "2014-07-01T10:30:00.000"])
+  (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
+    (-> (data/run-mbql-query users
+            {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
+             :fields      [[:expression :prev_month]]
+             :limit       3
+             :order-by    [[:asc $name]]})
+        qp.test/rows)))

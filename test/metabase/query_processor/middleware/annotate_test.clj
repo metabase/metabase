@@ -319,7 +319,7 @@
    :display_name "sum of Price + 1"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-      (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
+               (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
 ;; if a `:named` aggregation supplies optional `:use-as-display-name?` `options` we should respect that
 ;; `use-as-disply-name?` is `true` by default, e.g. in cases where the user supplies the names themselves
@@ -428,6 +428,23 @@
             :limit       10})))
       :cols
       second))
+
+(expect
+  {:name            "prev_month"
+   :display_name    "prev_month"
+   :base_type       :type/DateTime
+   :special_type    nil
+   :expression_name "prev_month"
+   :source          :fields
+   :field_ref       [:expression "prev_month"]}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query users
+           {:expressions {"prev_month" [:+ $last_login [:interval -1 :month]]}
+            :fields      [[:expression "prev_month"]]
+            :limit       10})))
+      :cols
+      first))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
