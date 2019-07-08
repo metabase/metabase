@@ -23,7 +23,7 @@
              [add-implicit-clauses :as qp.imlicit-clauses]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [schema
              [coerce :as sc]
              [core :as s]]
@@ -367,8 +367,13 @@
                                   requirements
                                   steps)]
           (for [[result-step {required-dimensions :dimensions}] provides]
-            (assert (every? (-> result-step bindings :dimensions) required-dimensions))
-            (-> result-step bindings :entity u/get-id)))))))
+            (do
+              (when (not-every? (-> result-step bindings :dimensions) required-dimensions)
+                (throw (Exception. (str (tru "Resulting transform {0} do not conform to expectations. Expected: {1}\nGot: {2}"
+                                             result-step
+                                             required-dimensions
+                                             (->> result-step bindings :dimensions (map :special_type)))))))
+              (-> result-step bindings :entity u/get-id))))))))
 
 ;; TODO: should this work for cards as well?
 (defn candidates
