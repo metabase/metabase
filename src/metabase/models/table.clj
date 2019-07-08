@@ -111,7 +111,7 @@
       (assoc table hydration-key (get table-id->objects (:id table) [])))))
 
 (defn with-segments
-  "Efficiently hydrate the `Segments` for a collection of TABLES."
+  "Efficiently hydrate the Segments for a collection of `tables`."
   {:batched-hydrate :segments}
   [tables]
   (with-objects :segments
@@ -120,7 +120,7 @@
     tables))
 
 (defn with-metrics
-  "Efficiently hydrate the `Metrics` for a collection of TABLES."
+  "Efficiently hydrate the Metrics for a collection of `tables`."
   {:batched-hydrate :metrics}
   [tables]
   (with-objects :metrics
@@ -129,7 +129,7 @@
     tables))
 
 (defn with-fields
-  "Efficiently hydrate the `Fields` for a collection of TABLES."
+  "Efficiently hydrate the Fields for a collection of `tables`."
   {:batched-hydrate :fields}
   [tables]
   (with-objects :fields
@@ -145,7 +145,7 @@
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 
 (defn qualified-identifier
-  "Return a keyword identifier for TABLE in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
+  "Return a keyword identifier for `table` in the form `:schema.table-name` (if the Table has a non-empty `:schema` field)
   or `:table-name` (if the Table has no `:schema`)."
   ^clojure.lang.Keyword [{schema :schema, table-name :name}]
   (keyword (str (when (seq schema)
