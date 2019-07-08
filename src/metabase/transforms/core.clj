@@ -1,16 +1,9 @@
 (ns metabase.transforms.core
-  (:require [clojure.java.io :as io]
-            [clojure.set :as set]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [flatland.ordered.map :refer [ordered-map]]
+  (:require [clojure.string :as str]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [schema :as mbql.schema]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection]
@@ -22,151 +15,10 @@
              [annotate :as qp.annotate]
              [add-implicit-clauses :as qp.imlicit-clauses]]
             [metabase.query-processor.store :as qp.store]
+            [metabase.transforms.transform-parser :refer [transforms]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [schema
-             [coerce :as sc]
-             [core :as s]]
-            [toucan.db :as db]
-            [weavejester.dependency :as dep]
-            [yaml.core :as yaml])
-  (:import [java.nio.file Files FileSystem FileSystems Path]))
-
-(def ^:private MBQL [s/Any])
-
-(def ^:private Source s/Str)
-
-(def ^:private Dimension s/Str)
-
-(def ^:private Breakout [Dimension])
-
-(def ^:private Aggregation {Dimension MBQL})
-
-(def ^:private Expressions {Dimension MBQL})
-
-(def ^:private Description s/Str)
-
-(def ^:private Join [{(s/required-key :source)    Source
-                      (s/required-key :condition) MBQL
-                      (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
-
-(def ^:private Steps {Source {(s/required-key :source)      Source
-                              (s/optional-key :aggregation) Aggregation
-                              (s/optional-key :breakout)    Breakout
-                              (s/optional-key :expressions) Expressions
-                              (s/optional-key :join)        Join
-                              (s/optional-key :description) Description}})
-
-(defn- field-type?
-  [t]
-  (isa? t :type/*))
-
-(def ^:private FieldType (s/constrained s/Keyword field-type?))
-
-(def ^:private Requires {Source {(s/optional-key :dimensions) [FieldType]}})
-
-(def ^:private Provides {Source {(s/required-key :dimensions) [Dimension]}})
-
-(def ^:private Name s/Str)
-
-(def ^:private TransformTemplate {(s/required-key :name)        Name
-                                  (s/required-key :requires)    Requires
-                                  (s/required-key :provides)    Provides
-                                  (s/required-key :steps)       Steps
-                                  (s/optional-key :description) Description})
-
-(defn- dependencies-sort
-  [dependencies-fn g]
-  (transduce (map (juxt key (comp dependencies-fn val)))
-             (fn
-               ([] (dep/graph))
-               ([acc [el dependencies]]
-                (reduce (fn [acc dependency]
-                          (dep/depend acc el dependency))
-                        acc
-                        dependencies))
-               ([acc]
-                (let [sorted      (filter g (dep/topo-sort acc))
-                      independent (set/difference (set (keys g)) (set sorted))]
-                  (not-empty
-                   (into (ordered-map)
-                         (map (fn [el]
-                                [el (g el)]))
-                         (concat independent sorted))))))
-             g))
-
-(defn- extract-dimensions
-  [mbql]
-  (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension] dimension))
-
-(defn ensure-seq
-  "Wrap `x` into a vector if it is not already a sequence."
-  [x]
-  (if (or (sequential? x) (nil? x))
-    x
-    [x]))
-
-(def ^:private ^{:arglists '([m])} stringify-keys
-  (partial m/map-keys name))
-
-(def ^:private transforms-validator
-  (sc/coercer!
-   TransformTemplate
-   {MBQL                     mbql.normalize/normalize
-    Steps                    (comp (partial dependencies-sort (fn [{:keys [source join]}]
-                                                                (conj (map :source join) source)))
-                                   stringify-keys)
-    Breakout                 ensure-seq
-    FieldType                (partial keyword "type")
-    mbql.schema/JoinStrategy keyword
-    ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL}         (comp (partial dependencies-sort extract-dimensions)
-                                   stringify-keys)
-    ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    s/Str                    name}))
-
-(def ^:private transforms-dir "etl/")
-
-(defn- load-transform
-  [^Path f]
-  (try
-    (->> f
-         .toUri
-         slurp
-         yaml/parse-string
-         transforms-validator)
-    (catch Exception e
-      (log/error (trs "Error parsing {0}:\n{1}"
-                      (.getFileName f)
-                      (or (some-> e
-                                  ex-data
-                                  (select-keys [:error :value])
-                                  u/pprint-to-str)
-                          e)))
-      (throw e))))
-
-(defn- load-transforms-dir
-  [dir]
-  (with-open [ds (Files/newDirectoryStream dir)]
-    (->> ds
-         (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-         (mapv load-transform))))
-
-(defmacro ^:private with-resource
-  [[identifier path] & body]
-  `(let [[jar# path#] (-> ~path .toString (str/split #"!" 2))]
-     (if path#
-       (with-open [^FileSystem fs# (-> jar#
-                                       java.net.URI/create
-                                       (FileSystems/newFileSystem (java.util.HashMap.)))]
-         (let [~identifier (.getPath fs# path# (into-array String []))]
-           ~@body))
-       (let [~identifier (.getPath (FileSystems/getDefault) (.getPath ~path) (into-array String []))]
-         ~@body))))
-
-(def ^:private transforms (delay
-                           (with-resource [path (-> transforms-dir io/resource .toURI)]
-                             (load-transforms-dir path))))
+            [metabase.util.i18n :refer [tru]]
+            [toucan.db :as db]))
 
 (defmulti ^:private ->mbql
   type)
