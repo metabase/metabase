@@ -50,6 +50,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-fn :sql [_] :%now)
+(defmethod current-datetime-fn :default [_] nil)
 
 
 (defmulti date

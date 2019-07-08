@@ -1,8 +1,8 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require [clj-time
-             [core :as time]
              [coerce :as tcoerce]
+             [core :as time]
              [format :as tformat]]
             [metabase
              [driver :as driver]

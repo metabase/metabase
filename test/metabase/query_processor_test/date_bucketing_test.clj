@@ -792,6 +792,7 @@
               ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
               [(u/prog1 (driver/date-add driver/*driver*
+                                         (sql.qp/current-datetime-fn driver/*driver*)
                                          (* i interval-seconds)
                                          :second)
                  (assert <>))]))])))

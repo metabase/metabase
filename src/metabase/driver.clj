@@ -380,7 +380,7 @@
   :hierarchy #'hierarchy)
 
 ;; TODO - should this support full arithmetics now (Clojure-land)?
-(defmethod date-add ::driver [_ amount unit]
+(defmethod date-add ::driver [_ _ amount unit]
   (du/relative-date unit amount))
 
 

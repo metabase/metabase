@@ -423,7 +423,7 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
-           {:expressions {"discount_price" [:* 0.9 [:field-id $price]]}
+           {:expressions {:discount_price [:* 0.9 [:field-id $price]]}
             :fields      [$name [:expression "discount_price"]]
             :limit       10})))
       :cols
@@ -440,7 +440,7 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query users
-           {:expressions {"prev_month" [:+ $last_login [:interval -1 :month]]}
+           {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
             :fields      [[:expression "prev_month"]]
             :limit       10})))
       :cols
