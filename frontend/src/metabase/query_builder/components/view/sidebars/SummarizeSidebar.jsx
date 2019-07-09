@@ -38,7 +38,7 @@ export default function SummarizeSidebar({
   const query = question.query().topLevelQuery();
   return (
     <SidebarContent
-      title={t`Pick what you want to view`}
+      title={t`Summarize by`}
       onClose={() => {
         if (isResultDirty) {
           runQuestionQuery();
@@ -61,7 +61,7 @@ export default function SummarizeSidebar({
       </div>
       {query.hasAggregations() && (
         <div className="border-top mt3 pt3 mx1">
-          <h3 className="text-heavy mb2 ml3">Summarize by…</h3>
+          <h3 className="text-heavy mb2 ml3">Group by</h3>
           <SummarizeBreakouts className="mx2" query={query} />
         </div>
       )}
