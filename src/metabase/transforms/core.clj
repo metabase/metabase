@@ -10,7 +10,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols ->source-table]]
-             [transform-parser :refer [transforms]]]
+             [template-parser :refer [transforms]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))

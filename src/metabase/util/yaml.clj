@@ -11,8 +11,7 @@
   "Setup all the JVM scaffolding to be able to treat /resources dir in a JAR the same as a normal directory.
   Ie. support directory listing and such."
   [[identifier path] & body]
-  `(let [path#        (-> ~path io/resource .toURI)
-         [jar# path#] (-> ~path .toString (str/split #"!" 2))]
+  `(let [[jar# path#] (-> ~path io/resource .toURI .toString (str/split #"!" 2))]
      (if path#
        (with-open [^FileSystem fs# (-> jar#
                                        java.net.URI/create

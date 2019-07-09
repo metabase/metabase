@@ -1,6 +1,7 @@
 (ns metabase.transforms.template-parser
-  (:require [clojure.set :as set]
-            [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.mbql

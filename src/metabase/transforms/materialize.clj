@@ -5,8 +5,8 @@
              [collection :as collection]
              [table :refer [Table]]]
             [metabase.query-processor.middleware
-             [annotate :as qp.annotate]
-             [add-implicit-clauses :as qp.imlicit-clauses]]
+             [add-implicit-clauses :as qp.imlicit-clauses]
+             [annotate :as qp.annotate]]
             [metabase.util :as u]
             [toucan.db :as db]))
 

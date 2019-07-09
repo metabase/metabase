@@ -19,7 +19,7 @@ provides:
 steps:
   Charges:
       source: OrderHistory
- #     expressions:
+      expressions:
   #      Month: [datetime-field, [dimension, CreationTimestamp], month]
          PrevMonth: [-, [dimension, Month], [interval, -1, month]]
   NextMonth:
