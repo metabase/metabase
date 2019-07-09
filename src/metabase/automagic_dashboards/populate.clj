@@ -98,7 +98,7 @@
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
   (let [[display visualization-settings] visualization]
-    {:display display
+    {:display                display
      :visualization_settings (-> visualization-settings
                                  (assoc :graph.series_labels (map :name metrics)
                                         :graph.metrics       (map :op metrics)
@@ -260,11 +260,11 @@
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
                          :else        n)
-         dashboard     {:name              title
-                        :transient_name    (or transient_title title)
-                        :description       description
-                        :creator_id        api/*current-user-id*
-                        :parameters        []}
+         dashboard     {:name           title
+                        :transient_name (or transient_title title)
+                        :description    description
+                        :creator_id     api/*current-user-id*
+                        :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
                             (partition-by :group)

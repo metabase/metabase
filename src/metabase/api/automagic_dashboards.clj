@@ -17,6 +17,9 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.transforms
+             [materialize :as transform.materialize]
+             [dashboard :as transform.dashboard]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -81,7 +84,8 @@
    "question" (comp api/read-check Card ensure-int)
    "adhoc"    (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
    "metric"   (comp api/read-check Metric ensure-int)
-   "field"    (comp api/read-check Field ensure-int)})
+   "field"    (comp api/read-check Field ensure-int)
+   "transform" transform.materialize/get-collection})
 
 (def ^:private Entity
   (su/with-api-error-message
@@ -98,7 +102,9 @@
   [entity entity-id-or-query show]
   {show   Show
    entity Entity}
-  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)})))
+  (if (= entity "transform")
+    (transform.dashboard/dashboard entity-id-or-query)
+    (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule`."

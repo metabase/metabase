@@ -3,6 +3,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as qp.imlicit-clauses]
              [annotate :as qp.annotate]]
@@ -25,21 +26,23 @@
    (db/select-one ['Collection :location :id]
      :id (get-or-create-root-container-collection!))))
 
-(defn- get-collection
-  ([name]
-   (get-collection name (root-container-location)))
-  ([name location]
+(defn get-collection
+  "Get collection named `collection-name`. If no location is given root collection for automatically
+   generated transforms is assumed (see `get-or-create-root-container-collection!`)."
+  ([collection-name]
+   (get-collection collection-name (root-container-location)))
+  ([collection-name location]
    (db/select-one-id 'Collection
-     :name     name
+     :name     collection-name
      :location location)))
 
 (defn- create-collection!
-  ([name color description]
-   (create-collection! name color description (root-container-location)))
-  ([name color description location]
+  ([collection-name color description]
+   (create-collection! collection-name color description (root-container-location)))
+  ([collection-name color description location]
    (u/get-id
     (db/insert! 'Collection
-      {:name        name
+      {:name        collection-name
        :color       color
        :description description
        :location    location}))))
@@ -62,12 +65,14 @@
 
 (defn make-card!
   "Make and save a card with a given name, query, and description."
-  [name query description]
+  [step-name transform-name query description]
   (->> {:creator_id             api/*current-user-id*
-        :dataset_query          query
+        :dataset_query          {:database (:database query)
+                                 :type     :native
+                                 :native   (qp/query->native query)}
         :description            description
-        :name                   name
-        :collection_id          (get-collection name)
+        :name                   step-name
+        :collection_id          (get-collection transform-name)
         :result_metadata        (-> query :query infer-cols)
         :visualization_settings {}
         :display                :table}

@@ -1,4 +1,7 @@
 (ns metabase.util.yaml
+  (:refer-clojure
+   :exclude
+   [load])
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
@@ -21,7 +24,7 @@
        (let [~identifier (.getPath (FileSystems/getDefault) (.getPath path#) (into-array String []))]
          ~@body))))
 
-(defn load-yaml
+(defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor` fn."
   ([f] (load-yaml identity f))
   ([constructor ^Path f]

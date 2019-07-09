@@ -303,7 +303,7 @@
             (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
 
             entity-type
-            (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load-yaml (partial make-rule entity-type) f))
+            (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load (partial make-rule entity-type) f))
 
             :else
             rules)))

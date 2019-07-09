@@ -111,7 +111,7 @@
     (with-open [ds (Files/newDirectoryStream dir)]
       (->> ds
            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load-yaml transforms-validator))))))
+           (mapv (partial yaml/load transforms-validator))))))
 
 (def transforms
   "List of registered dataset transforms."

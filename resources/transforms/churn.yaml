@@ -19,19 +19,23 @@ provides:
 steps:
   Charges:
       source: OrderHistory
+      description: prepare data
   #    expressions:
   #      Month: [datetime-field, [dimension, CreationTimestamp], month]
   #       PrevMonth: ["+", [dimension, CreationTimestamp], [interval, -1, month]]
   NextMonth:
+       description: dummy table for self-join
        source: Charges
   MRR:
       source: Charges
+      description: calculate a bunch of statistics
       aggregation:
         MRR: [sum, [dimension, Income]]
 #        Accounts: [count-distinct, [dimension, User]]
 #        ARPU: [/, [dimension, MRR], [dimension , Accounts]]
       breakout: CreationTimestamp
   MRRStatistics:
+      description: pull it all together
       source: Charges
       aggregation:
         ChurrnedMRR: [sum-where, [dimension, Income], [is-null, [dimension, NextMonth.CreationTimestamp]]]

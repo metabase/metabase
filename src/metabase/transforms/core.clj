@@ -141,8 +141,9 @@
                                      (dissoc :id)
                                      field/map->FieldInstance)]))
             :entity     (materialize/make-card! name
-                                                {:query    query
-                                                 :type     :query
+                                                (:name transform)
+                                                {:type     :query
+                                                 :query    query
                                                  :database ((some-fn :db_id :database_id) source-table)}
                                                 description)})))
 
@@ -210,3 +211,11 @@
   (->> @transforms
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
        (filter (comp (partial some #{table}) vals))))
+
+(binding [metabase.api.common/*current-user-id* 1
+          metabase.api.common/*is-superuser?* true
+          metabase.api.common/*current-user-permissions-set* (-> 1
+                                                                 metabase.models.user/permissions-set
+                                                                 atom)
+          ]
+  (run-transform! 1 "PUBLIC" (first @transforms)))
