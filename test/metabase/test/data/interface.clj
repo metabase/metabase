@@ -285,18 +285,6 @@
   :hierarchy #'driver/hierarchy)
 
 
-(defmulti expected-base-type->actual
-  "Return the base type type that is actually used to store Fields of `base-type`. The default implementation of this
-  method is an identity fn. This is provided so DBs that don't support a given base type used in the test data can
-  specifiy what type we should expect in the results instead. For example, Oracle has no `INTEGER` data types, so
-  `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`."
-  {:arglists '([driver base-type])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod expected-base-type->actual ::test-extensions [_ base-type] base-type)
-
-
 (defmulti format-name
   "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
   upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.

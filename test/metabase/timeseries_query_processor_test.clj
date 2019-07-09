@@ -1,9 +1,7 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [metabase
-             [query-processor-test :as qp.test :refer [rows]]
-             [util :as u]]
+  (:require [metabase.query-processor-test :as qp.test]
             [metabase.test.data :as data]
             [metabase.timeseries-query-processor-test.util :as tqp.test]))
 
@@ -137,7 +135,7 @@
    :rows    [[1.992]]}
   (->> (data/run-mbql-query checkins
          {:aggregation [[:avg $venue_price]]})
-       (qp.test/format-rows-by [(partial u/round-to-decimals 3)])
+       (qp.test/format-rows-by [3.0])
        qp.test/rows+column-names))
 
 ;;; distinct count
@@ -917,21 +915,23 @@
 (tqp.test/expect-with-timeseries-dbs
   ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
   [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
-  (rows (data/run-mbql-query checkins
-          {:aggregation [[:min $venue_latitude]]
-           :breakout    [$venue_price]})))
+  (qp.test/rows
+    (data/run-mbql-query checkins
+      {:aggregation [[:min $venue_latitude]]
+       :breakout    [$venue_price]})))
 
 (tqp.test/expect-with-timeseries-dbs
   [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
-  (rows (data/run-mbql-query checkins
-          {:aggregation [[:max $venue_latitude]]
-           :breakout    [$venue_price]})))
+  (qp.test/rows
+    (data/run-mbql-query checkins
+      {:aggregation [[:max $venue_latitude]]
+       :breakout    [$venue_price]})))
 
 ;; Do we properly handle queries that have more than one of the same aggregation? (#4166)
 (tqp.test/expect-with-timeseries-dbs
   [[35643 1992]]
   (qp.test/format-rows-by [int int]
-    (rows
+    (qp.test/rows
       (data/run-mbql-query checkins
         {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]}))))
 
@@ -941,8 +941,8 @@
    ["Chinese"    3.0]
    ["Wine Bar"   3.0]
    ["Japanese"   2.7]]
-  (qp.test/format-rows-by [str (partial u/round-to-decimals 1)]
-    (rows
+  (qp.test/format-rows-by [str 1.0]
+    (qp.test/rows
       (data/run-mbql-query checkins
         {:aggregation  [[:avg $venue_price]]
          :breakout     [[:field-id $venue_category_name]]

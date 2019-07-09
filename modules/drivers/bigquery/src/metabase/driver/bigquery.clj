@@ -17,14 +17,11 @@
              [google :as google]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.table :as table]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
@@ -349,21 +346,6 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(s/defn ^:private bq-aggregate-name :- su/NonBlankString
-  "Return an approriate name for an `ag-clause`."
-  [driver, ag-clause :- mbql.s/Aggregation]
-  (->> ag-clause annotate/aggregation-name (driver/format-custom-field-name driver)))
-
-(s/defn ^:private pre-alias-aggregations
-  "Expressions are not allowed in the order by clauses of a BQ query. To sort by a custom expression, that custom
-  expression must be aliased from the order by. This code will find the aggregations and give them a name if they
-  don't already have one. This name can then be used in the order by if one is present."
-  [driver {{aggregations :aggregation} :query, :as outer-query}]
-  (if-not (seq aggregations)
-    outer-query
-    (update-in outer-query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations
-                                                          (partial bq-aggregate-name driver)))))
-
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)
 (defmethod sql.qp/->honeysql [:bigquery String]
@@ -433,11 +415,10 @@
     {source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
   (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
-        aliased-query      (pre-alias-aggregations driver outer-query)
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
-    (binding [sql.qp/*query* (assoc aliased-query :dataset-id dataset-id)]
-      {:query      (->> aliased-query
+    (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
+      {:query      (->> outer-query
                         (sql.qp/build-honeysql-form :bigquery)
                         honeysql-form->sql)
        :table-name (or table-name

@@ -272,7 +272,7 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
-    [:named _ ag-name]
+    [:named _ ag-name & _]
     (->honeysql driver (hx/identifier :field-alias ag-name))
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the

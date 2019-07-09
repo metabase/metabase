@@ -9,10 +9,9 @@
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [util :as u]]
-            [metabase.db
              [connection-pool :as connection-pool]
-             [spec :as dbspec]]
+             [util :as u]]
+            [metabase.db.spec :as dbspec]
             [metabase.plugins.classloader :as classloader]
             [metabase.util
              [date :as du]

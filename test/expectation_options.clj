@@ -191,7 +191,7 @@
       ;; Uncomment `check-test-data-unchanged` when you want to debug situations where tests are being bad citizens
       ;; and leaving the metadata about the test data in a different state than it started out with. This is not
       ;; enabled by default because it adds ~5ms to each test which adds up when we have ~4000 tests (as of May 2019)
-      check-test-data-unchanged
+      #_check-test-data-unchanged
       log-slow-tests
       enforce-timeout
       check-table-cleanup))

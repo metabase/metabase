@@ -2,7 +2,7 @@
   (:require [clojure
              [set :as set]
              [string :as str]]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase.models
              [card :refer [Card]]
              [card-favorite :refer [CardFavorite]]
@@ -14,30 +14,65 @@
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [pulse :refer [Pulse]]
-             [segment :refer [Segment]]]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.util :as tu]
+             [segment :refer [Segment]]
+             [table :refer [Table]]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.users :as test-users]
             [metabase.util :as u]
+            [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (def default-search-row
-  {:description nil, :id true, :collection_id false,
-   :collection_position nil, :archived false, :favorite nil})
+  {:id                  true
+   :description         nil
+   :archived            false
+   :collection_id       false
+   :collection_position nil
+   :favorite            nil
+   :table_id            false
+   :database_id         false
+   :table_schema        nil
+   :table_name          nil
+   :table_description   nil})
 
-(def ^:private default-search-results
-  (set (map #(merge default-search-row %)
-            [{:name "dashboard test dashboard", :model "dashboard"}
-             {:name "collection test collection", :model "collection", :collection_id true}
-             {:name "card test card", :model "card"}
-             {:name "pulse test pulse", :model "pulse", :archived nil}
-             {:name "metric test metric", :description "Lookin' for a blueberry", :model "metric"}
-             {:name "segment test segment", :description "Lookin' for a blueberry", :model "segment"}])))
+(defn- table-search-results
+  "Segments and Metrics come back with information about their Tables as of 0.33.0. The `model-defaults` for Segment and
+  Metric put them both in the `:checkins` Table."
+  []
+  (merge
+   {:table_id true, :database_id true}
+   (db/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
+     :id (data/id :checkins))))
 
-(def ^:private default-metric-segment-results
-  (set (filter (comp #{"metric" "segment"} :model) default-search-results)))
+(defn- default-search-results []
+  #{(merge
+     default-search-row
+     {:name "dashboard test dashboard", :model "dashboard", :favorite false})
+    (merge
+     default-search-row
+     {:name "collection test collection", :model "collection", :collection_id true})
+    (merge
+     default-search-row
+     {:name "card test card", :model "card", :favorite false})
+    (merge
+     default-search-row
+     {:name "pulse test pulse", :model "pulse", :archived nil})
+    (merge
+     default-search-row
+     {:model "metric", :name "metric test metric", :description "Lookin' for a blueberry"}
+     (table-search-results))
+    (merge
+     default-search-row
+     {:model "segment", :name "segment test segment", :description "Lookin' for a blueberry"}
+     (table-search-results))})
 
-(def ^:private default-archived-results
-  (set (for [result default-search-results
+(defn- default-metric-segment-results []
+  (set (filter (comp #{"metric" "segment"} :model) (default-search-results))))
+
+(defn- default-archived-results []
+  (set (for [result (default-search-results)
              :when (false? (:archived result))]
          (assoc result :archived true))))
 
@@ -47,10 +82,10 @@
            (f search-item)
            search-item))))
 
-(def ^:private default-results-with-collection
+(defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
                    #(assoc % :collection_id true)
-                   default-search-results))
+                   (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
   (let [data-map      (fn [instance-name]
@@ -73,17 +108,17 @@
           :segment    segment}))))
 
 (defmacro ^:private with-search-items-in-root-collection [search-string & body]
-  `(do-with-search-items ~search-string true (fn [_#] ~@body)))
+  `(do-with-search-items ~search-string true (fn [~'_] ~@body)))
 
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
 (defn- search-request [user-kwd & params]
-  (tu/boolean-ids-and-timestamps (set (apply (user->client user-kwd) :get 200 "search" params))))
+  (tu/boolean-ids-and-timestamps (set (apply (test-users/user->client user-kwd) :get 200 "search" params))))
 
 ;; Basic search, should find 1 of each entity type, all items in the root collection
 (expect
-  default-search-results
+  (default-search-results)
   (with-search-items-in-root-collection "test"
     (search-request :crowberto :q "test")))
 
@@ -91,110 +126,110 @@
 ;; previous tests. Instead of an = comparison here, just ensure our default results are included
 (expect
   (set/subset?
-   default-search-results
+   (default-search-results)
    (with-search-items-in-root-collection "test"
      (search-request :crowberto))))
 
 ;; Ensure that users without perms for the root collection don't get results
 ;; NOTE: Metrics and segments don't have collections, so they'll be returned
 (expect
-  default-metric-segment-results
+  (default-metric-segment-results)
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-root-collection "test"
       (search-request :rasta :q "test"))))
 
 ;; Users that have root collection permissions should get root collection search results
 (expect
-  (set (remove (comp #{"collection"} :model) default-search-results))
+  (set (remove (comp #{"collection"} :model) (default-search-results)))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-root-collection "test"
       (tt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+                      PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
         (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
         (search-request :rasta :q "test")))))
 
 ;; Users without root collection permissions should still see other collections they have access to
 (expect
-  (into default-results-with-collection
-        (map #(merge default-search-row %)
+  (into (default-results-with-collection)
+        (map #(merge default-search-row % (table-search-results))
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
         (tt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
           (perms/grant-collection-read-permissions! group (u/get-id collection))
           (search-request :rasta :q "test"))))))
 
 ;; Users with root collection permissions should be able to search root collection data long with collections they
 ;; have access to
 (expect
-  (into default-results-with-collection
-        (for [row default-search-results
+  (into (default-results-with-collection)
+        (for [row (default-search-results)
               :when (not= "collection" (:model row))]
           (update row :name #(str/replace % "test" "test2"))))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
         (tt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
           (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection/is-root? true}))
           (perms/grant-collection-read-permissions! group collection)
           (search-request :rasta :q "test"))))))
 
 ;; Users with access to multiple collections should see results from all collections they have access to
 (expect
-  (into default-results-with-collection
+  (into (default-results-with-collection)
         (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-             default-results-with-collection))
+             (default-results-with-collection)))
   (with-search-items-in-collection {coll-1 :collection} "test"
     (with-search-items-in-collection {coll-2 :collection} "test2"
       (tt/with-temp* [PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+                      PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
         (perms/grant-collection-read-permissions! group (u/get-id coll-1))
         (perms/grant-collection-read-permissions! group (u/get-id coll-2))
         (search-request :rasta :q "test")))))
 
 ;; User should only see results in the collection they have access to
 (expect
-  (into default-results-with-collection
-        (map #(merge default-search-row %)
+  (into (default-results-with-collection)
+        (map #(merge default-search-row % (table-search-results))
              [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
               {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
         (tt/with-temp* [PermissionsGroup           [group]
-                        PermissionsGroupMembership [_ {:user_id (user->id :rasta), :group_id (u/get-id group)}]]
+                        PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
           (perms/grant-collection-read-permissions! group (u/get-id coll-1))
           (search-request :rasta :q "test"))))))
 
 ;; Favorites are per user, so other user's favorites don't cause search results to be favorited
 (expect
-  default-results-with-collection
+  (default-results-with-collection)
   (with-search-items-in-collection {:keys [card dashboard]} "test"
     (tt/with-temp* [CardFavorite      [_ {:card_id (u/get-id card)
-                                          :owner_id (user->id :rasta)}]
+                                          :owner_id (test-users/user->id :rasta)}]
                     DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                          :user_id (user->id :rasta)}]]
+                                          :user_id (test-users/user->id :rasta)}]]
       (search-request :crowberto :q "test"))))
 
 ;; Basic search, should find 1 of each entity type and include favorites when available
 (expect
   (on-search-types #{"dashboard" "card"}
                    #(assoc % :favorite true)
-                   default-results-with-collection)
+                   (default-results-with-collection))
   (with-search-items-in-collection {:keys [card dashboard]} "test"
     (tt/with-temp* [CardFavorite      [_ {:card_id  (u/get-id card)
-                                          :owner_id (user->id :crowberto)}]
+                                          :owner_id (test-users/user->id :crowberto)}]
                     DashboardFavorite [_ {:dashboard_id (u/get-id dashboard)
-                                          :user_id      (user->id :crowberto)}]]
+                                          :user_id      (test-users/user->id :crowberto)}]]
       (search-request :crowberto :q "test"))))
 
 ;; Basic search should only return substring matches
 (expect
-  default-search-results
+  (default-search-results)
   (with-search-items-in-root-collection "test"
     (with-search-items-in-root-collection "something different"
       (search-request :crowberto :q "test"))))
@@ -204,7 +239,7 @@
 
 ;; Should return unarchived results by default
 (expect
-  default-search-results
+  (default-search-results)
   (with-search-items-in-root-collection "test"
     (tt/with-temp* [Card       [_ (archived {:name "card test card 2"})]
                     Dashboard  [_ (archived {:name "dashboard test dashboard 2"})]
@@ -215,7 +250,7 @@
 
 ;; Should return archived results when specified
 (expect
-  default-archived-results
+  (default-archived-results)
   (with-search-items-in-root-collection "test2"
     (tt/with-temp* [Card       [_ (archived {:name "card test card"})]
                     Dashboard  [_ (archived {:name "dashboard test dashboard"})]
@@ -235,4 +270,4 @@
       (filter (fn [{:keys [model id]}]
                 (and (= id (u/get-id pulse))
                      (= "pulse" model)))
-              ((user->client :crowberto) :get 200 "search")))))
+              ((test-users/user->client :crowberto) :get 200 "search")))))

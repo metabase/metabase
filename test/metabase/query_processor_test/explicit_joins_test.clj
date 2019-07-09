@@ -3,8 +3,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [util :as u]]
+             [query-processor-test :as qp.test]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
@@ -293,8 +292,7 @@
    :columns
    (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (data/mbql-query categories))]
-    (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
-                             int identity]
+    (qp.test/format-rows-by [int identity int 4.0 4.0 int int identity]
       (qp.test/rows+column-names
         (data/run-mbql-query venues
           {:joins    [{:alias        "cat"
@@ -416,7 +414,7 @@
    :columns (mapv data/format-name
                   ["id" "date" "user_id" "venue_id" "id_2" "name" "category_id" "latitude" "longitude" "price"])}
   (qp.test/rows+column-names
-    (qp.test/format-rows-by [int str int int int str int (partial u/round-to-decimals 3) (partial u/round-to-decimals 3) int]
+    (qp.test/format-rows-by [int str int int int str int 3.0 3.0 int]
       (data/run-mbql-query checkins
         {:source-query {:source-table $$checkins
                         :joins
