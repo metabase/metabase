@@ -2,8 +2,7 @@
   (:require [metabase.api.common :as api]
             [metabase.models
              [card :as card :refer [Card]]
-             [collection :as collection]
-             [table :refer [Table]]]
+             [collection :as collection]]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as qp.imlicit-clauses]
              [annotate :as qp.annotate]]
@@ -13,18 +12,10 @@
 (defn infer-cols
   "Infer column types from given (MBQL) query."
   [query]
-  (-> {:query query
+  (-> {:query (qp.imlicit-clauses/add-implicit-mbql-clauses query)
        :type  :query}
-      qp.imlicit-clauses/add-implicit-mbql-clauses
       (#'qp.annotate/add-column-info* nil)
       :cols))
-
-(defn ->source-table
-  "Serialize `entity` into a form suitable as `:source-table` value."
-  [entity]
-  (if (instance? (type Table) entity)
-    (u/get-id entity)
-    (str "card__" (u/get-id entity))))
 
 (declare get-or-create-root-container-collection!)
 
@@ -73,13 +64,11 @@
   "Make and save a card with a given name, query, and description."
   [name query description]
   (->> {:creator_id             api/*current-user-id*
-        :dataset_query          {:query    (update query :source-table ->source-table)
-                                 :type     :query
-                                 :database ((some-fn :db_id :database_id) (:source-table query))}
+        :dataset_query          query
         :description            description
         :name                   name
         :collection_id          (get-collection name)
-        :result_metadata        (infer-cols query)
+        :result_metadata        (-> query :query infer-cols)
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields

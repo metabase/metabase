@@ -1,6 +1,5 @@
 (ns metabase.util.yaml
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -12,7 +11,7 @@
   Ie. support directory listing and such."
   [[identifier path] & body]
   `(let [^Path path#           ~path
-         [jar# internal-path#] (-> path# io/resource .toURI .toString (str/split #"!" 2))]
+         [jar# internal-path#] (-> path# .toString (str/split #"!" 2))]
      (if internal-path#
        (with-open [^FileSystem fs# (-> jar#
                                        java.net.URI/create

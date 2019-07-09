@@ -6,10 +6,11 @@
             [metabase.models
              [database :refer [Database]]
              [field :as field :refer [Field]]
-             [metric :as metric :refer [Metric]]]
+             [metric :as metric :refer [Metric]]
+             [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
-             [materialize :as materialize :refer [infer-cols ->source-table]]
+             [materialize :as materialize :refer [infer-cols]]
              [template-parser :refer [transforms]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -62,17 +63,28 @@
              bindings
              binding-forms))
 
+(defn- dimension-part
+  [identifier]
+  (-> identifier (str/split #"\.") last))
+
 (defn- add-breakout-bindings
   [bindings source breakout]
   (update-in bindings [source :dimensions]
              into (for [name breakout]
-                    [name (get-dimension-binding bindings source name)])))
+                    [(dimension-part name) (get-dimension-binding bindings source name)])))
+
+(defn- ->source-table-reference
+  "Serialize `entity` into a form suitable as `:source-table` value."
+  [entity]
+  (if (instance? (type Table) entity)
+    (u/get-id entity)
+    (str "card__" (u/get-id entity))))
 
 (defn- build-join
   [bindings context-source join]
   (for [{:keys [source condition strategy]} join]
     {:condition    (resolve-dimension-bindings bindings context-source condition)
-     :source-table (-> source bindings :entity ->source-table)
+     :source-table (-> source bindings :entity ->source-table-reference)
      :alias        source
      :strategy     strategy
      :fields       :all}))
@@ -90,13 +102,20 @@
                            (add-bindings name ->Metric aggregation)
                            (add-breakout-bindings name breakout)
                            (get-in [name :dimensions]))
+        source-table   (->> source bindings :entity)
         mbql-snippets  (m/map-vals ->mbql local-bindings)
-        query          (cond-> {:source-table (->> source bindings :entity)}
+        query          (cond-> {:source-table (->source-table-reference source-table)}
+                         (nil? aggregation)
+                         (assoc :fields (map mbql-snippets (-> source bindings :dimensions keys)))
+
                          ;; Expressions used in metrics will just get inlined
                          (and expressions
                               (nil? aggregation))
                          (->
-                           (assoc :expressions (select-keys mbql-snippets (keys expressions)))
+                          (assoc :expressions (->> expressions
+                                                   keys
+                                                   (select-keys mbql-snippets)
+                                                   (m/map-keys keyword)))
                            (update :fields concat (for [expression (keys expressions)]
                                                     [:expression expression])))
 
@@ -105,7 +124,7 @@
                                                [:named (mbql-snippets agg) agg]))
 
                          breakout
-                         (assoc :breakout (map mbql-snippets breakout))
+                         (assoc :breakout (map (comp mbql-snippets dimension-part) breakout))
 
                          join
                          (assoc :join (build-join bindings source join)))]
@@ -121,7 +140,11 @@
                                  (-> col
                                      (dissoc :id)
                                      field/map->FieldInstance)]))
-            :entity     (materialize/make-card! name query description)})))
+            :entity     (materialize/make-card! name
+                                                {:query    query
+                                                 :type     :query
+                                                 :database ((some-fn :db_id :database_id) source-table)}
+                                                description)})))
 
 (defn- table-dimensions
   [table]
@@ -148,8 +171,13 @@
                               :dimensions (table-dimensions table)}])))))
 
 (defn- store-requirements!
-  [db-id schema requirements]
+  [db-id requirements]
   (qp.store/fetch-and-store-database! db-id)
+  (println [(->> requirements
+                 vals
+                 (mapcat (comp vals :dimensions))
+                 (map u/get-id)
+                 ) (keys requirements)])
   (->> requirements
        vals
        (mapcat (comp vals :dimensions))
@@ -161,7 +189,7 @@
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
       (let [requirements (satisfy-requirements db-id schema transform)]
-        (store-requirements! requirements)
+        (store-requirements! db-id requirements)
         (materialize/fresh-collection-for-transform! transform)
         (let [bindings (reduce-kv (fn [bindings name step]
                                     (transform-step! bindings transform (assoc step :name name)))
@@ -170,10 +198,10 @@
           (for [[result-step {required-dimensions :dimensions}] provides]
             (do
               (when (not-every? (-> result-step bindings :dimensions) required-dimensions)
-                (throw (Exception. (str (tru "Resulting transform {0} do not conform to expectations. Expected: {1}\nGot: {2}"
+                (throw (Exception. (str (tru "Resulting transform {0} do not conform to expectations.\nExpected: {1}\nGot: {2}"
                                              result-step
                                              required-dimensions
-                                             (->> result-step bindings :dimensions (map :special_type)))))))
+                                             (->> result-step bindings :dimensions keys))))))
               (-> result-step bindings :entity u/get-id))))))))
 
 ;; TODO: should this work for cards as well?
