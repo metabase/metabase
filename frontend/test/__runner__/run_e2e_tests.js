@@ -69,24 +69,28 @@ const init = async () => {
     );
   }
 
-  try {
-    const version = await readFile(
-      __dirname + "/../../../resources/version.properties",
-    );
-    console.log(chalk.bold("Running e2e test runner with this build:"));
-    process.stdout.write(chalk.cyan(version));
-    console.log(
-      chalk.bold(
-        "If that version seems too old, please run `./bin/build version uberjar`.\n",
-      ),
-    );
-  } catch (e) {
-    console.log(
-      chalk.bold(
-        "No version file found. Please run `./bin/build version uberjar`.",
-      ),
-    );
-    process.exit(1);
+  if (process.env["METABASE_JAR"]) {
+    try {
+      const version = await readFile(
+        __dirname + "/../../../resources/version.properties",
+      );
+      console.log(chalk.bold("Running e2e test runner with this build:"));
+      process.stdout.write(chalk.cyan(version));
+      console.log(
+        chalk.bold(
+          "If that version seems too old, please run `./bin/build version uberjar`.\n",
+        ),
+      );
+    } catch (e) {
+      console.log(
+        chalk.bold(
+          "No version file found. Please run `./bin/build version uberjar`.",
+        ),
+      );
+      process.exit(1);
+    }
+  } else {
+    console.log(chalk.bold("Running e2e test runner with `lein run`"));
   }
 
   console.log(

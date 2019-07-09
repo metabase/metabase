@@ -432,15 +432,7 @@ jobs:
     steps:
       - run-yarn-command:
           command-name: Run frontend e2e tests
-          command: run test-e2e-no-build
-          before-steps:
-            - restore_cache:
-                keys:
-                  - uberjar-{{ checksum "./backend-checksums.txt" }}
-            - run:
-                name: Generate version file
-                command: ./bin/build version
-
+          command: run test-e2e
 
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
@@ -654,7 +646,7 @@ workflows:
             - be-deps
       - fe-tests-e2e:
           requires:
-            - build-uberjar
+            - be-deps
             - fe-deps
 
       - deploy-master:
