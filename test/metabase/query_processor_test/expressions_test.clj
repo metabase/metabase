@@ -232,13 +232,13 @@
 ;; Test interaction with truncation
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   (robust-dates
-   ["2014-09-02T00:45:00.000"
+   ["2014-09-02T00:00:00.000"
     "2014-07-02T00:00:00.000"
     "2014-07-01T00:00:00.000"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (-> (data/run-mbql-query users
           {:expressions {:prev_month [:+ [:datetime-field $last_login :day] [:interval -31 :day]]}
-             :fields      [[:expression :prev_month]]
-             :limit       3
-             :order-by    [[:asc $name]]})
+           :fields      [[:expression :prev_month]]
+           :limit       3
+           :order-by    [[:asc $name]]})
         qp.test/rows)))
