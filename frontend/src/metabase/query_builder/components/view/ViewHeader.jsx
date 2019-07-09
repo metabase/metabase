@@ -26,6 +26,8 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 
 import colors from "metabase/lib/colors";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 export class ViewTitleHeader extends React.Component {
   constructor(props) {
     super(props);
