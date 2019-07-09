@@ -21,7 +21,7 @@ steps:
       source: OrderHistory
       expressions:
   #      Month: [datetime-field, [dimension, CreationTimestamp], month]
-         PrevMonth: [-, [dimension, Month], [interval, -1, month]]
+         PrevMonth: ["-", [dimension, Month], [interval, -1, month]]
   NextMonth:
        source: Charges
   MRR:

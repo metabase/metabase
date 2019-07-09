@@ -13,6 +13,7 @@
              [template-parser :refer [transforms]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (defmulti ^:private ->mbql
@@ -161,7 +162,7 @@
     (qp.store/with-store
       (let [requirements (satisfy-requirements db-id schema transform)]
         (store-requirements! requirements)
-        (materialize/fresh-collection-for-transform! tansform)
+        (materialize/fresh-collection-for-transform! transform)
         (let [bindings (reduce-kv (fn [bindings name step]
                                     (transform-step! bindings transform (assoc step :name name)))
                                   requirements
