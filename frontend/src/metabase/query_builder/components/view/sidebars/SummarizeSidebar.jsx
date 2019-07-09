@@ -1,9 +1,10 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Flex } from "grid-styled";
-
+import _ from "underscore";
 import styled from "styled-components";
+
+import { Flex } from "grid-styled";
 
 import colors, { alpha } from "metabase/lib/colors";
 
@@ -171,7 +172,14 @@ const SummarizeBreakouts = ({ className, query }) => {
       dimensions={dimensions}
       sections={query.breakoutOptions(true).sections()}
       onChangeDimension={dimension => {
-        updateAndRun(query.clearBreakouts().addBreakout(dimension.mbql()));
+        const index = _.findIndex(dimensions, d =>
+          d.isSameBaseDimension(dimension),
+        );
+        if (index >= 0) {
+          updateAndRun(query.updateBreakout(index, dimension.mbql()));
+        } else {
+          updateAndRun(query.clearBreakouts().addBreakout(dimension.mbql()));
+        }
       }}
       onAddDimension={dimension => {
         updateAndRun(query.addBreakout(dimension.mbql()));

@@ -87,10 +87,15 @@ export default class DimensionList extends Component {
     });
   }
 
-  itemIsSelected = item => {
-    const dimensions =
+  _getDimensions() {
+    return (
       this.props.dimensions ||
-      (this.props.dimension ? [this.props.dimension] : []);
+      (this.props.dimension ? [this.props.dimension] : [])
+    );
+  }
+
+  itemIsSelected = item => {
+    const dimensions = this._getDimensions();
     return (
       item.dimension &&
       _.any(dimensions, d => item.dimension.isSameBaseDimension(d))
@@ -163,10 +168,10 @@ export default class DimensionList extends Component {
   };
 
   renderSubDimensionTrigger(otherDimension, multiSelect) {
-    const { dimension } = this.props;
-    const subDimension = otherDimension.isSameBaseDimension(dimension)
-      ? dimension
-      : otherDimension.defaultDimension();
+    const dimensions = this._getDimensions();
+    const subDimension =
+      _.find(dimensions, d => d.isSameBaseDimension(otherDimension)) ||
+      otherDimension.defaultDimension();
     const name = subDimension ? subDimension.subTriggerDisplayName() : null;
     return (
       <div className="FieldList-grouping-trigger text-white-hover flex align-center p1 cursor-pointer">
