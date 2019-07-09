@@ -154,6 +154,15 @@ export class ViewTitleHeader extends React.Component {
                     onCollapse={this.collapseFilters}
                   />
                 )}
+              {QuestionLineage.shouldRender(this.props) && (
+                <ViewSubHeading>
+                  <QuestionLineage
+                    className="ml2"
+                    question={question}
+                    originalQuestion={originalQuestion}
+                  />
+                </ViewSubHeading>
+              )}
             </div>
             <div className="flex align-center">
               {isSummarized && (
@@ -169,16 +178,6 @@ export class ViewTitleHeader extends React.Component {
                   />
                 )}
             </div>
-            {QuestionLineage.shouldRender(this.props) && (
-              <div className="mt1">
-                <ViewSubHeading>
-                  <QuestionLineage
-                    question={question}
-                    originalQuestion={originalQuestion}
-                  />
-                </ViewSubHeading>
-              </div>
-            )}
           </div>
         )}
         <div className="ml-auto flex align-center">
