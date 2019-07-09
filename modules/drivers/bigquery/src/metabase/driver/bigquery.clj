@@ -408,7 +408,7 @@
 
 (defmethod driver/date-add :bigquery
   [driver dt amount unit]
-  (hsql/call :date_add dt (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+  (hsql/call :datetime_add (hx/->datetime dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 (defmethod driver/mbql->native :bigquery
   [driver
