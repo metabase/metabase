@@ -498,6 +498,12 @@
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
+(defn ensure-seq
+  "Wrap `x` into a vector if it is not already a sequence."
+  [x]
+  (if (or (sequential? x) (nil? x))
+    x
+    [x]))
 
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
@@ -511,7 +517,7 @@
   [m keyseq]
   ;; TODO - use (empty m) once supported by model instances
   (into {} (for [k     keyseq
-                 :let  [[k & nested-keys] (if (sequential? k) k [k])
+                 :let  [[k & nested-keys] (ensure-seq k)
                         v                 (get m k)]
                  :when (contains? m k)]
              {k (if-not (seq nested-keys)

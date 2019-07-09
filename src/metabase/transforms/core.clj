@@ -1,21 +1,16 @@
 (ns metabase.transforms.core
   (:require [clojure.string :as str]
             [medley.core :as m]
-            [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
-             [card :as card :refer [Card]]
-             [collection :as collection]
              [database :refer [Database]]
              [field :as field :refer [Field]]
-             [metric :as metric :refer [Metric]]
-             [table :refer [Table]]]
-            [metabase.query-processor.middleware
-             [annotate :as qp.annotate]
-             [add-implicit-clauses :as qp.imlicit-clauses]]
+             [metric :as metric :refer [Metric]]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.transforms.transform-parser :refer [transforms]]
+            [metabase.transforms
+             [materialize :as materialize :refer [infer-cols ->source-table]]
+             [transform-parser :refer [transforms]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
@@ -72,59 +67,6 @@
              into (for [name breakout]
                     [name (get-dimension-binding bindings source name)])))
 
-(defn- infer-cols
-  [query]
-  (-> {:query query
-       :type  :query}
-      qp.imlicit-clauses/add-implicit-mbql-clauses
-      (#'qp.annotate/add-column-info* nil)
-      :cols))
-
-(defn- ->source-table
-  [entity]
-  (if (instance? (type Table) entity)
-    (u/get-id entity)
-    (str "card__" (u/get-id entity))))
-
-(defn- make-card!
-  [name collection query description]
-  (->> {:creator_id             api/*current-user-id*
-        :dataset_query          {:query    (update query :source-table ->source-table)
-                                 :type     :query
-                                 :database ((some-fn :db_id :database_id) (:source-table query))}
-        :description            description
-        :name                   name
-        :collection_id          collection
-        :result_metadata        (infer-cols query)
-        :visualization_settings {}
-        :display                :table}
-       card/populate-query-fields
-       (db/insert! 'Card)))
-
-(defn- get-or-create-collection!
-  [name color description parent-collection-id]
-  (let [location (if parent-collection-id
-                   (collection/children-location (db/select-one ['Collection :location :id]
-                                                   :id parent-collection-id))
-                   "/")]
-    (or (db/select-one 'Collection
-          :name     name
-          :location location)
-        (db/insert! 'Collection
-          {:name        name
-           :color       color
-           :description description
-           :location    location}))))
-
-(defn- get-or-create-root-container-collection!
-  "Get or create container collection for transforms in the root collection."
-  []
-  (u/get-id (get-or-create-collection! "Automatically Generated Transforms" "#509EE3" nil nil)))
-
-(defn- collection-for-transform
-  [{:keys [name description]}]
-  (get-or-create-collection! name "#509EE3" description (get-or-create-root-container-collection!)))
-
 (defn- build-join
   [bindings context-source join]
   (for [{:keys [source condition strategy]} join]
@@ -166,18 +108,19 @@
 
                          join
                          (assoc :join (build-join bindings source join)))]
-    (assoc bindings name {:dimensions (into {}
-                                            (for [col (infer-cols query)]
-                                              [(if (local-bindings (:name col))
-                                                 (:name col)
-                                                 (let [mask (juxt :name :base_type)]
-                                                   (some->> local-bindings
-                                                            (m/find-first (comp #{(mask col)} mask val))
-                                                            key)))
-                                               (-> col
-                                                   (dissoc :id)
-                                                   field/map->FieldInstance)]))
-                          :entity     (make-card! name (collection-for-transform transform) query description)})))
+    (assoc bindings
+      name {:dimensions (into {}
+                              (for [col (infer-cols query)]
+                                [(if (local-bindings (:name col))
+                                   (:name col)
+                                   (let [mask (juxt :name :base_type)]
+                                     (some->> local-bindings
+                                              (m/find-first (comp #{(mask col)} mask val))
+                                              key)))
+                                 (-> col
+                                     (dissoc :id)
+                                     field/map->FieldInstance)]))
+            :entity     (materialize/make-card! name query description)})))
 
 (defn- table-dimensions
   [table]
@@ -203,17 +146,22 @@
                  [identifier {:entity     table
                               :dimensions (table-dimensions table)}])))))
 
+(defn- store-requirements!
+  [db-id schema requirements]
+  (qp.store/fetch-and-store-database! db-id)
+  (->> requirements
+       vals
+       (mapcat (comp vals :dimensions))
+       (map u/get-id)
+       qp.store/fetch-and-store-fields!))
+
 (defn run-transform!
   [db-id schema {:keys [steps provides] :as transform}]
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
-      (qp.store/fetch-and-store-database! db-id)
       (let [requirements (satisfy-requirements db-id schema transform)]
-        (->> requirements
-             vals
-             (mapcat (comp vals :dimensions))
-             (map u/get-id)
-             qp.store/fetch-and-store-fields!)
+        (store-requirements! requirements)
+        (materialize/fresh-collection-for-transform! tansform)
         (let [bindings (reduce-kv (fn [bindings name step]
                                     (transform-step! bindings transform (assoc step :name name)))
                                   requirements
