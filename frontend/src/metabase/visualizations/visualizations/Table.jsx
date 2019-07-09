@@ -124,17 +124,10 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Cell column`,
       widget: "field",
-      getDefault: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ],
-        { "table.pivot": pivotCol },
-      ) => {
+      getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
         // We try to show numeric values in pivot cells, but if none are
         // available, we fall back to the last column in the unpivoted table
-        const nonPivotCols = cols.filter(c => c.name !== pivotCol);
+        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
         const lastCol = nonPivotCols[nonPivotCols.length - 1];
         const [{ name } = lastCol] = nonPivotCols.filter(isMetric);
         return name;
