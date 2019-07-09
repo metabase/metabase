@@ -207,13 +207,12 @@
   standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db}                            (*get-db*)
-        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])
-        copy-name                                              (format "%s___COPY" original-name)]
-    (try
-      (let [{new-db-id :id, :as new-db} (db/insert! Database (assoc original-db :name copy-name))]
+        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
+    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
+      (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f))
-      (finally (db/delete! Database :engine (name engine), :name copy-name)))))
+        (do-with-db new-db f)
+        (finally (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -447,7 +447,7 @@ jobs:
 ########################################################################################################################
 
   deploy-master:
-    executor: basic
+    executor: clojure
     steps:
       - attach-workspace
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
