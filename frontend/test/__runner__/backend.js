@@ -45,6 +45,7 @@ export const BackendResource = createSharedResource("BackendResource", {
       if (server.dbKey !== server.dbFile) {
         await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+
       server.process = spawn(
         "java",
         [
@@ -62,6 +63,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           env: {
             MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
+            MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
           },
           stdio: "inherit",
