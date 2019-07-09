@@ -52,13 +52,13 @@
 
     [:between [:datetime-field field unit] [:relative-datetime from _] [:relative-datetime to _]]
     [:and
-     [:>= [:datetime-field field :default] [:relative-datetime-padded from unit]]
-     [:< [:datetime-field field :default] [:relative-datetime-padded (+ to 1) unit]]]
+     [:>= [:datetime-field field :default] [:relative-datetime from unit {:padded? true}]]
+     [:< [:datetime-field field :default] [:relative-datetime (+ to 1) unit {:padded? true}]]]
 
     [:= [:datetime-field field unit] [:relative-datetime date _]]
     [:and
-     [:>= [:datetime-field field :default] [:relative-datetime-padded date unit]]
-     [:< [:datetime-field field :default] [:relative-datetime-padded (+ date 1) unit]]]))
+     [:>= [:datetime-field field :default] [:relative-datetime date unit {:padded? true}]]
+     [:< [:datetime-field field :default] [:relative-datetime (+ date 1) unit {:padded? true}]]]))
 
 (schema.core/defn ^:private optimize* :- mbql.s/Query
   [query]

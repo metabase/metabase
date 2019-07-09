@@ -266,11 +266,8 @@
 
 
 ;; TODO - where's the part where we handle include-current?
-(defmethod ->rvalue :relative-datetime [[_ amount unit]]
-  (absolute-datetime (du/relative-date (or unit :day) amount) unit false))
-
-(defmethod ->rvalue :relative-datetime-padded [[_ amount unit]]
-  (absolute-datetime (du/relative-date (or unit :day) amount) unit true))
+(defmethod ->rvalue :relative-datetime [[_ amount unit options]]
+  (absolute-datetime (du/relative-date (or unit :day) amount) unit (get options :padded? false)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

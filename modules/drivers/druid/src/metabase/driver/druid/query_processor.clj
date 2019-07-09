@@ -112,11 +112,7 @@
   (du/date->iso-8601 (du/date-trunc unit time (get-timezone-id))))
 
 (defmethod ->rvalue :relative-datetime
-  [[_ amount unit]]
-  (du/date->iso-8601 (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id))))
-
-(defmethod ->rvalue :relative-datetime-padded
-  [[_ amount unit]]
+  [[_ amount unit options]]
   (du/date->iso-8601 (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id))))
 
 (defmethod ->rvalue :value

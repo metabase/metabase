@@ -298,16 +298,10 @@
   (date driver unit (->honeysql driver value) false))
 
 (defmethod ->honeysql [:sql :relative-datetime]
-  [driver [_ amount unit]]
+  [driver [_ amount unit options]]
   (date driver unit (if (zero? amount)
                       (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount)) false))
-
-(defmethod ->honeysql [:sql :relative-datetime-padded]
-  [driver [_ amount unit]]
-  (date driver unit (if (zero? amount)
-                      (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount)) true))
+                      (driver/date-interval driver unit amount)) (get options :padded? false)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Field Aliases (AS Forms)                                            |
