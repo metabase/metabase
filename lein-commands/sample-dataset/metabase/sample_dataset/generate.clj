@@ -51,7 +51,7 @@
 
 (defn- load-addresses! []
   (println "Loading addresses...")
-  (reset! addresses (edn/read-string (slurp "sample_dataset/metabase/sample_dataset/addresses.edn")))
+  (reset! addresses (edn/read-string (slurp "lein-commands/sample-dataset/metabase/sample_dataset/addresses.edn")))
   :ok)
 
 (defn- next-address []

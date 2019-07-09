@@ -19,7 +19,7 @@
 (defn- venues-metadata [field-name]
   (select-keys
    (Field (data/id :venues field-name))
-   [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint]))
+   [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings]))
 
 (defn- venues-source-metadata
   ([]
@@ -85,7 +85,8 @@
                        [{:name         "avg"
                          :display_name "average of ID"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK}])})
+                         :special_type :type/PK
+                         :settings     nil}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
@@ -103,7 +104,8 @@
                        [{:name         "my_cool_aggregation"
                          :display_name "my_cool_aggregation"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK}])})
+                         :special_type :type/PK
+                         :settings     nil}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues

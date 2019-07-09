@@ -567,18 +567,16 @@
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (let [inner-query (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations
-                                                              annotate/aggregation-name))]
-    (reduce (fn [pipeline-ctx f]
-              (f inner-query pipeline-ctx))
-            {:projections [], :query []}
-            [add-initial-projection
-             handle-filter
-             handle-breakout+aggregation
-             handle-order-by
-             handle-fields
-             handle-limit
-             handle-page])))
+  (reduce (fn [pipeline-ctx f]
+            (f inner-query pipeline-ctx))
+          {:projections [], :query []}
+          [add-initial-projection
+           handle-filter
+           handle-breakout+aggregation
+           handle-order-by
+           handle-fields
+           handle-limit
+           handle-page]))
 
 (s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
   [original-keys :- Projections]

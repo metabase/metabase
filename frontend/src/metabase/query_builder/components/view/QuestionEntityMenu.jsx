@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 
 import EntityMenu from "metabase/components/EntityMenu";
 
@@ -11,15 +12,24 @@ const QuestionEntityMenu = ({ className, onOpenModal }) => (
     items={[
       {
         icon: "edit_document",
-        title: `Edit this question`,
+        title: t`Edit this question`,
         action: () => onOpenModal("edit"),
       },
       {
         icon: "history",
-        title: `View revision history`,
+        title: t`View revision history`,
         action: () => onOpenModal("history"),
       },
-      { icon: "move", title: `Move`, action: () => onOpenModal("move") },
+      {
+        icon: "add_to_dash",
+        title: t`Add to dashboard`,
+        action: () => onOpenModal("add-to-dashboard"),
+      },
+      {
+        icon: "move",
+        title: t`Move`,
+        action: () => onOpenModal("move"),
+      },
       {
         icon: "archive",
         title: `Archive`,

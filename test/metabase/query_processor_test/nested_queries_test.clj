@@ -1,10 +1,8 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
-  (:require [clojure.string :as str]
-            [expectations :refer [expect]]
+  (:require [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
-             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
@@ -12,7 +10,6 @@
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]
-             [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
              [segment :refer [Segment]]]
@@ -24,19 +21,7 @@
              [datasets :as datasets]
              [users :refer [user->client]]]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]
             [toucan.util.test :as tt]))
-
-(defn- rows+cols
-  "Return the `:rows` and relevant parts of `:cols` from the `results`.
-   (This is used to keep the output of various tests below focused and manageable.)"
-  {:style/indent 0}
-  [results]
-  {:rows (qp.test/rows results)
-   :cols (for [col (get-in results [:data :cols])]
-           {:name      (str/lower-case (:name col))
-            :base_type (:base_type col)})})
-
 
 ;; make sure we can do a basic query with MBQL source-query
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
@@ -45,21 +30,16 @@
           [3 "The Apple Pan"                11 34.0406 -118.428 2]
           [4 "Wurstküche"                   29 33.9997 -118.465 2]
           [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
-   :cols [{:name "id",          :base_type (data/id-field-type)}
-          {:name "name",        :base_type :type/Text}
-          {:name "category_id", :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "latitude",    :base_type :type/Float}
-          {:name "longitude",   :base_type :type/Float}
-          {:name "price",       :base_type (data/expected-base-type->actual :type/Integer)}]}
-  (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
-    (rows+cols
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:source-table (data/id :venues)
-                                  :order-by     [[:asc (data/id :venues :id)]]
-                                  :limit        10}
-                   :limit        5}}))))
+   :cols (mapv
+          (partial qp.test/field-literal-col :venues)
+          [:id :name :category_id :latitude :longitude :price])}
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by :venues
+      (data/run-mbql-query nil
+        {:source-query {:source-table $$venues
+                        :order-by     [[:asc $venues.id]]
+                        :limit        10}
+         :limit        5}))))
 
 ;; make sure we can do a basic query with a SQL source-query
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
@@ -68,66 +48,51 @@
           [3 -118.428 11 2 "The Apple Pan"                34.0406]
           [4 -118.465 29 2 "Wurstküche"                   33.9997]
           [5 -118.261 20 2 "Brite Spot Family Restaurant" 34.0778]]
-   ;; Oracle doesn't have Integer types, they always come back as DECIMAL
-   :cols [{:name "id",          :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
-          {:name "longitude",   :base_type :type/Float}
-          {:name "category_id", :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
-          {:name "price",       :base_type (case driver/*driver* :oracle :type/Decimal :type/Integer)}
-          {:name "name",        :base_type :type/Text}
-          {:name "latitude",    :base_type :type/Float}]}
-  (qp.test/format-rows-by [int (partial u/round-to-decimals 4) int int str (partial u/round-to-decimals 4)]
-    (rows+cols
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:native (:query
-                                           (qp/query->native
-                                             (data/mbql-query venues
-                                               {:fields [[:field-id $id]
-                                                         [:field-id $longitude]
-                                                         [:field-id $category_id]
-                                                         [:field-id $price]
-                                                         [:field-id $name]
-                                                         [:field-id $latitude]]})))}
-                   :order-by     [[:asc [:field-literal (data/format-name :id) :type/Integer]]]
-                   :limit        5}}))))
+   :cols (mapv (partial qp.test/native-query-col :venues) [:id :longitude :category_id :price :name :latitude])}
+  (qp.test/format-rows-by [int 4.0 int int str 4.0]
+    (let [{source-query :query} (qp/query->native
+                                  (data/mbql-query venues
+                                    {:fields [$id $longitude $category_id $price $name $latitude]}))]
+      (qp.test/rows-and-cols
+        (data/run-mbql-query venues
+          {:source-query {:native source-query}
+           :order-by     [[:asc *venues.id]]
+           :limit        5})))))
 
 
-(def ^:private breakout-results
+(defn- breakout-results [& {:keys [has-source-metadata?], :or {has-source-metadata? true}}]
   {:rows [[1 22]
           [2 59]
           [3 13]
           [4  6]]
-   :cols [{:name "price", :base_type :type/Integer}
-          {:name "count", :base_type :type/Integer}]})
+   :cols [(cond-> (qp.test/breakout-col (qp.test/field-literal-col :venues :price))
+            (not has-source-metadata?)
+            (dissoc :id :special_type :settings :fingerprint :table_id))
+          (qp.test/aggregate-col :count)]})
 
 ;; make sure we can do a query with breakout and aggregation using an MBQL source query
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
-  breakout-results
-  (rows+cols
-   (qp.test/format-rows-by [int int]
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:source-table (data/id :venues)}
-                   :aggregation  [:count]
-                   :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
+  (breakout-results)
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by [int int]
+      (data/run-mbql-query venues
+        {:source-query {:source-table $$venues}
+         :aggregation  [:count]
+         :breakout     [*price]}))))
 
 ;; Test including a breakout of a nested query column that follows an FK
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows [[1 174] [2 474] [3 78] [4 39]]
-   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "count", :base_type :type/Integer}]}
-  (rows+cols
-   (qp.test/format-rows-by [int int]
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:source-table (data/id :checkins)
-                                  :filter       [:> (data/id :checkins :date) "2014-01-01"]}
-                   :aggregation  [:count]
-                   :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
-                   :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]}}))))
+   :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by [int int]
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :filter       [:> $date "2014-01-01"]}
+         :aggregation  [:count]
+         :order-by     [[:asc $venue_id->venues.price]]
+         :breakout     [$venue_id->venues.price]}))))
 
 
 ;; Test two breakout columns from the nested query, both following an FK
@@ -137,21 +102,19 @@
           [2 33.9997 7]
           [3 10.0646 2]
           [4 33.983 2]],
-   :cols [{:name "price", :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "latitude", :base_type :type/Float}
-          {:name "count", :base_type :type/Integer}]}
-  (rows+cols
-   (qp.test/format-rows-by [int (partial u/round-to-decimals 4) int]
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:source-table (data/id :checkins)
-                                  :filter       [:> (data/id :checkins :date) "2014-01-01"]}
-                   :filter       [:< [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)] 34]
-                   :aggregation  [:count]
-                   :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
-                   :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
-                                  [:fk-> (data/id :checkins :venue_id) (data/id :venues :latitude)]]}}))))
+   :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
+          (qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :latitude))
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by [int 4.0 int]
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :filter       [:> $date "2014-01-01"]}
+         :filter       [:< $venue_id->venues.latitude 34]
+         :aggregation  [:count]
+         :order-by     [[:asc $venue_id->venues.price]]
+         :breakout     [$venue_id->venues.price
+                        $venue_id->venues.latitude]}))))
 
 ;; Test two breakout columns from the nested query, one following an FK the other from the source table
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -159,44 +122,41 @@
           [1 2 14]
           [1 3 13]
           [1 4 8]
-          [1 5 10]],
-   :cols [{:name "price",   :base_type (data/expected-base-type->actual :type/Integer)}
-          {:name "user_id", :base_type :type/Integer}
-          {:name "count",   :base_type :type/Integer}]}
-  (rows+cols
+          [1 5 10]]
+   :cols [(qp.test/breakout-col (qp.test/fk-col :checkins :venue_id :venues :price))
+          (qp.test/breakout-col (qp.test/field-literal-col :checkins :user_id))
+          (qp.test/aggregate-col :count)]}
+  (qp.test/rows-and-cols
     (qp.test/format-rows-by [int int int]
-      (qp/process-query
-        {:database (data/id)
-         :type     :query
-         :query    {:source-query {:source-table (data/id :checkins)
-                                   :filter       [:> (data/id :checkins :date) "2014-01-01"]}
-                    :aggregation  [:count]
-                    :filter       [:= [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)] 1]
-                    :order-by     [[:asc [:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]]]
-                    :breakout     [[:fk-> (data/id :checkins :venue_id) (data/id :venues :price)]
-                                   [:field-literal (keyword (data/format-name :user_id)) :type/Integer]]
-                    :limit        5}}))))
+      (data/run-mbql-query checkins
+        {:source-query {:source-table $$checkins
+                        :filter       [:> $date "2014-01-01"]}
+         :aggregation  [:count]
+         :filter       [:= $venue_id->venues.price 1]
+         :order-by     [[:asc $venue_id->venues.price]]
+         :breakout     [$venue_id->venues.price *user_id]
+         :limit        5}))))
 
 ;; make sure we can do a query with breakout and aggregation using a SQL source query
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
-  breakout-results
-  (rows+cols
-   (qp.test/format-rows-by [int int]
-     (qp/process-query
-       {:database (data/id)
-        :type     :query
-        :query    {:source-query {:native (:query (qp/query->native (data/mbql-query venues)))}
-                   :aggregation  [:count]
-                   :breakout     [[:field-literal (keyword (data/format-name :price)) :type/Integer]]}}))))
+  (breakout-results :has-source-metadata? false)
+  (qp.test/rows-and-cols
+    (qp.test/format-rows-by [int int]
+      (data/run-mbql-query venues
+        {:source-query {:native (:query (qp/query->native (data/mbql-query venues)))}
+         :aggregation  [:count]
+         :breakout     [*price]}))))
 
 
 (defn- mbql-card-def
   "Basic MBQL Card definition. Pass kv-pair clauses for the inner query."
   {:style/indent 0}
-  [& {:as clauses}]
-  {:dataset_query {:database (data/id)
-                   :type     :query
-                   :query    clauses}})
+  ([m]
+   {:dataset_query {:database (data/id)
+                    :type     :query
+                    :query    m}})
+  ([k v & {:as more}]
+   (mbql-card-def (merge {k v} more))))
 
 (defn- venues-mbql-card-def
   "A basic Card definition that returns raw data for the venues test table.
@@ -206,80 +166,85 @@
   (apply mbql-card-def :source-table (data/id :venues) additional-clauses))
 
 
-(defn- query-with-source-card {:style/indent 1} [card & {:as additional-clauses}]
-  {:database mbql.s/saved-questions-virtual-database-id
-   :type     :query
-   :query    (merge {:source-table (str "card__" (u/get-id card))}
-                    additional-clauses)})
+(defn- query-with-source-card
+  {:style/indent 1}
+  ([card]
+   {:database mbql.s/saved-questions-virtual-database-id
+    :type     :query
+    :query    {:source-table (str "card__" (u/get-id card))}})
+
+  ([card m]
+   (update (query-with-source-card card) :query merge m))
+
+  ([card k v & {:as more}]
+   (query-with-source-card card (merge {k v} more))))
 
 ;; Make sure we can run queries using source table `card__id` format. This is the format that is actually used by the
 ;; frontend; it gets translated to the normal `source-query` format by middleware. It's provided as a convenience so
 ;; only minimal changes need to be made to the frontend.
 (expect
-  breakout-results
+  (breakout-results)
   (tt/with-temp Card [card (venues-mbql-card-def)]
-    (rows+cols
-     (qp.test/format-rows-by [int int]
-       (qp/process-query
-         (query-with-source-card card
-           :aggregation [:count]
-           :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            (data/$ids venues
+              {:aggregation [:count]
+               :breakout    [*price]})))))))
 
 ;; make sure `card__id`-style queries work with native source queries as well
 (expect
-  breakout-results
+  (breakout-results :has-source-metadata? false)
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES"}}}]
-    (rows+cols
-     (qp.test/format-rows-by [int int]
-       (qp/process-query
-         (query-with-source-card card
-           :aggregation [:count]
-           :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            (data/$ids venues
+              {:aggregation [:count]
+               :breakout    [*price]})))))))
 
 ;; Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail
 (expect
-  breakout-results
+  (breakout-results :has-source-metadata? false)
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES -- small comment here"}}}]
-    (rows+cols
-     (qp.test/format-rows-by [int int]
-       (qp/process-query
-         (query-with-source-card card
-           :aggregation [:count]
-           :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            (data/$ids venues
+              {:aggregation [:count]
+               :breakout    [*price]})))))))
 
 ;; Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail
 (expect
-  breakout-results
+  (breakout-results :has-source-metadata? false)
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM VENUES -- small comment here\n"}}}]
-    (rows+cols
-     (qp.test/format-rows-by [int int]
-       (qp/process-query
-         (query-with-source-card card
-           :aggregation [:count]
-           :breakout    [[:field-literal (keyword (data/format-name :price)) :type/Integer]]))))))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int int]
+        (qp/process-query
+          (query-with-source-card card
+            (data/$ids venues
+              {:aggregation [:count]
+               :breakout    [*price]})))))))
 
 
 ;; make sure we can filter by a field literal
 (expect
   {:rows [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-   :cols [{:name "id",          :base_type :type/BigInteger}
-          {:name "name",        :base_type :type/Text}
-          {:name "category_id", :base_type :type/Integer}
-          {:name "latitude",    :base_type :type/Float}
-          {:name "longitude",   :base_type :type/Float}
-          {:name "price",       :base_type :type/Integer}]}
-  (rows+cols
-   (qp/process-query
-     {:database (data/id)
-      :type     :query
-      :query    {:source-query {:source-table (data/id :venues)}
-                 :filter       [:= [:field-literal (data/format-name :id) :type/Integer] 1]}})))
+   :cols (mapv (partial qp.test/field-literal-col :venues)
+               [:id :name :category_id :latitude :longitude :price])}
+  (qp.test/rows-and-cols
+    (data/run-mbql-query venues
+      {:source-query {:source-table $$venues}
+       :filter       [:= *id 1]})))
 
 (defn- honeysql->sql
   "Convert `honeysql-form` to the format returned by `query->native`. Writing HoneySQL is a lot easier that writing
@@ -352,11 +317,11 @@
    :params nil}
   (qp/query->native
     (data/mbql-query venues
-     {:source-query {:source-table $$venues
-                     :aggregation  [[:stddev $id]]
-                     :breakout     [$price]
-                     :order-by     [[[:aggregation 0] :descending]]}
-      :aggregation  [[:avg *stddev/Integer]]})))
+      {:source-query {:source-table $$venues
+                      :aggregation  [[:stddev $id]]
+                      :breakout     [$price]
+                      :order-by     [[[:aggregation 0] :descending]]}
+       :aggregation  [[:avg *stddev/Integer]]})))
 
 ;; make sure that we handle [field-id [field-literal ...]] forms gracefully, despite that not making any sense
 (expect
@@ -425,108 +390,57 @@
        :type     :query
        :query    {:source-table (str "card__" (u/get-id card))}})))
 
-(defn results-metadata {:style/indent 0} [results]
-  (when (= :failed (:status results))
-    (throw (ex-info "No results metadata." results)))
-  (for [col (get-in results [:data :cols])]
-    (u/select-non-nil-keys col [:base_type :display_name :id :name :special_type :table_id :unit :datetime-unit])))
-
 ;; make sure a query using a source query comes back with the correct columns metadata
 (expect
-  [{:base_type    :type/BigInteger
-    :display_name "ID"
-    :id           (data/id :venues :id)
-    :name         "ID"
-    :special_type :type/PK
-    :table_id     (data/id :venues)}
-   {:base_type    :type/Text
-    :display_name "Name"
-    :id           (data/id :venues :name)
-    :name         "NAME"
-    :special_type :type/Name
-    :table_id     (data/id :venues)}
-   {:base_type    :type/Integer
-    :display_name "Category ID"
-    :id           (data/id :venues :category_id)
-    :name         "CATEGORY_ID"
-    :special_type :type/FK
-    :table_id     (data/id :venues)}
-   {:base_type    :type/Float
-    :display_name "Latitude"
-    :id           (data/id :venues :latitude)
-    :name         "LATITUDE"
-    :special_type :type/Latitude
-    :table_id     (data/id :venues)}
-   {:base_type    :type/Float
-    :display_name "Longitude"
-    :id           (data/id :venues :longitude)
-    :name         "LONGITUDE"
-    :special_type :type/Longitude
-    :table_id     (data/id :venues)}
-   {:base_type    :type/Integer
-    :display_name "Price"
-    :id           (data/id :venues :price)
-    :name         "PRICE"
-    :special_type :type/Category
-    :table_id     (data/id :venues)}]
-  (-> (tt/with-temp Card [card (venues-mbql-card-def)]
-        (qp/process-query (query-with-source-card card)))
-      results-metadata))
+  (map
+   (partial qp.test/field-literal-col :venues)
+   [:id :name :category_id :latitude :longitude :price])
+  (qp.test/cols
+    (tt/with-temp Card [card (venues-mbql-card-def)]
+      (qp/process-query (query-with-source-card card)))))
 
 ;; make sure a breakout/aggregate query using a source query comes back with the correct columns metadata
 (expect
-  [{:base_type    :type/Text
-    :name         "PRICE"
-    :display_name "Price"}
-   {:base_type    :type/Integer
-    :display_name "count"
-    :name         "count"
-    :special_type :type/Number}]
-  (-> (tt/with-temp Card [card (venues-mbql-card-def)]
-        (qp/process-query (query-with-source-card card
-                            :aggregation  [[:count]]
-                            :breakout     [[:field-literal "PRICE" :type/Text]])))
-      results-metadata))
+  [(qp.test/breakout-col (qp.test/field-literal-col :venues :price))
+   (qp.test/aggregate-col :count)]
+  (qp.test/cols
+    (tt/with-temp Card [card (venues-mbql-card-def)]
+      (qp/process-query
+        (query-with-source-card card
+          (data/$ids venues
+            {:aggregation [[:count]]
+             :breakout    [*price]}))))))
 
 ;; make sure nested queries return the right columns metadata for SQL source queries and datetime breakouts
 (expect
-  [{:base_type    :type/DateTime
-    :display_name "Date"
-    :name         "DATE"
-    :unit         :day}
-   {:base_type    :type/Integer
-    :display_name "count"
-    :name         "count"
-    :special_type :type/Number}]
-  (-> (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                                :type     :native
-                                                :native   {:query "SELECT * FROM CHECKINS"}}}]
-        (qp/process-query (query-with-source-card card
-                            :aggregation  [[:count]]
-                            :breakout     [[:datetime-field [:field-literal "DATE" :type/DateTime] :day]])))
-      results-metadata))
+ [(-> (qp.test/breakout-col (qp.test/field-literal-col :checkins :date))
+      (assoc :field_ref [:datetime-field [:field-literal "DATE" :type/Date] :day]
+             :unit      :day)
+      ;; because this field literal comes from a native query that does not include `:source-metadata` it won't have
+      ;; the usual extra keys
+      (dissoc :special_type :table_id :id :settings :fingerprint))
+  (qp.test/aggregate-col :count)]
+ (qp.test/cols
+   (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                             :type     :native
+                                             :native   {:query "SELECT * FROM CHECKINS"}}}]
+     (qp/process-query
+       (query-with-source-card card
+         (data/$ids checkins
+           {:aggregation [[:count]]
+            :breakout    [!day.*date]}))))))
 
 ;; make sure when doing a nested query we give you metadata that would suggest you should be able to break out a *YEAR*
 (expect
-  [{:base_type    :type/Date
-    :display_name "Date"
-    :id           (data/id :checkins :date)
-    :name         "DATE"
-    :table_id     (data/id :checkins)
-    :unit         :year}
-   {:base_type    :type/Integer
-    :display_name "Count"
-    :name         "count"
-    :special_type :type/Number}]
-  (-> (tt/with-temp Card [card (mbql-card-def
-                                 :source-table (data/id :checkins)
-                                 :aggregation  [[:count]]
-                                 :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]])]
-        (qp/process-query (query-with-source-card card)))
-      results-metadata))
-
-(defn- field-name [table-kw field-kw]
-  (db/select-one-field :name Field :id (data/id table-kw field-kw)))
+  [(assoc (qp.test/field-literal-col :checkins :date) :unit :year)
+   (qp.test/field-literal-col (qp.test/aggregate-col :count))]
+  (qp.test/cols
+    (tt/with-temp Card [card (mbql-card-def
+                               (data/$ids checkins
+                                 {:source-table $$checkins
+                                  :aggregation  [[:count]]
+                                  :breakout     [!year.date]}))]
+      (qp/process-query (query-with-source-card card)))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -536,52 +450,49 @@
 ;; make sure using a time interval filter works
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
   :completed
-  (tt/with-temp Card [card (mbql-card-def
-                             :source-table (data/id :checkins))]
+  (tt/with-temp Card [card (mbql-card-def (data/$ids {:source-table $$checkins}))]
     (-> (query-with-source-card card
-          :filter [:time-interval [:field-literal (field-name :checkins :date) :type/DateTime] -30 :day])
+          (data/$ids checkins
+            {:filter [:time-interval *date -30 :day]}))
         qp/process-query
         completed-status)))
 
 ;; make sure that wrapping a field literal in a datetime-field clause works correctly in filters & breakouts
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
   :completed
-  (tt/with-temp Card [card (mbql-card-def
-                             :source-table (data/id :checkins))]
+  (tt/with-temp Card [card (mbql-card-def (data/$ids {:source-table $$checkins}))]
     (-> (query-with-source-card card
-          :aggregation [[:count]]
-          :filter      [:= [:datetime-field [:field-literal (field-name :checkins :date) :type/Date] :quarter] "2014-01-01T08:00:00.000Z"]
-          :breakout    [[:datetime-field [:field-literal (field-name :checkins :date) :type/Date] :month]])
+          (data/$ids :checkins
+            {:aggregation [[:count]]
+             :filter      [:= !quarter.*date "2014-01-01T08:00:00.000Z"]
+             :breakout    [!month.*date]}))
         qp/process-query
         completed-status)))
 
 ;; make sure timeseries queries generated by "drag-to-filter" work correctly
 (expect
   :completed
-  (tt/with-temp Card [card (mbql-card-def
-                             :source-table (data/id :checkins))]
-    (-> (query-with-source-card card
-          :aggregation [[:count]]
-          :breakout    [[:datetime-field [:field-literal "DATE" :type/Date] :week]]
-          :filter      [:between
-                        [:datetime-field [:field-literal "DATE" :type/Date] :month]
-                        "2014-02-01T00:00:00-08:00"
-                        "2014-05-01T00:00:00-07:00"])
-        qp/process-query
-        completed-status)))
+  (tt/with-temp Card [card (mbql-card-def (data/$ids {:source-table $$checkins}))]
+    (completed-status
+     (qp/process-query
+       (query-with-source-card card
+         (data/$ids checkins
+           {:aggregation [[:count]]
+            :breakout    [!week.*date]
+            :filter      [:between !week.*date "2014-02-01T00:00:00-08:00" "2014-05-01T00:00:00-07:00"]}))))))
 
 ;; Make sure that macro expansion works inside of a neested query, when using a compound filter clause (#5974)
 (expect
   [[22]]
-  (tt/with-temp* [Segment [segment {:table_id   (data/id :venues)
-                                    :definition {:filter [:= (data/id :venues :price) 1]}}]
+  (tt/with-temp* [Segment [segment (data/$ids {:table_id   $$venues
+                                               :definition {:filter [:= $venues.price 1]}})]
                   Card    [card (mbql-card-def
                                   :source-table (data/id :venues)
                                   :filter       [:and [:segment (u/get-id segment)]])]]
-    (-> (query-with-source-card card
-          :aggregation [:count])
-        qp/process-query
-        qp.test/rows)))
+    (qp.test/rows
+      (qp/process-query
+        (query-with-source-card card
+          {:aggregation [:count]})))))
 
 
 ;; Make suer you're allowed to save a query that uses a SQL-based source query even if you don't have SQL *write*1337
@@ -699,7 +610,7 @@
    [37 "bigmista's barbecue"  5 34.118  -118.26  2]
    [38 "Zeke's Smokehouse"    5 34.2053 -118.226 2]
    [39 "Baby Blues BBQ"       5 34.0003 -118.465 2]]
-  (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+  (qp.test/format-rows-by :venues
     (qp.test/rows
       (qp/process-query
         (data/mbql-query venues
@@ -718,9 +629,7 @@
         {:source-query {:source-table $$checkins
                         :order-by     [[:asc $id]]}
          :fields       [$id]
-         :filter       [:=
-                        [:field-literal (field-name :checkins :date) "type/DateTime"]
-                        "2014-03-30"]}))))
+         :filter       [:= *date "2014-03-30"]}))))
 
 ;; make sure filters in source queries are applied correctly!
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -735,3 +644,30 @@
          :order-by     [[:asc $venue_id->venues.name]]
          :breakout     [$venue_id->venues.name]
          :filter       [:starts-with $venue_id->venues.name "F"]}))))
+
+;; Do nested queries work with two of the same aggregation? (#9767)
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
+  {:rows
+   [["2014-02-01T00:00:00.000Z" 302 1804]
+    ["2014-03-01T00:00:00.000Z" 350 2362]]
+   :cols
+   [(assoc (qp.test/field-literal-col :checkins :date)
+      :unit :month)
+    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
+      (assoc (qp.test/aggregate-col :sum literal-col)
+        :source    :fields
+        :field_ref [:field-literal "sum" base-type]))
+    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :venue_id)]
+      (assoc (qp.test/aggregate-col :sum literal-col)
+        :name      "sum_2"
+        :source    :fields
+        :field_ref [:field-literal "sum_2" base-type]))]}
+  (qp.test/format-rows-by [identity int int]
+    (qp.test/rows-and-cols
+      (data/run-mbql-query checkins
+        {:source-query
+         {:source-table $$checkins
+          :aggregation  [[:sum $user_id] [:sum $venue_id]]
+          :breakout     [!month.date]}
+         :filter [:> *sum/Float 300]
+         :limit  2}))))

@@ -47,7 +47,7 @@
    [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
-   [amalloy/ring-gzip-middleware "0.1.3"]                             ; Ring middleware to GZIP responses if client can handle it
+   [amalloy/ring-gzip-middleware "0.1.4"]                             ; Ring middleware to GZIP responses if client can handle it
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
@@ -74,7 +74,6 @@
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
-   [com.mchange/c3p0 "0.9.5.3"]                                       ; connection pooling library
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
@@ -99,7 +98,8 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/mbql "1.0.3"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/mbql "1.2.0"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.1"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering

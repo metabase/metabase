@@ -114,7 +114,7 @@ type State = {
 };
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize("CardVisualization")
+@ExplicitSize({ className: "CardVisualization" })
 export default class Visualization extends Component {
   state: State;
   props: Props;

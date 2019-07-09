@@ -73,21 +73,26 @@
   [this]
   this)
 
+(defn- ag-clause->rvalue [[ag-type :as ag]]
+  (cond
+    (= [:count] ag)
+    :count
+
+    (= ag-type :distinct)
+    :distinct___count
+
+    (= ag-type :named)
+    (recur (second ag))
+
+    ag-type
+    ag-type
+
+    :else
+    (throw (Exception. "Unknown aggregation type!"))))
+
 (defmethod ->rvalue :aggregation
   [[_ index]]
-  (let [[ag-type :as ag] (nth (:aggregation *query*) index)]
-    (cond
-      (= [:count] ag)
-      :count
-
-      (= ag-type :distinct)
-      :distinct___count
-
-      ag-type
-      ag-type
-
-      :else
-      (throw (Exception. "Unknown aggregation type!")))))
+  (ag-clause->rvalue (nth (:aggregation *query*) index)))
 
 (defmethod ->rvalue :field-id
   [[_ field-id]]
@@ -581,8 +586,8 @@
   [query-type ag-clause updated-query]
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
-                                    [:named ag _] (recur ag)
-                                    [_ _ & _]     &match)]
+                                    [:named ag & _] (recur ag)
+                                    [_ _ & _]       &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
@@ -593,7 +598,7 @@
 (defn- add-expression-aggregation-output-names
   [[operator & args :as expression]]
   (if (mbql.u/is-clause? :named expression)
-    [:named (add-expression-aggregation-output-names (second expression)) (last expression)]
+    (update (vec expression) 1 add-expression-aggregation-output-names)
     (into [operator]
           (for [arg args]
             (cond
@@ -661,21 +666,20 @@
 
 (defn- handle-aggregations
   [query-type {aggregations :aggregation} updated-query]
-  (let [aggregations (mbql.u/pre-alias-and-uniquify-aggregations annotate/aggregation-name aggregations)]
-    (loop [[ag & more] aggregations, query updated-query]
-      (cond
-        (and (mbql.u/is-clause? :named ag)
-             (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
-        (handle-expression-aggregation query-type ag query)
+  (loop [[ag & more] aggregations, query updated-query]
+    (cond
+      (and (mbql.u/is-clause? :named ag)
+           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
+      (handle-expression-aggregation query-type ag query)
 
-        (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-        (handle-expression-aggregation query-type ag query)
+      (mbql.u/is-clause? #{:+ :- :/ :*} ag)
+      (handle-expression-aggregation query-type ag query)
 
-        (not ag)
-        query
+      (not ag)
+      query
 
-        :else
-        (recur more (handle-aggregation query-type ag query))))))
+      :else
+      (recur more (handle-aggregation query-type ag query)))))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
@@ -859,11 +863,21 @@
 
 
 (defmethod handle-order-by ::topN
-  [_ {[[ag-type]] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by} updated-query]
+  [_ {[ag] :aggregation, [breakout-field] :breakout, [[direction field]] :order-by} updated-query]
   (let [field             (->rvalue field)
         breakout-field    (->rvalue breakout-field)
         sort-by-breakout? (= field breakout-field)
-        ag-field          (if (= ag-type :distinct) :distinct___count ag-type)]
+        ag-field          (mbql.u/match-one ag
+                            :distinct
+                            :distinct___count
+
+                            [:named wrapped-ag & _]
+                            (recur wrapped-ag)
+
+                            [(ag-type :guard keyword?) & _]
+                            ag-type)]
+    (when-not sort-by-breakout?
+      (assert ag-field))
     (assoc-in updated-query [:query :metric] (match [sort-by-breakout? direction]
                                                [true  :asc]  {:type :alphaNumeric}
                                                [true  :desc] {:type :inverted, :metric {:type :alphaNumeric}}

@@ -3,7 +3,9 @@ import ReactDOM from "react-dom";
 
 import ResizeObserver from "resize-observer-polyfill";
 
-export default measureClass => ComposedComponent =>
+import cx from "classnames";
+
+export default ({ className, wrapped } = {}) => ComposedComponent =>
   class extends Component {
     static displayName =
       "ExplicitSize[" +
@@ -20,8 +22,8 @@ export default measureClass => ComposedComponent =>
 
     _getElement() {
       const element = ReactDOM.findDOMNode(this);
-      if (measureClass) {
-        const elements = element.getElementsByClassName(measureClass);
+      if (className) {
+        const elements = element.getElementsByClassName(className);
         if (elements.length > 0) {
           return elements[0];
         }
@@ -100,6 +102,20 @@ export default measureClass => ComposedComponent =>
     };
 
     render() {
-      return <ComposedComponent {...this.props} {...this.state} />;
+      if (wrapped) {
+        const { className, style = {}, ...props } = this.props;
+        const { width, height } = this.state;
+        return (
+          <div className={cx(className, "relative")} style={style}>
+            <ComposedComponent
+              style={{ position: "absolute", top: 0, left: 0, width, height }}
+              {...props}
+              {...this.state}
+            />
+          </div>
+        );
+      } else {
+        return <ComposedComponent {...this.props} {...this.state} />;
+      }
     }
   };
