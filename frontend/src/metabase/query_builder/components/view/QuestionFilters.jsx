@@ -31,6 +31,7 @@ export default function QuestionFilters({
       <FilterPill invert icon="filter" className="mr1" onClick={onCollapse} />
       {filters.map((filter, index) => (
         <PopoverWithTrigger
+          key={index}
           triggerElement={
             <FilterPill
               onRemove={() => filter.remove().update(null, { run: true })}
