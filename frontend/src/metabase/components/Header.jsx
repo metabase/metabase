@@ -125,7 +125,7 @@ export default class Header extends Component {
       );
     }
 
-    let headerButtons = this.props.headerButtons.map(
+    const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
           section &&

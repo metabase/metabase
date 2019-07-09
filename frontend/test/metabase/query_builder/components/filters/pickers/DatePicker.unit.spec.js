@@ -9,7 +9,7 @@ const nop = () => {};
 
 describe("DatePicker", () => {
   it("should render 'Previous 30 Days'", () => {
-    let picker = mount(
+    const picker = mount(
       <DatePicker
         filter={["time-interval", ["field-id", 1], -30, "day"]}
         onFilterChange={nop}
@@ -20,7 +20,7 @@ describe("DatePicker", () => {
     expect(picker.find(DateUnitSelector).text()).toEqual("Days");
   });
   it("should render 'Next 1 Month'", () => {
-    let picker = mount(
+    const picker = mount(
       <DatePicker
         filter={["time-interval", ["field-id", 1], 1, "month"]}
         onFilterChange={nop}
@@ -31,7 +31,7 @@ describe("DatePicker", () => {
     expect(picker.find(DateUnitSelector).text()).toEqual("Month");
   });
   it("should render 'Current Week'", () => {
-    let picker = mount(
+    const picker = mount(
       <DatePicker
         filter={["time-interval", ["field-id", 1], "current", "week"]}
         onFilterChange={nop}
@@ -41,7 +41,7 @@ describe("DatePicker", () => {
     expect(picker.find(DateUnitSelector).text()).toEqual("Week");
   });
   it("should render 'Between'", () => {
-    let picker = mount(
+    const picker = mount(
       <DatePicker
         filter={["between", ["field-id", 1], "2018-01-01", null]}
         onFilterChange={nop}

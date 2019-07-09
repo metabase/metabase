@@ -531,8 +531,11 @@ class SearchResultsList extends Component {
 
     const showPagination = PAGE_SIZE < entities.length;
 
-    let start = PAGE_SIZE * currentPage;
-    let end = Math.min(entities.length - 1, PAGE_SIZE * (currentPage + 1) - 1);
+    const start = PAGE_SIZE * currentPage;
+    const end = Math.min(
+      entities.length - 1,
+      PAGE_SIZE * (currentPage + 1) - 1,
+    );
     const entityCount = entities.length;
 
     const entitiesInCurrentPage = entities.slice(start, end + 1);

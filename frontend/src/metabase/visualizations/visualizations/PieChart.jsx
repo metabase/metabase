@@ -171,8 +171,8 @@ export default class PieChart extends Component {
   };
 
   componentDidUpdate() {
-    let groupElement = ReactDOM.findDOMNode(this.refs.group);
-    let detailElement = ReactDOM.findDOMNode(this.refs.detail);
+    const groupElement = ReactDOM.findDOMNode(this.refs.group);
+    const detailElement = ReactDOM.findDOMNode(this.refs.detail);
     if (groupElement.getBoundingClientRect().width < 100) {
       detailElement.classList.add("hide");
     } else {
@@ -232,12 +232,12 @@ export default class PieChart extends Component {
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    let sliceThreshold =
+    const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
         : SLICE_THRESHOLD;
 
-    let [slices, others] = _.chain(rows)
+    const [slices, others] = _.chain(rows)
       .map((row, index) => ({
         key: row[dimensionIndex],
         value: row[metricIndex],
@@ -266,13 +266,13 @@ export default class PieChart extends Component {
       slices.push(otherSlice);
     }
 
-    let legendTitles = slices.map(slice => [
+    const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
         ? formatPercent(slice.percentage, true)
         : undefined,
     ]);
-    let legendColors = slices.map(slice => slice.color);
+    const legendColors = slices.map(slice => slice.color);
 
     // no non-zero slices
     if (slices.length === 0) {

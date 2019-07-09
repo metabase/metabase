@@ -2,7 +2,9 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
   (:require [medley.core :as m]
-            [metabase.driver :as driver]
+            [metabase
+             [config :as config]
+             [driver :as driver]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor.debug :as debug]
@@ -36,6 +38,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [pre-alias-aggregations :as pre-alias-ags]
              [process-userland-query :as process-userland-query]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database :as resolve-database]
@@ -105,6 +108,7 @@
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
+   #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
    ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
    #'resolve-joins/resolve-joins
@@ -215,7 +219,8 @@
         (fn [qp]
           (fn [query]
             (let [results-promise (promise)
-                  results         (qp (assoc query :results-promise results-promise))]
+                  results         (binding [async-wait/*disable-async-wait* true]
+                                    (qp (assoc query :results-promise results-promise)))]
               (if (realized? results-promise)
                 @results-promise
                 ;; if the results promise was never delivered, it means we never made it all the way to the
@@ -244,6 +249,7 @@
   simliar functionality for queries that are actually executed.)"
   {:style/indent 0}
   [query]
+  (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
         (throw (ex-info (str (tru "No native form returned."))
@@ -275,19 +281,23 @@
     {:status (s/enum :completed :failed :canceled), s/Any s/Any})
    "Valid query response (core.async channel or map with :status)"))
 
-(def ^:dynamic *debug*
-  "Bind this to `true` to print debugging messages when processing the query."
-  false)
+;; QP debugging is only enabled in dev mode
+(when config/is-dev?
+  (def ^:dynamic *debug*
+    "Bind this to `true` to print debugging messages when processing the query."
+    false))
 
-(s/defn process-query :- QueryResponse
+(def ^{:style/indent 0, :arglists '([query])} process-query
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  {:style/indent 0}
-  [query]
-  ((if *debug*
-     debugging-pipeline
-     default-pipeline) query))
+  (if config/is-dev?
+    (s/fn :- QueryResponse
+      [query]
+      ((if *debug*
+         debugging-pipeline
+         default-pipeline) query))
+    default-pipeline))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

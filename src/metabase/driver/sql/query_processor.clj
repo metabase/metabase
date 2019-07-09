@@ -272,7 +272,7 @@
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
-    [:named _ ag-name]
+    [:named _ ag-name & _]
     (->honeysql driver (hx/identifier :field-alias ag-name))
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
@@ -568,11 +568,13 @@
         :quoting             (quote-style driver)
         :allow-dashed-names? true))
     (catch Throwable e
-      (log/error (u/format-color 'red
-                     (str (tru "Invalid HoneySQL form:")
-                          "\n"
-                          (u/pprint-to-str honeysql-form))))
-      (throw e))))
+      (try
+        (log/error (u/format-color 'red
+                       (str (tru "Invalid HoneySQL form:")
+                            "\n"
+                            (u/pprint-to-str honeysql-form))))
+        (finally
+          (throw e))))))
 
 (defn- add-default-select
   "Add `SELECT *` to `honeysql-form` if no `:select` clause is present."

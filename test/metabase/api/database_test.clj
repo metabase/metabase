@@ -190,7 +190,8 @@
 (expect-with-temp-db-created-via-api [{db-id :id, db-name :name}]
   (vec
    (sort-by
-    (fn [{db-name :name, driver :engine}] (mapv (comp str/lower-case name) [db-name driver]))
+    (fn [{db-name :name, driver :engine}]
+      [(str/lower-case db-name) (str/lower-case (name driver))])
     (cons
      (merge
       default-db-details
@@ -431,7 +432,7 @@
 
 ;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
 ;; nested queries
-(driver/register! ::no-nested-query-support :parent :h2)
+(driver/register! ::no-nested-query-support :parent :h2, :abstract? true)
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 

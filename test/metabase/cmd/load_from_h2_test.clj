@@ -5,6 +5,7 @@
              [db :as mdb]
              [util :as u]]
             [metabase.cmd.load-from-h2 :as load-from-h2]
+            [metabase.plugins.classloader :as classloader]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -43,7 +44,7 @@
              :when    (or (re-find #"^metabase\.models\." (name ns))
                           (= (name ns) "metabase.db.migrations"))
              :when    (not (re-find #"test" (name ns)))
-             [_ varr] (do (require ns)
+             [_ varr] (do (classloader/require ns)
                           (ns-interns ns))
              :let     [{model-name :name, :as model} (var-get varr)]
              :when    (and (models/model? model)

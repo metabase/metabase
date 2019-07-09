@@ -97,7 +97,9 @@ export default class QueryVisualization extends Component {
   }
 
   runQuery = () => {
-    this.props.runQuestionQuery({ ignoreCache: true });
+    const { isResultDirty } = this.props;
+    // ignore the cache if we're hitting "Refresh" (which we only show if isResultDirty = false)
+    this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
   };
 
   renderHeader() {
@@ -232,10 +234,10 @@ export default class QueryVisualization extends Component {
     let viz;
 
     if (!result) {
-      let hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
+      const hasSampleDataset = !!_.findWhere(databases, { is_sample: true });
       viz = <VisualizationEmptyState showTutorialLink={hasSampleDataset} />;
     } else {
-      let error = result.error;
+      const error = result.error;
 
       if (error) {
         viz = (

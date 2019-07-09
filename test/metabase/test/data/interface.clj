@@ -10,7 +10,7 @@
             [environ.core :refer [env]]
             [medley.core :as m]
             [metabase
-             [db :as db]
+             [db :as mdb]
              [driver :as driver]
              [util :as u]]
             [metabase.models
@@ -18,12 +18,15 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor.middleware.annotate :as annotate]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
              [pretty :as pretty]
              [schema :as su]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import clojure.lang.Keyword))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -110,18 +113,14 @@
 (defonce ^:private require-lock (Object.))
 
 (defn- require-driver-test-extensions-ns [driver & require-options]
-  ;; similar to `metabase.driver/require-driver-ns` make sure our context classloader is correct, and that Clojure
-  ;; will use it...
-  (classloader/the-classloader)
-  (binding [*use-context-classloader* true]
-    (let [expected-ns (symbol (or (namespace driver)
-                                  (str "metabase.test.data." (name driver))))]
-      ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
-      ;; in tests) doesn't make Clojure explode
-      (locking require-lock
-        (println (format "Loading driver %s test extensions %s"
-                         (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+  (let [expected-ns (symbol (or (namespace driver)
+                                (str "metabase.test.data." (name driver))))]
+    ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
+    ;; in tests) doesn't make Clojure explode
+    (locking require-lock
+      (println (format "Loading driver %s test extensions %s"
+                       (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+      (apply classloader/require expected-ns require-options))))
 
 (defn- load-test-extensions-namespace-if-needed [driver]
   (when-not (has-test-extensions? driver)
@@ -220,7 +219,7 @@
 (defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
   (assert (string? database-name))
   (assert (keyword? driver-kw))
-  (db/setup-db!)
+  (mdb/setup-db!)
   (Database :name database-name, :engine (name driver-kw)))
 
 
@@ -286,18 +285,6 @@
   :hierarchy #'driver/hierarchy)
 
 
-(defmulti expected-base-type->actual
-  "Return the base type type that is actually used to store Fields of `base-type`. The default implementation of this
-  method is an identity fn. This is provided so DBs that don't support a given base type used in the test data can
-  specifiy what type we should expect in the results instead. For example, Oracle has no `INTEGER` data types, so
-  `:type/Integer` test values are instead stored as `NUMBER`, which we map to `:type/Decimal`."
-  {:arglists '([driver base-type])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod expected-base-type->actual ::test-extensions [_ base-type] base-type)
-
-
 (defmulti format-name
   "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
   upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.
@@ -353,19 +340,21 @@
     :special_type :type/Number
     :name         "count"
     :display_name "count"
-    :source       :aggregation})
-  ([driver aggregation-type {:keys [base_type special_type]}]
+    :source       :aggregation
+    :field_ref    [:aggregation 0]})
+
+  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
    {:pre [base_type special_type]}
-   (merge
-    {:base_type    base_type
-     :special_type special_type
-     :settings     nil
-     :name         (name aggregation-type)
-     :display_name (name aggregation-type)
-     :source       :aggregation}
-    ;; count always gets the same special type regardless
-    (when (= aggregation-type :count)
-      (aggregate-column-info driver :count)))))
+   (driver/with-driver driver
+     (qp.store/with-store
+       (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
+       (qp.store/fetch-and-store-fields! [field-id])
+       (merge
+        (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
+        {:source    :aggregation
+         :field_ref [:aggregation 0]}
+        (when (#{:count :cum-count} aggregation-type)
+          {:base_type :type/Integer, :special_type :type/Number}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

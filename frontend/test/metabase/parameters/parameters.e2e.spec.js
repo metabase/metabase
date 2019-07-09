@@ -97,7 +97,7 @@ describe("parameters", () => {
     await store.dispatch(fetchTableMetadata(1));
     const metadata = getMetadata(store.getState());
 
-    let unsavedQuestion = Question.create({
+    const unsavedQuestion = Question.create({
       databaseId: 1,
       metadata,
     })

@@ -30,12 +30,12 @@ export default class SetUserPassword extends Component {
   }
 
   validateForm() {
-    let { valid } = this.state;
+    const { valid } = this.state;
     let isValid = true;
 
     // required: first_name, last_name, email
-    for (let fieldName in this.refs) {
-      let node = ReactDOM.findDOMNode(this.refs[fieldName]);
+    for (const fieldName in this.refs) {
+      const node = ReactDOM.findDOMNode(this.refs[fieldName]);
       if (node.required && MetabaseUtils.isEmpty(node.value)) {
         isValid = false;
       }
@@ -59,7 +59,7 @@ export default class SetUserPassword extends Component {
       formError: null,
     });
 
-    let formErrors = { data: { errors: {} } };
+    const formErrors = { data: { errors: {} } };
 
     // make sure new passwords match
     if (
@@ -76,7 +76,7 @@ export default class SetUserPassword extends Component {
       return;
     }
 
-    let details = {};
+    const details = {};
 
     details.user_id = this.props.user.id;
     details.old_password = ReactDOM.findDOMNode(this.refs.oldPassword).value;

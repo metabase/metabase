@@ -322,30 +322,35 @@
       (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
     result))
 
+(defn do-with-timeout
+  "Impl for `with-timeout` macro."
+  [timeout-ms f]
+  (let [result (deref-with-timeout
+                (future
+                  (try
+                    (f)
+                    (catch Throwable e
+                      e)))
+                timeout-ms)]
+    (if (instance? Throwable result)
+      (throw result)
+      result)))
+
 (defmacro with-timeout
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
-  `(deref-with-timeout (future ~@body) ~timeout-ms))
+  `(do-with-timeout ~timeout-ms (fn [] ~@body)))
 
 (defn round-to-decimals
-  "Round (presumabily floating-point) NUMBER to DECIMAL-PLACE. Returns a `Double`.
+  "Round (presumabily floating-point) `number` to `decimal-place`. Returns a `Double`.
 
      (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
 
-(defn ^:deprecated drop-first-arg
-  "Returns a new fn that drops its first arg and applies the rest to the original.
-   Useful for creating `extend` method maps when you don't care about the `this` param. :flushed:
-
-     ((drop-first-arg :value) xyz {:value 100}) -> (apply :value [{:value 100}]) -> 100"
-  ^clojure.lang.IFn [^clojure.lang.IFn f]
-  (comp (partial apply f) rest list))
-
-
 (defn- check-protocol-impl-method-map
-  "Check that the methods expected for PROTOCOL are all implemented by METHOD-MAP, and that no extra methods are
+  "Check that the methods expected for `protocol` are all implemented by `method-map`, and that no extra methods are
    provided. Used internally by `strict-extend`."
   [protocol method-map]
   (let [[missing-methods extra-methods] (data/diff (set (keys (:method-map protocol))) (set (keys method-map)))]

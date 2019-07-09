@@ -95,7 +95,7 @@
                      (str node)
                      node)) x))
 
-(defn ex-info
+(defn ^:deprecated ex-info
   "Just like `clojure.core/ex-info` but it is i18n-aware. It will call `str` on `msg` and walk `ex-data` converting any
   `SystemLocalizedString` and `UserLocalizedString`s to a regular string"
   ([msg ex-data-map]

@@ -14,6 +14,7 @@
 .*/node_modules/boxen/.*
 .*/node_modules/libnpx/.*
 .*/node_modules/@babel/standalone/.*
+.*/node_modules/jest-dom/.*
 
 [include]
 .*/frontend/.*

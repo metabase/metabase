@@ -33,7 +33,8 @@
              [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [weavejester.dependency :as dep]))
 
 ;; These next two schemas are for validating the intermediate stages of the middleware. We don't need to validate the
 ;; entire query
@@ -146,38 +147,47 @@
      (dissoc m :source-table)
      source-query-and-metadata)))
 
-(defn- check-for-circular-references
-  "Make sure we aren't trying to resolve circular references such as a card whose source query is itself."
-  [card-id already-resolved]
-  (when (contains? (set already-resolved) card-id)
-    (throw (ex-info (str (tru "Cannot resolve source query for Card {0}: circular references between source queries."
-                              card-id))
-             {:resolving card-id, :already-resolved already-resolved}))))
-
 (defn- resolve-all*
-  ([m]
-   (resolve-all* m nil))
+  [m]
+  (mbql.u/replace m
+    map-with-card-id-source-table?
+    ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
+    ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
+    (let [resolved (resolve-one &match)]
+      ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
+      ;; resolution that were we in the process of
+      (try
+        (resolve-all* resolved)
+        (catch Throwable e
+          (throw (ex-info (.getMessage e)
+                   {:resolving &match, :resolved resolved}
+                   e)))))))
 
-  ([m already-resolved]
-   (mbql.u/replace m
-     map-with-card-id-source-table?
-     ;; if this is a map that has a Card ID `:source-table`, resolve that (replacing it with the appropriate
-     ;; `:source-query`, then recurse and resolve any nested-nested queries that need to be resolved too
-     (let [source-table-str (:source-table &match)
-           card-id          (source-table-str->card-id source-table-str)]
-       (check-for-circular-references card-id already-resolved)
-       ;; ok, now actually resolve the Card ID, then recursively resolve all the Card ID source tables inside the
-       ;; newly resolved source query
-       ;;
-       (let [resolved (resolve-one &match)]
-         ;; wrap the recursive call in a try-catch; if the recursive resolution fails, add context about the
-         ;; resolution that were we in the process of
-         (try
-           (resolve-all* resolved (conj already-resolved card-id))
-           (catch Throwable e
-             (throw (ex-info (.getMessage e)
-                      {:resolving &match, :resolved resolved}
-                      e)))))))))
+(defn- check-for-circular-references
+  "Check that there are no circular dependencies among source cards. This is equivalent to
+   finding a topological sort of the dependency graph.
+   https://en.wikipedia.org/wiki/Topological_sorting"
+  ([m]
+   (check-for-circular-references (dep/graph) m)
+   m)
+  ([g m]
+   (transduce (comp (filter map-with-card-id-source-table?)
+                    (map (comp card-id->source-query-and-metadata
+                               source-table-str->card-id
+                               :source-table)))
+              (fn
+                ([] g)
+                ([g source-query]
+                 (-> g
+                     (dep/depend m source-query)
+                     ;; Recursive call will circuit break the moment there's a cycle, so no
+                     ;; danger of unbounded recursion.
+                     (check-for-circular-references source-query)))
+                ([g]
+                 ;; This will throw if there's a cycle
+                 (dep/topo-sort g)
+                 g))
+              (tree-seq coll? identity m))))
 
 (defn- copy-source-query-database-ids
   "If `m` has the saved questions virtual `:database` ID, (recursively) look for actual resolved Database IDs in the
@@ -209,7 +219,9 @@
   "Recursively replace all Card ID source tables in `m` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
-  (-> (resolve-all* query)
+  (-> query
+      check-for-circular-references
+      resolve-all*
       copy-source-query-database-ids
       remove-unneeded-database-ids))
 

@@ -17,7 +17,7 @@ export default class IconsApp extends Component {
     size: 32,
   };
   render() {
-    let sizes = SIZES.concat(this.state.size);
+    const sizes = SIZES.concat(this.state.size);
     return (
       <table className="Table m4" style={{ width: "inherit" }}>
         <thead>

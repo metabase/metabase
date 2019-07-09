@@ -261,7 +261,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                CREATING A CARD                                                 |
+;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Test that we can make a card
@@ -328,6 +328,16 @@
              :metadata_checksum  (#'results-metadata/metadata-checksum metadata)))
           ;; now check the metadata that was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
+
+;; we should be able to save a Card if the `result_metadata` is *empty* (but not nil) (#9286)
+(expect
+  (tu/with-model-cleanup [Card]
+    ;; create a card with the metadata
+    ((user->client :rasta) :post 200 "card"
+     (assoc (card-with-name-and-query)
+       :result_metadata    []
+       :metadata_checksum  (#'results-metadata/metadata-checksum [])))))
+
 
 (defn- fingerprint-integers->doubles
   "Converts the min/max fingerprint values to doubles so simulate how the FE will change the metadata when POSTing a

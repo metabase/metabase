@@ -101,7 +101,7 @@ export default class SettingsEditorApp extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
-      let message =
+      const message =
         error && (error.message || (error.data && error.data.message));
       this.layout.setSaveError(message);
       MetabaseAnalytics.trackEvent(

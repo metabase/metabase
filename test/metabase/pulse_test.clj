@@ -14,14 +14,12 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
-            [metabase.pulse.render :as render]
+            [metabase.pulse.render.body :as render.body]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data
-             [dataset-definitions :as defs]
-             [users :as users]]
+            [metabase.test.data.users :as users]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -50,9 +48,8 @@
 
 (defn- pulse-test-fixture
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
-      (f))))
+  (tu/with-temporary-setting-values [site-url "https://metabase.com/testmb"]
+    (f)))
 
 (defmacro ^:private slack-test-setup
   "Macro that ensures test-data is present and disables sending of all notifications"
@@ -521,13 +518,13 @@
    [nil] ;; -> attached-results-text should return nil since it's a slack message
    ]
   (slack-test-setup
-   (with-redefs [render/attached-results-text (wrap-function (var-get #'render/attached-results-text))]
+   (with-redefs [render.body/attached-results-text (wrap-function (var-get #'render.body/attached-results-text))]
      (let [[pulse-results] (pulse/send-pulse! (pulse.model/retrieve-pulse pulse-id))]
        ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be called
        (force-bytes-thunk pulse-results)
        [(thunk->boolean pulse-results)
-        (count (input (var-get #'render/attached-results-text)))
-        (output (var-get #'render/attached-results-text))]))))
+        (count (input (var-get #'render.body/attached-results-text)))
+        (output (var-get #'render.body/attached-results-text))]))))
 
 (defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
   (< 0 (alength (attachment-bytes-thunk))))

@@ -13,33 +13,30 @@
    [77 "Sushi Nakazawa"           40 40.7318 -74.0045 4]
    [79 "Sushi Yasuda"             40 40.7514 -73.9736 4]
    [81 "Tanoshi Sushi & Sake Bar" 40 40.7677 -73.9533 4]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:and [:> $id 50] [:>= $price 4]]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:and [:> $id 50] [:>= $price 4]]
+       :order-by [[:asc $id]]})))
 
 ;;; FILTER -- "AND", "<", ">", "!="
 (qp.test/expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"          58 37.7441 -122.421 2]
    [23 "Taqueria Los Coyotes" 50 37.765  -122.42  2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:and [:< $id 24] [:> $id 20] [:!= $id 22]]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:and [:< $id 24] [:> $id 20] [:!= $id 22]]
+       :order-by [[:asc $id]]})))
 
 ;;; FILTER WITH A FALSE VALUE
 ;; Check that we're checking for non-nil values, not just logically true ones.
 ;; There's only one place (out of 3) that I don't like
 (qp.test/expect-with-non-timeseries-dbs
   [[1]]
-  (->> (data/dataset places-cam-likes
-         (data/run-mbql-query places
-           {:aggregation [[:count]]
-            :filter      [:= $liked false]}))
-       qp.test/rows
-       (qp.test/format-rows-by [int])))
+  (qp.test/formatted-rows [int]
+    (data/dataset places-cam-likes
+      (data/run-mbql-query places
+        {:aggregation [[:count]]
+         :filter      [:= $liked false]}))))
 
 (defn- ->bool [x] ; SQLite returns 0/1 for false/true;
   (condp = x      ; Redshift returns nil/true.
@@ -48,67 +45,61 @@
     1   true
     1M  true
     nil false
-        x))
+    x))
 
 ;;; filter = true
 (qp.test/expect-with-non-timeseries-dbs
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
-  (->> (data/dataset places-cam-likes
-         (data/run-mbql-query places
-           {:filter   [:= $liked true]
-            :order-by [[:asc $id]]}))
-       qp.test/rows
-       (qp.test/format-rows-by [int str ->bool] :format-nil-values)))
+  (qp.test/formatted-rows [int str ->bool] :format-nil-values
+    (data/dataset places-cam-likes
+      (data/run-mbql-query places
+        {:filter   [:= $liked true]
+         :order-by [[:asc $id]]}))))
 
 ;;; filter != false
 (qp.test/expect-with-non-timeseries-dbs
   [[1 "Tempest" true]
    [2 "Bullit"  true]]
-  (->> (data/dataset places-cam-likes
-         (data/run-mbql-query places
-           {:filter   [:!= $liked false]
-            :order-by [[:asc $id]]}))
-       qp.test/rows
-       (qp.test/format-rows-by [int str ->bool] :format-nil-values)))
+  (qp.test/formatted-rows [int str ->bool] :format-nil-values
+    (data/dataset places-cam-likes
+      (data/run-mbql-query places
+        {:filter   [:!= $liked false]
+         :order-by [[:asc $id]]}))))
 
 ;;; filter != true
 (qp.test/expect-with-non-timeseries-dbs
   [[3 "The Dentist" false]]
-  (->> (data/dataset places-cam-likes
-         (data/run-mbql-query places
-           {:filter   [:!= $liked true]
-            :order-by [[:asc $id]]}))
-       qp.test/rows
-       (qp.test/format-rows-by [int str ->bool] :format-nil-values)))
+  (qp.test/formatted-rows [int str ->bool] :format-nil-values
+    (data/dataset places-cam-likes
+      (data/run-mbql-query places
+        {:filter   [:!= $liked true]
+         :order-by [[:asc $id]]}))))
 
 
 ;;; FILTER -- "BETWEEN", single subclause (neither "AND" nor "OR")
 (qp.test/expect-with-non-timeseries-dbs
   [[21 "PizzaHacker"    58 37.7441 -122.421 2]
    [22 "Gordo Taqueria" 50 37.7822 -122.484 1]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:between $id 21 22]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:between $id 21 22]
+       :order-by [[:asc $id]]})))
 
 ;;; FILTER -- "BETWEEN" with dates
-(qp.test/qp-expect-with-all-drivers
-  {:rows        [[29]]
-   :columns     ["count"]
-   :cols        [(qp.test/aggregate-col :count)]
-   :native_form true}
+(qp.test/expect-with-non-timeseries-dbs
+  {:rows [[29]]
+   :cols [(qp.test/aggregate-col :count)]}
   (do
     ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
     ;; results
     (when (= :snowflake driver/*driver*)
       (driver/notify-database-updated driver/*driver* (data/id)))
-    (->> (data/run-mbql-query checkins
-           {:aggregation [[:count]]
-            :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})
-         qp.test/booleanize-native-form
-         (qp.test/format-rows-by [int]))))
+    (qp.test/rows-and-cols
+      (qp.test/format-rows-by [int]
+        (data/run-mbql-query checkins
+          {:aggregation [[:count]]
+           :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})))))
 
 ;;; FILTER -- "OR", "<=", "="
 (qp.test/expect-with-non-timeseries-dbs
@@ -116,19 +107,17 @@
    [2 "Stout Burgers & Beers"        11 34.0996 -118.329 2]
    [3 "The Apple Pan"                11 34.0406 -118.428 2]
    [5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:or [:<= $id 3] [:= $id 5]]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:or [:<= $id 3] [:= $id 5]]
+       :order-by [[:asc $id]]})))
 
 ;;; FILTER -- "INSIDE"
 (qp.test/expect-with-non-timeseries-dbs
   [[1 "Red Medicine" 4 10.0646 -165.374 3]]
-  (-> (data/run-mbql-query venues
-        {:filter [:inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter [:inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371]})))
 
 ;;; FILTER - `is-null` & `not-null` on datetime columns
 (qp.test/expect-with-non-timeseries-dbs
@@ -169,28 +158,25 @@
 (qp.test/expect-with-non-timeseries-dbs
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:starts-with $name "Che"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:starts-with $name "Che"]
+       :order-by [[:asc $id]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
-  (-> (data/run-mbql-query venues
-        {:filter   [:starts-with $name "CHE"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:starts-with $name "CHE"]
+       :order-by [[:asc $id]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:starts-with $name "CHE" {:case-sensitive false}]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:starts-with $name "CHE" {:case-sensitive false}]
+       :order-by [[:asc $id]]})))
 
 
 ;;; --------------------------------------------------- ends-with ----------------------------------------------------
@@ -201,19 +187,17 @@
    [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
    [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
    [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:ends-with $name "Restaurant"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:ends-with $name "Restaurant"]
+       :order-by [[:asc $id]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
-  (-> (data/run-mbql-query venues
-        {:filter   [:ends-with $name "RESTAURANT"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:ends-with $name "RESTAURANT"]
+       :order-by [[:asc $id]]})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
@@ -221,42 +205,38 @@
    [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
    [45 "Tu Lan Restaurant"             4 37.7821 -122.41  1]
    [55 "Dal Rae Restaurant"           67 33.983  -118.096 4]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:ends-with $name "RESTAURANT" {:case-sensitive false}]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:ends-with $name "RESTAURANT" {:case-sensitive false}]
+       :order-by [[:asc $id]]})))
 
 ;;; ---------------------------------------------------- contains ----------------------------------------------------
 (qp.test/expect-with-non-timeseries-dbs
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:contains $name "BBQ"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:contains $name "BBQ"]
+       :order-by [[:asc $id]]})))
 
 ;; case-insensitive
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   []
-  (-> (data/run-mbql-query venues
-        {:filter   [:contains $name "bbq"]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:contains $name "bbq"]
+       :order-by [[:asc $id]]})))
 
 ;; case-insensitive
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]
-  (-> (data/run-mbql-query venues
-        {:filter   [:contains $name "bbq" {:case-sensitive false}]
-         :order-by [[:asc $id]]})
-      qp.test/rows
-      qp.test/formatted-venues-rows))
+  (qp.test/formatted-rows :venues
+    (data/run-mbql-query venues
+      {:filter   [:contains $name "bbq" {:case-sensitive false}]
+       :order-by [[:asc $id]]})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -265,15 +245,14 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   [[81]]
-  (->> (data/run-mbql-query venues
-         {:aggregation [[:count]]
-          :filter      [:and
-                        [:!= $price 3]
-                        [:or
-                         [:= $price 1]
-                         [:= $price 2]]]})
-       qp.test/rows
-       (qp.test/format-rows-by [int])))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :filter      [:and
+                     [:!= $price 3]
+                     [:or
+                      [:= $price 1]
+                      [:= $price 2]]]})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -282,19 +261,17 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   [[81]]
-  (->> (data/run-mbql-query venues
-         {:aggregation [[:count]]
-          :filter      [:= $price 1 2]})
-       qp.test/rows
-       (qp.test/format-rows-by [int])))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :filter      [:= $price 1 2]})))
 
 (qp.test/expect-with-non-timeseries-dbs
   [[19]]
-  (->> (data/run-mbql-query venues
-         {:aggregation [[:count]]
-          :filter      [:!= $price 1 2]})
-       qp.test/rows
-       (qp.test/format-rows-by [int])))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query venues
+      {:aggregation [[:count]]
+       :filter      [:!= $price 1 2]})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

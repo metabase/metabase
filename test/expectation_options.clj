@@ -31,9 +31,9 @@
    :actual-message   (when-let [in-a (first (data/diff a e))]
                        (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
    :raw              [str-e str-a]
-   :result           ["\nexpected:\n"
+   :result           [(format "\nexpected: %s\n" (class e))
                       (u/pprint-to-str 'green e)
-                      "\nwas:\n"
+                      (format "\nwas: %s\n" (class a))
                       (u/pprint-to-str 'red a)]})
 
 (defmethod expectations/compare-expr :expectations/maps [e a str-e str-a]
@@ -62,7 +62,7 @@
 
 ;;; ------------------------------------------------- log-slow-tests -------------------------------------------------
 
-(def ^:private slow-test-threshold-ms 2000)
+(def ^:private slow-test-threshold-ms 5000)
 
 (defn- log-slow-tests
   "Log a message about any test that takes longer than `slow-test-threshold-ms` to run. Ideally we'd keep all our tests
@@ -191,7 +191,7 @@
       ;; Uncomment `check-test-data-unchanged` when you want to debug situations where tests are being bad citizens
       ;; and leaving the metadata about the test data in a different state than it started out with. This is not
       ;; enabled by default because it adds ~5ms to each test which adds up when we have ~4000 tests (as of May 2019)
-      #_check-test-data-unchanged ; NOCOMMIT
+      #_check-test-data-unchanged
       log-slow-tests
       enforce-timeout
       check-table-cleanup))

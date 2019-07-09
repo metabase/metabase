@@ -16,7 +16,7 @@ export default class DatabaseEditForms extends Component {
   };
 
   render() {
-    let {
+    const {
       database,
       details,
       hiddenFields,
@@ -24,7 +24,7 @@ export default class DatabaseEditForms extends Component {
       formState: { formError, formSuccess, isSubmitting },
     } = this.props;
 
-    let errors = {};
+    const errors = {};
     return (
       <div className="mt4">
         <div

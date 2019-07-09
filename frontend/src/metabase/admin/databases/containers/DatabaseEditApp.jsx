@@ -111,7 +111,7 @@ export default class DatabaseEditApp extends Component {
   }
 
   render() {
-    let { database, formState } = this.props;
+    const { database, formState } = this.props;
     const { currentTab } = this.state;
 
     const editingExistingDatabase = database && database.id != null;

@@ -81,7 +81,7 @@ class Overworld extends React.Component {
         </Flex>
         <CollectionItemsLoader collectionId="root">
           {({ items }) => {
-            let pinnedDashboards = items.filter(
+            const pinnedDashboards = items.filter(
               d => d.model === "dashboard" && d.collection_position != null,
             );
 

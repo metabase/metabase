@@ -1,12 +1,8 @@
 (ns metabase.driver.oracle
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql
              [query-processor :as sql.qp]
@@ -248,8 +244,7 @@
   (apply driver.common/current-db-time args))
 
 (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  (set/union
-   #{"ANONYMOUS"
+  #{"ANONYMOUS"
      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
      "APEX_040200"
      "APPQOSSYS"
@@ -274,12 +269,7 @@
      "SYSTEM"
      "WMSYS"
      "XDB"
-     "XS$NULL"}
-   (when config/is-test?
-     ;; DIRTY HACK (!) This is similar hack we do for Redshift, see the explanation there we just want to ignore all
-     ;; the test "session schemas" that don't match the current test
-     (require 'metabase.test.data.oracle)
-     ((resolve 'metabase.test.data.oracle/non-session-schemas)))))
+     "XS$NULL"})
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
   "ALTER session SET time_zone = %s")

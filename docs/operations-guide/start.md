@@ -37,9 +37,6 @@ Step-by-step instructions on how to deploy Metabase on Elastic Beanstalk using R
 #### [Running on Heroku](running-metabase-on-heroku.md)
 Currently in beta.  We've run Metabase on Heroku and it works just fine, but it's not hardened for production use just yet.  If you're up for it then give it a shot and let us know how we can make it better!
 
-#### [Running on Cloud66](running-metabase-on-cloud66.md)
-Community support only at this time, but we have reports of Metabase instances running on Cloud66!
-
 #### [Running on Debian as a service](running-metabase-on-debian.md)
 Community support only at this time, but learn how to deploy Metabase as a service on Debian (and Debian-based) systems. Simple, guided, step-by-step approach that will work on any VPS.
 
@@ -280,15 +277,17 @@ By default, Metabase will be listening on `localhost`.  In some production envir
 
 ### Using HTTPS with Metabase
 
-If you have an ssl certificate and would prefer to have Metabase run over HTTPS directly using its webserver you can do so by using the following environment variables:
+If you have an SSL certificate and would prefer to have Metabase run over HTTPS directly using its webserver you can do so by using the following environment variables:
 
     export MB_JETTY_SSL="true"
-    export MB_JETTY_SSL_Port="8443"
-    export MB_JETTY_SSL_Keystore="path/to/keystore.jks"
-    export MB_JETTY_SSL_Keystore_Password="storepass"
+    export MB_JETTY_SSL_PORT="8443"
+    export MB_JETTY_SSL_KEYSTORE="path/to/keystore.jks" # replace these values with your own
+    export MB_JETTY_SSL_KEYSTORE_PASSWORD="storepass"
     java -jar metabase.jar
+    
+Be sure to replace `path/to/keystore.jks` and `storepass` with the correct path to and password for your [Java KeyStore](https://www.digitalocean.com/community/tutorials/java-keytool-essentials-working-with-java-keystores). With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.
 
-With the above settings applied you will be running Metabase on port 8443 over HTTPS using the supplied certificate.  #secured
+No idea how to generate a Java KeyStore yourself? This is sort of an advanced topic, but if you're feeling froggy you can read more about how to configure SSL in Jetty [here](https://www.eclipse.org/jetty/documentation/current/configuring-ssl.html). Otherwise, you'll probably find it easiest to handle SSL termination outside of Metabase, for example by the Elastic Load Balancer if deploying via Elastic Beanstalk.
 
 
 # Changing Metabase password complexity

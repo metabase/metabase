@@ -128,16 +128,16 @@
                 @inbox)))
 
 (defn email-to
-  "Creates a default email map for `USER-KWD` via `user/fetch-user`, as would be returned by `with-fake-inbox`"
+  "Creates a default email map for `user-kwd` via `user/fetch-user`, as would be returned by `with-fake-inbox`"
   [user-kwd & [email-map]]
   (let [{:keys [email]} (user/fetch-user user-kwd)]
-    {email [(merge {:from "notifications@metabase.com",
+    {email [(merge {:from (email/email-from-address)
                     :to #{email}}
                     email-map)]}))
 
 ;; simple test of email sending capabilities
 (expect
-  [{:from    "notifications@metabase.com"
+  [{:from    (email/email-from-address)
     :to      ["test@test.com"]
     :subject "101 Reasons to use Metabase"
     :body    [{:type    "text/html; charset=utf-8"

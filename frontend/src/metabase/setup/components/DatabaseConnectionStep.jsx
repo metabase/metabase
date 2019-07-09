@@ -30,7 +30,7 @@ export default class DatabaseConnectionStep extends Component {
   };
 
   chooseDatabaseEngine = e => {
-    let engine = e.target.value;
+    const engine = e.target.value;
 
     this.setState({
       engine: engine,
@@ -115,9 +115,9 @@ export default class DatabaseConnectionStep extends Component {
   }
 
   renderEngineSelect() {
-    let engines = MetabaseSettings.get("engines");
-    let { engine } = this.state,
-      engineNames = _.keys(engines).sort();
+    const engines = MetabaseSettings.get("engines");
+    const { engine } = this.state;
+    const engineNames = _.keys(engines).sort();
 
     return (
       <label className="Select Form-offset mt1">
@@ -134,9 +134,14 @@ export default class DatabaseConnectionStep extends Component {
   }
 
   render() {
-    let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
-    let { engine, formError } = this.state;
-    let engines = MetabaseSettings.get("engines");
+    const {
+      activeStep,
+      databaseDetails,
+      setActiveStep,
+      stepNumber,
+    } = this.props;
+    const { engine, formError } = this.state;
+    const engines = MetabaseSettings.get("engines");
 
     let stepText = t`Add your data`;
     if (activeStep > stepNumber) {

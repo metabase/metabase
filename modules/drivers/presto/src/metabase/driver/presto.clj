@@ -13,7 +13,6 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver.common :as driver.common]
@@ -142,19 +141,21 @@
             (try
               @results-future
               (catch InterruptedException e
-                (if id
-                  ;; If we have a query id, we can cancel the query
-                  (try
-                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
-                          adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
-                      (http/delete adjustedUri(details->request details-with-tunnel)))
-                    ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
-                    ;; covering it up with a failed cancel
-                    (catch Exception e
-                      (log/error e (trs "Error canceling query with ID {0}" id))))
-                  (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
-                ;; Propagate the error so that any finalizers can still run
-                (throw e)))))))))
+                (try
+                  (if id
+                    ;; If we have a query id, we can cancel the query
+                    (try
+                      (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
+                            adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
+                        (http/delete adjustedUri(details->request details-with-tunnel)))
+                      ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+                      ;; covering it up with a failed cancel
+                      (catch Exception e
+                        (log/error e (trs "Error canceling query with ID {0}" id))))
+                    (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
+                  (finally
+                    ;; Propagate the error so that any finalizers can still run
+                    (throw e)))))))))))
 
 
 ;;; `:sql` driver implementation
@@ -363,5 +364,4 @@
 (defmethod driver/supports? [:presto :expression-aggregations]         [_ _] true)
 (defmethod driver/supports? [:presto :binning]                         [_ _] true)
 
-;; during unit tests don't treat presto as having FK support
-(defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:presto :foreign-keys] [_ _] true)

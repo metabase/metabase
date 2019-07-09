@@ -68,7 +68,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   componentDidUpdate() {
-    let element = ReactDOM.findDOMNode(this._unfocusedElement);
+    const element = ReactDOM.findDOMNode(this._unfocusedElement);
     if (!this.state.isFocused && element) {
       const parameterWidgetElement = element.parentNode.parentNode.parentNode;
       if (parameterWidgetElement.clientWidth !== this.state.widgetWidth) {
@@ -78,8 +78,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   render() {
-    let { setValue, isEditing, field, parentFocusChanged } = this.props;
-    let { isFocused } = this.state;
+    const { setValue, isEditing, field, parentFocusChanged } = this.props;
+    const { isFocused } = this.state;
 
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);

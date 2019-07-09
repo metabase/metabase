@@ -145,7 +145,7 @@ export default class ActionsWidget extends Component {
 
     const selectedAction: ?ClickAction =
       selectedActionIndex == null ? null : actions[selectedActionIndex];
-    let PopoverComponent = selectedAction && selectedAction.popover;
+    const PopoverComponent = selectedAction && selectedAction.popover;
 
     return (
       <div className={cx(className, "relative")}>

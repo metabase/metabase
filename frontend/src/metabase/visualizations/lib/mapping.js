@@ -58,14 +58,14 @@ export function computeLargestGap(items, valueAccessor = d => d) {
 
 export function getAllFeaturesPoints(features) {
   let points = [];
-  for (let feature of features) {
+  for (const feature of features) {
     if (feature.geometry.type === "Polygon") {
-      for (let coordinates of feature.geometry.coordinates) {
+      for (const coordinates of feature.geometry.coordinates) {
         points = points.concat(coordinates);
       }
     } else if (feature.geometry.type === "MultiPolygon") {
-      for (let coordinatesList of feature.geometry.coordinates) {
-        for (let coordinates of coordinatesList) {
+      for (const coordinatesList of feature.geometry.coordinates) {
+        for (const coordinates of coordinatesList) {
           points = points.concat(coordinates);
         }
       }

@@ -5,6 +5,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -20,8 +21,7 @@
    :query    {:source-table (data/id :venues)
               :fields       [[:datetime-field [:field-id (data/id :venues :id)] :month]]
               :limit        qp.i/absolute-max-results}
-   :driver   :h2
-   :settings {}})
+   :driver   :h2})
 
 (def ^:private bad-query:native
   {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "
@@ -43,7 +43,8 @@
                   :error #"Cannot parse \"TIMESTAMP\" constant \"1\"; SQL statement:.*"
                   :cause {:class (s/eq java.lang.IllegalArgumentException)
                           :error (s/eq "1")}}}
-  (qp/process-query (bad-query)))
+  (tu.log/suppress-output
+    (qp/process-query (bad-query))))
 
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (tu/expect-schema
@@ -58,5 +59,7 @@
    :row_count    (s/eq 0)
    :running_time (s/constrained s/Int (complement neg?))
    :preprocessed (s/eq (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true))
-   :data         (s/eq {:rows [], :cols [], :columns []})}
-  (qp/process-query-and-save-execution! (bad-query) {:context :question}))
+   :data         {:rows (s/eq [])
+                  :cols (s/eq [])}}
+  (tu.log/suppress-output
+    (qp/process-query-and-save-execution! (bad-query) {:context :question})))

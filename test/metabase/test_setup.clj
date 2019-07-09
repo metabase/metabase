@@ -4,8 +4,10 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
+             [config :as config]
              [db :as mdb]
              [handler :as handler]
+             [metabot :as metabot]
              [plugins :as plugins]
              [server :as server]
              [task :as task]
@@ -78,11 +80,33 @@
     (u/deref-with-timeout start-web-server! 10000)
     nil))
 
+(defn- log-waiting-threads
+  "We have some sort of issue where some sort of mystery thread is running in the background and refusing to die. Until
+  that issue is resolved, at least log the threads that are waiting."
+  []
+  (doseq [[^Thread thread, stacktrace] (Thread/getAllStackTraces)
+          :when                        (and (.isAlive thread)
+                                            (not (.isDaemon thread))
+                                            (not= (.getName thread) "main")
+                                            (= (.getState thread) Thread$State/WAITING))]
+    (println
+     "unfinished thread:"
+     (u/pprint-to-str 'blue
+       {:name        (.getName thread)
+        :state       (.name (.getState thread))
+        :alive?      (.isAlive thread)
+        :interrupted (.isInterrupted thread)
+        :frames      (seq stacktrace)}))))
+
 (defn test-teardown
   {:expectations-options :after-run}
   []
   (log/info "Shutting down Metabase unit test runner")
-  (server/stop-web-server!))
+  (server/stop-web-server!)
+  (metabot/stop-metabot!)
+  (task/stop-scheduler!)
+  (when config/is-test?
+    (log-waiting-threads)))
 
 (defn call-with-test-scaffolding
   "Runs `test-startup` and ensures `test-teardown` is always called. This function is useful for running a test (or test

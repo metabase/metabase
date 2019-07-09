@@ -27,8 +27,8 @@ export default class LeafletMarkerPinMap extends LeafletMap {
       const { pinMarkerLayer } = this;
       const { points } = this.props;
 
-      let markers = pinMarkerLayer.getLayers();
-      let max = Math.max(points.length, markers.length);
+      const markers = pinMarkerLayer.getLayers();
+      const max = Math.max(points.length, markers.length);
       for (let i = 0; i < max; i++) {
         if (i >= points.length) {
           pinMarkerLayer.removeLayer(markers[i]);

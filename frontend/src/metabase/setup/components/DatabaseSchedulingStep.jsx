@@ -35,10 +35,15 @@ export default class DatabaseSchedulingStep extends Component {
   };
 
   render() {
-    let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
-    let { formError } = this.state;
+    const {
+      activeStep,
+      databaseDetails,
+      setActiveStep,
+      stepNumber,
+    } = this.props;
+    const { formError } = this.state;
 
-    let stepText = t`Control automatic scans`;
+    const stepText = t`Control automatic scans`;
 
     const schedulingIcon = (
       <Icon

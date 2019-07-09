@@ -64,7 +64,19 @@
         (log/debug (trs "Destroying query thread pool for Database {0}" id))
         (.shutdownNow thread-pool)))))
 
-(def ^:private ^:dynamic *already-in-thread-pool?* false)
+(def ^:private ^:dynamic *already-in-thread-pool?*
+  "True if the current thread is a thread pool thread from the a DB thread pool (i.e., if we're already running
+  asynchronously after waiting if needed.)"
+  false)
+
+(def ^:dynamic *disable-async-wait*
+  "Whether to disable async waiting entirely. Bind this to `true` for cases where we would not like to enforce async
+  waiting, such as for functions like `qp/query->native` that don't actually run queries.
+
+  DO NOT BIND THIS TO TRUE IN SITUATIONS WHERE WE ACTUALLY RUN QUERIES: some functionality relies on the fact that
+  things are ran in a separate thread to function correctly, such as the cancellation code that listens for
+  InterruptedExceptions."
+  false)
 
 (defn- runnable ^Runnable [qp query respond raise canceled-chan]
   ;; stash & restore bound dynamic vars. This is how Clojure does it for futures and the like in `binding-conveyor-fn`
@@ -95,6 +107,6 @@
   is allowed to run."
   [qp]
   (fn [{database-id :database, :as query} respond raise canceled-chan]
-    (if *already-in-thread-pool?*
+    (if (or *already-in-thread-pool?* *disable-async-wait*)
       (qp query respond raise canceled-chan)
       (run-in-thread-pool qp query respond raise canceled-chan))))

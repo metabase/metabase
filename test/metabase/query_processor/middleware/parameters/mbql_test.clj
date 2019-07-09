@@ -4,8 +4,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [util :as u]]
+             [query-processor-test :as qp.test]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
             [metabase.test.data :as data]
@@ -189,6 +188,19 @@
                          :target [:dimension $id]
                          :value  "100"}]})))))
 
+;; check that Categories work correctly (passed in as strings, as the frontend is wont to do; should get converted)
+(datasets/expect-with-drivers params-test-drivers
+  [[6]]
+  (qp.test/format-rows-by [int]
+    (qp.test/rows
+      (qp/process-query
+        (data/query venues
+          {:query      {:aggregation [[:count]]}
+           :parameters [{:name   "price"
+                         :type   :category
+                         :target $price
+                         :value  "4"}]})))))
+
 ;; test that we can inject a basic `WHERE id = 9` type param (`id` type)
 (datasets/expect-with-drivers params-test-drivers
   [[9 "Nils Gotam"]]
@@ -292,7 +304,7 @@
    [37 "bigmista's barbecue" 5 34.118 -118.26 2]
    [38 "Zeke's Smokehouse" 5 34.2053 -118.226 2]
    [39 "Baby Blues BBQ" 5 34.0003 -118.465 2]]
-  (qp.test/format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]
+  (qp.test/format-rows-by :venues
     (qp.test/rows
       (qp/process-query
         (data/query venues

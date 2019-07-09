@@ -30,7 +30,7 @@ export function channelIsValid(channel, channelSpec) {
     }
   }
   if (channelSpec.fields) {
-    for (let field of channelSpec.fields) {
+    for (const field of channelSpec.fields) {
       if (
         field.required &&
         channel.details &&

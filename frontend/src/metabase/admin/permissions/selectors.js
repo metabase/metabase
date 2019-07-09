@@ -74,9 +74,9 @@ function getTooltipForGroup(group) {
 export const getGroups = createSelector(
   [Group.selectors.getList],
   groups => {
-    let orderedGroups = groups ? [...groups] : [];
-    for (let groupFilter of SPECIAL_GROUP_FILTERS) {
-      let index = _.findIndex(orderedGroups, groupFilter);
+    const orderedGroups = groups ? [...groups] : [];
+    for (const groupFilter of SPECIAL_GROUP_FILTERS) {
+      const index = _.findIndex(orderedGroups, groupFilter);
       if (index >= 0) {
         orderedGroups.unshift(...orderedGroups.splice(index, 1));
       }
@@ -116,8 +116,8 @@ function getPermissionWarning(
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
   }
-  let perm = value || getter(permissions, groupId, entityId);
-  let defaultPerm = getter(permissions, defaultGroup.id, entityId);
+  const perm = value || getter(permissions, groupId, entityId);
+  const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
     return t`The "${
       defaultGroup.name
@@ -142,7 +142,7 @@ function getPermissionWarningModal(
   entityId,
   value,
 ) {
-  let permissionWarning = getPermissionWarning(
+  const permissionWarning = getPermissionWarning(
     entityType,
     getter,
     defaultGroup,
@@ -340,7 +340,7 @@ export const getTablesPermissionsGrid = createSelector(
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "fields", value);
-            let updatedPermissions = updateFieldsPermission(
+            const updatedPermissions = updateFieldsPermission(
               permissions,
               groupId,
               entityId,
@@ -436,7 +436,7 @@ export const getSchemasPermissionsGrid = createSelector(
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "tables", value);
-            let updatedPermissions = updateTablesPermission(
+            const updatedPermissions = updateTablesPermission(
               permissions,
               groupId,
               entityId,
@@ -543,8 +543,8 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           postAction(groupId, { databaseId }, value) {
             if (value === "controlled") {
-              let database = metadata.databases[databaseId];
-              let schemas = database ? database.schemaNames() : [];
+              const database = metadata.databases[databaseId];
+              const schemas = database ? database.schemaNames() : [];
               if (
                 schemas.length === 0 ||
                 (schemas.length === 1 && schemas[0] === "")
@@ -640,7 +640,7 @@ export const getDatabasesPermissionsGrid = createSelector(
         },
       },
       entities: databases.map(database => {
-        let schemas = database.schemaNames();
+        const schemas = database.schemaNames();
         return {
           id: {
             databaseId: database.id,
@@ -860,7 +860,7 @@ function getDecendentCollections(collection) {
 }
 
 function getPermissionsSet(collections, permissions, groupId) {
-  let perms = collections.map(collection =>
+  const perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, {
       collectionId: collection.id,
     }),

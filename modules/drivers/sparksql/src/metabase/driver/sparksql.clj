@@ -6,9 +6,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
-            [metabase
-             [config :as config]
-             [driver :as driver]]
+            [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
@@ -95,10 +93,16 @@
   {:tables
    (with-open [conn (jdbc/get-connection (sql-jdbc.conn/db->pooled-connection-spec database))]
      (set
-      (for [{:keys [tablename database]} (jdbc/query {:connection conn} ["show tables"])]
-        {:name   tablename
+      (for [{:keys [database tablename tab_name]} (jdbc/query {:connection conn} ["show tables"])]
+        {:name   (or tablename tab_name) ; column name differs depending on server (SparkSQL, hive, Impala)
          :schema (when (seq database)
                    database)})))})
+
+;; Hive describe table result has commented rows to distinguish partitions
+(defn- valid-describe-table-row? [{:keys [col_name data_type]}]
+  (every? (every-pred (complement str/blank?)
+                      (complement #(str/starts-with? % "#")))
+          [col_name data_type]))
 
 ;; workaround for SPARK-9686 Spark Thrift server doesn't return correct JDBC metadata
 (defmethod driver/describe-table :sparksql
@@ -113,7 +117,8 @@
                                                       (dash-to-underscore schema)
                                                       (dash-to-underscore table-name)))])]
        (set
-        (for [{col-name :col_name, data-type :data_type} results]
+        (for [{col-name :col_name, data-type :data_type, :as result} results
+              :when                                                  (valid-describe-table-row? result)]
           {:name          col-name
            :database-type data-type
            :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
@@ -142,7 +147,6 @@
 (defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
 
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true)
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)

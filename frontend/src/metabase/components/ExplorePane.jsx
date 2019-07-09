@@ -50,7 +50,7 @@ export class ExplorePane extends React.Component {
   };
 
   render() {
-    let {
+    const {
       candidates,
       title,
       description,
@@ -62,7 +62,7 @@ export class ExplorePane extends React.Component {
 
     let schemaNames;
     let tables;
-    let hasMore = false;
+    const hasMore = false;
     if (candidates && candidates.length > 0) {
       schemaNames = candidates.map(schema => schema.schema);
       if (schemaName == null) {

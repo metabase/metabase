@@ -10,7 +10,6 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver
@@ -18,14 +17,11 @@
              [google :as google]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.table :as table]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
@@ -238,7 +234,7 @@
      (let [^TableSchema schema (.getSchema response)
            parsers             (doall
                                 (for [^TableFieldSchema field (.getFields schema)
-                                      :let [parser-fn (type->parser (.getType field))]]
+                                      :let                    [parser-fn (type->parser (.getType field))]]
                                   (parser-fn *bigquery-timezone*)))
            columns             (for [column (table-schema->metabase-field-info schema)]
                                  (-> column
@@ -350,21 +346,6 @@
                          (str/replace #"(^\d)" "_$1"))]
     (subs replaced-str 0 (min 128 (count replaced-str)))))
 
-(s/defn ^:private bq-aggregate-name :- su/NonBlankString
-  "Return an approriate name for an `ag-clause`."
-  [driver, ag-clause :- mbql.s/Aggregation]
-  (->> ag-clause annotate/aggregation-name (driver/format-custom-field-name driver)))
-
-(s/defn ^:private pre-alias-aggregations
-  "Expressions are not allowed in the order by clauses of a BQ query. To sort by a custom expression, that custom
-  expression must be aliased from the order by. This code will find the aggregations and give them a name if they
-  don't already have one. This name can then be used in the order by if one is present."
-  [driver {{aggregations :aggregation} :query, :as outer-query}]
-  (if-not (seq aggregations)
-    outer-query
-    (update-in outer-query [:query :aggregation] (partial mbql.u/pre-alias-and-uniquify-aggregations
-                                                          (partial bq-aggregate-name driver)))))
-
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)
 (defmethod sql.qp/->honeysql [:bigquery String]
@@ -434,11 +415,10 @@
     {source-table-id :source-table, source-query :source-query} :query
     :as                                                         outer-query}]
   (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
-        aliased-query      (pre-alias-aggregations driver outer-query)
         {table-name :name} (some-> source-table-id qp.store/table)]
     (assert (seq dataset-id))
-    (binding [sql.qp/*query* (assoc aliased-query :dataset-id dataset-id)]
-      {:query      (->> aliased-query
+    (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
+      {:query      (->> outer-query
                         (sql.qp/build-honeysql-form :bigquery)
                         honeysql-form->sql)
        :table-name (or table-name
@@ -467,14 +447,7 @@
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 
-;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
-;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
-;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
-;; tests are not appropriate for BigQuery, so they're disabled for the time being.
-;;
-;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
-;; relationships for FK tables
-(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] true)
 
 ;; BigQuery doesn't return a timezone with it's time strings as it's always UTC, JodaTime parsing also defaults to UTC
 (defmethod driver.common/current-db-time-date-formatters :bigquery [_]

@@ -5,17 +5,17 @@
              [generate :as generate]]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
+            [metabase
+             [query-processor-test :as qp.test]
+             [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
-             [query-execution :refer [QueryExecution]]
-             [table :refer [Table]]]
+             [query-execution :refer [QueryExecution]]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
@@ -25,7 +25,6 @@
              [datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -59,12 +58,7 @@
 (expect
   {:api-response
    {:data                   {:rows        [[1000]]
-                             :columns     ["count"]
-                             :cols        [{:base_type    "type/Integer"
-                                            :special_type "type/Number"
-                                            :name         "count"
-                                            :display_name "count"
-                                            :source       "aggregation"}]
+                             :cols        [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                              :native_form true}
     :row_count              1
     :status                 "completed"
@@ -107,7 +101,6 @@
 (expect
   {:api-response
    {:data         {:rows    []
-                   :columns []
                    :cols    []}
     :row_count    0
     :status       "failed"
@@ -277,14 +270,34 @@
  {:status   (s/eq "failed")
   :error    (s/eq "You do not have permissions to run this query.")
   s/Keyword s/Any}
- (tt/with-temp* [Database [{db-id :id}    (select-keys (data/db) [:engine :details])]
-                 Table    [{table-id :id} {:db_id db-id, :name "VENUES"}]
-                 Field    [_              {:table_id table-id, :name "ID"}]]
+ (data/with-temp-copy-of-db
    ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
    ;; the Database
-   (perms/revoke-permissions! (group/all-users) db-id)
-   (perms/grant-permissions! (group/all-users) db-id "schema_that_does_not_exist")
+   (perms/revoke-permissions! (group/all-users) (data/id))
+   (perms/grant-permissions! (group/all-users) (data/id) "schema_that_does_not_exist")
    ((test-users/user->client :rasta) :post "dataset"
-    {:database db-id
-     :type     :query
-     :query    {:source-table table-id, :limit 1}})))
+    (data/mbql-query venues {:limit 1}))))
+
+;; Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?
+(expect
+  {:query (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
+               "FROM \"PUBLIC\".\"VENUES\" "
+               "LIMIT 1048576")
+   :params nil}
+  ((test-users/user->client :rasta) :post "dataset/native"
+   (data/mbql-query venues
+     {:fields [$id $name]})))
+
+;; `POST /api/dataset/native` should require that the user have ad-hoc native perms for the DB
+(tu/expect-schema
+  {:permissions-error? (s/eq true)
+   :message            (s/eq "You do not have permissions to run this query.")
+   s/Any               s/Any}
+  (tu.log/suppress-output
+    (data/with-temp-copy-of-db
+      ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+      (perms/revoke-permissions! (group/all-users) (data/id))
+      (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
+      ((test-users/user->client :rasta) :post "dataset/native"
+       (data/mbql-query venues
+         {:fields [$id $name]})))))

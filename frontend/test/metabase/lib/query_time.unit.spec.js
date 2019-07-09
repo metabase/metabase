@@ -169,7 +169,7 @@ describe("query_time", () => {
   describe("computeFilterTimeRange", () => {
     describe("absolute dates", () => {
       it('should handle "="', () => {
-        let [start, end] = computeFilterTimeRange(["=", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange(["=", 1, "2009-08-07"]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 00:00:00",
         );
@@ -178,21 +178,21 @@ describe("query_time", () => {
         );
       });
       it('should handle "<"', () => {
-        let [start, end] = computeFilterTimeRange(["<", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange(["<", 1, "2009-08-07"]);
         expect(start.year()).toBeLessThan(-10000);
         expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 00:00:00",
         );
       });
       it('should handle ">"', () => {
-        let [start, end] = computeFilterTimeRange([">", 1, "2009-08-07"]);
+        const [start, end] = computeFilterTimeRange([">", 1, "2009-08-07"]);
         expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(
           "2009-08-07 23:59:59",
         );
         expect(end.year()).toBeGreaterThan(10000);
       });
       it('should handle "between"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "between",
           1,
           "2009-08-07",
@@ -209,7 +209,7 @@ describe("query_time", () => {
 
     describe("relative dates", () => {
       it('should handle "="', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "=",
           1,
           ["relative-datetime", "current"],
@@ -222,7 +222,7 @@ describe("query_time", () => {
         );
       });
       it('should handle "<"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "<",
           1,
           ["relative-datetime", "current"],
@@ -233,7 +233,7 @@ describe("query_time", () => {
         );
       });
       it('should handle ">"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           ">",
           1,
           ["relative-datetime", "current"],
@@ -244,7 +244,7 @@ describe("query_time", () => {
         expect(end.year()).toBeGreaterThan(10000);
       });
       it('should handle "between"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "between",
           1,
           ["relative-datetime", -1, "day"],
@@ -265,7 +265,7 @@ describe("query_time", () => {
 
     describe("time-interval", () => {
       it('should handle "Past x days"', () => {
-        let [start, end] = computeFilterTimeRange([
+        const [start, end] = computeFilterTimeRange([
           "time-interval",
           1,
           -7,

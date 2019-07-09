@@ -131,11 +131,14 @@ payload = {
   :params => {
     ${Object.entries(params)
       .map(
-        ([key, value]) => JSON.stringify(key) + " => " + JSON.stringify(value),
+        ([key, value]) =>
+          JSON.stringify(key) +
+          " => " +
+          (value === null ? "nil" : JSON.stringify(value)),
       )
-      .join(",\n    ")},
+      .join(",\n    ")}
+  },
   :exp => Time.now.to_i + (60 * 10) # 10 minute expiration
-  }
 }
 token = JWT.encode payload, METABASE_SECRET_KEY
 

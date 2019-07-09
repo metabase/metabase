@@ -81,7 +81,7 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
-;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
+;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when definition
     (normalize/normalize-fragment [:query] definition)))
@@ -127,7 +127,7 @@
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
 (defn decompress
-  "Decompress COMPRESSED-BYTES."
+  "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))

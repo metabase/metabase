@@ -13,6 +13,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -38,8 +39,8 @@
 ;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
 ;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
 (when-not *compile-files*
-  (require 'monger.joda-time
-           'monger.json))
+  (classloader/require 'monger.joda-time
+                       'monger.json))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -566,18 +567,16 @@
 (s/defn ^:private generate-aggregation-pipeline :- {:projections Projections, :query Pipeline}
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
   [inner-query :- mbql.s/MBQLQuery]
-  (let [inner-query (update inner-query :aggregation (partial mbql.u/pre-alias-and-uniquify-aggregations
-                                                              annotate/aggregation-name))]
-    (reduce (fn [pipeline-ctx f]
-              (f inner-query pipeline-ctx))
-            {:projections [], :query []}
-            [add-initial-projection
-             handle-filter
-             handle-breakout+aggregation
-             handle-order-by
-             handle-fields
-             handle-limit
-             handle-page])))
+  (reduce (fn [pipeline-ctx f]
+            (f inner-query pipeline-ctx))
+          {:projections [], :query []}
+          [add-initial-projection
+           handle-filter
+           handle-breakout+aggregation
+           handle-order-by
+           handle-fields
+           handle-limit
+           handle-page]))
 
 (s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
   [original-keys :- Projections]
