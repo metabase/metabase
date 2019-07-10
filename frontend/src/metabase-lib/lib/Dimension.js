@@ -333,6 +333,7 @@ export default class Dimension {
       ...this.baseDimension()
         .field()
         .column(),
+      field_ref: this.mbql(),
     };
   }
 
@@ -679,6 +680,13 @@ export class DatetimeFieldDimension extends FieldDimension {
 
   subTriggerDisplayName(): string {
     return t`by ${formatBucketing(this._args[0]).toLowerCase()}`;
+  }
+
+  column() {
+    return {
+      ...super.column(),
+      unit: this.unit(),
+    };
   }
 
   render() {

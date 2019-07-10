@@ -40,6 +40,42 @@ export const rangeForValue = (
   }
 };
 
+const loggedKeys = new Set(); // just to make sure we log each mismatch only once
+export function fieldRefForColumnWithLegacyFallback(
+  column,
+  fieldRefForColumn_LEGACY,
+  debugName,
+) {
+  // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
+  const fieldRef =
+    column.field_ref &&
+    Dimension.parseMBQL(column.field_ref)
+      .baseDimension()
+      .mbql();
+
+  // TODO: remove this once we're sure field_ref is returning correct values
+  const fieldRef_LEGACY =
+    fieldRefForColumn_LEGACY && fieldRefForColumn_LEGACY(column);
+
+  const key = JSON.stringify([debugName, fieldRef, fieldRef_LEGACY]);
+  if (fieldRefForColumn_LEGACY && !loggedKeys.has(key)) {
+    loggedKeys.add(key);
+    if (!_.isEqual(fieldRef, fieldRef_LEGACY)) {
+      console.group(debugName + " mismatch");
+      console.warn("column", column);
+      console.warn("new", fieldRef);
+      console.warn("old", fieldRef_LEGACY);
+      console.groupEnd();
+    }
+  }
+
+  // NOTE: whitelisting known correct field_ref types for now while we make sure the rest are correct
+  if (fieldRef && fieldRef[0] === "field-literal") {
+    return fieldRef;
+  }
+  return fieldRef_LEGACY;
+}
+
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
  *
@@ -51,6 +87,17 @@ export const rangeForValue = (
  * @return {?FieldReference} MBQL field reference
  */
 export function fieldRefForColumn(
+  column: Column,
+  columns?: Column[],
+): ?FieldReference {
+  return fieldRefForColumnWithLegacyFallback(
+    column,
+    c => fieldRefForColumn_LEGACY(c, columns),
+    "dataset::fieldRefForColumn",
+  );
+}
+
+function fieldRefForColumn_LEGACY(
   column: Column,
   columns?: Column[],
 ): ?FieldReference {

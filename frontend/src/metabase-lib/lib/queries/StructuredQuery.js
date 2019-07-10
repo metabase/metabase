@@ -61,6 +61,7 @@ import { augmentDatabase } from "metabase/lib/table";
 import { TYPE } from "metabase/lib/types";
 
 import { isSegmentFilter } from "metabase/lib/query/filter";
+import { fieldRefForColumnWithLegacyFallback } from "metabase/lib/dataset";
 
 export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
@@ -1052,6 +1053,15 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   fieldReferenceForColumn(column) {
+    return fieldRefForColumnWithLegacyFallback(
+      column,
+      c => this.fieldReferenceForColumn_LEGACY(c),
+      "StructuredQuery::fieldReferenceForColumn",
+    );
+  }
+
+  // LEGACY:
+  fieldReferenceForColumn_LEGACY(column) {
     if (column.fk_field_id != null) {
       // NOTE: this isn't normalized MBQL
       return ["fk->", column.fk_field_id, column.id];
@@ -1146,7 +1156,55 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * Returns the corresponding {Dimension} in the "top-level" {StructuredQuery}
+   */
+  topLevelDimension(dimension: Dimension): ?Dimension {
+    const topQuery = this.topLevelQuery();
+    let query = this;
+    while (query) {
+      if (query === topQuery) {
+        return dimension;
+      } else {
+        dimension = query.dimensionForSourceQuery(dimension);
+        query = query.sourceQuery();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Returns the corresponding {Column} in the "top-level" {StructuredQuery}
+   */
+  topLevelColumn(column: Column): ?Column {
+    const dimension = this.dimensionForColumn(column);
+    if (dimension) {
+      const topDimension = this.topLevelDimension(dimension);
+      if (topDimension) {
+        return topDimension.column();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * returns the corresponding {Dimension} in the sourceQuery, if any
+   */
+  dimensionForSourceQuery(dimension: Dimension): ?Dimension {
+    if (dimension instanceof FieldLiteralDimension) {
+      const sourceQuery = this.sourceQuery();
+      if (sourceQuery) {
+        const index = sourceQuery.columnNames().indexOf(dimension.name());
+        if (index >= 0) {
+          return sourceQuery.columnDimensions()[index];
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
    * returns the original Table object at the beginning of the nested queries
+   * NOTE: this is inconsistent with sourceQuery() returning the `source-query`. Should we swap `table()` and `sourceTable()`?
    */
   sourceTable(): Table {
     return this.rootQuery().table();

@@ -136,4 +136,29 @@ describe("StructuredQuery nesting", () => {
       });
     });
   });
+
+  describe("topLevelDimension", () => {
+    it("should return same dimension if not nested", () => {
+      const q = makeStructuredQuery({
+        "source-table": ORDERS_TABLE_ID,
+      });
+      const d = q.topLevelDimension(
+        q.parseFieldReference(["field-id", ORDERS_TOTAL_FIELD_ID]),
+      );
+      expect(d.mbql()).toEqual(["field-id", ORDERS_TOTAL_FIELD_ID]);
+    });
+    it("should return underlying dimension for a nested query", () => {
+      const q = makeStructuredQuery({
+        "source-query": {
+          "source-table": ORDERS_TABLE_ID,
+          aggregation: [["count"]],
+          breakout: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        },
+      });
+      const d = q.topLevelDimension(
+        q.parseFieldReference(["field-literal", "TOTAL", "type/Float"]),
+      );
+      expect(d.mbql()).toEqual(["field-id", ORDERS_TOTAL_FIELD_ID]);
+    });
+  });
 });

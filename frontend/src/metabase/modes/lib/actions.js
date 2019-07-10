@@ -10,7 +10,10 @@ import * as Query from "metabase/lib/query/query";
 import * as Field from "metabase/lib/query/field";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
-import { rangeForValue } from "metabase/lib/dataset";
+import {
+  rangeForValue,
+  fieldRefForColumnWithLegacyFallback,
+} from "metabase/lib/dataset";
 import {
   isDate,
   isState,
@@ -62,12 +65,22 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
 
 export const getFieldRefFromColumn = (
   column: Column,
-  fieldId?: ?(FieldId | FieldLiteral) = column.id,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
+  return fieldRefForColumnWithLegacyFallback(
+    column,
+    c => getFieldRefFromColumn_LEGACY(c),
+    "actions::getFieldRefFromColumn",
+  );
+};
+
+const getFieldRefFromColumn_LEGACY = (
+  column: Column,
 ): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
   if (column.expression_name) {
     return ["expression", column.expression_name];
   }
 
+  const fieldId = column.id;
   if (fieldId == null) {
     throw new Error(
       "getFieldRefFromColumn expects non-null fieldId or column with non-null id",

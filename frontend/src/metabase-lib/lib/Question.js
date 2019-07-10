@@ -463,6 +463,39 @@ export default class Question {
     }
   }
 
+  /**
+   * returns the "top-level" {Question} for a nested structured query, e.x. with post-aggregation filters removed
+   */
+  topLevelQuestion(): Question {
+    const query = this.query();
+    if (query instanceof StructuredQuery && query !== query.topLevelQuery()) {
+      return this.setQuery(query.topLevelQuery());
+    } else {
+      return this;
+    }
+  }
+
+  /**
+   * returns the {ClickObject} with all columns transformed to be relative to the "top-level" query
+   */
+  topLevelClicked(clicked: ClickObject): ClickObject {
+    const query = this.query();
+    if (query instanceof StructuredQuery && query !== query.topLevelQuery()) {
+      return {
+        ...clicked,
+        column: query.topLevelColumn(clicked.column),
+        dimensions:
+          clicked.dimensions &&
+          clicked.dimensions.map(dimension => ({
+            ...dimension,
+            column: query.topLevelColumn(dimension.column),
+          })),
+      };
+    } else {
+      return clicked;
+    }
+  }
+
   // deprecated
   tableMetadata(): ?Table {
     const query = this.query();
