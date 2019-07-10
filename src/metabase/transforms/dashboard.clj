@@ -1,5 +1,6 @@
 (ns metabase.transforms.dashboard
-  (:require [metabase.api.common :as api]
+  (:require [medley.core :as m]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.models.table :refer [Table]]
             [metabase.transforms
