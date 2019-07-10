@@ -796,7 +796,7 @@
                                            (sql.qp/current-datetime-fn driver/*driver*)
                                            (* i interval-seconds)
                                            :second)
-                          (du/relative-date (* i interval-seconds) :second))
+                          (du/relative-date :second (* i interval-seconds)))
                  (assert <>))]))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]
