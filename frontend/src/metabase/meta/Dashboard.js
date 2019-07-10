@@ -382,6 +382,9 @@ export function setParameterName(
   parameter: Parameter,
   name: string,
 ): Parameter {
+  if (!name) {
+    name = "unnamed";
+  }
   const slug = slugify(name);
   return {
     ...parameter,
