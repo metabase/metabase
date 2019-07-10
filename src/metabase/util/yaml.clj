@@ -26,7 +26,7 @@
 
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor` fn."
-  ([f] (load-yaml identity f))
+  ([f] (load identity f))
   ([constructor ^Path f]
    (try
      (->> f

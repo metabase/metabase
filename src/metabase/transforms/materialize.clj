@@ -67,12 +67,14 @@
   "Make and save a card with a given name, query, and description."
   [step-name transform-name query description]
   (->> {:creator_id             api/*current-user-id*
-        :dataset_query          {:database (:database query)
-                                 :type     :native
-                                 :native   (qp/query->native query)}
+        :dataset_query          ;; {:database (:database query)
+         ;;                         :type     :native
+         ;; :native   (qp/query->native query)}
+        query
         :description            description
         :name                   step-name
         :collection_id          (get-collection transform-name)
+        ;; TODO -- is this needed?
         :result_metadata        (-> query :query infer-cols)
         :visualization_settings {}
         :display                :table}

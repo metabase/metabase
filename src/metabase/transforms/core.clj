@@ -11,7 +11,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols]]
-             [template-parser :refer [transforms]]]
+             [specs :refer [transform-specs]]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
@@ -95,7 +95,7 @@
                                :definition {:aggregation [definition]}}))
 
 (defn- transform-step!
-  [bindings transform {:keys [name source expressions aggregation breakout join description]}]
+  [bindings spec {:keys [name source expressions aggregation breakout join description limit filter]}]
   (let [local-bindings (-> bindings
                            (assoc name {:dimensions (-> source bindings :dimensions)})
                            (add-bindings name ->Expression expressions)
@@ -127,21 +127,26 @@
                          (assoc :breakout (map (comp mbql-snippets dimension-part) breakout))
 
                          join
-                         (assoc :join (build-join bindings source join)))]
+                         (assoc :joins (build-join bindings source join))
+
+                         filter
+                         (assoc :filter (resolve-dimension-bindings source bindings filter))
+
+                         limit
+                         (assoc :limit limit))]
     (assoc bindings
-      name {:dimensions (into {}
-                              (for [col (infer-cols query)]
-                                [(if (local-bindings (:name col))
-                                   (:name col)
-                                   (let [mask (juxt :name :base_type)]
-                                     (some->> local-bindings
-                                              (m/find-first (comp #{(mask col)} mask val))
-                                              key)))
-                                 (-> col
-                                     (dissoc :id)
-                                     field/map->FieldInstance)]))
+      name {:dimensions (into {} (for [col (infer-cols query)]
+                                   [(if (local-bindings (:name col))
+                                      (:name col)
+                                      (let [mask (juxt :name :base_type)]
+                                        (some->> local-bindings
+                                                 (m/find-first (comp #{(mask col)} mask val))
+                                                 key)))
+                                    (-> col
+                                        (dissoc :id)
+                                        field/map->FieldInstance)]))
             :entity     (materialize/make-card! name
-                                                (:name transform)
+                                                (:name spec)
                                                 {:type     :query
                                                  :query    query
                                                  :database ((some-fn :db_id :database_id) source-table)}
@@ -174,11 +179,6 @@
 (defn- store-requirements!
   [db-id requirements]
   (qp.store/fetch-and-store-database! db-id)
-  (println [(->> requirements
-                 vals
-                 (mapcat (comp vals :dimensions))
-                 (map u/get-id)
-                 ) (keys requirements)])
   (->> requirements
        vals
        (mapcat (comp vals :dimensions))
@@ -186,14 +186,14 @@
        qp.store/fetch-and-store-fields!))
 
 (defn run-transform!
-  [db-id schema {:keys [steps provides] :as transform}]
+  [db-id schema {:keys [steps provides] :as spec}]
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
-      (let [requirements (satisfy-requirements db-id schema transform)]
+      (let [requirements (satisfy-requirements db-id schema spec)]
         (store-requirements! db-id requirements)
-        (materialize/fresh-collection-for-transform! transform)
+        (materialize/fresh-collection-for-transform! spec)
         (let [bindings (reduce-kv (fn [bindings name step]
-                                    (transform-step! bindings transform (assoc step :name name)))
+                                    (transform-step! bindings spec (assoc step :name name)))
                                   requirements
                                   steps)]
           (for [[result-step {required-dimensions :dimensions}] provides]
@@ -208,14 +208,6 @@
 ;; TODO: should this work for cards as well?
 (defn candidates
   [table]
-  (->> @transforms
+  (->> @transform-specs
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
        (filter (comp (partial some #{table}) vals))))
-
-(binding [metabase.api.common/*current-user-id* 1
-          metabase.api.common/*is-superuser?* true
-          metabase.api.common/*current-user-permissions-set* (-> 1
-                                                                 metabase.models.user/permissions-set
-                                                                 atom)
-          ]
-  (run-transform! 1 "PUBLIC" (first @transforms)))

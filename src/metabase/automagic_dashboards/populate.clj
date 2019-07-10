@@ -212,7 +212,7 @@
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
-                    group            (+ group-heading-height))]
+                    group (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
                 [(if (text-card? card)

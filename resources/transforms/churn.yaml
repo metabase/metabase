@@ -20,6 +20,7 @@ steps:
   Charges:
       source: OrderHistory
       description: prepare data
+      limit: 10
   #    expressions:
   #      Month: [datetime-field, [dimension, CreationTimestamp], month]
   #       PrevMonth: ["+", [dimension, CreationTimestamp], [interval, -1, month]]
@@ -49,7 +50,7 @@ steps:
         - source: NextMonth
           strategy: left-join
 # [=, [dimension, Charges.User], [dimension, NextMonth.User]],
-          condition: [and, [=, [dimension, Charges.CreationTimestamp], [dimension, NextMonth.CreationTimestamp]]]
+          condition: [=, [dimension, Charges.CreationTimestamp], [dimension, NextMonth.CreationTimestamp]]
         - source: MRR
           strategy: inner-join
           condition: [=, [dimension, Charges.CreationTimestamp], [dimension, MRR.CreationTimestamp]]
