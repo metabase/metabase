@@ -549,16 +549,10 @@ function isDefaultLinkProtocol(protocol) {
 
 export function formatUrl(
   value: Value,
-  {
-    jsx,
-    rich,
-    view_as = "auto",
-    link_text,
-    column: { special_type } = {},
-  }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, column }: FormattingOptions = {},
 ) {
   const url = String(value);
-  const urlSpecialType = isa(special_type, TYPE.URL);
+  const urlSpecialType = column && isa(column.special_type, TYPE.URL);
   const protocol = getUrlProtocol(url);
   if (
     jsx &&
