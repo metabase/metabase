@@ -12,6 +12,7 @@ import {
   isNumeric,
   isLatitude,
   isLongitude,
+  isMetric,
   hasLatitudeAndLongitudeColumns,
   isState,
   isCountry,
@@ -61,15 +62,7 @@ export default class Map extends Component {
           { name: "Grid map", value: "grid" },
         ],
       },
-      getDefault: (
-        [
-          {
-            card,
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => {
+      getDefault: ([{ card, data }], settings) => {
         switch (card.display) {
           case "state":
           case "country":
@@ -77,11 +70,11 @@ export default class Map extends Component {
           case "pin_map":
             return "pin";
           default:
-            if (hasLatitudeAndLongitudeColumns(cols)) {
-              const latitudeColumn = _.findWhere(cols, {
+            if (hasLatitudeAndLongitudeColumns(data.cols)) {
+              const latitudeColumn = _.findWhere(data.cols, {
                 name: settings["map.latitude_column"],
               });
-              const longitudeColumn = _.findWhere(cols, {
+              const longitudeColumn = _.findWhere(data.cols, {
                 name: settings["map.longitude_column"],
               });
               if (
@@ -121,12 +114,12 @@ export default class Map extends Component {
           { name: "Grid", value: "grid" },
         ],
       },
-      getDefault: (series, vizSettings) =>
+      getDefault: ([{ data }], vizSettings) =>
         vizSettings["map.type"] === "heat"
           ? "heat"
           : vizSettings["map.type"] === "grid"
           ? "grid"
-          : series[0].data.rows.length >= 1000
+          : data.rows.length >= 1000
           ? "tiles"
           : "markers",
       getHidden: (series, vizSettings) =>
@@ -135,27 +128,20 @@ export default class Map extends Component {
     ...fieldSetting("map.latitude_column", {
       title: t`Latitude field`,
       fieldFilter: isNumeric,
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) => (_.find(cols, isLatitude) || {}).name,
+      getDefault: ([{ data }]) => (_.find(data.cols, isLatitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
     ...fieldSetting("map.longitude_column", {
       title: t`Longitude field`,
       fieldFilter: isNumeric,
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) => (_.find(cols, isLongitude) || {}).name,
+      getDefault: ([{ data }]) => (_.find(data.cols, isLongitude) || {}).name,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]),
     }),
-    ...metricSetting("map.metric_column", {
+    ...fieldSetting("map.metric_column", {
       title: t`Metric field`,
+      fieldFilter: isMetric,
       getHidden: (series, vizSettings) =>
         !PIN_MAP_TYPES.has(vizSettings["map.type"]) ||
         (vizSettings["map.pin_type"] !== "heat" &&
@@ -164,15 +150,10 @@ export default class Map extends Component {
     "map.region": {
       title: t`Region map`,
       widget: "select",
-      getDefault: ([
-        {
-          card,
-          data: { cols },
-        },
-      ]) => {
-        if (card.display === "state" || _.any(cols, isState)) {
+      getDefault: ([{ card, data }]) => {
+        if (card.display === "state" || _.any(data.cols, isState)) {
           return "us_states";
-        } else if (card.display === "country" || _.any(cols, isCountry)) {
+        } else if (card.display === "country" || _.any(data.cols, isCountry)) {
           return "world_countries";
         }
         return null;
@@ -235,14 +216,7 @@ export default class Map extends Component {
     },
   };
 
-  static checkRenderable(
-    [
-      {
-        data: { cols, rows },
-      },
-    ],
-    settings,
-  ) {
+  static checkRenderable([{ data }], settings) {
     if (PIN_MAP_TYPES.has(settings["map.type"])) {
       if (
         !settings["map.longitude_column"] ||

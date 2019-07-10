@@ -4,6 +4,7 @@ import {
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
+import _ from "underscore";
 
 export function getOptionFromColumn(col) {
   return {
@@ -39,17 +40,10 @@ export function fieldSetting(
       widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getProps: (
-        [
-          {
-            card,
-            data: { cols },
-          },
-        ],
-        vizSettings,
-      ) => ({
-        options: cols.filter(fieldFilter).map(getOptionFromColumn),
-        columns: cols,
+      getDefault: ([{ data }]) => (_.find(data.cols, fieldFilter) || {}).name,
+      getProps: ([{ card, data }], vizSettings) => ({
+        options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
+        columns: data.cols,
         showColumnSetting: showColumnSetting,
       }),
       ...def,
