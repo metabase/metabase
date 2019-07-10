@@ -2,18 +2,20 @@
   (:refer-clojure
    :exclude
    [load])
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
-  (:import [java.nio.file FileSystem FileSystems Path]))
+  (:import [java.nio.file FileSystem FileSystems Path]
+           java.net.URI))
 
 (defmacro with-resource
   "Setup all the JVM scaffolding to be able to treat /resources dir in a JAR the same as a normal directory.
   Ie. support directory listing and such."
   [[identifier path] & body]
-  `(let [^Path path#           ~path
+  `(let [^URI  path#           (-> ~path io/resource .toURI)
          [jar# internal-path#] (-> path# .toString (str/split #"!" 2))]
      (if internal-path#
        (with-open [^FileSystem fs# (-> jar#

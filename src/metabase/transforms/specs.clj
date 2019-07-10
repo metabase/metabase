@@ -2,7 +2,6 @@
   (:require [clojure
              [set :as set]
              [string :as str]]
-            [clojure.java.io :as io]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.mbql
@@ -115,7 +114,7 @@
 
 (defn- load-transforms-dir
   [dir]
-  (yaml/with-resource [dir (-> dir io/resource .toURI)]
+  (yaml/with-resource [dir dir]
     (with-open [ds (Files/newDirectoryStream dir)]
       (->> ds
            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))

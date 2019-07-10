@@ -209,6 +209,7 @@
 
 ;; TODO: should this work for cards as well?
 (defn candidates
+  "Return a list of candidate transforms for a given table."
   [table]
   (->> @transform-specs
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
