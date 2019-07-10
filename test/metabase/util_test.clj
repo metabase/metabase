@@ -234,3 +234,8 @@
 (expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :c 1})))
 (expect false  (boolean ((u/xor-pred :a :b :c) {:b 1, :c 1})))
 (expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :b 1, :c 1})))
+
+(expect nil   (u/ensure-seq nil))
+(expect [nil] (u/ensure-seq [nil]))
+(expect [42]  (u/ensure-seq 42))
+(expect [42]  (u/ensure-seq [42]))

@@ -18,8 +18,8 @@
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.transforms
-             [materialize :as transform.materialize]
-             [dashboard :as transform.dashboard]]
+             [dashboard :as transform.dashboard]
+             [materialize :as transform.materialize]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -79,12 +79,12 @@
     x))
 
 (def ^:private ->entity
-  {"table"    (comp api/read-check Table ensure-int)
-   "segment"  (comp api/read-check Segment ensure-int)
-   "question" (comp api/read-check Card ensure-int)
-   "adhoc"    (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"   (comp api/read-check Metric ensure-int)
-   "field"    (comp api/read-check Field ensure-int)
+  {"table"     (comp api/read-check Table ensure-int)
+   "segment"   (comp api/read-check Segment ensure-int)
+   "question"  (comp api/read-check Card ensure-int)
+   "adhoc"     (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
+   "metric"    (comp api/read-check Metric ensure-int)
+   "field"     (comp api/read-check Field ensure-int)
    "transform" transform.materialize/get-collection})
 
 (def ^:private Entity

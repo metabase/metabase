@@ -1,7 +1,9 @@
 (ns metabase.transforms.core
   (:require [clojure.string :as str]
             [medley.core :as m]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [database :refer [Database]]
@@ -12,7 +14,6 @@
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols]]
              [specs :refer [transform-specs]]]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -90,8 +91,8 @@
      :fields       :all}))
 
 (defn- ->Metric
-  [name definition]
-  (metric/map->MetricInstance {:name       name
+  [metric-name definition]
+  (metric/map->MetricInstance {:name       metric-name
                                :definition {:aggregation [definition]}}))
 
 (defn- transform-step!
@@ -185,7 +186,8 @@
        (map u/get-id)
        qp.store/fetch-and-store-fields!))
 
-(defn run-transform!
+(defn apply-transform!
+  "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
   [db-id schema {:keys [steps provides] :as spec}]
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store

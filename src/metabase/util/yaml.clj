@@ -21,7 +21,7 @@
                                        (FileSystems/newFileSystem (java.util.HashMap.)))]
          (let [~identifier (.getPath fs# internal-path# (into-array String []))]
            ~@body))
-       (let [~identifier (.getPath (FileSystems/getDefault) (.getPath path#) (into-array String []))]
+       (let [~identifier (.getPath ^FileSystem (FileSystems/getDefault) (.getPath path#) (into-array String []))]
          ~@body))))
 
 (defn load

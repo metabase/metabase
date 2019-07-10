@@ -3,7 +3,7 @@
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection]]
-            [metabase.query-processor :as qp]
+         ;   [metabase.query-processor :as qp]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as qp.imlicit-clauses]
              [annotate :as qp.annotate]]
