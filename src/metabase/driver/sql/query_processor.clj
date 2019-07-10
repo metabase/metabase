@@ -230,7 +230,15 @@
 (defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
 (defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :+] [driver [_ & args]] (apply hsql/call :+ (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :+] [driver [_ & args]]
+  (if (mbql.u/datetime-arithmetics? args)
+    (let [[field & intervals] args]
+      (reduce (fn [result [_ amount unit]]
+                (driver/date-add driver result amount unit))
+              (->honeysql driver field)
+              intervals))
+    (apply hsql/call :+ (map (partial ->honeysql driver) args))))
+
 (defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))
 (defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hsql/call :* (map (partial ->honeysql driver) args)))
 
@@ -300,7 +308,7 @@
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount))))
+                      (driver/date-add driver (current-datetime-fn driver) amount unit))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

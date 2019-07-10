@@ -97,11 +97,14 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
 
-(defmethod driver/date-interval :snowflake [_ unit amount]
+(defmethod sql.qp/current-datetime-fn :snowflake [_]
+  :%current_timestamp)
+
+(defmethod driver/date-add :snowflake [_ dt amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    :%current_timestamp))
+    (hx/->timestamp dt)))
 
 (defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))

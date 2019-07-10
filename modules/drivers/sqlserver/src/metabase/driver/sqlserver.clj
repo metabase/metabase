@@ -164,8 +164,8 @@
   (date-part :year expr))
 
 
-(defmethod driver/date-interval :sqlserver [_ unit amount]
-  (date-add unit amount :%getdate))
+(defmethod driver/date-add :sqlserver [_ dt amount unit]
+  (date-add unit amount dt))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds] [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into

@@ -94,8 +94,8 @@
                 1)
           3)))
 
-(defmethod driver/date-interval :hive-like [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
+(defmethod driver/date-add :hive-like [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
