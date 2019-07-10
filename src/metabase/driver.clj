@@ -369,19 +369,10 @@
 ;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
 ;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
 (defmulti date-add
-  "Return an driver-appropriate representation of a moment relative to the given time (or now). By default, this
-  returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should return a
-  native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a HoneySQL
-  form to call the appropriate SQL fns:
-
-    (date-interval :postgres :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))"
+  "Return an driver-appropriate representation of a moment relative to the given time."
   {:arglists '([driver dt amount unit])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-;; TODO - should this support full arithmetics now (Clojure-land)?
-(defmethod date-add ::driver [_ _ amount unit]
-  (du/relative-date unit amount))
 
 
 (defmulti describe-database

@@ -152,7 +152,9 @@
 
     [:expression expression-name]
     (merge
-     (infer-expression-type (-> expression-name keyword expressions))
+     ;; There's some inconsistency when expression names are keywords and when strings.
+     ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
+     (infer-expression-type (some expressions ((juxt identity keyword) expression-name)))
      {:name            expression-name
       :display_name    expression-name
       ;; provided so the FE can add easily add sorts and the like when someone clicks a column header

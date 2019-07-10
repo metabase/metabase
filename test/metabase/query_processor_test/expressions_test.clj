@@ -216,6 +216,7 @@
             maybe-truncate
             (tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz)))])))
 
+;; Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   (robust-dates
    ["2014-09-02T13:45:00.000"
@@ -229,7 +230,7 @@
              :order-by    [[:asc $name]]})
         qp.test/rows)))
 
-;; Test interaction with truncation
+;; Test interaction of datetime arithmetics with truncation
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   (robust-dates
    ["2014-09-02T00:00:00.000"

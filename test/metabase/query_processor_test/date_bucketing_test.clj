@@ -791,11 +791,12 @@
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
               ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (driver/date-add driver/*driver*
-                                         (when (isa? driver/hierarchy driver/*driver* :sql)
-                                           (sql.qp/current-datetime-fn driver/*driver*))
-                                         (* i interval-seconds)
-                                         :second)
+              [(u/prog1 (if (isa? driver/hierarchy driver/*driver* :sql)
+                          (driver/date-add driver/*driver*
+                                           (sql.qp/current-datetime-fn driver/*driver*)
+                                           (* i interval-seconds)
+                                           :second)
+                          (du/relative-date (* i interval-seconds) :second))
                  (assert <>))]))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]

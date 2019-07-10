@@ -319,7 +319,7 @@
    :display_name "sum of Price + 1"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-               (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
+      (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
 ;; if a `:named` aggregation supplies optional `:use-as-display-name?` `options` we should respect that
 ;; `use-as-disply-name?` is `true` by default, e.g. in cases where the user supplies the names themselves
