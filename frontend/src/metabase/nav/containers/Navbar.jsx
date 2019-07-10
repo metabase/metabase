@@ -326,7 +326,7 @@ export default class Navbar extends Component {
             triggerIcon="add"
             items={[
               {
-                title: t`New custom question`,
+                title: t`New notebook`,
                 icon: `notebook`,
                 link: hasDataAccess && this.props.query.question().getUrl(),
                 event: `NavBar;New Custom Question;`,
