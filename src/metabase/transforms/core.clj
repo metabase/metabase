@@ -32,7 +32,7 @@
   [{:keys [definition]}]
   (-> definition :aggregation first))
 
-(defrecord ^:private Expression [name definition])
+(defrecord ^:private Expression [identifier definition])
 
 (defmethod ->mbql Expression
   [{:keys [definition]}]

@@ -8,8 +8,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
-  (:import [java.nio.file FileSystem FileSystems Path]
-           java.net.URI))
+  (:import java.net.URI
+           [java.nio.file FileSystem FileSystems Path]))
 
 (defmacro with-resource
   "Setup all the JVM scaffolding to be able to treat /resources dir in a JAR the same as a normal directory.
