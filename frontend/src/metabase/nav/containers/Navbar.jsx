@@ -301,33 +301,36 @@ export default class Navbar extends Component {
             <Link
               mr={[1, 2]}
               to="browse"
-              className="flex align-center flex-no-shrink"
-              data-metabase-event={`NavBar;Data Browse`}
+              className="Button Button--selected flex-no-shrink"
+              data-metabase-event={`NavBar;Ask a question`}
             >
-              <Tooltip tooltip={t`Browse data`}>
-                <Icon size={17} name="table" mr={1} />
-              </Tooltip>
-              <h4 className="hide sm-show">{t`Browse data`}</h4>
+              <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
           )}
           {hasDataAccess && (
-            <Link
-              mr={[1, 2]}
-              to={this.props.plainNativeQuery.question().getUrl()}
-              className="flex align-center hide sm-show flex-no-shrink"
-              data-metabase-event={`NavBar;Data Browse`}
-            >
-              <Tooltip tooltip={t`Write SQL`}>
+            <Tooltip tooltip={t`Write SQL`}>
+              <Link
+                mr={[1, 2]}
+                ml={[1, 2]}
+                to={this.props.plainNativeQuery.question().getUrl()}
+                className="flex align-center hide sm-show flex-no-shrink"
+                data-metabase-event={`NavBar;SQL`}
+              >
                 <Icon size={17} name="sql" mr={1} />
-              </Tooltip>
-              <h4>{t`Write SQL`}</h4>
-            </Link>
+              </Link>
+            </Tooltip>
           )}
           <EntityMenu
             tooltip={t`Create`}
             className="hide sm-show"
             triggerIcon="add"
             items={[
+              {
+                title: t`New notebook`,
+                icon: `notebook`,
+                link: hasDataAccess && this.props.query.question().getUrl(),
+                event: `NavBar;New Custom Question;`,
+              },
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
@@ -340,21 +343,8 @@ export default class Navbar extends Component {
                 link: Urls.newPulse(),
                 event: `NavBar;New Pulse Click;`,
               },
-              {
-                title: t`New custom question`,
-                icon: `document`,
-                link: hasDataAccess && this.props.query.question().getUrl(),
-                event: `NavBar;New Question;`,
-              },
             ]}
           />
-          <Tooltip tooltip={t`Activity`}>
-            <Link mx={2} to="activity" data-metabase-event={`NavBar;Activity`}>
-              <IconWrapper>
-                <Icon size={20} name="bell" />
-              </IconWrapper>
-            </Link>
-          </Tooltip>
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}

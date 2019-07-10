@@ -21,6 +21,7 @@ import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
+import PageHeading from "metabase/components/PageHeading";
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
@@ -229,24 +230,29 @@ export class DatabaseBrowser extends React.Component {
 
 function BrowseHeader({ crumbs }) {
   return (
-    <Box mt={3} mb={2} className="flex align-center">
-      <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
-      <div className="flex flex-align-right">
-        <Link
-          className="flex flex-align-right"
-          to="reference"
-          data-metabase-event={`NavBar;Reference`}
-        >
-          <div className="flex flex-align-center text-medium text-brand-hover">
-            <Icon
-              className="flex flex-align-center"
-              size={18}
-              name="reference"
-            />
-            <h3 className="ml1 flex flex-align-center">Learn about our data</h3>
-          </div>
-        </Link>
-      </div>
+    <Box mt={3} mb={2}>
+      <PageHeading>{t`Pick your data`}</PageHeading>
+      <Flex align="center" mt={1}>
+        <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+        <div className="flex flex-align-right">
+          <Link
+            className="flex flex-align-right"
+            to="reference"
+            data-metabase-event={`NavBar;Reference`}
+          >
+            <div className="flex flex-align-center text-medium text-brand-hover">
+              <Icon
+                className="flex flex-align-center"
+                size={18}
+                name="reference"
+              />
+              <h3 className="ml1 flex flex-align-center">
+                Learn about our data
+              </h3>
+            </div>
+          </Link>
+        </div>
+      </Flex>
     </Box>
   );
 }
