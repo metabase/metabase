@@ -423,11 +423,28 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
-           {:expressions {"discount_price" [:* 0.9 [:field-id $price]]}
+           {:expressions {:discount_price [:* 0.9 [:field-id $price]]}
             :fields      [$name [:expression "discount_price"]]
             :limit       10})))
       :cols
       second))
+
+(expect
+  {:name            "prev_month"
+   :display_name    "prev_month"
+   :base_type       :type/DateTime
+   :special_type    nil
+   :expression_name "prev_month"
+   :source          :fields
+   :field_ref       [:expression "prev_month"]}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query users
+           {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
+            :fields      [[:expression "prev_month"]]
+            :limit       10})))
+      :cols
+      first))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

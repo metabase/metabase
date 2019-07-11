@@ -265,5 +265,14 @@ describe("formatting", () => {
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
+    it("should not crash if column is null", () => {
+      expect(
+        formatUrl("foobar", {
+          jsx: true,
+          rich: true,
+          column: null,
+        }),
+      ).toEqual("foobar");
+    });
   });
 });

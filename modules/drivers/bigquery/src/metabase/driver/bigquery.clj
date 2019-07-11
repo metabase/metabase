@@ -406,8 +406,9 @@
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-interval :bigquery [driver unit amount]
-  (sql.qp/->honeysql driver (du/relative-date unit amount)))
+(defmethod driver/date-add :bigquery
+  [_ dt amount unit]
+  (hsql/call :datetime_add (hx/->datetime dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 (defmethod driver/mbql->native :bigquery
   [driver

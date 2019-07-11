@@ -166,9 +166,9 @@
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
-(defmethod driver/date-interval :presto
-  [_ unit amount]
-  (hsql/call :date_add (hx/literal unit) amount :%now))
+(defmethod driver/date-add :presto
+  [_ dt amount unit]
+  (hsql/call :date_add (hx/literal unit) amount dt))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
