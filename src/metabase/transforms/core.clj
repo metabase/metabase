@@ -64,15 +64,13 @@
              bindings
              binding-forms))
 
-(defn- dimension-part
-  [identifier]
-  (-> identifier (str/split #"\.") last))
-
 (defn- add-breakout-bindings
-  [bindings source breakout]
+  [bindings source breakouts]
   (update-in bindings [source :dimensions]
-             into (for [name breakout]
-                    [(dimension-part name) (get-dimension-binding bindings source name)])))
+             into (for [breakout breakouts]
+                    (let [identifier (mbql.u/match-one breakout [:dimension dimension] dimension)]
+                      [(-> identifier (str/split #"\.") last)
+                       (get-dimension-binding bindings source identifier)]))))
 
 (defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
@@ -96,7 +94,7 @@
                                :definition {:aggregation [definition]}}))
 
 (defn- transform-step!
-  [bindings spec {:keys [name source expressions aggregation breakout join description limit filter]}]
+  [bindings spec {:keys [name source expressions aggregation breakout joins description limit filter]}]
   (let [local-bindings (-> bindings
                            (assoc name {:dimensions (-> source bindings :dimensions)})
                            (add-bindings name ->Expression expressions)
@@ -125,13 +123,14 @@
                                                [:named (mbql-snippets agg) agg]))
 
                          breakout
-                         (assoc :breakout (map (comp mbql-snippets dimension-part) breakout))
+                         (assoc :breakout (for [breakout breakout]
+                                            (resolve-dimension-bindings bindings source breakout)))
 
-                         join
-                         (assoc :joins (build-join bindings source join))
+                         joins
+                         (assoc :joins (build-join bindings source joins))
 
                          filter
-                         (assoc :filter (resolve-dimension-bindings source bindings filter))
+                         (assoc :filter (resolve-dimension-bindings bindings source filter))
 
                          limit
                          (assoc :limit limit))]
@@ -214,3 +213,21 @@
   (->> @transform-specs
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
        (filter (comp (partial some #{table}) vals))))
+
+(binding [metabase.api.common/*current-user-id* 1
+          metabase.api.common/*is-superuser?* true
+          metabase.api.common/*current-user-permissions-set* (-> 1
+                                                                 metabase.models.user/permissions-set
+                                                                 atom)
+          ]
+  (run-transform! 228 "stripetest1" (first @transform-specs))
+  ;(satisfy-requirements 228 "stripetest1" (first @transform-specs))
+  )
+
+
+(metabase.query-processor/process-query {:database 1
+                                         :type :query
+                                         :query {:source-table 2
+                                                 :expressions {:foo [:datetime-field [:field-id 15] :month]}
+                                                 :breakout [[:expression "foo"]]
+                                                 :aggregation [:count]}})

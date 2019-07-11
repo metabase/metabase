@@ -24,7 +24,7 @@
 
 (def ^:private Dimension s/Str)
 
-(def ^:private Breakout [Dimension])
+(def ^:private Breakout [(s/cond-pre Dimension MBQL)])
 
 (def ^:private Aggregation {Dimension MBQL})
 
@@ -36,15 +36,15 @@
 
 (def ^:private Limit su/IntGreaterThanZero)
 
-(def ^:private Join [{(s/required-key :source)    Source
-                      (s/required-key :condition) MBQL
-                      (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
+(def ^:private Joins [{(s/required-key :source)    Source
+                       (s/required-key :condition) MBQL
+                       (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
 
 (def ^:private Steps {Source {(s/required-key :source)      Source
                               (s/optional-key :aggregation) Aggregation
                               (s/optional-key :breakout)    Breakout
                               (s/optional-key :expressions) Expressions
-                              (s/optional-key :join)        Join
+                              (s/optional-key :joins)       Joins
                               (s/optional-key :description) Description
                               (s/optional-key :limit)       Limit
                               (s/optional-key :filter)      Filter}})
@@ -98,10 +98,14 @@
   (sc/coercer!
    TransformSpec
    {MBQL                     mbql.normalize/normalize
-    Steps                    (comp (partial dependencies-sort (fn [{:keys [source join]}]
-                                                                (conj (map :source join) source)))
+    Steps                    (comp (partial dependencies-sort (fn [{:keys [source joins]}]
+                                                                (conj (map :source joins) source)))
                                    stringify-keys)
-    Breakout                 u/ensure-seq
+    Breakout                 (fn [breakouts]
+                               (for [breakout (u/ensure-seq breakouts)]
+                                 (if (s/check MBQL breakout)
+                                   [:dimension breakout]
+                                   breakout)))
     FieldType                (partial keyword "type")
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly

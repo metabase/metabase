@@ -46,7 +46,7 @@ steps:
         - CreationTimestamp
         - MRR.MRR
 #        - MRR.Accounts
-      join:
+      joins:
         - source: NextMonth
           strategy: left-join
 # [=, [dimension, Charges.User], [dimension, NextMonth.User]],
