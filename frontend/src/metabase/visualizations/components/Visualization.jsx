@@ -114,7 +114,7 @@ type State = {
 };
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize({ className: "CardVisualization" })
+@ExplicitSize({ selector: ".CardVisualization" })
 export default class Visualization extends Component {
   state: State;
   props: Props;
@@ -450,10 +450,7 @@ export default class Visualization extends Component {
     const CardVisualization = visualization;
 
     return (
-      <div
-        className={cx(className, "flex flex-column full-height")}
-        style={style}
-      >
+      <div className={cx(className, "flex flex-column")} style={style}>
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||
@@ -540,7 +537,7 @@ export default class Visualization extends Component {
           <CardVisualization
             {...this.props}
             // NOTE: CardVisualization class used to target ExplicitSize HOC
-            className="CardVisualization flex-full"
+            className="CardVisualization flex-full flex-basis-none"
             series={series}
             settings={settings}
             // $FlowFixMe

@@ -5,7 +5,7 @@ import ResizeObserver from "resize-observer-polyfill";
 
 import cx from "classnames";
 
-export default ({ className, wrapped } = {}) => ComposedComponent =>
+export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {
     static displayName =
       "ExplicitSize[" +
@@ -22,35 +22,47 @@ export default ({ className, wrapped } = {}) => ComposedComponent =>
 
     _getElement() {
       const element = ReactDOM.findDOMNode(this);
-      if (className) {
-        const elements = element.getElementsByClassName(className);
-        if (elements.length > 0) {
-          return elements[0];
-        }
+      if (selector) {
+        return element.querySelector(selector) || element;
       }
       return element;
     }
 
+    componentDidMount() {
+      this._initMediaQueryListener();
+      this._initResizeObserver();
+      this._updateResizeObserver();
+      this._updateSize();
+    }
+
+    componentDidUpdate() {
+      // update ResizeObserver if element changes
+      this._updateResizeObserver();
+      this._updateSize();
+    }
+
+    componentWillUnmount() {
+      this._teardownResizeObserver();
+      this._teardownQueryMediaListener();
+    }
+
     // ResizeObserver, ensure re-layout when container element changes size
     _initResizeObserver() {
-      const element = this._getElement();
-      if (element !== this._currentElement) {
-        // cleanup previous, if any
-        this._teardownResizeObserver();
-        // setup new, if we have an element
-        if (element) {
-          this._ro = new ResizeObserver((entries, observer) => {
-            const element = this._getElement();
-            for (const entry of entries) {
-              if (entry.target === element) {
-                this._updateSize();
-                break;
-              }
-            }
-          });
-          this._ro.observe(element);
+      this._ro = new ResizeObserver((entries, observer) => {
+        const element = this._getElement();
+        for (const entry of entries) {
+          if (entry.target === element) {
+            this._updateSize();
+            return;
+          }
         }
+      });
+    }
+    _updateResizeObserver() {
+      const element = this._getElement();
+      if (this._currentElement !== element) {
         this._currentElement = element;
+        this._ro.observe(this._currentElement);
       }
     }
     _teardownResizeObserver() {
@@ -72,23 +84,6 @@ export default ({ className, wrapped } = {}) => ComposedComponent =>
         this._mql.removeListener(this._updateSize);
         this._mql = null;
       }
-    }
-
-    componentDidMount() {
-      this._initMediaQueryListener();
-      this._initResizeObserver();
-      this._updateSize();
-    }
-
-    componentDidUpdate() {
-      // re-init ResizeObserver if element changes
-      this._initResizeObserver();
-      this._updateSize();
-    }
-
-    componentWillUnmount() {
-      this._teardownResizeObserver();
-      this._teardownQueryMediaListener();
     }
 
     _updateSize = () => {
