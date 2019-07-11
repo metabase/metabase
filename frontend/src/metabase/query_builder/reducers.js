@@ -29,6 +29,7 @@ import {
   UPDATE_EMBEDDING_PARAMS,
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
+  RESET_UI_CONTROLS,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -52,6 +53,10 @@ export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
       next: (state, { payload }) => ({ ...state, ...payload }),
+    },
+
+    [RESET_UI_CONTROLS]: {
+      next: (state, { payload }) => DEFAULT_UI_CONTROLS,
     },
 
     [INITIALIZE_QB]: {

@@ -88,6 +88,9 @@ const getTemplateTagCount = (question: Question) => {
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
 export const setUIControls = createAction(SET_UI_CONTROLS);
 
+export const RESET_UI_CONTROLS = "metabase/qb/RESET_UI_CONTROLS";
+export const resetUIControls = createAction(RESET_UI_CONTROLS);
+
 export const setQueryBuilderMode = (
   queryBuilderMode,
   { shouldUpdateUrl = true } = {},
@@ -761,6 +764,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
           open(url);
         } else {
+          dispatch(resetUIControls());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
