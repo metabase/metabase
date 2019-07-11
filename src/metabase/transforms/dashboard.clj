@@ -14,15 +14,17 @@
 (def ^:private ^:const ^Long height 4)
 
 (defn- cards->section
+  "Build a section of cards and format them according to what the automagic dashboards code expects."
   [group cards]
   (mapcat (fn [card]
             (cond-> [(assoc card
-                       :group    group
-                       :width    width
-                       :height   height
-                       :score    100
-                       :title    (:name card)
-                       :position 0)]
+                       :group         group
+                       :width         width
+                       :height        height
+                       :score         100
+                       :title         (:name card)
+                       :visualization [(:display card)]
+                       :position      0)]
               (:description card) (conj {:text     (:description card)
                                          :group    group
                                          :width    (- total-width width)
@@ -53,13 +55,10 @@
                        :dataset_query          {:type     :query
                                                 :query    {:source-table (u/get-id table)}
                                                 :database (:db_id table)}
-                       :name                   (:name table)
+                       :name                   (:display_name table)
                        :collection_id          nil
                        :visualization_settings {}
                        :display                :table}))))]
-    (println [ steps provides sources (->> transform-name
-             materialize/get-collection
-             (db/select 'Card :collection_id))])
     (populate/create-dashboard {:cards       (concat (cards->section "sources" sources)
                                                      (cards->section "steps" steps)
                                                      (cards->section "provides" provides))

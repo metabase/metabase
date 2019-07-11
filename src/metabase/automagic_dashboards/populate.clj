@@ -113,14 +113,13 @@
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height]
-              :as card} [x y]]
+  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
                   :name          title
                   :collection_id nil
-                  :id            (gensym)}
+                  :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
