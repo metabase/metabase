@@ -94,13 +94,14 @@ export default class VisualizationResult extends Component {
     } else {
       return (
         <Visualization
+          className={className}
           rawSeries={rawSeries}
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
-          card={question.card()}
-          className={className}
-          // Table:
-          {...props}
+          showTitle={false}
+          metadata={this.props.metadata}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onUpdateWarnings={this.props.onUpdateWarnings}
         />
       );
     }

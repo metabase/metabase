@@ -80,6 +80,10 @@ export default class QueryVisualization extends Component {
     this.props.runQuestionQuery({ ignoreCache: !isResultDirty });
   };
 
+  handleUpdateWarnings = warnings => {
+    this.setState({ warnings });
+  };
+
   render() {
     const { className, question, isRunning, result } = this.props;
 
@@ -111,8 +115,7 @@ export default class QueryVisualization extends Component {
               {...this.props}
               className="spread"
               lastRunDatasetQuery={this.state.lastRunDatasetQuery}
-              onUpdateWarnings={warnings => this.setState({ warnings })}
-              showTitle={false}
+              onUpdateWarnings={this.handleUpdateWarnings}
             />
           ) : !isRunning ? (
             <VisualizationEmptyState className="spread" />

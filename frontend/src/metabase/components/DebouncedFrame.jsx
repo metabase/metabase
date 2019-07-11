@@ -76,7 +76,10 @@ export default class DebouncedFrame extends React.Component {
   render() {
     const { children, className, style = {}, enabled } = this.props;
     // if disabled use width and height from props directly
-    const { width, height } = enabled ? this.state : this.props;
+    const { width, height } =
+      enabled && this.state.width != null && this.state.height != null
+        ? this.state
+        : this.props;
     return (
       <div
         ref={r => (this._container = r)}

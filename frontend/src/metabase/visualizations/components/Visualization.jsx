@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, Element } from "react";
+import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
@@ -61,7 +61,7 @@ type Props = {
   isEditing: boolean,
   isSettings: boolean,
 
-  actionButtons: Element<any>,
+  actionButtons: React.Element<any>,
 
   // errors
   error: string,
@@ -84,11 +84,12 @@ type Props = {
   dispatch: Function,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
-  replacementContent: Element<any>,
+  replacementContent: React.Element<any>,
 
   // misc
   onUpdateWarnings: (string[]) => void,
   onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
+  onUpdateVisualizationSettings: (settings: { [key: string]: any }) => void,
 
   // number of grid cells wide and tall
   gridSize?: { width: number, height: number },
@@ -115,7 +116,7 @@ type State = {
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 @ExplicitSize({ selector: ".CardVisualization" })
-export default class Visualization extends Component {
+export default class Visualization extends React.PureComponent {
   state: State;
   props: Props;
 
@@ -136,13 +137,10 @@ export default class Visualization extends Component {
   }
 
   static defaultProps = {
-    className: "full-height",
     showTitle: false,
     isDashboard: false,
     isEditing: false,
     isSettings: false,
-    onUpdateVisualizationSettings: (...args) =>
-      console.warn("onUpdateVisualizationSettings", args),
   };
 
   componentWillMount() {
@@ -177,6 +175,10 @@ export default class Visualization extends Component {
     });
   }
 
+  // NOTE: this is a PureComponent
+  // shouldComponentUpdate(nextProps, nextState) {
+  // }
+
   // $FlowFixMe
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
@@ -201,13 +203,19 @@ export default class Visualization extends Component {
   }
 
   transform(newProps) {
+    const { series, visualization } = getVisualizationTransformed(
+      extractRemappings(newProps.rawSeries),
+    );
+    const computedSettings = getComputedSettingsForSeries(series);
     this.setState({
       hovered: null,
       clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
-      ...getVisualizationTransformed(extractRemappings(newProps.rawSeries)),
+      series: series,
+      visualization: visualization,
+      computedSettings: computedSettings,
     });
   }
 
@@ -365,7 +373,7 @@ export default class Visualization extends Component {
     let settings = this.props.settings || {};
 
     if (!loading && !error) {
-      settings = this.props.settings || getComputedSettingsForSeries(series);
+      settings = this.props.settings || this.state.computedSettings;
       if (!visualization) {
         error = t`Could not find visualization`;
       } else {

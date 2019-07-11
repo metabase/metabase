@@ -302,7 +302,6 @@ export default class Table extends Component {
   }
 
   componentWillReceiveProps(newProps: Props) {
-    // TODO: remove use of deprecated "card" and "data" props
     if (
       newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)

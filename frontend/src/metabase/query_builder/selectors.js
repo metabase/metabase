@@ -30,6 +30,8 @@ export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
+export const getIsShowingRawTable = state =>
+  getUiControls(state).isShowingRawTable;
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 
@@ -229,14 +231,20 @@ export const getRawSeries = createSelector(
     getQueryResults,
     getIsObjectDetail,
     getLastRunDatasetQuery,
-    getUiControls,
+    getIsShowingRawTable,
   ],
-  (question, results, isObjectDetail, lastRunDatasetQuery, uiControls) => {
+  (
+    question,
+    results,
+    isObjectDetail,
+    lastRunDatasetQuery,
+    isShowingRawTable,
+  ) => {
     let display = question && question.display();
     let settings = question && question.settings();
     if (isObjectDetail) {
       display = "object";
-    } else if (uiControls.isShowingRawTable) {
+    } else if (isShowingRawTable) {
       display = "table";
       settings = { "table.pivot": false };
     }
