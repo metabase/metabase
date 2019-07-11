@@ -32,6 +32,7 @@
              [table :as table]
              [task :as task]
              [tiles :as tiles]
+             [transform :as transform]
              [user :as user]
              [util :as util]]
             [metabase.middleware
@@ -87,6 +88,7 @@
   (context "/table"                [] (+auth table/routes))
   (context "/task"                 [] (+auth task/routes))
   (context "/tiles"                [] (+auth tiles/routes))
+  (context "/transform"            [] (+auth transform/routes))
   (context "/user"                 [] (+auth user/routes))
   (context "/util"                 [] util/routes)
   (route/not-found (constantly {:status 404, :body (tru "API endpoint does not exist.")})))
