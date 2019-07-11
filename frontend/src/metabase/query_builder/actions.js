@@ -443,22 +443,24 @@ export const initializeQB = (location, params) => {
       card = startNewCard("query", databaseId);
 
       // initialize parts of the query based on optional parameters supplied
-      if (options.table != undefined && card.dataset_query.query) {
-        card.dataset_query.query["source-table"] = parseInt(options.table);
-      }
-
-      if (options.segment != undefined && card.dataset_query.query) {
-        card.dataset_query.query.filter = [
-          "and",
-          ["segment", parseInt(options.segment)],
-        ];
-      }
-
-      if (options.metric != undefined && card.dataset_query.query) {
-        card.dataset_query.query.aggregation = [
-          "metric",
-          parseInt(options.metric),
-        ];
+      if (card.dataset_query.query) {
+        if (options.table != undefined) {
+          card.dataset_query.query["source-table"] = parseInt(options.table);
+        }
+        if (options.segment != undefined) {
+          card.dataset_query.query.filter = [
+            "segment",
+            parseInt(options.segment),
+          ];
+        }
+        if (options.metric != undefined) {
+          // show the summarize sidebar for metrics
+          uiControls.isShowingSummarySidebar = true;
+          card.dataset_query.query.aggregation = [
+            "metric",
+            parseInt(options.metric),
+          ];
+        }
       }
 
       MetabaseAnalytics.trackEvent(

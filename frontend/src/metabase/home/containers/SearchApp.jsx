@@ -84,7 +84,7 @@ export default class SearchApp extends React.Component {
                       eventObjectType="Question"
                     />
                   )}
-                  {/* {types.metric && (
+                  {types.metric && (
                     <SearchResultSection
                       title={t`Metrics`}
                       items={types.metric}
@@ -97,7 +97,7 @@ export default class SearchApp extends React.Component {
                       items={types.segment}
                       eventObjectType="Segment"
                     />
-                  )} */}
+                  )}
                   {types.pulse && (
                     <SearchResultSection
                       title={t`Pulses`}
