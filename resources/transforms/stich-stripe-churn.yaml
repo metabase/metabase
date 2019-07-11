@@ -11,13 +11,18 @@ provides:
       - Total
       - Churned
       - ChurnRate
-      - CreationTimestamp
+      - Month
 steps:
-  Calendar:
+  SubscriptionsCleanedUp:
     source: Subscriptions
-    description: Build a calendar of all the months we have data for. Note this assumes at least one new subscription each month
+    description: Truncate the dates we'll be using
     expressions:
       Month: [datetime-field, [dimension, CreationTimestamp], month]
+      StartMonth: [datetime-field, [dimension, CreationTimestamp], month]
+      CancelationMonth: [datetime-field, [dimension, CancelationTimestamp], month]
+  Calendar:
+    source: SubscriptionsCleanedUp
+    description: Build a calendar of all the months we have data for. Note this assumes at least one new subscription each month
     aggregation:
       Count: [count]
     breakout: Month
@@ -25,15 +30,16 @@ steps:
     source: Calendar
     description: Unroll Subscriptions table so that each month has its own entry (rather than just one per subscription)
     joins:
-      - source: Subscriptions
+      - source: SubscriptionsCleanedUp
         strategy: left-join
-        condition: [and, [">=", [dimension, Month], [datetime-field, [dimension, Subscriptions.CreationTimestamp], month]], [or, ["<=", [dimension, Month], [dimension, Subscriptions.CancelationTimestamp]], [is-null, [dimension, Subscriptions.CancelationTimestamp]]]]
+        condition: [and, [">=", [dimension, Month], [dimension, SubscriptionsCleanedUp.StartMonth]], [or, ["<=", [dimension, Month], [dimension, SubscriptionsCleanedUp.CancelationMonth]], [is-null, [dimension, SubscriptionsCleanedUp.CancelationMonth]]]]
   MonthlyChurn:
     source: SubscriptionsUnrolled
     description: Calculate per-month statistics
-    breakout: CreationTimestamp
+    breakout: Month
     aggregation:
-      Churned: [count-where, [=, [datetime-field, [dimension, Month], month], [datetime-field, [dimension, CancelationTimestamp], month]]]
-      ChurnRate: [share, [=, [datetime-field, [dimension, Month], month], [datetime-field, [dimension, CancelationTimestamp], month]]]
-      Total: [count-where, ["!=", [datetime-field, [dimension, Month], month], [datetime-field, [dimension, CancelationTimestamp], month]]]
+      Churned: [count-where, [=, [dimension, Month], [dimension, CancelationMonth]]]
+      ChurnRate: [share, [=, [dimension, Month], [dimension, CancelationMonth]]]
+      Total: [count-where, [or, ["!=", [dimension, Month], [dimension, CancelationMonth]], [is-null, [dimension, CancelationMonth]]]]
+      TotalCount: [count]
       New: [min, [dimension, Count]]

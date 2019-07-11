@@ -95,61 +95,63 @@
 
 (defn- transform-step!
   [bindings spec {:keys [name source expressions aggregation breakout joins description limit filter]}]
-  (let [local-bindings (-> bindings
-                           (assoc name {:dimensions (-> source bindings :dimensions)})
+  (let [source-table   (->> source bindings :entity)
+        local-bindings (-> bindings
+                           (assoc-in [name :dimensions] (-> source bindings :dimensions))
                            (add-bindings name ->Expression expressions)
                            (add-bindings name ->Metric aggregation)
-                           (add-breakout-bindings name breakout)
-                           (get-in [name :dimensions]))
-        source-table   (->> source bindings :entity)
-        mbql-snippets  (m/map-vals ->mbql local-bindings)
-        query          (cond-> {:source-table (->source-table-reference source-table)}
-                         (nil? aggregation)
-                         (assoc :fields (map mbql-snippets (-> source bindings :dimensions keys)))
+                           (add-breakout-bindings name breakout))
+        mbql-snippets  (m/map-vals ->mbql (get-in local-bindings [name :dimensions]))
+        query            (cond-> {:source-table (->source-table-reference source-table)}
+                           (nil? aggregation)
+                           (assoc :fields (map mbql-snippets (-> source bindings :dimensions keys)))
 
-                         ;; Expressions used in metrics will just get inlined
-                         (and expressions
-                              (nil? aggregation))
-                         (->
-                          (assoc :expressions (->> expressions
-                                                   keys
-                                                   (select-keys mbql-snippets)
-                                                   (m/map-keys keyword)))
-                           (update :fields concat (for [expression (keys expressions)]
-                                                    [:expression expression])))
+                           expressions
+                           (->
+                            (assoc :expressions (->> expressions
+                                                     keys
+                                                     (select-keys mbql-snippets)
+                                                     (m/map-keys keyword)))
+                             (update :fields concat (for [expression (keys expressions)]
+                                                      [:expression expression])))
 
-                         aggregation
-                         (assoc :aggregation (for [agg (keys aggregation)]
-                                               [:named (mbql-snippets agg) agg]))
+                           aggregation
+                           (assoc :aggregation (for [agg (keys aggregation)]
+                                                 [:named (mbql-snippets agg) agg]))
 
-                         breakout
-                         (assoc :breakout (for [breakout breakout]
-                                            (resolve-dimension-bindings bindings source breakout)))
+                           breakout
+                           (assoc :breakout (for [breakout breakout]
+                                              (resolve-dimension-bindings local-bindings name breakout)))
 
-                         joins
-                         (assoc :joins (build-join bindings source joins))
+                           joins
+                           (assoc :joins (build-join bindings source joins))
 
-                         filter
-                         (assoc :filter (resolve-dimension-bindings bindings source filter))
+                           filter
+                           (assoc :filter (resolve-dimension-bindings local-bindings name filter))
 
-                         limit
-                         (assoc :limit limit))]
+                           limit
+                           (assoc :limit limit))
+        query            {:type     :query
+                          :query    query
+                          :database ((some-fn :db_id :database_id) source-table)}]
     (assoc bindings
-      name {:dimensions (into {} (for [col (infer-cols query)]
-                                   [(if (local-bindings (:name col))
-                                      (:name col)
-                                      (let [mask (juxt :name :base_type)]
-                                        (some->> local-bindings
-                                                 (m/find-first (comp #{(mask col)} mask val))
-                                                 key)))
-                                    (-> col
-                                        (dissoc :id)
-                                        field/map->FieldInstance)]))
+      name {:dimensions (into {}
+                              (let [result-bindings (apply merge-with (fn [x _] x)
+                                                           (get-in local-bindings [name :dimensions])
+                                                           (map (comp :dimensions local-bindings :source) joins))]
+                                (for [col (infer-cols query)]
+                                  [(if (result-bindings (:name col))
+                                     (:name col)
+                                     (let [mask (juxt :name :special_type)]
+                                       (some->> result-bindings
+                                                (m/find-first (comp #{(mask col)} mask val))
+                                                key)))
+                                   (-> col
+                                       (dissoc :id)
+                                       field/map->FieldInstance)])))
             :entity     (materialize/make-card! name
                                                 (:name spec)
-                                                {:type     :query
-                                                 :query    query
-                                                 :database ((some-fn :db_id :database_id) source-table)}
+                                                query
                                                 description)})))
 
 (defn- table-dimensions
@@ -160,7 +162,7 @@
 
 (defn- satisfies-requierment?
   [{requirement-dimensions :dimensions} table]
-  (let [table-dimensions  (map (comp :special_type val) (table-dimensions table))]
+  (let [table-dimensions (map (comp :special_type val) (table-dimensions table))]
     (every? (fn [dimension]
               (some #(isa? % dimension) table-dimensions))
             requirement-dimensions)))
@@ -181,8 +183,9 @@
   (qp.store/fetch-and-store-database! db-id)
   (->> requirements
        vals
-       (mapcat (comp vals :dimensions))
-       (map u/get-id)
+       (map (comp u/get-id :entity))
+       (vector :in)
+       (db/select-ids 'Field :table_id )
        qp.store/fetch-and-store-fields!))
 
 (defn apply-transform!
@@ -213,21 +216,3 @@
   (->> @transform-specs
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
        (filter (comp (partial some #{table}) vals))))
-
-(binding [metabase.api.common/*current-user-id* 1
-          metabase.api.common/*is-superuser?* true
-          metabase.api.common/*current-user-permissions-set* (-> 1
-                                                                 metabase.models.user/permissions-set
-                                                                 atom)
-          ]
-  (run-transform! 228 "stripetest1" (first @transform-specs))
-  ;(satisfy-requirements 228 "stripetest1" (first @transform-specs))
-  )
-
-
-(metabase.query-processor/process-query {:database 1
-                                         :type :query
-                                         :query {:source-table 2
-                                                 :expressions {:foo [:datetime-field [:field-id 15] :month]}
-                                                 :breakout [[:expression "foo"]]
-                                                 :aggregation [:count]}})

@@ -6,15 +6,19 @@
          ;   [metabase.query-processor :as qp]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as qp.imlicit-clauses]
-             [annotate :as qp.annotate]]
+             [annotate :as qp.annotate]
+             [fetch-source-query :as qp.source-query]
+             [resolve-joins :as qp.resolve-joins]]
             [metabase.util :as u]
             [toucan.db :as db]))
 
 (defn infer-cols
   "Infer column types from given (MBQL) query."
   [query]
-  (-> {:query (qp.imlicit-clauses/add-implicit-mbql-clauses query)
-       :type  :query}
+  (-> query
+      (#'qp.source-query/resolve-all)
+      (#'qp.imlicit-clauses/maybe-add-implicit-clauses)
+      (#'qp.resolve-joins/resolve-joins*)
       (#'qp.annotate/add-column-info* nil)
       :cols))
 
@@ -75,7 +79,7 @@
         :name                   step-name
         :collection_id          (get-collection transform-name)
         ;; TODO -- is this needed?
-        :result_metadata        (-> query :query infer-cols)
+        :result_metadata        (infer-cols query)
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields
