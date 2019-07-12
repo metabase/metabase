@@ -77,18 +77,6 @@
        :type     :native
        :database (data/id)})))
 
-;; make sure that the bigquery driver can handle named columns with characters that aren't allowed in BQ itself
-(datasets/expect-with-driver :bigquery
-  {:rows    [[113]]
-   :columns ["User_ID_Plus_Venue_ID"]}
-  (qp.test/rows+column-names
-    (qp/process-query {:database (data/id)
-                       :type     "query"
-                       :query    {:source-table (data/id :checkins)
-                                  :aggregation  [["named" ["max" ["+" ["field-id" (data/id :checkins :user_id)]
-                                                                      ["field-id" (data/id :checkins :venue_id)]]]
-                                                  "User ID Plus Venue ID"]]}})))
-
 ;; ok, make sure we actually wrap all of our ag clauses in `:aggregation-options` clauses with unique names
 (defn- aggregation-names [query]
   (mbql.u/match (-> query :query :aggregation)

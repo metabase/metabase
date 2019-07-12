@@ -587,7 +587,7 @@
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
                                     [:aggregation-options ag & _] (recur ag)
-                                    :else                         &match)]
+                                    _                             &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]

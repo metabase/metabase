@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.expand-macros-test
   (:require [expectations :refer [expect]]
             [metabase
-             [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models
