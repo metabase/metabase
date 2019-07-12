@@ -8,6 +8,8 @@ import colors, { lighten, darken } from "metabase/lib/colors";
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
+import ExpandingContent from "metabase/components/ExpandingContent";
+
 import { Box, Flex } from "grid-styled";
 
 import NotebookStepPreview from "./NotebookStepPreview";
@@ -136,53 +138,60 @@ export default class NotebookStep extends React.Component {
       : null;
 
     return (
-      <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
-        {(title || onRemove) && (
-          <Flex mb={1} width={[8 / 12]} className="text-bold" style={{ color }}>
-            {title}
-            {onRemove && (
-              <Icon
-                name="close"
-                className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
-                tooltip={t`Remove`}
-                onClick={onRemove}
-              />
-            )}
-          </Flex>
-        )}
+      <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>
+        <Box mb={[1, 2]} pb={[1, 2]} className="hover-parent hover--visibility">
+          {(title || onRemove) && (
+            <Flex
+              mb={1}
+              width={[8 / 12]}
+              className="text-bold"
+              style={{ color }}
+            >
+              {title}
+              {onRemove && (
+                <Icon
+                  name="close"
+                  className="ml-auto cursor-pointer text-light text-medium-hover hover-child"
+                  tooltip={t`Remove`}
+                  onClick={onRemove}
+                />
+              )}
+            </Flex>
+          )}
 
-        {NotebookStepComponent && (
-          <Flex align="center">
-            <Box width={[8 / 12]}>
-              <NotebookStepComponent
-                color={color}
-                query={step.query}
-                updateQuery={updateQuery}
-                isLastOpened={isLastOpened}
-              />
-            </Box>
-            <Box width={[1 / 12]}>
-              <ActionButton
-                ml={2}
-                className={!showPreviewButton ? "hidden disabled" : null}
-                icon="play"
-                title={t`Preview`}
-                color={colors["text-medium"]}
-                onClick={() => this.setState({ showPreview: true })}
-              />
-            </Box>
-          </Flex>
-        )}
+          {NotebookStepComponent && (
+            <Flex align="center">
+              <Box width={[8 / 12]}>
+                <NotebookStepComponent
+                  color={color}
+                  query={step.query}
+                  updateQuery={updateQuery}
+                  isLastOpened={isLastOpened}
+                />
+              </Box>
+              <Box width={[1 / 12]}>
+                <ActionButton
+                  ml={2}
+                  className={!showPreviewButton ? "hidden disabled" : null}
+                  icon="play"
+                  title={t`Preview`}
+                  color={colors["text-medium"]}
+                  onClick={() => this.setState({ showPreview: true })}
+                />
+              </Box>
+            </Flex>
+          )}
 
-        {showPreview && canPreview && (
-          <NotebookStepPreview
-            step={step}
-            onClose={() => this.setState({ showPreview: false })}
-          />
-        )}
+          {showPreview && canPreview && (
+            <NotebookStepPreview
+              step={step}
+              onClose={() => this.setState({ showPreview: false })}
+            />
+          )}
 
-        {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
-      </Box>
+          {actionButtons.length > 0 && <Box mt={1}>{actionButtons}</Box>}
+        </Box>
+      </ExpandingContent>
     );
   }
 }
