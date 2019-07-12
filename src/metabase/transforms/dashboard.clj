@@ -16,21 +16,21 @@
 (defn- cards->section
   "Build a section of cards and format them according to what the automagic dashboards code expects."
   [group cards]
-  (mapcat (fn [card]
+  (mapcat (fn [{:keys [name description display] :as card}]
             (cond-> [(assoc card
                        :group         group
                        :width         width
                        :height        height
                        :score         100
-                       :title         (:name card)
-                       :visualization [(:display card)]
+                       :title         name
+                       :visualization [display]
                        :position      0)]
-              (:description card) (conj {:text     (:description card)
-                                         :group    group
-                                         :width    (- total-width width)
-                                         :height   height
-                                         :score    100
-                                         :position 0})))
+              description (conj {:text     description
+                                 :group    group
+                                 :width    (- total-width width)
+                                 :height   height
+                                 :score    100
+                                 :position 0})))
           cards))
 
 (defn dashboard

@@ -95,7 +95,7 @@
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))
 
-(def ^:private transform-spec-validator
+(def ^:private transform-spec-parser
   (sc/coercer!
    TransformSpec
    {MBQL                     mbql.normalize/normalize
@@ -127,7 +127,7 @@
     (with-open [ds (Files/newDirectoryStream dir)]
       (->> ds
            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load transform-spec-validator))))))
+           (mapv (partial yaml/load transform-spec-parser))))))
 
 (def transform-specs
   "List of registered dataset transforms."
