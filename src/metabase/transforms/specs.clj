@@ -41,6 +41,7 @@
                        (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
 
 (def ^:private Steps {Source {(s/required-key :source)      Source
+                              (s/required-key :name)        Source
                               (s/optional-key :aggregation) Aggregation
                               (s/optional-key :breakout)    Breakout
                               (s/optional-key :expressions) Expressions
@@ -98,9 +99,13 @@
   (sc/coercer!
    TransformSpec
    {MBQL                     mbql.normalize/normalize
-    Steps                    (comp (partial dependencies-sort (fn [{:keys [source joins]}]
-                                                                (conj (map :source joins) source)))
-                                   stringify-keys)
+    Steps                    (fn [steps]
+                               (->> steps
+                                    stringify-keys
+                                    (dependencies-sort (fn [{:keys [source joins]}]
+                                                         (conj (map :source joins) source)))
+                                    (m/map-kv-vals (fn [step-name step]
+                                                     (assoc step :name step-name)))))
     Breakout                 (fn [breakouts]
                                (for [breakout (u/ensure-seq breakouts)]
                                  (if (s/check MBQL breakout)
