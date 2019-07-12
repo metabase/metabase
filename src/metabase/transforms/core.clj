@@ -52,13 +52,6 @@
              bindings
              new-bindings))
 
-(defn- ->source-table-reference
-  "Serialize `entity` into a form suitable as `:source-table` value."
-  [entity]
-  (if (instance? (type Table) entity)
-    (u/get-id entity)
-    (str "card__" (u/get-id entity))))
-
 (defn- infer-resulting-dimensions
   [bindings {:keys [joins name]} query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
@@ -107,15 +100,23 @@
                                  (for [breakout breakout]
                                    (resolve-dimension-bindings bindings name breakout)))))
 
+(defn- ->source-table-reference
+  "Serialize `entity` into a form suitable as `:source-table` value."
+  [entity]
+  (if (instance? (type Table) entity)
+    (u/get-id entity)
+    (str "card__" (u/get-id entity))))
+
 (defn- maybe-add-joins
   [bindings {context-source :source joins :joins} query]
-  (m/assoc-some query :joins (not-empty
-                              (for [{:keys [source condition strategy]} joins]
-                                {:condition    (resolve-dimension-bindings bindings context-source condition)
-                                 :source-table (-> source bindings :entity ->source-table-reference)
-                                 :alias        source
-                                 :strategy     strategy
-                                 :fields       :all}))))
+  (m/assoc-some query :joins
+    (not-empty
+     (for [{:keys [source condition strategy]} joins]
+       {:condition    (resolve-dimension-bindings bindings context-source condition)
+        :source-table (-> source bindings :entity ->source-table-reference)
+        :alias        source
+        :strategy     strategy
+        :fields       :all}))))
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
@@ -200,13 +201,3 @@
   (->> @transform-specs
        (keep (partial satisfy-requirements (:db_id table) (:schema table)))
        (filter (comp (partial some #{table}) vals))))
-
-(binding [metabase.api.common/*current-user-id* 1
-          metabase.api.common/*is-superuser?* true
-          metabase.api.common/*current-user-permissions-set* (-> 1
-                                                                 metabase.models.user/permissions-set
-                                                                 atom)
-          ]
-  (apply-transform! 2 "stripetest1" (first @transform-specs))
-  ;(satisfy-requirements 228 "stripetest1" (first @transform-specs))
-  )

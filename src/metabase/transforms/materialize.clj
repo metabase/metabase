@@ -78,7 +78,6 @@
         :description            description
         :name                   step-name
         :collection_id          (get-collection transform-name)
-        ;; TODO -- is this needed?
         :result_metadata        (infer-cols query)
         :visualization_settings {}
         :display                :table}
