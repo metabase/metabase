@@ -72,8 +72,8 @@
 (defn- maybe-add-fields
   [bindings {:keys [aggregation name source]} query]
   (if-not aggregation
-    (assoc query :fields (map (comp ->mbql (get-in bindings [name :dimensions]))
-                              (-> source bindings :dimensions keys)))
+    (assoc query :fields (map (comp ->mbql (get-in bindings [name :dimensions]) key)
+                              (get-in bindings [source :dimensions])))
     query))
 
 (defn- maybe-add-expressions
@@ -128,9 +128,9 @@
 
 (defn- transform-step!
   [spec bindings {:keys [name source description aggregation expressions] :as step}]
-  (let [source-table   (->> source bindings :entity)
+  (let [source-table   (get-in bindings [source :entity])
         local-bindings (-> bindings
-                           (add-bindings name (-> source bindings :dimensions))
+                           (add-bindings name (get-in bindings [source :dimensions]))
                            (add-bindings name expressions)
                            (add-bindings name aggregation))
         query          {:type     :query
@@ -187,7 +187,7 @@
         (let [bindings (reduce (partial transform-step! spec) initial-bindings (vals steps))]
           (for [[result-step {required-dimensions :dimensions}] provides]
             (do
-              (when (not-every? (-> result-step bindings :dimensions) required-dimensions)
+              (when (not-every? (get-in bindings [result-step :dimensions]) required-dimensions)
                 (throw (Exception. (str (tru "Resulting transform {0} do not conform to expectations.\nExpected: {1}\nGot: {2}"
                                              result-step
                                              required-dimensions
@@ -198,6 +198,6 @@
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
-  (->> @transform-specs
-       (keep (partial satisfy-requirements (:db_id table) (:schema table)))
-       (filter (comp (partial some #{table}) vals))))
+  (filter (comp (partial some (comp #{table} :entity val))
+                (partial satisfy-requirements (:db_id table) (:schema table)))
+          @transform-specs))
