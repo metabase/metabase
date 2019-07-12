@@ -89,10 +89,10 @@
                                                                       ["field-id" (data/id :checkins :venue_id)]]]
                                                   "User ID Plus Venue ID"]]}})))
 
-;; ok, make sure we actually wrap all of our ag clauses in `:named` clauses with unique names
+;; ok, make sure we actually wrap all of our ag clauses in `:aggregation-options` clauses with unique names
 (defn- aggregation-names [query]
   (mbql.u/match (-> query :query :aggregation)
-    [:named _ ag-name] ag-name))
+    [:aggregation-options _ {:name ag-name}] ag-name))
 
 ;; make sure queries with two or more of the same aggregation type still work. Aggregations used to be deduplicated
 ;; here in the BigQuery driver; now they are deduplicated as part of the main QP middleware, but no reason not to keep

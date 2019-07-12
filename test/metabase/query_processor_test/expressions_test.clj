@@ -99,10 +99,10 @@
                       :snowflake :type/Number
                       :type/Integer)})
   (set (map #(select-keys % [:name :base_type])
-            (-> (data/run-mbql-query venues
-                  {:aggregation [:named [:sum [:* $price -1]] "x"]
-                   :breakout    [$category_id]})
-                (get-in [:data :cols])))))
+            (qp.test/cols
+              (data/run-mbql-query venues
+                {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
+                 :breakout    [$category_id]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           HANDLING NULLS AND ZEROES                                            |

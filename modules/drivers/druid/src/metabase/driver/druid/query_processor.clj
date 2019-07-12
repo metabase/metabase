@@ -81,7 +81,7 @@
     (= ag-type :distinct)
     :distinct___count
 
-    (= ag-type :named)
+    (= ag-type :aggregation-options)
     (recur (second ag))
 
     ag-type
@@ -586,8 +586,8 @@
   [query-type ag-clause updated-query]
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
-                                    [:named ag & _] (recur ag)
-                                    [_ _ & _]       &match)]
+                                    [:aggregation-options ag & _] (recur ag)
+                                    :else                         &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
@@ -597,7 +597,7 @@
 
 (defn- add-expression-aggregation-output-names
   [[operator & args :as expression]]
-  (if (mbql.u/is-clause? :named expression)
+  (if (mbql.u/is-clause? :aggregation-options expression)
     (update (vec expression) 1 add-expression-aggregation-output-names)
     (into [operator]
           (for [arg args]
@@ -605,39 +605,39 @@
               (number? arg)
               arg
 
-              (mbql.u/is-clause? :named arg)
+              (mbql.u/is-clause? :aggregation-options arg)
               arg
 
               (mbql.u/is-clause? #{:count :avg :distinct :stddev :sum :min :max} arg)
-              [:named arg (name (gensym (str "___" (name (first arg)) "_")))]
+              [:aggregation-options arg {:name (name (gensym (str "___" (name (first arg)) "_")))}]
 
               (mbql.u/is-clause? #{:+ :- :/ :*} arg)
               (add-expression-aggregation-output-names arg))))))
 
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
-  (if (mbql.u/is-clause? :named expression)
+  (if (mbql.u/is-clause? :aggregation-options expression)
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
     (merge (expression-post-aggregation (second expression))
-           {:name (annotate/aggregation-name expression {:top-level? true})})
+           {:name (annotate/aggregation-name expression)})
     {:type   :arithmetic
-     :name   (annotate/aggregation-name expression {:top-level? true})
+     :name   (annotate/aggregation-name expression)
      :fn     operator
      :fields (for [arg args]
-               (cond
-                 (number? arg)
-                 {:type :constant, :name (str arg), :value arg}
+               (mbql.u/match-one arg
+                 (_ :guard number?)
+                 {:type :constant, :name (str &match), :value &match}
 
-                 (mbql.u/is-clause? :named arg)
-                 {:type :fieldAccess, :fieldName (last arg)}
+                 [:aggregation-options _ options]
+                 {:type :fieldAccess, :fieldName (:name options)}
 
-                 (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                 (expression-post-aggregation arg)))}))
+                 #{:+ :- :/ :*}
+                 (expression-post-aggregation &match)))}))
 
 (declare handle-aggregations)
 
 (defn- expression->actual-ags
-  "Return a flattened list of actual aggregations that are needed for EXPRESSION."
+  "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
   (apply concat (for [arg   args
                       :when (not (number? arg))]
@@ -647,7 +647,7 @@
 
 (defn- unwrap-name
   [x]
-  (if (mbql.u/is-clause? :named x)
+  (if (mbql.u/is-clause? :aggregation-options x)
     (second x)
     x))
 
@@ -668,7 +668,7 @@
   [query-type {aggregations :aggregation} updated-query]
   (loop [[ag & more] aggregations, query updated-query]
     (cond
-      (and (mbql.u/is-clause? :named ag)
+      (and (mbql.u/is-clause? :aggregation-options ag)
            (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
       (handle-expression-aggregation query-type ag query)
 
@@ -871,7 +871,7 @@
                             :distinct
                             :distinct___count
 
-                            [:named wrapped-ag & _]
+                            [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
 
                             [(ag-type :guard keyword?) & _]
