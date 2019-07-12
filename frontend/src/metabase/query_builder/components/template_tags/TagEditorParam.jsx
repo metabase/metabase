@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 
 import Toggle from "metabase/components/Toggle.jsx";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
@@ -17,6 +18,7 @@ import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import MetabaseSettings from "metabase/lib/settings";
 import type { FieldId } from "metabase/meta/types/Field";
 
 type Props = {
@@ -122,6 +124,7 @@ export default class TagEditorParam extends Component {
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
+    const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     return (
       <div className="pb2 mb2 border-bottom border-dark">
         <h3 className="pb2">{tag.name}</h3>
@@ -173,10 +176,26 @@ export default class TagEditorParam extends Component {
                 isInitiallyOpen={!tag.dimension}
               />
             )}
+            {hasSelectedDimensionField && !hasWidgetOptions && (
+              <p className="pb1">
+                {t`Oh no! There are no filter widgets for this field. Select
+                another field or`}{" "}
+                <Link
+                  to={MetabaseSettings.docsUrl(
+                    "users-guide/13-sql-parameters",
+                    "the-field-filter-variable-type",
+                  )}
+                  target="_blank"
+                  className="link"
+                >
+                  {t`read about this issue in the docs.`}
+                </Link>
+              </p>
+            )}
           </div>
         )}
 
-        {widgetOptions && widgetOptions.length > 0 && (
+        {hasWidgetOptions && (
           <div className="pb1">
             <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
             <Select
