@@ -20,9 +20,16 @@ import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
 import {
+  loadObjectDetailFKReferences,
+  followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
 } from "metabase/query_builder/actions";
+import {
+  getTableMetadata,
+  getTableForeignKeys,
+  getTableForeignKeyReferences,
+} from "metabase/query_builder/selectors";
 
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
@@ -31,17 +38,46 @@ import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
+type ForeignKeyId = number;
+type ForeignKey = {
+  id: ForeignKeyId,
+  relationship: string,
+  origin: Field,
+  origin_id: FieldId,
+  destination: Field,
+  destination_id: FieldId,
+};
+
+type ForeignKeyCountInfo = {
+  status: number,
+  value: number,
+};
+
 type Props = VisualizationProps & {
+  tableMetadata: ?TableMetadata,
+  tableForeignKeys: ?(ForeignKey[]),
+  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
+  loadObjectDetailFKReferences: () => void,
+  followForeignKey: (fk: any) => void,
   viewNextObjectDetail: () => void,
   viewPreviousObjectDetail: () => void,
 };
 
-const mapStateToProps = () => ({});
+const mapStateToProps = state => ({
+  tableMetadata: getTableMetadata(state),
+  tableForeignKeys: getTableForeignKeys(state),
+  tableForeignKeyReferences: getTableForeignKeyReferences(state),
+});
 
-const mapDispatchToProps = {
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
-};
+// ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
+const mapDispatchToProps = dispatch => ({
+  loadObjectDetailFKReferences: (...args) =>
+    dispatch(loadObjectDetailFKReferences(...args)),
+  followForeignKey: (...args) => dispatch(followForeignKey(...args)),
+  viewPreviousObjectDetail: (...args) =>
+    dispatch(viewPreviousObjectDetail(...args)),
+  viewNextObjectDetail: (...args) => dispatch(viewNextObjectDetail(...args)),
+});
 
 export class ObjectDetail extends Component {
   props: Props;

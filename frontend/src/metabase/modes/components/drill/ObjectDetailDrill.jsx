@@ -18,7 +18,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   }
 
   // $FlowFixMe
-  let field = question.metadata().fields[clicked.column.id];
+  let field = question.metadata().field(clicked.column.id);
   if (!field) {
     return [];
   }

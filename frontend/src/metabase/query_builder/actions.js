@@ -155,6 +155,9 @@ export const onCloseChartType = () =>
     ...UI_CONTROLS_SIDEBAR_DEFAULTS,
   });
 
+export const onCloseSidebars = () =>
+  setUIControls(UI_CONTROLS_SIDEBAR_DEFAULTS);
+
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);
 
@@ -764,7 +767,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         if (shouldOpenInBlankWindow(url, { blankOnMetaKey: true })) {
           open(url);
         } else {
-          dispatch(resetUIControls());
+          dispatch(onCloseSidebars());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());

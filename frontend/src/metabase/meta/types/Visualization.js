@@ -107,26 +107,4 @@ export type VisualizationProps = {
   onChangeCardAndRun: OnChangeCardAndRun,
 
   onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
-
-  // object detail
-  tableMetadata: ?TableMetadata,
-  tableForeignKeys: ?(ForeignKey[]),
-  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
-  loadObjectDetailFKReferences: () => void,
-  followForeignKey: (fk: any) => void,
-};
-
-type ForeignKeyId = number;
-type ForeignKey = {
-  id: ForeignKeyId,
-  relationship: string,
-  origin: Field,
-  origin_id: FieldId,
-  destination: Field,
-  destination_id: FieldId,
-};
-
-type ForeignKeyCountInfo = {
-  status: number,
-  value: number,
 };
