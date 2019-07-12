@@ -35,19 +35,19 @@
         (not= source table-or-dimension) (assoc :source-alias table-or-dimension))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
-(defn- resolve-dimension-bindings
+(defn- resolve-dimension-clauses
   [bindings source mbql-form]
   (mbql.u/replace mbql-form
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 ->mbql
-                                (resolve-dimension-bindings bindings source))))
+                                (resolve-dimension-clauses bindings source))))
 
 (defn- add-bindings
   [bindings source new-bindings]
   (reduce-kv (fn [bindings name definition]
                (->> definition
-                    (resolve-dimension-bindings bindings source)
+                    (resolve-dimension-clauses bindings source)
                     (assoc-in bindings [source :dimensions name])))
              bindings
              new-bindings))
@@ -98,7 +98,7 @@
   [bindings {:keys [name breakout]} query]
   (m/assoc-some query :breakout (not-empty
                                  (for [breakout breakout]
-                                   (resolve-dimension-bindings bindings name breakout)))))
+                                   (resolve-dimension-clauses bindings name breakout)))))
 
 (defn- ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
@@ -112,7 +112,7 @@
   (m/assoc-some query :joins
     (not-empty
      (for [{:keys [source condition strategy]} joins]
-       {:condition    (resolve-dimension-bindings bindings context-source condition)
+       {:condition    (resolve-dimension-clauses bindings context-source condition)
         :source-table (-> source bindings :entity ->source-table-reference)
         :alias        source
         :strategy     strategy
@@ -120,7 +120,7 @@
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
-  (m/assoc-some query :filter (resolve-dimension-bindings bindings name filter)))
+  (m/assoc-some query :filter (resolve-dimension-clauses bindings name filter)))
 
 (defn- maybe-add-limit
   [bindings {:keys [limit]} query]
@@ -128,13 +128,13 @@
 
 (defn- transform-step!
   [spec bindings {:keys [name source description aggregation expressions] :as step}]
-  (let [source-table   (get-in bindings [source :entity])
+  (let [source-entity  (get-in bindings [source :entity])
         local-bindings (-> bindings
                            (add-bindings name (get-in bindings [source :dimensions]))
                            (add-bindings name expressions)
                            (add-bindings name aggregation))
         query          {:type     :query
-                        :query    (->> {:source-table (->source-table-reference source-table)}
+                        :query    (->> {:source-table (->source-table-reference source-entity)}
                                        (maybe-add-fields local-bindings step)
                                        (maybe-add-expressions local-bindings step)
                                        (maybe-add-aggregation local-bindings step)
@@ -142,7 +142,7 @@
                                        (maybe-add-joins local-bindings step)
                                        (maybe-add-filter local-bindings step)
                                        (maybe-add-limit local-bindings step))
-                        :database ((some-fn :db_id :database_id) source-table)}]
+                        :database ((some-fn :db_id :database_id) source-entity)}]
     (assoc bindings name {:entity     (materialize/make-card! name (:name spec) query description)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
