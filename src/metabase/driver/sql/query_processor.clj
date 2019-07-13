@@ -151,22 +151,11 @@
 
 (defmethod ->honeysql [:sql :value] [driver [_ value]] (->honeysql driver value))
 
-;; TODO: Temp fix
-(defn- expression-with-name*
-  [query expression-name]
-  (or (get-in query [:expressions (keyword expression-name)])
-      (and (:source-query query) (expression-with-name* (:source-query query) expression-name))))
-
-(defn- expression-with-name
-  [query expression-name]
-  (or (expression-with-name* (:query query) expression-name)
-      (throw (Exception. (str (tru "No expression named ''{0}''" (name expression-name)))))))
-
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
   ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
   ;; original formula.
-  (->honeysql driver (expression-with-name *query* expression-name)))
+  (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
 (defn cast-unix-timestamp-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."

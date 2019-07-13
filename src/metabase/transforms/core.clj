@@ -93,7 +93,7 @@
   (->> (for [agg (keys aggregation)]
          [:aggregation-options (get-in bindings [name :dimensions agg]) {:name agg}])
        not-empty
-       (m/assoc-some :aggregation)))
+       (m/assoc-some query :aggregation)))
 
 (defn- maybe-add-breakout
   [bindings {:keys [name breakout]} query]
