@@ -653,7 +653,9 @@ export class AggregationDimension extends Dimension {
       // FIXME: query lib
       if (aggregation[0] === "aggregation-options") {
         const { "display-name": displayName } = aggregation[2];
-        if (displayName) return displayName;
+        if (displayName) {
+          return displayName;
+        }
       }
       const short = aggregation[0];
       // NOTE: special case for "distinct"

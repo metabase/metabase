@@ -828,16 +828,16 @@ export const NamedClause = {
     return Array.isArray(clause) && clause[0] === "aggregation-options";
   },
   getOptions(clause) {
-    return hasOptions(clause) ? clause[2] : {};
+    return NamedClause.hasOptions(clause) ? clause[2] : {};
   },
   isNamed(clause) {
-    return getOptions(clause)["display-name"];
+    return NamedClause.getOptions(clause)["display-name"];
   },
   getName(clause) {
-    return getOptions(clause)["display-name"];
+    return NamedClause.getOptions(clause)["display-name"];
   },
   getContent(clause) {
-    return hasOptions(clause) ? clause[1] : clause;
+    return NamedClause.hasOptions(clause) ? clause[1] : clause;
   },
   setName(clause, name) {
     return [
