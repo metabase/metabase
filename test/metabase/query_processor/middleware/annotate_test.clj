@@ -4,12 +4,16 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -91,7 +95,7 @@
 (expect
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
-       :display_name "VENUES → Name"
+       :display_name "Venues → Name"
        :fk_field_id  %category_id
        :source       :fields
        :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
@@ -108,6 +112,28 @@
                            :fk-field-id  %category_id}]}}
         {:columns [:name]})))))
 
+;; we shuld use the `display_name` of a Table instead of its `name` in joined display names
+(expect
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "Geographical locations to share Tips about → Name" ; RIP GeoTips
+       :fk_field_id  %category_id
+       :source       :fields
+       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (tu/with-temp-vals-in-db Table $$venues {:display_name "Geographical locations to share Tips about"}
+        (doall
+         (annotate/column-info
+          {:type  :query
+           :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                   :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                             :source-table $$venues
+                             :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                             :strategy     :left-join
+                             :fk-field-id  %category_id}]}}
+          {:columns [:name]}))))))
+
 ;; when using `:joined-field` clauses for a join a source query (instead of a source table), `display_name` should
 ;; include the join alias
 (expect
@@ -117,18 +143,18 @@
        :fk_field_id  %category_id
        :source       :fields
        :field_ref    &cats.categories.name))]
- (qp.test-util/with-everything-store
-   (data/$ids venues
-     (doall
-      (annotate/column-info
-       {:type  :query
-        :query {:fields [&cats.categories.name]
-                :joins  [{:alias        "cats"
-                          :source-query {:source-table $$venues}
-                          :condition    [:= $category_id &cats.categories.id]
-                          :strategy     :left-join
-                          :fk-field-id  %category_id}]}}
-       {:columns [:name]})))))
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (doall
+       (annotate/column-info
+        {:type  :query
+         :query {:fields [&cats.categories.name]
+                 :joins  [{:alias        "cats"
+                           :source-query {:source-table $$venues}
+                           :condition    [:= $category_id &cats.categories.id]
+                           :strategy     :left-join
+                           :fk-field-id  %category_id}]}}
+        {:columns [:name]})))))
 
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
