@@ -337,6 +337,8 @@
         [original-column->value] (db/query {:select (keys column->temp-value)
                                             :from   [model]
                                             :where  [:= :id (u/get-id object-or-id)]})]
+    (assert original-column->value
+      (format "%s %d not found." (name model) (u/get-id object-or-id)))
     (try
       (db/update! model (u/get-id object-or-id)
         column->temp-value)
