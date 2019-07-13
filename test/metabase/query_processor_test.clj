@@ -169,12 +169,13 @@
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
-  (let [source-col      (col source-table-kw source-field-kw)
-        dest-col        (col dest-table-kw dest-field-kw)
-        dest-table-name (db/select-one-field :name Table :id (data/id dest-table-kw))
-        join-alias      (#'add-implicit-joins/join-alias dest-table-name (:name source-col))]
+  (let [source-col              (col source-table-kw source-field-kw)
+        dest-col                (col dest-table-kw dest-field-kw)
+        dest-table-display-name (db/select-one-field :display_name Table :id (data/id dest-table-kw))
+        dest-table-name         (db/select-one-field :name Table :id (data/id dest-table-kw))
+        join-alias              (#'add-implicit-joins/join-alias dest-table-name (:name source-col))]
     (-> dest-col
-        (update :display_name (partial format "%s → %s" dest-table-name))
+        (update :display_name (partial format "%s → %s" (or dest-table-display-name dest-table-name)))
         (assoc :field_ref   [:joined-field join-alias [:field-id (:id dest-col)]]
                :fk_field_id (:id source-col)))))
 

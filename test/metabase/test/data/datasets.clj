@@ -2,7 +2,7 @@
   "Interface + implementations for loading test datasets for different drivers, and getting information about the
   dataset's tables, fields, etc.
 
-  TODO - rename this to `metabase.driver.test-extensions.expect` or something like that"
+  TODO - rename this to `metabase.driver.test-extensions.expect` or `metabase.driver.test` or something like that"
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.test.data.env :as tx.env]))
