@@ -90,9 +90,10 @@
 
 (defn- maybe-add-aggregation
   [bindings {:keys [name aggregation]} query]
-  (m/assoc-some query :aggregation (not-empty
-                                    (for [agg (keys aggregation)]
-                                      [:named (get-in bindings [name :dimensions agg]) agg]))))
+  (->> (for [agg (keys aggregation)]
+         [:aggregation-options (get-in bindings [name :dimensions agg]) {:name agg}])
+       not-empty
+       (m/assoc-some :aggregation)))
 
 (defn- maybe-add-breakout
   [bindings {:keys [name breakout]} query]
