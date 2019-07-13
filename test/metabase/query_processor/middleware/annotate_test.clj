@@ -454,6 +454,7 @@
       :cols
       second))
 
+
 ;; make sure multiple expressions come back with deduplicated names
 (expect
   [{:base_type    :type/Float
@@ -476,6 +477,24 @@
                             [:* 0.8 [:avg $price]]]
               :limit       10}))))
       :cols))
+
+(expect
+  {:name            "prev_month"
+   :display_name    "prev_month"
+   :base_type       :type/DateTime
+   :special_type    nil
+   :expression_name "prev_month"
+   :source          :fields
+   :field_ref       [:expression "prev_month"]}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query users
+           {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
+            :fields      [[:expression "prev_month"]]
+            :limit       10})))
+      :cols
+      first))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           result-rows-maps->vectors                                            |

@@ -376,19 +376,11 @@
 
 ;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
 ;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
-(defmulti date-interval
-  "Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this
-  returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should return a
-  native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a HoneySQL
-  form to call the appropriate SQL fns:
-
-    (date-interval :postgres :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))"
-  {:arglists '([driver unit amount])}
+(defmulti date-add
+  "Return an driver-appropriate representation of a moment relative to the given time."
+  {:arglists '([driver dt amount unit])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmethod date-interval ::driver [_ unit amount]
-  (du/relative-date unit amount))
 
 
 (defmulti describe-database

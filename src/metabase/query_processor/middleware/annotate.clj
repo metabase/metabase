@@ -106,8 +106,16 @@
                             join-alias)]
     (format "%s → %s" join-display-name field-display-name)))
 
+(defn- infer-expression-type
+  [expression]
+  (if (mbql.u/datetime-arithmetics? expression)
+    {:base_type    :type/DateTime
+     :special_type nil}
+    {:base_type    :type/Float
+     :special_type :type/Number}))
+
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [{:keys [source-metadata], :as inner-query} :- su/Map, clause :- mbql.s/Field]
+  [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
@@ -143,12 +151,14 @@
          :display_name (humanization/name->human-readable-name field-name)})
 
     [:expression expression-name]
-    {:name            expression-name
-     :display_name    expression-name
-     :base_type       :type/Float
-     :special_type    :type/Number
-     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-     :expression_name expression-name}
+    (merge
+     ;; There's some inconsistency when expression names are keywords and when strings.
+     ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
+     (infer-expression-type (some expressions ((juxt identity keyword) expression-name)))
+     {:name            expression-name
+      :display_name    expression-name
+      ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+      :expression_name expression-name})
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
@@ -316,8 +326,7 @@
     ;; for the purposes of a patch release.
     #{:expression :+ :- :/ :*}
     (merge
-     {:base_type    :type/Float
-      :special_type :type/Number}
+     (infer-expression-type &match)
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info &match)))
 
