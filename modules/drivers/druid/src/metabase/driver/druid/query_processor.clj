@@ -10,7 +10,9 @@
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
             [metabase.driver.druid.js :as js]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -81,7 +83,7 @@
     (= ag-type :distinct)
     :distinct___count
 
-    (= ag-type :named)
+    (= ag-type :aggregation-options)
     (recur (second ag))
 
     ag-type
@@ -139,18 +141,23 @@
   (dimension-or-metric? field))
 
 
-(def ^:private ^:const query-type->default-query
-  (let [defaults {:intervals   ["1900-01-01/2100-01-01"]
-                  :granularity :all
-                  :context     {:timeout 60000
-                                :queryId (str (java.util.UUID/randomUUID))}}]
-    {::select             (merge defaults {:queryType  :select
-                                           :pagingSpec {:threshold i/absolute-max-results}})
-     ::total              (merge defaults {:queryType :timeseries})
-     ::grouped-timeseries (merge defaults {:queryType :timeseries})
-     ::topN               (merge defaults {:queryType :topN
-                                           :threshold topN-max-results})
-     ::groupBy            (merge defaults {:queryType :groupBy})}))
+(defn- random-query-id []
+  (str (java.util.UUID/randomUUID)))
+
+(defn- query-type->default-query [query-type]
+  (merge
+   {:intervals   ["1900-01-01/2100-01-01"]
+    :granularity :all
+    :context     {:timeout 60000
+                  :queryId (random-query-id)}}
+   (case query-type
+     ::select             {:queryType  :select
+                           :pagingSpec {:threshold i/absolute-max-results}}
+     ::total              {:queryType :timeseries}
+     ::grouped-timeseries {:queryType :timeseries}
+     ::topN               {:queryType :topN
+                           :threshold topN-max-results}
+     ::groupBy            {:queryType :groupBy})))
 
 
 
@@ -582,12 +589,12 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(defn- handle-aggregation
-  [query-type ag-clause updated-query]
+(s/defn ^:private handle-aggregation
+  [query-type, ag-clause :- mbql.s/Aggregation, updated-query]
   (let [output-name               (annotate/aggregation-name ag-clause)
         [ag-type ag-field & args] (mbql.u/match-one ag-clause
-                                    [:named ag & _] (recur ag)
-                                    [_ _ & _]       &match)]
+                                    [:aggregation-options ag & _] (recur ag)
+                                    _                             &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
       (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
@@ -595,49 +602,61 @@
             (update :projections #(vec (concat % projections)))
             (update :query #(merge-with concat % ag-clauses)))))))
 
+(defn- deduplicate-aggregation-options [expression]
+  (mbql.u/replace expression
+    [:aggregation-options [:aggregation-options ag options-1] options-2]
+    [:aggregation-options ag (merge options-1 options-2)]))
+
+(def ^:private ^:dynamic *query-unique-identifier-counter*
+  "Counter used for generating unique identifiers for use in the query. Bound to `(atom 0)` and incremented on each use
+  as the MBQL query is compiled."
+  nil)
+
+(defn- aggregation-unique-identifier [clause]
+  (format "__%s_%d" (name clause) (first (swap-vals! *query-unique-identifier-counter* inc))))
+
 (defn- add-expression-aggregation-output-names
-  [[operator & args :as expression]]
-  (if (mbql.u/is-clause? :named expression)
-    (update (vec expression) 1 add-expression-aggregation-output-names)
-    (into [operator]
-          (for [arg args]
-            (cond
-              (number? arg)
-              arg
+  [expression]
+  (mbql.u/replace expression
+    [:aggregation-options ag options]
+    (deduplicate-aggregation-options [:aggregation-options (add-expression-aggregation-output-names ag) options])
 
-              (mbql.u/is-clause? :named arg)
-              arg
-
-              (mbql.u/is-clause? #{:count :avg :distinct :stddev :sum :min :max} arg)
-              [:named arg (name (gensym (str "___" (name (first arg)) "_")))]
-
-              (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-              (add-expression-aggregation-output-names arg))))))
+    [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
+    [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
-  (if (mbql.u/is-clause? :named expression)
+  (mbql.u/match-one expression
     ;; If it's a named expression, we want to preserve the included name, so recurse, but merge in the name
+    [:aggregation-options ag _]
     (merge (expression-post-aggregation (second expression))
-           {:name (annotate/aggregation-name expression {:top-level? true})})
+           {:name (annotate/aggregation-name expression)})
+
+    _
     {:type   :arithmetic
-     :name   (annotate/aggregation-name expression {:top-level? true})
+     :name   (annotate/aggregation-name expression)
      :fn     operator
-     :fields (for [arg args]
-               (cond
-                 (number? arg)
-                 {:type :constant, :name (str arg), :value arg}
+     :fields (vec (for [arg args]
+                    (mbql.u/match-one arg
+                      number?
+                      {:type :constant, :name (str &match), :value &match}
 
-                 (mbql.u/is-clause? :named arg)
-                 {:type :fieldAccess, :fieldName (last arg)}
+                      [:aggregation-options _ (options :guard :name)]
+                      {:type :fieldAccess, :fieldName (:name options)}
 
-                 (mbql.u/is-clause? #{:+ :- :/ :*} arg)
-                 (expression-post-aggregation arg)))}))
+                      #{:+ :- :/ :*}
+                      (expression-post-aggregation &match)
+
+                      ;; we should never get here unless our code is B U S T E D
+                      _
+                      (throw (ex-info (str (tru "Expected :aggregation-options, constant, or expression."))
+                               {:type :bug, :input arg})))))}))
+
 
 (declare handle-aggregations)
 
 (defn- expression->actual-ags
-  "Return a flattened list of actual aggregations that are needed for EXPRESSION."
+  "Return a flattened list of actual aggregations that are needed for `expression`."
   [[_ & args]]
   (apply concat (for [arg   args
                       :when (not (number? arg))]
@@ -647,7 +666,7 @@
 
 (defn- unwrap-name
   [x]
-  (if (mbql.u/is-clause? :named x)
+  (if (mbql.u/is-clause? :aggregation-options x)
     (second x)
     x))
 
@@ -662,24 +681,23 @@
         post-agg      (expression-post-aggregation expression)]
     (-> updated-query
         (update :projections conj (keyword (:name post-agg)))
-        (update :query #(merge-with concat % {:postAggregations [post-agg]})))))
+        (update-in [:query :postAggregations] concat [post-agg]))))
 
 (defn- handle-aggregations
   [query-type {aggregations :aggregation} updated-query]
-  (loop [[ag & more] aggregations, query updated-query]
-    (cond
-      (and (mbql.u/is-clause? :named ag)
-           (mbql.u/is-clause? #{:+ :- :/ :*} (second ag)))
-      (handle-expression-aggregation query-type ag query)
+  (reduce
+   (fn [updated-query aggregation]
+     (mbql.u/match-one aggregation
+       [:aggregation-options [(_ :guard #{:+ :- :/ :*}) & _] _]
+       (handle-expression-aggregation query-type &match updated-query)
 
-      (mbql.u/is-clause? #{:+ :- :/ :*} ag)
-      (handle-expression-aggregation query-type ag query)
+       #{:+ :- :/ :*}
+       (handle-expression-aggregation query-type &match updated-query)
 
-      (not ag)
-      query
-
-      :else
-      (recur more (handle-aggregation query-type ag query)))))
+       _
+       (handle-aggregation query-type &match updated-query)))
+   updated-query
+   aggregations))
 
 
 ;;; ------------------------------------------------ handle-breakout -------------------------------------------------
@@ -871,7 +889,7 @@
                             :distinct
                             :distinct___count
 
-                            [:named wrapped-ag & _]
+                            [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
 
                             [(ag-type :guard keyword?) & _]
@@ -1139,7 +1157,8 @@
   ;; Merge `:settings` into the inner query dict so the QP has access to it
   (let [query (assoc (:query query)
                 :settings (:settings query))]
-    (binding [*query* query]
+    (binding [*query*                   query
+              *query-unique-identifier-counter* (atom 0)]
       (build-druid-query query))))
 
 
@@ -1188,7 +1207,7 @@
                          (json/parse-string query keyword)
                          query)
         query-type     (or query-type
-                           (keyword "metabase.driver.druid.query-processor" (name (:queryType query))))
+                           (keyword (namespace ::query) (name (:queryType query))))
         post-proc-map  (->> query
                             (do-query details)
                             (post-process query-type projections

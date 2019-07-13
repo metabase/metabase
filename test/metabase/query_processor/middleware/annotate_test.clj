@@ -264,11 +264,11 @@
   (aggregation-names [:sum [:field-id (data/id :venues :id)]]))
 
 (expect
-  {:name "count + 1", :display_name "count + 1"}
+  {:name "expression", :display_name "count + 1"}
   (aggregation-names [:+ [:count] 1]))
 
 (expect
-  {:name         "min + (2 * avg)"
+  {:name         "expression"
    :display_name "minimum value of ID + (2 * average of Price)"}
   (aggregation-names
    [:+
@@ -276,7 +276,7 @@
     [:* 2 [:avg [:field-id (data/id :venues :price)]]]]))
 
 (expect
-  {:name         "min + (2 * avg * 3 * (max - 4))"
+  {:name         "expression"
    :display_name "minimum value of ID + (2 * average of Price * 3 * (maximum value of Category ID - 4))"}
   (aggregation-names
    [:+
@@ -289,16 +289,29 @@
       [:max [:field-id (data/id :venues :category_id)]]
       4]]]))
 
+;; `aggregation-options` (`:name` and `:display-name`)
 (expect
-  {:name "x", :display_name "x"}
+  {:name "generated_name", :display_name "User-specified Name"}
   (aggregation-names
-   [:named
+   [:aggregation-options
     [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
-    "x"]))
+    {:name "generated_name", :display-name "User-specified Name"}]))
 
+;; `aggregation-options` (`:name` only)
 (expect
-  {:name "My Cool Aggregation", :display_name "My Cool Aggregation"}
-  (aggregation-names [:named [:avg [:field-id (data/id :venues :price)]] "My Cool Aggregation"]))
+  {:name "generated_name", :display_name "minimum value of ID + (2 * average of Price)"}
+  (aggregation-names
+   [:aggregation-options
+    [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
+    {:name "generated_name"}]))
+
+;; `aggregation-options` (`:display-name` only)
+(expect
+  {:name "expression", :display_name "User-specified Name"}
+  (aggregation-names
+   [:aggregation-options
+    [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
+    {:display-name "User-specified Name"}]))
 
 ;; make sure custom aggregation names get included in the col info
 (defn- col-info-for-aggregation-clause [clause]
@@ -308,7 +321,7 @@
 (expect
   {:base_type    :type/Float
    :special_type :type/Number
-   :name         "count / 2"
+   :name         "expression"
    :display_name "count / 2"}
   (col-info-for-aggregation-clause [:/ [:count] 2]))
 
@@ -321,31 +334,41 @@
     (data/$ids venues
       (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
-;; if a `:named` aggregation supplies optional `:use-as-display-name?` `options` we should respect that
-;; `use-as-disply-name?` is `true` by default, e.g. in cases where the user supplies the names themselves
+;; col info for `:aggregation-options` (`:name` and `:display-name`)
 (expect
   {:base_type    :type/Integer
    :special_type :type/Category
    :settings     nil
-   :name         "sum"
-   :display_name "sum"}
+   :name         "sum_2"
+   :display_name "My custom name"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? true}]))))
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}]))))
 
-;; `use-as-display-name?` will normally be `false` when the `:named` clause is generated automatically, e.g. by the
-;; `pre-alias-aggregations` middleware. In this case we want to use the name internally in the query to prevent
-;; duplicate column names, but do not want to use them as display names. See
-;; https://github.com/metabase/mbql/releases/tag/1.2.0 for detailed explanation.
+;; col info for `:aggregation-options` (`:name` only)
 (expect
   {:base_type    :type/Integer
    :special_type :type/Category
    :settings     nil
-   :name         "sum"
+   :name         "sum_2"
    :display_name "sum of Price"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? false}]))))
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:name "sum_2"}]))))
+
+;; col info for `:aggregation-options` (`:display-name` only)
+(expect
+  {:base_type    :type/Integer
+   :special_type :type/Category
+   :settings     nil
+   :name         "sum"
+   :display_name "My Custom Name"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))
 
 ;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
 ;; that information in the results. Their information should be preferred over ours
@@ -394,22 +417,24 @@
      :display_name "count_2"
      :source       :aggregation
      :field_ref    [:aggregation 3]}]}
-  (binding [driver/*driver* :h2]
-    ((annotate/add-column-info (constantly {:cols    [{:name         "count"
-                                                       :display_name "count"
-                                                       :base_type    :type/Number}
-                                                      {:name         "sum"
-                                                       :display_name "sum"
-                                                       :base_type    :type/Number}
-                                                      {:name         "count"
-                                                       :display_name "count"
-                                                       :base_type    :type/Number}
-                                                      {:name         "count_2"
-                                                       :display_name "count_2"
-                                                       :base_type    :type/Number}]
-                                            :columns ["count" "sum" "count" "count_2"]}))
+  (driver/with-driver :h2
+    ((annotate/add-column-info (constantly {:cols [{:name         "count"
+                                                    :display_name "count"
+                                                    :base_type    :type/Number}
+                                                   {:name         "sum"
+                                                    :display_name "sum"
+                                                    :base_type    :type/Number}
+                                                   {:name         "count"
+                                                    :display_name "count"
+                                                    :base_type    :type/Number}
+                                                   {:name         "count_2"
+                                                    :display_name "count_2"
+                                                    :base_type    :type/Number}]}))
      (data/mbql-query venues
-       {:aggregation  [[:count] [:sum] [:count] [:named [:count] "count_2"]]}))))
+       {:aggregation  [[:count]
+                       [:sum]
+                       [:count]
+                       [:aggregation-options [:count] {:display-name "count_2"}]]}))))
 
 ;; make sure expressions come back with the right set of keys, including `:expression_name` (#8854)
 (expect
@@ -423,11 +448,35 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
-           {:expressions {:discount_price [:* 0.9 [:field-id $price]]}
+           {:expressions {"discount_price" [:* 0.9 $price]}
             :fields      [$name [:expression "discount_price"]]
             :limit       10})))
       :cols
       second))
+
+
+;; make sure multiple expressions come back with deduplicated names
+(expect
+  [{:base_type    :type/Float
+    :special_type :type/Number
+    :name         "expression"
+    :display_name "0.9 * average of Price"
+    :source       :aggregation
+    :field_ref    [:aggregation 0]}
+   {:base_type    :type/Float
+    :special_type :type/Number
+    :name         "expression_2"
+    :display_name "0.8 * average of Price"
+    :source       :aggregation
+    :field_ref    [:aggregation 1]}]
+  (-> (driver/with-driver :h2
+        (qp.test-util/with-everything-store
+          ((annotate/add-column-info (constantly {}))
+           (data/mbql-query venues
+             {:aggregation [[:* 0.9 [:avg $price]]
+                            [:* 0.8 [:avg $price]]]
+              :limit       10}))))
+      :cols))
 
 (expect
   {:name            "prev_month"

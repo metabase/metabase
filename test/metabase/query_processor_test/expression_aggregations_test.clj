@@ -184,12 +184,11 @@
              [3  52]
              [4  30]]
    :columns [(data/format-name "price")
-             ;; Redshift annoyingly always lowercases column aliases
-             (driver/format-custom-field-name driver/*driver* "New Price")]}
+             "sum_of_price"]}
   (qp.test/format-rows-by [int int]
     (qp.test/rows+column-names
       (data/run-mbql-query venues
-        {:aggregation [[:named [:sum [:+ $price 1]] "New Price"]]
+                           {:aggregation [[:aggregation-options [:sum [:+ $price 1]] {:name "sum_of_price"}]]
          :breakout    [$price]}))))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
@@ -199,14 +198,14 @@
              [3  -2]
              [4 -17]]
    :columns [(data/format-name "price")
-             (driver/format-custom-field-name driver/*driver* "Sum-41")]}
+             "sum_41"]}
   (qp.test/format-rows-by [int int]
     (qp.test/rows+column-names
       (data/run-mbql-query venues
-        {:aggregation [[:named [:- [:sum $price] 41] "Sum-41"]]
+        {:aggregation [[:aggregation-options [:- [:sum $price] 41] {:name "sum_41"}]]
          :breakout    [$price]}))))
 
-;; check that we can handle METRICS (ick) inside expression aggregation clauses
+;; check that we can handle Metrics inside expression aggregation clauses
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
   [[2 119]
    [3  40]
@@ -220,29 +219,30 @@
           {:aggregation [:+ [:metric (u/get-id metric)] 1]
            :breakout    [[:field-id $price]]})))))
 
-;; check that we can handle METRICS (ick) inside a NAMED clause
+;; check that we can handle Metrics inside an `:aggregation-options` clause
+;; TODO - Pretty sure this test doesn't belong here (?)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
    :columns [(data/format-name "price")
-             (driver/format-custom-field-name driver/*driver* "My Cool Metric")]}
+             "auto_generated_name"]}
   (tt/with-temp Metric [metric {:table_id   (data/id :venues)
                                 :definition {:aggregation [:sum [:field-id (data/id :venues :price)]]
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (qp.test/format-rows-by [int int]
       (qp.test/rows+column-names
         (data/run-mbql-query venues
-          {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
+          {:aggregation [[:aggregation-options [:metric (u/get-id metric)] {:name "auto_generated_name"}]]
            :breakout    [[:field-id $price]]})))))
 
-;; check that METRICS (ick) with a nested aggregation still work inside a NAMED clause
+;; check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
    :columns [(data/format-name "price")
-             (driver/format-custom-field-name driver/*driver* "My Cool Metric")]}
+             "auto_generated_name"]}
   (tt/with-temp Metric [metric (data/$ids venues
                                  {:table_id   $$venues
                                   :definition {:aggregation [[:sum $price]]
@@ -250,16 +250,16 @@
     (qp.test/format-rows-by [int int]
       (qp.test/rows+column-names
         (data/run-mbql-query venues
-          {:aggregation [[:named [:metric (u/get-id metric)] "My Cool Metric"]]
+          {:aggregation [[:aggregation-options [:metric (u/get-id metric)] {:name "auto_generated_name"}]]
            :breakout    [[:field-id $price]]})))))
 
 ;; check that named aggregations come back with the correct column metadata (#4002)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
   (assoc (qp.test/aggregate-col :count)
-    :name         (driver/format-custom-field-name driver/*driver* "Count of Things")
+    :name         "auto_generated_name"
     :display_name "Count of Things")
   (-> (data/run-mbql-query venues
-        {:aggregation [[:named ["COUNT"] "Count of Things"]]})
+        {:aggregation [[:aggregation-options ["COUNT"] {:name "auto_generated_name", :display-name "Count of Things"}]]})
       qp.test/cols
       first))
 

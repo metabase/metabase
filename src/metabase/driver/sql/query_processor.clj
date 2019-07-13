@@ -273,15 +273,18 @@
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :named] [driver [_ ag ag-name]]
+(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
-    [:named _ ag-name & _]
-    (->honeysql driver (hx/identifier :field-alias ag-name))
+    [:aggregation-options ag (options :guard :name)]
+    (->honeysql driver (hx/identifier :field-alias (:name options)))
+
+    [:aggregation-options ag _]
+    (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation

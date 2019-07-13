@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.expand-macros-test
   (:require [expectations :refer [expect]]
             [metabase
-             [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models
@@ -55,7 +54,7 @@
 ;; just a metric (w/out nested segments)
 (expect
   (mbql-query
-   {:aggregation [[:named [:count] "Toucans in the rainforest"]]
+   {:aggregation [[:aggregation-options [:count] {:display-name "Toucans in the rainforest"}]]
     :filter      [:and
                   [:> [:field-id 4] 1]
                   [:= [:field-id 5] "abc"]]
@@ -78,7 +77,7 @@
 (expect
   (mbql-query
    {:source-table 1000
-    :aggregation  [[:named [:count] "ABC Fields"]]
+    :aggregation  [[:aggregation-options [:count] {:display-name "ABC Fields"}]]
     :filter       [:= [:field-id 5] "abc"]
     :breakout     [[:field-id 17]]
     :order-by     [[:asc [:field-id 1]]]})
@@ -98,7 +97,7 @@
 ;; metric w/ no filter definition
 (expect
   (mbql-query
-   {:aggregation [[:named [:count] "My Metric"]]
+   {:aggregation [[:aggregation-options [:count] {:display-name "My Metric"}]]
     :filter      [:= [:field-id 5] "abc"]
     :breakout    [[:field-id 17]]
     :order-by    [[:asc [:field-id 1]]]})
@@ -118,7 +117,7 @@
 (expect
   (mbql-query
    {:source-table 1000
-    :aggregation  [[:named [:sum [:field-id 18]] "My Metric"]]
+    :aggregation  [[:aggregation-options [:sum [:field-id 18]] {:display-name "My Metric"}]]
     :filter       [:and
                    [:> [:field-id 4] 1]
                    [:is-null [:field-id 7]]
@@ -158,12 +157,9 @@
                                              :filter      [:> [:field-id (data/id :venues :price)] 1]}}]
     (qp.test/format-rows-by [int int]
       (qp.test/rows
-        (qp/process-query
-          {:database (data/id)
-           :type     :query
-           :query    {:source-table (data/id :venues)
-                      :aggregation  [[:metric (u/get-id metric)]]
-                      :breakout     [[:field-id (data/id :venues :price)]]}})))))
+        (data/run-mbql-query venues
+          {:aggregation  [[:metric (u/get-id metric)]]
+           :breakout     [$price]})))))
 
 ;; make sure that we don't try to expand GA "metrics" (#6104)
 (expect
@@ -193,19 +189,48 @@
 ;; make sure we can name a :metric (ick)
 (expect
   (mbql-query
-   {:aggregation [[:named [:sum [:field-id 20]] "Named Metric"]]
+   {:aggregation [[:aggregation-options [:sum [:field-id 20]] {:display-name "Named Metric"}]]
     :breakout    [[:field-id 10]]})
   (tt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
     (#'expand-macros/expand-metrics-and-segments
-     (mbql-query {:aggregation [[:named [:metric (u/get-id metric)] "Named Metric"]]
+     (mbql-query {:aggregation [[:aggregation-options [:metric (u/get-id metric)] {:display-name "Named Metric"}]]
                   :breakout    [[:field-id 10]]}))))
 
-;; a Metric whose :aggregation is already named should not get wrapped in a `:named` clause
+;; if the `:metric` is wrapped in aggregation options that do *not* give it a display name, `:display-name` should be
+;; added to the options
 (expect
   (mbql-query
-   {:aggregation [[:named [:sum [:field-id 20]] "My Cool Aggregation"]]
+   {:aggregation [[:aggregation-options
+                   [:sum [:field-id 20]]
+                   {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
     :breakout    [[:field-id 10]]})
-  (tt/with-temp Metric [metric {:definition {:aggregation [[:named [:sum [:field-id 20]] "My Cool Aggregation"]]}}]
+  (tt/with-temp Metric [metric {:definition {:aggregation [[:sum [:field-id 20]]]}}]
+    (#'expand-macros/expand-metrics-and-segments
+     (mbql-query {:aggregation [[:aggregation-options [:metric (u/get-id metric)] {:name "auto_generated_name"}]]
+                  :breakout    [[:field-id 10]]}))))
+
+;; a Metric whose :aggregation is already named should not get wrapped in an `:aggregation-options` clause
+(expect
+  (mbql-query
+   {:aggregation [[:aggregation-options [:sum [:field-id 20]] {:display-name "My Cool Aggregation"}]]
+    :breakout    [[:field-id 10]]})
+  (tt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
+                                                            [:sum [:field-id 20]]
+                                                            {:display-name "My Cool Aggregation"}]]}}]
+    (#'expand-macros/expand-metrics-and-segments
+     (mbql-query {:aggregation [[:metric (u/get-id metric)]]
+                  :breakout    [[:field-id 10]]}))))
+
+;; ...but if it's wrapped in `:aggregation-options`, but w/o given a display name, we should merge the options
+(expect
+  (mbql-query
+   {:aggregation [[:aggregation-options
+                   [:sum [:field-id 20]]
+                   {:name "auto_generated_name", :display-name "Toucans in the rainforest"}]]
+    :breakout    [[:field-id 10]]})
+  (tt/with-temp Metric [metric {:definition {:aggregation [[:aggregation-options
+                                                            [:sum [:field-id 20]]
+                                                            {:name "auto_generated_name"}]]}}]
     (#'expand-macros/expand-metrics-and-segments
      (mbql-query {:aggregation [[:metric (u/get-id metric)]]
                   :breakout    [[:field-id 10]]}))))

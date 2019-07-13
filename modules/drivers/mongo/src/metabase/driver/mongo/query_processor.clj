@@ -390,29 +390,49 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defn- aggregation->rvalue [[aggregation-type arg & args]]
-  {:pre [(keyword? aggregation-type)]}
-  (if-not arg
-    (case aggregation-type
-      :count {$sum 1})
-    (case aggregation-type
-      :named       (recur arg)
-      :avg         {$avg (->rvalue arg)}
-      :count       {$sum {$cond {:if   (->rvalue arg)
-                                 :then 1
-                                 :else 0}}}
-      :distinct    {$addToSet (->rvalue arg)}
-      :sum         {$sum (->rvalue arg)}
-      :min         {$min (->rvalue arg)}
-      :max         {$max (->rvalue arg)}
-      :sum-where   (let [[pred] args]
-                     {$sum {$cond {:if   (parse-cond pred)
-                                   :then (->rvalue arg)
-                                   :else 0}}})
-      :count-where (recur [:sum-where [:value 1] arg]))))
+(defn- aggregation->rvalue [ag]
+  (mbql.u/match-one ag
+    [:aggregation-options ag _]
+    (recur ag)
+
+    [:count]
+    {$sum 1}
+
+    [:count arg]
+    {$sum {$cond {:if   (->rvalue arg)
+                  :then 1
+                  :else 0}}}
+    [:avg arg]
+    {$avg (->rvalue arg)}
+
+
+    [:distinct arg]
+    {$addToSet (->rvalue arg)}
+
+    [:sum arg]
+    {$sum (->rvalue arg)}
+
+    [:min arg]
+    {$min (->rvalue arg)}
+
+    [:max arg]
+    {$max (->rvalue arg)}
+
+    [:sum-where arg pred]
+    {$sum {$cond {:if   (parse-cond pred)
+                  :then (->rvalue arg)
+                  :else 0}}}
+
+    [:count-where pred]
+    (recur [:sum-where [:value 1] pred])
+
+    :else
+    (throw
+     (ex-info (str (tru "Don't know how to handle aggregation {0}" ag))
+       {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
-  (if (= ag-type :named)
+  (if (= ag-type :aggregation-options)
     (recur arg)
     ag))
 
