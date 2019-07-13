@@ -275,9 +275,9 @@ describe("StructuredQuery unit tests", () => {
       it("returns a named expression name", () => {
         expect(
           makeQueryWithAggregation([
-            "named",
+            "aggregation-options",
             ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
-            "Named",
+            { "display-name": "Named" },
           ]).aggregationName(),
         ).toBe("Named");
       });
