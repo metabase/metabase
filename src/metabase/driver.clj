@@ -52,6 +52,15 @@
   below. The QP binds the driver this way in the `bind-driver` middleware."
   nil)
 
+(defn do-with-driver
+  "Impl for `with-driver`."
+  [driver f]
+  ;; it's substantially faster not to call `binding` in the first place if it's already bound
+  (if (= *driver* driver)
+    (f)
+    (binding [*driver* driver]
+      (f))))
+
 (defmacro with-driver
   "Bind current driver to `driver` and execute `body`.
 
@@ -59,8 +68,7 @@
       ...)"
   {:style/indent 1}
   [driver & body]
-  `(binding [*driver* ~driver]
-     ~@body))
+  `(do-with-driver ~driver (fn [] ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

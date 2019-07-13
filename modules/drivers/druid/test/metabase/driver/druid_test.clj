@@ -317,18 +317,7 @@
     {:aggregation [[:sum [:+ $venue_price 1]]]
      :breakout    [$venue_price]}))
 
-;; check that we can name an expression aggregation w/ aggregation at top-level (Legacy `:named` clause)
-(datasets/expect-with-driver :druid
-  [["1"  442.0]
-   ["2" 1845.0]
-   ["3"  460.0]
-   ["4"  245.0]]
-  (qp.test/rows
-   (druid-query
-    {:aggregation [[:named [:sum [:+ $venue_price 1]] "New Price"]]
-     :breakout    [$venue_price]})))
-
-;; same thing, but with the 0.33.0+ `:aggregation-options` clause
+;; check that we can name an expression aggregation w/ aggregation at top-level
 (datasets/expect-with-driver :druid
   [["1"  442.0]
    ["2" 1845.0]
@@ -339,19 +328,7 @@
       {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
        :breakout    [$venue_price]})))
 
-;; check that we can name an expression aggregation w/ expression at top-level (Legacy `:named` clause)
-(datasets/expect-with-driver :druid
-  {:rows    [["1"  180.0]
-             ["2" 1189.0]
-             ["3"  304.0]
-             ["4"  155.0]]
-   :columns ["venue_price" "Sum-41"]}
-  (qp.test/rows+column-names
-    (druid-query
-      {:aggregation [[:named [:- [:sum $venue_price] 41] "Sum-41"]]
-       :breakout    [$venue_price]})))
-
-;; 0.33.0+ `:aggregation-options` clause
+;; check that we can name an expression aggregation w/ expression at top-level
 (datasets/expect-with-driver :druid
   {:rows    [["1"  180.0]
              ["2" 1189.0]
