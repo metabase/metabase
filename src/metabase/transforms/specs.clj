@@ -1,7 +1,5 @@
 (ns metabase.transforms.specs
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
+  (:require [clojure.set :as set]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.mbql
@@ -15,10 +13,9 @@
             [schema
              [coerce :as sc]
              [core :as s]]
-            [weavejester.dependency :as dep])
-  (:import [java.nio.file Files Path]))
+            [weavejester.dependency :as dep]))
 
-(def ^:private MBQL [s/Any])
+(def ^:private MBQL (s/pred mbql.u/mbql-clause?))
 
 (def ^:private Source s/Str)
 
@@ -121,14 +118,6 @@
 
 (def ^:private transforms-dir "transforms/")
 
-(defn- load-transforms-dir
-  [dir]
-  (yaml/with-resource [dir dir]
-    (with-open [ds (Files/newDirectoryStream dir)]
-      (->> ds
-           (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load transform-spec-parser))))))
-
 (def transform-specs
   "List of registered dataset transforms."
-  (delay (load-transforms-dir transforms-dir)))
+  (delay (yaml/load-dir transforms-dir transform-spec-parser)))

@@ -9,7 +9,7 @@
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
   (:import java.net.URI
-           [java.nio.file FileSystem FileSystems Path]))
+           [java.nio.file Files FileSystem FileSystems Path]))
 
 (defmacro with-resource
   "Setup all the JVM scaffolding to be able to treat /resources dir in a JAR the same as a normal directory.
@@ -27,7 +27,7 @@
          ~@body))))
 
 (defn load
-  "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor` fn."
+  "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."
   ([f] (load identity f))
   ([constructor ^Path f]
    (try
@@ -45,3 +45,13 @@
                                    u/pprint-to-str)
                            e)))
        (throw e)))))
+
+(defn load-dir
+  "Load and parse all YAMLs in `dir`. Optionally pass each resulting data structure through `constructor-fn`."
+  ([dir] (load-dir dir identity))
+  ([dir constructor]
+   (with-resource [dir dir]
+     (with-open [ds (Files/newDirectoryStream dir)]
+       (->> ds
+            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
+            (mapv (partial load constructor)))))))
