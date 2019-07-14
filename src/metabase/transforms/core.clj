@@ -163,13 +163,15 @@
 (defn- satisfy-requirements
   [db-id schema {:keys [requires]}]
   (let [tables   (db/select 'Table :db_id db-id :schema schema)
-        bindings (for [[identifier requirement] requires]
-                   [identifier (filter (partial satisfies-requierment? requirement) tables)])]
+        bindings (m/map-vals (fn [requirement]
+                               (filter (partial satisfies-requierment? requirement) tables))
+                             requires)]
     ;; If multiple tables match punt for now
     (when (every? (comp #{1} count second) bindings)
-      (into {} (for [[identifier [table]] bindings]
-                 [identifier {:entity     table
-                              :dimensions (table-dimensions table)}])))))
+      (m/map-vals (fn [[table]]
+                    {:entity     table
+                     :dimensions (table-dimensions table)})
+                  bindings))))
 
 (defn- store-requirements!
   [db-id requirements]
