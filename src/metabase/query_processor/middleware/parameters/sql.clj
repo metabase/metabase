@@ -236,6 +236,7 @@
   [base-type :- su/FieldType, value]
   (cond
     (isa? base-type :type/UUID) (UUID/fromString value)
+    (isa? base-type :type/Number) (value->number value)
     :else                       value))
 
 (s/defn ^:private parse-value-for-type :- ParamValue
