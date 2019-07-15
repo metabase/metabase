@@ -24,19 +24,11 @@ export default class SearchApp extends React.Component {
     return (
       <Box mx={PAGE_PADDING}>
         {location.query.q && (
-          <Flex align="center" mb={2} py={[2, 3]}>
+          <Flex align="center" py={[2, 3]}>
             <Subhead>{jt`Results for "${location.query.q}"`}</Subhead>
           </Flex>
         )}
-        <Box w={[1, 2 / 3]}>
-          <ItemTypeFilterBar
-            analyticsContext={`Search Results`}
-            filters={FILTERS.concat({
-              name: t`Collections`,
-              filter: "collection",
-              icon: "all",
-            })}
-          />
+        <Box>
           <Search.ListLoader query={location.query} wrapped>
             {({ list }) => {
               if (list.length === 0) {
@@ -62,50 +54,32 @@ export default class SearchApp extends React.Component {
                 .value();
 
               return (
-                <Box>
-                  {types.dashboard && (
+                <Flex align="top">
+                  <Box w={2 / 3}>
                     <SearchResultSection
-                      title={t`Dashboards`}
-                      items={types.dashboard}
-                      eventObjectType="Dashboard"
+                      items={[
+                        // TODO - DO NOT SHIP THIS
+                        ...(types.dashboard || []),
+                        ...(types.metric || []),
+                        ...(types.table || []),
+                        ...(types.segment || []),
+                        ...(types.card || []),
+                        ...(types.pulse || []),
+                        ...(types.collection || []),
+                      ]}
                     />
-                  )}
-                  {types.collection && (
-                    <SearchResultSection
-                      title={t`Collections`}
-                      items={types.collection}
-                      eventObjectType="Collection"
+                  </Box>
+                  <Box ml={[1, 2]} pt={2} px={2}>
+                    <ItemTypeFilterBar
+                      analyticsContext={`Search Results`}
+                      filters={FILTERS.concat({
+                        name: t`Collections`,
+                        filter: "collection",
+                        icon: "all",
+                      })}
                     />
-                  )}
-                  {types.card && (
-                    <SearchResultSection
-                      title={t`Questions`}
-                      items={types.card}
-                      eventObjectType="Question"
-                    />
-                  )}
-                  {types.metric && (
-                    <SearchResultSection
-                      title={t`Metrics`}
-                      items={types.metric}
-                      eventObjectType="Pulse"
-                    />
-                  )}
-                  {types.segment && (
-                    <SearchResultSection
-                      title={t`Segments`}
-                      items={types.segment}
-                      eventObjectType="Segment"
-                    />
-                  )}
-                  {types.pulse && (
-                    <SearchResultSection
-                      title={t`Pulses`}
-                      items={types.pulse}
-                      eventObjectType="Pulse"
-                    />
-                  )}
-                </Box>
+                  </Box>
+                </Flex>
               );
             }}
           </Search.ListLoader>
@@ -115,26 +89,22 @@ export default class SearchApp extends React.Component {
   }
 }
 
-const SearchResultSection = ({ title, items, eventObjectType }) => (
-  <Box mt={2} mb={3}>
-    <div className="text-uppercase text-medium text-small text-bold my1">
-      {title}
-    </div>
-    <Card>
-      {items.map(item => (
-        <Link
-          to={item.getUrl()}
-          key={item.id}
-          data-metabase-event={`Search Results;Item Click;${eventObjectType}`}
-        >
-          <EntityItem
-            variant="list"
-            name={item.getName()}
-            iconName={item.getIcon()}
-            iconColor={item.getColor()}
-          />
-        </Link>
-      ))}
-    </Card>
-  </Box>
+const SearchResultSection = ({ title, items }) => (
+  <Card>
+    {items.map(item => (
+      <Link
+        to={item.getUrl()}
+        key={item.id}
+        data-metabase-event={`Search Results;Item Click;${item.model}`}
+      >
+        <EntityItem
+          variant="list"
+          name={item.getName()}
+          iconName={item.getIcon()}
+          iconColor={item.getColor()}
+          item={item}
+        />
+      </Link>
+    ))}
+  </Card>
 );
