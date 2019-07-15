@@ -548,7 +548,7 @@ export default class TokenField extends Component {
 
     const valuesList = (
       <ul
-        className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
+        className="input flex flex-wrap bg-white scroll-x scroll-y"
         style={{ ...this.props.style, inputBoxStyles }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
@@ -556,7 +556,7 @@ export default class TokenField extends Component {
           <li
             key={index}
             className={cx(
-              `mt1 ml1 py1 pl2 rounded bg-medium`,
+              `1 ml1 py1 pl2 rounded bg-medium`,
               multi ? "pr1" : "pr2",
             )}
           >
@@ -575,10 +575,10 @@ export default class TokenField extends Component {
             )}
           </li>
         ))}
-        <li className="flex-full mr1 py1 pl1 mt1 bg-white">
+        <li className="flex-full">
           <input
             ref="input"
-            className="full h4 text-bold text-default no-focus borderless"
+            className="full h4 no-focus borderless"
             // set size to be small enough that it fits in a parameter.
             size={10}
             placeholder={placeholder}
@@ -598,7 +598,6 @@ export default class TokenField extends Component {
       filteredOptions.length === 0 ? null : (
         <ul
           className="pl1 py1 scroll-y scroll-show border-bottom"
-          style={{ maxHeight: 300 }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >

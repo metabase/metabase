@@ -26,7 +26,7 @@ export default function FilterPopoverHeader({
   };
 
   return showHeader ? (
-    <div className={cx(className, "flex align-center text-medium")}>
+    <div className={cx(className, "text-medium")}>
       {showFieldPicker && (
         <div className="flex py1">
           <span
@@ -44,7 +44,6 @@ export default function FilterPopoverHeader({
       )}
       {showOperatorSelector && (
         <OperatorSelector
-          className={showFieldPicker ? "flex-align-right pl2" : "flex-full p1"}
           operator={filter.operatorName()}
           operators={filter.operatorOptions()}
           onOperatorChange={setOperator}

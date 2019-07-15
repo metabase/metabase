@@ -120,19 +120,19 @@ export default class ViewFilterPopover extends Component {
       return (
         <div className={className} style={style}>
           <FilterPopoverHeader
-            className="p1"
+            className="px3"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
             showFieldPicker
           />
-          <FilterPopoverPicker
-            className="p1"
-            filter={filter}
-            onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
-            width={null}
-          />
+          <div className="px3 mt1">
+            <FilterPopoverPicker
+              filter={filter}
+              onFilterChange={this.handleFilterChange}
+              width={null}
+            />
+          </div>
           <FilterPopoverFooter
             className="p1"
             filter={filter}
