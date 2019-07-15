@@ -158,9 +158,10 @@ export default class ChartSettingOrderedColumns extends Component {
             {additionalFieldOptions.fks.map(fk => (
               <div>
                 <div className="my2 text-medium text-bold text-uppercase text-small">
-                  {fk.field.target
-                    ? fk.field.target.table.display_name
-                    : fk.field.display_name}
+                  {fk.name ||
+                    (fk.field.target
+                      ? fk.field.target.table.display_name
+                      : fk.field.display_name)}
                 </div>
                 {fk.dimensions.map((dimension, index) => (
                   <ColumnItem
