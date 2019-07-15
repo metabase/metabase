@@ -106,8 +106,16 @@
                             join-alias)]
     (format "%s → %s" join-display-name field-display-name)))
 
+(defn- infer-expression-type
+  [expression]
+  (if (mbql.u/datetime-arithmetics? expression)
+    {:base_type    :type/DateTime
+     :special_type nil}
+    {:base_type    :type/Float
+     :special_type :type/Number}))
+
 (s/defn ^:private col-info-for-field-clause :- su/Map
-  [{:keys [source-metadata], :as inner-query} :- su/Map, clause :- mbql.s/Field]
+  [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
@@ -143,12 +151,14 @@
          :display_name (humanization/name->human-readable-name field-name)})
 
     [:expression expression-name]
-    {:name            expression-name
-     :display_name    expression-name
-     :base_type       :type/Float
-     :special_type    :type/Number
-     ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-     :expression_name expression-name}
+    (merge
+     ;; There's some inconsistency when expression names are keywords and when strings.
+     ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
+     (infer-expression-type (some expressions ((juxt identity keyword) expression-name)))
+     {:name            expression-name
+      :display_name    expression-name
+      ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
+      :expression_name expression-name})
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
@@ -165,13 +175,7 @@
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------
 
-(def ^:private arithmetic-op->text
-  {:+ "add"
-   :- "sub"
-   :/ "div"
-   :* "mul"})
-
-(defn- expression-ag-arg->name
+(defn- expression-arg-display-name
   "Generate an appropriate name for an `arg` in an expression aggregation."
   [recursive-name-fn arg]
   (mbql.u/match-one arg
@@ -189,29 +193,24 @@
     _ &match))
 
 (s/defn aggregation-name :- su/NonBlankString
-  "Return an appropriate field *and* display name for an `:aggregation` subclause (an aggregation or
-  expression). Takes an options map as schema won't support passing keypairs directly as a varargs. `{:top-level?
-  true}` will cause a name to be generated that will appear in the results, other names with a leading `__` will be
-  trimmed on some backends.
+  "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
+  or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
 
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
-  [ag-clause :- mbql.s/Aggregation & [{:keys [top-level? recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
+  [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
   (when-not driver/*driver*
     (throw (Exception. (str (tru "*driver* is unbound.")))))
   (mbql.u/match-one ag-clause
-    ;; if a custom name was provided use it. Some drivers have limits on column names, so call
-    ;; `format-custom-field-name` so they can modify it as needed.
-    [:named _ ag-name & _]
-    (driver/format-custom-field-name driver/*driver* ag-name)
+    [:aggregation-options _ (options :guard :name)]
+    (:name options)
+
+    [:aggregation-options ag _]
+    (recur ag)
 
     ;; For unnamed expressions, just compute a name like "sum + count"
     ;; Top level expressions need a name without a leading __ as those are automatically removed from the results
     [(operator :guard #{:+ :- :/ :*}) & args]
-    (str (when top-level?
-           (str (arithmetic-op->text operator)
-                "__"))
-         (str/join (str " " (name operator) " ")
-                   (map (partial expression-ag-arg->name recursive-name-fn) args)))
+    "expression"
 
     ;; for historic reasons a distinct count clause is still named "count". Don't change this or you might break FE
     ;; stuff that keys off of aggregation names.
@@ -243,18 +242,15 @@
   "Return an appropriate user-facing display name for an aggregation clause."
   [ag-clause]
   (mbql.u/match-one ag-clause
-    ;; if the `named` clause has options, and *explicity* specifies {:use-as-display-name? false}, generate a name based
-    ;; on the wrapped clause instead
-    [:named wrapped-clause _ (_ :guard #(false? (:use-as-display-name? %)))]
-    (aggregation-display-name wrapped-clause)
+    [:aggregation-options _ (options :guard :display-name)]
+    (:display-name options)
 
-    ;; otherwise for a `named` aggregation use the supplied name as the display name
-    [:named _ ag-name & _]
-    ag-name
+    [:aggregation-options ag _]
+    (recur ag)
 
     [(operator :guard #{:+ :- :/ :*}) & args]
     (str/join (format " %s " (name operator))
-              (map (partial expression-ag-arg->name aggregation-arg-display-name) args))
+              (map (partial expression-arg-display-name aggregation-arg-display-name) args))
 
     [:count]
     (str (tru "count"))
@@ -291,8 +287,8 @@
   ; `match` pattern for field clauses below
   [inner-query :- su/Map, clause]
   (mbql.u/match-one clause
-    ;; ok, if this is a named aggregation recurse so we can get information about the ag we are naming
-    [:named ag & _]
+    ;; ok, if this is a aggregation w/ options recurse so we can get information about the ag it wraps
+    [:aggregation-options ag _]
     (merge
      (col-info-for-aggregation-clause inner-query ag)
      (ag->name-info &match))
@@ -328,15 +324,14 @@
     ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
     ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
     ;; for the purposes of a patch release.
-    [(_ :guard #{:expression :+ :- :/ :*}) & _]
+    #{:expression :+ :- :/ :*}
     (merge
-     {:base_type    :type/Float
-      :special_type :type/Number}
+     (infer-expression-type &match)
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info &match)))
 
     ;; get name/display-name of this ag
-    [(_ :guard keyword?) arg & args]
+    [(_ :guard keyword?) arg & _]
     (merge
      (col-info-for-aggregation-clause inner-query arg)
      (ag->name-info &match))))

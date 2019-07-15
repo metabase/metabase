@@ -70,10 +70,10 @@
   (comp qp check-native-query-not-using-default-user))
 
 
-(defmethod driver/date-interval :h2 [driver unit amount]
+(defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
-    (recur driver :month (hx/* amount 3))
-    (hsql/call :dateadd (hx/literal unit) amount :%now)))
+    (recur driver dt (hx/* amount 3) :month)
+    (hsql/call :dateadd (hx/literal unit) amount dt)))
 
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]

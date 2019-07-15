@@ -52,6 +52,15 @@
   below. The QP binds the driver this way in the `bind-driver` middleware."
   nil)
 
+(defn do-with-driver
+  "Impl for `with-driver`."
+  [driver f]
+  ;; it's substantially faster not to call `binding` in the first place if it's already bound
+  (if (= *driver* driver)
+    (f)
+    (binding [*driver* driver]
+      (f))))
+
 (defmacro with-driver
   "Bind current driver to `driver` and execute `body`.
 
@@ -59,8 +68,7 @@
       ...)"
   {:style/indent 1}
   [driver & body]
-  `(binding [*driver* ~driver]
-     ~@body))
+  `(do-with-driver ~driver (fn [] ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -368,19 +376,11 @@
 
 ;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
 ;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
-(defmulti date-interval
-  "Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this
-  returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should return a
-  native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a HoneySQL
-  form to call the appropriate SQL fns:
-
-    (date-interval :postgres :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))"
-  {:arglists '([driver unit amount])}
+(defmulti date-add
+  "Return an driver-appropriate representation of a moment relative to the given time."
+  {:arglists '([driver dt amount unit])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmethod date-interval ::driver [_ unit amount]
-  (du/relative-date unit amount))
 
 
 (defmulti describe-database
@@ -545,12 +545,24 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 
 
-(defmulti format-custom-field-name
-  "Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the results. This
-  is used by the post-processing annotation stage to find the correct metadata to include with fields in the results.
-  The default implementation is `identity`, meaning the resulting field will have exactly the same name as passed to
-  the `:named` clause. Certain drivers like Redshift always lowercase these names, so this method is provided for
-  those situations."
+(defmulti ^:deprecated format-custom-field-name
+  "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
+  `:named` clause:
+
+    [:named [:count] \"My Count\"]
+
+  This name was used for both the `:display_name` in the query results, and for the `:name` used as an alias in the
+  query (e.g. the right-hand side of a SQL `AS` expression). Because some custom display names weren't allowed by some
+  drivers, or would be transformed in some way (for example, Redshift always lowercases custom aliases), this method
+  was needed so we could match the name we had given the column with the one in the query results.
+
+  In 0.33.0, we started using `:named` internally to alias aggregations in middleware in *all* queries to prevent
+  issues with referring to multiple aggregations of the same type when that query was used as a source query.
+  See [#9767](https://github.com/metabase/metabase/issues/9767) for more details. After this change, it became
+  desirable to differentiate between such internally-generated aliases and display names, which need not be used in
+  the query at all; thus in MBQL 1.3.0 [`:named` was replaced by the more general
+  `:aggregation-options`](https://github.com/metabase/mbql/pull/7). Because user-generated names are no longer used as
+  aliases in native queries themselves, this method is no longer needed and will be removed in a future release."
   {:arglists '([driver custom-field-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

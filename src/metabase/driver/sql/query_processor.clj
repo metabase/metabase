@@ -230,7 +230,15 @@
 (defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
 (defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :+] [driver [_ & args]] (apply hsql/call :+ (map (partial ->honeysql driver) args)))
+(defmethod ->honeysql [:sql :+] [driver [_ & args]]
+  (if (mbql.u/datetime-arithmetics? args)
+    (let [[field & intervals] args]
+      (reduce (fn [result [_ amount unit]]
+                (driver/date-add driver result amount unit))
+              (->honeysql driver field)
+              intervals))
+    (apply hsql/call :+ (map (partial ->honeysql driver) args))))
+
 (defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))
 (defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hsql/call :* (map (partial ->honeysql driver) args)))
 
@@ -265,15 +273,18 @@
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :named] [driver [_ ag ag-name]]
+(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
-    [:named _ ag-name & _]
-    (->honeysql driver (hx/identifier :field-alias ag-name))
+    [:aggregation-options ag (options :guard :name)]
+    (->honeysql driver (hx/identifier :field-alias (:name options)))
+
+    [:aggregation-options ag _]
+    (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
@@ -300,7 +311,7 @@
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
                       (current-datetime-fn driver)
-                      (driver/date-interval driver unit amount))))
+                      (driver/date-add driver (current-datetime-fn driver) amount unit))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

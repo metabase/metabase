@@ -93,24 +93,57 @@
                      :aggregation  [[:avg $id]]
                      :breakout     [$price]}})))
 
-;; Can we add source metadata for a source query that has a named aggregation?
+;; Can we add source metadata for a source query that has a named aggregation? (w/ `:name` and `:display-name`)
 (expect
   (data/mbql-query venues
     {:source-query    {:source-table $$venues
-                       :aggregation  [[:named [:avg $id] "my_cool_aggregation"]]
+                       :aggregation  [[:aggregation-options
+                                       [:avg $id]
+                                       {:name "some_generated_name", :display-name "My Cool Ag"}]]
                        :breakout     [$price]}
      :source-metadata (concat
                        (venues-source-metadata :price)
-                       [{:name         "my_cool_aggregation"
-                         :display_name "my_cool_aggregation"
+                       [{:name         "some_generated_name"
+                         :display_name "My Cool Ag"
                          :base_type    :type/BigInteger
                          :special_type :type/PK
                          :settings     nil}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
-                     :aggregation  [[:named [:avg $id] "my_cool_aggregation"]]
+                     :aggregation  [[:aggregation-options
+                                     [:avg $id]
+                                     {:name "some_generated_name", :display-name "My Cool Ag"}]]
                      :breakout     [$price]}})))
+
+(defn- source-metadata [query]
+  (get-in query [:query :source-metadata] query))
+
+;; Can we add source metadata for a source query that has a named aggregation? (w/ `:name` only)
+(expect
+  [{:name         "some_generated_name"
+    :display_name "average of ID"
+    :base_type    :type/BigInteger
+    :special_type :type/PK
+    :settings     nil}]
+  (source-metadata
+   (add-source-metadata
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues
+                      :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}}))))
+
+;; Can we add source metadata for a source query that has a named aggregation? (w/ `:display-name` only)
+(expect
+  [{:name         "avg"
+    :display_name "My Cool Ag"
+    :base_type    :type/BigInteger
+    :special_type :type/PK
+    :settings     nil}]
+  (source-metadata
+   (add-source-metadata
+    (data/mbql-query venues
+      {:source-query {:source-table $$venues
+                      :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}}))))
 
 ;; Can we automatically add source metadata to the parent level of a query? If the source query has a source query
 ;; with source metadata

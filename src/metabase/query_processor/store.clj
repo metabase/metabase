@@ -67,6 +67,7 @@
   "Columns you should fetch for any Table you want to stash in the Store."
   [:id
    :name
+   :display_name
    :schema])
 
 (def ^:private TableInstanceWithRequiredStoreKeys

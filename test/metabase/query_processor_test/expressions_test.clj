@@ -1,10 +1,17 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [metabase
+  (:require [clj-time
+             [coerce :as tcoerce]
+             [core :as time]
+             [format :as tformat]]
+            [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]
+            [metabase.util.date :as du]))
 
 ;; Do a basic query including an expression
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
@@ -99,10 +106,10 @@
                       :snowflake :type/Number
                       :type/Integer)})
   (set (map #(select-keys % [:name :base_type])
-            (-> (data/run-mbql-query venues
-                  {:aggregation [:named [:sum [:* $price -1]] "x"]
-                   :breakout    [$category_id]})
-                (get-in [:data :cols])))))
+            (qp.test/cols
+              (data/run-mbql-query venues
+                {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
+                 :breakout    [$category_id]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           HANDLING NULLS AND ZEROES                                            |
@@ -184,3 +191,55 @@
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   [[nil] [0.0] [0.0] [10.0] [8.0] [5.0] [5.0] [nil] [0.0] [0.0]]
   (calculate-bird-scarcity [:* 1 [:field-id $count]]))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           DATETIME EXTRACTION AND MANIPULATION                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(def ^:private utc-tz (time/time-zone-for-id "UTC"))
+
+(defn- maybe-truncate
+  [dt]
+  (if (= :sqlite driver/*driver*)
+    (->> dt (du/date-trunc :day) tcoerce/from-sql-date)
+    dt))
+
+(defn- robust-dates
+  [dates]
+  (let [output-format (if (= :sqlite driver/*driver*)
+                        :mysql
+                        :date-time)]
+    (for [d dates]
+      [(->> d
+            (tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz))
+            maybe-truncate
+            (tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz)))])))
+
+;; Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
+  (robust-dates
+   ["2014-09-02T13:45:00.000"
+    "2014-07-02T09:30:00.000"
+    "2014-07-01T10:30:00.000"])
+  (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
+    (-> (data/run-mbql-query users
+            {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
+             :fields      [[:expression :prev_month]]
+             :limit       3
+             :order-by    [[:asc $name]]})
+        qp.test/rows)))
+
+;; Test interaction of datetime arithmetics with truncation
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
+  (robust-dates
+   ["2014-09-02T00:00:00.000"
+    "2014-07-02T00:00:00.000"
+    "2014-07-01T00:00:00.000"])
+  (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
+    (-> (data/run-mbql-query users
+          {:expressions {:prev_month [:+ [:datetime-field $last_login :day] [:interval -31 :day]]}
+           :fields      [[:expression :prev_month]]
+           :limit       3
+           :order-by    [[:asc $name]]})
+        qp.test/rows)))
