@@ -482,14 +482,14 @@ export default class TokenField extends Component {
     ) {
       const element = findDOMNode(this.scrollElement);
       if (element && isObscured(element)) {
-        element.scrollIntoView(element);
+        element.scrollIntoView({ block: "nearest" });
       }
     }
-    // if we added a valkue then scroll to the last item (the input)
+    // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
       const input = findDOMNode(this.refs.input);
       if (input && isObscured(input)) {
-        input.scrollIntoView(input);
+        input.scrollIntoView({ block: "nearest" });
       }
     }
   }
