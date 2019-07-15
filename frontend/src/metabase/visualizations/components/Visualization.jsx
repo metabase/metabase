@@ -141,6 +141,7 @@ export default class Visualization extends React.PureComponent {
     isDashboard: false,
     isEditing: false,
     isSettings: false,
+    onUpdateVisualizationSettings: () => {},
   };
 
   componentWillMount() {
