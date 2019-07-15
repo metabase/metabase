@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 
-const DEBOUNCE_PERIOD = 150;
+const DEBOUNCE_PERIOD = 300;
 
 /**
  * This component prevents children elements from being rerendered while it's being resized (currently hard-coded debounce period of 250ms)

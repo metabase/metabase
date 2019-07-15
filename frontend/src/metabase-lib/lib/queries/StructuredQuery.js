@@ -372,6 +372,10 @@ export default class StructuredQuery extends AtomicQuery {
     return query;
   }
 
+  hasData() {
+    return !!this.table();
+  }
+
   hasAnyClauses() {
     return (
       this.hasJoins() ||

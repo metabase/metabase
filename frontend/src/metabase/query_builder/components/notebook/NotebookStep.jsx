@@ -57,20 +57,20 @@ const STEP_UI = {
     component: SummarizeStep,
     priority: 5,
   },
-  // aggregate: {
-  //   title: t`Summarize`,
-  //   color: colors["accent1"],
-  //   icon: "sum",
-  //   component: AggregateStep,
-  //   priority: 5,
-  // },
-  // breakout: {
-  //   title: t`Breakout`,
-  //   color: colors["accent4"],
-  //   icon: "segment",
-  //   component: BreakoutStep,
-  //   priority: 1,
-  // },
+  aggregate: {
+    title: t`Aggregate`,
+    color: colors["accent1"],
+    icon: "sum",
+    component: AggregateStep,
+    priority: 5,
+  },
+  breakout: {
+    title: t`Breakout`,
+    color: colors["accent4"],
+    icon: "segment",
+    component: BreakoutStep,
+    priority: 1,
+  },
   sort: {
     title: t`Sort`,
     color: colors["bg-dark"],
@@ -131,9 +131,9 @@ export default class NotebookStep extends React.Component {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    const onRemove = step.step.revert
+    const onRemove = step.revert
       ? () => {
-          step.step.revert(step.query).update(updateQuery);
+          step.revert(step.query).update(updateQuery);
         }
       : null;
 
@@ -164,6 +164,7 @@ export default class NotebookStep extends React.Component {
               <Box width={[8 / 12]}>
                 <NotebookStepComponent
                   color={color}
+                  step={step}
                   query={step.query}
                   updateQuery={updateQuery}
                   isLastOpened={isLastOpened}
