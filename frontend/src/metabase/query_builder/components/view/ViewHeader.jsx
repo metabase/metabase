@@ -155,7 +155,7 @@ export class ViewTitleHeader extends React.Component {
                   />
                 )}
               {QuestionLineage.shouldRender(this.props) && (
-                <ViewSubHeading>
+                <ViewSubHeading style={{ paddingTop: "3px" }}>
                   <QuestionLineage
                     className="ml2"
                     question={question}
