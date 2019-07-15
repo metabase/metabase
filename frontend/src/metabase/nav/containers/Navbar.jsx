@@ -301,7 +301,7 @@ export default class Navbar extends Component {
             <Link
               mr={[1, 2]}
               to="browse"
-              className="Button Button--selected flex-no-shrink"
+              className="Button Button--selected borderless flex-no-shrink"
               data-metabase-event={`NavBar;Ask a question`}
             >
               <h4 className="hide sm-show">{t`Ask a question`}</h4>
