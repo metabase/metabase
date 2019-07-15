@@ -18,13 +18,19 @@ import Join from "metabase-lib/lib/queries/structured/Join";
 export default function JoinStep({
   color,
   query,
+  step,
   updateQuery,
   isLastOpened,
   ...props
 }) {
+  const isSingleJoinStep = step.itemIndex != null;
   let joins = query.joins();
+  if (isSingleJoinStep) {
+    const join = joins[step.itemIndex];
+    joins = join ? [join] : [];
+  }
   if (joins.length === 0) {
-    joins = [new Join({ fields: "all" }, 0, query)];
+    joins = [new Join({ fields: "all" }, query.joins().length, query)];
   }
   const valid = _.all(joins, join => join.isValid());
   return (
@@ -42,7 +48,7 @@ export default function JoinStep({
           />
         ))}
       </Flex>
-      {valid && (
+      {!isSingleJoinStep && valid && (
         <NotebookCellAdd
           color={color}
           className="cursor-pointer ml-auto"
