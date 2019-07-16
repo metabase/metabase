@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Flex } from "grid-styled";
 import { t } from "ttag";
 import { withRouter } from "react-router";
 
@@ -15,14 +15,9 @@ export const FILTERS = [
     icon: "list",
   },
   {
-    name: t`Metrics`,
-    filter: "metric",
-    icon: "insight",
-  },
-  {
-    name: t`Segments`,
-    filter: "segment",
-    icon: "segment",
+    name: t`Dashboards`,
+    filter: "dashboard",
+    icon: "dashboard",
   },
   {
     name: t`Questions`,
@@ -39,7 +34,7 @@ export const FILTERS = [
 const ItemTypeFilterBar = props => {
   const { location, analyticsContext } = props;
   return (
-    <Box>
+    <Flex align="center" className="border-bottom mt1">
       {props.filters.map(f => {
         let isActive = location && location.query.type === f.filter;
 
@@ -57,12 +52,18 @@ const ItemTypeFilterBar = props => {
             }}
             color={color}
             hover={{ color: colors.brand }}
-            className="flex align-center"
+            className="flex-full flex align-center justify-center sm-block text-brand-hover text-medium"
+            mr={[0, 2]}
             key={f.filter}
             py={1}
             data-metabase-event={`${analyticsContext};Item Filter;${f.name}`}
+            style={{
+              borderBottom: `2px solid ${
+                isActive ? colors.brand : "transparent"
+              }`,
+            }}
           >
-            <Icon name={f.icon} size={20} mr={1} />
+            <Icon name={f.icon} className="sm-hide" size={20} />
             <h5
               className="text-uppercase hide sm-show"
               style={{
@@ -75,7 +76,7 @@ const ItemTypeFilterBar = props => {
           </Link>
         );
       })}
-    </Box>
+    </Flex>
   );
 };
 
