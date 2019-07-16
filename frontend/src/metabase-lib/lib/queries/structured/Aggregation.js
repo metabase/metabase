@@ -180,26 +180,40 @@ export default class Aggregation extends MBQLClause {
     return AggregationClause_DEPRECATED.isCustom(this);
   }
 
+  // OPTIONS
+
+  hasOptions() {
+    return this[0] === "aggregation-options";
+  }
+
+  options() {
+    if (this.hasOptions()) {
+      return this[1] || {};
+    } else {
+      return {};
+    }
+  }
+
   // NAMED
 
   /**
    * Returns true if this a named aggregation
    */
   isNamed() {
-    return this[0] === "named";
+    return this.options()["display-name"];
   }
 
   name() {
     if (this.isNamed()) {
-      return this[2];
+      return this.options()["display-name"];
     }
   }
 
   /**
-   * Returns the aggregation without "named" clause, if any
+   * Returns the aggregation without "aggregation-options" clause, if any
    */
   aggregation() {
-    if (this.isNamed()) {
+    if (this.hasOptions()) {
       return new Aggregation(this[1], this._index, this._query);
     } else {
       return this;

@@ -114,7 +114,9 @@ describe("StructuredQuery", () => {
         it("should not remove valid named aggregations", () => {
           const q = makeStructuredQuery({
             "source-table": ORDERS_TABLE_ID,
-            aggregation: [["named", ["count"], "foo"]],
+            aggregation: [
+              ["aggregation-options", ["count"], { "display-name": "foo" }],
+            ],
           });
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
@@ -122,7 +124,9 @@ describe("StructuredQuery", () => {
         it("should remove invalid named aggregations", () => {
           const q = makeStructuredQuery({
             "source-table": ORDERS_TABLE_ID,
-            aggregation: [["named", ["casdfaount"], "foo"]],
+            aggregation: [
+              ["aggregation-option", ["invalid"], { "display-name": "foo" }],
+            ],
           });
           expect(q.clean().query()).toEqual({
             "source-table": ORDERS_TABLE_ID,
