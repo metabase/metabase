@@ -102,16 +102,18 @@ export default class ChartSettingOrderedColumns extends Component {
 
   render() {
     const { value, question, columns } = this.props;
-    const query = question.query();
 
     let additionalFieldOptions = { count: 0 };
-    if (columns && question && query instanceof StructuredQuery) {
-      const fieldRefs = columns.map(column => fieldRefForColumn(column));
-      additionalFieldOptions = query.fieldsOptions(dimension => {
-        return !_.find(fieldRefs, fieldRef =>
-          dimension.isSameBaseDimension(fieldRef),
-        );
-      });
+    if (columns && question) {
+      const query = question.query();
+      if (query instanceof StructuredQuery) {
+        const fieldRefs = columns.map(column => fieldRefForColumn(column));
+        additionalFieldOptions = query.fieldsOptions(dimension => {
+          return !_.find(fieldRefs, fieldRef =>
+            dimension.isSameBaseDimension(fieldRef),
+          );
+        });
+      }
     }
 
     const [enabledColumns, disabledColumns] = _.partition(
