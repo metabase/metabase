@@ -7,6 +7,7 @@ import {
 } from "../settings";
 
 import { getVisualizationRaw } from "metabase/visualizations";
+import { normalizeFieldRef } from "metabase/lib/dataset";
 import { t } from "ttag";
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
@@ -45,8 +46,29 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
   return definitions;
 }
 
+function normalizeColumnSettings(columnSettings) {
+  return Object.fromEntries(
+    Object.entries(columnSettings).map(([columnKey, columnSettings]) => {
+      const [refOrName, fieldRef] = JSON.parse(columnKey);
+      if (refOrName === "ref") {
+        columnKey = JSON.stringify(["ref", normalizeFieldRef(fieldRef)]);
+      }
+      return [columnKey, columnSettings];
+    }),
+  );
+}
+
 export function getStoredSettingsForSeries(series: ?Series): Settings {
-  return (series && series[0] && series[0].card.visualization_settings) || {};
+  const storedSettings =
+    (series && series[0] && series[0].card.visualization_settings) || {};
+  if (storedSettings.column_settings) {
+    // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
+    return {
+      ...storedSettings,
+      column_settings: normalizeColumnSettings(storedSettings.column_settings),
+    };
+  }
+  return storedSettings;
 }
 
 export function getComputedSettingsForSeries(series: ?Series): Settings {
