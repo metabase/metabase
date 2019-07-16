@@ -1,9 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import cx from "classnames";
 
-import FieldList from "../FieldList";
 import DimensionList from "../DimensionList";
 
 import FilterPopoverHeader from "../filters/FilterPopoverHeader";

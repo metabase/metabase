@@ -33,6 +33,7 @@ export default class QueryDefinitionTooltip extends Component {
                   <AggregationName
                     aggregation={aggregation}
                     tableMetadata={tableMetadata}
+                    customFields={customFields}
                   />
                 ))}
                 <FilterList

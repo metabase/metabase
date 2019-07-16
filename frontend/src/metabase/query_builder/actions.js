@@ -23,25 +23,19 @@ import {
   urlForCardState,
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
-import { formatSQL } from "metabase/lib/formatting";
 import { createQuery } from "metabase/lib/query";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
-import { getEngineNativeType, formatJsonQuery } from "metabase/lib/engine";
 import { defer } from "metabase/lib/promise";
 import Question from "metabase-lib/lib/Question";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import {
   getCard,
-  getDatabasesList,
-  getTableMetadata,
-  getNativeDatabases,
   getQuestion,
   getOriginalQuestion,
   getOriginalCard,
   getIsEditing,
-  getIsShowingDataReference,
   getTransformedSeries,
   getResultsMetadata,
   getFirstQueryResult,
@@ -51,25 +45,25 @@ import {
   getIsShowingTemplateTagsEditor,
 } from "./selectors";
 
-import { getTables, getMetadata } from "metabase/selectors/metadata";
-
-import { fetchDatabases } from "metabase/redux/metadata";
-
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 
 import { parse as urlParse } from "url";
 import querystring from "querystring";
-import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 
-import type { Card } from "metabase/meta/types/Card";
+import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { clearRequestState } from "metabase/redux/requests";
 
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import { syncTableColumnsToQuery } from "metabase/lib/dataset";
+import Databases from "metabase/entities/databases";
+
+import { getMetadata } from "metabase/selectors/metadata";
+import { clearRequestState } from "metabase/redux/requests";
+
+import type { Card } from "metabase/meta/types/Card";
 
 type UiControls = {
   isEditing?: boolean,
@@ -339,7 +333,7 @@ export const initializeQB = (location, params) => {
 
     const { currentUser } = getState();
 
-    let card, databasesList, originalCard;
+    let card, originalCard;
     const uiControls: UiControls = {
       isEditing: false,
       isShowingTemplateTagsEditor: false,
@@ -348,8 +342,12 @@ export const initializeQB = (location, params) => {
 
     // always start the QB by loading up the databases for the application
     try {
-      await dispatch(fetchDatabases());
-      databasesList = getDatabasesList(getState());
+      await dispatch(
+        Databases.actions.fetchList({
+          include_tables: true,
+          include_cards: true,
+        }),
+      );
     } catch (error) {
       console.error("error fetching dbs", error);
       // NOTE: don't actually error if dbs can't be fetched for some reason,
@@ -372,7 +370,6 @@ export const initializeQB = (location, params) => {
         serializedCard = hash;
       }
     }
-    const sampleDataset = _.findWhere(databasesList, { is_sample: true });
 
     let preserveParameters = false;
     if (params.cardId || serializedCard) {

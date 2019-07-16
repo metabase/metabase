@@ -157,20 +157,33 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export const alpha = (color: ColorString, alpha: number): ColorString =>
-  Color(color)
-    .alpha(alpha)
+export function color(color: ColorString | ColorName): ColorString {
+  if (color in colors) {
+    return colors[color];
+  }
+  return color;
+}
+export function alpha(c: ColorString | ColorName, a: number): ColorString {
+  return Color(color(c))
+    .alpha(a)
     .string();
-
-export const darken = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .darken(factor)
+}
+export function darken(
+  c: ColorString | ColorName,
+  f: number = 0.25,
+): ColorString {
+  return Color(color(c))
+    .darken(f)
     .string();
-
-export const lighten = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .lighten(factor)
+}
+export function lighten(
+  c: ColorString | ColorName,
+  f: number = 0.5,
+): ColorString {
+  return Color(color(c))
+    .lighten(f)
     .string();
+}
 
 const PREFERRED_COLORS = {
   [colors["success"]]: [

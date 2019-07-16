@@ -1,31 +1,30 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
-import { t } from "ttag";
-import { Box, Flex } from "grid-styled";
-import styled from "styled-components";
-import { space, width } from "styled-system";
-import colors from "metabase/lib/colors";
-import color from "color";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import * as Urls from "metabase/lib/urls";
+import cx from "classnames";
+import { t } from "ttag";
+import { Flex } from "grid-styled";
+import styled from "styled-components";
+import { space, width } from "styled-system";
+import color from "color";
 
-import Button from "metabase/components/Button.jsx";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import * as Urls from "metabase/lib/urls";
+import colors from "metabase/lib/colors";
+
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
+import LogoIcon from "metabase/components/LogoIcon";
 import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
-
 import Modal from "metabase/components/Modal";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
-import ProfileLink from "metabase/nav/components/ProfileLink.jsx";
+import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { getPath, getContext, getUser } from "../selectors";
 import Database from "metabase/entities/databases";

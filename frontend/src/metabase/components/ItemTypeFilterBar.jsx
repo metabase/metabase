@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import { t } from "ttag";
 import { withRouter } from "react-router";
 

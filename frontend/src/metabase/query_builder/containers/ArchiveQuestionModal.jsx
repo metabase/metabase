@@ -3,11 +3,6 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 
-import Button from "metabase/components/Button";
-import Icon from "metabase/components/Icon";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import Tooltip from "metabase/components/Tooltip";
-
 import ArchiveModal from "metabase/components/ArchiveModal";
 
 import { archiveQuestion } from "metabase/query_builder/actions";

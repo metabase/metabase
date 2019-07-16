@@ -38,7 +38,6 @@ export default class ComponentsApp extends Component {
   render() {
     const componentName = slugify(this.props.params.componentName);
     const exampleName = slugify(this.props.params.exampleName);
-    const showExampleCode = !!componentName;
     return (
       <div className="flex full">
         <nav

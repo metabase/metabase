@@ -22,6 +22,9 @@ type Props = {
   lastRunDatasetQuery: DatasetQuery,
   navigateToNewCardInsideQB: any => void,
   rawSeries: any,
+
+  onOpenChartSettings: () => void,
+  onUpdateWarnings: () => void,
 };
 
 export default class VisualizationResult extends Component {
@@ -46,7 +49,6 @@ export default class VisualizationResult extends Component {
       result,
       rawSeries,
       className,
-      ...props
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -99,7 +101,7 @@ export default class VisualizationResult extends Component {
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
           showTitle={false}
-          metadata={this.props.metadata}
+          metadata={question.metadata()}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
         />

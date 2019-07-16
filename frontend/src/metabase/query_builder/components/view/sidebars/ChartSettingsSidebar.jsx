@@ -1,12 +1,8 @@
 import React from "react";
 import { t } from "ttag";
-import Button from "metabase/components/Button";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
-import visualizations, {
-  getIconForVisualizationType,
-} from "metabase/visualizations";
-import Icon from "metabase/components/Icon";
+import visualizations from "metabase/visualizations";
 import SidebarContent from "../SidebarContent";
 
 const ChartSettingsSidebar = ({

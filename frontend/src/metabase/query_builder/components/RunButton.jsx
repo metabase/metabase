@@ -30,7 +30,7 @@ export default class RunButton extends Component {
       className,
       compact,
       circular,
-      ...props,
+      ...props
     } = this.props;
     let buttonText = null;
     let buttonIcon = null;

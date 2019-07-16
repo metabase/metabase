@@ -1,8 +1,6 @@
 import React from "react";
 
 import Input from "metabase/components/Input";
-import Icon from "metabase/components/Icon";
-import { Flex } from "grid-styled";
 
 import { NotebookCell } from "../NotebookCell";
 

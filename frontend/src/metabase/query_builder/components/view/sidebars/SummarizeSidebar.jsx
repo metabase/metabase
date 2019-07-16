@@ -10,13 +10,10 @@ import colors, { alpha } from "metabase/lib/colors";
 
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
-import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import AggregationName from "metabase/query_builder/components/AggregationName";
 
 import DimensionList from "metabase/query_builder/components/DimensionList";
 
-import SelectButton from "metabase/components/SelectButton";
-import Button from "metabase/components/Button";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 

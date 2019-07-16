@@ -317,7 +317,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderDataSection() {
-    const { databases, query, isShowingTutorial } = this.props;
+    const { databases, query } = this.props;
     const tableMetadata = query.tableMetadata();
     const datasetQuery = query.datasetQuery();
     const databaseId = datasetQuery && datasetQuery.database;

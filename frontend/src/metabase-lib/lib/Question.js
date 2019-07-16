@@ -12,7 +12,6 @@ import StructuredQuery, {
 import NativeQuery from "./queries/NativeQuery";
 
 import { memoize } from "metabase-lib/lib/utils";
-import MetabaseUtils from "metabase/lib/utils";
 import * as Card_DEPRECATED from "metabase/lib/card";
 
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
@@ -25,7 +24,6 @@ import {
   distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
-  guessVisualization,
 } from "metabase/modes/lib/actions";
 
 import _ from "underscore";

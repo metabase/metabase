@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
 
-import Clearable from "./Clearable.jsx";
+import Clearable from "./Clearable";
 
 import Popover from "metabase/components/Popover";
 

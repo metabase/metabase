@@ -1,6 +1,5 @@
 import React from "react";
 import { t } from "ttag";
-import cx from "classnames";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 

@@ -420,8 +420,7 @@ export function parseViewBox(viewBox: string): Array<number> {
 export function loadIcon(name: string) {
   const def = ICON_PATHS[name];
   if (!def) {
-    console.warn('Icon "' + name + '" does not exist.');
-    return;
+    return null;
   }
 
   if (def.img) {
@@ -432,8 +431,8 @@ export function loadIcon(name: string) {
     attrs: {
       className: "Icon Icon-" + name,
       viewBox: "0 0 32 32",
-      width: "16px",
-      height: "16px",
+      width: 16,
+      height: 16,
       fill: "currentcolor",
     },
     svg: undefined,

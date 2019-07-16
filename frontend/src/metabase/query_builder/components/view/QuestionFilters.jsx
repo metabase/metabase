@@ -1,6 +1,5 @@
 import React from "react";
 
-import cx from "classnames";
 import { t } from "ttag";
 
 import Tooltip from "metabase/components/Tooltip";
@@ -90,7 +89,7 @@ export default function QuestionFilters({
 //   );
 // }
 export function QuestionFilterWidget({
-  question,
+  query,
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,

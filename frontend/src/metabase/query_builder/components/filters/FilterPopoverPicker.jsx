@@ -1,6 +1,6 @@
 import React from "react";
 
-import DatePicker, { getOperator } from "../filters/pickers/DatePicker";
+import DatePicker from "../filters/pickers/DatePicker";
 import TimePicker from "../filters/pickers/TimePicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
 

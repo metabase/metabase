@@ -4,10 +4,7 @@ import MBQLClause from "./MBQLClause";
 
 import { t } from "ttag";
 
-import {
-  AggregationClause as AggregationClause_DEPRECATED,
-  NamedClause as NamedClause_DEPRECATED,
-} from "metabase/lib/query";
+import { AggregationClause as AggregationClause_DEPRECATED } from "metabase/lib/query";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";

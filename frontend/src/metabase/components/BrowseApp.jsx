@@ -10,16 +10,15 @@ import Table from "metabase/entities/tables";
 
 import EntityItem from "metabase/components/EntityItem";
 
-import { normal } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
-import Icon, { IconWrapper } from "metabase/components/Icon";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Subhead from "metabase/components/Subhead";
 import Tooltip from "metabase/components/Tooltip";
 import PageHeading from "metabase/components/PageHeading";
 
@@ -48,7 +47,7 @@ export class SchemaBrowser extends React.Component {
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
-                        hover={{ color: normal.purple }}
+                        hover={{ color: colors["accent2"] }}
                         data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                         className="overflow-hidden"
                       >
@@ -57,7 +56,7 @@ export class SchemaBrowser extends React.Component {
                             <EntityItem
                               name={schema.name}
                               iconName="folder"
-                              iconColor={normal.purple}
+                              iconColor={colors["accent2"]}
                               item={schema}
                             />
                             <Box ml="auto">
@@ -122,54 +121,53 @@ export class TableBrowser extends React.Component {
                           px={1}
                           className="hover-parent hover--visibility"
                         >
-                          <Flex align="center">
-                            <Link
-                              to={link}
-                              ml={1}
-                              hover={{ color: normal.purple }}
-                              data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
-                              className="overflow-hidden"
-                            >
-                              <EntityItem
-                                item={table}
-                                name={table.display_name || table.name}
-                                iconName="table"
-                                iconColor={normal.purple}
-                              />
-                            </Link>
-                            <Box ml="auto" mr={1} className="hover-child">
-                              <Flex align="center">
-                                {this.props.xraysEnabled && (
-                                  <Tooltip tooltip={t`X-ray this table`}>
-                                    <Link
-                                      to={`auto/dashboard/table/${table.id}`}
-                                      data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
-                                    >
-                                      <Icon
-                                        name="bolt"
-                                        mx={1}
-                                        color={normal.yellow}
-                                        size={20}
-                                      />
-                                    </Link>
-                                  </Tooltip>
-                                )}
-                                <Tooltip tooltip={t`Learn about this table`}>
+                          <Link
+                            to={link}
+                            ml={1}
+                            hover={{ color: colors["accent2"] }}
+                            data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                            className="block overflow-hidden"
+                          >
+                            <EntityItem
+                              item={table}
+                              name={table.display_name || table.name}
+                              iconName="table"
+                              iconColor={colors["accent2"]}
+                              buttons={[
+                                this.props.xraysEnabled && (
                                   <Link
-                                    to={`reference/databases/${dbId}/tables/${
-                                      table.id
-                                    }`}
-                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
+                                    to={`auto/dashboard/table/${table.id}`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                                    className="link--icon ml1"
                                   >
                                     <Icon
-                                      name="reference"
-                                      color={normal.grey1}
+                                      key="xray"
+                                      tooltip={t`X-ray this table`}
+                                      name="bolt"
+                                      color={colors["warning"]}
+                                      size={20}
+                                      className="hover-child"
                                     />
                                   </Link>
-                                </Tooltip>
-                              </Flex>
-                            </Box>
-                          </Flex>
+                                ),
+                                <Link
+                                  to={`reference/databases/${dbId}/tables/${
+                                    table.id
+                                  }`}
+                                  data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
+                                  className="link--icon ml1"
+                                >
+                                  <Icon
+                                    key="reference"
+                                    tooltip={t`Learn about this table`}
+                                    name="reference"
+                                    color={colors["text-medium"]}
+                                    className="hover-child"
+                                  />
+                                </Link>,
+                              ]}
+                            />
+                          </Link>
                         </Card>
                       </GridItem>
                     );
@@ -205,12 +203,12 @@ export class DatabaseBrowser extends React.Component {
                     <Link
                       to={`browse/${database.id}`}
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-                      hover={{ color: normal.blue }}
+                      hover={{ color: colors["brand"] }}
                     >
                       <Card p={3}>
                         <Icon
                           name="database"
-                          color={normal.purple}
+                          color={colors["accent2"]}
                           mb={3}
                           size={28}
                         />

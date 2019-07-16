@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 
 import Button from "metabase/components/Button";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -31,7 +31,6 @@ export default class DeleteDatabaseModal extends Component {
   }
 
   render() {
-    const { database } = this.props;
     const { confirmValue } = this.state;
 
     let formError;
@@ -52,7 +51,6 @@ export default class DeleteDatabaseModal extends Component {
       confirmValue.toUpperCase() === "DELETE" ||
       confirmValue.toUpperCase() === t`DELETE`;
 
-    const headsUp = <strong>{t`Just a heads up:`}</strong>;
     return (
       <ModalContent
         title={t`Delete this database?`}

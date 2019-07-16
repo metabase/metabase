@@ -20,14 +20,11 @@ import {
   isCountry,
   isCoordinate,
   isNumber,
-  isCategory,
-  isBinnedNumber,
 } from "metabase/lib/schema_metadata";
 import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { FieldId } from "metabase/meta/types/Field";
 import type {
   StructuredQuery,
   FieldFilter,

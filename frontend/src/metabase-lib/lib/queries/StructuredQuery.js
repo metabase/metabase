@@ -10,7 +10,7 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import _ from "underscore";
-import { chain, assoc, dissoc, updateIn } from "icepick";
+import { chain, updateIn } from "icepick";
 
 import { memoize } from "metabase-lib/lib/utils";
 
@@ -44,8 +44,6 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase/meta/types/Table";
-
-import Utils from "metabase/lib/utils";
 
 import AtomicQuery from "./AtomicQuery";
 

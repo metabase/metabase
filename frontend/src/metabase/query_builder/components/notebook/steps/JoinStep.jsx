@@ -63,14 +63,7 @@ export default function JoinStep({
 
 class JoinClause extends React.Component {
   render() {
-    const {
-      color,
-      join,
-      updateQuery,
-      showRemove,
-      isLastOpened,
-      ...props
-    } = this.props;
+    const { color, join, updateQuery, showRemove, ...props } = this.props;
     const query = join.query();
     if (!query) {
       return null;

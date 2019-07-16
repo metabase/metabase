@@ -7,7 +7,6 @@ import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
-import * as Query from "metabase/lib/query/query";
 import Question from "metabase-lib/lib/Question";
 
 export default class PartialQueryBuilder extends Component {
@@ -69,11 +68,6 @@ export default class PartialQueryBuilder extends Component {
       },
     };
     const previewUrl = Urls.question(null, previewCard);
-
-    const onChange = query => {
-      this.props.onChange(query);
-      this.props.updatePreviewSummary({ ...datasetQuery, query });
-    };
 
     return (
       <div className="py1">

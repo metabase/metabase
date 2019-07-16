@@ -14,11 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type {
-  StructuredQuery,
-  NativeQuery,
-  TemplateTag,
-} from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase/meta/types/Query";
 import type {
   Card,
   DatasetQuery,

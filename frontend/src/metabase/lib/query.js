@@ -8,7 +8,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import { getOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty } from "metabase/lib/table";
 import { isFK, TYPE } from "metabase/lib/types";
-import { stripId, formatField } from "metabase/lib/formatting";
+import { stripId } from "metabase/lib/formatting";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import * as Table from "./query/table";

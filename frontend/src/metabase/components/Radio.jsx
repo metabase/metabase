@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import styled from "styled-components";
 import { space } from "styled-system";
 
-import colors from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -114,7 +114,7 @@ const BaseItem = styled.li.attrs({
   cursor: pointer;
   :hover {
     color: ${props =>
-      !props.showButtons && !props.selected ? colors["brand"] : null};
+      !props.showButtons && !props.selected ? color("brand") : null};
   }
 `;
 BaseItem.defaultProps = {
@@ -128,14 +128,14 @@ const NormalList = styled(BaseList).attrs({
     cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
 })``;
 const NormalItem = styled(BaseItem)`
-  color: ${props => (props.selected ? colors["brand"] : null)};
+  color: ${props => (props.selected ? color("brand") : null)};
 `;
 
 // UNDERLINE
 const UnderlinedList = styled(NormalList)``;
 const UnderlinedItem = styled(NormalItem)`
   border-bottom: 3px solid transparent;
-  border-color: ${props => (props.selected ? colors["brand"] : null)};
+  border-color: ${props => (props.selected ? color("brand") : null)};
 `;
 UnderlinedItem.defaultProps = {
   py: 2,
@@ -146,8 +146,9 @@ const BubbleList = styled(BaseList)``;
 const BubbleItem = styled(BaseItem)`
   font-weight: 700;
   border-radius: 99px;
-  color: ${props => (props.selected ? colors["white"] : colors["brand"])};
-  background-color: ${props => (props.selected ? colors["brand"] : "#D8ECFF")};
+  color: ${props => (props.selected ? color("white") : color("brand"))};
+  background-color: ${props =>
+    props.selected ? color("brand") : lighten("brand")};
 `;
 BubbleItem.defaultProps = {
   xspace: 1,

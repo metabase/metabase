@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import { connect } from "react-redux";
 
 import fitViewport from "metabase/hoc/FitViewPort";
@@ -28,7 +28,6 @@ import { push } from "react-router-redux";
 import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmptyState";
 
 import { Grid, GridItem } from "metabase/components/Grid";
-import Card from "metabase/components/Card";
 
 const mapStateToProps = state => ({
   query: getCurrentQuery(state),
@@ -111,12 +110,7 @@ export class NewQueryOptions extends Component {
   };
 
   render() {
-    const {
-      isAdmin,
-      metricSearchUrl,
-      dataBrowseUrl,
-      newQueryOptions,
-    } = this.props;
+    const { isAdmin, metricSearchUrl, newQueryOptions } = this.props;
     const {
       loaded,
       hasDatabases,

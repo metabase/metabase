@@ -4,20 +4,11 @@ import React, { Component } from "react";
 
 import DimensionList from "./DimensionList";
 
-import AccordianList from "metabase/components/AccordianList.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
-
-import { stripId, singularize } from "metabase/lib/formatting";
-
-import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 import type { ConcreteField } from "metabase/meta/types/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
-import type { RenderItemWrapper } from "metabase/components/AccordianList.jsx";
 
 // import type { Section } from "metabase/components/AccordianList";
 export type AccordianListItem = {};

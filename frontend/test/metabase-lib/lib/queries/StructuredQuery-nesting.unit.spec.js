@@ -1,19 +1,9 @@
 import {
-  metadata,
-  question,
-  DATABASE_ID,
-  ANOTHER_DATABASE_ID,
   ORDERS_TABLE_ID,
-  PRODUCT_TABLE_ID,
   ORDERS_TOTAL_FIELD_ID,
-  MAIN_METRIC_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
-  PRODUCT_TILE_FIELD_ID,
   makeStructuredQuery,
 } from "__support__/sample_dataset_fixture";
-
-import Segment from "metabase-lib/lib/metadata/Segment";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {

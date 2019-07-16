@@ -3,11 +3,10 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import styled from "styled-components";
-import { Box, Flex } from "grid-styled";
+import { Flex } from "grid-styled";
 import colors, { darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
@@ -55,6 +54,7 @@ const ViewFooter = ({
         className="flex-full"
         left={[
           <VizTypeButton
+            key="viz-type"
             question={question}
             result={result}
             active={isShowingChartTypeSidebar}
@@ -63,6 +63,7 @@ const ViewFooter = ({
             }
           />,
           <VizSettingsButton
+            key="viz-settings"
             ml={1}
             active={isShowingChartSettingsSidebar}
             onClick={
@@ -75,6 +76,7 @@ const ViewFooter = ({
         center={
           isVisualized && (
             <VizTableToggle
+              key="viz-table-toggle"
               question={question}
               isShowingRawTable={isShowingRawTable}
               onShowTable={isShowingRawTable => {
@@ -146,9 +148,9 @@ const VizTypeButton = ({ question, result, ...props }) => {
 };
 
 const VizSettingsButton = ({ ...props }) => (
-    <ViewButton medium icon="gear" {...props}>
-      {t`Settings`}
-    </ViewButton>
+  <ViewButton medium icon="gear" {...props}>
+    {t`Settings`}
+  </ViewButton>
 );
 
 const Well = styled(Flex)`

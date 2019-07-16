@@ -1,10 +1,6 @@
 /* @flow */
 
 import type { Join, JoinClause } from "metabase/meta/types/Query";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { Field } from "metabase/meta/types/Field";
-
-import Q from "metabase/lib/query";
 
 import { add, update, remove, clear } from "./util";
 

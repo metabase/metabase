@@ -9,7 +9,6 @@ import IconWrapper from "metabase/components/IconWrapper";
 import CheckBox from "metabase/components/CheckBox";
 import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import colors from "metabase/lib/colors";
 
@@ -38,6 +37,7 @@ const EntityItem = ({
   selectable,
   variant,
   item,
+  buttons,
 }) => {
   const actions = [
     onPin && {
@@ -119,15 +119,18 @@ const EntityItem = ({
         <Ellipsified>{name}</Ellipsified>
       </h3>
 
-      <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
+      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
+        {buttons}
         {item.description && (
-          <Tooltip tooltip={item.description}>
-            <Icon nam="info" />
-          </Tooltip>
+          <Icon
+            tooltip={item.description}
+            name="info"
+            className="ml1 text-medium"
+          />
         )}
         {actions.length > 0 && (
           <EntityMenu
-            className="hover-child"
+            className="ml1 hover-child"
             triggerIcon="ellipsis"
             items={actions}
           />

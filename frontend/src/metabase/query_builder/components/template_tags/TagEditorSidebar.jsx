@@ -3,8 +3,6 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-
 import { t } from "ttag";
 import cx from "classnames";
 

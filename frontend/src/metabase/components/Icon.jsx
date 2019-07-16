@@ -47,16 +47,25 @@ class BaseIcon extends Component {
     tooltip?: string, // using Tooltipify
   };
 
+  static defaultProps = {
+    defaultName: "unknown",
+  };
+
   render() {
-    const icon = loadIcon(this.props.name);
+    const { name, defaultName, className, ...rest } = this.props;
+
+    const icon = loadIcon(name) || loadIcon(defaultName);
     if (!icon) {
-      return null;
+      console.warn(`Icon "${name}" does not exist.`);
+      return <span />;
     }
-    const className = cx(
-      icon.attrs && icon.attrs.className,
-      this.props.className,
-    );
-    const props = { ...icon.attrs, ...this.props, className };
+
+    const props = {
+      ...icon.attrs,
+      ...stripLayoutProps(rest),
+      className: cx(icon.attrs.className, className),
+    };
+
     for (const prop of ["width", "height", "size", "scale"]) {
       if (typeof props[prop] === "string") {
         props[prop] = parseInt(props[prop], 10);
@@ -70,23 +79,27 @@ class BaseIcon extends Component {
       props.width *= props.scale;
       props.height *= props.scale;
     }
+    delete props.size, props.scale;
 
     if (icon.img) {
       return (
         <RetinaImage
           forceOriginalDimensions={false}
-          {...props}
           src={icon.img}
+          {...props}
         />
       );
     } else if (icon.svg) {
       return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
-    } else {
+    } else if (icon.path) {
       return (
-        <svg {...stripLayoutProps(props)}>
+        <svg {...props}>
           <path d={icon.path} />
         </svg>
       );
+    } else {
+      console.warn(`Icon "${name}" must have an img, svg, or path`);
+      return <span />;
     }
   }
 }

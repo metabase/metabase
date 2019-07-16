@@ -6,7 +6,7 @@ import { Box, Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 
-import colors from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 
 import visualizations from "metabase/visualizations";
 
@@ -89,7 +89,7 @@ const ChartTypeOption = ({
       flexDirection="column"
       align="center"
       justifyContent="center"
-      bg={isSelected ? colors["brand"] : "#D8ECFF"}
+      bg={isSelected ? color("brand") : lighten("brand")}
       onClick={onClick}
       className={cx(
         "cursor-pointer bg-brand-hover text-brand text-white-hover",

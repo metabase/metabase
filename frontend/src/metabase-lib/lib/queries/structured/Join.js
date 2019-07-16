@@ -4,10 +4,8 @@ import { MBQLObjectClause } from "./MBQLClause";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
-import MetabaseUtils from "metabase/lib/utils";
 
 import _ from "underscore";
-import { getIn } from "icepick";
 
 const JOIN_STRATEGY_OPTIONS = [
   { value: "left-join", name: "Left outer join", icon: "join_left_outer" }, // default
