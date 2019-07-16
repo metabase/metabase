@@ -307,22 +307,9 @@ export default class Navbar extends Component {
               <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
           )}
-          {hasDataAccess && (
-            <Tooltip tooltip={t`Write SQL`}>
-              <Link
-                mr={[1, 2]}
-                ml={[1, 2]}
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center hide sm-show flex-no-shrink"
-                data-metabase-event={`NavBar;SQL`}
-              >
-                <Icon size={17} name="sql" mr={1} />
-              </Link>
-            </Tooltip>
-          )}
           <EntityMenu
             tooltip={t`Create`}
-            className="hide sm-show"
+            className="hide sm-show mx1"
             triggerIcon="add"
             items={[
               {
@@ -345,6 +332,19 @@ export default class Navbar extends Component {
               },
             ]}
           />
+          {hasDataAccess && (
+            <Tooltip tooltip={t`Write SQL`}>
+              <Link
+                mr={[1, 2]}
+                ml={[1, 2]}
+                to={this.props.plainNativeQuery.question().getUrl()}
+                className="flex align-center hide sm-show flex-no-shrink"
+                data-metabase-event={`NavBar;SQL`}
+              >
+                <Icon size={19} name="sql" mr={1} />
+              </Link>
+            </Tooltip>
+          )}
           <ProfileLink {...this.props} />
         </Flex>
         {this.renderModal()}
