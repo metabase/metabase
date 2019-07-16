@@ -47,15 +47,17 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
 }
 
 function normalizeColumnSettings(columnSettings) {
-  return Object.fromEntries(
-    Object.entries(columnSettings).map(([columnKey, columnSettings]) => {
-      const [refOrName, fieldRef] = JSON.parse(columnKey);
-      if (refOrName === "ref") {
-        columnKey = JSON.stringify(["ref", normalizeFieldRef(fieldRef)]);
-      }
-      return [columnKey, columnSettings];
-    }),
-  );
+  const newColumnSettings = {};
+  for (const oldColumnKey of columnSettings) {
+    const [refOrName, fieldRef] = JSON.parse(oldColumnKey);
+    // if the key is a reference, normalize the mbql syntax
+    const newColumnKey =
+      refOrName === "ref"
+        ? JSON.stringify(["ref", normalizeFieldRef(fieldRef)])
+        : oldColumnKey;
+    newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
+  }
+  return newColumnSettings;
 }
 
 export function getStoredSettingsForSeries(series: ?Series): Settings {
