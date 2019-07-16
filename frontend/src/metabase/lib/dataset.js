@@ -53,7 +53,11 @@ export function fieldRefForColumn(
       // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
       return column.id;
     } else if (column.fk_field_id != null) {
-      return ["fk->", column.fk_field_id, column.id];
+      return [
+        "fk->",
+        ["field-id", column.fk_field_id],
+        ["field-id", column.id],
+      ];
     } else {
       return ["field-id", column.id];
     }
