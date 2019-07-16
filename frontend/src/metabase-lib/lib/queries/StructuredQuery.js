@@ -918,8 +918,22 @@ export default class StructuredQuery extends AtomicQuery {
         dimensionOptions.dimensions.push(dimension);
       }
 
+      // de-duplicate explicit and implicit joined tables
+      const explicitJoinFields = new Set(
+        joins.map(join => {
+          const p = join.parentDimension();
+          const j = join.joinDimension();
+          return `${p && p.field().id},${j && j.field().id}`;
+        }),
+      );
+
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
+        const field = dimension.field();
+        if (explicitJoinFields.has(`${field.id},${field.target.id}`)) {
+          continue;
+        }
+
         const fkDimensions = dimension
           .dimensions([FKDimension])
           .filter(dimensionFilter);
@@ -927,7 +941,7 @@ export default class StructuredQuery extends AtomicQuery {
         if (fkDimensions.length > 0) {
           dimensionOptions.count += fkDimensions.length;
           dimensionOptions.fks.push({
-            field: dimension.field(),
+            field: field,
             dimension: dimension,
             dimensions: fkDimensions,
           });
