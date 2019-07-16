@@ -11,7 +11,11 @@ describe("metabase/util/dataset", () => {
       expect(fieldRefForColumn(FIELD_COLUMN)).toEqual(["field-id", 1]);
     });
     it('should return `["fk->", 2, 1]` for a fk column', () => {
-      expect(fieldRefForColumn(FK_COLUMN)).toEqual(["fk->", 2, 1]);
+      expect(fieldRefForColumn(FK_COLUMN)).toEqual([
+        "fk->",
+        ["field-id", 2],
+        ["field-id", 1],
+      ]);
     });
     it('should return `["expression", 2, 1]` for a fk column', () => {
       expect(fieldRefForColumn(EXPRESSION_COLUMN)).toEqual([
