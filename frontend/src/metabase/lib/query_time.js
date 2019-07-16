@@ -273,7 +273,7 @@ export function parseFieldTargetId(field) {
       return field[1];
     }
     if (field[0] === "fk->") {
-      return field[1];
+      return parseFieldTargetId(field[1]);
     }
     if (field[0] === "datetime-field") {
       return parseFieldTargetId(field[1]);
