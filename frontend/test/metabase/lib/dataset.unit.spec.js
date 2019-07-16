@@ -1,4 +1,7 @@
-import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  fieldRefForColumn,
+  findColumnForColumnSetting,
+} from "metabase/lib/dataset";
 
 const FIELD_COLUMN = { id: 1 };
 const FK_COLUMN = { id: 1, fk_field_id: 2 };
@@ -50,6 +53,30 @@ describe("metabase/util/dataset", () => {
         "field-id",
         3,
       ]);
+    });
+  });
+
+  describe("findColumnForColumnSetting", () => {
+    const columns = [
+      { name: "bar", id: 42 },
+      { name: "foo", id: 1, fk_field_id: 2 },
+      { name: "baz", id: 43 },
+    ];
+    it("should find column with name", () => {
+      const column = findColumnForColumnSetting(columns, { name: "foo" });
+      expect(column).toBe(columns[1]);
+    });
+    it("should find column with normalized fieldRef", () => {
+      const column = findColumnForColumnSetting(columns, {
+        fieldRef: ["fk->", ["field-id", 2], ["field-id", 1]],
+      });
+      expect(column).toBe(columns[1]);
+    });
+    it("should find column with non-normalized fieldRef", () => {
+      const column = findColumnForColumnSetting(columns, {
+        fieldRef: ["fk->", 2, 1],
+      });
+      expect(column).toBe(columns[1]);
     });
   });
 });
