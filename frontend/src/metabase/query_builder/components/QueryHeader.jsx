@@ -221,7 +221,7 @@ export default class QueryHeader extends Component {
           buttonSections.push([
             <button
               key="recentlySaved"
-              className="cursor-pointer bg-white text-success text-bold text-uppercase"
+              className="cursor-pointer bg-white text-success text-bold text-uppercase text-nowrap"
             >
               <span>
                 <Icon name="check" size={12} />
@@ -248,7 +248,7 @@ export default class QueryHeader extends Component {
           <ActionButton
             key="save"
             actionFn={() => this.onSave(this.props.card, false)}
-            className="cursor-pointer text-brand-hover bg-white text-medium text-uppercase"
+            className="cursor-pointer text-brand-hover bg-white text-medium text-uppercase text-nowrap"
             normalText={t`SAVE CHANGES`}
             activeText={t`Saving…`}
             failedText={t`Save failed`}

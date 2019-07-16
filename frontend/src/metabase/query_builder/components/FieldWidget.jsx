@@ -74,7 +74,7 @@ export default class FieldWidget extends Component {
     return (
       <div className="flex align-center">
         <FieldName
-          className={cx(className, "QueryOption")}
+          className={cx(className, "QueryOption text-wrap flex flex-auto")}
           field={field}
           query={query}
           tableMetadata={this.props.tableMetadata}

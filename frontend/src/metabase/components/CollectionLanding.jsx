@@ -236,7 +236,9 @@ class DefaultLanding extends React.Component {
                 />
               </Box>
               <Flex align="center">
-                <PageHeading>{collection.name}</PageHeading>
+                <PageHeading className="text-wrap">
+                  {collection.name}
+                </PageHeading>
                 {collection.description && (
                   <Tooltip tooltip={collection.description}>
                     <Icon

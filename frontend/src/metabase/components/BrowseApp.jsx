@@ -238,7 +238,7 @@ export class DatabaseBrowser extends React.Component {
                     >
                       <Card p={3} hover={{ color: normal.blue }}>
                         <Icon name="database" color={normal.grey2} mb={3} />
-                        <Subhead>{database.name}</Subhead>
+                        <Subhead className="text-wrap">{database.name}</Subhead>
                       </Card>
                     </Link>
                   </GridItem>

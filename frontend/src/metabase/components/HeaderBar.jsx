@@ -54,7 +54,8 @@ export default class Header extends Component {
       } else {
         titleAndDescription = (
           <div className="flex align-baseline">
-            <h1 className="Header-title-name my1">{name}</h1> {breadcrumb}
+            <h1 className="Header-title-name my1 text-wrap mr1">{name}</h1>{" "}
+            {breadcrumb}
           </div>
         );
       }
@@ -68,7 +69,7 @@ export default class Header extends Component {
           className,
         )}
       >
-        <div className={cx("relative flex-full")}>
+        <div className={cx("relative flex-auto")}>
           {titleAndDescription}
           {badge && <div>{badge}</div>}
         </div>

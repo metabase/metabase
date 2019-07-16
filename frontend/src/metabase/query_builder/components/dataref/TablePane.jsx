@@ -112,7 +112,7 @@ export default class TablePane extends Component {
                   <a
                     key={fk.id}
                     onClick={() => this.props.show("field", fk.origin)}
-                    className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                    className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
                   >
                     {fk.origin.table.display_name}
                     {fkCountsByTable[fk.origin.table.id] > 1 ? (
@@ -135,7 +135,7 @@ export default class TablePane extends Component {
                 <a
                   key={item.id}
                   onClick={() => this.props.show(itemType, item)}
-                  className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                  className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
                 >
                   {item.name}
                 </a>
@@ -150,7 +150,7 @@ export default class TablePane extends Component {
           <div className="ml1">
             <div className="flex align-center">
               <Icon name="table2" className="text-medium pr1" size={16} />
-              <h3>{table.name}</h3>
+              <h3 className="text-wrap">{table.name}</h3>
             </div>
             {description}
             <div className="my2 Button-group Button-group--brand text-uppercase">

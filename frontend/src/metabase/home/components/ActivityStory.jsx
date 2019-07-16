@@ -38,7 +38,7 @@ export default class ActivityStory extends Component {
             <Link
               to={story.bodyLink}
               data-metabase-event={"Activity Feed;Story Clicked;" + story.topic}
-              className="link"
+              className="link text-wrap"
             >
               {story.body}
             </Link>
