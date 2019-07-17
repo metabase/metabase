@@ -499,7 +499,7 @@ const AccordianListCell = ({
           }
         >
           {renderSectionIcon(section, sectionIndex)}
-          <h3 className="List-section-title">{section.name}</h3>
+          <h3 className="List-section-title text-wrap">{section.name}</h3>
           {sections.length > 1 && section.items && section.items.length > 0 && (
             <span className="flex-align-right hover-child">
               <Icon
@@ -546,7 +546,7 @@ const AccordianListCell = ({
       >
         <a
           className={cx(
-            "p1 flex-full flex align-center",
+            "p1 flex-auto flex align-center",
             isClickable ? "cursor-pointer" : "cursor-default",
           )}
           onClick={isClickable ? () => onChange(item) : null}
@@ -554,7 +554,7 @@ const AccordianListCell = ({
           <span className="flex align-center">
             {renderItemIcon(item, itemIndex, isSelected)}
           </span>
-          <h4 className="List-item-title ml1">{item.name}</h4>
+          <h4 className="List-item-title ml1 text-wrap">{item.name}</h4>
         </a>
         {renderItemExtra(item, itemIndex, isSelected)}
         {showItemArrows && (

@@ -122,13 +122,11 @@ export default class FilterPopover extends React.Component {
         </div>
       );
     } else {
-      const field = dimension.field();
       return (
         <div
           style={{
-            minWidth: 300,
             // $FlowFixMe
-            maxWidth: field.isDate() ? null : 500,
+            minWidth: dimension.field().isDate() ? 600 : 500,
           }}
         >
           <FilterPopoverHeader

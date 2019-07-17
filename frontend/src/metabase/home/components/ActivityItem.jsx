@@ -28,7 +28,7 @@ export default class ActivityItem extends Component {
         </span>
 
         <div className="ml2 full flex align-center">
-          <div className="text-medium">
+          <div className="text-medium text-wrap">
             <span className="text-dark">{description.userName}</span>&nbsp;
             {description.summary}
           </div>

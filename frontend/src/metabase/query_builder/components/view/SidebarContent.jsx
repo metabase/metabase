@@ -1,7 +1,7 @@
 import React from "react";
 
 import Icon from "metabase/components/Icon";
-import Button from "metabase/components/Button";
+import ViewButton from "./ViewButton";
 
 import cx from "classnames";
 import { t } from "ttag";
@@ -10,20 +10,22 @@ const SidebarContent = ({
   className,
   icon,
   title,
+  color,
   onBack,
   onClose,
-  footer = onClose ? (
-    <Button
-      primary
+  footer = console.log(color) || onClose ? (
+    <ViewButton
+      active
       px={4}
       ml="auto"
       mr="auto"
       mb={2}
+      color={color}
       className="circular shadowed"
       onClick={onClose}
     >
       {t`Done`}
-    </Button>
+    </ViewButton>
   ) : null,
   children,
 }) => {

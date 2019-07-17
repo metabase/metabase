@@ -9,6 +9,7 @@ import Schema from "metabase/entities/schemas";
 import Table from "metabase/entities/tables";
 
 import EntityItem from "metabase/components/EntityItem";
+import Subhead from "metabase/components/Subhead";
 
 import colors from "metabase/lib/colors";
 
@@ -205,14 +206,14 @@ export class DatabaseBrowser extends React.Component {
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
                       hover={{ color: colors["brand"] }}
                     >
-                      <Card p={3}>
+                      <Card p={3} hover={{ color: colors["brand"] }}>
                         <Icon
                           name="database"
-                          color={colors["accent2"]}
+                          color={colors["text-medium"]}
                           mb={3}
                           size={28}
                         />
-                        <h3>{database.name}</h3>
+                        <Subhead className="text-wrap">{database.name}</Subhead>
                       </Card>
                     </Link>
                   </GridItem>

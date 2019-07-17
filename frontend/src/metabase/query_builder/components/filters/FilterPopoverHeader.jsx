@@ -28,18 +28,18 @@ export default function FilterPopoverHeader({
   return showHeader ? (
     <div className={cx(className, "flex align-center text-medium")}>
       {showFieldPicker && (
-        <div className="flex py1">
+        <div className="flex flex-wrap py1">
           <span
             className="cursor-pointer text-purple-hover transition-color flex align-center"
             onClick={onClearField}
           >
             <Icon name="chevronleft" size={14} />
             {tableDisplayName && (
-              <h3 className="ml1">{singularize(tableDisplayName)}</h3>
+              <h3 className="ml1 text-wrap">{singularize(tableDisplayName)}</h3>
             )}
           </span>
           {tableDisplayName && <h3 className="ml1">-</h3>}
-          <h3 className="ml1 text-default">{formatField(field)}</h3>
+          <h3 className="ml1 text-default text-wrap">{formatField(field)}</h3>
         </div>
       )}
       {showOperatorSelector && (

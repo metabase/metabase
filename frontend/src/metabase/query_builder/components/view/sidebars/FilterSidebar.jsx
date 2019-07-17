@@ -5,6 +5,8 @@ import cx from "classnames";
 import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
 import ViewFilterPopover from "../ViewFilterPopover";
 
+import { color } from "metabase/lib/colors";
+
 /** FilterSidebar operates on filters from topLevelFilters */
 const FilterSidebar = ({ className, question, index, onClose }) => {
   const query = question.query();
@@ -12,6 +14,7 @@ const FilterSidebar = ({ className, question, index, onClose }) => {
   return (
     <SidebarContent
       title={t`Pick a column to filter`}
+      color={color("accent7")}
       onClose={onClose}
       className={cx(className, "spread")}
     >

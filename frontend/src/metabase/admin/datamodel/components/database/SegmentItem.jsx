@@ -23,18 +23,8 @@ export default class SegmentItem extends Component {
 
     return (
       <tr className="mt1 mb3">
-        <td className="px1">{segment.name}</td>
-        <td className="px1 text-ellipsis">
-          <div
-            style={{
-              maxWidth: 400,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            {description}
-          </div>
-        </td>
+        <td className="px1 text-wrap">{segment.name}</td>
+        <td className="px1 text-wrap">{description}</td>
         <td className="px1 text-centered">
           <ObjectActionSelect
             object={segment}

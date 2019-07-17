@@ -50,9 +50,11 @@ class CollectionBadge extends React.Component {
         }}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
-        <Flex align="center" className="text-medium text-brand-hover">
-          <Icon name={object.getIcon()} mr={1} size={13} />
-          <h4 className="text-bold">{object.name}</h4>
+        <Flex align="center">
+          <Icon name={object.getIcon()} mr={1} />
+          <h5 className="text-uppercase text-wrap" style={{ fontWeight: 900 }}>
+            {object.name}
+          </h5>
         </Flex>
       </Link>
     );

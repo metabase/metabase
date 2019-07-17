@@ -29,6 +29,7 @@ const BaseButton = ({
   iconSize,
   iconColor,
   iconVertical,
+  color,
   children,
   ...props
 }) => {
