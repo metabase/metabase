@@ -70,7 +70,6 @@ const MultiDatePicker = ({
         onChange={(startValue, endValue) =>
           onFilterChange([op, field, startValue, endValue])
         }
-        isDual
       />
     </div>
   </div>

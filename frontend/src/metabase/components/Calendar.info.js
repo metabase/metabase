@@ -18,12 +18,4 @@ export const examples = {
       onChange={onChange}
     />
   ),
-  "Dual with a date range": (
-    <Calendar
-      isDual
-      selected={moment()}
-      selectedEnd={moment().add(1, "month")}
-      onChange={onChange}
-    />
-  ),
 };

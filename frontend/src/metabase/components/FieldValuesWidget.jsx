@@ -275,7 +275,6 @@ export class FieldValuesWidget extends Component {
           autoFocus={autoFocus}
           color={color}
           style={{
-            borderWidth: 2,
             ...this.props.style,
           }}
           updateOnInputChange
