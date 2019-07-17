@@ -9,9 +9,8 @@ import Schema from "metabase/entities/schemas";
 import Table from "metabase/entities/tables";
 
 import EntityItem from "metabase/components/EntityItem";
-import Subhead from "metabase/components/Subhead";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { getXraysEnabled } from "metabase/selectors/settings";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -48,7 +47,7 @@ export class SchemaBrowser extends React.Component {
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
-                        hover={{ color: colors["accent2"] }}
+                        hover={{ color: color("accent2") }}
                         data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
                         className="overflow-hidden"
                       >
@@ -57,7 +56,7 @@ export class SchemaBrowser extends React.Component {
                             <EntityItem
                               name={schema.name}
                               iconName="folder"
-                              iconColor={colors["accent2"]}
+                              iconColor={color("accent2")}
                               item={schema}
                             />
                             <Box ml="auto">
@@ -125,7 +124,7 @@ export class TableBrowser extends React.Component {
                           <Link
                             to={link}
                             ml={1}
-                            hover={{ color: colors["accent2"] }}
+                            hover={{ color: color("accent2") }}
                             data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
                             className="block overflow-hidden"
                           >
@@ -133,7 +132,7 @@ export class TableBrowser extends React.Component {
                               item={table}
                               name={table.display_name || table.name}
                               iconName="table"
-                              iconColor={colors["accent2"]}
+                              iconColor={color("accent2")}
                               buttons={[
                                 this.props.xraysEnabled && (
                                   <Link
@@ -145,7 +144,7 @@ export class TableBrowser extends React.Component {
                                       key="xray"
                                       tooltip={t`X-ray this table`}
                                       name="bolt"
-                                      color={colors["warning"]}
+                                      color={color("warning")}
                                       size={20}
                                       className="hover-child"
                                     />
@@ -162,7 +161,7 @@ export class TableBrowser extends React.Component {
                                     key="reference"
                                     tooltip={t`Learn about this table`}
                                     name="reference"
-                                    color={colors["text-medium"]}
+                                    color={color("text-medium")}
                                     className="hover-child"
                                   />
                                 </Link>,
@@ -204,16 +203,16 @@ export class DatabaseBrowser extends React.Component {
                     <Link
                       to={`browse/${database.id}`}
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
-                      hover={{ color: colors["brand"] }}
+                      hover={{ color: color("brand") }}
                     >
-                      <Card p={3} hover={{ color: colors["brand"] }}>
+                      <Card p={3} hover={{ color: color("brand") }}>
                         <Icon
                           name="database"
-                          color={colors["text-medium"]}
+                          color={color("accent2")}
                           mb={3}
                           size={28}
                         />
-                        <Subhead className="text-wrap">{database.name}</Subhead>
+                        <h3 className="text-wrap">{database.name}</h3>
                       </Card>
                     </Link>
                   </GridItem>
