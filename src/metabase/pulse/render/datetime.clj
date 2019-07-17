@@ -110,7 +110,7 @@
 (s/defn format-timestamp-relative :- (s/maybe su/NonBlankString)
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
   otherwie returns nil"
-  [timezone, timestamp-str :- (s/maybe s/Str), {:keys [unit]}]
+  [timezone timestamp-str {:keys [unit]}]
   (date->interval-name (du/str->date-time timestamp-str timezone) unit))
 
 (defn format-timestamp-pair
