@@ -1,4 +1,5 @@
 # Metabase
+its just a prectice to send a pull request dont merge it
 Metabase is the easy, open source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](docs/metabase-product-screenshot.png)
