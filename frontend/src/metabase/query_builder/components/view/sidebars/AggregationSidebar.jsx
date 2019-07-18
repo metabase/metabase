@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
 import { color } from "metabase/lib/colors";
@@ -13,7 +13,7 @@ const AggregationSidebar = ({ question, index, onClose }) => {
       icon="insight"
       title={t`Pick the metric you'd like to see`}
       color={color("accent1")}
-      onClose={onClose}
+      onDone={onClose}
     >
       <AggregationPopover
         key={index}

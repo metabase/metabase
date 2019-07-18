@@ -16,6 +16,7 @@ export default function DefaultPicker({
   setValue,
   setValues,
   onCommit,
+  className,
   width = 440,
 }) {
   const operator = filter.operator();
@@ -94,16 +95,22 @@ export default function DefaultPicker({
           />
         );
       }
-      return (
-        <span key={index}>
-          {t`not implemented ${operatorField.type}`}{" "}
-          {operator.multi ? t`true` : t`false`}
-        </span>
-      );
+      return null;
     });
   if (fieldWidgets && fieldWidgets.filter(f => f).length > 0) {
-    return <div>{fieldWidgets}</div>;
+    return (
+      <div className={className}>
+        {fieldWidgets.map((fieldWidget, index) => (
+          <div
+            key={index}
+            className={index < fieldWidgets.length - 1 ? "mb1" : null}
+          >
+            {fieldWidget}
+          </div>
+        ))}
+      </div>
+    );
   } else {
-    return <div className="mb1" />;
+    return <div className={className} />;
   }
 }

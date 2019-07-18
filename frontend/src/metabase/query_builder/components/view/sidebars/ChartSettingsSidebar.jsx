@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 import visualizations from "metabase/visualizations";
-import SidebarContent from "../SidebarContent";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 const ChartSettingsSidebar = ({
   question,
@@ -19,7 +19,7 @@ const ChartSettingsSidebar = ({
     <SidebarContent
       className="full-height"
       title={t`${visualizations.get(question.display()).uiName} options`}
-      onClose={onClose}
+      onDone={onClose}
       onBack={onOpenChartType}
     >
       <ChartSettings

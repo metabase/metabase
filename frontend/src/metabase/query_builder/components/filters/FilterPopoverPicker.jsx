@@ -5,6 +5,7 @@ import TimePicker from "../filters/pickers/TimePicker";
 import DefaultPicker from "../filters/pickers/DefaultPicker";
 
 export default function FilterPopoverPicker({
+  className,
   filter,
   onFilterChange,
   onCommit,
@@ -21,20 +22,21 @@ export default function FilterPopoverPicker({
   const field = dimension.field();
   return field.isTime() ? (
     <TimePicker
-      className="mt1"
+      className={className}
       filter={filter}
       onFilterChange={onFilterChange}
       width={width}
     />
   ) : field.isDate() ? (
     <DatePicker
-      className="mt1"
+      className={className}
       filter={filter}
       onFilterChange={onFilterChange}
       width={width}
     />
   ) : (
     <DefaultPicker
+      className={className}
       filter={filter}
       setValue={setValue}
       setValues={setValues}

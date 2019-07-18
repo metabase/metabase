@@ -8,14 +8,20 @@ import FilterPopoverHeader from "../filters/FilterPopoverHeader";
 import FilterPopoverPicker from "../filters/FilterPopoverPicker";
 import FilterPopoverFooter from "../filters/FilterPopoverFooter";
 
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
+import { color } from "metabase/lib/colors";
+
 type Props = {
   query: StructuredQuery,
   filter?: Filter,
+  onChange: (filter: Filter) => void,
+  // NOTE: this should probably be called onCommit
   onChangeFilter: (filter: Filter) => void,
   onClose: () => void,
 };
@@ -29,6 +35,11 @@ type State = {
 export default class ViewFilterPopover extends Component {
   props: Props;
   state: State;
+
+  static defaultProps = {
+    style: {},
+    showFieldPicker: true,
+  };
 
   constructor(props: Props) {
     super(props);
@@ -52,6 +63,13 @@ export default class ViewFilterPopover extends Component {
       this.setState({
         filter: filter.setQuery(nextProps.query),
       });
+    }
+  }
+
+  setFilter(filter) {
+    this.setState({ filter });
+    if (this.props.onChange) {
+      this.props.onChange(filter);
     }
   }
 
@@ -79,39 +97,50 @@ export default class ViewFilterPopover extends Component {
 
   handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
     const filter = this.state.filter || new Filter([], null, query);
-    this.setState({
-      filter: filter.setDimension(fieldRef, { useDefaultOperator: true }),
-    });
+    this.setFilter(filter.setDimension(fieldRef, { useDefaultOperator: true }));
   };
 
   handleFilterChange = (newFilter: FieldFilter) => {
-    this.setState({ filter: this.state.filter.set(newFilter) });
+    this.setFilter(this.state.filter.set(newFilter));
   };
 
   handleClearField = () => {
-    this.setState({ filter: this.state.filter.setDimension(null) });
+    this.setFilter(this.state.filter.setDimension(null));
   };
 
   render() {
-    const { className, style, query, width = 410, maxHeight } = this.props;
+    const {
+      className,
+      style,
+      query,
+      showFieldPicker,
+      fieldPickerTitle,
+    } = this.props;
     const { filter } = this.state;
 
     const dimension = filter && filter.dimension();
     if (!dimension) {
       return (
         <div className={className} style={style}>
+          {fieldPickerTitle && (
+            <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          )}
           <DimensionList
-            className="text-purple"
-            width={width}
-            maxHeight={maxHeight}
+            style={{ color: color("filter") }}
+            maxHeight={Infinity}
             dimension={dimension}
-            sections={query.topLevelFilterFieldOptionSections()}
+            sections={
+              this.props.topLevel
+                ? query.topLevelFilterFieldOptionSections(filter)
+                : query.filterFieldOptionSections(filter)
+            }
             onChangeDimension={dimension =>
               this.handleFieldChange(dimension.mbql(), dimension.query())
             }
             onChange={item => {
               this.handleCommitFilter(item.filter, item.query);
             }}
+            width={null}
             alwaysExpanded
           />
         </div>
@@ -120,24 +149,23 @@ export default class ViewFilterPopover extends Component {
       return (
         <div className={className} style={style}>
           <FilterPopoverHeader
-            className="px3"
+            className="mx1 mt2 mb1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
-            showFieldPicker
+            showFieldPicker={showFieldPicker}
           />
-          <div className="px3 mt1">
-            <FilterPopoverPicker
-              filter={filter}
-              onFilterChange={this.handleFilterChange}
-              width={null}
-            />
-          </div>
-          <FilterPopoverFooter
-            className="p1"
+          <FilterPopoverPicker
+            className="mx1 mt1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
+            width={null}
+          />
+          <FilterPopoverFooter
+            className="mx1 mt1 mb1"
+            filter={filter}
+            onFilterChange={this.handleFilterChange}
+            onCommit={!this.props.noCommitButton ? this.handleCommit : null}
           />
         </div>
       );

@@ -8,6 +8,8 @@ import FilterPopoverHeader from "./FilterPopoverHeader";
 import FilterPopoverPicker from "./FilterPopoverPicker";
 import FilterPopoverFooter from "./FilterPopoverFooter";
 
+import { color } from "metabase/lib/colors";
+
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 
@@ -32,7 +34,10 @@ export default class FilterPopover extends React.Component {
   state: State;
 
   static defaultProps = {
+    style: {},
     showFieldPicker: true,
+    // TODO: remove this
+    className: "full",
   };
 
   constructor(props: Props) {
@@ -102,15 +107,16 @@ export default class FilterPopover extends React.Component {
   };
 
   render() {
-    const { query, showFieldPicker } = this.props;
+    const { className, style, query, showFieldPicker } = this.props;
     const { filter } = this.state;
 
     const dimension = filter.dimension();
     if (filter.isSegmentFilter() || !dimension) {
       return (
-        <div className="full">
+        <div className={className} style={style}>
           <FieldList
             className="text-purple"
+            style={{ color: color("filter") }}
             maxHeight={this.props.maxHeight}
             field={dimension && dimension.mbql()}
             fieldOptions={query.filterFieldOptions(filter)}
@@ -124,26 +130,30 @@ export default class FilterPopover extends React.Component {
     } else {
       return (
         <div
+          className={className}
           style={{
+            minWidth: 300,
             // $FlowFixMe
-            minWidth: dimension.field().isDate() ? 600 : 500,
+            maxWidth: dimension.field().isDate() ? 600 : 500,
+            // $FlowFixMe
+            ...style,
           }}
         >
           <FilterPopoverHeader
-            className="p1 border-bottom border-medium text-medium"
+            className="mx1 mt2 mb1"
             filter={filter}
             showFieldPicker={showFieldPicker}
             onFilterChange={this.handleFilterChange}
             onClearField={this.handleClearField}
           />
           <FilterPopoverPicker
-            className="p1"
+            className="mx1 mt1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}
           />
           <FilterPopoverFooter
-            className="p1"
+            className="mx1 mt1 mb1"
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={this.handleCommit}

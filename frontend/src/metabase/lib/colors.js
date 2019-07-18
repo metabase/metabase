@@ -49,6 +49,11 @@ const colors = {
 /* eslint-enable no-color-literals */
 export default colors;
 
+export const aliases = {
+  summarize: "accent1",
+  filter: "accent7",
+};
+
 export const harmony = [];
 
 // DEPRECATED: we should remove these and use `colors` directly
@@ -161,6 +166,10 @@ export function color(color: ColorString | ColorName): ColorString {
   if (color in colors) {
     return colors[color];
   }
+  if (color in aliases) {
+    return colors[aliases[color]];
+  }
+  // TODO: validate this is a ColorString
   return color;
 }
 export function alpha(c: ColorString | ColorName, a: number): ColorString {

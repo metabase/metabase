@@ -548,7 +548,7 @@ export default class TokenField extends Component {
 
     const valuesList = (
       <ul
-        className="input flex flex-wrap bg-white scroll-x scroll-y"
+        className="input pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y"
         style={{ ...this.props.style, inputBoxStyles }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
@@ -556,14 +556,14 @@ export default class TokenField extends Component {
           <li
             key={index}
             className={cx(
-              `1 ml1 py1 pl2 rounded bg-medium`,
-              multi ? "pr1" : "pr2",
+              "flex align-center mr1 mb1 pl2 rounded bg-medium",
+              multi ? "pr1" : "pr2 py1", // move some of the padding to the X button
             )}
           >
             <span className="text-bold">{valueRenderer(v)}</span>
             {multi && (
               <a
-                className="text-medium text-default-hover px1"
+                className="text-medium text-default-hover p1"
                 onClick={e => {
                   this.removeValue(v);
                   e.preventDefault();
@@ -575,7 +575,7 @@ export default class TokenField extends Component {
             )}
           </li>
         ))}
-        <li className="flex-full">
+        <li className="flex-full flex align-center mb1">
           <input
             ref="input"
             className="full h4 no-focus borderless"

@@ -9,12 +9,12 @@ import ViewFilterPopover from "./ViewFilterPopover";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-const FilterPill = props => <ViewPill color={colors["accent2"]} {...props} />;
+const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
 const FilterButton = props => (
-  <ViewButton medium icon="filter" color={colors["accent2"]} {...props} />
+  <ViewButton medium icon="filter" color={color("filter")} {...props} />
 );
 
 export default function QuestionFilters({
@@ -47,21 +47,10 @@ export default function QuestionFilters({
             onChangeFilter={newFilter =>
               newFilter.replace().update(null, { run: true })
             }
+            style={{ minWidth: 300 }}
           />
         </PopoverWithTrigger>
       ))}
-      {/* <PopoverWithTrigger
-        triggerElement={<FilterPill icon="add" />}
-        triggerClasses="flex align-center"
-        sizeToFit
-      >
-        <ViewFilterPopover
-          query={query}
-          onChangeFilter={newFilter =>
-            newFilter.add().update(null, { run: true })
-          }
-        />
-      </PopoverWithTrigger> */}
     </div>
   ) : (
     <Tooltip tooltip={`Show filters`}>
@@ -72,22 +61,6 @@ export default function QuestionFilters({
   );
 }
 
-// export function QuestionFilterWidget({ query, ...props }) {
-//   return (
-//     <PopoverWithTrigger
-//       triggerElement={<FilterButton {...props} >{t`Filter}</FilterButton>}
-//       triggerClasses="flex align-center"
-//       sizeToFit
-//     >
-//       <ViewFilterPopover
-//         query={query}
-//         onChangeFilter={newFilter =>
-//           newFilter.add().update(null, { run: true })
-//         }
-//       />
-//     </PopoverWithTrigger>
-//   );
-// }
 export function QuestionFilterWidget({
   query,
   isShowingFilterSidebar,

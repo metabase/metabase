@@ -34,7 +34,7 @@ export default class OperatorSelector extends Component {
       <Select
         value={operator}
         onChange={e => onOperatorChange(e.target.value)}
-        className={cx("border-medium", className)}
+        className={cx("border-medium text-default", className)}
       >
         {operators.map(o => (
           <Option key={o.name} value={o.name}>

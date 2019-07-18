@@ -4,7 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
-import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import { color, lighten } from "metabase/lib/colors";
 
@@ -41,7 +41,7 @@ const ChartTypeSidebar = ({
     <SidebarContent
       className="full-height"
       title={t`Choose a visualization`}
-      onClose={onCloseChartType}
+      onDone={onCloseChartType}
     >
       {layout.map(row => (
         <Flex mx={3} mb={1} className="flex-wrap">

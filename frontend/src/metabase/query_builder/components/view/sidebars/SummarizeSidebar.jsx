@@ -6,9 +6,9 @@ import styled from "styled-components";
 
 import { Flex } from "grid-styled";
 
-import colors, { alpha } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
-import SidebarContent from "metabase/query_builder/components/view/SidebarContent";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 import AggregationName from "metabase/query_builder/components/AggregationName";
 
@@ -37,7 +37,8 @@ export default function SummarizeSidebar({
   return (
     <SidebarContent
       title={t`Summarize by`}
-      onClose={() => {
+      color={color("summarize")}
+      onDone={() => {
         if (isResultDirty) {
           runQuestionQuery();
         }
@@ -45,7 +46,7 @@ export default function SummarizeSidebar({
       }}
       className={cx(className, "spread")}
     >
-      <div className="px4 pt1">
+      <div className="px4">
         {query.aggregations().map((aggregation, index) => (
           <SummarizeAggregation
             className="mb1"
@@ -73,7 +74,7 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
       <PopoverWithTrigger
         triggerClasses="flex-full"
         triggerElement={
-          <AggregationToken color={colors["accent1"]}>
+          <AggregationToken color={color("summarize")}>
             <AggregationName className="ml1" aggregation={aggregation} />
             <Icon
               className="flex ml-auto faded fade-in-hover"

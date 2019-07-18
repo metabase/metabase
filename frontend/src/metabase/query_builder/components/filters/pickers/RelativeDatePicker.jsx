@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import cx from "classnames";
 
 import NumericInput from "metabase/components/NumericInput.jsx";
 import DateUnitSelector from "../DateUnitSelector";
@@ -46,12 +47,13 @@ export default class RelativeDatePicker extends Component {
 
   render() {
     const {
+      className,
       filter: [op, field, intervals, unit],
       onFilterChange,
       formatter,
     } = this.props;
     return (
-      <div className="flex-full mb2 flex align-center">
+      <div className={cx(className, "flex align-center")}>
         <NumericInput
           className="mr2 input border-purple text-right"
           style={{
@@ -70,7 +72,7 @@ export default class RelativeDatePicker extends Component {
           }
           placeholder="30"
         />
-        <div className="flex-full mr2">
+        <div className="flex-full">
           <DateUnitSelector
             open={this.state.showUnits}
             value={unit}

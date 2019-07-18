@@ -8,7 +8,7 @@ import cx from "classnames";
 
 import TagEditorParam from "./TagEditorParam";
 import TagEditorHelp from "./TagEditorHelp";
-import SidebarHeader from "../SidebarHeader";
+import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -81,9 +81,8 @@ export default class TagEditorSidebar extends React.Component {
     }
 
     return (
-      <div className="DataReference-container p3 scroll-y">
-        <SidebarHeader title={t`Variables`} onClose={onClose} />
-        <div className="DataReference-content">
+      <SidebarContent title={t`Variables`} onClose={onClose}>
+        <div className="mx4">
           <div className="Button-group Button-group--brand text-uppercase mb2">
             <a
               className={cx("Button Button--small", {
@@ -114,7 +113,7 @@ export default class TagEditorSidebar extends React.Component {
             />
           )}
         </div>
-      </div>
+      </SidebarContent>
     );
   }
 }

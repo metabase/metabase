@@ -30,12 +30,6 @@
   }
 }
 
-@media screen and (--breakpoint-min-xl) {
-  .Button {
-    padding: 1rem 1.5rem;
-  }
-}
-
 .Button--small {
   padding: 0.45rem 1rem;
   font-size: 0.6rem;

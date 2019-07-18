@@ -29,15 +29,17 @@ export default function FilterPopoverFooter({
               filter.operator()
         }
       />
-      <button
-        data-ui-tag="add-filter"
-        className={cx("Button Button--purple ml-auto", {
-          disabled: !filter.isValid(),
-        })}
-        onClick={onCommit}
-      >
-        {isNew ? t`Add filter` : t`Update filter`}
-      </button>
+      {onCommit && (
+        <button
+          data-ui-tag="add-filter"
+          className={cx("Button Button--purple ml-auto", {
+            disabled: !filter.isValid(),
+          })}
+          onClick={onCommit}
+        >
+          {isNew ? t`Add filter` : t`Update filter`}
+        </button>
+      )}
     </div>
   );
 }

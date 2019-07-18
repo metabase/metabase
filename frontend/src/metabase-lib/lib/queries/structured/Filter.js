@@ -55,7 +55,7 @@ export default class Filter extends MBQLClause {
   displayName() {
     if (this.isSegmentFilter()) {
       const segment = this.segment();
-      return t`Matches ${segment ? segment.displayName() : t`Unknown Segment`}`;
+      return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isFieldFilter()) {
       const dimension = this.dimension();
       const operator = this.operator();

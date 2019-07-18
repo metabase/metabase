@@ -4,6 +4,7 @@ import cx from "classnames";
 import OperatorSelector from "../filters/OperatorSelector";
 import { formatField, singularize } from "metabase/lib/formatting";
 import Icon from "metabase/components/Icon";
+import SidebarHeader from "../SidebarHeader";
 
 export default function FilterPopoverHeader({
   className,
@@ -14,7 +15,6 @@ export default function FilterPopoverHeader({
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
-  const tableDisplayName = field.table && field.table.displayName();
 
   const showOperatorSelector = !(field.isTime() || field.isDate());
   const showHeader = showFieldPicker || showOperatorSelector;
@@ -28,19 +28,11 @@ export default function FilterPopoverHeader({
   return showHeader ? (
     <div className={cx(className, "text-medium")}>
       {showFieldPicker && (
-        <div className="flex flex-wrap py1">
-          <span
-            className="cursor-pointer text-purple-hover transition-color flex align-center"
-            onClick={onClearField}
-          >
-            <Icon name="chevronleft" size={14} />
-            {tableDisplayName && (
-              <h3 className="ml1 text-wrap">{singularize(tableDisplayName)}</h3>
-            )}
-          </span>
-          {tableDisplayName && <h3 className="ml1">-</h3>}
-          <h3 className="ml1 text-default text-wrap">{formatField(field)}</h3>
-        </div>
+        <SidebarHeader
+          className="text-default mt1 mb2"
+          title={field.displayName({ includeTable: true })}
+          onBack={onClearField}
+        />
       )}
       {showOperatorSelector && (
         <OperatorSelector
