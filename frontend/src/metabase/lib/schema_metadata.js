@@ -136,7 +136,8 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col => col && col.source !== "aggregation";
+export const isDimension = col =>
+  col && col.source !== "aggregation" && !isDescription(col);
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 
@@ -174,6 +175,9 @@ export const isLongitude = field =>
 
 export const isCurrency = field =>
   isa(field && field.special_type, TYPE.Currency);
+
+export const isDescription = field =>
+  isa(field && field.special_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
