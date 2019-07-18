@@ -43,6 +43,7 @@ import {
   getTableForeignKeys,
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
+  getIsRunning,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -97,6 +98,9 @@ export const setQueryBuilderMode = (
   );
   if (shouldUpdateUrl) {
     await dispatch(updateUrl(null, { queryBuilderMode }));
+  }
+  if (queryBuilderMode === "notebook") {
+    dispatch(cancelQuery());
   }
 };
 
@@ -1070,17 +1074,16 @@ export const queryErrored = createThunkAction(
 
 // cancelQuery
 export const CANCEL_QUERY = "metabase/qb/CANCEL_QUERY";
-export const cancelQuery = createThunkAction(CANCEL_QUERY, () => {
-  return async (dispatch, getState) => {
-    const {
-      qb: { uiControls, cancelQueryDeferred },
-    } = getState();
-
-    if (uiControls.isRunning && cancelQueryDeferred) {
+export const cancelQuery = () => (dispatch, getState) => {
+  const isRunning = getIsRunning(getState());
+  if (isRunning) {
+    const { cancelQueryDeferred } = getState().qb;
+    if (cancelQueryDeferred) {
       cancelQueryDeferred.resolve();
     }
-  };
-});
+    return { type: CANCEL_QUERY };
+  }
+};
 
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
