@@ -917,18 +917,21 @@ export default class StructuredQuery extends AtomicQuery {
       }
 
       // de-duplicate explicit and implicit joined tables
-      const explicitJoinFields = new Set(
+      const keyForFk = (src, dst) =>
+        src && dst ? `${src.id},${dst.id}` : null;
+      const explicitJoins = new Set(
         joins.map(join => {
           const p = join.parentDimension();
           const j = join.joinDimension();
-          return `${p && p.field().id},${j && j.field().id}`;
+          return keyForFk(p && p.field(), j && j.field());
         }),
       );
+      explicitJoins.delete(null);
 
       const fkDimensions = this.dimensions().filter(dimensionIsFKReference);
       for (const dimension of fkDimensions) {
         const field = dimension.field();
-        if (explicitJoinFields.has(`${field.id},${field.target.id}`)) {
+        if (field && explicitJoins.has(keyForFk(field, field.target))) {
           continue;
         }
 

@@ -18,8 +18,10 @@ const STEPS = [
     subSteps: query => query.joins().length,
     active: (query, index) => query.joins().length > index,
     revert: (query, index) => query.removeJoin(index),
-    clean: (query, index) =>
-      query.joins()[index].isValid() ? query : query.removeJoin(index),
+    clean: (query, index) => {
+      const join = query.joins()[index];
+      return !join || join.isValid() ? query : query.removeJoin(index);
+    },
   },
   {
     type: "expression",
