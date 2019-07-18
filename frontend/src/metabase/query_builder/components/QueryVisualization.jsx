@@ -7,6 +7,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
+import Warnings from "./Warnings";
 
 import Utils from "metabase/lib/utils";
 
@@ -85,7 +86,13 @@ export default class QueryVisualization extends Component {
   };
 
   render() {
-    const { className, question, isRunning, result } = this.props;
+    const {
+      className,
+      question,
+      isRunning,
+      isObjectDetail,
+      result,
+    } = this.props;
 
     return (
       <div className={cx(className, "relative")}>
@@ -96,6 +103,13 @@ export default class QueryVisualization extends Component {
               {t`Doing science`}...
             </h2>
           </div>
+        )}
+        {!isObjectDetail && (
+          <Warnings
+            warnings={this.state.warnings}
+            className="absolute top right mt2 mr2 z2"
+            size={18}
+          />
         )}
         <div
           className={cx("spread Visualization z1", {

@@ -16,7 +16,9 @@ import ViewButton from "./ViewButton";
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+
 import QuestionRowCount from "./QuestionRowCount";
+import QuestionLastUpdated from "./QuestionLastUpdated";
 
 import {
   getVisualizationRaw,
@@ -96,6 +98,13 @@ const ViewFooter = ({
                 result={result}
               />
             ),
+          QuestionLastUpdated.shouldRender({ result }) && (
+            <QuestionLastUpdated
+              key="last-updated"
+              className="mx1 hide sm-show"
+              result={result}
+            />
+          ),
           QueryDownloadWidget.shouldRender({ result, isResultDirty }) && (
             <QueryDownloadWidget
               key="download"
