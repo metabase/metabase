@@ -151,7 +151,7 @@
     ;; TODO - should be able to remove this now
     ;; for FKs where source is a :field-literal don't include `:fk_field_id`
     [:fk-> _ field]
-    (assoc (col-info-for-field-clause field)
+    (assoc (col-info-for-field-clause inner-query field)
       :field_ref &match)
 
     ;; for field literals, look for matching `source-metadata`, and use that if we can find it; otherwise generate
