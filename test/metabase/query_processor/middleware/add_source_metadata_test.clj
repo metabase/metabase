@@ -7,7 +7,9 @@
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.test.util :as tu]
+            [metabase.util :as u]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
@@ -17,9 +19,10 @@
       ((add-source-metadata/add-source-metadata-for-source-queries identity) query))))
 
 (defn- venues-metadata [field-name]
-  (select-keys
-   (Field (data/id :venues field-name))
-   [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings]))
+  #_(select-keys (Field (data/id :venues field-name))
+                 [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings])
+  (u/select-keys-when (Field (data/id :venues field-name))
+    :non-nil #{:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings}))
 
 (defn- venues-source-metadata
   ([]
@@ -50,7 +53,7 @@
 ;; Can we automatically add source metadata to the parent level of a query? If the source query does not have `:fields`
 (expect
   (data/mbql-query venues
-    {:source-query {:source-table $$venues}
+    {:source-query    {:source-table $$venues}
      :source-metadata (venues-source-metadata)})
   (add-source-metadata
    (data/mbql-query venues
@@ -85,8 +88,7 @@
                        [{:name         "avg"
                          :display_name "average of ID"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK
-                         :settings     nil}])})
+                         :special_type :type/PK}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
@@ -106,8 +108,7 @@
                        [{:name         "some_generated_name"
                          :display_name "My Cool Ag"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK
-                         :settings     nil}])})
+                         :special_type :type/PK}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
@@ -124,8 +125,7 @@
   [{:name         "some_generated_name"
     :display_name "average of ID"
     :base_type    :type/BigInteger
-    :special_type :type/PK
-    :settings     nil}]
+    :special_type :type/PK}]
   (source-metadata
    (add-source-metadata
     (data/mbql-query venues
@@ -137,8 +137,7 @@
   [{:name         "avg"
     :display_name "My Cool Ag"
     :base_type    :type/BigInteger
-    :special_type :type/PK
-    :settings     nil}]
+    :special_type :type/PK}]
   (source-metadata
    (add-source-metadata
     (data/mbql-query venues
@@ -244,3 +243,23 @@
      {:source-table $$venues
       :joins        [{:source-query {:source-table $$venues
                                      :fields       [$id $name]}}]})))
+
+;; source metadata should handle source queries that have binned fields
+(expect
+  (data/mbql-query venues
+    {:source-query    {:source-table $$venues
+                       :aggregation  [[:count]]
+                       :breakout     [[:binning-strategy $latitude :default]]}
+     :source-metadata (concat
+                       (venues-source-metadata :latitude)
+                       [{:name         "count"
+                         :display_name "count"
+                         :base_type    :type/Integer
+                         :special_type :type/Number}])})
+  (tu/with-temporary-setting-values [breakout-bin-width 5.0]
+    (add-source-metadata
+     (data/mbql-query venues
+       {:source-query
+        {:source-table $$venues
+         :aggregation  [[:count]]
+         :breakout     [[:binning-strategy $latitude :default]]}}))))

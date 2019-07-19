@@ -7,22 +7,17 @@
             [metabase.query-processor
              [interface :as qp.i]
              [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [add-implicit-clauses :as add-implicit-clauses]
-             [annotate :as annotate]
-             [pre-alias-aggregations :as pre-alias-ags]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
 (s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
-  [{breakouts    :breakout
-    aggregations :aggregation
-    fields       :fields
-    :as          source-query} :- mbql.s/SourceQuery]
-  (let [field-ids (mbql.u/match (concat breakouts aggregations fields) [:field-id id] id)]
-    (qp.store/fetch-and-store-fields! field-ids))
+  [source-query]
   (for [col (annotate/cols-for-mbql-query source-query)]
-    (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (u/select-keys-when col
+      :non-nil #{:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings})
+    #_(select-keys col
+                 [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -86,9 +81,11 @@
   TODO - in a nicer world there would be no need to do such things. It defeats the purpose of having distinct
   middleware stages."
   [source-query]
-  (-> source-query
-      pre-alias-ags/pre-alias-aggregations-in-inner-query
-      add-implicit-clauses/add-implicit-mbql-clauses))
+  (:query
+   ((resolve 'metabase.query-processor/query->preprocessed)
+    {:database (:id (qp.store/database))
+     :type     :query
+     :query    source-query})))
 
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
@@ -112,12 +109,13 @@
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 
+(defn- maybe-add-source-metadata [x]
+  (if (and (map? x) (can-add-source-metadata? x))
+    (add-source-metadata x)
+    x))
+
 (defn- add-source-metadata-at-all-levels [inner-query]
-  (walk/postwalk
-   #(if-not ((every-pred map? can-add-source-metadata?) %)
-      %
-      (add-source-metadata %))
-   inner-query))
+  (walk/postwalk maybe-add-source-metadata inner-query))
 
 (defn- add-source-metadata-for-source-queries* [{query-type :type, :as query}]
   (if-not (= query-type :query)
