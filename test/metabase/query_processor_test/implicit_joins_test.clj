@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Test for JOIN behavior."
-  (:require [metabase
+  (:require [expectations :refer [expect]]
+            [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
             [metabase.test.data :as data]
@@ -107,6 +108,17 @@
                    [:asc $id]]
         :limit    10}))
    [:status :error]))
+
+;; Implicit joins should come back with `:fk->` field refs
+(expect
+  (data/$ids venues $category_id->categories.name)
+  (-> (qp.test/cols
+        (data/run-mbql-query :venues
+          {:fields   [$category_id->categories.name]
+           :order-by [[:asc $id]]
+           :limit    1}))
+      first
+      :field_ref))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

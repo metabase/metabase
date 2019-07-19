@@ -7,7 +7,6 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
-            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))
@@ -59,9 +58,7 @@
               :display_name  "Foo"
               :name          (data/format-name "name_2")
               :remapped_from (data/format-name "category_id")
-              :field_ref     [:joined-field
-                              (qp.test-util/fk-table-alias-name $$categories %category_id)
-                              $categories.name]))]}
+              :field_ref     $category_id->categories.name))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
@@ -84,9 +81,7 @@
                      :display_name  "Foo"
                      :name          (data/format-name "name_2")
                      :remapped_from (data/format-name "category_id")
-                     :field_ref     [:joined-field
-                                     (qp.test-util/fk-table-alias-name $$categories %category_id)
-                                     $categories.name]))]}
+                     :field_ref     $category_id->categories.name))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
