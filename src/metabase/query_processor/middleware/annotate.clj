@@ -114,41 +114,54 @@
     {:base_type    :type/Float
      :special_type :type/Number}))
 
-(s/defn ^:private col-info-for-field-clause :- su/Map
+(s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
   ;; for various things that can wrap Field clauses recurse on the wrapped Field but include a little bit of info
   ;; about the clause doing the wrapping
   (mbql.u/match-one clause
     [:binning-strategy field strategy _ resolved-options]
-    (assoc (col-info-for-field-clause inner-query field)
-      :binning_info (assoc (u/snake-keys resolved-options)
-                      :binning_strategy strategy))
+    (let [recursive-info (col-info-for-field-clause inner-query field)]
+      (assoc recursive-info
+        :binning_info (assoc (u/snake-keys resolved-options)
+                        :binning_strategy strategy)
+        :field_ref    (assoc (vec &match) 1 (:field_ref recursive-info))))
 
     [:datetime-field field unit]
-    (assoc (col-info-for-field-clause inner-query field) :unit unit)
+    (let [recursive-info (col-info-for-field-clause inner-query field)]
+      (assoc recursive-info
+        :unit      unit
+        :field_ref (assoc (vec &match) 1 (:field_ref recursive-info))))
 
-    [:joined-field alias field]
-    (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query alias)]
-      (-> (col-info-for-field-clause inner-query field)
-          (assoc :fk_field_id fk-field-id)
-          (update :display_name display-name-for-joined-field join)))
+    [:joined-field join-alias field]
+    (let [{:keys [fk-field-id], :as join} (join-with-alias inner-query join-alias)]
+      (let [recursive-info (col-info-for-field-clause inner-query field)]
+        (-> recursive-info
+            (merge (when fk-field-id {:fk_field_id fk-field-id}))
+            (assoc :field_ref (if fk-field-id
+                                [:fk-> [:field-id fk-field-id] field]
+                                (assoc (vec &match) 2 (:field_ref recursive-info))))
+            (update :display_name display-name-for-joined-field join))))
 
     ;; TODO - should be able to remove this now
     [:fk-> [:field-id source-field-id] field]
-    (assoc (col-info-for-field-clause inner-query field) :fk_field_id source-field-id)
+    (assoc (col-info-for-field-clause inner-query field)
+      :field_ref  &match
+      :fk_field_id source-field-id)
 
     ;; TODO - should be able to remove this now
     ;; for FKs where source is a :field-literal don't include `:fk_field_id`
     [:fk-> _ field]
-    (recur field)
+    (assoc (col-info-for-field-clause field)
+      :field_ref &match)
 
     ;; for field literals, look for matching `source-metadata`, and use that if we can find it; otherwise generate
     ;; basic info based on the content of the field literal
     [:field-literal field-name field-type]
-    (or (some #(when (= (:name %) field-name) %) source-metadata)
-        {:name         field-name
-         :base_type    field-type
-         :display_name (humanization/name->human-readable-name field-name)})
+    (assoc (or (some #(when (= (:name %) field-name) %) source-metadata)
+               {:name         field-name
+                :base_type    field-type
+                :display_name (humanization/name->human-readable-name field-name)})
+      :field_ref &match)
 
     [:expression expression-name]
     (merge
@@ -158,14 +171,16 @@
      {:name            expression-name
       :display_name    expression-name
       ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
-      :expression_name expression-name})
+      :expression_name expression-name
+      :field_ref       &match})
 
     [:field-id id]
     (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id) :database_type)]
-      (if-not parent-id
-        field
-        (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
-          (update field :name #(str (:name parent) \. %)))))
+      (assoc (if-not parent-id
+               field
+               (let [parent (col-info-for-field-clause inner-query [:field-id parent-id])]
+                 (update field :name #(str (:name parent) \. %))))
+        :field_ref &match))
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
@@ -358,16 +373,14 @@
   [{:keys [fields], :as inner-query} :- su/Map]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
-      :source    :fields
-      :field_ref field)))
+      :source :fields)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
   [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
-       :source    :breakout
-       :field_ref breakout))
+       :source :breakout))
    (for [[i aggregation] (m/indexed aggregations)]
      (assoc (col-info-for-aggregation-clause inner-query aggregation)
        :source    :aggregation

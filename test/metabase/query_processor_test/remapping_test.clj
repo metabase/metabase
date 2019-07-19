@@ -59,9 +59,7 @@
               :display_name  "Foo"
               :name          (data/format-name "name_2")
               :remapped_from (data/format-name "category_id")
-              :field_ref     [:joined-field
-                              (qp.test-util/fk-table-alias-name $$categories %category_id)
-                              $categories.name]))]}
+              :field_ref     $category_id->categories.name))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
@@ -84,9 +82,7 @@
                      :display_name  "Foo"
                      :name          (data/format-name "name_2")
                      :remapped_from (data/format-name "category_id")
-                     :field_ref     [:joined-field
-                                     (qp.test-util/fk-table-alias-name $$categories %category_id)
-                                     $categories.name]))]}
+                     :field_ref     $category_id->categories.name))]}
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (select-columns (set (map data/format-name ["name" "price" "name_2"]))
