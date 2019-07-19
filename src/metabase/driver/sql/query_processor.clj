@@ -153,6 +153,7 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
+  (println "*query*:" *query*) ; NOCOMMIT
   ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
   ;; original formula.
   (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
