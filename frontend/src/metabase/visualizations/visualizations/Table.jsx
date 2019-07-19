@@ -161,21 +161,35 @@ export default class Table extends Component {
       title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
-      isValid: ([{ card, data }]) =>
-        card.visualization_settings["table.columns"] &&
-        columnsAreValid(
-          card.visualization_settings["table.columns"].map(x => x.name),
-          data,
-        ),
-      getDefault: ([
-        {
-          data: { cols },
-        },
-      ]) =>
-        cols.map(col => ({
-          name: col.name,
-          enabled: col.visibility_type !== "details-only",
-        })),
+      isValid: ([{ card, data }]) => {
+        const tableCols = card.visualization_settings["table.columns"];
+        if (!tableCols) {
+          return false;
+        }
+        const tableColsNames = new Set(tableCols.map(c => c.name));
+        // we need to invalidate table.columns if the data has diff column names
+        const colsMatch =
+          tableCols.length === data.cols.length &&
+          data.cols.every(c => tableColsNames.has(c.name));
+        return columnsAreValid(tableCols.map(c => c.name), data) && colsMatch;
+      },
+      getDefault: ([{ card, data }]) => {
+        const tableCols = card.visualization_settings["table.columns"] || [];
+        const dataCols = data.cols || [];
+
+        const colNamesInSettings = new Set(tableCols.map(c => c.name));
+        const colNamesInData = new Set(dataCols.map(c => c.name));
+
+        const newCols = dataCols
+          .filter(c => !colNamesInSettings.has(c.name))
+          .map(col => ({
+            name: col.name,
+            enabled: col.visibility_type !== "details-only",
+          }));
+        const existingCols = tableCols.filter(c => colNamesInData.has(c.name));
+
+        return [...existingCols, ...newCols];
+      },
       getProps: ([
         {
           data: { cols },

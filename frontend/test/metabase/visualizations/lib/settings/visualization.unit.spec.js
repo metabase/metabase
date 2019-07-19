@@ -58,6 +58,53 @@ describe("visualization_settings", () => {
           }),
         ));
     });
+    describe("table.columns", () => {
+      it("should populate an empty table.columns based on data columns", () => {
+        const cols = ["foo", "bar", "baz"].map(name => NumberColumn({ name }));
+        const card = { display: "table", visualization_settings: {} };
+        const settings = getComputedSettingsForSeries([
+          { card, data: { cols } },
+        ]);
+        expect(settings["table.columns"].map(c => c.name)).toEqual([
+          "foo",
+          "bar",
+          "baz",
+        ]);
+      });
+      it("should add to table.columns based on new data columns", () => {
+        const cols = ["foo", "bar", "baz"].map(name => NumberColumn({ name }));
+        const card = {
+          display: "table",
+          visualization_settings: {
+            "table.columns": [{ name: "foo" }, { name: "bar" }],
+          },
+        };
+        const settings = getComputedSettingsForSeries([
+          { card, data: { cols } },
+        ]);
+        expect(settings["table.columns"].map(c => c.name)).toEqual([
+          "foo",
+          "bar",
+          "baz",
+        ]);
+      });
+      it("should remove from table.columns if not present in the data's columns", () => {
+        const cols = ["bar", "baz"].map(name => NumberColumn({ name }));
+        const card = {
+          display: "table",
+          visualization_settings: {
+            "table.columns": [{ name: "foo" }, { name: "bar" }],
+          },
+        };
+        const settings = getComputedSettingsForSeries([
+          { card, data: { cols } },
+        ]);
+        expect(settings["table.columns"].map(c => c.name)).toEqual([
+          "bar",
+          "baz",
+        ]);
+      });
+    });
   });
 });
 
