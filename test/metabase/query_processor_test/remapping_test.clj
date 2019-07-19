@@ -7,7 +7,6 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
-            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
             [toucan.db :as db]))

@@ -12,7 +12,6 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
