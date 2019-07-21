@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import querystring from "querystring";
-import JSONbig from 'json-bigint';
+import JSONbig from "json-bigint";
 
 import EventEmitter from "events";
 

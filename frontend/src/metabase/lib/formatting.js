@@ -9,7 +9,7 @@ import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
-import BigNumber from 'bignumber.js';
+import BigNumber from "bignumber.js";
 
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 
