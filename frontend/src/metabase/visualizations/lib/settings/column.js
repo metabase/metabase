@@ -294,6 +294,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     // hide this for currency
     getHidden: (column: Column, settings: ColumnSettings) =>
       isCurrency(column) && settings["number_style"] === "currency",
+    readDependencies: ["currency"],
   },
   currency: {
     title: t`Unit of currency`,
@@ -312,8 +313,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
-    readDependencies: ["number_style"],
+      // NOTE: ideally we'd hide this if number_style != "currency" but that would result in a circular dependency
+      !isCurrency(column),
   },
   currency_style: {
     title: t`Currency label style`,
