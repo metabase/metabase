@@ -25,6 +25,7 @@ type Props = {
 
   onOpenChartSettings: () => void,
   onUpdateWarnings: () => void,
+  onUpdateVisualizationSettings: (settings: any) => void,
 };
 
 export default class VisualizationResult extends Component {
@@ -104,6 +105,9 @@ export default class VisualizationResult extends Component {
           metadata={question.metadata()}
           onOpenChartSettings={this.props.onOpenChartSettings}
           onUpdateWarnings={this.props.onUpdateWarnings}
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
         />
       );
     }
