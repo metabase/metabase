@@ -62,6 +62,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       ...action,
       question: () =>
         question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
-      action: () => onEditSummary(),
+      action: () => dispatch => {
+        // HACK: drill through closes sidebars, so open sidebar asynchronously
+        setTimeout(() => {
+          dispatch(onEditSummary());
+        });
+      },
     }));
 };
