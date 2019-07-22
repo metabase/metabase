@@ -25,47 +25,68 @@ function updateAndRun(query) {
     .update(null, { run: true });
 }
 
-export default function SummarizeSidebar({
-  question,
-  isResultDirty,
-  runQuestionQuery,
-  onClose,
-  className,
-}) {
-  // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
-  const query = question.query().topLevelQuery();
-  return (
-    <SidebarContent
-      title={t`Summarize by`}
-      color={color("summarize")}
-      onDone={() => {
-        if (isResultDirty) {
-          runQuestionQuery();
-        }
-        onClose();
-      }}
-      className={cx(className, "spread")}
-    >
-      <div className="px4">
-        {query.aggregations().map((aggregation, index) => (
-          <SummarizeAggregation
-            className="mb1"
-            key={index}
-            aggregation={aggregation}
-            index={index}
-            query={query}
-          />
-        ))}
-        <SummarizeAggregationAdd query={query} />
-      </div>
-      {query.hasAggregations() && (
-        <div className="border-top mt3 pt3 mx1">
-          <h3 className="text-heavy mb2 ml3">Group by</h3>
-          <SummarizeBreakouts className="mx2" query={query} />
+export default class SummarizeSidebar extends React.Component {
+  state = {
+    modified: false,
+  };
+
+  componentWillReceiveProps(nextProps) {
+    if (!this.props.question.isEqual(nextProps.question)) {
+      this.setState({ modified: true });
+    }
+  }
+
+  render() {
+    const {
+      question,
+      isResultDirty,
+      runQuestionQuery,
+      onClose,
+      className,
+    } = this.props;
+    // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
+    let query = question.query().topLevelQuery();
+    // if the query hasn't been modified and doesn't have an aggregation, automatically add one
+    const addDefaultAggregation =
+      !this.state.modified && !query.hasAggregations();
+    if (addDefaultAggregation) {
+      query = query.addAggregation(["count"]);
+    }
+    return (
+      <SidebarContent
+        title={t`Summarize by`}
+        color={color("summarize")}
+        onDone={() => {
+          if (isResultDirty) {
+            runQuestionQuery();
+          } else if (addDefaultAggregation) {
+            query.update(null, { run: true });
+          }
+          onClose();
+        }}
+        className={cx(className, "spread")}
+      >
+        <div className="px4">
+          {query.aggregations().map((aggregation, index) => (
+            <SummarizeAggregation
+              className="mb1"
+              key={index}
+              aggregation={aggregation}
+              index={index}
+              query={query}
+            />
+          ))}
+          <SummarizeAggregationAdd query={query} />
         </div>
-      )}
-    </SidebarContent>
-  );
+        {query.hasAggregations() && (
+          <div className="border-top mt3 pt3 mx1">
+            <h3 className="text-heavy mb2 ml3">Group by</h3>
+            <SummarizeBreakouts className="mx2" query={query} />
+          </div>
+        )}
+      </SidebarContent>
+    );
+  }
 }
 
 const SummarizeAggregation = ({ className, aggregation, index, query }) => {

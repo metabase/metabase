@@ -8,8 +8,6 @@ import Button from "metabase/components/Button";
 import FilterOptions from "./FilterOptions";
 import { getOperator } from "../filters/pickers/DatePicker";
 
-import { color } from "metabase/lib/colors";
-
 export default function FilterPopoverFooter({
   filter,
   isNew,

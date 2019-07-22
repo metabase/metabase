@@ -40,17 +40,12 @@ export function QuestionSummarizeWidget({
   onCloseSummary,
   ...props
 }) {
-  // topLevelQuery ignores any query stages that don't aggregate, e.x. post-aggregation filters
-  const query = question.query().topLevelQuery();
   return (
     <SummarizeButton
       onClick={async () => {
         if (isShowingSummarySidebar) {
           onCloseSummary();
         } else {
-          if (!query.hasAggregations()) {
-            await query.addAggregation(["count"]).update(null, { run: false });
-          }
           onEditSummary();
         }
       }}
