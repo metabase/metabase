@@ -1,11 +1,9 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
-  (:require [metabase
-             [query-processor :as qp]
-             [query-processor-test :as qp.test]]
-            [metabase.models
+  (:require [metabase.models
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
+            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
@@ -112,13 +110,9 @@
   ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
-    (->> (qp/process-query
-           {:database (data/id)
-            :type :query
-            :query {:source-table (data/id :venues)
-                    :order-by [[(data/id :venues :name) :ascending]]
-                    :limit 4}})
-         qp.test/rows
+    (->> (qp.test/rows
+           (data/run-mbql-query venues
+             {:order-by [[:asc $name]], :limit 4}))
          (map second))))
 
 ;; Test out a self referencing column. This has a users table like the one that is in `test-data`, but also includes a
@@ -132,9 +126,9 @@
   (data/dataset test-data-self-referencing-user
     (data/with-temp-objects
       (fn []
-        [(db/insert! Dimension {:field_id (data/id :users :created_by)
-                                :name "created-by-mapping"
-                                :type :external
+        [(db/insert! Dimension {:field_id                (data/id :users :created_by)
+                                :name                    "created-by-mapping"
+                                :type                    :external
                                 :human_readable_field_id (data/id :users :name)})])
 
       (db/update! 'Field (data/id :users :created_by)
