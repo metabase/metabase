@@ -26,8 +26,13 @@ export default function QuestionFilters({
   const query = question.query();
   const filters = query.topLevelFilters();
   return filters.length === 0 ? null : expanded ? (
-    <div className="flex align-center">
-      <FilterPill invert icon="filter" className="mr1" onClick={onCollapse} />
+    <div className="flex flex-wrap align-center mbn1">
+      <FilterPill
+        invert
+        icon="filter"
+        className="mr1 mb1"
+        onClick={onCollapse}
+      />
       {filters.map((filter, index) => (
         <PopoverWithTrigger
           key={index}
@@ -38,7 +43,7 @@ export default function QuestionFilters({
               {filter.displayName()}
             </FilterPill>
           }
-          triggerClasses="flex align-center mr1"
+          triggerClasses="flex flex-no-shrink align-center mr1 mb1"
           sizeToFit
         >
           <FilterPopover
