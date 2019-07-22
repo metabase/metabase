@@ -16,6 +16,7 @@ export default function FilterPopoverHeader({
 
   const showOperatorSelector = !(field.isTime() || field.isDate());
   const showHeader = showFieldPicker || showOperatorSelector;
+  const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
 
   const setOperator = operatorName => {
     if (filter.operator() !== operatorName) {
@@ -27,7 +28,7 @@ export default function FilterPopoverHeader({
   return showHeader ? (
     <div
       className={cx(className, "text-medium", {
-        "flex align-center": !isSidebar,
+        "flex align-center": !showOperatorSelectorOnOwnRow,
       })}
     >
       {showFieldPicker && (
@@ -43,8 +44,8 @@ export default function FilterPopoverHeader({
       {showOperatorSelector && (
         <OperatorSelector
           className={cx("flex-no-shrink block", {
-            "ml-auto": !isSidebar,
-            my1: isSidebar,
+            "ml-auto": !showOperatorSelectorOnOwnRow,
+            my1: showOperatorSelectorOnOwnRow,
           })}
           operator={filter.operatorName()}
           operators={filter.operatorOptions()}

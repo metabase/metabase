@@ -22,7 +22,7 @@ import {
 import { isObscured } from "metabase/lib/dom";
 
 const defaultStyleValue = {
-  fontSize: 16,
+  fontSize: 14,
   fontWeight: 700,
 };
 
