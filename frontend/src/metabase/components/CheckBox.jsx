@@ -21,6 +21,7 @@ export default class CheckBox extends Component {
     size: 16,
     padding: 2,
     color: "blue",
+    style: {},
   };
 
   onClick(e) {
@@ -37,6 +38,7 @@ export default class CheckBox extends Component {
   render() {
     const {
       className,
+      style,
       checked,
       indeterminate,
       color,
@@ -56,23 +58,22 @@ export default class CheckBox extends Component {
     };
     return (
       <div
-        className={cx(className, "cursor-pointer")}
+        className={cx(
+          className,
+          "flex align-center justify-center rounded cursor-pointer",
+        )}
+        style={{ ...style, ...checkboxStyle }}
         onClick={e => {
           this.onClick(e);
         }}
       >
-        <div
-          style={checkboxStyle}
-          className="flex align-center justify-center rounded"
-        >
-          {(checked || indeterminate) && !noIcon && (
-            <Icon
-              style={{ color: checked ? "white" : uncheckedColor }}
-              name={indeterminate ? "dash" : "check"}
-              size={size - padding * 2}
-            />
-          )}
-        </div>
+        {(checked || indeterminate) && !noIcon && (
+          <Icon
+            style={{ color: checked ? "white" : uncheckedColor }}
+            name={indeterminate ? "dash" : "check"}
+            size={size - padding * 2}
+          />
+        )}
       </div>
     );
   }

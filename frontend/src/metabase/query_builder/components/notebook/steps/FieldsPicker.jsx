@@ -5,6 +5,7 @@ import cx from "classnames";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import CheckBox from "metabase/components/CheckBox";
+import StackedCheckBox from "metabase/components/StackedCheckBox";
 
 export default function FieldsPicker({
   className,
@@ -34,7 +35,7 @@ export default function FieldsPicker({
               }
             }}
           >
-            <CheckBox
+            <StackedCheckBox
               checked={isAll}
               indeterminate={!isAll && !isNone}
               className="mr1"
