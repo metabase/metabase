@@ -222,7 +222,7 @@ export default class View extends React.Component {
               {leftSideBar}
             </ViewSidebar>
 
-            <div className="flex-full flex flex-column">
+            <div className="flex-full flex flex-column flex-basis-none">
               {query instanceof NativeQuery && (
                 <div className="z2 hide sm-show border-bottom">
                   <NativeQueryEditor
