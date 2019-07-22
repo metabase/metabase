@@ -5,7 +5,7 @@ import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
-import ViewFilterPopover from "./ViewFilterPopover";
+import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 import ViewPill from "./ViewPill";
 import ViewButton from "./ViewButton";
 
@@ -41,13 +41,14 @@ export default function QuestionFilters({
           triggerClasses="flex align-center mr1"
           sizeToFit
         >
-          <ViewFilterPopover
+          <FilterPopover
+            isTopLevel
             query={query}
             filter={filter}
             onChangeFilter={newFilter =>
               newFilter.replace().update(null, { run: true })
             }
-            style={{ minWidth: 300 }}
+            className="scroll-y"
           />
         </PopoverWithTrigger>
       ))}

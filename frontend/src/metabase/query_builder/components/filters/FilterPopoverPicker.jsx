@@ -9,7 +9,9 @@ export default function FilterPopoverPicker({
   filter,
   onFilterChange,
   onCommit,
-  width = 440,
+  isSidebar,
+  minWidth,
+  maxWidth,
 }) {
   const setValue = (index: number, value: any) => {
     onFilterChange(filter.setArgument(index, value));
@@ -25,14 +27,18 @@ export default function FilterPopoverPicker({
       className={className}
       filter={filter}
       onFilterChange={onFilterChange}
-      width={width}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
+      isSidebar={isSidebar}
     />
   ) : field.isDate() ? (
     <DatePicker
       className={className}
       filter={filter}
       onFilterChange={onFilterChange}
-      width={width}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
+      isSidebar={isSidebar}
     />
   ) : (
     <DefaultPicker
@@ -41,7 +47,9 @@ export default function FilterPopoverPicker({
       setValue={setValue}
       setValues={setValues}
       onCommit={onCommit}
-      width={width}
+      minWidth={minWidth}
+      maxWidth={maxWidth}
+      isSidebar={isSidebar}
     />
   );
 }

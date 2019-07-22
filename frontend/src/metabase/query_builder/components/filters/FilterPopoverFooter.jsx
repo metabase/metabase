@@ -1,11 +1,14 @@
 import React from "react";
 
-import FilterOptions from "./FilterOptions";
-
-import { getOperator } from "../filters/pickers/DatePicker";
-
 import { t } from "ttag";
 import cx from "classnames";
+
+import Button from "metabase/components/Button";
+
+import FilterOptions from "./FilterOptions";
+import { getOperator } from "../filters/pickers/DatePicker";
+
+import { color } from "metabase/lib/colors";
 
 export default function FilterPopoverFooter({
   filter,
@@ -30,15 +33,15 @@ export default function FilterPopoverFooter({
         }
       />
       {onCommit && (
-        <button
+        <Button
           data-ui-tag="add-filter"
-          className={cx("Button Button--purple ml-auto", {
-            disabled: !filter.isValid(),
-          })}
+          purple
+          disabled={!filter.isValid()}
+          ml="auto"
           onClick={onCommit}
         >
           {isNew ? t`Add filter` : t`Update filter`}
-        </button>
+        </Button>
       )}
     </div>
   );

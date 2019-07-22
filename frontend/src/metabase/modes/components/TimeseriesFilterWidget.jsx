@@ -121,6 +121,7 @@ export default class TimeseriesFilterWidget extends Component {
         autoWidth={true}
       >
         <DatePicker
+          className="m2"
           filter={this.state.filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });

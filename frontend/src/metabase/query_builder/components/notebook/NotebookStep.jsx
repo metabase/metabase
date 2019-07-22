@@ -133,7 +133,10 @@ export default class NotebookStep extends React.Component {
 
     const onRemove = step.revert
       ? () => {
-          step.revert(step.query).update(updateQuery);
+          step
+            .revert(step.query)
+            .clean()
+            .update(updateQuery);
         }
       : null;
 

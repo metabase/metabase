@@ -2,8 +2,6 @@ import React from "react";
 import cx from "classnames";
 
 import OperatorSelector from "../filters/OperatorSelector";
-import { formatField, singularize } from "metabase/lib/formatting";
-import Icon from "metabase/components/Icon";
 import SidebarHeader from "../SidebarHeader";
 
 export default function FilterPopoverHeader({
@@ -11,7 +9,7 @@ export default function FilterPopoverHeader({
   showFieldPicker,
   filter,
   onFilterChange,
-  onClearField,
+  isSidebar,
 }) {
   const dimension = filter.dimension();
   const field = dimension.field();
@@ -24,18 +22,30 @@ export default function FilterPopoverHeader({
       onFilterChange(filter.setOperator(operatorName));
     }
   };
+  const clearField = () => onFilterChange(null);
 
   return showHeader ? (
-    <div className={cx(className, "text-medium")}>
+    <div
+      className={cx(className, "text-medium", {
+        "flex align-center": !isSidebar,
+      })}
+    >
       {showFieldPicker && (
         <SidebarHeader
-          className="text-default mt1 mb2"
-          title={field.displayName({ includeTable: true })}
-          onBack={onClearField}
+          className={cx("text-default py1")}
+          title={
+            (field.table ? field.table.displayName() + " – " : "") +
+            field.displayName()
+          }
+          onBack={clearField}
         />
       )}
       {showOperatorSelector && (
         <OperatorSelector
+          className={cx("flex-no-shrink block", {
+            "ml-auto": !isSidebar,
+            my1: isSidebar,
+          })}
           operator={filter.operatorName()}
           operators={filter.operatorOptions()}
           onOperatorChange={setOperator}

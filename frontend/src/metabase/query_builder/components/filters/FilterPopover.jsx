@@ -1,51 +1,53 @@
 /* @flow */
 
-import React from "react";
+import React, { Component } from "react";
 
-import FieldList from "../FieldList";
+import DimensionList from "../DimensionList";
 
 import FilterPopoverHeader from "./FilterPopoverHeader";
 import FilterPopoverPicker from "./FilterPopoverPicker";
 import FilterPopoverFooter from "./FilterPopoverFooter";
 
-import { color } from "metabase/lib/colors";
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
+import { color } from "metabase/lib/colors";
+
 type Props = {
-  maxHeight?: number,
   query: StructuredQuery,
   filter?: Filter,
+  onChange: (filter: Filter) => void,
+  // NOTE: this should probably be called onCommit
   onChangeFilter: (filter: Filter) => void,
   onClose: () => void,
-  showFieldPicker?: boolean,
 };
 
 type State = {
-  filter: Filter,
+  filter: ?Filter,
 };
 
-// NOTE: this is duplicated from FilterPopover. Consider merging them
-export default class FilterPopover extends React.Component {
+const MIN_WIDTH = 300;
+const MAX_WIDTH = 410;
+
+// NOTE: this is duplicated from FilterPopover but allows you to add filters on
+// the last two "stages" of a nested query, e.x. post aggregation filtering
+export default class ViewFilterPopover extends Component {
   props: Props;
   state: State;
 
   static defaultProps = {
     style: {},
     showFieldPicker: true,
-    // TODO: remove this
-    className: "full",
   };
 
   constructor(props: Props) {
     super(props);
-
     this.state = {
-      // $FlowFixMe
-      filter: new Filter(props.filter || [], null, props.query),
+      filter: props.filter instanceof Filter ? props.filter : null,
     };
   }
 
@@ -67,18 +69,24 @@ export default class FilterPopover extends React.Component {
     }
   }
 
+  setFilter(filter) {
+    this.setState({ filter });
+    if (this.props.onChange) {
+      this.props.onChange(filter);
+    }
+  }
+
   handleCommit = () => {
-    this.handleCommitFilter(this.state.filter);
+    this.handleCommitFilter(this.state.filter, this.props.query);
   };
 
   handleCommitOnEnter = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      this.handleCommitFilter(this.state.filter);
+      this.handleCommitFilter(this.state.filter, this.props.query);
     }
   };
 
-  handleCommitFilter = (filter: FieldFilter) => {
-    const { query } = this.props;
+  handleCommitFilter = (filter: ?FieldFilter, query: StructuredQuery) => {
     if (filter && !(filter instanceof Filter)) {
       filter = new Filter(filter, null, query);
     }
@@ -90,73 +98,80 @@ export default class FilterPopover extends React.Component {
     }
   };
 
-  handleFieldChange = (fieldRef: ConcreteField) => {
-    this.setState({
-      filter: this.state.filter.setDimension(fieldRef, {
-        useDefaultOperator: true,
-      }),
-    });
+  handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
+    const filter = new Filter([], null, query);
+    this.setFilter(filter.setDimension(fieldRef, { useDefaultOperator: true }));
   };
 
-  handleFilterChange = (newFilter: FieldFilter) => {
-    this.setState({ filter: this.state.filter.set(newFilter) });
-  };
-
-  handleClearField = () => {
-    this.setState({ filter: this.state.filter.setDimension(null) });
+  handleFilterChange = (newFilter: ?FieldFilter) => {
+    this.setFilter(newFilter ? this.state.filter.set(newFilter) : null);
   };
 
   render() {
-    const { className, style, query, showFieldPicker } = this.props;
+    const {
+      className,
+      style,
+      query,
+      showFieldPicker,
+      fieldPickerTitle,
+      isSidebar,
+      isTopLevel,
+    } = this.props;
     const { filter } = this.state;
 
-    const dimension = filter.dimension();
-    if (filter.isSegmentFilter() || !dimension) {
+    const dimension = filter && filter.dimension();
+    if (!dimension) {
       return (
-        <div className={className} style={style}>
-          <FieldList
-            className="text-purple"
+        <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
+          {fieldPickerTitle && (
+            <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          )}
+          <DimensionList
             style={{ color: color("filter") }}
-            maxHeight={this.props.maxHeight}
-            field={dimension && dimension.mbql()}
-            fieldOptions={query.filterFieldOptions(filter)}
-            segmentOptions={query.filterSegmentOptions(filter)}
-            table={query.table()}
-            onFieldChange={this.handleFieldChange}
-            onFilterChange={this.handleCommitFilter}
+            maxHeight={Infinity}
+            dimension={dimension}
+            sections={
+              isTopLevel
+                ? query.topLevelFilterFieldOptionSections()
+                : (filter ? filter.query() : query).filterFieldOptionSections(
+                    filter,
+                  )
+            }
+            onChangeDimension={dimension =>
+              this.handleFieldChange(dimension.mbql(), dimension.query())
+            }
+            onChange={item => {
+              this.handleCommitFilter(item.filter, item.query);
+            }}
+            width={isSidebar ? null : MIN_WIDTH}
+            alwaysExpanded={isTopLevel || isSidebar}
           />
         </div>
       );
     } else {
       return (
-        <div
-          className={className}
-          style={{
-            minWidth: 300,
-            // $FlowFixMe
-            maxWidth: dimension.field().isDate() ? 600 : 500,
-            // $FlowFixMe
-            ...style,
-          }}
-        >
+        <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
           <FilterPopoverHeader
-            className="mx1 mt2 mb1"
+            className={isSidebar ? "px1 pt1" : "p1 mb1 border-bottom"}
+            isSidebar={isSidebar}
             filter={filter}
-            showFieldPicker={showFieldPicker}
             onFilterChange={this.handleFilterChange}
-            onClearField={this.handleClearField}
+            showFieldPicker={showFieldPicker}
           />
           <FilterPopoverPicker
-            className="mx1 mt1"
+            className={isSidebar ? "p1" : "px1 pt1 pb1"}
+            isSidebar={isSidebar}
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
+            minWidth={isSidebar ? null : MIN_WIDTH}
+            maxWidth={isSidebar ? null : MAX_WIDTH}
           />
           <FilterPopoverFooter
-            className="mx1 mt1 mb1"
+            className={isSidebar ? "p1" : "px1 pb1"}
+            isSidebar={isSidebar}
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
+            onCommit={!this.props.noCommitButton ? this.handleCommit : null}
           />
         </div>
       );

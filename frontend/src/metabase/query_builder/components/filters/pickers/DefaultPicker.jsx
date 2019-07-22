@@ -1,7 +1,6 @@
 /* @flow */
 
 import React from "react";
-import { t } from "ttag";
 
 import NumberPicker from "./NumberPicker";
 import SelectPicker from "./SelectPicker";
@@ -17,16 +16,15 @@ export default function DefaultPicker({
   setValues,
   onCommit,
   className,
-  width = 440,
+  isSidebar,
+  minWidth,
+  maxWidth,
 }) {
   const operator = filter.operator();
   const field = filter.dimension().field();
-  const fieldWidgets =
-    operator &&
-    operator.fields.map((operatorField, index) => {
-      if (!operator) {
-        return null;
-      }
+  const operatorFields = (operator && operator.fields) || [];
+  const fieldWidgets = operatorFields
+    .map((operatorField, index) => {
       let values, onValuesChange;
       const placeholder =
         (operator && operator.placeholders && operator.placeholders[index]) ||
@@ -57,6 +55,7 @@ export default function DefaultPicker({
       } else if (field && field.id != null) {
         return (
           <FieldValuesWidget
+            className="input"
             value={(values: Array<string>)}
             onChange={onValuesChange}
             multi={operator.multi}
@@ -66,8 +65,9 @@ export default function DefaultPicker({
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
-            minWidth={width}
-            maxWidth={width}
+            minWidth={minWidth}
+            maxWidth={maxWidth}
+            optionsMaxHeight={isSidebar ? null : undefined}
           />
         );
       } else if (operatorField.type === "text") {
@@ -96,21 +96,26 @@ export default function DefaultPicker({
         );
       }
       return null;
-    });
-  if (fieldWidgets && fieldWidgets.filter(f => f).length > 0) {
-    return (
-      <div className={className}>
-        {fieldWidgets.map((fieldWidget, index) => (
-          <div
-            key={index}
-            className={index < fieldWidgets.length - 1 ? "mb1" : null}
-          >
-            {fieldWidget}
-          </div>
-        ))}
-      </div>
-    );
+    })
+    .filter(f => f);
+  if (fieldWidgets.length > 0) {
+    const Layout = DefaultLayout;
+    // TODO: custom layouts for different operators
+    return <Layout className={className} fieldWidgets={fieldWidgets} />;
   } else {
     return <div className={className} />;
   }
 }
+
+const DefaultLayout = ({ className, fieldWidgets }) => (
+  <div className={className}>
+    {fieldWidgets.map((fieldWidget, index) => (
+      <div
+        key={index}
+        className={index < fieldWidgets.length - 1 ? "mb1" : null}
+      >
+        {fieldWidget}
+      </div>
+    ))}
+  </div>
+);

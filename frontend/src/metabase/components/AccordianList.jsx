@@ -517,15 +517,13 @@ const AccordianListCell = ({
     content = <div className="my1" />;
   } else if (type === "search") {
     content = (
-      <div className="m1" style={{ border: "2px solid transparent" }}>
-        <ListSearchField
-          className="bg-white"
-          onChange={onChangeSearchText}
-          searchText={searchText}
-          placeholder={searchPlaceholder}
-          autoFocus
-        />
-      </div>
+      <ListSearchField
+        className="bg-white m1"
+        onChange={onChangeSearchText}
+        searchText={searchText}
+        placeholder={searchPlaceholder}
+        autoFocus
+      />
     );
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);

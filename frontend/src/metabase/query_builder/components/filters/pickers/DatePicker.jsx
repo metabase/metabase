@@ -373,7 +373,10 @@ export default class DatePicker extends Component {
         style={{ minWidth: 300 }}
       >
         <DateOperatorSelector
-          className={cx("mb2", { mr2: Widget && Widget.horizontalLayout })}
+          className={cx({
+            mr2: Widget && Widget.horizontalLayout,
+            mb2: Widget && !Widget.horizontalLayout,
+          })}
           operator={operator && operator.name}
           operators={operators}
           onOperatorChange={operator => onFilterChange(operator.init(filter))}
@@ -381,7 +384,7 @@ export default class DatePicker extends Component {
         {Widget && (
           <Widget
             {...this.props}
-            className="mb2 flex-full"
+            className="flex-full"
             filter={filter}
             hideHoursAndMinutes={this.props.hideTimeSelectors}
             onFilterChange={filter => {

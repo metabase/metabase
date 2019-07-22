@@ -21,8 +21,9 @@ import {
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
 
-const inputBoxStyles = {
-  maxHeight: 130,
+const defaultStyleValue = {
+  fontSize: 16,
+  fontWeight: 700,
 };
 
 type Value = any;
@@ -153,6 +154,10 @@ export default class TokenField extends Component {
     layoutRenderer: props => <DefaultTokenFieldLayout {...props} />,
 
     color: "brand",
+
+    style: {},
+    valueStyle: {},
+    optionsStyle: {},
   };
 
   componentWillMount() {
@@ -485,7 +490,7 @@ export default class TokenField extends Component {
         element.scrollIntoView(element);
       }
     }
-    // if we added a valkue then scroll to the last item (the input)
+    // if we added a value then scroll to the last item (the input)
     if (this.props.value.length > prevProps.value.length) {
       const input = findDOMNode(this.refs.input);
       if (input && isObscured(input)) {
@@ -499,12 +504,21 @@ export default class TokenField extends Component {
       value,
       placeholder,
       multi,
+
+      parseFreeformValue,
+      updateOnInputChange,
+
       optionRenderer,
       valueRenderer,
       layoutRenderer,
+
       color,
-      parseFreeformValue,
-      updateOnInputChange,
+
+      style,
+      className,
+      valueStyle,
+      optionsStyle,
+      optionsClassName,
     } = this.props;
     let {
       inputValue,
@@ -548,37 +562,43 @@ export default class TokenField extends Component {
 
     const valuesList = (
       <ul
-        className="input pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y"
-        style={{ ...this.props.style, inputBoxStyles }}
+        className={cx(
+          className,
+          "pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y",
+        )}
+        style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
       >
         {value.map((v, index) => (
           <li
             key={index}
-            className={cx(
-              "flex align-center mr1 mb1 pl2 rounded bg-medium",
-              multi ? "pr1" : "pr2 py1", // move some of the padding to the X button
-            )}
+            className={cx("flex align-center mr1 mb1 p1 rounded bg-medium")}
           >
-            <span className="text-bold">{valueRenderer(v)}</span>
+            <span
+              style={{ ...defaultStyleValue, ...valueStyle }}
+              className={multi ? "pl1 pr0" : "px1"}
+            >
+              {valueRenderer(v)}
+            </span>
             {multi && (
               <a
-                className="text-medium text-default-hover p1"
+                className="text-medium text-default-hover px1"
                 onClick={e => {
-                  this.removeValue(v);
                   e.preventDefault();
+                  this.removeValue(v);
                 }}
                 onMouseDown={e => e.preventDefault()}
               >
-                <Icon name="close" className="" size={12} />
+                <Icon name="close" size={12} />
               </a>
             )}
           </li>
         ))}
-        <li className="flex-full flex align-center mb1">
+        <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
           <input
             ref="input"
-            className="full h4 no-focus borderless"
+            style={{ ...defaultStyleValue, ...valueStyle }}
+            className={cx("full no-focus borderless px1")}
             // set size to be small enough that it fits in a parameter.
             size={10}
             placeholder={placeholder}
@@ -597,7 +617,11 @@ export default class TokenField extends Component {
     const optionsList =
       filteredOptions.length === 0 ? null : (
         <ul
-          className="pl1 py1 scroll-y scroll-show border-bottom"
+          className={cx(
+            optionsClassName,
+            "pl1 my1 scroll-y scroll-show border-bottom",
+          )}
+          style={{ maxHeight: 300, ...optionsStyle }}
           onMouseEnter={() => this.setState({ listIsHovered: true })}
           onMouseLeave={() => this.setState({ listIsHovered: false })}
         >

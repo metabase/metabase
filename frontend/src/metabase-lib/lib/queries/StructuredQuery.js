@@ -661,7 +661,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   filterFieldOptionSections(filter?: Filter) {
-    const filterFieldOptions = this.filterFieldOptions(filter);
+    const filterFieldOptions = this.filterFieldOptions();
     const filterSegmentOptions = this.filterSegmentOptions(filter);
     return filterFieldOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
@@ -673,7 +673,7 @@ export default class StructuredQuery extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(stages = 2) {
+  topLevelFilterFieldOptionSections(filter = null, stages = 2) {
     const queries = this.queries().slice(-stages);
     // allow post-aggregation filtering
     if (queries.length < stages && this.breakouts().length > 0) {
@@ -681,7 +681,7 @@ export default class StructuredQuery extends AtomicQuery {
     }
     queries.reverse();
 
-    return [].concat(...queries.map(q => q.filterFieldOptionSections()));
+    return [].concat(...queries.map(q => q.filterFieldOptionSections(filter)));
   }
 
   /**

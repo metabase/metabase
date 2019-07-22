@@ -44,6 +44,7 @@ type Props = {
   formatOptions?: FormattingOptions,
   maxWidth?: number,
   minWidth?: number,
+  optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
 };
 
@@ -224,7 +225,10 @@ export class FieldValuesWidget extends Component {
       multi,
       autoFocus,
       color,
+      className,
+      style,
       formatOptions,
+      optionsMaxHeight,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -271,13 +275,19 @@ export class FieldValuesWidget extends Component {
           value={value.filter(v => v != null)}
           onChange={onChange}
           placeholder={placeholder}
+          updateOnInputChange
+          // forwarded props
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={{
-            ...this.props.style,
-          }}
-          updateOnInputChange
+          style={style}
+          className={className}
+          optionsStyle={
+            optionsMaxHeight !== undefined
+              ? { maxHeight: optionsMaxHeight }
+              : {}
+          }
+          // end forwarded props
           options={options}
           // $FlowFixMe
           valueKey={0}
