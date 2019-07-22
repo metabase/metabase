@@ -872,6 +872,10 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.clearFields, arguments);
   }
 
+  setFields(fields) {
+    return this._updateQuery(q => ({ ...q, fields }));
+  }
+
   /**
    * Returns dimension options that can appear in the `fields` clause
    */
@@ -996,7 +1000,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   @memoize
   joinedDimensions(): Dimension[] {
-    return [].concat(...this.joins().map(join => join.joinedDimensions()));
+    return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 
   @memoize

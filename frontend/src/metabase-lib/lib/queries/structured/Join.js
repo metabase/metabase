@@ -85,6 +85,11 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
+  // FIELDS
+  setFields(fields) {
+    return this.set({ ...this, fields });
+  }
+
   // STRATEGY
   setStrategy(strategy) {
     return this.set({ ...this, strategy });
@@ -220,11 +225,27 @@ export default class Join extends MBQLObjectClause {
     return parentQuery && parentQuery.table();
   }
 
+  /**
+   * All possible joined dimensions
+   */
   joinedDimensions() {
     const table = this.joinedTable();
     return table
       ? table.dimensions().map(dimension => this.joinedDimension(dimension))
       : [];
+  }
+
+  /**
+   * Currently selected joined dimensions
+   */
+  fieldsDimensions() {
+    if (this.fields === "all") {
+      return this.joinedDimensions();
+    } else if (Array.isArray(this.fields)) {
+      return this.fields.map(f => this.query().parseFieldReference(f));
+    } else {
+      return [];
+    }
   }
 
   joinedDimensionOptions(dimensionFilter = () => true) {

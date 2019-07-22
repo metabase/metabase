@@ -9,8 +9,10 @@ import {
   NotebookCellItem,
   NotebookCellAdd,
 } from "../NotebookCell";
+
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import FieldList from "metabase/query_builder/components/FieldList";
 import Join from "metabase-lib/lib/queries/structured/Join";
@@ -35,7 +37,7 @@ export default function JoinStep({
   const valid = _.all(joins, join => join.isValid());
   return (
     <NotebookCell color={color} flexWrap="nowrap">
-      <Flex flexDirection="column">
+      <Flex flexDirection="column" className="flex-full">
         {joins.map((join, index) => (
           <JoinClause
             mb={index === joins.length - 1 ? 0 : 2}
@@ -188,6 +190,14 @@ class JoinClause extends React.Component {
           </Flex>
         )}
 
+        {join.isValid() && (
+          <JoinFieldsPicker
+            className="mb1 ml-auto"
+            join={join}
+            updateQuery={updateQuery}
+          />
+        )}
+
         {showRemove && (
           <Icon
             name="close"
@@ -273,3 +283,48 @@ class JoinDimensionPicker extends React.Component {
     );
   }
 }
+
+import FieldsPicker from "./FieldsPicker";
+
+const JoinFieldsPicker = ({ className, join, updateQuery }) => {
+  const dimensions = join.joinedDimensions();
+  const selectedDimensions = join.fieldsDimensions();
+  const selected = new Set(selectedDimensions.map(d => d.key()));
+  return (
+    <FieldsPicker
+      className={className}
+      dimensions={dimensions}
+      selectedDimensions={selectedDimensions}
+      isAll={join.fields === "all"}
+      isNone={join.fields === "none"}
+      onSelectAll={() =>
+        join
+          .setFields("all")
+          .parent()
+          .update(updateQuery)
+      }
+      onSelectNone={() =>
+        join
+          .setFields("none")
+          .parent()
+          .update(updateQuery)
+      }
+      onToggleDimension={(dimension, enable) => {
+        join
+          .setFields(
+            dimensions
+              .filter(d => {
+                if (d === dimension) {
+                  return !selected.has(d.key());
+                } else {
+                  return selected.has(d.key());
+                }
+              })
+              .map(d => d.mbql()),
+          )
+          .parent()
+          .update(updateQuery);
+      }}
+    />
+  );
+};

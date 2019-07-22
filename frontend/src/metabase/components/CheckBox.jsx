@@ -1,5 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 
 import colors, { normal as defaultColors } from "metabase/lib/colors";
@@ -33,7 +35,15 @@ export default class CheckBox extends Component {
   }
 
   render() {
-    const { checked, indeterminate, color, padding, size, noIcon } = this.props;
+    const {
+      className,
+      checked,
+      indeterminate,
+      color,
+      padding,
+      size,
+      noIcon,
+    } = this.props;
 
     const checkedColor = defaultColors[color];
     const uncheckedColor = colors["text-light"];
@@ -46,7 +56,7 @@ export default class CheckBox extends Component {
     };
     return (
       <div
-        className="cursor-pointer"
+        className={cx(className, "cursor-pointer")}
         onClick={e => {
           this.onClick(e);
         }}

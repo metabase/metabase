@@ -57,7 +57,11 @@ const STEPS = [
     type: "summarize",
     valid: query => query.hasData(),
     active: query => query.hasAggregations() || query.hasBreakouts(),
-    revert: query => query.clearBreakouts().clearAggregations(),
+    revert: query =>
+      // only clear if there are aggregations or breakouts because it will also clear `fields`
+      query.hasAggregations() || query.hasBreakouts()
+        ? query.clearBreakouts().clearAggregations()
+        : query,
     clean: query => query.cleanBreakouts().cleanAggregations(),
   },
   {
@@ -158,8 +162,7 @@ export function getStageSteps(query, stageIndex, openSteps) {
     }),
   );
 
-  // sort/limit not currently covered by steps so revert them manually
-  let previewQuery = query; //.clearSort().clearLimit();
+  let previewQuery = query;
 
   let actions = [];
   // iterate over steps in reverse so we can revert query for previewing and accumulate valid actions

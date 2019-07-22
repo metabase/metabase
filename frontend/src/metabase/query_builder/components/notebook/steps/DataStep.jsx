@@ -28,6 +28,46 @@ export default function DataStep({ color, query, updateQuery }) {
           )
         }
       />
+      {query.table() && query.isRaw() && (
+        <DataFieldsPicker
+          className="ml-auto mb1"
+          query={query}
+          updateQuery={updateQuery}
+        />
+      )}
     </NotebookCell>
   );
 }
+
+import FieldsPicker from "./FieldsPicker";
+
+const DataFieldsPicker = ({ className, query, updateQuery }) => {
+  const dimensions = query.tableDimensions();
+  const selectedDimensions = query.columnDimensions();
+  const selected = new Set(selectedDimensions.map(d => d.key()));
+  const fields = query.fields();
+  return (
+    <FieldsPicker
+      className={className}
+      dimensions={dimensions}
+      selectedDimensions={selectedDimensions}
+      isAll={!fields || fields.length === 0}
+      onSelectAll={() => query.clearFields().update(updateQuery)}
+      onToggleDimension={(dimension, enable) => {
+        query
+          .setFields(
+            dimensions
+              .filter(d => {
+                if (d === dimension) {
+                  return !selected.has(d.key());
+                } else {
+                  return selected.has(d.key());
+                }
+              })
+              .map(d => d.mbql()),
+          )
+          .update(updateQuery);
+      }}
+    />
+  );
+};

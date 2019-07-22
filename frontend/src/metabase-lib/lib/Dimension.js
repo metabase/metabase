@@ -375,6 +375,10 @@ export default class Dimension {
   mbql() {
     throw new Error("Abstract method `mbql` not implemented");
   }
+
+  key() {
+    return JSON.stringify(this.mbql());
+  }
 }
 
 /**
