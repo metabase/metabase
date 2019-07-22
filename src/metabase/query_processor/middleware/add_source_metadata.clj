@@ -14,10 +14,7 @@
 (s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
   [source-query]
   (for [col (annotate/cols-for-mbql-query source-query)]
-    (u/select-keys-when col
-      :non-nil #{:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings})
-    #_(select-keys col
-                 [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its

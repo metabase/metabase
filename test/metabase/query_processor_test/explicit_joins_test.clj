@@ -428,15 +428,3 @@
                          :condition    [:= *user_id &v.venues.id]}]
          :order-by     [[:asc $id]]
          :limit        2}))))
-
-
-
-;; TODO Can we join against a source nested native query?
-
-;; TODO Do joins inside nested queries work?
-
-;; TODO Do multiple joins work, and return columns in the correct order?
-
-;; TODO Can we join the same table twice with different conditions?
-
-;; TODO Can we join the same table twice with the same condition?

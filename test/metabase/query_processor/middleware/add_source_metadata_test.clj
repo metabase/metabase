@@ -7,9 +7,9 @@
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.test.data :as data]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.test
+             [data :as data]
+             [util :as tu]]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
@@ -19,10 +19,9 @@
       ((add-source-metadata/add-source-metadata-for-source-queries identity) query))))
 
 (defn- venues-metadata [field-name]
-  #_(select-keys (Field (data/id :venues field-name))
-                 [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings])
-  (u/select-keys-when (Field (data/id :venues field-name))
-    :non-nil #{:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings}))
+  (select-keys
+   (Field (data/id :venues field-name))
+   [:id :table_id :name :display_name :base_type :special_type :unit :fingerprint :settings]))
 
 (defn- venues-source-metadata
   ([]
@@ -31,6 +30,22 @@
   ([& field-names]
    (for [field-name field-names]
      (venues-metadata (keyword (str/lower-case (name field-name)))))))
+
+(defn- metadata-from-source-query
+  "`:fingerprint` and `:settings` are not usually included in `:source-metadata` if it is pulled up from a nested source
+  query, so this function can be used with one of the functions above to remove those keys if applicable.
+
+  TODO - I'm not convinced that behavior makes sense? Maybe we should change it and remove this function. "
+  [ms]
+  {:pre [(sequential? ms) (every? map? ms)]}
+  (for [m ms]
+    (reduce
+     (fn [m k]
+       (if (nil? (get m k))
+         (dissoc m k)
+         m))
+     m
+     [:fingerprint :settings])))
 
 (defn- venues-source-metadata-for-field-literals
   "Metadata we'd expect to see from a `:field-literal` clause. The same as normal metadata, but field literals don't
@@ -88,7 +103,8 @@
                        [{:name         "avg"
                          :display_name "average of ID"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK}])})
+                         :special_type :type/PK
+                         :settings     nil}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
@@ -108,7 +124,8 @@
                        [{:name         "some_generated_name"
                          :display_name "My Cool Ag"
                          :base_type    :type/BigInteger
-                         :special_type :type/PK}])})
+                         :special_type :type/PK
+                         :settings     nil}])})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-table $$venues
@@ -125,7 +142,8 @@
   [{:name         "some_generated_name"
     :display_name "average of ID"
     :base_type    :type/BigInteger
-    :special_type :type/PK}]
+    :special_type :type/PK
+    :settings     nil}]
   (source-metadata
    (add-source-metadata
     (data/mbql-query venues
@@ -137,7 +155,8 @@
   [{:name         "avg"
     :display_name "My Cool Ag"
     :base_type    :type/BigInteger
-    :special_type :type/PK}]
+    :special_type :type/PK
+    :settings     nil}]
   (source-metadata
    (add-source-metadata
     (data/mbql-query venues
@@ -151,7 +170,7 @@
     {:source-query    {:source-query    {:source-table $$venues
                                          :fields       [$id $name]}
                        :source-metadata (venues-source-metadata :id :name)}
-     :source-metadata (venues-source-metadata :id :name)})
+     :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-query    {:source-table $$venues
@@ -164,8 +183,8 @@
     {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                            :fields       [$id $name]}
                                          :source-metadata (venues-source-metadata :id :name)}
-                       :source-metadata (venues-source-metadata :id :name)}
-     :source-metadata (venues-source-metadata :id :name)})
+                       :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))}
+     :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query
@@ -179,8 +198,8 @@
     (data/mbql-query venues
       {:source-query    {:source-query    {:source-query    {:source-table $$venues}
                                            :source-metadata (venues-source-metadata)}
-                         :source-metadata (venues-source-metadata)}
-       :source-metadata (venues-source-metadata)})
+                         :source-metadata (metadata-from-source-query (venues-source-metadata))}
+       :source-metadata (metadata-from-source-query (venues-source-metadata))})
     (add-source-metadata
      (data/mbql-query venues
        {:source-query {:source-query {:source-query {:source-table $$venues}}}})))
@@ -191,8 +210,8 @@
     {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                            :fields       [$id $name]}
                                          :source-metadata (venues-source-metadata :id :name)}
-                       :source-metadata (venues-source-metadata :id :name)}
-     :source-metadata (venues-source-metadata :id :name)})
+                       :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))}
+     :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-query {:source-query {:source-table $$venues
@@ -211,21 +230,21 @@
                                                              :aggregation  [[:count]]
                                                              :breakout     [$price]}
                                            :source-metadata metadata}
-                         :source-metadata metadata}
-       :source-metadata metadata}))
+                         :source-metadata (metadata-from-source-query metadata)}
+       :source-metadata (metadata-from-source-query metadata)}))
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-query {:source-query {:source-table $$venues
                                                    :aggregation  [[:count]]
                                                    :breakout     [$price]}}}})))
 
-;; can we add source-metadata to the parent level if the source query has a native source query, but has
+;; can we add `source-metadata` to the parent level if the source query has a native source query, but itself has
 ;; `source-metadata`?
 (expect
   (data/mbql-query venues
     {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                        :source-metadata (venues-source-metadata :id :name)}
-     :source-metadata (venues-source-metadata :id :name)})
+     :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
   (add-source-metadata
    (data/mbql-query venues
      {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
