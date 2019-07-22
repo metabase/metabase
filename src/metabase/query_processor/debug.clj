@@ -12,10 +12,6 @@
             [metabase.util :as u]
             [schema.core :as s]))
 
-(def ^:private ^:dynamic *timeout*
-  "Timeout (in milliseconds) for async middleware to return a response."
-  5000)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Generic Middleware Debugging Utils                                       |
