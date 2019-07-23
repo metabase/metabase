@@ -10,7 +10,10 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import Button from "metabase/components/Button.jsx";
 
-import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, {
+  AggregationClause,
+  AggregationOptionsClause,
+} from "metabase/lib/query";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import _ from "underscore";
@@ -36,7 +39,8 @@ export default class AggregationPopover extends Component {
       editingAggregation:
         props.aggregation &&
         props.aggregation.length > 1 &&
-        AggregationClause.isCustom(props.aggregation),
+        (AggregationClause.isCustom(props.aggregation) ||
+          AggregationOptionsClause.isNamed(props.aggregation)),
     };
 
     _.bindAll(
@@ -172,7 +176,7 @@ export default class AggregationPopover extends Component {
 
   itemIsSelected(item) {
     const { aggregation } = this.props;
-    return item.isSelected(NamedClause.getContent(aggregation));
+    return item.isSelected(AggregationOptionsClause.getContent(aggregation));
   }
 
   renderItemExtra(item, itemIndex) {
@@ -230,7 +234,9 @@ export default class AggregationPopover extends Component {
     }
 
     const { choosingField, editingAggregation } = this.state;
-    const aggregation = NamedClause.getContent(this.state.aggregation);
+    const aggregation = AggregationOptionsClause.getContent(
+      this.state.aggregation,
+    );
 
     let selectedAggregation;
     if (AggregationClause.isMetric(aggregation)) {
@@ -345,7 +351,7 @@ export default class AggregationPopover extends Component {
               customFields={customFields}
               onChange={parsedExpression =>
                 this.setState({
-                  aggregation: NamedClause.setContent(
+                  aggregation: AggregationOptionsClause.setContent(
                     this.state.aggregation,
                     parsedExpression,
                   ),
@@ -373,11 +379,14 @@ export default class AggregationPopover extends Component {
               ))}
             <input
               className="input block full my1"
-              value={NamedClause.getName(this.state.aggregation)}
+              value={AggregationOptionsClause.getName(this.state.aggregation)}
               onChange={e =>
                 this.setState({
                   aggregation: e.target.value
-                    ? NamedClause.setName(aggregation, e.target.value)
+                    ? AggregationOptionsClause.setName(
+                        aggregation,
+                        e.target.value,
+                      )
                     : aggregation,
                 })
               }

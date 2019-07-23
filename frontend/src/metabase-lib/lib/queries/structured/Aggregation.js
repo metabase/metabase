@@ -50,8 +50,8 @@ export default class Aggregation extends MBQLClause {
    * Returns the display name for the aggregation
    */
   displayName() {
-    if (this.isNamed()) {
-      return this[2];
+    if (this.hasOptions()) {
+      return this.name() || this.aggregation().displayName();
     } else if (this.isCustom()) {
       return this._query.formatExpression(this);
     } else if (this.isMetric()) {
@@ -78,8 +78,11 @@ export default class Aggregation extends MBQLClause {
    * Predicate function to test if a given aggregation clause is valid
    */
   isValid(): boolean {
-    if (this.isNamed()) {
-      return !!this.name() && this.aggregation().isValid();
+    if (this.hasOptions()) {
+      return this.aggregation().isValid();
+    } else if (this.isCustom()) {
+      // TODO: custom aggregations
+      return true;
     } else if (this.isStandard()) {
       const dimension = this.dimension();
       const aggregation = this.query()
@@ -94,9 +97,6 @@ export default class Aggregation extends MBQLClause {
       );
     } else if (this.isMetric()) {
       return !!this.metric();
-    } else if (this.isCustom()) {
-      // TODO: custom aggregations
-      return true;
     }
     return false;
   }
@@ -191,7 +191,7 @@ export default class Aggregation extends MBQLClause {
 
   options() {
     if (this.hasOptions()) {
-      return this[1] || {};
+      return this[2] || {};
     } else {
       return {};
     }
@@ -203,13 +203,11 @@ export default class Aggregation extends MBQLClause {
    * Returns true if this a named aggregation
    */
   isNamed() {
-    return this.options()["display-name"];
+    return !!this.options()["display-name"];
   }
 
   name() {
-    if (this.isNamed()) {
-      return this.options()["display-name"];
-    }
+    return this.options()["display-name"];
   }
 
   /**

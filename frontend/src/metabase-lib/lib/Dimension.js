@@ -1,12 +1,8 @@
-import React from "react";
 import { t, ngettext, msgid } from "ttag";
-
-import Icon from "metabase/components/Icon";
+import _ from "underscore";
 
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
-
-import _ from "underscore";
 
 import Field from "./metadata/Field";
 import Metadata from "./metadata/Metadata";

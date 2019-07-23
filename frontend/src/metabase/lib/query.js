@@ -550,8 +550,11 @@ const Query = {
   getAggregationDescription(tableMetadata, query, options) {
     return conjunctList(
       Query.getAggregations(query).map(aggregation => {
-        if (NamedClause.isNamed(aggregation)) {
-          return [NamedClause.getName(aggregation)];
+        if (AggregationOptionsClause.hasOptions(aggregation)) {
+          if (AggregationOptionsClause.isNamed(aggregation)) {
+            return [AggregationOptionsClause.getName(aggregation)];
+          }
+          aggregation = AggregationOptionsClause.getContent(aggregation);
         }
         if (AggregationClause.isMetric(aggregation)) {
           const metric = _.findWhere(tableMetadata.metrics, {
@@ -776,31 +779,35 @@ for (const prop in Q) {
 
 import { isMath } from "metabase/lib/expressions";
 
-export const NamedClause = {
+export const AggregationOptionsClause = {
   hasOptions(clause) {
     return Array.isArray(clause) && clause[0] === "aggregation-options";
   },
   getOptions(clause) {
-    return NamedClause.hasOptions(clause) ? clause[2] : {};
-  },
-  isNamed(clause) {
-    return NamedClause.getOptions(clause)["display-name"];
-  },
-  getName(clause) {
-    return NamedClause.getOptions(clause)["display-name"];
+    return AggregationOptionsClause.hasOptions(clause) ? clause[2] : {};
   },
   getContent(clause) {
-    return NamedClause.hasOptions(clause) ? clause[1] : clause;
+    return AggregationOptionsClause.hasOptions(clause) ? clause[1] : clause;
+  },
+  isNamed(clause) {
+    return AggregationOptionsClause.getOptions(clause)["display-name"];
+  },
+  getName(clause) {
+    return AggregationOptionsClause.getOptions(clause)["display-name"];
   },
   setName(clause, name) {
     return [
       "aggregation-options",
-      NamedClause.getContent(clause),
-      { "display-name": name, ...NamedClause.getOptions(clause) },
+      AggregationOptionsClause.getContent(clause),
+      { "display-name": name, ...AggregationOptionsClause.getOptions(clause) },
     ];
   },
   setContent(clause, content) {
-    return ["aggregation-options", content, NamedClause.getOptions(clause)];
+    return [
+      "aggregation-options",
+      content,
+      AggregationOptionsClause.getOptions(clause),
+    ];
   },
 };
 
@@ -855,7 +862,7 @@ export const AggregationClause = {
   isCustom(aggregation) {
     // for now treal all named clauses as custom
     return (
-      (aggregation && NamedClause.isNamed(aggregation)) ||
+      (aggregation && AggregationOptionsClause.hasOptions(aggregation)) ||
       isMath(aggregation) ||
       (AggregationClause.isStandard(aggregation) &&
         _.any(aggregation.slice(1), arg => isMath(arg)))

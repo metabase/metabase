@@ -34,6 +34,7 @@ export const PEOPLE_LATITUDE_FIELD_ID = 14;
 export const PEOPLE_LONGITUDE_FIELD_ID = 15;
 export const PEOPLE_STATE_FIELD_ID = 19;
 
+// TODO: dump this from a real instance
 export const state = {
   entities: {
     metrics: {

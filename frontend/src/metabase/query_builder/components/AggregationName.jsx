@@ -5,7 +5,10 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Query, { AggregationClause, NamedClause } from "metabase/lib/query";
+import Query, {
+  AggregationClause,
+  AggregationOptionsClause,
+} from "metabase/lib/query";
 import { getAggregator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
 
@@ -31,9 +34,15 @@ const AggregationName = ({
   if (!tableMetadata) {
     return null;
   }
-  return NamedClause.isNamed(aggregation) ? (
-    <NamedAggregation aggregation={aggregation} className={className} />
-  ) : AggregationClause.isCustom(aggregation) ? (
+  if (AggregationOptionsClause.hasOptions(aggregation)) {
+    if (AggregationOptionsClause.isNamed(aggregation)) {
+      return (
+        <NamedAggregation aggregation={aggregation} className={className} />
+      );
+    }
+    aggregation = AggregationOptionsClause.getContent(aggregation);
+  }
+  return AggregationClause.isCustom(aggregation) ? (
     <CustomAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
@@ -57,7 +66,9 @@ const AggregationName = ({
 };
 
 const NamedAggregation = ({ aggregation, className }) => (
-  <span className={className}>{NamedClause.getName(aggregation)}</span>
+  <span className={className}>
+    {AggregationOptionsClause.getName(aggregation)}
+  </span>
 );
 
 const CustomAggregation = ({

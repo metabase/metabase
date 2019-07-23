@@ -429,7 +429,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   hasExpressions() {
-    return this.expressions().length > 0;
+    return Object.keys(this.expressions()).length > 0;
   }
 
   hasFilters() {

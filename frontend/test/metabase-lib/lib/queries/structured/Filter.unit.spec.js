@@ -1,4 +1,4 @@
-import Filter from "metabase-lib/lib/queries/structured/Filter.js";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import {
   question,
