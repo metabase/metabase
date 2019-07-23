@@ -38,10 +38,7 @@ export default class Breakout extends MBQLClause {
    */
   displayName(): ?string {
     const dimension = this.dimension();
-    if (!dimension) {
-      return null;
-    }
-    return dimension.render().join("");
+    return dimension && dimension.render();
   }
 
   /**

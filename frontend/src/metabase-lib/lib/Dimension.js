@@ -3,7 +3,7 @@ import { t, ngettext, msgid } from "ttag";
 
 import Icon from "metabase/components/Icon";
 
-import { stripId } from "metabase/lib/formatting";
+import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
@@ -366,10 +366,10 @@ export default class Dimension {
   }
 
   /**
-   * Renders a dimension to React
+   * Renders a dimension to a string for display in query builders
    */
-  render(): ?React$Element<any> {
-    return this._parent ? this._parent.render() : [this.displayName()];
+  render() {
+    return this._parent ? this._parent.render() : this.displayName();
   }
 
   mbql() {
@@ -590,9 +590,9 @@ export class FKDimension extends FieldDimension {
   render() {
     return [
       stripId(this._parent.field().display_name),
-      <Icon name="connections" className="px1" size={10} />,
+      FK_SYMBOL,
       this.field().display_name,
-    ];
+    ].join("");
   }
 }
 
@@ -694,7 +694,7 @@ export class DatetimeFieldDimension extends FieldDimension {
   }
 
   render() {
-    return [...super.render(), ": ", this.subDisplayName()];
+    return [super.render(), ": ", this.subDisplayName()].join("");
   }
 }
 
@@ -741,7 +741,7 @@ export class BinnedDimension extends FieldDimension {
   }
 
   render() {
-    return [...super.render(), ": ", this.subTriggerDisplayName()];
+    return [super.render(), ": ", this.subTriggerDisplayName()].join("");
   }
 }
 
