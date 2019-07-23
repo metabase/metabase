@@ -288,17 +288,51 @@
                         {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :special_type :type/FK}]}
      [:field-literal "sum" :type/Integer])))
 
+;; col info for an `expression` should work as expected
+(expect
+  {:base_type       :type/Float
+   :special_type    :type/Number
+   :name            "double-price"
+   :display_name    "double-price"
+   :expression_name "double-price"
+   :field_ref       [:expression "double-price"]}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (#'annotate/col-info-for-field-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:expression "double-price"]))))
+
+;; if there is no matching expression it should give a meaningful error message
+(expect
+  {:message "No expression named double-price found. Found: (\"one-hundred\")"
+   :data    {:type        :invalid-query
+             :clause      [:expression "double-price"]
+             :expressions {"one-hundred" 100}}}
+  (try
+    (qp.test-util/with-everything-store
+      (data/$ids venues
+        (#'annotate/col-info-for-field-clause
+         {:expressions {"one-hundred" 100}}
+         [:expression "double-price"])))
+    (catch Throwable e
+      {:message (.getMessage e)
+       :data    (ex-data e)})))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    (MBQL) Col info for Aggregation clauses                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test that added information about aggregations looks the way we'd expect
-(defn- aggregation-names [ag-clause]
-  (binding [driver/*driver* :h2]
-    (qp.test-util/with-everything-store
-      {:name         (annotate/aggregation-name ag-clause)
-       :display_name (annotate/aggregation-display-name ag-clause)})))
+(defn- aggregation-names
+  ([ag-clause]
+   (aggregation-names {} ag-clause))
+
+  ([inner-query ag-clause]
+   (binding [driver/*driver* :h2]
+     (qp.test-util/with-everything-store
+       {:name         (annotate/aggregation-name ag-clause)
+        :display_name (annotate/aggregation-display-name inner-query ag-clause)}))))
 
 (expect
   {:name "count", :display_name "count"}
@@ -363,9 +397,13 @@
     {:display-name "User-specified Name"}]))
 
 ;; make sure custom aggregation names get included in the col info
-(defn- col-info-for-aggregation-clause [clause]
-  (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause {} clause)))
+(defn- col-info-for-aggregation-clause
+  ([clause]
+   (col-info-for-aggregation-clause {} clause))
+
+  ([inner-query clause]
+   (binding [driver/*driver* :h2]
+     (#'annotate/col-info-for-aggregation-clause inner-query clause))))
 
 (expect
   {:base_type    :type/Float
@@ -434,6 +472,18 @@
                                             :columns ["totalEvents"]}))
      (data/mbql-query venues
        {:aggregation [[:metric "ga:totalEvents"]]}))))
+
+;; col info for an `expression` aggregation w/ a named expression should work as expected
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "sum"
+   :display_name "sum of double-price"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:sum [:expression "double-price"]]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
