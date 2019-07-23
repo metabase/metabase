@@ -113,7 +113,9 @@ export class TableBrowser extends React.Component {
                     // NOTE: currently tables entities doesn't integrate with Metadata objects
                     const metadataTable = metadata.table(table.id);
                     const link =
-                      metadataTable && metadataTable.newQuestion().getUrl();
+                      metadataTable &&
+                      // NOTE: don't clean since we might not have all the metadata loaded?
+                      metadataTable.newQuestion().getUrl({ clean: false });
                     return (
                       <GridItem w={ITEM_WIDTHS} key={table.id}>
                         <Card

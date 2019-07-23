@@ -105,7 +105,7 @@ export default class NotebookStep extends React.Component {
     const { title, color, component: NotebookStepComponent } =
       STEP_UI[step.type] || {};
 
-    const canPreview = step.previewQuery && step.previewQuery.canRun();
+    const canPreview = step.previewQuery && step.previewQuery.isValid();
     const showPreviewButton = !showPreview && canPreview;
 
     const largeActionButtons =
@@ -131,14 +131,13 @@ export default class NotebookStep extends React.Component {
     actions.sort((a, b) => (b.priority || 0) - (a.priority || 0));
     const actionButtons = actions.map(action => action.button);
 
-    const onRemove = step.revert
-      ? () => {
-          step
-            .revert(step.query)
-            .clean()
-            .update(updateQuery);
-        }
-      : null;
+    let onRemove = null;
+    if (step.revert) {
+      const reverted = step.revert(step.query).clean();
+      if (reverted.isValid()) {
+        onRemove = () => reverted.update(updateQuery);
+      }
+    }
 
     return (
       <ExpandingContent isInitiallyOpen={!isLastOpened} isOpen>

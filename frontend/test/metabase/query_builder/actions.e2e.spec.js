@@ -70,7 +70,7 @@ describe("QueryBuilder", () => {
       describe("with clean state", () => {
         it("completes successfully", async () => {
           const location = urlParse(
-            savedCleanQuestion.getUrl(savedCleanQuestion),
+            savedCleanQuestion.getUrl({ originalQuestion: savedCleanQuestion }),
           );
           // pass the card id explicitly as we are not using react-router parameter resolution here
           await store.dispatch(
@@ -91,13 +91,15 @@ describe("QueryBuilder", () => {
         });
         it("keeps the url same after initialization is finished", async () => {
           expect(store.getPath()).toBe(
-            savedCleanQuestion.getUrl(savedCleanQuestion),
+            savedCleanQuestion.getUrl({ originalQuestion: savedCleanQuestion }),
           );
         });
       });
       describe("with dirty state", () => {
         it("completes successfully", async () => {
-          const location = urlParse(dirtyQuestion.getUrl(savedCleanQuestion));
+          const location = urlParse(
+            dirtyQuestion.getUrl({ originalQuestion: savedCleanQuestion }),
+          );
           await store.dispatch(initializeQB(location, {}));
         });
 

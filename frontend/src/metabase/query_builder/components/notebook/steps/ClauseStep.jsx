@@ -15,6 +15,7 @@ export default function ClauseStep({
   renderName = item => item.displayName(),
   renderPopover,
   onRemove = null,
+  canRemove,
   isLastOpened = false,
   initialAddText = null,
   ...props
@@ -26,7 +27,7 @@ export default function ClauseStep({
           triggerElement={
             <NotebookCellItem color={color}>
               {renderName(item, index)}
-              {onRemove && (
+              {onRemove && (!canRemove || canRemove(item)) && (
                 <Icon
                   ml={1}
                   name="close"

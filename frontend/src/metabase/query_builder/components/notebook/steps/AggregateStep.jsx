@@ -30,6 +30,7 @@ export default function AggregateStep({
       )}
       isLastOpened={isLastOpened}
       onRemove={aggregation => aggregation.remove().update(updateQuery)}
+      canRemove={aggregation => aggregation.canRemove()}
     />
   );
 }

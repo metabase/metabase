@@ -97,13 +97,15 @@ const SummarizeAggregation = ({ className, aggregation, index, query }) => {
         triggerElement={
           <AggregationToken color={color("summarize")}>
             <AggregationName className="ml1" aggregation={aggregation} />
-            <Icon
-              className="flex ml-auto faded fade-in-hover"
-              name="close"
-              onClick={() => {
-                updateAndRun(query.removeAggregation(index));
-              }}
-            />
+            {aggregation.canRemove() && (
+              <Icon
+                className="flex ml-auto faded fade-in-hover"
+                name="close"
+                onClick={() => {
+                  updateAndRun(query.removeAggregation(index));
+                }}
+              />
+            )}
           </AggregationToken>
         }
       >

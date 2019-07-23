@@ -47,7 +47,7 @@ describe("QueryBuilder", () => {
 
     it("renders normally on page load", async () => {
       const store = await createTestStore();
-      store.pushPath(savedQuestion.getUrl(savedQuestion));
+      store.pushPath(savedQuestion.getUrl({ originalQuestion: savedQuestion }));
       const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
 
       await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
@@ -188,7 +188,9 @@ describe("QueryBuilder", () => {
           .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
           .question();
 
-        store.pushPath(dirtyQuestion.getUrl(savedQuestion));
+        store.pushPath(
+          dirtyQuestion.getUrl({ originalQuestion: savedQuestion }),
+        );
         const qbWrapper = mount(store.connectContainer(<QueryBuilder />));
         await store.waitForActions([INITIALIZE_QB, QUERY_COMPLETED]);
 

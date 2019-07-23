@@ -318,6 +318,7 @@ export default class StructuredQuery extends AtomicQuery {
       .cleanLimit()
       .cleanFields();
 
+    // remove empty queries
     const newSourceQuery = query.sourceQuery();
     if (newSourceQuery && (query.isEmpty() || !query.hasAnyClauses())) {
       return newSourceQuery;
@@ -358,16 +359,52 @@ export default class StructuredQuery extends AtomicQuery {
     return this; // TODO
   }
 
+  isValid() {
+    if (!this.hasData()) {
+      return false;
+    }
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery && !sourceQuery.isValid()) {
+      return false;
+    }
+    if (
+      !this._isValidClauseList("joins") ||
+      !this._isValidClauseList("filters") ||
+      !this._isValidClauseList("aggregations") ||
+      !this._isValidClauseList("breakouts")
+    ) {
+      return false;
+    }
+    const table = this.table();
+    // NOTE: special case for Google Analytics which requires an aggregation
+    if (table.entity_type === "entity/GoogleAnalyticsTable") {
+      if (!this.hasAggregations()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   _cleanClauseList(listName) {
     let query = this;
     for (let index = 0; index < query[listName]().length; index++) {
-      if (!query[listName]()[index].isValid()) {
-        query = query[listName]()[index].remove();
+      const clause = query[listName]()[index];
+      if (!clause.isValid()) {
+        query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
       }
     }
     return query;
+  }
+
+  _isValidClauseList(listName) {
+    for (const clause of this[listName]()) {
+      if (!clause.isValid()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   hasData() {
@@ -676,7 +713,7 @@ export default class StructuredQuery extends AtomicQuery {
   topLevelFilterFieldOptionSections(filter = null, stages = 2) {
     const queries = this.queries().slice(-stages);
     // allow post-aggregation filtering
-    if (queries.length < stages && this.breakouts().length > 0) {
+    if (queries.length < stages && this.canNest() && this.hasBreakouts()) {
       queries.push(queries[queries.length - 1].nest());
     }
     queries.reverse();
@@ -1130,6 +1167,11 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(query => ({ "source-query": query }));
   }
 
+  canNest() {
+    const db = this.database();
+    return db && db.hasFeature("nested-queries");
+  }
+
   /**
    * The (wrapped) source query, if any
    */
@@ -1161,7 +1203,7 @@ export default class StructuredQuery extends AtomicQuery {
    * */
   @memoize
   lastSummarizedQuery() {
-    if (this.hasAggregations()) {
+    if (this.hasAggregations() || !this.canNest()) {
       return this;
     } else {
       const sourceQuery = this.sourceQuery();
@@ -1175,7 +1217,11 @@ export default class StructuredQuery extends AtomicQuery {
    */
   @memoize
   topLevelQuery(): Query {
-    return this.lastSummarizedQuery() || this;
+    if (!this.canNest()) {
+      return this;
+    } else {
+      return this.lastSummarizedQuery() || this;
+    }
   }
 
   /**

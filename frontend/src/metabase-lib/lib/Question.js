@@ -559,12 +559,15 @@ export default class Question {
     return table && table.id;
   }
 
-  getUrl(originalQuestion?: Question): string {
+  getUrl({
+    originalQuestion = null,
+    clean = true,
+  }: { originalQuestion?: Question, clean?: boollean } = {}): string {
     if (
       !this.id() ||
       (originalQuestion && this.isDirtyComparedTo(originalQuestion))
     ) {
-      return Urls.question(null, this._serializeForUrl());
+      return Urls.question(null, this._serializeForUrl({ clean }));
     } else {
       return Urls.question(this.id(), "");
     }
@@ -748,13 +751,13 @@ export default class Question {
   }
 
   // Internal methods
-  _serializeForUrl({ includeOriginalCardId = true } = {}) {
-    const cleanedQuery = this.query().clean();
+  _serializeForUrl({ includeOriginalCardId = true, clean = true } = {}) {
+    const query = clean ? this.query().clean() : this.query();
 
     const cardCopy = {
       name: this._card.name,
       description: this._card.description,
-      dataset_query: cleanedQuery.datasetQuery(),
+      dataset_query: query.datasetQuery(),
       display: this._card.display,
       parameters: this._card.parameters,
       visualization_settings: this._card.visualization_settings,

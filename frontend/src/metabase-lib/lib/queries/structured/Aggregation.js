@@ -40,6 +40,12 @@ export default class Aggregation extends MBQLClause {
     return this._query.removeAggregation(this._index);
   }
 
+  canRemove(): boolean {
+    return this.remove()
+      .clean()
+      .isValid();
+  }
+
   /**
    * Returns the display name for the aggregation
    */
