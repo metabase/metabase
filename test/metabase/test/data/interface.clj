@@ -351,7 +351,7 @@
    {:base_type    :type/Integer
     :special_type :type/Number
     :name         "count"
-    :display_name "count"
+    :display_name "Count"
     :source       :aggregation})
 
   ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]

@@ -59,7 +59,7 @@
                              :cols        [{:base_type    "type/Integer"
                                             :special_type "type/Number"
                                             :name         "count"
-                                            :display_name "count"
+                                            :display_name "Count"
                                             :source       "aggregation"}]
                              :native_form true}
     :row_count              1

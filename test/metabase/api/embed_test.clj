@@ -73,7 +73,7 @@
    {:data       {:cols     [{:base_type    "type/Integer"
                              :special_type "type/Number"
                              :name         "count"
-                             :display_name "count"
+                             :display_name "Count"
                              :source       "aggregation"}]
                  :rows     [[100]]
                  :insights nil}
@@ -82,14 +82,14 @@
   ([results-format]
    (case results-format
      ""      (successful-query-results)
-     "/json" [{:count 100}]
-     "/csv"  "count\n100\n"
+     "/json" [{:Count 100}]
+     "/csv"  "Count\n100\n"
      "/xlsx" (fn [body]
                (->> (ByteArrayInputStream. body)
                     spreadsheet/load-workbook
                     (spreadsheet/select-sheet "Query result")
                     (spreadsheet/select-columns {:A :col})
-                    (= [{:col "count"} {:col 100.0}]))))))
+                    (= [{:col "Count"} {:col 100.0}]))))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))

@@ -479,7 +479,7 @@
     :name         "PRICE"
     :display_name "Price"}
    {:base_type    :type/Integer
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type :type/Number}]
   (-> (tt/with-temp Card [card (venues-mbql-card-def)]
@@ -495,7 +495,7 @@
     :name         "DATE"
     :unit         :day}
    {:base_type    :type/Integer
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type :type/Number}]
   (-> (tt/with-temp Card [card {:dataset_query {:database (data/id)

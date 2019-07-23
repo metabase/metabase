@@ -65,7 +65,7 @@
      :source-metadata (concat
                        (venues-source-metadata :price)
                        [{:name         "count"
-                         :display_name "count"
+                         :display_name "Count"
                          :base_type    :type/Integer
                          :special_type :type/Number}])})
   (add-source-metadata
@@ -83,7 +83,7 @@
      :source-metadata (concat
                        (venues-source-metadata :price)
                        [{:name         "avg"
-                         :display_name "average of ID"
+                         :display_name "Average of ID"
                          :base_type    :type/BigInteger
                          :special_type :type/PK}])})
   (add-source-metadata
@@ -169,7 +169,7 @@
   (let [metadata (concat
                   (venues-source-metadata :price)
                   [{:name         "count"
-                    :display_name "count"
+                    :display_name "Count"
                     :base_type    :type/Integer
                     :special_type :type/Number}])]
     (data/mbql-query venues
