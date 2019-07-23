@@ -199,17 +199,22 @@
     [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout new-strategy resolved-options)
                                                                     resolved-options)]))
 
+(defn update-binning-strategy-in-inner-query
+  "Update `:binning-strategy` clauses in an `inner` [MBQL] query."
+  [{filters :filter, :as inner-query}]
+  (let [field-id->filters (filter->field-map filters)]
+    (mbql.u/replace inner-query
+      :binning-strategy
+      (try
+        (update-binned-field inner-query field-id->filters &match)
+        (catch Throwable e
+          (throw (ex-info (.getMessage e) {:clause &match} e)))))))
+
 
 (defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
   (if (= query-type :native)
     query
-    (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
-      (mbql.u/replace-in query [:query]
-        :binning-strategy
-        (try
-          (update-binned-field inner-query field-id->filters &match)
-          (catch Throwable e
-            (throw (ex-info (.getMessage e) {:clause &match} e))))))))
+    (update query :query update-binning-strategy-in-inner-query)))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of
