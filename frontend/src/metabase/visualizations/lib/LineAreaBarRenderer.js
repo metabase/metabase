@@ -72,10 +72,12 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
 
-const UNAGGREGATED_DATA_WARNING = col =>
-  t`"${getFriendlyName(
+const UNAGGREGATED_DATA_WARNING = col => ({
+  key: UNAGGREGATED_DATA_WARNING,
+  text: t`"${getFriendlyName(
     col,
-  )}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`;
+  )}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`,
+});
 
 const enableBrush = (series, onChangeCardAndRun) =>
   !!(
@@ -779,8 +781,10 @@ export default function lineAreaBar(
   const { onRender, isScalarSeries, settings, series } = props;
 
   const warnings = {};
-  const warn = id => {
-    warnings[id] = (warnings[id] || 0) + 1;
+  // `text` is displayed to users, but we deduplicate based on `key`
+  // Call `warn` for each row-level issue, but only the first of each type is displayed.
+  const warn = ({ key, text }) => {
+    warnings[key] = warnings[key] || text;
   };
 
   checkSeriesIsValid(props);
@@ -873,13 +877,13 @@ export default function lineAreaBar(
 
   // only ordinal axis can display "null" values
   if (isOrdinal(parent.settings)) {
-    delete warnings[NULL_DIMENSION_WARNING];
+    delete warnings[NULL_DIMENSION_WARNING.key];
   }
 
   if (onRender) {
     onRender({
       yAxisSplit: yAxisProps.yAxisSplit,
-      warnings: Object.keys(warnings),
+      warnings: Object.values(warnings),
     });
   }
 
