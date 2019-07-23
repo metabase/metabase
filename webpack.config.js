@@ -13,6 +13,7 @@ var HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 var UnusedFilesWebpackPlugin = require("unused-files-webpack-plugin").default;
 var BannerWebpackPlugin = require("banner-webpack-plugin");
 var UglifyJSPlugin = require("uglifyjs-webpack-plugin");
+var WebpackNotifierPlugin = require("webpack-notifier");
 
 var fs = require("fs");
 
@@ -258,6 +259,8 @@ if (NODE_ENV !== "production") {
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
   config.output.pathinfo = true;
+
+  config.plugins.push(new WebpackNotifierPlugin());
 } else {
   // this is required to ensure we don't minify Chevrotain token identifiers
   // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
