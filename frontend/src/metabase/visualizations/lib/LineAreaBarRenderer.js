@@ -535,6 +535,7 @@ function getCharts(
     const seriesChartType = getSeriesDisplay(settings, single) || chartType;
 
     const chart = getDcjsChart(seriesChartType, parent);
+    chart.chartType = seriesChartType;
 
     if (enableBrush(series, onChangeCardAndRun)) {
       initBrush(parent, chart, onBrushChange, onBrushEnd);

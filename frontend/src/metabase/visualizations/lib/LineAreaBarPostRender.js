@@ -54,6 +54,17 @@ function onRenderRemoveClipPath(chart) {
   }
 }
 
+function addClipPathToBarCharts(chart) {
+  const children = chart.children();
+  const parentChartClip = `url(#dc-chart${chart.chartID()}-clip)`;
+  for (let i = 0; i < children.length; i++) {
+    if (children[i].chartType === "bar") {
+      const [[subChartBody]] = chart.select(`.sub._${i} .chart-body`);
+      subChartBody.setAttribute("clip-path", parentChartClip);
+    }
+  }
+}
+
 function onRenderMoveContentToTop(chart) {
   for (const element of chart.selectAll(".sub, .chart-body")[0]) {
     // move chart content on top of axis (z-index doesn't work on SVG):
@@ -363,6 +374,7 @@ function onRenderRotateAxis(chart) {
 // the various steps that get called
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
+  addClipPathToBarCharts(chart);
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
   onRenderSetDotStyle(chart);
