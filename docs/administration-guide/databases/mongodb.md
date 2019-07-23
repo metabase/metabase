@@ -35,15 +35,15 @@ This guide covers:
   
   2. Select the cluster you want to connect to, and click "Connect"
 
-     ![Your cluster screengrab](mongo_1.jpg "Your cluster")
+     ![Your cluster screengrab](mongo_1.png "Your cluster")
 
   3. Click "Connect Your Application"
 
-     ![Connect screengrab](mongo_2.jpg "Connect")
+     ![Connect screengrab](mongo_2.png "Connect")
 
   4. Select "Java" and "3.6 or later"
 
-     ![Java screengrab](mongo_3.jpg "Java")
+     ![Java screengrab](mongo_3.png "Java")
 
   5. The resulting connection string has the relevant information to provide to Metabase's `Add a Database` form for MongoDB.  
   6. You will likely want to select the option `Use DNS SRV`, which newer Atlas clusters use by default.
