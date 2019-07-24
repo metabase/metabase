@@ -112,13 +112,15 @@ export default class ChartWithLegend extends Component {
         }}
       >
         {LegendComponent ? (
-          <LegendComponent
-            className={styles.Legend}
-            titles={legendTitles}
-            colors={legendColors}
-            hovered={hovered}
-            onHoverChange={onHoverChange}
-          />
+          <div className={cx(styles.LegendWrapper)}>
+            <LegendComponent
+              className={styles.Legend}
+              titles={legendTitles}
+              colors={legendColors}
+              hovered={hovered}
+              onHoverChange={onHoverChange}
+            />
+          </div>
         ) : null}
         <div
           className={cx(styles.Chart)}
@@ -126,6 +128,8 @@ export default class ChartWithLegend extends Component {
         >
           {children}
         </div>
+        {/* spacer div to balance legend */}
+        {LegendComponent && <div className={cx(styles.LegendSpacer)} />}
       </div>
     );
   }

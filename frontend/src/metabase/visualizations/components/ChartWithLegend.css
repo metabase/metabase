@@ -8,6 +8,15 @@
   justify-content: center;
 }
 
+:local .ChartWithLegend .LegendSpacer {
+  flex: 1;
+}
+
+:local .ChartWithLegend .LegendWrapper {
+  flex: 1;
+  display: flex;
+}
+
 :local .ChartWithLegend .Chart {
   flex-shrink: 0;
   position: relative;
@@ -30,6 +39,10 @@
   flex-shrink: 1;
   overflow: hidden;
 }
+:local .ChartWithLegend.vertical .LegendWrapper {
+  flex-direction: column;
+  justify-content: flex-start;
+}
 :local .ChartWithLegend.vertical.flexChart .Legend {
   flex-grow: 0;
   flex-shrink: 0;
@@ -50,6 +63,10 @@
   flex-grow: 0;
   flex-shrink: 1;
   overflow: hidden;
+}
+:local .ChartWithLegend.horizontal .LegendWrapper {
+  flex-direction: row;
+  justify-content: flex-end;
 }
 :local .ChartWithLegend.horizontal.flexChart .Legend {
   flex-grow: 0;
