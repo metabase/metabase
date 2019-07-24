@@ -38,6 +38,9 @@ const QuestionDataSource = ({
       href: !noLink && database.id >= 0 && browseSchema(table),
     });
   }
+
+  const isObjectDetail = question.isObjectDetail();
+
   if (table) {
     let name = table.displayName();
     if (query instanceof StructuredQuery) {
@@ -53,7 +56,14 @@ const QuestionDataSource = ({
     parts.push({
       icon: "table2",
       name: name,
-      href: !noLink && subHead && table.newQuestion().getUrl(),
+      href:
+        !noLink && (subHead || isObjectDetail) && table.newQuestion().getUrl(),
+    });
+  }
+
+  if (isObjectDetail) {
+    parts.push({
+      name: question.objectDetailPK(),
     });
   }
 

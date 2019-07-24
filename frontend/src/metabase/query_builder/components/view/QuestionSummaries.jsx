@@ -64,10 +64,12 @@ QuestionSummaries.shouldRender = ({ question, queryBuilderMode }) =>
   question
     .query()
     .topLevelQuery()
-    .hasAggregations();
+    .hasAggregations() &&
+  !question.isObjectDetail();
 
 QuestionSummarizeWidget.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question &&
   question.isStructured() &&
-  question.query().table();
+  question.query().table() &&
+  !question.isObjectDetail();

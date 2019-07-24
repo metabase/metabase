@@ -574,8 +574,22 @@ export default class Question {
     }
   }
 
+  @memoize
   mode(): ?Mode {
     return Mode.forQuestion(this);
+  }
+
+  isObjectDetail(): boolean {
+    const mode = this.mode();
+    return mode && mode.name() === "object";
+  }
+
+  objectDetailPK(): any {
+    const query = this.query();
+    if (this.isObjectDetail() && query instanceof StructuredQuery) {
+      const filters = query.filters();
+      return filters[0] && filters[0][2];
+    }
   }
 
   /**
