@@ -182,20 +182,13 @@ export type InsideFilter = [
   NumericLiteral,
   NumericLiteral,
 ];
-export type TimeIntervalFilter =
-  | [
-      "time-interval",
-      ConcreteField,
-      RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
-    ]
-  | [
-      "time-interval",
-      ConcreteField,
-      RelativeDatetimePeriod,
-      RelativeDatetimeUnit,
-      FilterOptions,
-    ];
+export type TimeIntervalFilter = [
+  "time-interval",
+  ConcreteField,
+  RelativeDatetimePeriod,
+  RelativeDatetimeUnit,
+  ?TimeIntervalFilterOptions,
+];
 
 export type TimeIntervalFilterOptions = {
   "include-current"?: boolean,
