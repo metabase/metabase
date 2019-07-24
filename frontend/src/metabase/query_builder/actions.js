@@ -51,7 +51,6 @@ import { MetabaseApi, CardApi, UserApi } from "metabase/services";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -601,18 +600,6 @@ export const loadMetadataForCard = createThunkAction(
   },
 );
 
-function syncTableColumnsIfNeeded(question, newQuestion) {
-  if (
-    !_.isEqual(
-      question.settings()["table.columns"],
-      newQuestion.settings()["table.columns"],
-    )
-  ) {
-    return syncTableColumnsToQuery(newQuestion);
-  } else {
-    return newQuestion;
-  }
-}
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
   // technically this is wrong because you could add and remove two columns with the same name
@@ -629,15 +616,9 @@ export const updateCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
-  const queryResult = getFirstQueryResult(getState());
-
-  const newQuestion = syncTableColumnsIfNeeded(
-    question,
-    question.updateSettings(settings),
+  await dispatch(
+    updateQuestion(question.updateSettings(settings), { run: "auto" }),
   );
-  const shouldRun = hasNewColumns(newQuestion, queryResult);
-
-  await dispatch(updateQuestion(newQuestion, { run: shouldRun }));
   dispatch(updateUrl(null, { dirty: true }));
 };
 
@@ -646,15 +627,9 @@ export const replaceAllCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
-  const queryResult = getFirstQueryResult(getState());
-
-  const newQuestion = syncTableColumnsIfNeeded(
-    question,
-    question.setSettings(settings),
+  await dispatch(
+    updateQuestion(question.setSettings(settings), { run: "auto" }),
   );
-  const run = hasNewColumns(newQuestion, queryResult);
-
-  await dispatch(updateQuestion(newQuestion, { run }));
   dispatch(updateUrl(null, { dirty: true }));
 };
 
@@ -803,6 +778,13 @@ export const updateQuestion = (
       newQuestion.isSaved()
     ) {
       newQuestion = newQuestion.withoutNameAndId();
+    }
+
+    newQuestion = newQuestion.syncColumnsAndSettings(oldQuestion);
+
+    if (run === "auto") {
+      const queryResult = getFirstQueryResult(getState());
+      run = hasNewColumns(newQuestion, queryResult);
     }
 
     // Replace the current question with a new one

@@ -58,6 +58,7 @@ import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import * as actions from "../actions";
 import { push } from "react-router-redux";
 
+import Collections from "metabase/entities/collections";
 import { MetabaseApi } from "metabase/services";
 
 function autocompleteResults(card, prefix) {
@@ -130,6 +131,11 @@ const mapStateToProps = (state, props) => {
     loadTableAndForeignKeysFn: loadTableAndForeignKeys,
     autocompleteResultsFn: prefix => autocompleteResults(state.qb.card, prefix),
     instanceSettings: getSettings(state),
+
+    initialCollectionId: Collections.selectors.getInitialCollectionId(
+      state,
+      props,
+    ),
   };
 };
 

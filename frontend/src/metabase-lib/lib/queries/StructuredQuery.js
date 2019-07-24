@@ -551,14 +551,14 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns true if the query has no aggregation
    */
   isBareRows(): boolean {
-    return Q.isBareRows(this.query());
+    return !this.hasAggregations();
   }
 
   /**
    * @returns true if the query has no aggregation or breakouts
    */
   isRaw(): boolean {
-    return this.breakouts().length === 0 && this.aggregations().length === 0;
+    return !this.hasAggregations() && !this.hasBreakouts();
   }
 
   /**
@@ -871,19 +871,54 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   addExpression(name, expression) {
-    return this._updateQuery(Q.addExpression, arguments);
+    let query = this._updateQuery(Q.addExpression, arguments);
+    // extra logic for adding expressions in fields clause
+    // TODO: push into query/expression?
+    if (query.hasFields() && query.isRaw()) {
+      query = query.addField(["expression", name]);
+    }
+    return query;
   }
 
   updateExpression(name, expression, oldName) {
-    return this._updateQuery(Q.updateExpression, arguments);
+    let query = this._updateQuery(Q.updateExpression, arguments);
+    // extra logic for renaming expressions in fields clause
+    // TODO: push into query/expression?
+    if (name !== oldName) {
+      const index = query._indexOfField(["expression", oldName]);
+      if (index >= 0) {
+        query = query.updateField(index, ["expression", name]);
+      }
+    }
+    return query;
   }
 
   removeExpression(name) {
-    return this._updateQuery(Q.removeExpression, arguments);
+    let query = this._updateQuery(Q.removeExpression, arguments);
+    // extra logic for removing expressions in fields clause
+    // TODO: push into query/expression?
+    const index = query._indexOfField(["expression", name]);
+    if (index >= 0) {
+      query = query.removeField(index);
+    }
+    return query;
   }
 
   clearExpressions() {
-    return this._updateQuery(Q.clearExpressions, arguments);
+    let query = this._updateQuery(Q.clearExpressions, arguments);
+    // extra logic for removing expressions in fields clause
+    // TODO: push into query/expression?
+    for (const name of Object.keys(this.expressions())) {
+      const index = query._indexOfField(["expression", name]);
+      if (index >= 0) {
+        query = query.removeField(index);
+      }
+    }
+    return query;
+  }
+
+  _indexOfField(fieldRef) {
+    return this.fields().findIndex(f => _.isEqual(f, fieldRef));
   }
 
   // FIELDS
@@ -897,7 +932,7 @@ export default class StructuredQuery extends AtomicQuery {
     return this._updateQuery(Q.addField, arguments);
   }
 
-  updateField(name, expression, oldName) {
+  updateField(index, field) {
     return this._updateQuery(Q.updateField, arguments);
   }
 
@@ -917,7 +952,7 @@ export default class StructuredQuery extends AtomicQuery {
    * Returns dimension options that can appear in the `fields` clause
    */
   fieldsOptions(dimensionFilter = () => true): DimensionOptions {
-    if (this.isBareRows() && this.breakouts().length === 0) {
+    if (this.isBareRows() && !this.hasBreakouts()) {
       return this.dimensionOptions(dimensionFilter);
     }
     // TODO: allow adding fields connected by broken out PKs?
@@ -1064,18 +1099,29 @@ export default class StructuredQuery extends AtomicQuery {
   // NOTE: these will not have the correct columnName() if there are duplicates
   @memoize
   columnDimensions() {
-    const aggregations = this.aggregationDimensions();
-    const breakouts = this.breakoutDimensions();
-    const fields = this.fieldDimensions();
-    if (aggregations.length || breakouts.length || fields.length) {
-      return [...breakouts, ...aggregations, ...fields];
+    if (this.hasAggregations() || this.hasBreakouts()) {
+      const aggregations = this.aggregationDimensions();
+      const breakouts = this.breakoutDimensions();
+      return [...breakouts, ...aggregations];
+    } else if (this.hasFields()) {
+      const fields = this.fieldDimensions();
+      const joined = this.joinedDimensions();
+      return [...fields, ...joined];
     } else {
       const expressions = this.expressionDimensions();
       const joined = this.joinedDimensions();
       const table = this.tableDimensions();
       const sorted = _.chain(table)
-        .filter(d => d.field().visibility_type !== "hidden")
-        .sortBy(d => d.field().name)
+        .filter(d => {
+          const f = d.field();
+          return (
+            f.active !== false &&
+            f.visibility_type !== "sensitive" &&
+            f.visibility_type !== "retired" &&
+            f.parent_id == null
+          );
+        })
+        .sortBy(d => d.field().name.toLowerCase())
         .sortBy(d => {
           const type = d.field().special_type;
           return type === TYPE.PK ? 0 : type === TYPE.Name ? 1 : 2;
@@ -1110,6 +1156,13 @@ export default class StructuredQuery extends AtomicQuery {
       ...dimension.column(),
       name: names[index],
     }));
+  }
+
+  columnDimensionWithName(columnName) {
+    const index = this.columnNames().findIndex(n => n === columnName);
+    if (index >= 0) {
+      return this.columnDimensions()[index];
+    }
   }
 
   fieldReferenceForColumn(column) {

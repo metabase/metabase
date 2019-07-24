@@ -1,21 +1,32 @@
 /* @flow weak */
 
-import Query from "./queries/Query";
+import _ from "underscore";
+import { chain, assoc } from "icepick";
 
-import Metadata from "./metadata/Metadata";
-import Table from "./metadata/Table";
-import Field from "./metadata/Field";
-
+import Query from "metabase-lib/lib/queries/Query";
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
-} from "./queries/StructuredQuery";
-import NativeQuery from "./queries/NativeQuery";
+} from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Table from "metabase-lib/lib/metadata/Table";
+import Field from "metabase-lib/lib/metadata/Field";
+
+import {
+  DatetimeFieldDimension,
+  BinnedDimension,
+} from "metabase-lib/lib/Dimension";
+import Mode from "metabase-lib/lib/Mode";
 
 import { memoize } from "metabase-lib/lib/utils";
+
+// TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
-
+import * as Urls from "metabase/lib/urls";
+import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
-
 import {
   summarize,
   pivot,
@@ -25,9 +36,8 @@ import {
   toUnderlyingRecords,
   drillUnderlyingRecords,
 } from "metabase/modes/lib/actions";
-
-import _ from "underscore";
-import { chain, assoc } from "icepick";
+import { MetabaseApi, CardApi } from "metabase/services";
+import Questions from "metabase/entities/questions";
 
 import type {
   Parameter as ParameterObject,
@@ -38,26 +48,15 @@ import type {
   Card as CardObject,
   VisualizationSettings,
 } from "metabase/meta/types/Card";
-
-import { MetabaseApi, CardApi } from "metabase/services";
-import Questions from "metabase/entities/questions";
-
-import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import {
-  DatetimeFieldDimension,
-  BinnedDimension,
-} from "metabase-lib/lib/Dimension";
-
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
-import * as Urls from "metabase/lib/urls";
-import Mode from "metabase-lib/lib/Mode";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
+import { AggregationDimension } from "./Dimension";
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 
@@ -328,6 +327,10 @@ export default class Question {
   settings(): VisualizationSettings {
     return this._card && this._card.visualization_settings;
   }
+  setting(settingName, defaultValue = undefined) {
+    const value = (this.settings() || {})[settingName];
+    return value === undefined ? defaultValue : value;
+  }
   setSettings(settings: VisualizationSettings) {
     return this.setCard(assoc(this.card(), "visualization_settings", settings));
   }
@@ -459,6 +462,73 @@ export default class Question {
         .addFilter(["=", ["field-id", field.id], value])
         .question();
     }
+  }
+
+  syncColumnsAndSettings(previous) {
+    const query = this.query();
+    const previousQuery = previous && previous.query();
+    if (
+      query instanceof StructuredQuery &&
+      previousQuery instanceof StructuredQuery
+    ) {
+      if (
+        !_.isEqual(
+          previous.setting("table.columns"),
+          this.setting("table.columns"),
+        )
+      ) {
+        return syncTableColumnsToQuery(this);
+      }
+
+      const addedColumnNames = _.difference(
+        query.columnNames(),
+        previousQuery.columnNames(),
+      );
+      const removedColumnNames = _.difference(
+        previousQuery.columnNames(),
+        query.columnNames(),
+      );
+
+      if (
+        this.setting("graph.metrics") &&
+        addedColumnNames.length > 0 &&
+        removedColumnNames.length === 0
+      ) {
+        const addedMetricColumnNames = addedColumnNames.filter(
+          name =>
+            query.columnDimensionWithName(name) instanceof AggregationDimension,
+        );
+        if (addedMetricColumnNames.length > 0) {
+          return this.updateSettings({
+            "graph.metrics": [
+              ...this.setting("graph.metrics"),
+              ...addedMetricColumnNames,
+            ],
+          });
+        }
+      }
+
+      if (
+        this.setting("table.columns") &&
+        addedColumnNames.length > 0 &&
+        removedColumnNames.length === 0
+      ) {
+        return this.updateSettings({
+          "table.columns": [
+            ...this.setting("table.columns"),
+            ...addedColumnNames.map(name => {
+              const dimension = query.columnDimensionWithName(name);
+              return {
+                name: name,
+                field_ref: dimension.baseDimension().mbql(),
+                enabled: true,
+              };
+            }),
+          ],
+        });
+      }
+    }
+    return this;
   }
 
   /**

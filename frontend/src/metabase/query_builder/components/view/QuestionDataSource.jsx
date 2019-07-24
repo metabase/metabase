@@ -35,7 +35,7 @@ const QuestionDataSource = ({
     parts.push({
       icon: "folder",
       name: table.schema,
-      href: !noLink && browseSchema(table),
+      href: !noLink && database.id >= 0 && browseSchema(table),
     });
   }
   if (table) {
