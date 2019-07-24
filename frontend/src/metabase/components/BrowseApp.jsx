@@ -20,7 +20,6 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
-import PageHeading from "metabase/components/PageHeading";
 
 const PAGE_PADDING = [1, 2, 4];
 const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
@@ -231,7 +230,6 @@ export class DatabaseBrowser extends React.Component {
 function BrowseHeader({ crumbs }) {
   return (
     <Box mt={3} mb={2}>
-      <PageHeading>{t`Pick your data`}</PageHeading>
       <Flex align="center" mt={1}>
         <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
         <div className="flex flex-align-right">
@@ -240,15 +238,15 @@ function BrowseHeader({ crumbs }) {
             to="reference"
             data-metabase-event={`NavBar;Reference`}
           >
-            <div className="flex flex-align-center text-medium text-brand-hover">
+            <div className="flex align-center text-medium text-brand-hover">
               <Icon
-                className="flex flex-align-center"
-                size={18}
+                className="flex align-center"
+                size={14}
                 name="reference"
               />
-              <h3 className="ml1 flex flex-align-center">
+            <Link className="ml1 flex align-center text-bold">
                 Learn about our data
-              </h3>
+              </Link>
             </div>
           </Link>
         </div>

@@ -315,7 +315,17 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to="browse"
               className="Button Button--selected borderless flex-no-shrink"
-              data-metabase-event={`NavBar;Ask a question`}
+              data-metabase-event={`NavBar;Data Browse`}
+            >
+              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+            </Link>
+          )}
+          {hasDataAccess && (
+            <Link
+              mr={[1, 2]}
+              to={Urls.newQuestion()}
+              className="Button Button--selected borderless flex-no-shrink"
+              data-metabase-event={`NavBar;New Question`}
             >
               <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
@@ -325,12 +335,14 @@ export default class Navbar extends Component {
             className="hide sm-show mx1"
             triggerIcon="add"
             items={[
+              /*
               {
                 title: t`New notebook`,
                 icon: `notebook`,
                 link: hasDataAccess && this.props.query.question().getUrl(),
                 event: `NavBar;New Custom Question;`,
               },
+              */
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
