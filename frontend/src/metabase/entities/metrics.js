@@ -26,7 +26,7 @@ const Metrics = createEntity({
     getName: metric => metric && metric.name,
     getUrl: metric =>
       Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
-    getColor: metric => colors["text-medium"],
+    getColor: metric => colors["accent1"],
     getIcon: metric => "sum",
   },
 
