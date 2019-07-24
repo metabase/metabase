@@ -27,7 +27,7 @@ describe("Join", () => {
       const q = makeStructuredQuery({
         "source-table": ORDERS_TABLE_ID,
       });
-      const j = new Join({}, 1, q).setJoinSourceTableId(ORDERS_TABLE_ID);
+      const j = new Join({}, 0, q).setJoinSourceTableId(ORDERS_TABLE_ID);
       expect(j.alias).toEqual("ORDERS_2");
     });
   });

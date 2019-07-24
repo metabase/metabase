@@ -55,6 +55,1107 @@ exports[`Button should render "with an icon" correctly 1`] = `
 </button>
 `;
 
+exports[`ButtonBar should render "default" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="mr-auto sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Button
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="ml-auto sc-htpNat cISmVk"
+  />
+</div>
+`;
+
+exports[`ButtonBar should render "left and right" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="mr-auto sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Left
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="ml-auto sc-htpNat cISmVk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Right
+        </div>
+      </div>
+    </button>
+  </div>
+</div>
+`;
+
+exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="flex-full flex-basis-none sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Left
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="sc-htpNat jncdfk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Center
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="flex-full flex-basis-none sc-htpNat cISmVk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div>
+          Right
+        </div>
+      </div>
+    </button>
+  </div>
+</div>
+`;
+
+exports[`Calendar should render "With a date range" correctly 1`] = `
+<div
+  className="Calendar Grid-cell Calendar--range"
+>
+  <div
+    className="Calendar-header flex align-center"
+  >
+    <div
+      className="bordered rounded p1 cursor-pointer transition-border border-hover px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronleft Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M20 1 L24 5 L14 16 L24 27 L20 31 L6 16 z"
+        />
+      </svg>
+    </div>
+    <span
+      className="flex-full"
+    />
+    <h4
+      className="cursor-pointer rounded p1"
+    >
+      July 2019
+    </h4>
+    <span
+      className="flex-full"
+    />
+    <div
+      className="bordered border-hover rounded p1 transition-border cursor-pointer px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronright Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z "
+        />
+      </svg>
+    </div>
+  </div>
+  <div
+    className="Calendar-day-names Calendar-week py1"
+  >
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Su
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Mo
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Tu
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      We
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Th
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Fr
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Sa
+    </span>
+  </div>
+  <div
+    className="Calendar-weeks relative"
+  >
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        3
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        4
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        5
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        6
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        7
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        8
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        9
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        10
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        11
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        12
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        13
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        14
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        15
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        16
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        17
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        18
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        19
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        20
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        21
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        22
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        23
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--today Calendar-day--this-month Calendar-day--selected"
+        onClick={[Function]}
+      >
+        24
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        25
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        26
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        27
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        28
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        29
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        31
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--in-range"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--selected-end Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        3
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Calendar should render "With a selected date" correctly 1`] = `
+<div
+  className="Calendar Grid-cell"
+>
+  <div
+    className="Calendar-header flex align-center"
+  >
+    <div
+      className="bordered rounded p1 cursor-pointer transition-border border-hover px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronleft Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M20 1 L24 5 L14 16 L24 27 L20 31 L6 16 z"
+        />
+      </svg>
+    </div>
+    <span
+      className="flex-full"
+    />
+    <h4
+      className="cursor-pointer rounded p1"
+    >
+      July 2019
+    </h4>
+    <span
+      className="flex-full"
+    />
+    <div
+      className="bordered border-hover rounded p1 transition-border cursor-pointer px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronright Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z "
+        />
+      </svg>
+    </div>
+  </div>
+  <div
+    className="Calendar-day-names Calendar-week py1"
+  >
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Su
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Mo
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Tu
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      We
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Th
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Fr
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Sa
+    </span>
+  </div>
+  <div
+    className="Calendar-weeks relative"
+  >
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        3
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        4
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        5
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        6
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        7
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        8
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        9
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        10
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        11
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        12
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        13
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        14
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        15
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        16
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        17
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        18
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        19
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        20
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        21
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        22
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        23
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--today Calendar-day--this-month Calendar-day--selected"
+        onClick={[Function]}
+      >
+        24
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        25
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        26
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        27
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        28
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        29
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        31
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        3
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`Calendar should render "default" correctly 1`] = `
+<div
+  className="Calendar Grid-cell"
+>
+  <div
+    className="Calendar-header flex align-center"
+  >
+    <div
+      className="bordered rounded p1 cursor-pointer transition-border border-hover px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronleft Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M20 1 L24 5 L14 16 L24 27 L20 31 L6 16 z"
+        />
+      </svg>
+    </div>
+    <span
+      className="flex-full"
+    />
+    <h4
+      className="cursor-pointer rounded p1"
+    >
+      July 2019
+    </h4>
+    <span
+      className="flex-full"
+    />
+    <div
+      className="bordered border-hover rounded p1 transition-border cursor-pointer px1"
+      onClick={[Function]}
+    >
+      <svg
+        className="Icon Icon-chevronright Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={10}
+        viewBox="0 0 32 32"
+        width={10}
+      >
+        <path
+          d="M12 1 L26 16 L12 31 L8 27 L18 16 L8 5 z "
+        />
+      </svg>
+    </div>
+  </div>
+  <div
+    className="Calendar-day-names Calendar-week py1"
+  >
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Su
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Mo
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Tu
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      We
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Th
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Fr
+    </span>
+    <span
+      className="Calendar-day-name text-centered"
+    >
+      Sa
+    </span>
+  </div>
+  <div
+    className="Calendar-weeks relative"
+  >
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        3
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        4
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        5
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        6
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        7
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        8
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        9
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        10
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        11
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        12
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        13
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        14
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        15
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        16
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        17
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        18
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        19
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        20
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        21
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        22
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        23
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--today Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        24
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        25
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        26
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        27
+      </span>
+    </div>
+    <div
+      className="Calendar-week"
+    >
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        onClick={[Function]}
+      >
+        28
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        29
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        30
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        onClick={[Function]}
+      >
+        31
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered"
+        onClick={[Function]}
+      >
+        1
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered"
+        onClick={[Function]}
+      >
+        2
+      </span>
+      <span
+        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-end"
+        onClick={[Function]}
+      >
+        3
+      </span>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`Card should render "dark" correctly 1`] = `
 <div
   className="Card-RQot dPIXem"
@@ -490,6 +1591,82 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
 </div>
 `;
 
+exports[`ModalContent should render "default" correctly 1`] = `
+<div
+  className="rounded bordered"
+>
+  <div
+    className="ModalContent NewForm flex-full flex flex-column relative"
+    id={undefined}
+  >
+    <svg
+      className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={16}
+      onClick={[Function]}
+      viewBox="0 0 32 32"
+      width={16}
+    >
+      <path
+        d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "
+      />
+    </svg>
+    <div
+      className="ModalHeader flex-no-shrink px4 py4 full"
+    >
+      <h2
+        className="text-bold mr4"
+      >
+        Do something crazy?
+      </h2>
+    </div>
+    <div
+      className="ModalBody px4"
+    >
+      <div
+        className="flex-full ml-auto mr-auto flex flex-column"
+        style={
+          Object {
+            "maxWidth": undefined,
+          }
+        }
+      >
+        Are you sure?
+      </div>
+    </div>
+    <div
+      className="ModalFooter flex flex-no-shrink px4 py3"
+    >
+      <div
+        className="ml-auto flex align-center"
+        style={
+          Object {
+            "maxWidth": undefined,
+          }
+        }
+      >
+        <span
+          className="ml2"
+        >
+          <button
+            className="Button sc-bdVaJa bDWFJH flex-no-shrink Button--danger"
+          >
+            <div
+              className="flex layout-centered"
+              style={null}
+            >
+              <div>
+                Ok
+              </div>
+            </div>
+          </button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
 exports[`PageHeading should render "normal" correctly 1`] = `
 <h1
   className="PageHeading-iMPvjs juZTVP"
@@ -541,6 +1718,51 @@ exports[`ProgressBar should render "Default" correctly 1`] = `
     width={75}
   />
 </div>
+`;
+
+exports[`Radio should render "bubble" correctly 1`] = `
+<ul
+  className="Radio__BubbleList-ghIvdM ejKqoS Radio__BaseList-iXttyI emDsVO"
+>
+  <li
+    className="Radio__BubbleItem-cPPKrR izYaHB Radio__BaseItem-gLcmFf bMiqJE"
+    mb={null}
+    mr={1}
+    onClick={[Function]}
+    selected={true}
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-5-0"
+      name="radio-5"
+      type="radio"
+      value={0}
+    />
+    <span>
+      Gadget
+    </span>
+  </li>
+  <li
+    className="Radio__BubbleItem-cPPKrR iOSyOa Radio__BaseItem-gLcmFf etzrCv"
+    mb={null}
+    mr={null}
+    onClick={[Function]}
+    selected={false}
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-5-1"
+      name="radio-5"
+      type="radio"
+      value={1}
+    />
+    <span>
+      Gizmo
+    </span>
+  </li>
+</ul>
 `;
 
 exports[`Radio should render "default" correctly 1`] = `

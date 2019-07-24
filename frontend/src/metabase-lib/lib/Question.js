@@ -15,6 +15,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import {
+  AggregationDimension,
   DatetimeFieldDimension,
   BinnedDimension,
 } from "metabase-lib/lib/Dimension";
@@ -56,7 +57,6 @@ import {
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
-import { AggregationDimension } from "./Dimension";
 
 type QuestionUpdateFn = (q: Question) => ?Promise<void>;
 

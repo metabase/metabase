@@ -92,7 +92,7 @@ describe("Legacy Query library", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [1],
+        breakout: [["field-id", 1]],
         filter: [],
         "order-by": [["asc", ["aggregation", 0]]],
       };
@@ -115,7 +115,7 @@ describe("Legacy Query library", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [1],
+        breakout: [["field-id", 1]],
         filter: [],
         "order-by": [["asc", 1]],
       };

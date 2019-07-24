@@ -24,7 +24,7 @@ describe("Filter", () => {
     });
     it("should return the correct string for a segment filter", () => {
       expect(filterForMBQL(["segment", 1]).displayName()).toEqual(
-        "Matches Expensive Things",
+        "Expensive Things",
       );
     });
   });
