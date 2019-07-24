@@ -582,7 +582,7 @@ export class FKDimension extends FieldDimension {
   render() {
     return [
       stripId(this._parent.field().display_name),
-      FK_SYMBOL,
+      ` ${FK_SYMBOL} `,
       this.field().display_name,
     ].join("");
   }
