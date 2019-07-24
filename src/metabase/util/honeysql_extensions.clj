@@ -105,7 +105,7 @@
                      (:components component)
                      [component])
          :when     (some? component)]
-     (u/keyword->qualified-name component))))
+     (u/qualified-name component))))
 
 ;; Single-quoted string literal
 (defrecord Literal [literal]
@@ -131,7 +131,7 @@
   this won't handle wacky cases like three single quotes in a row. Don't use `literal` for things that might be wacky.
   Only use it for things that are hardcoded."
   [s]
-  (Literal. (u/keyword->qualified-name s)))
+  (Literal. (u/qualified-name s)))
 
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (partial hsql/call :+))

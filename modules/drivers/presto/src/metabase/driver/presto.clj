@@ -273,7 +273,7 @@
         columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
     (merge
-     {:columns (map (comp u/keyword->qualified-name :name) columns)
+     {:columns (map (comp u/qualified-name :name) columns)
       :rows    rows}
      ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
      ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want

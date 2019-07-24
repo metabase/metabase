@@ -64,61 +64,13 @@
      (SchemaExpectation. ~expected)
      ~actual))
 
-
-;;; ---------------------------------------------------- match-$ -----------------------------------------------------
-
-(defn- $->prop
-  "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
-
-    ($->prop my-obj 'fish)  -> 'fish
-    ($->prop my-obj '$fish) -> '(:fish my-obj)"
-  [source-obj form]
-  (or (when (and (symbol? form)
-                 (= (first (name form)) \$)
-                 (not= form '$))
-        (if (= form '$$)
-          source-obj
-          `(~(keyword (apply str (rest (name form)))) ~source-obj)))
-      form))
-
-(defmacro ^:deprecated match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
-  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
-  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
-  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
-  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their
-  ;; presence see the `boolean-ids-and-timestamps` function below
-  {:style/indent 1}
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                    v)}))]
-    `(let [~source## ~source-obj]
-       ~(walk/prewalk (partial $->prop source##)
-                      dest-object))))
-
-
-;;; random-name
-(def ^:private ^{:arglists '([])} random-uppercase-letter
-  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+(defn- random-uppercase-letter []
+  (char (+ (rand-int 26) (int \A))))
 
 (defn random-name
   "Generate a random string of 20 uppercase letters."
   []
-  (apply str (repeatedly 20 random-uppercase-letter)))
+  (str/join (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."

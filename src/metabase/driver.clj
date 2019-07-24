@@ -170,10 +170,12 @@
 (defn- check-abstractness-hasnt-changed
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
-  (let [old-abstract? (abstract? driver)]
-    (when (and (registered? driver) (not= (boolean old-abstract?) (boolean new-abstract?)))
-      (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                   driver old-abstract? new-abstract?)))))))
+  (when (registered? driver)
+    (let [old-abstract? (boolean (abstract? driver))
+          new-abstract? (boolean new-abstract?)]
+      (when (not= old-abstract? new-abstract?)
+        (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
+                                     driver old-abstract? new-abstract?))))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
@@ -206,31 +208,39 @@
   Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
   create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
   `::concrete`."
+  {:style/indent 1}
   [driver & {:keys [parent abstract?]}]
   {:pre [(keyword? driver)]}
   ;; no-op during compilation.
   (when-not *compile-files*
-    ;; validate that the registration isn't stomping on things
-    (check-abstractness-hasnt-changed driver abstract?)
-    ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
-    (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-      (derive! ::driver)
-      (when-not abstract?
-        (derive! ::concrete))
-      (doseq [parent (u/one-or-many parent)
-              :when  parent]
-        (load-driver-namespace-if-needed! parent)
-        (derive! parent)))
-    ;; ok, log our great success
-    (log/info
-     (u/format-color 'blue
-         (if (metabase.driver/abstract? driver)
-           (trs "Registered abstract driver {0}" driver)
-           (trs "Registered driver {0}" driver)))
-     (if (seq (filter some? (u/one-or-many parent)))
-       (trs "(parents: {0})" parent)
-       "")
-     (u/emoji "🚚"))))
+    (let [parents (filter some? (u/one-or-many parent))]
+      ;; load parents as needed; if this is an abstract driver make sure parents aren't concrete
+      (doseq [parent parents]
+        (load-driver-namespace-if-needed! parent))
+      (when abstract?
+        (doseq [parent parents
+                :when  (concrete? parent)]
+          (throw (ex-info (str (trs "Abstract drivers cannot derive from concrete parent drivers."))
+                   {:driver driver, :parent parent}))))
+      ;; validate that the registration isn't stomping on things
+      (check-abstractness-hasnt-changed driver abstract?)
+      ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
+      (let [derive! (partial alter-var-root #'hierarchy derive driver)]
+        (derive! ::driver)
+        (when-not abstract?
+          (derive! ::concrete))
+        (doseq [parent parents]
+          (derive! parent)))
+      ;; ok, log our great success
+      (log/info
+       (u/format-color 'blue
+           (if (metabase.driver/abstract? driver)
+             (trs "Registered abstract driver {0}" driver)
+             (trs "Registered driver {0}" driver)))
+       (if (seq parents)
+         (trs "(parents: {0})" parents)
+         "")
+       (u/emoji "🚚")))))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's

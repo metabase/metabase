@@ -11,9 +11,7 @@
              [i18n :refer [tru]]]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
-            [toucan
-             [models :as models]
-             [util :as toucan-util]])
+            [toucan.models :as models])
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
            java.util.zip.GZIPInputStream))
@@ -152,7 +150,7 @@
 ;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
 ;; handles those cases.
 (models/add-type! :keyword
-  :in  toucan-util/keyword->qualified-name
+  :in  u/qualified-name
   :out (comp keyword u/jdbc-clob->str))
 
 
