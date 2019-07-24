@@ -46,7 +46,7 @@ export default class RelativeDatePicker extends Component {
 
   render() {
     const {
-      filter: [op, field, intervals, unit],
+      filter: [op, field, intervals, unit, options],
       onFilterChange,
       formatter,
     } = this.props;
@@ -66,7 +66,7 @@ export default class RelativeDatePicker extends Component {
             typeof intervals === "number" ? Math.abs(intervals) : intervals
           }
           onChange={value =>
-            onFilterChange([op, field, formatter(value), unit])
+            onFilterChange([op, field, formatter(value), unit, options])
           }
           placeholder="30"
         />
@@ -75,7 +75,7 @@ export default class RelativeDatePicker extends Component {
             open={this.state.showUnits}
             value={unit}
             onChange={value => {
-              onFilterChange([op, field, intervals, value]);
+              onFilterChange([op, field, intervals, value, options]);
               this.setState({ showUnits: false });
             }}
             togglePicker={() =>
