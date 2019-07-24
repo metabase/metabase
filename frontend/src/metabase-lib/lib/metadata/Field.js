@@ -161,6 +161,11 @@ export default class Field extends Base {
     return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
+  sourceField() {
+    const d = this.dimension().sourceDimension();
+    return d && d.field();
+  }
+
   operator(operatorName) {
     if (this.operators_lookup) {
       return this.operators_lookup[operatorName];

@@ -53,6 +53,12 @@ export default function DefaultPicker({
           />
         );
       } else if (field && field.id != null) {
+        // get the underling field if the query is nested
+        let underlyingField = field;
+        let sourceField;
+        while ((sourceField = underlyingField.sourceField())) {
+          underlyingField = sourceField;
+        }
         return (
           <FieldValuesWidget
             className="input"
@@ -60,8 +66,8 @@ export default function DefaultPicker({
             onChange={onValuesChange}
             multi={operator.multi}
             placeholder={placeholder}
-            field={field}
-            searchField={field.filterSearchField()}
+            field={underlyingField}
+            searchField={underlyingField.filterSearchField()}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
             formatOptions={getFilterArgumentFormatOptions(operator, index)}
