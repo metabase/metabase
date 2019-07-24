@@ -121,9 +121,11 @@ export default class DimensionList extends Component {
               multiSelect,
             )}
             tetherOptions={multiSelect ? null : SUBMENU_TETHER_OPTIONS}
+            sizeToFit
           >
             {({ onClose }) => (
               <DimensionPicker
+                className="scroll-y"
                 dimension={dimension}
                 dimensions={subDimensions}
                 onChangeDimension={dimension => {
