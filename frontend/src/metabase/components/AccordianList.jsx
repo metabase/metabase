@@ -479,7 +479,7 @@ const AccordianListCell = ({
   if (type === "header") {
     if (alwaysExpanded) {
       content = (
-        <div className="px2 pt2 pb1 h6 text-light text-uppercase text-bold">
+        <div className="pt2 mb1 mx2 text-green h5 text-uppercase text-bold">
           {section.name}
         </div>
       );

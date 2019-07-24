@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
@@ -98,6 +99,8 @@ const SearchInput = styled.input`
   }
 `;
 
+const SEARCH_FOCUS_ELEMENT_WHITELIST = new Set(["BODY", "A"]);
+
 class SearchBar extends React.Component {
   state = {
     active: false,
@@ -106,6 +109,10 @@ class SearchBar extends React.Component {
 
   componentWillMount() {
     this._updateSearchTextFromUrl(this.props);
+    window.addEventListener("keyup", this.handleKeyUp);
+  }
+  componentWillUnmount() {
+    window.removeEventListener("keyup", this.handleKeyUp);
   }
   componentWillReceiveProps(nextProps) {
     if (this.props.location.pathname !== nextProps.location.pathname) {
@@ -120,6 +127,12 @@ class SearchBar extends React.Component {
       this.setState({ searchText: "" });
     }
   }
+  handleKeyUp = (e: KeyboardEvent) => {
+    const FORWARD_SLASH_KEY = 191;
+    if (e.keyCode === FORWARD_SLASH_KEY && SEARCH_FOCUS_ELEMENT_WHITELIST.has(document.activeElement.tagName)) {
+      ReactDOM.findDOMNode(this.searchInput).focus();
+    }
+  };
 
   render() {
     const { active, searchText } = this.state;
@@ -137,6 +150,7 @@ class SearchBar extends React.Component {
             py={2}
             pr={2}
             pl={1}
+            ref={ref=>this.searchInput=ref}
             value={searchText}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
@@ -301,7 +315,17 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to="browse"
               className="Button Button--selected borderless flex-no-shrink"
-              data-metabase-event={`NavBar;Ask a question`}
+              data-metabase-event={`NavBar;Data Browse`}
+            >
+              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+            </Link>
+          )}
+          {hasDataAccess && (
+            <Link
+              mr={[1, 2]}
+              to={Urls.newQuestion()}
+              className="Button Button--selected borderless flex-no-shrink"
+              data-metabase-event={`NavBar;New Question`}
             >
               <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
@@ -311,12 +335,14 @@ export default class Navbar extends Component {
             className="hide sm-show mx1"
             triggerIcon="add"
             items={[
+              /*
               {
                 title: t`New notebook`,
                 icon: `notebook`,
                 link: hasDataAccess && this.props.query.question().getUrl(),
                 event: `NavBar;New Custom Question;`,
               },
+              */
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
