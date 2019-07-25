@@ -1,7 +1,6 @@
 import React from "react";
 
 import Select, { Option } from "metabase/components/Select.jsx";
-import _ from "underscore";
 
 const SettingSelect = ({
   setting: { placeholder, value, options, defaultValue },
