@@ -54,6 +54,7 @@ export function getMode(
           const field = tableMetadata.fields_lookup[fieldId];
           if (
             field &&
+            field.table &&
             field.table.id === query["source-table"] &&
             isPK(field)
           ) {
