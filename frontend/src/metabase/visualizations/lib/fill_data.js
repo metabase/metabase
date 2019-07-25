@@ -59,10 +59,13 @@ function fillMissingValuesInData(
       // $FlowFixMe
       const { interval, count } = xInterval;
       if (count <= MAX_FILL_COUNT) {
-        // replace xValues with
+        // d3.time[interval].range always uses local time by default
+        // We save the offset here to reset it after creating the range
+        const timeZoneOffset = moment(xDomain[0]).utcOffset();
+        // replace xValues with this range
         xValues = d3.time[interval]
           .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
-          .map(d => moment(d));
+          .map(d => moment(d).utcOffset(timeZoneOffset, true));
         return fillMissingValues(
           rows,
           xValues,
