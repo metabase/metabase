@@ -135,7 +135,7 @@ export class NewQueryOptions extends Component {
       /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
     }
     const NUM_ITEMS = showMetricOption + showSQLOption + 1;
-    const ITEM_WIDTHS = [1, 1 / 2];
+    const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
 
     return (
       <Box my="auto" mx={PAGE_PADDING}>
@@ -158,6 +158,16 @@ export class NewQueryOptions extends Component {
               to={this.getGuiQueryUrl}
             />
           </GridItem>
+          {showSQLOption && (
+            <GridItem w={ITEM_WIDTHS}>
+              <NewQueryOption
+                image="app/img/sql_illustration"
+                title={t`Native query`}
+                description={t`For more complicated questions, you can write your own SQL or native query.`}
+                to={this.getNativeQueryUrl}
+              />
+            </GridItem>
+          )}
         </Grid>
       </Box>
     );
