@@ -75,7 +75,7 @@ const allOptionsVisibleState = {
   showTableOption: true,
   showSQLOption: true,
 };
-const PAGE_PADDING = [1, 2, 4];
+const PAGE_PADDING = [1, 4];
 
 @fitViewport
 export class NewQueryOptions extends Component {
@@ -135,42 +135,29 @@ export class NewQueryOptions extends Component {
       /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
     }
     const NUM_ITEMS = showMetricOption + showSQLOption + 1;
-    const ITEM_WIDTHS = [1, 1 / 2, 1 / NUM_ITEMS];
+    const ITEM_WIDTHS = [1, 1 / 2];
 
     return (
       <Box my="auto" mx={PAGE_PADDING}>
         <Grid className="justifyCenter">
-          {showMetricOption && (
-            <GridItem w={ITEM_WIDTHS}>
-              <NewQueryOption
-                image="app/img/questions_illustration"
-                title={t`Metrics`}
-                description={t`See data over time, as a map, or pivoted to help you understand trends or changes.`}
-                to={metricSearchUrl}
-              />
-            </GridItem>
-          )}
           <GridItem w={ITEM_WIDTHS}>
             <NewQueryOption
-              image="app/img/query_builder_illustration"
-              title={
-                showCustomInsteadOfNewQuestionText ? t`Custom` : t`New question`
-              }
-              description={t`Use the simple question builder to see trends, lists of things, or to create your own metrics.`}
+              image="app/img/simple_mode_illustration"
+              title={t`Simple question`}
+              description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
+              width={180}
+              to="browse"
+            />
+          </GridItem>
+          <GridItem w={ITEM_WIDTHS}>
+            <NewQueryOption
+              image="app/img/notebook_mode_illustration"
+              title={t`Custom question`}
+              description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
               width={180}
               to={this.getGuiQueryUrl}
             />
           </GridItem>
-          {showSQLOption && (
-            <GridItem w={ITEM_WIDTHS}>
-              <NewQueryOption
-                image="app/img/sql_illustration"
-                title={t`Native query`}
-                description={t`For more complicated questions, you can write your own SQL or native query.`}
-                to={this.getNativeQueryUrl}
-              />
-            </GridItem>
-          )}
         </Grid>
       </Box>
     );
