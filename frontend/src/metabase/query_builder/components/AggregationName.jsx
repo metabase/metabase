@@ -5,10 +5,9 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import Query, {
-  AggregationClause,
-  AggregationOptionsClause,
-} from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
+import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+
 import { getAggregator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
 
@@ -34,22 +33,22 @@ const AggregationName = ({
   if (!tableMetadata) {
     return null;
   }
-  if (AggregationOptionsClause.hasOptions(aggregation)) {
-    if (AggregationOptionsClause.isNamed(aggregation)) {
+  if (A_DEPRECATED.hasOptions(aggregation)) {
+    if (A_DEPRECATED.isNamed(aggregation)) {
       return (
         <NamedAggregation aggregation={aggregation} className={className} />
       );
     }
-    aggregation = AggregationOptionsClause.getContent(aggregation);
+    aggregation = A_DEPRECATED.getContent(aggregation);
   }
-  return AggregationClause.isCustom(aggregation) ? (
+  return Aggregation.isCustom(aggregation) ? (
     <CustomAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
       customFields={customFields}
       className={className}
     />
-  ) : AggregationClause.isMetric(aggregation) ? (
+  ) : A_DEPRECATED.isMetric(aggregation) ? (
     <MetricAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}
@@ -66,9 +65,7 @@ const AggregationName = ({
 };
 
 const NamedAggregation = ({ aggregation, className }) => (
-  <span className={className}>
-    {AggregationOptionsClause.getName(aggregation)}
-  </span>
+  <span className={className}>{A_DEPRECATED.getName(aggregation)}</span>
 );
 
 const CustomAggregation = ({
@@ -83,7 +80,7 @@ const CustomAggregation = ({
 );
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
-  const metricId = AggregationClause.getMetric(aggregation);
+  const metricId = A_DEPRECATED.getMetric(aggregation);
   const selectedMetric = _.findWhere(tableMetadata.metrics, { id: metricId });
   if (selectedMetric) {
     return (
@@ -102,10 +99,10 @@ const StandardAggregation = ({
   customFields,
   className,
 }) => {
-  const fieldId = AggregationClause.getField(aggregation);
+  const fieldId = A_DEPRECATED.getField(aggregation);
 
   const selectedAggregation = getAggregator(
-    AggregationClause.getOperator(aggregation),
+    A_DEPRECATED.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one
   if (
@@ -122,7 +119,10 @@ const StandardAggregation = ({
           <FieldName
             field={fieldId}
             tableMetadata={tableMetadata}
-            fieldOptions={Query.getFieldOptions(tableMetadata.fields, true)}
+            fieldOptions={Q_DEPRECATED.getFieldOptions(
+              tableMetadata.fields,
+              true,
+            )}
             customFieldOptions={customFields}
           />
         )}

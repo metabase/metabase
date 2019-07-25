@@ -23,7 +23,7 @@ import {
   urlForCardState,
 } from "metabase/lib/card";
 import { open, shouldOpenInBlankWindow } from "metabase/lib/dom";
-import { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { isPK } from "metabase/lib/types";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
@@ -1088,7 +1088,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
       }
 
       async function getFKCount(card, queryResult, fk) {
-        const fkQuery = createQuery("query");
+        const fkQuery = Q_DEPRECATED.createQuery("query");
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];

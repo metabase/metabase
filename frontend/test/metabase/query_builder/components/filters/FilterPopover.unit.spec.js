@@ -1,7 +1,7 @@
 import "__support__/mocks";
 import React from "react";
 
-import { shallow, mount } from "enzyme";
+import { mount } from "enzyme";
 
 import Question from "metabase-lib/lib/Question";
 

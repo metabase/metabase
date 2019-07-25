@@ -5,7 +5,7 @@ import FilterList from "./FilterList.jsx";
 import AggregationName from "./AggregationName.jsx";
 import FieldSet from "metabase/components/FieldSet.jsx";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { t } from "ttag";
 
 export default class QueryDefinitionTooltip extends Component {
@@ -29,15 +29,17 @@ export default class QueryDefinitionTooltip extends Component {
           <div className="mt2">
             <FieldSet legend={t`Definition`} className="border-light">
               <div className="TooltipFilterList">
-                {Query.getAggregations(object.definition).map(aggregation => (
-                  <AggregationName
-                    aggregation={aggregation}
-                    tableMetadata={tableMetadata}
-                    customFields={customFields}
-                  />
-                ))}
+                {Q_DEPRECATED.getAggregations(object.definition).map(
+                  aggregation => (
+                    <AggregationName
+                      aggregation={aggregation}
+                      tableMetadata={tableMetadata}
+                      customFields={customFields}
+                    />
+                  ),
+                )}
                 <FilterList
-                  filters={Query.getFilters(object.definition)}
+                  filters={Q_DEPRECATED.getFilters(object.definition)}
                   maxDisplayValues={Infinity}
                 />
               </div>

@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
 import {
   isDate,
   isAddress,

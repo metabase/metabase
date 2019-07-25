@@ -10,7 +10,7 @@ import Expandable from "metabase/components/Expandable.jsx";
 
 // lib
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { inflect } from "metabase/lib/formatting";
 
@@ -58,7 +58,7 @@ export default class TablePane extends Component {
 
   setQueryAllRows() {
     const card = createCard();
-    card.dataset_query = createQuery(
+    card.dataset_query = Q_DEPRECATED.createQuery(
       "query",
       this.state.table.db_id,
       this.state.table.id,

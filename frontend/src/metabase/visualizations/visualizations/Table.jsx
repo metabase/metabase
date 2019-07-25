@@ -11,7 +11,7 @@ import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils"
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import {
   isMetric,
   isDimension,
@@ -86,7 +86,7 @@ export default class Table extends Component {
       getDefault: ([{ card, data }]) =>
         data &&
         data.cols.length === 3 &&
-        Query.isStructured(card.dataset_query) &&
+        Q_DEPRECATED.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
     },

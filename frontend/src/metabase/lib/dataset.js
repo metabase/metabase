@@ -62,7 +62,7 @@ export function fieldRefForColumnWithLegacyFallback(
     loggedKeys.add(key);
     if (!_.isEqual(fieldRef, fieldRef_LEGACY)) {
       console.group(debugName + " mismatch");
-      console.warn("column", column);
+      console.warn("column", column.name, column.field_ref);
       console.warn("new", fieldRef);
       console.warn("old", fieldRef_LEGACY);
       console.groupEnd();

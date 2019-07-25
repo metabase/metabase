@@ -29,8 +29,8 @@ import * as L from "./limit";
 import * as O from "./order_by";
 import * as E from "./expression";
 import * as FIELD from "./field";
+import * as FIELD_REF from "./field_ref";
 
-import Query from "metabase/lib/query";
 import _ from "underscore";
 
 // AGGREGATION
@@ -183,10 +183,10 @@ function setAggregationClause(
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
   // NOTE: this doesn't handle complex cases
   const breakoutIds = B.getBreakouts(breakoutClause)
-    .map(b => Query.getFieldTargetId(b))
+    .map(b => FIELD_REF.getFieldTargetId(b))
     .filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
-    const sortId = Query.getFieldTargetId(sort[1]);
+    const sortId = FIELD_REF.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {
       query = removeOrderBy(query, index);
     }

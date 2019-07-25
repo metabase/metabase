@@ -13,7 +13,7 @@ import DateOperatorSelector from "../DateOperatorSelector";
 import DateUnitSelector from "../DateUnitSelector";
 import Calendar from "metabase/components/Calendar";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import type {
   FieldFilter,
@@ -161,7 +161,7 @@ function getDateTimeField(
 export function getDateTimeFieldTarget(
   field: ConcreteField,
 ): LocalFieldReference | ForeignFieldReference | ExpressionReference {
-  if (Query.isDatetimeField(field)) {
+  if (Q_DEPRECATED.isDatetimeField(field)) {
     // $FlowFixMe:
     return (field[1]: // $FlowFixMe:
     LocalFieldReference | ForeignFieldReference | ExpressionReference);

@@ -4,7 +4,7 @@ import MBQLClause from "./MBQLClause";
 
 import { t } from "ttag";
 
-import { AggregationClause as AggregationClause_DEPRECATED } from "metabase/lib/query";
+import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
@@ -107,7 +107,7 @@ export default class Aggregation extends MBQLClause {
    * Returns true if this is a "standard" metric
    */
   isStandard(): boolean {
-    return AggregationClause_DEPRECATED.isStandard(this);
+    return A_DEPRECATED.isStandard(this);
   }
 
   dimension(): ?Dimension {
@@ -138,7 +138,7 @@ export default class Aggregation extends MBQLClause {
    * Returns `null` if the clause isn't in a standard format
    */
   getOperator(): ?string {
-    return AggregationClause_DEPRECATED.getOperator(this);
+    return A_DEPRECATED.getOperator(this);
   }
 
   /**
@@ -146,7 +146,7 @@ export default class Aggregation extends MBQLClause {
    * Returns `null` if the clause isn't in a standard format
    */
   getFieldReference(): ?FieldId {
-    return AggregationClause_DEPRECATED.getField(this);
+    return A_DEPRECATED.getField(this);
   }
 
   // METRIC AGGREGATION
@@ -180,7 +180,7 @@ export default class Aggregation extends MBQLClause {
    * Returns true if this is custom expression created with the expression editor
    */
   isCustom(): boolean {
-    return AggregationClause_DEPRECATED.isCustom(this);
+    return A_DEPRECATED.isCustom(this);
   }
 
   // OPTIONS

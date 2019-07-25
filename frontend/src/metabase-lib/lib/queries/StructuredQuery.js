@@ -5,7 +5,7 @@
  */
 
 import * as Q from "metabase/lib/query/query";
-import Q_deprecated from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
@@ -628,7 +628,7 @@ export default class StructuredQuery extends AtomicQuery {
         ? []
         : this.breakouts()
             .filter(b => !_.isEqual(b, includedBreakout))
-            .map(b => Q_deprecated.getFieldTargetId(b)),
+            .map(b => Q_DEPRECATED.getFieldTargetId(b)),
     );
 
     return this.fieldOptions(
@@ -647,7 +647,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns whether the current query has a valid breakout
    */
   hasValidBreakout(): boolean {
-    return Q_deprecated.hasValidBreakout(this.query());
+    return Q_DEPRECATED.hasValidBreakout(this.query());
   }
 
   /**
@@ -808,7 +808,7 @@ export default class StructuredQuery extends AtomicQuery {
       const usedFields = new Set(
         this.sorts()
           .filter(b => !_.isEqual(b, sort))
-          .map(b => Q_deprecated.getFieldTargetId(b[1])),
+          .map(b => Q_DEPRECATED.getFieldTargetId(b[1])),
       );
 
       return this.fieldOptions(field => !usedFields.has(field.id));
@@ -818,7 +818,7 @@ export default class StructuredQuery extends AtomicQuery {
         sortOptions.count++;
       }
       for (const [index] of this.aggregations().entries()) {
-        if (Q_deprecated.canSortByAggregateField(this.query(), index)) {
+        if (Q_DEPRECATED.canSortByAggregateField(this.query(), index)) {
           sortOptions.dimensions.push(
             new AggregationDimension(null, [index], this._metadata, this),
           );

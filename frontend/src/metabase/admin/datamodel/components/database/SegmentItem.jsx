@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ObjectActionSelect from "../ObjectActionSelect.jsx";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 export default class SegmentItem extends Component {
   static propTypes = {
@@ -15,7 +15,7 @@ export default class SegmentItem extends Component {
   render() {
     const { onRetire, segment, tableMetadata } = this.props;
 
-    const description = Query.generateQueryDescription(
+    const description = Q_DEPRECATED.generateQueryDescription(
       tableMetadata,
       segment.definition,
       { sections: ["filter"], jsx: true },

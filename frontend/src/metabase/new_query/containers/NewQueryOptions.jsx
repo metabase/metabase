@@ -110,14 +110,8 @@ export class NewQueryOptions extends Component {
   };
 
   render() {
-    const { isAdmin, metricSearchUrl, newQueryOptions } = this.props;
-    const {
-      loaded,
-      hasDatabases,
-      showMetricOption,
-      showSQLOption,
-    } = newQueryOptions;
-    const showCustomInsteadOfNewQuestionText = showMetricOption || isAdmin;
+    const { newQueryOptions } = this.props;
+    const { loaded, hasDatabases } = newQueryOptions;
 
     if (!loaded) {
       return <LoadingAndErrorWrapper loading={true} />;
@@ -131,10 +125,7 @@ export class NewQueryOptions extends Component {
       );
     }
 
-    {
-      /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
-    }
-    const NUM_ITEMS = showMetricOption + showSQLOption + 1;
+    /* Determine how many items will be shown based on permissions etc so we can make sure the layout adapts */
     const ITEM_WIDTHS = [1, 1 / 2];
 
     return (

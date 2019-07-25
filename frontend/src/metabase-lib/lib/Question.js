@@ -327,10 +327,10 @@ export default class Question {
   }
 
   settings(): VisualizationSettings {
-    return this._card && this._card.visualization_settings;
+    return (this._card && this._card.visualization_settings) || {};
   }
   setting(settingName, defaultValue = undefined) {
-    const value = (this.settings() || {})[settingName];
+    const value = this.settings()[settingName];
     return value === undefined ? defaultValue : value;
   }
   setSettings(settings: VisualizationSettings) {

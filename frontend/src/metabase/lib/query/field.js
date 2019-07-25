@@ -1,8 +1,10 @@
+import _ from "underscore";
+
 import type {
   Field as FieldReference,
   FieldsClause,
 } from "metabase/meta/types/Query";
-import type { Field, FieldId, FieldValues } from "metabase/meta/types/Field";
+import type { Field, FieldValues } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
 
 import { add, update, remove, clear } from "./util";
@@ -44,67 +46,6 @@ export function removeField(
 export function clearFields(fields: ?FieldsClause): ?FieldsClause {
   return getFieldClause(clear());
 }
-
-// gets the target field ID (recursively) from any type of field, including raw field ID, fk->, and datetime-field cast.
-export function getFieldTargetId(field: FieldReference): ?FieldId {
-  if (isRegularField(field)) {
-    // $FlowFixMe
-    return field;
-  } else if (isLocalField(field)) {
-    // $FlowFixMe
-    return field[1];
-  } else if (isForeignKeyField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[2]);
-  } else if (isDatetimeField(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isBinningStrategy(field)) {
-    // $FlowFixMe
-    return getFieldTargetId(field[1]);
-  } else if (isFieldLiteral(field)) {
-    return field;
-  }
-  console.warn("Unknown field type: ", field);
-}
-
-export function isRegularField(field: FieldReference): boolean {
-  return typeof field === "number";
-}
-
-export function isLocalField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "field-id";
-}
-
-export function isForeignKeyField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "fk->";
-}
-
-export function isDatetimeField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "datetime-field";
-}
-
-export function isBinningStrategy(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "binning-strategy";
-}
-
-export function isFieldLiteral(field: FieldReference): boolean {
-  return (
-    Array.isArray(field) && field.length === 3 && field[0] === "field-literal"
-  );
-}
-
-export function isExpressionField(field: FieldReference): boolean {
-  return (
-    Array.isArray(field) && field.length === 2 && field[0] === "expression"
-  );
-}
-
-export function isAggregateField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "aggregation";
-}
-
-import _ from "underscore";
 
 // Metadata field "values" type is inconsistent
 // https://github.com/metabase/metabase/issues/3417

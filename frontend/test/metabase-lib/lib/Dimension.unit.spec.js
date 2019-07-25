@@ -1,5 +1,3 @@
-import ReactTestUtils from "react-dom/test-utils";
-
 import Dimension from "metabase-lib/lib/Dimension";
 import {
   metadata,

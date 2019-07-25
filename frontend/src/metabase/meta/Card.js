@@ -7,7 +7,7 @@ import {
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
-import Q from "metabase/lib/query"; // legacy
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -158,7 +158,7 @@ export function applyParameters(
   const datasetQuery = Utils.copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
-    datasetQuery.query = Q.cleanQuery(datasetQuery.query);
+    datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {

@@ -3,11 +3,11 @@
 import moment from "moment";
 import _ from "underscore";
 
-import Q from "metabase/lib/query"; // legacy query lib
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
 import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
-import * as Field from "metabase/lib/query/field";
+import * as FieldRef from "metabase/lib/query/field_ref";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
 import {
@@ -148,8 +148,8 @@ export const addOrUpdateFilter = (card, filter) => {
   for (let index = 0; index < filters.length; index++) {
     if (
       Filter.isFieldFilter(filters[index]) &&
-      Field.getFieldTargetId(filters[index][1]) ===
-        Field.getFieldTargetId(filter[1])
+      FieldRef.getFieldTargetId(filters[index][1]) ===
+        FieldRef.getFieldTargetId(filter[1])
     ) {
       newCard.dataset_query.query = Query.updateFilter(
         newCard.dataset_query.query,
@@ -175,8 +175,8 @@ export const addOrUpdateBreakout = (card, breakout) => {
   for (let index = 0; index < breakouts.length; index++) {
     if (
       fieldIdsEq(
-        Field.getFieldTargetId(breakouts[index]),
-        Field.getFieldTargetId(breakout),
+        FieldRef.getFieldTargetId(breakouts[index]),
+        FieldRef.getFieldTargetId(breakout),
       )
     ) {
       newCard.dataset_query.query = Query.updateBreakout(
@@ -425,7 +425,8 @@ export function guessVisualization(
   }
   const aggregations = Query.getAggregations(query);
   const breakoutFields = Query.getBreakouts(query).map(
-    breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field,
+    breakout =>
+      (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
   );
   if (aggregations.length === 0 && breakoutFields.length === 0) {
     card.display = "table";

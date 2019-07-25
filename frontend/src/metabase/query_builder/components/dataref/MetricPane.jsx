@@ -8,7 +8,7 @@ import QueryButton from "metabase/components/QueryButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
 import { fetchTableMetadata } from "metabase/redux/metadata";
@@ -54,7 +54,11 @@ export default class MetricPane extends Component {
 
     if (table) {
       const card = createCard();
-      card.dataset_query = createQuery("query", table.db_id, table.id);
+      card.dataset_query = Q_DEPRECATED.createQuery(
+        "query",
+        table.db_id,
+        table.id,
+      );
       return card;
     } else {
       throw new Error(

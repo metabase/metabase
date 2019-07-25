@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import colors from "metabase/lib/colors";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -30,7 +30,7 @@ function getQueryColumns(card, databases) {
   if (!table) {
     return null;
   }
-  return Query.getQueryColumns(table, query);
+  return Q_DEPRECATED.getQueryColumns(table, query);
 }
 
 export default class AddSeriesModal extends Component {
