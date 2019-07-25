@@ -65,26 +65,6 @@
                               (s/required-key :steps)       Steps
                               (s/optional-key :description) Description})
 
-(defn- dependencies-sort
-  [dependencies-fn g]
-  (transduce (map (juxt key (comp dependencies-fn val)))
-             (fn
-               ([] (dep/graph))
-               ([acc [el dependencies]]
-                (reduce (fn [acc dependency]
-                          (dep/depend acc el dependency))
-                        acc
-                        dependencies))
-               ([acc]
-                (let [sorted      (filter g (dep/topo-sort acc))
-                      independent (set/difference (set (keys g)) (set sorted))]
-                  (not-empty
-                   (into (ordered-map)
-                         (map (fn [el]
-                                [el (g el)]))
-                         (concat independent sorted))))))
-             g))
-
 (defn- extract-dimensions
   [mbql]
   (mbql.u/match (mbql.normalize/normalize mbql) [:dimension dimension] dimension))
@@ -99,7 +79,7 @@
     Steps                    (fn [steps]
                                (->> steps
                                     stringify-keys
-                                    (dependencies-sort (fn [{:keys [source joins]}]
+                                    (topological-sort (fn [{:keys [source joins]}]
                                                          (conj (map :source joins) source)))
                                     (m/map-kv-vals (fn [step-name step]
                                                      (assoc step :name step-name)))))
@@ -111,7 +91,7 @@
     FieldType                (partial keyword "type")
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL}         (comp (partial dependencies-sort extract-dimensions)
+    {Dimension MBQL}         (comp (partial topological-sort extract-dimensions)
                                    stringify-keys)
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                    name}))

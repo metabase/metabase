@@ -725,3 +725,25 @@
   (fn [& args]
     (apply xor (for [pred preds]
                  (apply pred args)))))
+
+(defn topological-sort
+  "Topologically sorts vertexs in graph g.
+   https://en.wikipedia.org/wiki/Topological_sorting"
+  [edges g]
+  (transduce (map (juxt key (comp edges val)))
+             (fn
+               ([] (dep/graph))
+               ([acc [vertex edges]]
+                (reduce (fn [acc edge]
+                          (dep/depend acc vertex edge))
+                        acc
+                        edges))
+               ([acc]
+                (let [sorted      (filter g (dep/topo-sort acc))
+                      independent (set/difference (set (keys g)) (set sorted))]
+                  (not-empty
+                   (into (ordered-map)
+                         (map (fn [vertex]
+                                [vertex (g vertex)]))
+                         (concat independent sorted))))))
+             g))

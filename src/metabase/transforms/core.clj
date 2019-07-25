@@ -21,7 +21,7 @@
   [field-or-mbql]
   (if (mbql.u/mbql-clause? field-or-mbql)
     field-or-mbql
-    (let [{:keys [source-alias id name base_type] :as field} field-or-mbql]
+    (let [{:keys [source-alias id name base_type]} field-or-mbql]
       (cond
         source-alias [:joined-field source-alias (->mbql (dissoc field-or-mbql :source-alias))]
         id           [:field-id id]
@@ -29,9 +29,9 @@
 
 (s/defn ^:private get-dimension-binding :- (s/cond-pre (type Field) (s/pred mbql.u/mbql-clause?))
   [bindings source identifier]
-  (let [[table-or-dimension dimension] (str/split identifier #"\.")]
-    (if dimension
-      (cond-> (get-in bindings [table-or-dimension :dimensions dimension])
+  (let [[table-or-dimension maybe-dimension] (str/split identifier #"\.")]
+    (if maybe-dimension
+      (cond-> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
         (not= source table-or-dimension) (assoc :source-alias table-or-dimension))
       (get-in bindings [source :dimensions table-or-dimension]))))
 

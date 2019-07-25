@@ -10,7 +10,7 @@
 
 (def ^:private MBQL (s/pred mbql.u/mbql-clause?))
 
-(def ^:private DomainEntityReference s/Str)
+(def ^:private DomainEntityReference keyword)
 
 (def ^:private Identifier s/Str)
 
@@ -47,27 +47,32 @@
                                  (s/optional-key :segments)            Segments
                                  (s/optional-key :breakout_dimensions) BreakoutDimensions})
 
-(def ^:private ^{:arglists '([m])} add-name-from-key
-  (partial m/map-kv-vals (fn [identifier m]
-                           (assoc m :name identifier))))
+
+(defonce ^:private ^{:doc "Domain entity spec hierarchy."}
+  hierarchy
+  (make-hierarchy))
+
+(defn- add-to-hiearchy!
+  [{:keys [name refines]}]
+  (derive hierarchy name (or refines :DomainEntity/*)))
 
 (def ^:private domain-entity-spec-parser
   (sc/coercer!
    DomainEntitySpec
-   {MBQL               mbql.normalize/normalize
-    Metrics            add-name-from-key
-    Segments           add-name-from-key
-    BreakoutDimensions (fn [breakout-dimensions]
-                         (for [dimension breakout-dimensions]
-                           (if (s/check MBQL dimension)
-                             [:dimension dimension]
-                             dimension)))
-    FieldType          (partial keyword "type")
+   {MBQL                  mbql.normalize/normalize
+    BreakoutDimensions    (fn [breakout-dimensions]
+                            (for [dimension breakout-dimensions]
+                              (if (s/check MBQL dimension)
+                                [:dimension dimension]
+                                dimension)))
+    FieldType             (partial keyword "type")
+    DomainEntityReference (partial keyword "DomainEntity")
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
-    s/Str              name}))
+    s/Str                 name}))
 
 (def ^:private domain-entities-dir "domain_entities/")
 
 (def domain-entity-specs
   "List of registered domain entities."
-  (delay (yaml/load-dir domain-entities-dir domain-entity-spec-parser)))
+  (delay (yaml/load-dir domain-entities-dir (comp add-to-hiearchy!
+                                                  domain-entity-spec-parser))))
