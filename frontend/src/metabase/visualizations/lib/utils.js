@@ -155,7 +155,7 @@ export function getXValues(datas) {
   // this is fairly optimized since it iterates over every row in the results
   for (let i = 0, datasLength = datas.length; i < datasLength; i++) {
     const rows = datas[i];
-    let lastValue = rows[0][0];
+    let lastValue = rows.length > 0 ? rows[0][0] : null;
     xValuesSet.add(lastValue);
     // skip the first row so we can compare
     for (let j = 1, rowsLength = rows.length; j < rowsLength; j++) {

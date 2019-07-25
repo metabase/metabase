@@ -181,7 +181,10 @@ function setAggregationClause(
   return setClause("aggregation", query, aggregationClause);
 }
 function setBreakoutClause(query: SQ, breakoutClause: ?BreakoutClause): SQ {
-  const breakoutIds = B.getBreakouts(breakoutClause).filter(id => id != null);
+  // NOTE: this doesn't handle complex cases
+  const breakoutIds = B.getBreakouts(breakoutClause)
+    .map(b => Query.getFieldTargetId(b))
+    .filter(id => id != null);
   for (const [index, sort] of getOrderBys(query).entries()) {
     const sortId = Query.getFieldTargetId(sort[1]);
     if (sortId != null && !_.contains(breakoutIds, sortId)) {

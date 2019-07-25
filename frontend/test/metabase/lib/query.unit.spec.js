@@ -117,10 +117,10 @@ describe("Legacy Query library", () => {
         aggregation: ["count"],
         breakout: [["field-id", 1]],
         filter: [],
-        "order-by": [["asc", 1]],
+        "order-by": [["asc", ["field-id", 1]]],
       };
       Query.cleanQuery(query);
-      expect(query["order-by"]).toEqual([["asc", 1]]);
+      expect(query["order-by"]).toEqual([["asc", ["field-id", 1]]]);
     });
     it("should remove sort clauses on fields not appearing in breakout", () => {
       const query = {

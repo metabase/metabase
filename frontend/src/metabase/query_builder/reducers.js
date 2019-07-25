@@ -30,6 +30,15 @@ import {
   SHOW_CHART_SETTINGS,
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
+  onEditSummary,
+  onCloseSummary,
+  onAddFilter,
+  onCloseFilter,
+  onOpenChartSettings,
+  onCloseChartSettings,
+  onOpenChartType,
+  onCloseChartType,
+  onCloseSidebars,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -46,6 +55,13 @@ const DEFAULT_UI_CONTROLS = {
   isPreviewing: true, // sql preview mode
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" or "notebook"
+};
+
+const UI_CONTROLS_SIDEBAR_DEFAULTS = {
+  isShowingSummarySidebar: false,
+  isShowingFilterSidebar: false,
+  isShowingChartSettingsSidebar: false,
+  isShowingChartTypeSidebar: false,
 };
 
 // various ui state options
@@ -117,6 +133,48 @@ export const uiControls = handleActions(
         initialChartSetting: payload,
       }),
     },
+    // AGGREGATION
+    [onEditSummary]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingSummarySidebar: true,
+    }),
+    [onCloseSummary]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onAddFilter]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingFilterSidebar: true,
+    }),
+    [onCloseFilter]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenChartSettings]: (state, { payload: initial }) => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingChartSettingsSidebar: true,
+      initialChartSetting: initial,
+    }),
+    [onCloseChartSettings]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onOpenChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      isShowingChartTypeSidebar: true,
+    }),
+    [onCloseChartType]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
+    [onCloseSidebars]: state => ({
+      ...state,
+      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+    }),
   },
   DEFAULT_UI_CONTROLS,
 );

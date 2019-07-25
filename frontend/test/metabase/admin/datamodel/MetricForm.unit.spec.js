@@ -1,6 +1,6 @@
 import React from "react";
+import "@testing-library/jest-dom/extend-expect";
 import { render, cleanup } from "@testing-library/react";
-import "jest-dom/extend-expect";
 
 import { getStore } from "metabase/store";
 import normalReducers from "metabase/reducers-main";

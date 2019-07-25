@@ -1,4 +1,12 @@
-import { fieldRefForColumn } from "metabase/lib/dataset";
+import {
+  fieldRefForColumn,
+  syncTableColumnsToQuery,
+} from "metabase/lib/dataset";
+
+import {
+  makeStructuredQuery,
+  ORDERS_TOTAL_FIELD_ID,
+} from "__support__/sample_dataset_fixture";
 
 const FIELD_COLUMN = { id: 1 };
 const FK_COLUMN = { id: 1, fk_field_id: 2 };
@@ -46,6 +54,70 @@ describe("metabase/util/dataset", () => {
         "field-id",
         3,
       ]);
+    });
+  });
+
+  describe("syncTableColumnsToQuery", () => {
+    it("should not modify `fields` if no `table.columns` setting preset", () => {
+      const question = syncTableColumnsToQuery(
+        makeStructuredQuery({
+          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        }).question(),
+      );
+      expect(question.query().query()).toEqual({
+        "source-table": 1,
+        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+      });
+    });
+    it("should sync included `table.columns` by name", () => {
+      const question = syncTableColumnsToQuery(
+        makeStructuredQuery()
+          .question()
+          .setSettings({
+            "table.columns": [
+              {
+                name: "TOTAL",
+                enabled: true,
+              },
+            ],
+          }),
+      );
+      expect(question.query().query()).toEqual({
+        "source-table": 1,
+        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+      });
+    });
+    it("should sync included `table.columns` by fieldRef", () => {
+      const question = syncTableColumnsToQuery(
+        makeStructuredQuery()
+          .question()
+          .setSettings({
+            "table.columns": [
+              {
+                fieldRef: ["field-id", ORDERS_TOTAL_FIELD_ID],
+                enabled: true,
+              },
+            ],
+          }),
+      );
+      expect(question.query().query()).toEqual({
+        "source-table": 1,
+        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+      });
+    });
+    it("should not modify columns if all default columns are enabled", () => {
+      const query = makeStructuredQuery();
+      const question = syncTableColumnsToQuery(
+        query.question().setSettings({
+          "table.columns": query.columnNames().map(name => ({
+            name,
+            enabled: true,
+          })),
+        }),
+      );
+      expect(question.query().query()).toEqual({
+        "source-table": 1,
+      });
     });
   });
 });

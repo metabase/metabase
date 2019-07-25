@@ -103,57 +103,19 @@ export const setQueryBuilderMode = (
   }
 };
 
-// NOTE: technically these should be in the reducer but ¯\_(ツ)_/¯
-const UI_CONTROLS_SIDEBAR_DEFAULTS = {
-  isShowingSummarySidebar: false,
-  isShowingFilterSidebar: false,
-  isShowingChartSettingsSidebar: false,
-  isShowingChartTypeSidebar: false,
-};
-// AGGREGATION
-export const onEditSummary = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isShowingSummarySidebar: true,
-  });
-export const onCloseSummary = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
-// FILTER
-export const onAddFilter = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isShowingFilterSidebar: true,
-  });
-export const onCloseFilter = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
-// CHART SETTINGS
-export const onOpenChartSettings = initial =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isShowingChartSettingsSidebar: true,
-    initialChartSetting: initial,
-  });
-export const onCloseChartSettings = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
-// CHART TYPE
-export const onOpenChartType = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-    isShowingChartTypeSidebar: true,
-  });
-export const onCloseChartType = () =>
-  setUIControls({
-    ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-  });
-
-export const onCloseSidebars = () =>
-  setUIControls(UI_CONTROLS_SIDEBAR_DEFAULTS);
+export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
+export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
+export const onAddFilter = createAction("metabase/qb/ADD_FITLER");
+export const onCloseFilter = createAction("metabase/qb/CLOSE_FILTER");
+export const onOpenChartSettings = createAction(
+  "metabase/qb/OPEN_CHART_SETTINGS",
+);
+export const onCloseChartSettings = createAction(
+  "metabase/qb/CLOSE_CHART_SETTINGS",
+);
+export const onOpenChartType = createAction("metabase/qb/OPEN_CHART_TYPE");
+export const onCloseChartType = createAction("metabase/qb/CLOSE_CHART_TYPE");
+export const onCloseSidebars = createAction("metabase/qb/CLOSE_SIDEBARS");
 
 export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
 const setCurrentState = createAction(SET_CURRENT_STATE);

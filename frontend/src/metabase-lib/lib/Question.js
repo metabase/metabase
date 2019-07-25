@@ -3,12 +3,14 @@
 import _ from "underscore";
 import { chain, assoc } from "icepick";
 
-import Query from "metabase-lib/lib/queries/Query";
+// NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+
+import Query from "metabase-lib/lib/queries/Query";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Table from "metabase-lib/lib/metadata/Table";

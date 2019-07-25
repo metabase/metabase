@@ -1686,6 +1686,7 @@ exports[`Radio should render "bubble" correctly 1`] = `
   className="Radio__BubbleList-ghIvdM ejKqoS Radio__BaseList-iXttyI emDsVO"
 >
   <li
+    aria-selected={true}
     className="Radio__BubbleItem-cPPKrR izYaHB Radio__BaseItem-gLcmFf bMiqJE"
     mb={null}
     mr={1}
@@ -1705,6 +1706,7 @@ exports[`Radio should render "bubble" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-selected={false}
     className="Radio__BubbleItem-cPPKrR iOSyOa Radio__BaseItem-gLcmFf etzrCv"
     mb={null}
     mr={null}
@@ -1731,6 +1733,7 @@ exports[`Radio should render "default" correctly 1`] = `
   className="Radio__NormalList-iITwyU h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
 >
   <li
+    aria-selected={true}
     className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
     mb={null}
     mr={3}
@@ -1750,6 +1753,7 @@ exports[`Radio should render "default" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-selected={false}
     className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf knlEpD"
     mb={null}
     mr={null}
@@ -1776,6 +1780,7 @@ exports[`Radio should render "show buttons" correctly 1`] = `
   className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI emDsVO"
 >
   <li
+    aria-selected={true}
     className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
     mb={null}
     mr={3}
@@ -1798,6 +1803,7 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-selected={false}
     className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
     mb={null}
     mr={null}
@@ -1827,6 +1833,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
   className="Radio__UnderlinedList-bIlLBB ipqCjB Radio__NormalList-iITwyU Radio__UnderlinedList-bIlLBB ipqCjB h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
 >
   <li
+    aria-selected={true}
     className="Radio__UnderlinedItem-fiPrcQ QyBRA Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf jhOuoa"
     mb={null}
     mr={3}
@@ -1846,6 +1853,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-selected={false}
     className="Radio__UnderlinedItem-fiPrcQ javWeu Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf iCgizd"
     mb={null}
     mr={null}
@@ -1872,6 +1880,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
   className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI fKwfUD"
 >
   <li
+    aria-selected={true}
     className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf krIKqz"
     mb={1}
     mr={null}
@@ -1894,6 +1903,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
     </span>
   </li>
   <li
+    aria-selected={false}
     className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
     mb={null}
     mr={null}

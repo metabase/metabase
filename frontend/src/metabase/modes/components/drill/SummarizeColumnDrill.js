@@ -10,7 +10,6 @@ import type {
   ClickAction,
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
-import { onEditSummary } from "metabase/query_builder/actions";
 
 const AGGREGATIONS = {
   sum: {
@@ -65,7 +64,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       action: () => dispatch => {
         // HACK: drill through closes sidebars, so open sidebar asynchronously
         setTimeout(() => {
-          dispatch(onEditSummary());
+          dispatch({ type: "metabase/qb/EDIT_SUMMARY" });
         });
       },
     }));

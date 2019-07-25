@@ -129,7 +129,10 @@ class SearchBar extends React.Component {
   }
   handleKeyUp = (e: KeyboardEvent) => {
     const FORWARD_SLASH_KEY = 191;
-    if (e.keyCode === FORWARD_SLASH_KEY && SEARCH_FOCUS_ELEMENT_WHITELIST.has(document.activeElement.tagName)) {
+    if (
+      e.keyCode === FORWARD_SLASH_KEY &&
+      SEARCH_FOCUS_ELEMENT_WHITELIST.has(document.activeElement.tagName)
+    ) {
       ReactDOM.findDOMNode(this.searchInput).focus();
     }
   };
@@ -150,7 +153,7 @@ class SearchBar extends React.Component {
             py={2}
             pr={2}
             pl={1}
-            ref={ref=>this.searchInput=ref}
+            ref={ref => (this.searchInput = ref)}
             value={searchText}
             placeholder={t`Search` + "…"}
             onClick={() => this.setState({ active: true })}
