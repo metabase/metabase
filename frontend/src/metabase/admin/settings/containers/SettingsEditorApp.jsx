@@ -7,6 +7,7 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
 import { t } from "ttag";
 import AdminLayout from "metabase/components/AdminLayout.jsx";
+import { NotFound } from "metabase/containers/ErrorPages";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
@@ -125,7 +126,7 @@ export default class SettingsEditorApp extends Component {
     const { activeSection, settingValues } = this.props;
 
     if (!activeSection) {
-      return null;
+      return <NotFound />;
     }
 
     if (activeSection.slug === "email") {
