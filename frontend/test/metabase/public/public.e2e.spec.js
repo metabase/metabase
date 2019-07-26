@@ -33,7 +33,6 @@ import {
   API_CREATE_QUESTION,
   QUERY_COMPLETED,
   RUN_QUERY,
-  SET_QUERY_MODE,
   setDatasetQuery,
   UPDATE_EMBEDDING_PARAMS,
   UPDATE_ENABLE_EMBEDDING,
@@ -141,16 +140,17 @@ describe("public/embedded", () => {
       // NOTE Atte Keinänen 8/9/17: Ace provides a MockRenderer class which could be used for pseudo-rendering and
       // testing Ace editor in tests, but it doesn't render stuff to DOM so I'm not sure how practical it would be
       NativeQueryEditor.prototype.loadAceEditor = () => {};
+      NativeQueryEditor.prototype._updateSize = () => {};
 
       const store = await createTestStore();
 
-      // load public sharing settings
-      store.pushPath(Urls.plainQuestion());
+      store.pushPath("/");
       const app = mount(store.getAppContainer());
-      await store.waitForActions([INITIALIZE_QB]);
+
+      await delay(500);
 
       click(app.find(".Icon-sql"));
-      await store.waitForActions([SET_QUERY_MODE]);
+      await store.waitForActions([INITIALIZE_QB]);
 
       await setQueryText(
         store,
@@ -216,12 +216,7 @@ describe("public/embedded", () => {
       expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
 
       // save the question, required for public link/embedding
-      click(
-        app
-          .find(".Header-buttonSection a")
-          .first()
-          .find("a"),
-      );
+      click(app.find('[children="Save"]'));
 
       setInputValue(
         app.find(SaveQuestionModal).find("input[name='name']"),

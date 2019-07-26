@@ -92,24 +92,8 @@ export default class StructuredQuery extends AtomicQuery {
     this._structuredDatasetQuery = (datasetQuery: StructuredDatasetQuery);
   }
 
-  static newStucturedQuery({
-    question,
-    databaseId,
-    tableId,
-  }: {
-    question: Question,
-    databaseId?: DatabaseId,
-    tableId?: TableId,
-  }) {
-    const datasetQuery = {
-      ...STRUCTURED_QUERY_TEMPLATE,
-      database: databaseId || null,
-      query: {
-        "source-table": tableId || null,
-      },
-    };
-
-    return new StructuredQuery(question, datasetQuery);
+  static create(options = {}): StructuredQuery {
+    return Question.create({ ...options, type: "query" }).query();
   }
 
   /* Query superclass methods */
@@ -300,6 +284,11 @@ export default class StructuredQuery extends AtomicQuery {
    * Removes invalid clauses from the query (and source-query, recursively)
    */
   clean() {
+    if (!this.metadata()) {
+      console.warn("Warning: can't clean query without metadata!");
+      return this;
+    }
+
     let query = this;
 
     // first clean the sourceQuery, if any, recursively

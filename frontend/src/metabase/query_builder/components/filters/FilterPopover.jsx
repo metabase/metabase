@@ -172,6 +172,7 @@ export default class ViewFilterPopover extends Component {
             filter={filter}
             onFilterChange={this.handleFilterChange}
             onCommit={!this.props.noCommitButton ? this.handleCommit : null}
+            isNew={!this.props.filter}
           />
         </div>
       );

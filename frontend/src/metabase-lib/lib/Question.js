@@ -1,13 +1,15 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { chain, assoc } from "icepick";
+import { chain, assoc, assocIn } from "icepick";
 
 // NOTE: the order of these matters due to circular dependency issues
 import StructuredQuery, {
   STRUCTURED_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import NativeQuery, {
+  NATIVE_QUERY_TEMPLATE,
+} from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 import Query from "metabase-lib/lib/queries/Query";
@@ -122,29 +124,39 @@ export default class Question {
     tableId,
     metadata,
     parameterValues,
-    ...cardProps
+    type = "query",
+    name = null,
+    display = "table",
+    visualization_settings = {},
+    dataset_query = type === "native"
+      ? NATIVE_QUERY_TEMPLATE
+      : STRUCTURED_QUERY_TEMPLATE,
   }: {
     databaseId?: DatabaseId,
     tableId?: TableId,
     metadata: Metadata,
     parameterValues?: ParameterValues,
+    type?: "query" | "native",
+    name?: string,
+    display?: string,
+    visualization_settings?: VisualizationSettings,
+    dataset_query?: DatasetQuery,
   } = {}) {
     // $FlowFixMe
-    const card: Card = {
-      name: cardProps.name || null,
-      display: cardProps.display || "table",
-      visualization_settings: cardProps.visualization_settings || {},
-      dataset_query: STRUCTURED_QUERY_TEMPLATE, // temporary placeholder
+    let card: Card = {
+      name,
+      display,
+      visualization_settings,
+      dataset_query,
     };
+    if (tableId != null) {
+      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
+    }
+    if (databaseId != null) {
+      card = assocIn(card, ["dataset_query", "database"], databaseId);
+    }
 
-    const initialQuestion = new Question(metadata, card, parameterValues);
-    const query = StructuredQuery.newStucturedQuery({
-      question: initialQuestion,
-      databaseId,
-      tableId,
-    });
-
-    return initialQuestion.setQuery(query);
+    return new Question(metadata, card, parameterValues);
   }
 
   metadata(): Metadata {
@@ -855,3 +867,7 @@ export default class Question {
     return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
   }
 }
+
+window.Question = Question;
+window.NativeQuery = NativeQuery;
+window.StructuredQuery = StructuredQuery;

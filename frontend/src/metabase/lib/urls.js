@@ -49,7 +49,11 @@ const flattenParam = ([key, value]) => {
 };
 
 export function plainQuestion() {
-  return Question.create({ metadata: null }).getUrl();
+  return Question.create().getUrl();
+}
+
+export function nativeQuestion() {
+  return Question.create({ type: "native" }).getUrl();
 }
 
 export function dashboard(dashboardId, { addCardWithId } = {}) {

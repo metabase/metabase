@@ -28,11 +28,10 @@ export default class QuestionAlertWidget extends React.Component {
     const { isOpen, isFrozen } = this.state;
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {
       return (
-        <span>
+        <span onClick={this.open}>
           <Icon
             name="alert"
             className={cx(className, "text-brand cursor-pointer")}
-            onClick={this.open}
           />
           <Popover
             isOpen={isOpen}

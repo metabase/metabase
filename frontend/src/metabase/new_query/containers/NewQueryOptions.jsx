@@ -110,14 +110,13 @@ export class NewQueryOptions extends Component {
   };
 
   render() {
-    const { isAdmin, metricSearchUrl, newQueryOptions } = this.props;
+    const { newQueryOptions } = this.props;
     const {
       loaded,
       hasDatabases,
       showMetricOption,
       showSQLOption,
     } = newQueryOptions;
-    const showCustomInsteadOfNewQuestionText = showMetricOption || isAdmin;
 
     if (!loaded) {
       return <LoadingAndErrorWrapper loading={true} />;

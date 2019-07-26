@@ -49,6 +49,10 @@ export default class NativeQuery extends AtomicQuery {
     this._nativeDatasetQuery = (datasetQuery: NativeDatasetQuery);
   }
 
+  static create(options = {}) {
+    return Question.create({ ...options, type: "native" }).query();
+  }
+
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
     return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
   }

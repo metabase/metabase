@@ -1,7 +1,6 @@
 import React from "react";
 
 import { t } from "ttag";
-import _ from "underscore";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -29,6 +28,6 @@ const NativeVariablesButton = ({
 NativeVariablesButton.shouldRender = ({ question }) =>
   question.query() instanceof NativeQuery &&
   question.database() &&
-  _.contains(question.database().features, "native-parameters");
+  question.database().hasFeature("native-parameters");
 
 export default NativeVariablesButton;

@@ -59,6 +59,6 @@ export default class Database extends Base {
 
   newQuestion(): Question {
     // $FlowFixMe
-    return Question.create({ database: this, metadata: this.metadata });
+    return Question.create({ databaseId: this.id, metadata: this.metadata });
   }
 }

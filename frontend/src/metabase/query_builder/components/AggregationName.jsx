@@ -41,7 +41,7 @@ const AggregationName = ({
     }
     aggregation = A_DEPRECATED.getContent(aggregation);
   }
-  return Aggregation.isCustom(aggregation) ? (
+  return A_DEPRECATED.isCustom(aggregation) ? (
     <CustomAggregation
       aggregation={aggregation}
       tableMetadata={tableMetadata}

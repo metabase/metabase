@@ -34,7 +34,6 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { RevisionId } from "metabase/meta/types/Revision";
 import { Link } from "react-router";
 
 type Props = {
@@ -59,12 +58,6 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttribute: (attribute: string, value: any) => void,
 
@@ -105,7 +98,6 @@ export default class DashboardHeader extends Component {
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
