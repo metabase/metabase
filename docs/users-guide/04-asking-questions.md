@@ -1,48 +1,68 @@
 
-## Asking custom questions
+## Asking questions in Metabase
 ---
-Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask Metabase a question, click the New Question button at the top of the screen.
+Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the Ask a Question button at the top of the screen.
 
 ### Ways to start a new question
 
-If an administrator has [defined some metrics](../administration-guide/07-segments-and-metrics.md), when you click on the `Ask a question` button in the top bar you'll see a screen like this one:
+When you click the Ask a Question button, you'll see that there are three ways to ask a specific question in Metabase:
+1. The simple question mode, which lets you filter, summarize, and visualize data.
+2. The custom question mode, which gives you a powerful notebook-style editor to create more complex questions that require joins, multiple stages of filtering and aggregating, or custom columns.
+3. The SQL/native query editor.
 
-![New question options](images/new-question-all-options.png)
+We'll cover the simple mode first.
 
-You can start your new question:
-- from an existing metric
-- from scratch with the Question Builder interface
-- using the SQL / native query editor
+### Asking a simple question
 
-Asking a new question about a **metric** is often a great place to start.
+After you select the Simple Question option, you'll need to pick some data that you have a question about. Just pick one of the databases that's connected to Metabase, and you'll see a list of all the tables inside of it. Pick the one that you have a question about; it could be a Users table, or maybe it's something like Events, Orders, or Downloads.
 
-#### Asking a new question about a metric
+#### What exactly is a table?
 
-A **metric** is a numeric measurement of something your company wants to track, like revenue, the total number of users, or the number of events that have occurred. So if you have a question like, "how many users have we had in the last 30 days?", then you could start by finding a metric like "Total Users" from your company's list of metrics, and then filtering it down to the time period you care about. Clicking on the metric option will show you a list of your company's metrics:
+If you've never really worked with databases and tables before, a table is basically like an Excel spreadsheet. Each table is usually "about" one specific object or idea, like Customers, Products, or Downloads. The columns in the table give you information about that thing, and each row represents one unique instance of that thing — a single specific user, purchase, event, etc.
 
-![List of metrics](images/metrics-list.png)
+To ask a question about a table of data, we usually do some **filtering** and/or **summarizing**.
 
- Clicking on a metric will show you that number. From there, you can click directly on the number to break it out in interesting ways — like by day, by state, by customer, etc.:
+#### Filtering
 
-![Metric drill through](images/metric-drill-through.png)
+Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when shopping online. Maybe you only want to see olive-colored pants, or books where the author's last name is "Steinbeck."
 
-You can also use the Action Menu in the bottom-right of the screen to choose a break out, or to see the table data that the metric uses:
+You can do the same kind of thing with data in Metabase. Just click the Filter button in the top-right of the screen to open the filter sidebar. You'll see a list of all of the columns in this table, as well as columns from tables that are related to the one you're looking at. Depending on the column you pick, you'll see slightly different options for your filter.
 
-![Metric action menu](images/metric-action-menu.png)
+Broadly speaking, there are three types of columns, each with their own set of filtering options:
+1. **Numerics columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
+2. With **text or category columns**, you can specify that you only want to include data where this column is or isn't a specific option, or you can exclude rows that don't have a value for this column.
+3. **Date** columns give you a calendar or input box so that you can select specific time ranges, or choose all days before or after a certain date.
 
-#### Asking a new question about a table
+One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
-Another quick way to start a new question is by clicking on one of your connected databases at the bottom of the homepage, and picking a table that you have a question about. You'll immediately see the table and the graphical question builder so that you can keep exploring.
+**Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
 
-![Browse data](./images/browse-data.png)
+**Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to *change*. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you for example how many users visited your website in the last 7 days.
 
-When viewing a table you can also click on the headings of columns to see options for ways to explore more, like clicking on the Age column of your Users table to see how many Users you have per age group (that's called a "distribution"):
+Once you're happy with your filter, click Done, and your data will be updated with your filter applied. If you want to edit your filter, just click the little purple token at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
-![Table heading actions](images/table-heading-actions.png)
+#### Summarizing
 
-You can also use the Action Menu when viewing a table to see any metrics in it, or to summarize the table.
+When we have a question like "how many people downloaded our app each day this week?" or "what's the average age of customers who visit each of our stores on the weekend?", we're asking for a **summary** of the data. A summary is usually made up of two parts: one or more *numbers* we care about (called a "metric" in data-speak), and how we want to see that number *grouped* or *broken out*. So in our first example:
+- "how many people downloaded our app" is the metric
+- "each day" is how we want that metric to be grouped
+- and "this week" is a filter
 
-![Table action menu](images/segment-actions.png)
+There are two very common ways you'll tend to summarize your data:
+- Counting the number of rows in your table
+- Getting the sum or average of a numeric column
+
+And a lot of the time, you'll then group that number by:
+- Time
+- Place
+- Some other category like operating system, gender, state, etc.
+
+To do this in Metabase, click the Summarize button in the top-right of the screen, and the summary sidebar will open up. The sidebar has two main parts: the top is where you pick the number ("metric") you want to see, and the part below it is where you pick out to group that number (or "break it out"). By default the "count of rows" metric will be selected, since it's super common.
+
+Depending on the grouping column you select, Metabase will show you what it thinks is the best default visualization or chart for this summary. So if you select a date column, you'll see a line chart like this:
+
+[FIX ME]
+
 
 #### Asking a new custom question
 
@@ -51,21 +71,7 @@ If you have a question that isn't covered by an existing question, you can creat
 
 ### Using the Question Builder interface
 
-Metabase has a simple graphical question builder that looks like this:
 
-![queryinterfacebar](images/QueryInterfaceBar.png)
-
-The question builder is made up of four distinct sections, from left to right:
-- **Data**, where you pick the source data you want to ask a question about
-- **Filters**, where you can optionally add one or more filters to narrow down your source data
-- **View**, where you choose what you want to see — raw table data, a basic metric, or a "common" metric that an administrator has defined
-- **Groupings**, where you can group or break out your metric by time, location, or other categories
-
-#### Source data
----
-All of the data in databases are in tables. Typically, tables will be named for the thing that each row in the table contains. For example, in a Customers table, each row in the table would represent a single customer. This means that when you’re thinking about how to phrase your question, you’ll need to decide what your question is about, and which table has that information in it.
-
-The first dropdown menu in the question builder is where you’ll choose the database and table you want.
 
 ##### Using saved questions as source data
 
@@ -105,11 +111,7 @@ If filtering by dates, a date picker will appear to allow you to select dates ea
 
 Click on the first dropdown to change the kind of date filter you're using. The rest of the popup menu will change depending on this first selection.
 
-One important thing to understand when filtering by time or dates like this is the difference between specific and relative dates:
 
-**Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-
-**Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to change. Relative dates are a useful way to set up a filter on a question so that it stays up to date by showing you for example how many users visited your website in the last 7 days.
 
 ##### Using segments
 If your Metabase administrators have created special named filters for the table you're viewing they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called "segments," and they're shortcuts to filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
