@@ -225,8 +225,8 @@ export function getTableDimensions(
             parentName: stripId(field.display_name),
             target: [
               "fk->",
-              field.id,
-              getDimensionTargetFieldId(dimension.target),
+              ["field-id", field.id],
+              ["field-id", getDimensionTargetFieldId(dimension.target)],
             ],
             depth: dimension.depth + 1,
           }),

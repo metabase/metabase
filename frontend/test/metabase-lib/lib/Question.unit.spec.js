@@ -367,7 +367,11 @@ describe("Question", () => {
             "source-table": ORDERS_TABLE_ID,
             filter: [
               "=",
-              ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_CATEGORY_FIELD_ID],
+              [
+                "fk->",
+                ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+                ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+              ],
               "Doohickey",
             ],
           },

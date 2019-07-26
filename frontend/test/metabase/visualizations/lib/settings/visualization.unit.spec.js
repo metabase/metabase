@@ -1,7 +1,10 @@
 // NOTE: need to load visualizations first for getSettings to work
 import "metabase/visualizations/index";
 
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import {
+  getComputedSettingsForSeries,
+  getStoredSettingsForSeries,
+} from "metabase/visualizations/lib/settings/visualization";
 
 import { DateTimeColumn, NumberColumn } from "../../__support__/visualizations";
 
@@ -57,6 +60,30 @@ describe("visualization_settings", () => {
             expect(settings["graph.x_axis._is_histogram"]).toBe(true);
           }),
         ));
+    });
+  });
+  describe("getStoredSettingsForSeries", () => {
+    it("should return an empty object if visualization_settings isn't defined", () => {
+      const settings = getStoredSettingsForSeries([{ card: {} }]);
+      expect(settings).toEqual({});
+    });
+    it("should pull out any saved visualization settings", () => {
+      const settings = getStoredSettingsForSeries([
+        { card: { visualization_settings: { foo: "bar" } } },
+      ]);
+      expect(settings).toEqual({ foo: "bar" });
+    });
+    it("should normalize stored columnSettings keys", () => {
+      const oldKey = `["ref",["fk->",1,2]]`;
+      const newKey = `["ref",["fk->",["field-id",1],["field-id",2]]]`;
+      const settings = getStoredSettingsForSeries([
+        {
+          card: {
+            visualization_settings: { column_settings: { [oldKey]: "blah" } },
+          },
+        },
+      ]);
+      expect(settings.column_settings).toEqual({ [newKey]: "blah" });
     });
   });
 });

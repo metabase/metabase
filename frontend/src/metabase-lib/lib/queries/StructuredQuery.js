@@ -810,7 +810,11 @@ export default class StructuredQuery extends AtomicQuery {
 
   fieldReferenceForColumn(column) {
     if (column.fk_field_id != null) {
-      return ["fk->", column.fk_field_id, column.id];
+      return [
+        "fk->",
+        ["field-id", column.fk_field_id],
+        ["field-id", column.id],
+      ];
     } else if (column.id != null) {
       return ["field-id", column.id];
     } else if (column.expression_name != null) {
