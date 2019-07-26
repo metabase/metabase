@@ -15,6 +15,7 @@ import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 export default class ParameterWidget extends Component {
   state = {
     isEditingName: false,
+    editingNameValue: undefined,
     isFocused: false,
   };
 
