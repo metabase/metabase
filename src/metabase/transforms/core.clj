@@ -4,47 +4,65 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models
+             [card :refer [Card]]
              [database :refer [Database]]
              [field :as field :refer [Field]]
-             [table :refer [Table]]]
+             [table :as table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols]]
-             [specs :refer [transform-specs]]]
-            [metabase.util.i18n :refer [tru]]
+             [specs :refer [transform-specs MBQL Step TransformSpec]]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- ->mbql
-  [field-or-mbql]
+(def ^:private FieldOrMBQL (s/cond-pre (type Field) MBQL))
+
+(def ^:private SourceName s/Str)
+
+(def ^:private DimensionReference s/Str)
+
+(def ^:private DimensionBindings {DimensionReference FieldOrMBQL})
+
+(def ^:private SourceEntity (s/cond-pre (type Table) (type Card)))
+
+(def ^:private Bindings {SourceName {(s/optional-key :entity)     SourceEntity
+                                     (s/required-key :dimensions) DimensionBindings}})
+
+(s/defn ^:private ->mbql :- MBQL
+  [field-or-mbql :- FieldOrMBQL]
   (if (mbql.u/mbql-clause? field-or-mbql)
     field-or-mbql
-    (let [{:keys [source-alias id name base_type] :as field} field-or-mbql]
+    (let [{:keys [source-alias id name base_type]} field-or-mbql]
       (cond
         source-alias [:joined-field source-alias (->mbql (dissoc field-or-mbql :source-alias))]
         id           [:field-id id]
         :else        [:field-literal name base_type]))))
 
-(s/defn ^:private get-dimension-binding :- (s/cond-pre (type Field) (s/pred mbql.u/mbql-clause?))
-  [bindings source identifier]
-  (let [[table-or-dimension dimension] (str/split identifier #"\.")]
-    (if dimension
-      (cond-> (get-in bindings [table-or-dimension :dimensions dimension])
+(s/defn ^:private get-dimension-binding :- FieldOrMBQL
+  [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
+  (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
+    (if maybe-dimension
+      (cond-> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
         (not= source table-or-dimension) (assoc :source-alias table-or-dimension))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
-(defn- resolve-dimension-clauses
-  [bindings source mbql-form]
-  (mbql.u/replace mbql-form
+(s/defn ^:private resolve-dimension-clauses :- (s/maybe FieldOrMBQL)
+  [bindings :- Bindings, source :- SourceName, field-or-mbql :- (s/maybe FieldOrMBQL)]
+  (mbql.u/replace field-or-mbql
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 ->mbql
                                 (resolve-dimension-clauses bindings source))))
 
-(defn- add-bindings
-  [bindings source new-bindings]
+(s/defn ^:private add-bindings :- Bindings
+  [bindings :- Bindings, source :- SourceName, new-bindings :- (s/maybe DimensionBindings)]
   (reduce-kv (fn [bindings name definition]
                (->> definition
                     (resolve-dimension-clauses bindings source)
@@ -52,22 +70,19 @@
              bindings
              new-bindings))
 
-(defn- infer-resulting-dimensions
-  [bindings {:keys [joins name]} query]
+(s/defn ^:private infer-resulting-dimensions :- DimensionBindings
+  [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
-                                  (get-in bindings [name :dimensions]))
-        mask               (juxt :name :special_type)]
-    (into {} (for [col (infer-cols query)]
-               [(if (flattened-bindings (:name col))
-                  (:name col)
+                                  (get-in bindings [name :dimensions]))]
+    (into {} (for [{:keys [name] :as col} (infer-cols query)]
+               [(if (flattened-bindings name)
+                  name
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
                   ;; our parlance
-                  (some->> flattened-bindings
-                           (m/find-first (comp #{(mask col)} mask val))
-                           key))
-                (-> col
-                    (dissoc :id)
-                    field/map->FieldInstance)]))))
+                  (or (some->> flattened-bindings (m/find-first (comp #{name} :name val)) key)
+                      ;; Else it's a duplicated key from a join
+                      name))
+                (field/map->FieldInstance col)]))))
 
 (defn- maybe-add-fields
   [bindings {:keys [aggregation name source]} query]
@@ -101,9 +116,9 @@
                                  (for [breakout breakout]
                                    (resolve-dimension-clauses bindings name breakout)))))
 
-(defn- ->source-table-reference
+(s/defn ^:private ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
-  [entity]
+  [entity :- SourceEntity]
   (if (instance? (type Table) entity)
     (u/get-id entity)
     (str "card__" (u/get-id entity))))
@@ -127,8 +142,8 @@
   [bindings {:keys [limit]} query]
   (m/assoc-some query :limit limit))
 
-(defn- transform-step!
-  [spec bindings {:keys [name source description aggregation expressions] :as step}]
+(s/defn ^:private transform-step! :- Bindings
+  [bindings :- Bindings, {:keys [name source aggregation expressions] :as step} :- Step]
   (let [source-entity  (get-in bindings [source :entity])
         local-bindings (-> bindings
                            (add-bindings name (get-in bindings [source :dimensions]))
@@ -144,13 +159,14 @@
                                        (maybe-add-filter local-bindings step)
                                        (maybe-add-limit local-bindings step))
                         :database ((some-fn :db_id :database_id) source-entity)}]
-    (assoc bindings name {:entity     (materialize/make-card! name (:name spec) query description)
+    (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
 (defn- table-dimensions
   [table]
-  ;; For now we assume that relevant fields have distinct types
-  (into {} (for [field (db/select 'Field :table_id (u/get-id table))]
+  (into {} (for [field (:fields table)
+                 ;; For now we assume that relevant fields have distinct types
+                 :when (:special_type field)]
              [(some-> field :special_type name) field])))
 
 (defn- satisfies-requierment?
@@ -162,7 +178,8 @@
 
 (defn- satisfy-requirements
   [db-id schema {:keys [requires]}]
-  (let [tables   (db/select 'Table :db_id db-id :schema schema)
+  (let [tables   (table/with-fields
+                   (db/select 'Table :db_id db-id :schema schema))
         bindings (m/map-vals (fn [requirement]
                                (filter (partial satisfies-requierment? requirement) tables))
                              requires)]
@@ -177,21 +194,21 @@
   [db-id requirements]
   (qp.store/fetch-and-store-database! db-id)
   (qp.store/fetch-and-store-fields!
-   (db/select-ids 'Field :table_id [:in (map (comp u/get-id :entity val) requirements)])))
+   (mapcat (comp (partial map u/get-id) :fields :entity val) requirements)))
 
-(defn apply-transform!
+(s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
-  [db-id schema {:keys [steps provides] :as spec}]
+  [db-id :- su/IntGreaterThanZero  schema :- s/Str {:keys [steps provides] :as spec} :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
       (let [initial-bindings (satisfy-requirements db-id schema spec)]
         (store-requirements! db-id initial-bindings)
-        (let [bindings (reduce (partial transform-step! spec) initial-bindings (vals steps))]
+        (let [bindings (reduce transform-step! initial-bindings (vals steps))]
           (for [[result-step {required-dimensions :dimensions}] provides]
             (do
               (when (not-every? (get-in bindings [result-step :dimensions]) required-dimensions)
-                (throw (Exception. (str (tru "Resulting transform {0} do not conform to expectations.\nExpected: {1}\nGot: {2}"
+                (throw (Exception. (str (tru "Resulting transform {0} does not conform to expectations.\nExpected: {1}\nGot: {2}"
                                              result-step
                                              required-dimensions
                                              (->> result-step bindings :dimensions keys))))))

@@ -18,13 +18,15 @@
             [weavejester.dependency :as dep])
   (:import [java.nio.file Files Path]))
 
-(def ^:private MBQL [s/Any])
+(def MBQL
+  "MBQL clause (ie. a vector starting with a keyword)"
+  (s/pred mbql.u/mbql-clause?))
 
 (def ^:private Source s/Str)
 
 (def ^:private Dimension s/Str)
 
-(def ^:private Breakout [(s/cond-pre Dimension MBQL)])
+(def ^:private Breakout [MBQL])
 
 (def ^:private Aggregation {Dimension MBQL})
 
@@ -40,15 +42,22 @@
                        (s/required-key :condition) MBQL
                        (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
 
-(def ^:private Steps {Source {(s/required-key :source)      Source
-                              (s/required-key :name)        Source
-                              (s/optional-key :aggregation) Aggregation
-                              (s/optional-key :breakout)    Breakout
-                              (s/optional-key :expressions) Expressions
-                              (s/optional-key :joins)       Joins
-                              (s/optional-key :description) Description
-                              (s/optional-key :limit)       Limit
-                              (s/optional-key :filter)      Filter}})
+(def ^:private TransformName s/Str)
+
+(def Step
+  "Transform step"
+  {(s/required-key :source)      Source
+   (s/required-key :name)        Source
+   (s/required-key :transform)   TransformName
+   (s/optional-key :aggregation) Aggregation
+   (s/optional-key :breakout)    Breakout
+   (s/optional-key :expressions) Expressions
+   (s/optional-key :joins)       Joins
+   (s/optional-key :description) Description
+   (s/optional-key :limit)       Limit
+   (s/optional-key :filter)      Filter})
+
+(def ^:private Steps {Source Step})
 
 (defn- field-type?
   [t]
@@ -56,17 +65,17 @@
 
 (def ^:private FieldType (s/constrained s/Keyword field-type?))
 
-(def ^:private Requires {Source {(s/optional-key :dimensions) [FieldType]}})
+(def ^:private Requires {Source {:dimensions [FieldType]}})
 
-(def ^:private Provides {Source {(s/required-key :dimensions) [Dimension]}})
+(def ^:private Provides {Source {:dimensions [Dimension]}})
 
-(def ^:private Name s/Str)
-
-(def ^:private TransformSpec {(s/required-key :name)        Name
-                              (s/required-key :requires)    Requires
-                              (s/required-key :provides)    Provides
-                              (s/required-key :steps)       Steps
-                              (s/optional-key :description) Description})
+(def TransformSpec
+  "Transform spec"
+  {(s/required-key :name)        TransformName
+   (s/required-key :requires)    Requires
+   (s/required-key :provides)    Provides
+   (s/required-key :steps)       Steps
+   (s/optional-key :description) Description})
 
 (defn- dependencies-sort
   [dependencies-fn g]
@@ -95,6 +104,13 @@
 (def ^:private ^{:arglists '([m])} stringify-keys
   (partial m/map-keys name))
 
+(defn- add-metadata-to-steps
+  [spec]
+  (update spec :steps (partial m/map-kv-vals (fn [step-name step]
+                                               (assoc step
+                                                 :name      step-name
+                                                 :transform (:name spec))))))
+
 (def ^:private transform-spec-parser
   (sc/coercer!
    TransformSpec
@@ -103,9 +119,7 @@
                                (->> steps
                                     stringify-keys
                                     (dependencies-sort (fn [{:keys [source joins]}]
-                                                         (conj (map :source joins) source)))
-                                    (m/map-kv-vals (fn [step-name step]
-                                                     (assoc step :name step-name)))))
+                                                         (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
                                (for [breakout (u/ensure-seq breakouts)]
                                  (if (s/check MBQL breakout)
@@ -127,7 +141,7 @@
     (with-open [ds (Files/newDirectoryStream dir)]
       (->> ds
            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load transform-spec-parser))))))
+           (mapv (partial yaml/load (comp transform-spec-parser add-metadata-to-steps)))))))
 
 (def transform-specs
   "List of registered dataset transforms."
