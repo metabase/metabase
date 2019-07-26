@@ -1,5 +1,7 @@
 import { getFriendlyName } from "./utils";
 
+import { t } from "ttag";
+
 export const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
 export function nullDimensionWarning() {
   return {
@@ -9,7 +11,7 @@ export function nullDimensionWarning() {
 }
 
 export const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
-export function createInvalidDateWarning(value) {
+export function invalidDateWarning(value) {
   return {
     key: INVALID_DATE_WARNING,
     text: `We encountered an invalid date: "${value}"`,

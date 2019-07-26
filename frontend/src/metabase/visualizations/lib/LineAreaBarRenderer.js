@@ -31,11 +31,7 @@ import { setupTooltips } from "./apply_tooltips";
 import { getTrendDataPointsFromInsight } from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
-import {
-  nullDimensionWarning,
-  NULL_DIMENSION_WARNING,
-  unaggregatedDataWarning,
-} from "./warnings";
+import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
