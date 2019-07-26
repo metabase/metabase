@@ -129,7 +129,7 @@ export default class Table extends Component {
         // available, we fall back to the last column in the unpivoted table
         const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
         const lastCol = nonPivotCols[nonPivotCols.length - 1];
-        const [{ name } = lastCol] = nonPivotCols.filter(isMetric);
+        const { name } = nonPivotCols.find(isMetric) || lastCol;
         return name;
       },
       getProps: (
