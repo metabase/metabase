@@ -339,22 +339,26 @@ export default class FilterPopover extends Component {
           style={{
             minWidth: 300,
             // $FlowFixMe
-            maxWidth: dimension.field().isDate() ? null : 500,
+            maxWidth: dimension.field().isDate() ? 600 : 500,
           }}
         >
           {showHeader && (
             <div className="FilterPopover-header border-bottom p1 flex align-center">
               {showFieldPicker && (
-                <div className="flex py1 text-medium">
+                <div className="flex flex-wrap py1 text-medium">
                   <span
                     className="cursor-pointer text-purple-hover transition-color flex align-center"
                     onClick={this.clearField}
                   >
                     <Icon name="chevronleft" size={16} />
-                    <h3 className="ml1">{singularize(table.display_name)}</h3>
+                    <h3 className="ml1 text-wrap">
+                      {singularize(table.display_name)}
+                    </h3>
                   </span>
                   <h3 className="mx1">-</h3>
-                  <h3 className="text-default">{formatField(field)}</h3>
+                  <h3 className="text-default text-wrap">
+                    {formatField(field)}
+                  </h3>
                 </div>
               )}
               {showOperatorSelector && (

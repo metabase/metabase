@@ -671,3 +671,29 @@
           :breakout     [!month.date]}
          :filter [:> *sum/Float 300]
          :limit  2}))))
+
+;; can you use nested queries that have expressions in them?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
+  [[30] [20]]
+  (qp.test/format-rows-by [int int]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:source-query
+         {:source-table $$venues
+          :fields       [[:expression "price-times-ten"]]
+          :expressions  {"price-times-ten" [:* $price 10]}
+          :order-by     [[:asc $id]]
+          :limit        2}}))))
+
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
+  [[30] [20]]
+  (tt/with-temp Card [{card-id :id} {:dataset_query (data/mbql-query venues
+                                                      {:fields       [[:expression "price-times-ten"]]
+                                                       :expressions  {"price-times-ten" [:* $price 10]}
+                                                       :order-by     [[:asc $id]]
+                                                       :limit        2})}]
+
+    (qp.test/format-rows-by [int int]
+      (qp.test/rows
+        (data/run-mbql-query nil
+          {:source-table (str "card__" card-id)})))))

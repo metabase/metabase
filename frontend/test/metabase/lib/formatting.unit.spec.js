@@ -1,6 +1,12 @@
 import { isElementOfType } from "react-dom/test-utils";
+import moment from "moment";
 
-import { formatNumber, formatValue, formatUrl } from "metabase/lib/formatting";
+import {
+  formatNumber,
+  formatValue,
+  formatUrl,
+  formatDateTimeWithUnit,
+} from "metabase/lib/formatting";
 import ExternalLink from "metabase/components/ExternalLink.jsx";
 import { TYPE } from "metabase/lib/types";
 
@@ -273,6 +279,31 @@ describe("formatting", () => {
           column: null,
         }),
       ).toEqual("foobar");
+    });
+  });
+
+  describe("formatDateTimeWithUnit", () => {
+    it("should format week ranges", () => {
+      expect(
+        formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+          type: "cell",
+        }),
+      ).toEqual("July 7, 2019 – July 13, 2019");
+    });
+
+    it("should always format week ranges in en locale", () => {
+      try {
+        // globally set locale to es
+        moment.locale("es");
+        expect(
+          formatDateTimeWithUnit("2019-07-07T00:00:00.000Z", "week", {
+            type: "cell",
+          }),
+        ).toEqual("julio 7, 2019 – julio 13, 2019");
+      } finally {
+        // globally reset locale
+        moment.locale(false);
+      }
     });
   });
 });

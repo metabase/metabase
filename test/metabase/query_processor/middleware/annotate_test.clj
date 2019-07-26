@@ -91,14 +91,14 @@
       {:columns [:name]}))))
 
 ;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses; display_name should
-;; include the joined table
+;; include the joined table (for IMPLICIT JOINS)
 (expect
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
        :display_name "Venues → Name"
-       :fk_field_id  %category_id
        :source       :fields
-       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
   (qp.test-util/with-everything-store
     (data/$ids venues
       (doall
@@ -112,14 +112,34 @@
                            :fk-field-id  %category_id}]}}
         {:columns [:name]})))))
 
+;; for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned `:field_ref` should be a
+;; `joined-field` clause instead of an `fk->` clause
+(expect
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "Venues → Name"
+       :source       :fields
+       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (doall
+       (annotate/column-info
+        {:type  :query
+         :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                           :source-table $$venues
+                           :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                           :strategy     :left-join}]}}
+        {:columns [:name]})))))
+
 ;; we shuld use the `display_name` of a Table instead of its `name` in joined display names
 (expect
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
        :display_name "Geographical locations to share Tips about → Name" ; RIP GeoTips
-       :fk_field_id  %category_id
        :source       :fields
-       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
   (qp.test-util/with-everything-store
     (data/$ids venues
       (tu/with-temp-vals-in-db Table $$venues {:display_name "Geographical locations to share Tips about"}
@@ -140,9 +160,9 @@
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
        :display_name "cats → Name"
-       :fk_field_id  %category_id
        :source       :fields
-       :field_ref    &cats.categories.name))]
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
   (qp.test-util/with-everything-store
     (data/$ids venues
       (doall
@@ -220,7 +240,7 @@
 
 ;; For fields with parents we should return them with a combined name including parent's name
 (tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
-                      Field [child  {:name "child",  :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+                      Field [child  {:name "child", :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
   {:description     nil
    :table_id        (data/id :venues)
    :special_type    nil
@@ -231,14 +251,15 @@
    :visibility_type :normal
    :display_name    "Child"
    :fingerprint     nil
+   :field_ref       [:field-id (u/get-id child)]
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
 
 ;; nested-nested fields should include grandparent name (etc)
 (tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
-                      Field [parent      {:name "parent",      :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
-                      Field [child       {:name "child",       :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+                      Field [parent      {:name "parent", :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
+                      Field [child       {:name "child", :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
   {:description     nil
    :table_id        (data/id :venues)
    :special_type    nil
@@ -249,6 +270,7 @@
    :visibility_type :normal
    :display_name    "Child"
    :fingerprint     nil
+   :field_ref       [:field-id (u/get-id child)]
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
@@ -258,12 +280,43 @@
   {:name         "sum"
    :display_name "sum of User ID"
    :base_type    :type/Integer
+   :field_ref    [:field-literal "sum" :type/Integer]
    :special_type :type/FK}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause
-     {:source-metadata [{:name "abc", :display_name "another Field",  :base_type :type/Integer, :special_type :type/FK}
+     {:source-metadata [{:name "abc", :display_name "another Field", :base_type :type/Integer, :special_type :type/FK}
                         {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :special_type :type/FK}]}
      [:field-literal "sum" :type/Integer])))
+
+;; col info for an `expression` should work as expected
+(expect
+  {:base_type       :type/Float
+   :special_type    :type/Number
+   :name            "double-price"
+   :display_name    "double-price"
+   :expression_name "double-price"
+   :field_ref       [:expression "double-price"]}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (#'annotate/col-info-for-field-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:expression "double-price"]))))
+
+;; if there is no matching expression it should give a meaningful error message
+(expect
+  {:message "No expression named double-price found. Found: (\"one-hundred\")"
+   :data    {:type        :invalid-query
+             :clause      [:expression "double-price"]
+             :expressions {"one-hundred" 100}}}
+  (try
+    (qp.test-util/with-everything-store
+      (data/$ids venues
+        (#'annotate/col-info-for-field-clause
+         {:expressions {"one-hundred" 100}}
+         [:expression "double-price"])))
+    (catch Throwable e
+      {:message (.getMessage e)
+       :data    (ex-data e)})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -271,11 +324,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test that added information about aggregations looks the way we'd expect
-(defn- aggregation-names [ag-clause]
-  (binding [driver/*driver* :h2]
-    (qp.test-util/with-everything-store
-      {:name         (annotate/aggregation-name ag-clause)
-       :display_name (annotate/aggregation-display-name ag-clause)})))
+(defn- aggregation-names
+  ([ag-clause]
+   (aggregation-names {} ag-clause))
+
+  ([inner-query ag-clause]
+   (binding [driver/*driver* :h2]
+     (qp.test-util/with-everything-store
+       {:name         (annotate/aggregation-name ag-clause)
+        :display_name (annotate/aggregation-display-name inner-query ag-clause)}))))
 
 (expect
   {:name "count", :display_name "count"}
@@ -340,9 +397,13 @@
     {:display-name "User-specified Name"}]))
 
 ;; make sure custom aggregation names get included in the col info
-(defn- col-info-for-aggregation-clause [clause]
-  (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause {} clause)))
+(defn- col-info-for-aggregation-clause
+  ([clause]
+   (col-info-for-aggregation-clause {} clause))
+
+  ([inner-query clause]
+   (binding [driver/*driver* :h2]
+     (#'annotate/col-info-for-aggregation-clause inner-query clause))))
 
 (expect
   {:base_type    :type/Float
@@ -411,6 +472,18 @@
                                             :columns ["totalEvents"]}))
      (data/mbql-query venues
        {:aggregation [[:metric "ga:totalEvents"]]}))))
+
+;; col info for an `expression` aggregation w/ a named expression should work as expected
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "sum"
+   :display_name "sum of double-price"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:sum [:expression "double-price"]]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

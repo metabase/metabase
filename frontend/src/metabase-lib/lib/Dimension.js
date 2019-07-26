@@ -395,7 +395,7 @@ export class FieldIDDimension extends FieldDimension {
 }
 
 /**
- * Foreign key-based dimension, `["fk->", fk-field-id, dest-field-id]`
+ * Foreign key-based dimension, `["fk->", ["field-id", fk-field-id], ["field-id", dest-field-id]]`
  */
 export class FKDimension extends FieldDimension {
   static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {

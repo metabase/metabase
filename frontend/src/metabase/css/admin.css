@@ -294,8 +294,6 @@
 .AdminTable {
   border-collapse: collapse;
   border-spacing: 0;
-
-  white-space: nowrap;
   text-align: left;
 }
 

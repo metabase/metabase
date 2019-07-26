@@ -4,6 +4,7 @@
 *  [How to install Metabase](#installing-and-running-metabase)
 *  [How to upgrade Metabase](#upgrading-metabase)
 *  [Configuring the application database](#configuring-the-metabase-application-database)
+*  [Connecting Metabase to databases in your organization](../administration-guide/01-managing-databases.md)
 *  [Migrating from using the H2 database to MySQL or Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres)
 *  [Running database migrations manually](#running-metabase-database-migrations-manually)
 *  [Backing up Metabase Application Data](#backing-up-metabase-application-data)
