@@ -163,6 +163,7 @@ export class NewQueryOptions extends Component {
                 image="app/img/sql_illustration"
                 title={t`Native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
+                width={180}
                 to={this.getNativeQueryUrl}
               />
             </GridItem>
