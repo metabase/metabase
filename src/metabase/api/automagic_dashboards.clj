@@ -9,6 +9,7 @@
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -85,7 +86,12 @@
    "adhoc"     (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
    "metric"    (comp api/read-check Metric ensure-int)
    "field"     (comp api/read-check Field ensure-int)
-   "transform" transform.materialize/get-collection})
+   "transform" (fn [transform-name]
+                 (->> transform-name
+                      transform.materialize/get-collection
+                      Collection
+                      api/read-check)
+                 transform-name)})
 
 (def ^:private Entity
   (su/with-api-error-message
@@ -103,7 +109,7 @@
   {show   Show
    entity Entity}
   (if (= entity "transform")
-    (transform.dashboard/dashboard entity-id-or-query)
+    (transform.dashboard/dashboard ((->entity entity) entity-id-or-query))
     (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"

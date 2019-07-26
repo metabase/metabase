@@ -11,8 +11,13 @@
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]
+             [transforms :as transforms.test]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
+            [metabase.transforms
+             [core :as transforms]
+             [materialize :as transforms.materialize]
+             [specs :as transforms.specs]]
             [toucan.util.test :as tt]))
 
 (defn- api-call
@@ -156,3 +161,15 @@
                (->> [:= [:field-id (data/id :venues :price)] 15]
                     (#'magic/encode-base64-json))
                segment-id])))
+
+
+;;; ------------------- Transforms -------------------
+
+(expect
+  (with-rasta
+    (transforms.test/with-test-transform-specs
+      (tu/with-model-cleanup ['Card 'Collection]
+        (transforms/apply-transform! (data/id) "PUBLIC" (first @transforms.specs/transform-specs))
+        (api-call "transform/%s" ["Test transform"]
+                  #(revoke-collection-permissions!
+                    (transforms.materialize/get-collection "Test transform")))))))

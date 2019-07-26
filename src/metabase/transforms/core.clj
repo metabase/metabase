@@ -128,11 +128,11 @@
   (m/assoc-some query :joins
     (not-empty
      (for [{:keys [source condition strategy]} joins]
-       {:condition    (resolve-dimension-clauses bindings context-source condition)
-        :source-table (-> source bindings :entity ->source-table-reference)
-        :alias        source
-        :strategy     strategy
-        :fields       :all}))))
+       (-> {:condition    (resolve-dimension-clauses bindings context-source condition)
+            :source-table (-> source bindings :entity ->source-table-reference)
+            :alias        source
+            :fields       :all}
+           (m/assoc-some :strategy strategy))))))
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
@@ -162,16 +162,17 @@
     (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
+(def ^:private ^{:arglists '([field])} field-type
+  (some-fn :special_type :base_type))
+
 (defn- table-dimensions
   [table]
-  (into {} (for [field (:fields table)
-                 ;; For now we assume that relevant fields have distinct types
-                 :when (:special_type field)]
-             [(some-> field :special_type name) field])))
+  (into {} (for [field (:fields table)]
+             [(some-> field field-type name) field])))
 
 (defn- satisfies-requierment?
   [{requirement-dimensions :dimensions} table]
-  (let [table-dimensions (map (comp :special_type val) (table-dimensions table))]
+  (let [table-dimensions (map (comp field-type val) (table-dimensions table))]
     (every? (fn [dimension]
               (some #(isa? % dimension) table-dimensions))
             requirement-dimensions)))
@@ -198,7 +199,7 @@
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
-  [db-id :- su/IntGreaterThanZero  schema :- s/Str {:keys [steps provides] :as spec} :- TransformSpec]
+  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), {:keys [steps provides] :as spec} :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
   (driver/with-driver (-> db-id Database :engine)
     (qp.store/with-store
@@ -218,6 +219,6 @@
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
-  (filter (comp (partial some (comp #{table} :entity val))
+  (filter (comp (partial some (comp #{(u/get-id table)} u/get-id :entity val))
                 (partial satisfy-requirements (:db_id table) (:schema table)))
           @transform-specs))
