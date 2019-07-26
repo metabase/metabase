@@ -201,9 +201,9 @@
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), {:keys [steps provides] :as spec} :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
-  (driver/with-driver (-> db-id Database :engine)
-    (qp.store/with-store
-      (let [initial-bindings (satisfy-requirements db-id schema spec)]
+  (let [initial-bindings (satisfy-requirements db-id schema spec)]
+    (driver/with-driver (-> db-id Database :engine)
+      (qp.store/with-store
         (store-requirements! db-id initial-bindings)
         (let [bindings (reduce transform-step! initial-bindings (vals steps))]
           (for [[result-step {required-dimensions :dimensions}] provides]

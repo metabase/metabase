@@ -10,9 +10,7 @@
              [data :as data]
              [transforms :refer :all]
              [util :as tu]]
-            [metabase.transforms
-             [core :as t]
-             [specs :as t.specs]]))
+            [metabase.transforms.core :as t]))
 
 (expect
   [:field-id (data/id :venues :price)]
@@ -23,7 +21,7 @@
   (#'t/->mbql (dissoc (Field (data/id :venues :price)) :id)))
 
 (expect
-  [:joined-field "Soruce table" [:field-id (data/id :venues :price)]]
+  [:joined-field "Source table" [:field-id (data/id :venues :price)]]
   (#'t/->mbql (assoc (Field (data/id :venues :price)) :source-alias "Source table")))
 
 (expect
