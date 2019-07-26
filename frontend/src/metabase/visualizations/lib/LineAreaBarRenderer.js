@@ -31,12 +31,16 @@ import { setupTooltips } from "./apply_tooltips";
 import { getTrendDataPointsFromInsight } from "./trends";
 
 import fillMissingValuesInDatas from "./fill_data";
+import {
+  nullDimensionWarning,
+  NULL_DIMENSION_WARNING,
+  unaggregatedDataWarning,
+} from "./warnings";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import {
   HACK_parseTimestamp,
-  NULL_DIMENSION_WARNING,
   forceSortedGroupsOfGroups,
   initChart, // TODO - probably better named something like `initChartParent`
   makeIndexMap,
@@ -71,13 +75,6 @@ import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
 const BAR_PADDING_RATIO = 0.2;
 const DEFAULT_INTERPOLATION = "linear";
-
-const UNAGGREGATED_DATA_WARNING = col => ({
-  key: UNAGGREGATED_DATA_WARNING,
-  text: t`"${getFriendlyName(
-    col,
-  )}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`,
-});
 
 const enableBrush = (series, onChangeCardAndRun) =>
   !!(
@@ -229,7 +226,7 @@ function getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
   const groups = [
     datas.map((data, seriesIndex) =>
       reduceGroup(dimension.group(), seriesIndex + 1, () =>
-        warn(UNAGGREGATED_DATA_WARNING(props.series[seriesIndex].data.cols[0])),
+        warn(unaggregatedDataWarning(props.series[seriesIndex].data.cols[0])),
       ),
     ),
   ];
@@ -252,7 +249,7 @@ function getDimensionsAndGroupsForOther({ series }, datas, warn) {
       .slice(1)
       .map((_, metricIndex) =>
         reduceGroup(dim.group(), metricIndex + 1, () =>
-          warn(UNAGGREGATED_DATA_WARNING(series[seriesIndex].data.cols[0])),
+          warn(unaggregatedDataWarning(series[seriesIndex].data.cols[0])),
         ),
       );
   });
@@ -877,7 +874,7 @@ export default function lineAreaBar(
 
   // only ordinal axis can display "null" values
   if (isOrdinal(parent.settings)) {
-    delete warnings[NULL_DIMENSION_WARNING.key];
+    delete warnings[NULL_DIMENSION_WARNING];
   }
 
   if (onRender) {

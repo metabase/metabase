@@ -9,15 +9,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsTimeseries } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
-
-export const NULL_DIMENSION_WARNING = {
-  key: "NULL_DIMENSION_WARNING",
-  text: "Data includes missing dimension values.",
-};
-const createInvalidDateWarning = value => ({
-  key: "INVALID_DATE_WARNING",
-  text: `We encountered an invalid date: "${value}"`,
-});
+import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -111,12 +103,12 @@ function moment_fast_toString() {
 
 export function HACK_parseTimestamp(value, unit, warn) {
   if (value == null) {
-    warn(NULL_DIMENSION_WARNING);
+    warn(nullDimensionWarning());
     return null;
   }
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
-    warn(createInvalidDateWarning(value));
+    warn(invalidDateWarning(value));
     return null;
   }
   m.toString = moment_fast_toString;
