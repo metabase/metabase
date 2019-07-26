@@ -281,9 +281,17 @@ function timeseriesTicksInterval(
 /// isn't smart enough to actually estimate how much space each tick will take. Instead the estimated with is
 /// hardcoded below.
 /// TODO - it would be nice to rework this a bit so we
-function maxTicksForChartWidth(chartWidth) {
-  const MIN_PIXELS_PER_TICK = 160;
-  return Math.floor(chartWidth / MIN_PIXELS_PER_TICK); // round down so we don't end up with too many ticks
+function maxTicksForChartWidth(chartWidth, tickFormat) {
+  const PIXELS_PER_CHARACTER = 8;
+  // if there isn't enough buffer, the labels are hidden in LineAreaBarPostRender
+  const TICK_BUFFER_PIXELS = 25;
+
+  // day of week and month names vary in length, but it's slow to check all of them
+  // as an approximation we just use a specific date which was long in my locale
+  const formattedValue = tickFormat(new Date(2019, 8, 4));
+  const pixelsPerTick =
+    formattedValue.length * PIXELS_PER_CHARACTER + TICK_BUFFER_PIXELS;
+  return Math.floor(chartWidth / pixelsPerTick); // round down so we don't end up with too many ticks
 }
 
 /// return the range, in milliseconds, of the xDomain. ("Range" in this sense refers to the total "width"" of the
@@ -296,10 +304,15 @@ function timeRangeMilliseconds(xDomain) {
 
 /// return the appropriate entry in TIMESERIES_INTERVALS for a given chart with domain, interval, and width.
 /// The entry is used to calculate how often a tick should be displayed for this chart (e.g. one tick every 5 minutes)
-export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth) {
+export function computeTimeseriesTicksInterval(
+  xDomain,
+  xInterval,
+  chartWidth,
+  tickFormat,
+) {
   return timeseriesTicksInterval(
     xInterval,
     timeRangeMilliseconds(xDomain),
-    maxTicksForChartWidth(chartWidth),
+    maxTicksForChartWidth(chartWidth, tickFormat),
   );
 }
