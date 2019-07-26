@@ -15,7 +15,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols]]
-             [specs :refer [transform-specs MBQL Step TransformSpec]]]
+             [specs :refer [MBQL Step transform-specs TransformSpec]]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
