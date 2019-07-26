@@ -8,6 +8,7 @@
              [config :as config]
              [util :as u]]
             [metabase.util.pretty :refer [PrettyPrintable]]
+            [potemkin.types :as p.types]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
@@ -70,8 +71,7 @@
    :field          ; is `my_field`
    :field-alias))  ; is `f`
 
-(defrecord Identifier [identifier-type components]
-  :load-ns true
+(p.types/defrecord+ Identifier [identifier-type components]
   ToSql
   (to-sql [_]
     (binding [hformat/*allow-dashed-names?* true]
@@ -108,8 +108,7 @@
      (u/qualified-name component))))
 
 ;; Single-quoted string literal
-(defrecord Literal [literal]
-  :load-ns true
+(p.types/defrecord+ Literal [literal]
   ToSql
   (to-sql [_]
     (as-> literal <>

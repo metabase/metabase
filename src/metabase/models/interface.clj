@@ -9,6 +9,7 @@
              [date :as du]
              [encryption :as encryption]
              [i18n :refer [tru]]]
+            [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan.models :as models])
@@ -176,7 +177,7 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defprotocol IObjectPermissions
+(p.types/defprotocol+ IObjectPermissions
   "Methods for determining whether the current user has read/write permissions for a given object."
 
   (perms-objects-set [this, ^clojure.lang.Keyword read-or-write]

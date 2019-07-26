@@ -64,7 +64,8 @@
         user-email (tu/random-email)
         body       (setup-body token db-name user-email)]
     (try
-      (f body token db-name user-email)
+      (tu/discard-setting-changes [site-name anon-tracking-enabled]
+        (f body token db-name user-email))
       (finally
         (db/delete! Database :name db-name)
         (db/delete! User :email user-email)))))
