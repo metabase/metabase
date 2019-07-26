@@ -62,6 +62,7 @@ describe("visualization_settings", () => {
         ));
     });
   });
+
   describe("getStoredSettingsForSeries", () => {
     it("should return an empty object if visualization_settings isn't defined", () => {
       const settings = getStoredSettingsForSeries([{ card: {} }]);
@@ -86,29 +87,72 @@ describe("visualization_settings", () => {
       expect(settings.column_settings).toEqual({ [newKey]: "blah" });
     });
   });
+  describe("table.cell_column", () => {
+    it("should pick the first metric column", () => {
+      const settings = getComputedSettingsForSeries(
+        cardWithTimeseriesBreakoutAndTwoMetrics({ display: "table" }),
+      );
+      expect(settings["table.cell_column"]).toBe("col2");
+    });
+
+    it("should not pick the pivot column", () => {
+      const settings = getComputedSettingsForSeries(
+        cardWithTimeseriesBreakoutAndTwoMetrics({
+          display: "table",
+          visualization_settings: { "table.pivot_column": "col2" },
+        }),
+      );
+      expect(settings["table.cell_column"]).toBe("col3");
+    });
+
+    it("should pick a non-metric column if necessary", () => {
+      const settings = getComputedSettingsForSeries(
+        cardWithTimeseriesBreakout({
+          display: "table",
+          visualization_settings: { "table.pivot_column": "col2" },
+        }),
+      );
+      expect(settings["table.cell_column"]).toBe("col1");
+    });
+  });
 });
 
-const cardWithTimeseriesBreakout = ({ unit, display = "bar" }) => [
+const cardWithTimeseriesBreakout = ({
+  unit,
+  display = "bar",
+  visualization_settings = {},
+}) => [
   {
     card: {
       display: display,
-      visualization_settings: {},
+      visualization_settings,
     },
     data: {
-      cols: [DateTimeColumn({ unit }), NumberColumn()],
+      cols: [
+        DateTimeColumn({ unit, name: "col1" }),
+        NumberColumn({ name: "col2" }),
+      ],
       rows: [[0, 0]],
     },
   },
 ];
 
-const cardWithTimeseriesBreakoutAndTwoMetrics = ({ unit, display = "bar" }) => [
+const cardWithTimeseriesBreakoutAndTwoMetrics = ({
+  unit,
+  display = "bar",
+  visualization_settings = {},
+}) => [
   {
     card: {
       display: display,
-      visualization_settings: {},
+      visualization_settings,
     },
     data: {
-      cols: [DateTimeColumn({ unit }), NumberColumn(), NumberColumn()],
+      cols: [
+        DateTimeColumn({ unit, name: "col1" }),
+        NumberColumn({ name: "col2" }),
+        NumberColumn({ name: "col3" }),
+      ],
       rows: [[0, 0, 0]],
     },
   },
