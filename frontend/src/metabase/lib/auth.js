@@ -15,5 +15,4 @@ export async function clearGoogleAuthCredentials() {
   } catch (error) {
     console.error("Problem clearing Google Auth credentials", error);
   }
-  console.log("Cleared Google Auth credentials.");
 }
