@@ -199,16 +199,18 @@
   "Add `is_next_step` key to all the `steps` from `admin-checklist`.
   The next step is the *first* step where `:triggered` is `true` and `:completed` is `false`."
   [steps]
-  (let [next-step? (fn [{:keys [triggered completed]}]
-                     (and triggered (not completed)))
-        [completed-steps [next-step & more-steps]] (split-with next-step? (admin-checklist-values))]
-    (concat
-     (for [step completed-steps]
-       (assoc step :is_next_step false))
-     (when next-step
-       [(assoc next-step :is_next_step true)])
-     (for [step more-steps]
-       (assoc step :is_next_step false)))))
+  (first
+   (reduce
+    (fn [[acc already-found-next-step?] {:keys [triggered completed], :as step}]
+      (let [is-next-step? (and (not already-found-next-step?)
+                               triggered
+                               (not completed))
+            step          (-> (assoc step :is_next_step (boolean is-next-step?))
+                              (update :triggered boolean))]
+        [(conj (vec acc) step)
+         (or is-next-step? already-found-next-step?)]))
+    [[] false]
+    steps)))
 
 (defn- partition-steps-into-groups
   "Partition the admin checklist steps into a sequence of groups."

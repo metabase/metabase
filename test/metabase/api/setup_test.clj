@@ -3,9 +3,12 @@
   (:require [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
+             [email :as email]
              [http-client :as http]
              [public-settings :as public-settings]
              [setup :as setup]]
+            [metabase.api.setup :as setup-api]
+            [metabase.integrations.slack :as slack]
             [metabase.models
              [database :refer [Database]]
              [user :refer [User]]]
@@ -22,7 +25,7 @@
       ;; make sure the default test users are created before running this test, otherwise we're going to run into
       ;; issues if it attempts to delete this user and it is the only admin test user
       (test-users/create-users-if-needed!)
-      (tu/with-temporary-setting-values [admin-email nil]
+      (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
         {:uuid?
          (tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
                                                                   :prefs {:site_name "Metabase Test"}
@@ -64,7 +67,7 @@
         user-email (tu/random-email)
         body       (setup-body token db-name user-email)]
     (try
-      (tu/discard-setting-changes [site-name anon-tracking-enabled]
+      (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
         (f body token db-name user-email))
       (finally
         (db/delete! Database :name db-name)
@@ -147,3 +150,54 @@
 (expect
   {:errors {:engine "value must be a valid database engine."}}
   (http/client :post 400 "setup/validate" {:token (setup/token-value)}))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         GET /api/setup/admin_checklist                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; basic sanity check
+(expect
+  [{:name  "Get connected"
+    :tasks [{:title        "Add a database"
+             :completed    true
+             :triggered    true
+             :is_next_step false}
+            {:title        "Set up email"
+             :completed    true
+             :triggered    true
+             :is_next_step false}
+            {:title        "Set Slack credentials"
+             :completed    false
+             :triggered    true
+             :is_next_step true}
+            {:title        "Invite team members"
+             :completed    true
+             :triggered    true
+             :is_next_step false}]}
+   {:name  "Curate your data"
+    :tasks [{:title        "Hide irrelevant tables"
+             :completed    true
+             :triggered    false
+             :is_next_step false}
+            {:title        "Organize questions"
+             :completed    true
+             :triggered    false
+             :is_next_step false}
+            {:title        "Create metrics"
+             :completed    true
+             :triggered    false
+             :is_next_step false}
+            {:title        "Create segments"
+             :completed    true
+             :triggered    false
+             :is_next_step false}]}]
+  (with-redefs [db/exists?              (constantly true)
+                db/count                (constantly 5)
+                email/email-configured? (constantly true)
+                slack/slack-configured? (constantly false)]
+    (for [{group-name :name, tasks :tasks} (#'setup-api/admin-checklist)]
+      {:name  (str group-name)
+       :tasks (for [task tasks]
+                (-> (select-keys task [:title :completed :triggered :is_next_step])
+                    (update :title str)))})))

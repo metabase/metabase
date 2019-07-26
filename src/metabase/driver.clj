@@ -238,7 +238,7 @@
              (trs "Registered abstract driver {0}" driver)
              (trs "Registered driver {0}" driver)))
        (if (seq parents)
-         (trs "(parents: {0})" parents)
+         (trs "(parents: {0})" (vec parents))
          "")
        (u/emoji "🚚")))))
 
