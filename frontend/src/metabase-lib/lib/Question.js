@@ -369,6 +369,10 @@ export default class Question {
   canWrite(): boolean {
     return this._card && this._card.can_write;
   }
+  
+  canAutoRun(): boolean {
+    return true; // FIXME: check the this.database() once the auto-run property has been added
+  }
 
   /**
    * Returns the type of alert that current question supports
