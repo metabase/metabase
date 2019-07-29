@@ -194,7 +194,7 @@ export type TimeIntervalFilter =
       ConcreteField,
       RelativeDatetimePeriod,
       RelativeDatetimeUnit,
-      FilterOptions,
+      TimeIntervalFilterOptions,
     ];
 
 export type TimeIntervalFilterOptions = {
