@@ -29,6 +29,8 @@ import NoDatabasesEmptyState from "metabase/reference/databases/NoDatabasesEmpty
 
 import { Grid, GridItem } from "metabase/components/Grid";
 
+import * as Urls from "metabase/lib/urls";
+
 const mapStateToProps = state => ({
   query: getCurrentQuery(state),
   plainNativeQuery: getPlainNativeQuery(state),
@@ -145,7 +147,7 @@ export class NewQueryOptions extends Component {
               title={t`Simple question`}
               description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
               width={180}
-              to="browse"
+              to={Urls.newQuestion()}
             />
           </GridItem>
           <GridItem w={ITEM_WIDTHS}>
@@ -154,7 +156,7 @@ export class NewQueryOptions extends Component {
               title={t`Custom question`}
               description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
               width={180}
-              to={this.getGuiQueryUrl}
+              to={Urls.newQuestion({ mode: "notebook" })}
             />
           </GridItem>
           {showSQLOption && (
@@ -163,7 +165,7 @@ export class NewQueryOptions extends Component {
                 image="app/img/sql_illustration"
                 title={t`Native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
-                to={this.getNativeQueryUrl}
+                to={Urls.newQuestion({ type: "native" })}
               />
             </GridItem>
           )}

@@ -438,14 +438,6 @@ export const initializeQB = (location, params) => {
       );
     }
 
-    // if it's a new MBQL query, start in worksheet mode
-    if (
-      card.dataset_query.type === "query" &&
-      card.dataset_query.database == null
-    ) {
-      uiControls.queryBuilderMode = "notebook";
-    }
-
     /**** All actions are dispatched here ****/
 
     // Update the question to Redux state together with the initial state of UI controls

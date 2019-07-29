@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 
 export const activity = "/activity";
 
-export const newQuestion = () => "/question/new";
+export const newQuestionFlow = () => "/question/new";
 
 export const newDashboard = collectionId =>
   `collection/${collectionId}/new_dashboard`;
@@ -48,12 +48,13 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function plainQuestion() {
-  return Question.create().getUrl();
-}
-
-export function nativeQuestion() {
-  return Question.create({ type: "native" }).getUrl();
+export function newQuestion({ mode, ...options } = {}) {
+  const url = Question.create(options).getUrl();
+  if (mode) {
+    return url.replace(/^\/question/, `/question\/${mode}`);
+  } else {
+    return url;
+  }
 }
 
 export function dashboard(dashboardId, { addCardWithId } = {}) {

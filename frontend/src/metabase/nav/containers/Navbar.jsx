@@ -326,7 +326,7 @@ export default class Navbar extends Component {
           {hasDataAccess && (
             <Link
               mr={[1, 2]}
-              to={Urls.newQuestion()}
+              to={Urls.newQuestionFlow()}
               className="Button Button--selected borderless flex-no-shrink"
               data-metabase-event={`NavBar;New Question`}
             >

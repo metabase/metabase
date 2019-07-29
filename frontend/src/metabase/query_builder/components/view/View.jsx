@@ -20,6 +20,7 @@ import { ViewTitleHeader, ViewSubHeader } from "./ViewHeader";
 import NewQuestionHeader from "./NewQuestionHeader";
 import ViewFooter from "./ViewFooter";
 import ViewSidebar from "./ViewSidebar";
+import QuestionDataSelector from "./QuestionDataSelector";
 
 import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
@@ -106,10 +107,19 @@ export default class View extends React.Component {
     if (!card || !databases) {
       return <LoadingAndErrorWrapper className={fitClassNames} loading />;
     }
-
     const ModeFooter = mode && mode.ModeFooter;
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
+
+    if (isStructured && queryBuilderMode === "view" && !query.table()) {
+      return (
+        <div className={fitClassNames}>
+          <div>
+            <QuestionDataSelector query={query} />
+          </div>
+        </div>
+      );
+    }
 
     const topQuery = isStructured && query.topLevelQuery();
 
