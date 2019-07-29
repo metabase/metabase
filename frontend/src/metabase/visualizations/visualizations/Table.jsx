@@ -125,16 +125,13 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Cell column`,
       widget: "field",
-      getDefault: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ],
-        settings,
-      ) => {
-        const col = cols.filter(isMetric)[0];
-        return col && col.name;
+      getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
+        // We try to show numeric values in pivot cells, but if none are
+        // available, we fall back to the last column in the unpivoted table
+        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
+        const lastCol = nonPivotCols[nonPivotCols.length - 1];
+        const { name } = nonPivotCols.find(isMetric) || lastCol;
+        return name;
       },
       getProps: (
         [
@@ -144,7 +141,7 @@ export default class Table extends Component {
         ],
         settings,
       ) => ({
-        options: cols.filter(isMetric).map(getOptionFromColumn),
+        options: cols.map(getOptionFromColumn),
       }),
       getHidden: (
         [
@@ -153,7 +150,7 @@ export default class Table extends Component {
           },
         ],
         settings,
-      ) => !settings["table.pivot"] || cols.filter(isMetric).length < 2,
+      ) => !settings["table.pivot"],
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },

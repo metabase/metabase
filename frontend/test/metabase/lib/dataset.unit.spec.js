@@ -1,6 +1,7 @@
 import {
   fieldRefForColumn,
   syncTableColumnsToQuery,
+  findColumnForColumnSetting,
 } from "metabase/lib/dataset";
 
 import {
@@ -19,7 +20,11 @@ describe("metabase/util/dataset", () => {
       expect(fieldRefForColumn(FIELD_COLUMN)).toEqual(["field-id", 1]);
     });
     it('should return `["fk->", 2, 1]` for a fk column', () => {
-      expect(fieldRefForColumn(FK_COLUMN)).toEqual(["fk->", 2, 1]);
+      expect(fieldRefForColumn(FK_COLUMN)).toEqual([
+        "fk->",
+        ["field-id", 2],
+        ["field-id", 1],
+      ]);
     });
     it('should return `["expression", 2, 1]` for a fk column', () => {
       expect(fieldRefForColumn(EXPRESSION_COLUMN)).toEqual([
@@ -118,6 +123,27 @@ describe("metabase/util/dataset", () => {
       expect(question.query().query()).toEqual({
         "source-table": 1,
       });
+  describe("findColumnForColumnSetting", () => {
+    const columns = [
+      { name: "bar", id: 42 },
+      { name: "foo", id: 1, fk_field_id: 2 },
+      { name: "baz", id: 43 },
+    ];
+    it("should find column with name", () => {
+      const column = findColumnForColumnSetting(columns, { name: "foo" });
+      expect(column).toBe(columns[1]);
+    });
+    it("should find column with normalized fieldRef", () => {
+      const column = findColumnForColumnSetting(columns, {
+        fieldRef: ["fk->", ["field-id", 2], ["field-id", 1]],
+      });
+      expect(column).toBe(columns[1]);
+    });
+    it("should find column with non-normalized fieldRef", () => {
+      const column = findColumnForColumnSetting(columns, {
+        fieldRef: ["fk->", 2, 1],
+      });
+      expect(column).toBe(columns[1]);
     });
   });
 });

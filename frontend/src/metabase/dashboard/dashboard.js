@@ -184,6 +184,11 @@ export const addCardToDashboard = function({
     };
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
     dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
+
+    // guard in case card was filtered
+    if (card.dataset_query && card.dataset_query.database) {
+      dispatch(fetchDatabaseMetadata(card.dataset_query.database));
+    }
   };
 };
 

@@ -270,3 +270,12 @@
     (qp.test/rows
       (data/run-mbql-query venues
         {:aggregation [["*" ["cum_count"] 10]]}))))
+
+;; can we use named expressions inside expression aggregations?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+  [[406]]
+  (qp.test/format-rows-by [int]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:aggregation [[:sum [:expression "double-price"]]]
+         :expressions {"double-price" [:* $price 2]}}))))

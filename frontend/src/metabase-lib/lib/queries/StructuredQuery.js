@@ -1165,8 +1165,11 @@ export default class StructuredQuery extends AtomicQuery {
   // LEGACY:
   fieldReferenceForColumn_LEGACY(column) {
     if (column.fk_field_id != null) {
-      // NOTE: this isn't normalized MBQL
-      return ["fk->", column.fk_field_id, column.id];
+      return [
+        "fk->",
+        ["field-id", column.fk_field_id],
+        ["field-id", column.id],
+      ];
     } else if (column.id != null) {
       return ["field-id", column.id];
     } else if (column.expression_name != null) {

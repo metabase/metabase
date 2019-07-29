@@ -88,7 +88,7 @@ const getFieldRefFromColumn_LEGACY = (
     // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
     return fieldId;
   } else if (column.fk_field_id != null) {
-    return ["fk->", column.fk_field_id, fieldId];
+    return ["fk->", ["field-id", column.fk_field_id], ["field-id", fieldId]];
   } else {
     return ["field-id", fieldId];
   }
