@@ -63,6 +63,12 @@
     [:field-id id]
     [:field-literal name base_type]))
 
+(defn- mbql-reference->col-name
+  [mbql-reference]
+  (mbql.u/match-one mbql-reference
+    [:field-literal name _] name
+    [:field-id id]          (-> id Field :name)))
+
 (s/defn ^:private infer-resulting-dimensions :- DimensionBindings
   [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
@@ -72,7 +78,9 @@
                   name
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
                   ;; our parlance
-                  (or (some->> flattened-bindings (m/find-first (comp #{name} :name val)) key)
+                  (or (some->> flattened-bindings
+                               (m/find-first (comp #{name} mbql-reference->col-name val))
+                               key)
                       ;; If that doesn't work either, it's a duplicated col from a join
                       name))
                 (mbql-reference col)]))))
