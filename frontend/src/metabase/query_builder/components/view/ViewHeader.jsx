@@ -157,7 +157,7 @@ export class ViewTitleHeader extends React.Component {
               {QuestionLineage.shouldRender(this.props) && (
                 <ViewSubHeading>
                   <QuestionLineage
-                    className={isSummarized ? "ml2" : ""}
+                    className={isSummarized ? "ml2" : isNative ? "ml2" : ""}
                     question={question}
                     originalQuestion={originalQuestion}
                   />
