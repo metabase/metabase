@@ -25,16 +25,17 @@
 ;; output, which makes it an order of magnitude easier to read, especially for tests that compare a
 ;; lot of data, like Query Processor or API tests.
 (defn- format-failure [e a str-e str-a]
-  {:type             :fail
-   :expected-message (when-let [in-e (first (data/diff e a))]
-                       (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'green in-e)))
-   :actual-message   (when-let [in-a (first (data/diff a e))]
-                       (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red in-a)))
-   :raw              [str-e str-a]
-   :result           [(format "\nexpected: %s\n" (class e))
-                      (u/pprint-to-str 'green e)
-                      (format "\nwas: %s\n" (class a))
-                      (u/pprint-to-str 'red a)]})
+  (let [[only-in-expected only-in-actual] (data/diff e a)]
+    {:type             :fail
+     :expected-message (when only-in-expected
+                         (format "\nin expected, not actual:\n%s" (u/pprint-to-str 'green only-in-expected)))
+     :actual-message   (when only-in-actual
+                         (format "\nin actual, not expected:\n%s" (u/pprint-to-str 'red only-in-actual)))
+     :raw              [str-e str-a]
+     :result           [(format "\nexpected: %s\n" (class e))
+                        (u/pprint-to-str 'green e)
+                        (format "\nwas: %s\n" (class a))
+                        (u/pprint-to-str 'red a)]}))
 
 (defmethod expectations/compare-expr :expectations/maps [e a str-e str-a]
   (let [[in-e in-a] (data/diff e a)]
@@ -43,7 +44,10 @@
       (format-failure e a str-e str-a))))
 
 (defmethod expectations/compare-expr :expectations/sets [e a str-e str-a]
-  (format-failure e a str-e str-a))
+  (let [[in-e in-a] (data/diff e a)]
+    (if (and (nil? in-e) (nil? in-a))
+      {:type :pass}
+      (format-failure e a str-e str-a))))
 
 (defmethod expectations/compare-expr :expectations/sequentials [e a str-e str-a]
   (let [diff-fn (fn [e a] (seq (set/difference (set e) (set a))))]
@@ -191,7 +195,7 @@
       ;; Uncomment `check-test-data-unchanged` when you want to debug situations where tests are being bad citizens
       ;; and leaving the metadata about the test data in a different state than it started out with. This is not
       ;; enabled by default because it adds ~5ms to each test which adds up when we have ~4000 tests (as of May 2019)
-      check-test-data-unchanged
+      #_check-test-data-unchanged
       log-slow-tests
       enforce-timeout
       check-table-cleanup))

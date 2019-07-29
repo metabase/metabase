@@ -24,12 +24,13 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(def default-search-row
+(def ^:private default-search-row
   {:id                  true
    :description         nil
    :archived            false
    :collection_id       false
    :collection_position nil
+   :collection_name     nil
    :favorite            nil
    :table_id            false
    :database_id         false
@@ -52,7 +53,7 @@
      {:name "dashboard test dashboard", :model "dashboard", :favorite false})
     (merge
      default-search-row
-     {:name "collection test collection", :model "collection", :collection_id true})
+     {:name "collection test collection", :model "collection", :collection_id true, :collection_name true})
     (merge
      default-search-row
      {:name "card test card", :model "card", :favorite false})
@@ -84,7 +85,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
-                   #(assoc % :collection_id true)
+                   #(assoc % :collection_id true, :collection_name true)
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -114,7 +115,11 @@
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
 (defn- search-request [user-kwd & params]
-  (tu/boolean-ids-and-timestamps (set (apply (test-users/user->client user-kwd) :get 200 "search" params))))
+  (set
+   (for [result (apply (test-users/user->client user-kwd) :get 200 "search" params)]
+     (-> result
+         tu/boolean-ids-and-timestamps
+         (update :collection_name #(some-> % string?))))))
 
 ;; Basic search, should find 1 of each entity type, all items in the root collection
 (expect

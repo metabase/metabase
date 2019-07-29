@@ -29,6 +29,7 @@
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string       (s/maybe su/NonBlankString)
    :archived?           s/Bool
+   ;; either `:all` or a set of IDs and/or the string `root`
    :visible-collections coll/VisibleCollections})
 
 (def ^:private searchable-models
@@ -69,6 +70,7 @@
    :archived            :boolean
    ;; returned for Card, Dashboard, Pulse, and Collection
    :collection_id       :integer
+   :collection_name     :text
    ;; returned for Card and Dashboard
    :collection_position :integer
    :favorite            :boolean
@@ -90,7 +92,7 @@
   [(hsql/call :case [:not= :fave.id nil] true :else false) :favorite])
 
 (def ^:private table-columns
-  "Columns containing information about the table this model references. Returned for Metrics and Segments."
+  "Columns containing information about the Table this model references. Returned for Metrics and Segments."
   [:table_id
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
@@ -104,19 +106,19 @@
 
 (defmethod columns-for-model (class Card)
   [_]
-  (conj default-columns :collection_id :collection_position favorite-col))
+  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
 
 (defmethod columns-for-model (class Dashboard)
   [_]
-  (conj default-columns :collection_id :collection_position favorite-col))
+  (conj default-columns :collection_id :collection_position [:collection.name :collection_name] favorite-col))
 
 (defmethod columns-for-model (class Pulse)
   [_]
-  [:id :name :collection_id])
+  [:id :name :collection_id [:collection.name :collection_name]])
 
 (defmethod columns-for-model (class Collection)
   [_]
-  (conj default-columns [:id :collection_id]))
+  (conj default-columns [:id :collection_id] [:name :collection_name]))
 
 (defmethod columns-for-model (class Segment)
   [_]
@@ -208,12 +210,18 @@
    :from   (from-clause-for-model model)
    :where  (base-where-clause-for-model model context)})
 
-(s/defn ^:private add-where-clause-for-collection-id
-  "Update the query to only include collections the user has access to"
+(s/defn ^:private add-collection-join-and-where-clauses
+  "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
+  so we can return its `:name`."
   [honeysql-query :- su/Map, collection-id-column :- s/Keyword, {:keys [visible-collections]} :- SearchContext]
-  (h/merge-where
-   honeysql-query
-   (coll/visible-collection-ids->honeysql-filter-clause collection-id-column visible-collections)))
+  (let [honeysql-query (h/merge-where
+                        honeysql-query
+                        (coll/visible-collection-ids->honeysql-filter-clause collection-id-column visible-collections))]
+    ;; add a JOIN against Collection *unless* the source table is already Collection
+    (cond-> honeysql-query
+      (not= collection-id-column :collection.id)
+      (h/merge-left-join [Collection :collection]
+                         [:= collection-id-column :collection_id]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -231,12 +239,12 @@
                    [:and
                     [:= :card.id :fave.card_id]
                     [:= :fave.owner_id api/*current-user-id*]])
-      (add-where-clause-for-collection-id :card.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :card.collection_id search-ctx)))
 
 (s/defmethod ^:private search-query-for-model (class Collection)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Collection search-ctx)
-      (add-where-clause-for-collection-id :collection.id search-ctx)))
+      (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
 (s/defmethod ^:private search-query-for-model (class Dashboard)
   [_ search-ctx :- SearchContext]
@@ -245,13 +253,13 @@
                    [:and
                     [:= :dashboard.id :fave.dashboard_id]
                     [:= :fave.user_id api/*current-user-id*]])
-      (add-where-clause-for-collection-id :dashboard.collection_id search-ctx)))
+      (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
 (s/defmethod ^:private search-query-for-model (class Pulse)
   [_ search-ctx :- SearchContext]
   ;; Pulses don't currently support being archived, omit if archived is true
   (-> (base-query-for-model Pulse search-ctx)
-      (add-where-clause-for-collection-id :pulse.collection_id search-ctx)
+      (add-collection-join-and-where-clauses :pulse.collection_id search-ctx)
       ;; We don't want alerts included in pulse results
       (h/merge-where [:= :alert_condition nil])))
 
