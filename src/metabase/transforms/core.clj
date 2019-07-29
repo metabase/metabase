@@ -10,7 +10,7 @@
             [metabase.models
              [card :refer [Card]]
              [database :refer [Database]]
-             [field :as field :refer [Field]]
+             [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
@@ -22,43 +22,30 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private FieldOrMBQL (s/cond-pre (type Field) MBQL))
-
 (def ^:private SourceName s/Str)
 
 (def ^:private DimensionReference s/Str)
 
-(def ^:private DimensionBindings {DimensionReference FieldOrMBQL})
+(def ^:private DimensionBindings {DimensionReference MBQL})
 
 (def ^:private SourceEntity (s/cond-pre (type Table) (type Card)))
 
 (def ^:private Bindings {SourceName {(s/optional-key :entity)     SourceEntity
                                      (s/required-key :dimensions) DimensionBindings}})
 
-(s/defn ^:private ->mbql :- MBQL
-  [field-or-mbql :- FieldOrMBQL]
-  (if (mbql.u/mbql-clause? field-or-mbql)
-    field-or-mbql
-    (let [{:keys [source-alias id name base_type]} field-or-mbql]
-      (cond
-        source-alias [:joined-field source-alias (->mbql (dissoc field-or-mbql :source-alias))]
-        id           [:field-id id]
-        :else        [:field-literal name base_type]))))
-
-(s/defn ^:private get-dimension-binding :- FieldOrMBQL
+(s/defn ^:private get-dimension-binding :- MBQL
   [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
   (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
     (if maybe-dimension
-      (cond-> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
-        (not= source table-or-dimension) (assoc :source-alias table-or-dimension))
+      (cond->> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
+        (not= source table-or-dimension) (vector :joined-field table-or-dimension))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
-(s/defn ^:private resolve-dimension-clauses :- (s/maybe FieldOrMBQL)
-  [bindings :- Bindings, source :- SourceName, field-or-mbql :- (s/maybe FieldOrMBQL)]
+(s/defn ^:private resolve-dimension-clauses :- (s/maybe MBQL)
+  [bindings :- Bindings, source :- SourceName, field-or-mbql :- (s/maybe MBQL)]
   (mbql.u/replace field-or-mbql
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
-                                ->mbql
                                 (resolve-dimension-clauses bindings source))))
 
 (s/defn ^:private add-bindings :- Bindings
@@ -69,6 +56,12 @@
                     (assoc-in bindings [source :dimensions name])))
              bindings
              new-bindings))
+
+(s/defn ^:private mbql-reference :- MBQL
+  [{:keys [id name base_type]}]
+  (if id
+    [:field-id id]
+    [:field-literal name base_type]))
 
 (s/defn ^:private infer-resulting-dimensions :- DimensionBindings
   [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
@@ -82,7 +75,7 @@
                   (or (some->> flattened-bindings (m/find-first (comp #{name} :name val)) key)
                       ;; Else it's a duplicated key from a join
                       name))
-                (field/map->FieldInstance col)]))))
+                (mbql-reference col)]))))
 
 (defn- maybe-add-fields
   [bindings {:keys [aggregation name source]} query]
@@ -165,14 +158,9 @@
 (def ^:private ^{:arglists '([field])} field-type
   (some-fn :special_type :base_type))
 
-(defn- table-dimensions
-  [table]
-  (into {} (for [field (:fields table)]
-             [(some-> field field-type name) field])))
-
 (defn- satisfies-requierment?
   [{requirement-dimensions :dimensions} table]
-  (let [table-dimensions (map (comp field-type val) (table-dimensions table))]
+  (let [table-dimensions (map field-type (:fields table))]
     (every? (fn [dimension]
               (some #(isa? % dimension) table-dimensions))
             requirement-dimensions)))
@@ -188,7 +176,8 @@
     (when (every? (comp #{1} count second) bindings)
       (m/map-vals (fn [[table]]
                     {:entity     table
-                     :dimensions (table-dimensions table)})
+                     :dimensions (into {} (for [field (:fields table)]
+                                            [(-> field field-type name) (mbql-reference field)]))})
                   bindings))))
 
 (defn- store-requirements!
@@ -215,7 +204,6 @@
                                              (->> result-step bindings :dimensions keys))))))
               (-> result-step bindings :entity u/get-id))))))))
 
-;; TODO: should this work for cards as well?
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
