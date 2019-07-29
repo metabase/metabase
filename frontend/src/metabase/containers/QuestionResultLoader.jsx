@@ -134,9 +134,10 @@ export class QuestionResultLoader extends React.Component {
         results,
         result: results && results[0],
         // convienence for <Visualization /> component. Only support single series for now
-        rawSeries: [
-          { card: question.card(), data: results && results[0].data },
-        ],
+        rawSeries:
+          question && results
+            ? [{ card: question.card(), data: results[0].data }]
+            : null,
         loading,
         error,
         cancel: this._cancel,

@@ -70,6 +70,7 @@ type UiControls = {
   isShowingTemplateTagsEditor?: boolean,
   isShowingNewbModal?: boolean,
   queryBuilderMode?: "view" | "notebook",
+  isShowingSummarySidebar?: boolean,
 };
 
 const PREVIEW_RESULT_LIMIT = 10;
@@ -242,7 +243,7 @@ export const updateUrl = createThunkAction(
     const urlParsed = urlParse(url);
     const locationDescriptor = {
       pathname:
-        urlParsed.pathname +
+        (urlParsed.pathname || "") +
         (queryBuilderMode === "view" ? "" : "/" + queryBuilderMode),
       search: preserveParameters ? window.location.search : "",
       hash: urlParsed.hash,

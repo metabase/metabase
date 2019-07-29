@@ -14,6 +14,8 @@ type Props = {
   operators: Operator[],
   onOperatorChange: (o: Operator) => void,
   hideTimeSelectors?: boolean,
+
+  className?: string,
 };
 
 export default class DateOperatorSelector extends Component {

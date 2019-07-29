@@ -2,7 +2,12 @@
 
 import MBQLClause from "./MBQLClause";
 
-import type { Filter as FilterObject } from "metabase/meta/types/Query";
+import type {
+  Filter as FilterObject,
+  FieldFilter,
+  Field,
+} from "metabase/meta/types/Query";
+import type { FilterOperator } from "metabase/meta/types/Metadata";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
 
@@ -18,17 +23,13 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-type FilterOperator = {
-  name: string, // MBQL filter clause
-};
-
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
    * or replaces itself in the parent query if no {filter} argument is provided.
    */
   replace(filter?: Filter | FilterObject): StructuredQuery {
-    if (arguments.length > 0) {
+    if (filter != null) {
       return this._query.updateFilter(this._index, filter);
     } else {
       return this._query.updateFilter(this._index, this);
@@ -148,11 +149,12 @@ export default class Filter extends MBQLClause {
     return dimension ? dimension.operator(this.operatorName()) : null;
   }
 
-  setOperator(operatorName) {
+  setOperator(operatorName: string) {
     const dimension = this.dimension();
     const operator = dimension && dimension.operator(operatorName);
 
-    const filter: FieldFilter = [operatorName, dimension.mbql()];
+    // $FlowFixMe: partial filter
+    const filter: FieldFilter = [operatorName, dimension && dimension.mbql()];
 
     if (operator) {
       for (let i = 0; i < operator.fields.length; i++) {
@@ -190,12 +192,18 @@ export default class Filter extends MBQLClause {
     return this.set(filter);
   }
 
-  setDimension(fieldRef, { useDefaultOperator = false } = {}) {
+  setDimension(
+    fieldRef: ?Field,
+    { useDefaultOperator = false }: { useDefaultOperator?: boolean } = {},
+  ) {
     if (!fieldRef) {
       return this.set([]);
     }
     const dimension = this._query.parseFieldReference(fieldRef);
-    if (!this.isFieldFilter() || !dimension.isEqual(this.dimension())) {
+    if (
+      dimension &&
+      (!this.isFieldFilter() || !dimension.isEqual(this.dimension()))
+    ) {
       // see if the new dimension supports the existing operator
       const operator = dimension.operator(this.operatorName());
       const operatorName =
@@ -204,7 +212,8 @@ export default class Filter extends MBQLClause {
         (useDefaultOperator && dimension.defaultOperator()) ||
         null;
 
-      const filter = this.set(
+      // $FlowFixMe
+      const filter: Filter = this.set(
         this.isFieldFilter()
           ? [this[0], dimension.mbql(), ...this.slice(2)]
           : [null, dimension.mbql()],
@@ -218,7 +227,7 @@ export default class Filter extends MBQLClause {
     return this;
   }
 
-  setArgument(index, value) {
+  setArgument(index: number, value: any) {
     return this.set([
       ...this.slice(0, index + 2),
       value,
@@ -226,7 +235,7 @@ export default class Filter extends MBQLClause {
     ]);
   }
 
-  setArguments(values) {
+  setArguments(values: any[]) {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
@@ -239,15 +248,18 @@ export default class Filter extends MBQLClause {
     return hasFilterOptions(this) ? this.slice(2, -1) : this.slice(2);
   }
 
-  formattedArguments(maxDisplayValues = 1) {
+  formattedArguments(maxDisplayValues?: number = 1) {
     const dimension = this.dimension();
     const operator = this.operator();
     const args = this.arguments();
-    // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
     if (operator && operator.multi && args.length > maxDisplayValues) {
       const n = args.length;
       return [ngettext(msgid`${n} selection`, `${n} selections`, n)];
-    } else if (dimension.field().isDate() && !dimension.field().isTime()) {
+    } else if (
+      dimension &&
+      dimension.field().isDate() &&
+      !dimension.field().isTime()
+    ) {
       return generateTimeFilterValuesDescriptions(this);
     } else {
       return args

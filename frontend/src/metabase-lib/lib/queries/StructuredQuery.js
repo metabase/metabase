@@ -44,6 +44,7 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 import type Database from "../metadata/Database";
 import type Question from "../Question";
 import type { TableId } from "metabase/meta/types/Table";
+import type { Column } from "metabase/meta/types/Dataset";
 
 import AtomicQuery from "./AtomicQuery";
 
@@ -90,10 +91,6 @@ export default class StructuredQuery extends AtomicQuery {
     super(question, datasetQuery);
 
     this._structuredDatasetQuery = (datasetQuery: StructuredDatasetQuery);
-  }
-
-  static create(options = {}): StructuredQuery {
-    return Question.create({ ...options, type: "query" }).query();
   }
 
   /* Query superclass methods */
@@ -376,7 +373,9 @@ export default class StructuredQuery extends AtomicQuery {
 
   _cleanClauseList(listName) {
     let query = this;
+    // $FlowFixMe
     for (let index = 0; index < query[listName]().length; index++) {
+      // $FlowFixMe
       const clause = query[listName]()[index];
       if (!clause.isValid()) {
         query = clause.remove();
@@ -388,6 +387,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   _isValidClauseList(listName) {
+    // $FlowFixMe
     for (const clause of this[listName]()) {
       if (!clause.isValid()) {
         return false;
@@ -438,7 +438,8 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   hasLimit() {
-    return this.limit() > 0;
+    const limit = this.limit();
+    return limit != null && limit > 0;
   }
 
   hasFields() {
@@ -450,7 +451,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns an array of MBQL @type {Join}s.
    */
-  joins(): Join[] {
+  joins(): JoinWrapper[] {
     return Q.getJoins(this.query()).map(
       (join, index) => new JoinWrapper(join, index, this),
     );
@@ -477,7 +478,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns an array of MBQL @type {Aggregation}s.
    */
-  aggregations(): Aggregation[] {
+  aggregations(): AggregationWrapper[] {
     return Q.getAggregations(this.query()).map(
       (aggregation, index) => new AggregationWrapper(aggregation, index, this),
     );
@@ -501,11 +502,14 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns the field options for the provided aggregation
    */
   aggregationFieldOptions(agg: string | AggregationOption): DimensionOptions {
-    const aggregation =
+    const aggregation: AggregationOption =
       typeof agg === "string" ? this.table().aggregation(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
-        return aggregation.validFieldsFilters[0]([field]).length === 1;
+        return (
+          aggregation.validFieldsFilters.length > 0 &&
+          aggregation.validFieldsFilters[0]([field]).length === 1
+        );
       });
 
       // HACK Atte Keinänen 6/18/17: Using `fieldOptions` with a field filter function
@@ -672,7 +676,7 @@ export default class StructuredQuery extends AtomicQuery {
    * @returns An array of MBQL @type {Filter}s.
    */
   @memoize
-  filters(): Filter[] {
+  filters(): FilterWrapper[] {
     return Q.getFilters(this.query()).map(
       (filter, index) => new FilterWrapper(filter, index, this),
     );
@@ -686,7 +690,7 @@ export default class StructuredQuery extends AtomicQuery {
     return [].concat(...queries.map(q => q.filters()));
   }
 
-  filterFieldOptionSections(filter?: Filter) {
+  filterFieldOptionSections(filter?: ?(Filter | FilterWrapper)) {
     const filterFieldOptions = this.filterFieldOptions();
     const filterSegmentOptions = this.filterSegmentOptions(filter);
     return filterFieldOptions.sections({
@@ -720,7 +724,10 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns @type {Segment}s that can be used as filters.
    */
-  filterSegmentOptions(filter?: Filter): Segment[] {
+  filterSegmentOptions(filter?: Filter | FilterWrapper): Segment[] {
+    if (filter && !(filter instanceof FilterWrapper)) {
+      filter = new FilterWrapper(filter, null, this);
+    }
     const currentSegmentId =
       filter && filter.isSegmentFilter() && filter.segmentId();
     return this.table().segments.filter(
@@ -758,14 +765,14 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns {StructuredQuery} new query with the provided MBQL @type {Filter} added.
    */
-  addFilter(filter: Filter) {
+  addFilter(filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.addFilter, arguments);
   }
 
   /**
    * @returns {StructuredQuery} new query with the MBQL @type {Filter} updated at the provided index.
    */
-  updateFilter(index: number, filter: Filter) {
+  updateFilter(index: number, filter: Filter | FilterWrapper) {
     return this._updateQuery(Q.updateFilter, arguments);
   }
 
@@ -1238,7 +1245,7 @@ export default class StructuredQuery extends AtomicQuery {
    * Returns the "first" of the nested queries, or this query it not nested
    */
   @memoize
-  rootQuery(): Query {
+  rootQuery(): StructuredQuery {
     const sourceQuery = this.sourceQuery();
     return sourceQuery ? sourceQuery.rootQuery() : this;
   }
@@ -1247,7 +1254,7 @@ export default class StructuredQuery extends AtomicQuery {
    * Returns the "last" nested query that is already summarized, or `null` if none are
    * */
   @memoize
-  lastSummarizedQuery() {
+  lastSummarizedQuery(): ?StructuredQuery {
     if (this.hasAggregations() || !this.canNest()) {
       return this;
     } else {
@@ -1261,7 +1268,7 @@ export default class StructuredQuery extends AtomicQuery {
    * Used in "view mode" to effectively ignore post-aggregation filter stages
    */
   @memoize
-  topLevelQuery(): Query {
+  topLevelQuery(): StructuredQuery {
     if (!this.canNest()) {
       return this;
     } else {
@@ -1403,6 +1410,8 @@ export default class StructuredQuery extends AtomicQuery {
 
 // subclass of StructuredQuery that's returned by query.sourceQuery() to allow manipulation of source-query
 class NestedStructuredQuery extends StructuredQuery {
+  _parent: StructuredQuery;
+
   constructor(question, datasetQuery, parent) {
     super(question, datasetQuery);
     this._parent = parent;

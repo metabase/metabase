@@ -27,6 +27,8 @@ export default class Database extends Base {
   tables: Table[];
   schemas: Schema[];
 
+  auto_run_queries: boolean;
+
   displayName(): string {
     return this.name;
   }
@@ -58,7 +60,6 @@ export default class Database extends Base {
   }
 
   newQuestion(): Question {
-    // $FlowFixMe
     return Question.create({ databaseId: this.id, metadata: this.metadata });
   }
 }

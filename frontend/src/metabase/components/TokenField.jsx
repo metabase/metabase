@@ -70,6 +70,12 @@ type Props = {
   valueRenderer: (value: Value) => React$Element<any>,
   optionRenderer: (option: Option) => React$Element<any>,
   layoutRenderer: (props: LayoutRendererProps) => React$Element<any>,
+
+  style?: any,
+  className?: string,
+  valueStyle?: any,
+  optionsStyle?: any,
+  optionsClassName?: string,
 };
 
 type State = {
@@ -102,46 +108,6 @@ export default class TokenField extends Component {
       listIsHovered: false,
     };
   }
-
-  static propTypes = {
-    value: PropTypes.array,
-    options: PropTypes.array,
-    placeholder: PropTypes.string,
-    autoFocus: PropTypes.bool,
-    multi: PropTypes.bool,
-
-    style: PropTypes.object,
-    color: PropTypes.string,
-
-    valueKey: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.number,
-      PropTypes.func,
-    ]),
-    labelKey: PropTypes.oneOfType([
-      PropTypes.string,
-      PropTypes.number,
-      PropTypes.func,
-    ]),
-
-    removeSelected: PropTypes.bool,
-    filterOption: PropTypes.func,
-
-    onChange: PropTypes.func.isRequired,
-    onInputChange: PropTypes.func,
-    onInputKeyDown: PropTypes.func,
-    onFocus: PropTypes.func,
-    onBlur: PropTypes.func,
-
-    updateOnInputChange: PropTypes.bool,
-    // if provided, parseFreeformValue parses the input string into a value,
-    // or returns null to indicate an invalid value
-    parseFreeformValue: PropTypes.func,
-
-    valueRenderer: PropTypes.func.isRequired, // TODO: default
-    optionRenderer: PropTypes.func.isRequired, // TODO: default
-    layoutRenderer: PropTypes.func,
-  };
 
   static defaultProps = {
     removeSelected: true,

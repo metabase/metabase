@@ -123,6 +123,9 @@ describe("metabase/util/dataset", () => {
       expect(question.query().query()).toEqual({
         "source-table": 1,
       });
+    });
+  });
+
   describe("findColumnForColumnSetting", () => {
     const columns = [
       { name: "bar", id: 42 },

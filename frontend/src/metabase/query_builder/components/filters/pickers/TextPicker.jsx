@@ -8,7 +8,7 @@ import cx from "classnames";
 import _ from "underscore";
 
 type Props = {
-  values: Array<string | null>,
+  values: Array<string>,
   onValuesChange: (values: any[]) => void,
   validations: boolean[],
   placeholder?: string,

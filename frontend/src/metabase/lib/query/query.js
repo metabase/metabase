@@ -227,7 +227,8 @@ type FilterClauseName =
   | "order-by"
   | "limit"
   | "expressions"
-  | "fields";
+  | "fields"
+  | "joins";
 
 function setClause(clauseName: FilterClauseName, query: SQ, clause: ?any): SQ {
   query = { ...query };

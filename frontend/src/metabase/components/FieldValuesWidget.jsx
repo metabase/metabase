@@ -46,6 +46,8 @@ type Props = {
   minWidth?: number,
   optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
+
+  className?: string,
 };
 
 type State = {

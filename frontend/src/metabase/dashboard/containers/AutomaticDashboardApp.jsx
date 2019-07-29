@@ -194,7 +194,6 @@ const TransientTitle = ({ dashboard }) =>
 
 const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-medium text-bold">
-    {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}

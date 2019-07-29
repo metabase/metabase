@@ -101,10 +101,11 @@ type Props = {
 
 type State = {
   series: ?Series,
-  visualization: ?(Component<void, VisualizationSettings, void> & {
+  visualization: ?(React.Component<void, VisualizationSettings, void> & {
     checkRenderable: (any, any) => void,
     noHeader: boolean,
   }),
+  computedSettings: VisualizationSettings,
 
   hovered: ?HoverObject,
   clicked: ?ClickObject,
@@ -133,6 +134,7 @@ export default class Visualization extends React.PureComponent {
       yAxisSplit: null,
       series: null,
       visualization: null,
+      computedSettings: {},
     };
   }
 

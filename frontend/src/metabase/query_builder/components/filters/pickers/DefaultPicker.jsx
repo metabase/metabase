@@ -10,6 +10,19 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
+import type Filter from "metabase-lib/lib/queries/structured/Filter";
+
+type Props = {
+  filter: Filter,
+  setValue: (index: number, value: any) => void,
+  setValues: (value: any[]) => void,
+  onCommit: () => void,
+  className?: string,
+  isSidebar?: boolean,
+  minWidth?: number,
+  maxWidth?: number,
+};
+
 export default function DefaultPicker({
   filter,
   setValue,
@@ -19,21 +32,24 @@ export default function DefaultPicker({
   isSidebar,
   minWidth,
   maxWidth,
-}) {
+}: Props) {
   const operator = filter.operator();
-  const field = filter.dimension().field();
-  const operatorFields = (operator && operator.fields) || [];
+  if (!operator) {
+    return <div className={className} />;
+  }
+
+  const dimension = filter.dimension();
+  const field = dimension && dimension.field();
+  const operatorFields = operator.fields || [];
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
       let values, onValuesChange;
       const placeholder =
-        (operator && operator.placeholders && operator.placeholders[index]) ||
-        undefined;
+        (operator.placeholders && operator.placeholders[index]) || undefined;
       if (operator.multi) {
         values = filter.arguments();
         onValuesChange = values => setValues(values);
       } else {
-        // $FlowFixMe
         values = [filter.arguments()[index]];
         onValuesChange = values => setValue(index, values[0]);
       }
@@ -44,7 +60,6 @@ export default function DefaultPicker({
           <SelectPicker
             key={index}
             options={operatorField.values}
-            // $FlowFixMe
             values={(values: Array<string>)}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
@@ -80,7 +95,6 @@ export default function DefaultPicker({
         return (
           <TextPicker
             key={index}
-            // $FlowFixMe
             values={(values: Array<string>)}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
@@ -92,7 +106,6 @@ export default function DefaultPicker({
         return (
           <NumberPicker
             key={index}
-            // $FlowFixMe
             values={(values: Array<number | null>)}
             onValuesChange={onValuesChange}
             placeholder={placeholder}

@@ -101,6 +101,7 @@ export default class TableInteractive extends Component {
   columnNeedsResize: { [key: number]: boolean };
   _div: HTMLElement;
   _totalContentWidth: ?number;
+  _previousOverscrollBehaviorX: any;
 
   header: GridComponent;
   grid: GridComponent;
@@ -643,10 +644,13 @@ export default class TableInteractive extends Component {
   handleOnMouseEnter = () => {
     // prevent touchpad gestures from navigating forward/back if you're expecting to just scroll the table
     // https://stackoverflow.com/a/50846937
+    // $FlowFixMe: overscrollBehaviorX
     this._previousOverscrollBehaviorX = document.body.style.overscrollBehaviorX;
+    // $FlowFixMe: overscrollBehaviorX
     document.body.style.overscrollBehaviorX = "none";
   };
   handleOnMouseLeave = () => {
+    // $FlowFixMe: overscrollBehaviorX
     document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
   };
 

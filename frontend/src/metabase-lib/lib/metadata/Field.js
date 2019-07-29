@@ -45,8 +45,8 @@ export default class Field extends Base {
   table: Table;
   name_field: ?Field;
 
-  get parent() {
-    return this.metadata ? this.metadata.field(this.parent_id) : null;
+  parent() {
+    return this.metadata ? this.metadata.fields[this.parent_id] : null;
   }
 
   path() {
@@ -54,7 +54,7 @@ export default class Field extends Base {
     let field = this;
     do {
       path.unshift(field);
-    } while ((field = field.parent));
+    } while ((field = field.parent()));
     return path;
   }
 
