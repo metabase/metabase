@@ -8,7 +8,7 @@ To get the Enterprise edition, you can either [download the latest .jar file](ht
 
 Once you have the Enterprise edition running, to activate all of its features go to the Admin Panel within Metabase, click on the Enterprise tab, click the "Activate a license" button, and then paste in your license token. The page should change to show you that Enterprise features are now active.
 
-Please note that if you are running Metabase via a proxy, you may need to complete some additional configuration steps. Metabase will need to be able to access `https://store.metabase.com/api/[token-id]` in order to validate your token and turn on the Enterprise feature set. 
+Please note that if you are running Metabase via a proxy, you may need to complete some additional configuration steps. Metabase will need to be able to access `https://store.metabase.com/api/[token-id]` in order to validate your token and turn on the Enterprise feature set. This may include unblocking port `80` and `443` to allow Metabase to make an outgoing connection. If you're unsure of how to do this, please contact your organization's ops or infrastructure team.
 
 ---
 
