@@ -80,7 +80,7 @@ const initQbWithAlertMenuItemClicked = async (
 };
 
 function clickAlertWidget(app) {
-  click(app.find("QuestionAlertWidget"));
+  click(app.find(".Icon-bell"));
 }
 
 function getAlertModal(app) {

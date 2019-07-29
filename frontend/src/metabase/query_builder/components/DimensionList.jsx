@@ -7,7 +7,7 @@ import { t } from "ttag";
 import AccordianList from "metabase/components/AccordianList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/components/Tooltip"
+import Tooltip from "metabase/components/Tooltip";
 
 import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
@@ -22,12 +22,17 @@ export type AccordianListSection = {
 type Props = {
   className?: string,
   maxHeight?: number,
-  width?: number,
+  width?: ?number,
 
   dimension?: ?Dimension,
   dimensions?: Dimension[],
   onChangeDimension: (dimension: Dimension) => void,
   onChange?: (item: any) => void,
+
+  onAddDimension?: (dimension: Dimension, item: AccordianListItem) => void,
+  onRemoveDimension?: (dimension: Dimension, item: AccordianListItem) => void,
+
+  sections: AccordianListSection[],
 
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
@@ -212,11 +217,17 @@ export default class DimensionList extends Component {
   };
 
   handleAdd = item => {
-    this.props.onAddDimension(this._getDimensionFromItem(item), item);
+    const d = this._getDimensionFromItem(item);
+    if (d && this.props.onAddDimension) {
+      this.props.onAddDimension(d, item);
+    }
   };
 
   handleRemove = item => {
-    this.props.onRemoveDimension(this._getDimensionFromItem(item), item);
+    const d = this._getDimensionFromItem(item);
+    if (d && this.props.onRemoveDimension) {
+      this.props.onRemoveDimension(d, item);
+    }
   };
 
   render() {

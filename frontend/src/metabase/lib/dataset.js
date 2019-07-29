@@ -12,6 +12,7 @@ import type { Field as FieldReference } from "metabase/meta/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
+import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
   name: ColumnName,
@@ -42,10 +43,10 @@ export const rangeForValue = (
 
 const loggedKeys = new Set(); // just to make sure we log each mismatch only once
 export function fieldRefForColumnWithLegacyFallback(
-  column,
-  fieldRefForColumn_LEGACY,
-  debugName,
-) {
+  column: any,
+  fieldRefForColumn_LEGACY: any,
+  debugName: any,
+): any {
   // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
   const fieldRef =
     column.field_ref &&
@@ -175,7 +176,7 @@ export function findColumnIndexForColumnSetting(
   return _.findIndex(columns, col => col.name === columnSetting.name);
 }
 
-export function syncTableColumnsToQuery(question) {
+export function syncTableColumnsToQuery(question: Question): Question {
   let query = question.query();
   const columnSettings = question.settings()["table.columns"];
   if (columnSettings && query instanceof StructuredQuery) {

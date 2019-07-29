@@ -86,7 +86,8 @@ export function getVisualizationTransformed(series: Series) {
 }
 
 export function getIconForVisualizationType(display) {
-  return visualizations.get(display).iconName;
+  const viz = visualizations.get(display);
+  return viz && viz.iconName;
 }
 
 export const extractRemappings = series => {

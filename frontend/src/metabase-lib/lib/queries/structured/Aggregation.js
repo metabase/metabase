@@ -19,7 +19,7 @@ export default class Aggregation extends MBQLClause {
    * or replaces itself in the parent query if no {aggregation} argument is provided.
    */
   replace(aggregation?: AggregationObject | Aggregation): StructuredQuery {
-    if (arguments.length > 0) {
+    if (aggregation != null) {
       return this._query.updateAggregation(this._index, aggregation);
     } else {
       return this._query.updateAggregation(this._index, this);

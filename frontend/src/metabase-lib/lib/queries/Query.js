@@ -3,6 +3,7 @@
 import Database from "../metadata/Database";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { TableId } from "metabase/meta/types/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import { memoize } from "metabase-lib/lib/utils";

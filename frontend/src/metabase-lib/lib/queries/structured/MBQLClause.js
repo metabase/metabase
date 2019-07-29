@@ -6,17 +6,17 @@ export default class MBQLArrayClause extends Array {
   _index: number;
   _query: StructuredQuery;
 
-  constructor(mbql: Array<any>, index: number, query: StructuredQuery) {
+  constructor(mbql: Array<any>, index?: ?number, query?: StructuredQuery) {
     super(...mbql);
     _private(this, "_index", index);
     _private(this, "_query", query);
   }
 
-  set(mbql) {
+  set(mbql: Array<any>) {
     return new this.constructor(mbql, this._index, this._query);
   }
 
-  replace(replacement: any): StructuredQuery {
+  replace(replacement: Array<any>): StructuredQuery {
     throw new Error("Abstract method `replace` not implemented");
   }
 
@@ -28,6 +28,7 @@ export default class MBQLArrayClause extends Array {
   }
 
   setQuery(query: StructuredQuery) {
+    // $FlowFixMe
     return new this.constructor(this, this._index, query);
   }
 
@@ -39,10 +40,12 @@ export default class MBQLArrayClause extends Array {
    * replaces the previous clause with this one and propagates an update, recursively
    */
   update(...args: any) {
+    // $FlowFixMe
     return this.replace(this).update(undefined, ...args);
   }
 
   parent() {
+    // $FlowFixMe
     return this.replace(this);
   }
 
@@ -58,13 +61,13 @@ export class MBQLObjectClause {
   _index: number;
   _query: StructuredQuery;
 
-  constructor(mbql: Array<any>, index: number, query: StructuredQuery) {
+  constructor(mbql: Object, index?: ?number, query?: StructuredQuery) {
     Object.assign(this, mbql);
     _private(this, "_index", index);
     _private(this, "_query", query);
   }
 
-  set(mbql) {
+  set(mbql: any) {
     return new this.constructor(mbql, this._index, this._query);
   }
 

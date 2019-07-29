@@ -20,10 +20,18 @@ import { color } from "metabase/lib/colors";
 type Props = {
   query: StructuredQuery,
   filter?: Filter,
-  onChange: (filter: Filter) => void,
+  onChange?: (filter: ?Filter) => void,
   // NOTE: this should probably be called onCommit
-  onChangeFilter: (filter: Filter) => void,
+  onChangeFilter?: (filter: Filter) => void,
   onClose: () => void,
+
+  style?: {},
+  className?: string,
+
+  fieldPickerTitle?: string,
+  showFieldPicker?: boolean,
+  isTopLevel?: boolean,
+  isSidebar?: boolean,
 };
 
 type State = {
@@ -59,7 +67,7 @@ export default class ViewFilterPopover extends Component {
     window.removeEventListener("keydown", this.handleCommitOnEnter);
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentWillReceiveProps(nextProps: Props) {
     const { filter } = this.state;
     // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
     if (filter && this.props.query !== nextProps.query) {
@@ -69,7 +77,7 @@ export default class ViewFilterPopover extends Component {
     }
   }
 
-  setFilter(filter) {
+  setFilter(filter: ?Filter) {
     this.setState({ filter });
     if (this.props.onChange) {
       this.props.onChange(filter);
@@ -86,11 +94,11 @@ export default class ViewFilterPopover extends Component {
     }
   };
 
-  handleCommitFilter = (filter: ?FieldFilter, query: StructuredQuery) => {
+  handleCommitFilter = (filter: ?Filter, query: StructuredQuery) => {
     if (filter && !(filter instanceof Filter)) {
       filter = new Filter(filter, null, query);
     }
-    if (filter && filter.isValid()) {
+    if (filter && filter.isValid() && this.props.onChangeFilter) {
       this.props.onChangeFilter(filter);
       if (this.props.onClose) {
         this.props.onClose();
@@ -104,7 +112,9 @@ export default class ViewFilterPopover extends Component {
   };
 
   handleFilterChange = (newFilter: ?FieldFilter) => {
-    this.setFilter(newFilter ? this.state.filter.set(newFilter) : null);
+    this.setFilter(
+      newFilter && this.state.filter ? this.state.filter.set(newFilter) : null,
+    );
   };
 
   render() {
@@ -133,9 +143,10 @@ export default class ViewFilterPopover extends Component {
             sections={
               isTopLevel
                 ? query.topLevelFilterFieldOptionSections()
-                : (filter ? filter.query() : query).filterFieldOptionSections(
-                    filter,
-                  )
+                : (
+                    (filter && filter.query()) ||
+                    query
+                  ).filterFieldOptionSections(filter)
             }
             onChangeDimension={dimension =>
               this.handleFieldChange(dimension.mbql(), dimension.query())

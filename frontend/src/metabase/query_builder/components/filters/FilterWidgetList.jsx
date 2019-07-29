@@ -6,14 +6,14 @@ import { t } from "ttag";
 import FilterWidget from "./FilterWidget.jsx";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { Filter } from "metabase/meta/types/Query";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 
 type Props = {
   query: StructuredQuery,
-  filters: Array<Filter>,
+  filters: Filter[],
   removeFilter?: (index: number) => void,
   updateFilter?: (index: number, filter: Filter) => void,
   maxDisplayValues?: number,

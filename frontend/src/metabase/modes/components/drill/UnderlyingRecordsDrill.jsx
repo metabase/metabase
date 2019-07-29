@@ -12,7 +12,7 @@ import type {
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // removes post-aggregation filter stage
-  clicked = question.topLevelClicked(clicked);
+  clicked = clicked && question.topLevelClicked(clicked);
   question = question.topLevelQuestion();
 
   const query = question.query();

@@ -89,6 +89,7 @@ NextPicker.horizontalLayout = true;
 type CurrentPickerProps = {
   filter: TimeIntervalFilter,
   onFilterChange: (filter: TimeIntervalFilter) => void,
+  className?: string,
 };
 
 type CurrentPickerState = {

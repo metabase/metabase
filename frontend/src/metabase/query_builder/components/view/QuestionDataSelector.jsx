@@ -11,8 +11,8 @@ export default function QuestionDataSelector({ query, triggerElement }) {
       setSourceTableFn={tableId =>
         query.setTableId(tableId).update(null, { run: true })
       }
-      isInitiallyOpen={!query.tableId()}
       triggerElement={triggerElement}
+      isOpen
     />
   );
 }

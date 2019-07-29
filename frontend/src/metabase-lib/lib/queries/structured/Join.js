@@ -5,6 +5,16 @@ import { MBQLObjectClause } from "./MBQLClause";
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 
+import { TableId } from "metabase/meta/types/Table";
+import type {
+  Join as JoinObject,
+  JoinStrategy,
+  JoinFields,
+  JoinAlias,
+  JoinCondition,
+  StructuredQuery as StructuredQueryObject,
+} from "metabase/meta/types/Query";
+
 import _ from "underscore";
 
 const JOIN_STRATEGY_OPTIONS = [
@@ -15,6 +25,18 @@ const JOIN_STRATEGY_OPTIONS = [
 ];
 
 export default class Join extends MBQLObjectClause {
+  strategy: ?JoinStrategy;
+  alias: ?JoinAlias;
+  condition: ?JoinCondition;
+  fields: ?JoinFields;
+  // "source-query": ?StructuredQueryObject;
+  // "source-table": ?TableId;
+
+  set(join: any): Join {
+    // $FlowFixMe
+    return super.set(join);
+  }
+
   displayName() {
     const table = this.joinedTable();
     return table && table.displayName();
@@ -28,10 +50,15 @@ export default class Join extends MBQLObjectClause {
   }
 
   // SOURCE TABLE
-  joinSourceTableId() {
+  joinSourceTableId(): ?TableId {
+    // $FlowFixMe
     return this["source-table"];
   }
-  setJoinSourceTableId(tableId, { defaultCondition = true } = {}) {
+  setJoinSourceTableId(
+    tableId: TableId,
+    { defaultCondition = true }: { defaultCondition?: boolean } = {},
+  ) {
+    // $FlowFixMe
     if (tableId !== this["source-table"]) {
       const table = this.metadata().table(tableId);
       const join = this.set({
@@ -50,10 +77,11 @@ export default class Join extends MBQLObjectClause {
   }
 
   // SOURCE QUERY
-  joinSourceQuery() {
+  joinSourceQuery(): ?StructuredQueryObject {
+    // $FlowFixMe
     return this["source-query"];
   }
-  setJoinSourceQuery(query) {
+  setJoinSourceQuery(query: StructuredQuery) {
     return this.set({
       ...this,
       "source-table": undefined,
@@ -63,7 +91,7 @@ export default class Join extends MBQLObjectClause {
     });
   }
 
-  _uniqueAlias(name) {
+  _uniqueAlias(name: JoinAlias) {
     const usedAliases = new Set(
       this.query()
         .joins()
@@ -86,12 +114,12 @@ export default class Join extends MBQLObjectClause {
   }
 
   // FIELDS
-  setFields(fields) {
+  setFields(fields: JoinFields) {
     return this.set({ ...this, fields });
   }
 
   // STRATEGY
-  setStrategy(strategy) {
+  setStrategy(strategy: JoinStrategy) {
     return this.set({ ...this, strategy });
   }
   strategyOption() {
@@ -110,7 +138,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   // CONDITION
-  setCondition(condition) {
+  setCondition(condition: JoinCondition): Join {
     return this.set({ ...this, condition });
   }
   setDefaultCondition() {
@@ -140,7 +168,7 @@ export default class Join extends MBQLObjectClause {
   parentDimension() {
     const { condition } = this;
     if (Array.isArray(condition) && condition[0] === "=" && condition[1]) {
-      return this.query().parseFieldReference(this.condition[1]);
+      return this.query().parseFieldReference(condition[1]);
     }
   }
   parentDimensionOptions() {
@@ -160,7 +188,7 @@ export default class Join extends MBQLObjectClause {
     }
     return options;
   }
-  setParentDimension(dimension) {
+  setParentDimension(dimension: Dimension): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
     }
@@ -168,24 +196,26 @@ export default class Join extends MBQLObjectClause {
     return this.setCondition([
       "=",
       dimension,
-      joinDimension && joinDimension.mbql(),
+      joinDimension instanceof Dimension ? joinDimension.mbql() : null,
     ]);
   }
 
   joinDimension() {
     const { condition } = this;
     if (Array.isArray(condition) && condition[0] === "=" && condition[2]) {
-      return this.joinedQuery().parseFieldReference(this.condition[2]);
+      const joinedQuery = this.joinedQuery();
+      return joinedQuery && joinedQuery.parseFieldReference(condition[2]);
     }
   }
-  setJoinDimension(dimension) {
+  setJoinDimension(dimension: Dimension): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
     }
     const parentDimension = this.parentDimension();
+    // $FlowFixMe
     return this.setCondition([
       "=",
-      parentDimension && parentDimension.mbql(),
+      parentDimension instanceof Dimension ? parentDimension.mbql() : null,
       dimension,
     ]);
   }
@@ -201,15 +231,17 @@ export default class Join extends MBQLObjectClause {
   // HELPERS
 
   joinedQuery() {
-    return this["source-table"]
+    const sourceTable = this.joinSourceTableId();
+    const sourceQuery = this.joinSourceQuery();
+    return sourceTable
       ? new StructuredQuery(this.query().question(), {
           type: "query",
-          query: { "source-table": this["source-table"] },
+          query: { "source-table": sourceTable },
         })
-      : this["source-query"]
+      : sourceQuery
       ? new StructuredQuery(this.query().question(), {
           type: "query",
-          query: this["source-query"],
+          query: sourceQuery,
         })
       : null;
   }
@@ -248,7 +280,9 @@ export default class Join extends MBQLObjectClause {
     }
   }
 
-  joinedDimensionOptions(dimensionFilter = () => true) {
+  joinedDimensionOptions(
+    dimensionFilter: (d: Dimension) => boolean = () => true,
+  ) {
     const dimensions = this.joinedDimensions().filter(dimensionFilter);
     return {
       name: this.displayName(),
@@ -259,7 +293,7 @@ export default class Join extends MBQLObjectClause {
     };
   }
 
-  joinedDimension(dimension) {
+  joinedDimension(dimension: Dimension) {
     return new JoinedDimension(
       dimension,
       [this.alias],

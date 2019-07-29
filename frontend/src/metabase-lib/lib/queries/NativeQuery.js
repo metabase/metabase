@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import Question from "../Question";
 import Query from "./Query";
 
 import Database from "metabase-lib/lib/metadata/Database";
@@ -19,12 +18,14 @@ import {
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 
+import type Question from "metabase-lib/lib/Question";
 import type {
   DatasetQuery,
   NativeDatasetQuery,
 } from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -47,10 +48,6 @@ export default class NativeQuery extends AtomicQuery {
     super(question, datasetQuery);
 
     this._nativeDatasetQuery = (datasetQuery: NativeDatasetQuery);
-  }
-
-  static create(options = {}) {
-    return Question.create({ ...options, type: "native" }).query();
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {

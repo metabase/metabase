@@ -37,6 +37,8 @@ import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { FieldId, Field } from "metabase/meta/types/Field";
 
 type ForeignKeyId = number;
 type ForeignKey = {

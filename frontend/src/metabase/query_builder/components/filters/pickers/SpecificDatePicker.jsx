@@ -21,6 +21,7 @@ type Props = {
   onChange: (value: ?string) => void,
   calendar?: boolean,
   hideTimeSelectors?: boolean,
+  className?: string,
 };
 
 type State = {

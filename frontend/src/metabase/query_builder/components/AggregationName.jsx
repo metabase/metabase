@@ -15,17 +15,24 @@ import FieldName from "./FieldName";
 
 import type { Aggregation } from "metabase/meta/types/Query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import AggregationWrapper from "metabase-lib/lib/queries/structured/Aggregation";
 
 type Props = {
-  aggregation: Aggregation,
+  aggregation: Aggregation | AggregationWrapper,
   query: StructuredQuery,
   className?: string,
+  // DEPRECATED: replaced with 'aggregation' / 'query`
+  tableMetadata?: any,
+  customFields?: any,
 };
 
 const AggregationName = ({
   className,
   aggregation,
-  query = aggregation.query && aggregation.query(),
+  query = aggregation instanceof AggregationWrapper
+    ? aggregation.query()
+    : // $FlowFixMe
+      null,
   // DEPRECATED: replaced with 'aggregation' / 'query`
   tableMetadata = query && query.tableMetadata(),
   customFields = query && query.expressions(),

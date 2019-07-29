@@ -30,7 +30,7 @@ export type DimensionValue = {
 
 export type ClickObject = {
   value?: Value,
-  column?: Column,
+  column?: ?Column,
   dimensions?: DimensionValue[],
   event?: MouseEvent,
   element?: HTMLElement,
@@ -105,4 +105,8 @@ export type VisualizationProps = {
   onChangeCardAndRun: OnChangeCardAndRun,
 
   onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
+
+  onAddSeries?: Function,
+  onEditSeries?: Function,
+  onRemoveSeries?: Function,
 };

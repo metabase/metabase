@@ -96,7 +96,7 @@ const ChartTypeOption = ({
       )}
       style={{
         borderRadius: 10,
-        padding: 12
+        padding: 12,
       }}
     >
       <Icon name={visualization.iconName} size={20} />

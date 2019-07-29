@@ -77,9 +77,13 @@ type Props = {
   setParameterValue: (parameterId: ParameterId, value: string) => void,
 
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
+
+  isNativeEditorOpen: boolean,
+  setIsNativeEditorOpen: (isOpen: boolean) => void,
 };
 type State = {
   initialHeight: number,
+  firstRun: boolean,
 };
 
 export default class NativeQueryEditor extends Component {
@@ -156,7 +160,7 @@ export default class NativeQueryEditor extends Component {
     }
   }
 
-  componentWillReceiveProps(nextProps) {
+  componentWillReceiveProps(nextProps: Props) {
     if (this.state.firstRun && nextProps.isRunning && !this.props.isRunning) {
       this.setState({ firstRun: false });
       this._updateSize(true);
@@ -252,7 +256,7 @@ export default class NativeQueryEditor extends Component {
     });
   }
 
-  _updateSize(allowShrink = false) {
+  _updateSize(allowShrink: boolean = false) {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     const newHeight = getEditorLineHeight(doc.getLength());

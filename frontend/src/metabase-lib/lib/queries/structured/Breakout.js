@@ -12,7 +12,7 @@ export default class Breakout extends MBQLClause {
    * or replaces itself in the parent query if no {breakout} argument is provided.
    */
   replace(breakout?: Breakout | BreakoutObject): StructuredQuery {
-    if (arguments.length > 0) {
+    if (breakout != null) {
       return this._query.updateBreakout(this._index, breakout);
     } else {
       return this._query.updateBreakout(this._index, this);

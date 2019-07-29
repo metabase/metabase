@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
-import Tooltip from "metabase/components/Tooltip.jsx";
 
 import AlertListPopoverContent from "../AlertListPopoverContent";
 

@@ -7,8 +7,9 @@ import DimensionList from "./DimensionList";
 import Dimension from "metabase-lib/lib/Dimension";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import type { ConcreteField } from "metabase/meta/types/Query";
+import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 // import type { Section } from "metabase/components/AccordianList";
 export type AccordianListItem = {};
@@ -28,7 +29,8 @@ type Props = {
 
   table?: Table,
   // query should be included otherwise FieldList may not display field-literal display name correctly
-  query?: Query,
+  query?: StructuredQuery,
+  metadata?: Metadata,
 
   // AccordianList props:
   className?: string,
@@ -79,7 +81,7 @@ export default class FieldList extends Component {
   };
 
   handleChange = item => {
-    if (item.filter) {
+    if (item.filter && this.props.onFilterChange) {
       this.props.onFilterChange(item.filter);
     }
   };

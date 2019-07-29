@@ -74,18 +74,20 @@ export type FilterOperatorField = {
 
 export type ValidArgumentsFilter = (field: Field, table: Table) => boolean;
 
+type FieldsFilter = (fields: Field[]) => Field[];
+
 export type AggregationOption = {
   name: string,
   short: string,
   fields: Field[],
-  validFieldsFilter: (fields: Field[]) => Field[],
+  validFieldsFilters: FieldsFilter[],
 };
 
 export type BreakoutOption = {
   name: string,
   short: string,
   fields: Field[],
-  validFieldsFilter: (fields: Field[]) => Field[],
+  validFieldsFilter: FieldsFilter,
 };
 
 export type FieldOptions = {

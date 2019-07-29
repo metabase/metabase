@@ -1,19 +1,11 @@
-/* @flow */
-
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const SIZES = [12, 16];
 
-type Props = {};
-type State = {
-  size: number,
-};
-
 export default class IconsApp extends Component {
-  props: Props;
-  state: State = {
+  state = {
     size: 32,
     search: "",
   };

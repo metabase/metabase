@@ -37,7 +37,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "details",
       title: t`View details`,
       default: true,
-      question: () => question.drillPK(field, clicked && clicked.value),
+      question: () =>
+        field ? question.drillPK(field, clicked && clicked.value) : question,
     },
   ];
 };

@@ -38,6 +38,7 @@ type Props = {
   isRunnable: boolean,
   isAdmin: boolean,
   isResultDirty: boolean,
+  isObjectDetail: boolean,
   runQuestionQuery: any => void,
   cancelQuery?: any => void,
   className: string,
@@ -97,13 +98,11 @@ export default class QueryVisualization extends Component {
       result,
     } = this.props;
 
-    const isError = result && result.error;
-
     return (
       <div className={cx(className, "relative stacking-context")}>
         {isRunning ? (
           <VisualizationRunningState className="spread z2" />
-        ) : isResultDirty && !isError ? (
+        ) : isResultDirty && !(result && result.error) ? (
           <VisualizationDirtyState {...this.props} className="spread z2" />
         ) : null}
         {!isObjectDetail && (
@@ -119,7 +118,7 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {isError ? (
+          {result && result.error ? (
             <VisualizationError
               className="spread"
               error={result.error}

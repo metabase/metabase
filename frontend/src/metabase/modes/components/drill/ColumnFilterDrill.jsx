@@ -11,6 +11,7 @@ import FilterPopover from "metabase/query_builder/components/filters/FilterPopov
 import type {
   ClickAction,
   ClickActionProps,
+  ClickActionPopoverProps,
 } from "metabase/meta/types/Visualization";
 
 export default function QuickFilterDrill({

@@ -27,6 +27,7 @@ type Props = {
   onFilterChange: (filter: TimeIntervalFilter) => void,
   formatter: (value: any) => any,
   hideTimeSelectors?: boolean,
+  className?: string,
 };
 
 type State = {

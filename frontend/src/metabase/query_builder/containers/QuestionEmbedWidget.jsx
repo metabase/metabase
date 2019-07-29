@@ -60,15 +60,18 @@ export default class QuestionEmbedWidget extends Component {
       />
     );
   }
-}
 
-QuestionEmbedWidget.shouldRender = ({
-  question,
-  isAdmin,
-  // preferably this would come from props
-  isPublicLinksEnabled = MetabaseSettings.get("public_sharing"),
-  isEmbeddingEnabled = MetabaseSettings.get("embedding"),
-}) =>
-  question.isSaved() &&
-  ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
-    (isEmbeddingEnabled && isAdmin));
+  static shouldRender({
+    question,
+    isAdmin,
+    // preferably this would come from props
+    isPublicLinksEnabled = MetabaseSettings.get("public_sharing"),
+    isEmbeddingEnabled = MetabaseSettings.get("embedding"),
+  }) {
+    return (
+      question.isSaved() &&
+      ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
+        (isEmbeddingEnabled && isAdmin))
+    );
+  }
+}

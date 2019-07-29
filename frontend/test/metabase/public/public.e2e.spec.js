@@ -202,16 +202,17 @@ describe("public/embedded", () => {
       click(tagEditorSidebar.find(".Icon-close"));
 
       // test without the parameter
-      click(app.find(RunButton));
+      click(app.find(RunButton).first());
       await store.waitForActions([RUN_QUERY, QUERY_COMPLETED]);
       expect(app.find(Scalar).text()).toBe(COUNT_ALL);
 
       // test the parameter
       const parameter = app.find(ParameterFieldWidget).first();
       click(parameter.find("div").first());
-      click(parameter.find('span[children="Doohickey"]'));
+      click(parameter.find('[children="Doohickey"]'));
+
       clickButton(parameter.find(".Button"));
-      click(app.find(RunButton));
+      click(app.find(RunButton).first());
       await store.waitForActions([RUN_QUERY, QUERY_COMPLETED]);
       expect(app.find(Scalar).text()).toBe(COUNT_DOOHICKEY);
 

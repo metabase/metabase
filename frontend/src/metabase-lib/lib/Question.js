@@ -15,6 +15,7 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Query from "metabase-lib/lib/queries/Query";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -56,6 +57,8 @@ import type {
 import type { Dataset } from "metabase/meta/types/Dataset";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
+import type { ClickObject } from "metabase/meta/types/Visualization";
+
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
@@ -125,7 +128,7 @@ export default class Question {
     metadata,
     parameterValues,
     type = "query",
-    name = null,
+    name,
     display = "table",
     visualization_settings = {},
     dataset_query = type === "native"
@@ -372,7 +375,7 @@ export default class Question {
 
   canAutoRun(): boolean {
     const db = this.database();
-    return db && db.auto_run_queries;
+    return (db && db.auto_run_queries) || false;
   }
 
   /**
@@ -570,12 +573,12 @@ export default class Question {
     if (query instanceof StructuredQuery && query !== query.topLevelQuery()) {
       return {
         ...clicked,
-        column: query.topLevelColumn(clicked.column),
+        column: clicked.column && query.topLevelColumn(clicked.column),
         dimensions:
           clicked.dimensions &&
           clicked.dimensions.map(dimension => ({
             ...dimension,
-            column: query.topLevelColumn(dimension.column),
+            column: dimension.column && query.topLevelColumn(dimension.column),
           })),
       };
     } else {
@@ -600,7 +603,7 @@ export default class Question {
 
   isObjectDetail(): boolean {
     const mode = this.mode();
-    return mode && mode.name() === "object";
+    return mode ? mode.name() === "object" : false;
   }
 
   objectDetailPK(): any {
@@ -647,25 +650,27 @@ export default class Question {
 
   database(): ?Database {
     const query = this.query();
-    return query && query.database && query.database();
+    return query && typeof query.database === "function"
+      ? query.database()
+      : null;
   }
-  databaseId() {
+  databaseId(): ?DatabaseId {
     const db = this.database();
-    return db && db.id;
+    return db ? db.id : null;
   }
-  table() {
+  table(): ?Table {
     const query = this.query();
-    return query && query.table && query.table();
+    return query && typeof query.table === "function" ? query.table() : null;
   }
-  tableId() {
+  tableId(): ?TableId {
     const table = this.table();
-    return table && table.id;
+    return table ? table.id : null;
   }
 
   getUrl({
-    originalQuestion = null,
+    originalQuestion,
     clean = true,
-  }: { originalQuestion?: Question, clean?: boollean } = {}): string {
+  }: { originalQuestion?: Question, clean?: boolean } = {}): string {
     if (
       !this.id() ||
       (originalQuestion && this.isDirtyComparedTo(originalQuestion))
