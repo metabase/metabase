@@ -38,7 +38,7 @@ const STEP_UI = {
     priority: 1,
   },
   expression: {
-    title: t`Add column`,
+    title: t`Custom column`,
     color: colors["bg-dark"],
     icon: "add_data",
     component: ExpressionStep,

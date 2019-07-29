@@ -29,12 +29,12 @@ export default class FilterSidebar extends React.Component {
         className={cx(className, "spread")}
         color={color("filter")}
         onDone={valid ? () => this.handleCommit(filter) : onClose}
-        doneButtonText={valid ? t`Done` : t`Cancel`}
+        doneButtonText={valid ? t`Add filter` : t`Cancel`}
       >
         <FilterPopover
           isTopLevel
           isSidebar
-          className="mx3"
+          className="mx2 pt1"
           fieldPickerTitle={t`Filter by`}
           query={question.query()}
           // fires every time the filter is changed:

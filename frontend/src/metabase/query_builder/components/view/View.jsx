@@ -117,8 +117,12 @@ export default class View extends React.Component {
       return (
         <div className={fitClassNames}>
           <div className="p4 mx2">
-            <Subhead>{t`Pick your data`}</Subhead>
-            <QuestionDataSelector query={query} />
+            <QuestionDataSelector
+              query={query}
+              triggerElement={
+                <Subhead className="mb2">{t`Pick your data`}</Subhead>
+              }
+            />
           </div>
         </div>
       );

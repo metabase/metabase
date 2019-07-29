@@ -172,6 +172,7 @@ export const VisualizationDirtyState = ({
 }) => (
   <div className={cx(className, "Loading flex flex-column layout-centered")}>
     <RunButtonWithTooltip
+      className="shadowed"
       circular
       result={result}
       isRunnable={isRunnable}

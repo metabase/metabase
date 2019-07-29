@@ -27,7 +27,7 @@ export default function SidebarContent({
       <div className="scroll-y">
         {(title || onBack || icon) && (
           <SidebarHeader
-            className="mx4 my2"
+            className="mx3 my2 pt1"
             title={title}
             icon={icon}
             onBack={onBack}

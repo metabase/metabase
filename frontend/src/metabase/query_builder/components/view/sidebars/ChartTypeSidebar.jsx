@@ -39,12 +39,12 @@ const ChartTypeSidebar = ({
 
   return (
     <SidebarContent
-      className="full-height"
+      className="full-height px1"
       title={t`Choose a visualization`}
       onDone={onCloseChartType}
     >
       {layout.map(row => (
-        <Flex mx={3} mb={1} className="flex-wrap">
+        <Flex mx={2} mb={1} className="flex-wrap">
           {row.map(type => {
             const visualization = visualizations.get(type);
             return (
@@ -85,7 +85,6 @@ const ChartTypeOption = ({
     style={{ opacity: !isSensible ? 0.25 : 1 }}
   >
     <Flex
-      p={[1, 2]}
       flexDirection="column"
       align="center"
       justifyContent="center"
@@ -96,10 +95,11 @@ const ChartTypeOption = ({
         { "text-white": isSelected },
       )}
       style={{
-        borderRadius: 18,
+        borderRadius: 10,
+        padding: 12
       }}
     >
-      <Icon name={visualization.iconName} size={24} />
+      <Icon name={visualization.iconName} size={20} />
     </Flex>
     <Box mt={1} className="text-bold text-brand">
       {visualization.uiName}

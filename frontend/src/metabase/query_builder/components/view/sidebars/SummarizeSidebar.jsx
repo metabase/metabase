@@ -66,7 +66,7 @@ export default class SummarizeSidebar extends React.Component {
         }}
         className={cx(className, "spread")}
       >
-        <div className="px4">
+        <div className="px3">
           {query.aggregations().map((aggregation, index) => (
             <SummarizeAggregation
               className="mb1"
@@ -80,7 +80,7 @@ export default class SummarizeSidebar extends React.Component {
         </div>
         {query.hasAggregations() && (
           <div className="border-top mt3 pt3 mx1">
-            <h3 className="text-heavy mb2 ml3">Group by</h3>
+            <h3 className="text-heavy mb2 ml2">Group by</h3>
             <SummarizeBreakouts className="mx2" query={query} />
           </div>
         )}
@@ -189,7 +189,7 @@ const SummarizeBreakouts = ({ className, query }) => {
   const dimensions = query.breakouts().map(b => b.dimension());
   return (
     <DimensionList
-      className="text-green mx2"
+      className="text-green mx1"
       dimensions={dimensions}
       sections={query.breakoutOptions(true).sections()}
       onChangeDimension={dimension => {
