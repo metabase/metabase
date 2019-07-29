@@ -741,6 +741,10 @@ export const updateQuestion = (
       run = hasNewColumns(newQuestion, queryResult);
     }
 
+    if (!newQuestion.canAutoRun()) {
+      run = false;
+    }
+
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 

@@ -8,6 +8,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import VisualizationError from "./VisualizationError";
 import VisualizationResult from "./VisualizationResult";
 import Warnings from "./Warnings";
+import RunButtonWithTooltip from "./RunButtonWithTooltip";
 
 import Utils from "metabase/lib/utils";
 
@@ -17,6 +18,7 @@ import Question from "metabase-lib/lib/Question";
 import type { Database } from "metabase/meta/types/Database";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { DatasetQuery } from "metabase/meta/types/Card";
+
 import type { ParameterValues } from "metabase/meta/types/Parameter";
 
 type Props = {
@@ -91,19 +93,17 @@ export default class QueryVisualization extends Component {
       question,
       isRunning,
       isObjectDetail,
+      isResultDirty,
       result,
     } = this.props;
 
     return (
-      <div className={cx(className, "relative")}>
-        {isRunning && (
-          <div className="Loading spread flex flex-column layout-centered text-brand z2">
-            <LoadingSpinner />
-            <h2 className="Loading-message text-brand text-uppercase my3">
-              {t`Doing science`}...
-            </h2>
-          </div>
-        )}
+      <div className={cx(className, "relative stacking-context")}>
+        {isRunning ? (
+          <VisualizationRunningState className="spread z2" />
+        ) : isResultDirty ? (
+          <VisualizationDirtyState {...this.props} className="spread z2" />
+        ) : null}
         {!isObjectDetail && (
           <Warnings
             warnings={this.state.warnings}
@@ -143,5 +143,41 @@ export default class QueryVisualization extends Component {
 export const VisualizationEmptyState = ({ className }) => (
   <div className={cx(className, "flex flex-column layout-centered text-light")}>
     <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
+  </div>
+);
+
+export const VisualizationRunningState = ({ className }) => (
+  <div
+    className={cx(
+      className,
+      "Loading flex flex-column layout-centered text-brand",
+    )}
+  >
+    <LoadingSpinner />
+    <h2 className="Loading-message text-brand text-uppercase my3">
+      {t`Doing science`}...
+    </h2>
+  </div>
+);
+
+export const VisualizationDirtyState = ({
+  className,
+  result,
+  isRunnable,
+  isRunning,
+  isResultDirty,
+  runQuestionQuery,
+  cancelQuery,
+}) => (
+  <div className={cx(className, "Loading flex flex-column layout-centered")}>
+    <RunButtonWithTooltip
+      circular
+      result={result}
+      isRunnable={isRunnable}
+      isRunning={isRunning}
+      isDirty={isResultDirty}
+      onRun={() => runQuestionQuery({ ignoreCache: true })}
+      onCancel={() => cancelQuery()}
+    />
   </div>
 );
