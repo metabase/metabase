@@ -29,7 +29,7 @@ export default class FilterSidebar extends React.Component {
         className={cx(className, "spread")}
         color={color("filter")}
         onDone={valid ? () => this.handleCommit(filter) : onClose}
-        doneButtonText={valid ? t`Done` : t`Cancel`}
+        doneButtonText={valid ? t`Add filter` : t`Cancel`}
       >
         <FilterPopover
           isTopLevel

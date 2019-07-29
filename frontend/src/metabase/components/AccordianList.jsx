@@ -3,6 +3,7 @@ import PropTypes from "prop-types";
 
 import cx from "classnames";
 import _ from "underscore";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
@@ -479,7 +480,7 @@ const AccordianListCell = ({
   if (type === "header") {
     if (alwaysExpanded) {
       content = (
-        <div className="pt2 mb1 mx2 text-green h5 text-uppercase text-bold">
+        <div className="pt2 mb1 mx2 h5 text-uppercase text-bold" style={{color: color}}>
           {section.name}
         </div>
       );
