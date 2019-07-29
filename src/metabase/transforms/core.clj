@@ -41,10 +41,9 @@
         (not= source table-or-dimension) (vector :joined-field table-or-dimension))
       (get-in bindings [source :dimensions table-or-dimension]))))
 
-(defn resolve-dimension-clauses
-  "Given "
-  [bindings :- Bindings, source :- SourceName, field-or-mbql :- (s/maybe MBQL)]
-  (mbql.u/replace field-or-mbql
+(s/defn ^:private resolve-dimension-clauses :- (s/maybe MBQL)
+  [bindings :- Bindings, source :- SourceName, mbql-clause :- (s/maybe MBQL)]
+  (mbql.u/replace mbql-clause
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
