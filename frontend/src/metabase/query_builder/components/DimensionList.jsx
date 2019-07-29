@@ -2,10 +2,12 @@
 
 import React, { Component } from "react";
 import _ from "underscore";
+import { t } from "ttag";
 
 import AccordianList from "metabase/components/AccordianList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Tooltip from "metabase/components/Tooltip"
 
 import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
@@ -137,15 +139,17 @@ export default class DimensionList extends Component {
           </PopoverWithTrigger>
         ) : null}
         {!isSelected && onAddDimension && (
-          <Icon
-            name="add"
-            size={14}
-            className="mx1 cursor-pointer hover-child faded fade-in-hover"
-            onClick={e => {
-              e.stopPropagation();
-              this.handleAdd(item);
-            }}
-          />
+          <Tooltip tooltip={t`Add grouping`}>
+            <Icon
+              name="add"
+              size={14}
+              className="mx1 cursor-pointer hover-child faded fade-in-hover"
+              onClick={e => {
+                e.stopPropagation();
+                this.handleAdd(item);
+              }}
+            />
+          </Tooltip>
         )}
         {isSelected && onRemoveDimension && (
           <Icon

@@ -54,7 +54,7 @@ const QuestionDataSource = ({
       }, name);
     }
     parts.push({
-      icon: "table2",
+      icon: "table_spaced",
       name: name,
       href:
         !noLink && (subHead || isObjectDetail) && table.newQuestion().getUrl(),
@@ -80,7 +80,7 @@ const SubHeadBreadcrumbs = ({ parts }) => (
   <span className="flex align-center text-medium text-bold">
     {parts.map(({ name, icon, href }, index) => (
       <MaybeLink key={index} to={href} className="flex align-center mr2">
-        {icon && <Icon name={icon} mr={"5px"} size={12} />}
+        {icon && <Icon name={icon} mr={"5px"} size={11} />}
         {name}
       </MaybeLink>
     ))}
