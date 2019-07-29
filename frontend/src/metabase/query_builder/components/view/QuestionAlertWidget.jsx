@@ -49,13 +49,12 @@ export default class QuestionAlertWidget extends React.Component {
       );
     } else {
       return (
-        <Tooltip tooltip={t`Get alerts`}>
-          <Icon
-            name="bell"
-            className={cx(className, "text-brand-hover cursor-pointer")}
-            onClick={onCreateAlert}
-          />
-        </Tooltip>
+        <Icon
+          name="bell"
+          tooltip={t`Get alerts`}
+          className={cx(className, "text-brand-hover cursor-pointer")}
+          onClick={onCreateAlert}
+        />
       );
     }
   }

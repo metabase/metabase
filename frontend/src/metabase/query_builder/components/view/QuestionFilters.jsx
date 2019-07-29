@@ -27,12 +27,14 @@ export default function QuestionFilters({
   const filters = query.topLevelFilters();
   return filters.length === 0 ? null : expanded ? (
     <div className="flex flex-wrap align-center mbn1">
-      <FilterPill
-        invert
-        icon="filter"
-        className="mr1 mb1"
-        onClick={onCollapse}
-      />
+      <Tooltip tooltip={t`Hide filters`}>
+        <FilterPill
+          invert
+          icon="filter"
+          className="mr1 mb1"
+          onClick={onCollapse}
+        />
+      </Tooltip>
       {filters.map((filter, index) => (
         <PopoverWithTrigger
           key={index}
