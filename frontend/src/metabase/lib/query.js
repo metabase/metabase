@@ -824,22 +824,30 @@ for (const prop in Q) {
 import { isMath } from "metabase/lib/expressions";
 
 export const NamedClause = {
+  hasOptions(clause) {
+    return Array.isArray(clause) && clause[0] === "aggregation-options";
+  },
+  getOptions(clause) {
+    return NamedClause.hasOptions(clause) ? clause[2] : {};
+  },
   isNamed(clause) {
-    return Array.isArray(clause) && clause[0] === "named";
+    return NamedClause.getOptions(clause)["display-name"];
   },
   getName(clause) {
-    return NamedClause.isNamed(clause) ? clause[2] : null;
+    return NamedClause.getOptions(clause)["display-name"];
   },
   getContent(clause) {
-    return NamedClause.isNamed(clause) ? clause[1] : clause;
+    return NamedClause.hasOptions(clause) ? clause[1] : clause;
   },
   setName(clause, name) {
-    return ["named", NamedClause.getContent(clause), name];
+    return [
+      "aggregation-options",
+      NamedClause.getContent(clause),
+      { "display-name": name, ...NamedClause.getOptions(clause) },
+    ];
   },
   setContent(clause, content) {
-    return NamedClause.isNamed(clause)
-      ? ["named", content, NamedClause.getName(clause)]
-      : content;
+    return ["aggregation-options", content, NamedClause.getOptions(clause)];
   },
 };
 

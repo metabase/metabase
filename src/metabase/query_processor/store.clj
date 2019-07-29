@@ -25,27 +25,32 @@
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
+(def ^:private uninitialized-store
+  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
+
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
-  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
+  uninitialized-store)
 
 (defn initialized?
   "Is the QP store currently initialized?"
   []
-  (not (delay? *store*)))
+  (not (identical? *store* uninitialized-store)))
 
-(defn do-with-new-store
-  "Execute `f` with a freshly-bound `*store*`."
+(defn do-with-store
+  "Execute `f` with an initialized `*store*` if one is not already bound."
   [f]
-  (binding [*store* (atom {})]
-    (f)))
+  (if (initialized?)
+    (f)
+    (binding [*store* (atom {})]
+      (f))))
 
 (defmacro with-store
-  "Execute `body` with a freshly-bound QP `*store*`. The `store` middleware takes care of setting up a fresh store for
-  each query execution; you should have no need to use this macro yourself outside of that namespace."
+  "Execute `body` with an initialized QP `*store*`. The `store` middleware takes care of setting up a store as needed
+  for each query execution; you should have no need to use this macro yourself outside of that namespace."
   {:style/indent 0}
   [& body]
-  `(do-with-new-store (fn [] ~@body)))
+  `(do-with-store (fn [] ~@body)))
 
 (def ^:private database-columns-to-fetch
   "Columns you should fetch for the Database referenced by the query before stashing in the store."
@@ -67,6 +72,7 @@
   "Columns you should fetch for any Table you want to stash in the Store."
   [:id
    :name
+   :display_name
    :schema])
 
 (def ^:private TableInstanceWithRequiredStoreKeys

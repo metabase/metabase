@@ -395,7 +395,7 @@ export class FieldIDDimension extends FieldDimension {
 }
 
 /**
- * Foreign key-based dimension, `["fk->", fk-field-id, dest-field-id]`
+ * Foreign key-based dimension, `["fk->", ["field-id", fk-field-id], ["field-id", dest-field-id]]`
  */
 export class FKDimension extends FieldDimension {
   static parseMBQL(mbql: ConcreteField, metadata?: ?Metadata): ?Dimension {
@@ -639,7 +639,9 @@ export class AggregationDimension extends Dimension {
     const aggregation =
       this._query && this._query.aggregations()[this.aggregationIndex()];
     if (aggregation) {
-      return aggregation[0] === "named" ? aggregation[1] : aggregation;
+      return aggregation[0] === "aggregation-options"
+        ? aggregation[1]
+        : aggregation;
     }
     return null;
   }
@@ -649,13 +651,15 @@ export class AggregationDimension extends Dimension {
       this._query && this._query.aggregations()[this.aggregationIndex()];
     if (aggregation) {
       // FIXME: query lib
-      if (aggregation[0] === "named") {
-        return aggregation[2];
-      } else {
-        const short = aggregation[0];
-        // NOTE: special case for "distinct"
-        return short === "distinct" ? "count" : short;
+      if (aggregation[0] === "aggregation-options") {
+        const { "display-name": displayName } = aggregation[2];
+        if (displayName) {
+          return displayName;
+        }
       }
+      const short = aggregation[0];
+      // NOTE: special case for "distinct"
+      return short === "distinct" ? "count" : short;
     }
     return null;
   }

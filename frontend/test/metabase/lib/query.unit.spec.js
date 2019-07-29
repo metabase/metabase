@@ -344,7 +344,13 @@ describe("generateQueryDescription", () => {
     expect(
       Query.generateQueryDescription(mockTableMetadata, {
         "source-table": 1,
-        aggregation: [["named", ["sum", ["field-id", 1]], "Revenue"]],
+        aggregation: [
+          [
+            "aggregation-options",
+            ["sum", ["field-id", 1]],
+            { "display-name": "Revenue" },
+          ],
+        ],
       }),
     ).toEqual("Orders, Revenue");
   });

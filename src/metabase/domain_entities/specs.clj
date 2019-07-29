@@ -47,7 +47,6 @@
                                  (s/optional-key :segments)            Segments
                                  (s/optional-key :breakout_dimensions) BreakoutDimensions})
 
-
 (defonce ^:private ^{:doc "Domain entity spec hierarchy."}
   hierarchy
   (make-hierarchy))

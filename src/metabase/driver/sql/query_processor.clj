@@ -151,22 +151,11 @@
 
 (defmethod ->honeysql [:sql :value] [driver [_ value]] (->honeysql driver value))
 
-;; TODO: Temp fix
-(defn- expression-with-name*
-  [query expression-name]
-  (or (get-in query [:expressions (keyword expression-name)])
-      (and (:source-query query) (expression-with-name* (:source-query query) expression-name))))
-
-(defn- expression-with-name
-  [query expression-name]
-  (or (expression-with-name* (:query query) expression-name)
-      (throw (Exception. (str (tru "No expression named ''{0}''" (name expression-name)))))))
-
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
   ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
   ;; original formula.
-  (->honeysql driver (expression-with-name *query* expression-name)))
+  (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
 
 (defn cast-unix-timestamp-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
@@ -284,15 +273,18 @@
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :named] [driver [_ ag ag-name]]
+(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
   (mbql.u/match-one (mbql.u/aggregation-at-index *query* index *nested-query-level*)
-    [:named _ ag-name & _]
-    (->honeysql driver (hx/identifier :field-alias ag-name))
+    [:aggregation-options ag (options :guard :name)]
+    (->honeysql driver (hx/identifier :field-alias (:name options)))
+
+    [:aggregation-options ag _]
+    (recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation

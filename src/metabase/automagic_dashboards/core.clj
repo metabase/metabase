@@ -89,7 +89,7 @@
               (complement mbql.u/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
-  (partial mbql.u/is-clause? :named))
+  (partial mbql.u/is-clause? :aggregation-options))
 
 (def ^:private ^{:arglists '([metric])} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))

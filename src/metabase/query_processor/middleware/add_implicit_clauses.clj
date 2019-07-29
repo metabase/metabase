@@ -44,7 +44,7 @@
     ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
     {:order-by (default-sort-rules)}))
 
-(s/defn sorted-implicit-fields-for-table :- [mbql.s/Field]
+(s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
@@ -55,7 +55,7 @@
       [:datetime-field [:field-id (u/get-id field)] :default]
       [:field-id (u/get-id field)])))
 
-(s/defn ^:private source-metadata->fields :- [mbql.s/Field]
+(s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (for [{field-name :name, base-type :base_type} source-metadata]

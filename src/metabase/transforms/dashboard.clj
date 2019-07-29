@@ -33,32 +33,31 @@
                                  :position 0})))
           cards))
 
+(defn- card-for-source-table
+  [table]
+  {:creator_id             api/*current-user-id*
+   :dataset_query          {:type     :query
+                            :query    {:source-table (u/get-id table)}
+                            :database (:db_id table)}
+   :name                   (:display_name table)
+   :collection_id          nil
+   :visualization_settings {}
+   :display                :table})
+
 (defn dashboard
-  "Create a (transient) dashboard for transform."
+  "Create a (transient) dashboard for transform named `transform-name`."
   [transform-name]
-  (let [transform-spec
-        (m/find-first (comp #{transform-name} :name) @transform-specs)
-
-        {steps false provides true}
-        (->> transform-name
-             materialize/get-collection
-             (db/select 'Card :collection_id)
-             (group-by (comp some? (-> transform-spec :provides keys set) :name)))
-
-        sources
-        (->> steps
-             (map (comp :source-table :query :dataset_query))
-             (filter number?)
-             (map (fn [source-table]
-                    (let [table (Table source-table)]
-                      {:creator_id             api/*current-user-id*
-                       :dataset_query          {:type     :query
-                                                :query    {:source-table (u/get-id table)}
-                                                :database (:db_id table)}
-                       :name                   (:display_name table)
-                       :collection_id          nil
-                       :visualization_settings {}
-                       :display                :table}))))]
+  (let [transform-spec              (m/find-first (comp #{transform-name} :name) @transform-specs)
+        {steps false provides true} (->> transform-name
+                                         materialize/get-collection
+                                         (db/select 'Card :collection_id)
+                                         (group-by (comp some?
+                                                         (-> transform-spec :provides keys set)
+                                                         :name)))
+        sources                     (->> steps
+                                         (map (comp :source-table :query :dataset_query))
+                                         (filter number?)
+                                         (map (comp card-for-source-table Table)))]
     (populate/create-dashboard {:cards       (concat (cards->section "sources" sources)
                                                      (cards->section "steps" steps)
                                                      (cards->section "provides" provides))

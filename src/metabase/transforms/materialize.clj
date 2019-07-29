@@ -3,7 +3,6 @@
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection]]
-         ;   [metabase.query-processor :as qp]
             [metabase.query-processor.middleware
              [add-implicit-clauses :as qp.imlicit-clauses]
              [annotate :as qp.annotate]
@@ -67,17 +66,14 @@
     (db/delete! Card :collection_id collection-id)
     (create-collection! name "#509EE3" description)))
 
-(defn make-card!
-  "Make and save a card with a given name, query, and description."
-  [step-name transform-name query description]
+(defn make-card-for-step!
+  "Make and save a card for a given transform step and query."
+  [{:keys [name transform description]} query]
   (->> {:creator_id             api/*current-user-id*
-        :dataset_query          ;; {:database (:database query)
-         ;;                         :type     :native
-         ;; :native   (qp/query->native query)}
-        query
+        :dataset_query          query
         :description            description
-        :name                   step-name
-        :collection_id          (get-collection transform-name)
+        :name                   name
+        :collection_id          (get-collection transform)
         :result_metadata        (infer-cols query)
         :visualization_settings {}
         :display                :table}

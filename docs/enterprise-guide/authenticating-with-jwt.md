@@ -24,6 +24,14 @@ These are additional settings you can fill in to pass user attributes to Metabas
 
 **Last Name attribute:** if you guessed that this is the key to retrieve each JWT user's last name, well then you have been paying attention.
 
+#### Group Schema
+
+You can use your JWT to assign Metabase users to custom groups by following these steps:
+
+1. Add this to your JWT: `groups: ["group_name"]`
+2. In the Admin Panel in Metabase, go to the Authentication tab of the Settings section and click the Configure button on JWT. On this screen, turn on the toggle under "SYNCHRONIZE GROUP MEMBERSHIPS".
+3. Next, click Edit Mappings. In this modal, type in the name of one of your groups as defined in the JWT, then click Add. In the row that appears, click the dropdown to pick the Metabase group that this should map to. Repeat this for each of the groups you want to map.
+
 
 ---
 

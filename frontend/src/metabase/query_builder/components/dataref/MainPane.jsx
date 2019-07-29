@@ -24,7 +24,7 @@ const MainPane = ({ databases, show }) => (
                 className="p1 flex align-center no-decoration bg-medium-hover"
               >
                 <Icon name="database" className="pr1 text-medium" size={14} />
-                <h3>{database.name}</h3>
+                <h3 className="text-wrap">{database.name}</h3>
               </a>
             </li>
           ))}
