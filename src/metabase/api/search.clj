@@ -16,6 +16,7 @@
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
              [metric :refer [Metric]]
+             [permissions :as perms]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]
              [table :refer [Table]]]
@@ -27,13 +28,12 @@
 
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
-  {:search-string       (s/maybe su/NonBlankString)
-   :archived?           s/Bool
-   ;; either `:all` or a set of IDs and/or the string `root`
-   :visible-collections coll/VisibleCollections})
+  {:search-string      (s/maybe su/NonBlankString)
+   :archived?          s/Bool
+   :current-user-perms #{perms/UserPath}})
 
 (def ^:private searchable-models
-  [Card Dashboard Pulse Collection Segment Metric])
+  [Card Dashboard Pulse Collection Segment Metric Table])
 
 (def ^:private SearchableModel
   (apply s/enum searchable-models))
@@ -128,6 +128,17 @@
   [_]
   (into default-columns table-columns))
 
+(defmethod columns-for-model (class Table)
+  [_]
+  [:id
+   :name
+   :description
+   [:id :table_id]
+   [:db_id :database_id]
+   [:schema :table_schema]
+   [:name :table_name]
+   [:description :table_description]])
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Shared Query Logic                                               |
@@ -191,9 +202,22 @@
   [model :- SearchableModel]
   [[model (model->alias model)]])
 
+(defmulti ^:private archived-where-clause
+  {:arglists '([model archived?])}
+  (fn [model _] (class model)))
+
+(defmethod archived-where-clause :default
+  [model archived?]
+  [:= (hsql/qualify (model->alias model) :archived) archived?])
+
+;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
+(defmethod archived-where-clause (class Table)
+  [model _]
+  [:= (hsql/qualify (model->alias model) :active) true])
+
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
-  (let [archived-clause      [:= (hsql/qualify (model->alias model) :archived) archived?]
+  (let [archived-clause      (archived-where-clause model archived?)
         search-string-clause (when (seq search-string)
                                [:like
                                 (hsql/call :lower (hsql/qualify (model->alias model) :name))
@@ -213,10 +237,12 @@
 (s/defn ^:private add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection
   so we can return its `:name`."
-  [honeysql-query :- su/Map, collection-id-column :- s/Keyword, {:keys [visible-collections]} :- SearchContext]
-  (let [honeysql-query (h/merge-where
-                        honeysql-query
-                        (coll/visible-collection-ids->honeysql-filter-clause collection-id-column visible-collections))]
+  [honeysql-query :- su/Map, collection-id-column :- s/Keyword, {:keys [current-user-perms]} :- SearchContext]
+  (let [visible-collections      (coll/permissions-set->visible-collection-ids current-user-perms)
+        collection-filter-clause (coll/visible-collection-ids->honeysql-filter-clause
+                                  collection-id-column
+                                  visible-collections)
+        honeysql-query           (h/merge-where honeysql-query collection-filter-clause)]
     ;; add a JOIN against Collection *unless* the source table is already Collection
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
@@ -232,7 +258,7 @@
   {:arglists '([model search-context])}
   (fn [model _] (class model)))
 
-(s/defmethod ^:private search-query-for-model (class Card)
+(s/defmethod search-query-for-model (class Card)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Card search-ctx)
       (h/left-join [CardFavorite :fave]
@@ -241,12 +267,12 @@
                     [:= :fave.owner_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :card.collection_id search-ctx)))
 
-(s/defmethod ^:private search-query-for-model (class Collection)
+(s/defmethod search-query-for-model (class Collection)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Collection search-ctx)
       (add-collection-join-and-where-clauses :collection.id search-ctx)))
 
-(s/defmethod ^:private search-query-for-model (class Dashboard)
+(s/defmethod search-query-for-model (class Dashboard)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Dashboard search-ctx)
       (h/left-join [DashboardFavorite :fave]
@@ -255,7 +281,7 @@
                     [:= :fave.user_id api/*current-user-id*]])
       (add-collection-join-and-where-clauses :dashboard.collection_id search-ctx)))
 
-(s/defmethod ^:private search-query-for-model (class Pulse)
+(s/defmethod search-query-for-model (class Pulse)
   [_ search-ctx :- SearchContext]
   ;; Pulses don't currently support being archived, omit if archived is true
   (-> (base-query-for-model Pulse search-ctx)
@@ -263,21 +289,40 @@
       ;; We don't want alerts included in pulse results
       (h/merge-where [:= :alert_condition nil])))
 
-(s/defmethod ^:private search-query-for-model (class Metric)
+(s/defmethod search-query-for-model (class Metric)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Metric search-ctx)
       (h/left-join [Table :table] [:= :metric.table_id :table.id])))
 
-(s/defmethod ^:private search-query-for-model (class Segment)
+(s/defmethod search-query-for-model (class Segment)
   [_ search-ctx :- SearchContext]
   (-> (base-query-for-model Segment search-ctx)
       (h/left-join [Table :table] [:= :segment.table_id :table.id])))
 
+(s/defmethod search-query-for-model (class Table)
+  [_ {:keys [current-user-perms], :as search-ctx} :- SearchContext]
+  (when (seq current-user-perms)
+    (let [base-query (base-query-for-model Table search-ctx)]
+      (if (contains? current-user-perms "/")
+        base-query
+        {:select (:select base-query)
+         :from   [[(merge
+                    base-query
+                    {:select [:id :schema :db_id :name :description
+                              [(hx/concat "/db/" :db_id "/" :schema "/" :id "/") :path]]})
+                   :table]]
+         :where  (cons
+                  :or
+                  (for [path current-user-perms]
+                    [:like :path (str path "%")]))}))))
+
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (for [row (db/query {:union-all (for [model searchable-models]
-                                    (search-query-for-model model search-ctx))})]
+  (for [row (db/query {:union-all (for [model searchable-models
+                                        :let  [query (search-query-for-model model search-ctx)]
+                                        :when (seq query)]
+                                    query)})]
     ;; MySQL returns `:favorite` as `1` or `0` so convert those to boolean as needed
     (update row :favorite (fn [favorite]
                             (if (integer? favorite)
@@ -291,19 +336,15 @@
 
 (s/defn ^:private make-search-context :- SearchContext
   [search-string :- (s/maybe su/NonBlankString), archived-string :- (s/maybe su/BooleanString)]
-  {:search-string       search-string
-   :archived?           (Boolean/parseBoolean archived-string)
-   :visible-collections (coll/permissions-set->visible-collection-ids @api/*current-user-permissions-set*)})
+  {:search-string      search-string
+   :archived?          (Boolean/parseBoolean archived-string)
+   :current-user-perms @api/*current-user-permissions-set*})
 
 (api/defendpoint GET "/"
   "Search Cards, Dashboards, Collections and Pulses for the substring `q`."
   [q archived]
   {q        (s/maybe su/NonBlankString)
    archived (s/maybe su/BooleanString)}
-  (let [{:keys [visible-collections] :as search-ctx} (make-search-context q archived)]
-    ;; Throw if the user doesn't have access to any collections
-    (api/check-403 (or (= :all visible-collections)
-                       (seq visible-collections)))
-    (search search-ctx)))
+  (search (make-search-context q archived)))
 
 (api/define-routes)
