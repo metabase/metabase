@@ -73,7 +73,7 @@
                              :type/*)]]
      (merge
       {:name         (name col)
-       :display_name (u/keyword->qualified-name col)
+       :display_name (u/qualified-name col)
        :base_type    base-type
        :source       :native}
       ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
@@ -165,7 +165,7 @@
 
     [:expression expression-name]
     (if-let [matching-expression (when (seq expressions)
-                                   (some expressions ((juxt keyword u/keyword->qualified-name) expression-name)))]
+                                   (some expressions ((juxt keyword u/qualified-name) expression-name)))]
       (merge
        ;; There's some inconsistency when expression names are keywords and when strings.
        ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
@@ -503,7 +503,7 @@
                  (nil? columns)))
     (let [sorted-columns (expected-column-sort-order query results)]
       (assoc results
-        :columns (map u/keyword->qualified-name sorted-columns)
+        :columns (map u/qualified-name sorted-columns)
         :rows    (for [row rows]
                    (for [col sorted-columns]
                      (get row col)))))))

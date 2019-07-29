@@ -93,9 +93,9 @@
                         (source-metadata->fields source-metadata))
           ;; generate a new expression ref clause for each expression defined in the query.
           expressions (for [[expression-name] expressions]
-                        ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
+                        ;; TODO - we need to wrap this in `u/qualified-name` because `:expressions` uses
                         ;; keywords as keys. We can remove this call once we fix that.
-                        [:expression (u/keyword->qualified-name expression-name)])]
+                        [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
         (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
