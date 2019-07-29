@@ -7,7 +7,7 @@ import { t } from "ttag";
 import AccordianList from "metabase/components/AccordianList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import Tooltip from "metabase/components/Tooltip"
+import Tooltip from "metabase/components/Tooltip";
 
 import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 

@@ -571,6 +571,7 @@ export default class DataSelector extends Component {
         hasArrow={this.props.hasArrow}
         tetherOptions={this.props.tetherOptions}
         sizeToFit
+        isOpen={this.props.isOpen}
       >
         {this.renderActiveStep()}
       </PopoverWithTrigger>

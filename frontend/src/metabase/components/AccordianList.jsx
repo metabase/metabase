@@ -480,7 +480,10 @@ const AccordianListCell = ({
   if (type === "header") {
     if (alwaysExpanded) {
       content = (
-        <div className="pt2 mb1 mx2 h5 text-uppercase text-bold" style={{color: color}}>
+        <div
+          className="pt2 mb1 mx2 h5 text-uppercase text-bold"
+          style={{ color: color }}
+        >
           {section.name}
         </div>
       );
