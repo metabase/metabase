@@ -255,6 +255,10 @@ export default class Visualization extends React.PureComponent {
     const { rawSeries, metadata } = this.props;
     const seriesIndex = clicked.seriesIndex || 0;
     const card = rawSeries[seriesIndex].card;
+    if (metadata == null) {
+      // embedded visualizations don't have necessary metadata for click actions
+      return [];
+    }
     const question = new Question(metadata, card);
     const mode = question.mode();
     return mode ? mode.actionsForClick(clicked, {}) : [];

@@ -29,7 +29,8 @@
              [datasets :as datasets]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util.date :as du])
+            [metabase.util.date :as du]
+            [potemkin.types :as p.types])
   (:import [org.joda.time DateTime DateTimeZone]))
 
 (defn- ->long-if-number [x]
@@ -778,7 +779,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; RELATIVE DATES
-(deftype ^:private TimestampDatasetDef [intervalSeconds])
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds])
 
 (defmethod tx/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]

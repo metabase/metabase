@@ -371,7 +371,8 @@ export default class Question {
   }
 
   canAutoRun(): boolean {
-    return false; // FIXME: check the this.database() once the auto-run property has been added
+    const db = this.database();
+    return db && db.auto_run_queries;
   }
 
   /**

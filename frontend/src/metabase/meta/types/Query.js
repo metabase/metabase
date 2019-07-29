@@ -238,7 +238,11 @@ export type ConcreteField =
 
 export type LocalFieldReference = ["field-id", FieldId] | FieldId; // @deprecated: use ["field-id", FieldId]
 
-export type ForeignFieldReference = ["fk->", FieldId, FieldId];
+export type ForeignFieldReference = [
+  "fk->",
+  ["field-id", FieldId],
+  ["field-id", FieldId],
+];
 
 export type ExpressionReference = ["expression", ExpressionName];
 

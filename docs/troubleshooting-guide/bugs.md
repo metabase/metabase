@@ -1,4 +1,6 @@
-If you come across something that looks like a bug, we suggest collecting the following information to help us reproduce the issue.
+If you come across something that looks like a bug, start by searching our [Github issues](https://github.com/metabase/metabase/issues) to see if it has already been reported. If it has, please let us know you're experiencing the same issue by reacting with a thumbs up emoji or adding a comment providing additional information.
+
+If the bug has not yet been reported, go ahead and [open a bug report](https://github.com/metabase/metabase/issues/new?assignees=&labels=Bug&template=bug_report.md&title=). We suggest collecting the following information to help us reproduce the issue:
 
 1. Metabase server logs
 2. Javascript console logs
@@ -7,6 +9,7 @@ If you come across something that looks like a bug, we suggest collecting the fo
 5. Where Metabase is running (Docker image, AWS Elastic Beanstalk, Heroku, Linux/Ubuntu, etc)
 6. Which database is used
 7. What browser version
+8. Screenshots (if relevant)
 
 ## Helpful tidbits
 
