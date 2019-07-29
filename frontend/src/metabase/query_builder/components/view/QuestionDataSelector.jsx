@@ -1,5 +1,4 @@
 import React from "react";
-import { t } from "ttag";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 

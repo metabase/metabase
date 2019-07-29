@@ -97,11 +97,13 @@ export default class QueryVisualization extends Component {
       result,
     } = this.props;
 
+    const isError = result && result.error;
+
     return (
       <div className={cx(className, "relative stacking-context")}>
         {isRunning ? (
           <VisualizationRunningState className="spread z2" />
-        ) : isResultDirty ? (
+        ) : isResultDirty && !isError ? (
           <VisualizationDirtyState {...this.props} className="spread z2" />
         ) : null}
         {!isObjectDetail && (
@@ -117,7 +119,7 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error ? (
+          {isError ? (
             <VisualizationError
               className="spread"
               error={result.error}

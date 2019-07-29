@@ -352,9 +352,17 @@ export const getIsVisualized = createSelector(
 
 export const getIsLiveResizable = createSelector(
   [getTransformedSeries, getTransformedVisualization],
-  (series, visualization) =>
-    !series ||
-    !visualization ||
-    !visualization.isLiveResizable ||
-    visualization.isLiveResizable(series),
+  (series, visualization) => {
+    try {
+      return (
+        !series ||
+        !visualization ||
+        !visualization.isLiveResizable ||
+        visualization.isLiveResizable(series)
+      );
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  },
 );
