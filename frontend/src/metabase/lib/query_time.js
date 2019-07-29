@@ -182,6 +182,9 @@ export function generateTimeValueDescription(value, bucketing) {
 }
 
 export function formatBucketing(bucketing = "", n = 1) {
+  if (!bucketing) {
+    return "";
+  }
   switch (bucketing) {
     case "default":
       return ngettext(msgid`Default period`, `Default periods`, n);

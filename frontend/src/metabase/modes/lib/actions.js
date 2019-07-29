@@ -79,9 +79,10 @@ const getFieldRefFromColumn_LEGACY = (
 
   const fieldId = column.id;
   if (fieldId == null) {
-    throw new Error(
-      "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
-    );
+    return null;
+    // throw new Error(
+    //   "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
+    // );
   }
   if (Array.isArray(fieldId)) {
     // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
