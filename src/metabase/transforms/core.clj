@@ -73,15 +73,14 @@
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
                   ;; our parlance
                   (or (some->> flattened-bindings (m/find-first (comp #{name} :name val)) key)
-                      ;; Else it's a duplicated key from a join
+                      ;; If that doesn't work either, it's a duplicated col from a join
                       name))
                 (mbql-reference col)]))))
 
 (defn- maybe-add-fields
-  [bindings {:keys [aggregation name source]} query]
+  [bindings {:keys [aggregation source]} query]
   (if-not aggregation
-    (assoc query :fields (map (comp ->mbql (get-in bindings [name :dimensions]) key)
-                              (get-in bindings [source :dimensions])))
+    (assoc query :fields (vals (get-in bindings [source :dimensions])))
     query))
 
 (defn- maybe-add-expressions

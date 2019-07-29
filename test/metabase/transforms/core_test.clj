@@ -14,32 +14,15 @@
 
 (expect
   [:field-id (data/id :venues :price)]
-  (#'t/->mbql (Field (data/id :venues :price))))
+  (#'t/mbql-reference (Field (data/id :venues :price))))
 
 (expect
   [:field-literal "PRICE" :type/Integer]
-  (#'t/->mbql (dissoc (Field (data/id :venues :price)) :id)))
-
-(expect
-  [:joined-field "Source table" [:field-id (data/id :venues :price)]]
-  (#'t/->mbql (assoc (Field (data/id :venues :price)) :source-alias "Source table")))
-
-(expect
-  [:sum [:field-id (data/id :venues :price)]]
-  (#'t/->mbql [:sum [:field-id (data/id :venues :price)]]))
+  (#'t/mbql-reference (dissoc (Field (data/id :venues :price)) :id)))
 
 
 (expect
   (#'t/satisfy-requirements (data/id) "PUBLIC" test-transform-spec))
-
-
-(expect
-  ["FK" "PK" "Latitude" "Longitude" "Name" "Category"]
-  (-> (data/id :venues)
-      Table
-      (assoc :fields (table/fields {:id (data/id "venues")}))
-      (#'t/table-dimensions)
-      keys))
 
 
 ;; Run the transform and make sure it produces the correct result
