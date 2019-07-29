@@ -166,6 +166,7 @@ export class NewQueryOptions extends Component {
                 title={t`Native query`}
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
                 to={Urls.newQuestion({ type: "native" })}
+                width={180}
               />
             </GridItem>
           )}

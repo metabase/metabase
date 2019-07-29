@@ -42,7 +42,7 @@ class CollectionBadge extends React.Component {
         to={collection.getUrl()}
         className={cx(
           className,
-          "block cursor-pointer h4 text-bold text-medium text-brand-hover",
+          "block cursor-pointer text-bold text-medium text-brand-hover",
           { px1: hasBackground },
         )}
         style={{

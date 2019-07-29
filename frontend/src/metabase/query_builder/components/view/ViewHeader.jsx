@@ -94,6 +94,7 @@ export class ViewTitleHeader extends React.Component {
         .hasAggregations();
 
     const showFiltersInHeading = !isSummarized && !isFiltersExpanded;
+    const subHeadingStyle = {paddingTop: 3};
 
     return (
       <ViewSection
@@ -102,9 +103,9 @@ export class ViewTitleHeader extends React.Component {
         py={[1]}
       >
         {isSaved ? (
-          <div>
+          <div className="mb1">
             <div className="flex align-center">
-              <ViewHeading className="my1 mr1">
+              <ViewHeading className="mr1">
                 {question.displayName()}
               </ViewHeading>
               {description && (
@@ -136,9 +137,9 @@ export class ViewTitleHeader extends React.Component {
             </ViewSubHeading>
           </div>
         ) : (
-          <div>
-            <div className="flex align-center">
-              <ViewHeading className="my1">
+          <div className="mb1">
+            <div className="flex align-baseline">
+              <ViewHeading className="mt1" style={{marginBottom: 4}}>
                 {isNative ? (
                   t`New question`
                 ) : (
@@ -155,9 +156,9 @@ export class ViewTitleHeader extends React.Component {
                   />
                 )}
               {QuestionLineage.shouldRender(this.props) && (
-                <ViewSubHeading style={{ paddingTop: "3px" }}>
+                <ViewSubHeading>
                   <QuestionLineage
-                    className="ml2"
+                    className={isSummarized? "ml2" : ""}
                     question={question}
                     originalQuestion={originalQuestion}
                   />

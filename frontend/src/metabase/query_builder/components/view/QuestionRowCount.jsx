@@ -42,7 +42,7 @@ const QuestionRowCount = ({
     const limit = query.limit();
     content = (
       <PopoverWithTrigger
-        triggerElement={<span className="text-brand-hover">{message}</span>}
+        triggerElement={<span className="text-brand-hover text-bold">{message}</span>}
         triggerClasses={limit != null ? "text-brand" : ""}
       >
         {({ onClose }) => (
