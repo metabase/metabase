@@ -6,7 +6,7 @@ import { Motion, spring } from "react-motion";
 
 const SPRING_CONFIG = { stiffness: 200, damping: 26 };
 
-const ViewSideBar = ({ left, right, width = 420, isOpen, children }) => (
+const ViewSideBar = ({ left, right, width = 355, isOpen, children }) => (
   <Motion
     defaultStyle={{ opacity: 0, width: 0 }}
     style={
