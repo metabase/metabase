@@ -5,6 +5,7 @@ Object {
   "active": true,
   "caveats": null,
   "db": Object {
+    "auto_run_queries": true,
     "cache_field_values_schedule": "0 0 0 * * ? *",
     "caveats": null,
     "description": null,
@@ -1104,6 +1105,7 @@ Object {
   "active": true,
   "caveats": null,
   "db": Object {
+    "auto_run_queries": true,
     "cache_field_values_schedule": "0 0 0 * * ? *",
     "caveats": null,
     "description": null,
@@ -2308,6 +2310,7 @@ Object {
   "active": true,
   "caveats": null,
   "db": Object {
+    "auto_run_queries": true,
     "cache_field_values_schedule": "0 0 0 * * ? *",
     "caveats": null,
     "description": null,
@@ -3155,6 +3158,7 @@ Object {
   "active": true,
   "caveats": null,
   "db": Object {
+    "auto_run_queries": true,
     "cache_field_values_schedule": "0 0 0 * * ? *",
     "caveats": null,
     "description": null,

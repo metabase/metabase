@@ -111,7 +111,7 @@
   described above."
   [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
-                           (tx/format-name driver (u/keyword->qualified-name component)))
+                           (tx/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
     (partial do-insert! driver conn table-identifier)))
 
