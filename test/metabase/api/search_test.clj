@@ -9,6 +9,7 @@
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [database :refer [Database]]
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -276,3 +277,29 @@
                 (and (= id (u/get-id pulse))
                      (= "pulse" model)))
               ((test-users/user->client :crowberto) :get 200 "search")))))
+
+;; You should see TABLES in the search results!
+(defn- default-table-search-row [table-name]
+  (merge
+   default-search-row
+   {:name table-name, :table_name table-name :table_id true, :archived nil, :model "table", :database_id true}))
+
+(let [table-name (tu/random-name)]
+  (expect
+    #{(default-table-search-row table-name)}
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :crowberto :q table-name))))
+
+(let [table-name (tu/random-name)]
+  (expect
+    #{(default-table-search-row table-name)}
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :rasta :q table-name))))
+
+;; you should not be able to see a Table if the current user doesn't have permissions for that Table
+(expect
+  #{}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [table {:db_id db-id}]]
+    (perms/revoke-permissions! (group/all-users) db-id)
+    (search-request :rasta :q (:name table))))

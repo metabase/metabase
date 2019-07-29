@@ -66,7 +66,7 @@
      ~actual))
 
 (defn- random-uppercase-letter []
-  (char (+ (rand-int 26) (int \A))))
+  (char (+ (int \A) (rand-int 26))))
 
 (defn random-name
   "Generate a random string of 20 uppercase letters."
