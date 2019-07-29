@@ -1,9 +1,11 @@
 import React from "react";
+import { t } from "ttag";
 
 import cx from "classnames";
 
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
+import Subhead from "metabase/components/Subhead";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import NativeQueryEditor from "../NativeQueryEditor";
@@ -114,7 +116,8 @@ export default class View extends React.Component {
     if (isStructured && queryBuilderMode === "view" && !query.table()) {
       return (
         <div className={fitClassNames}>
-          <div>
+          <div className="p4 mx2">
+            <Subhead>{t`Pick your data`}</Subhead>
             <QuestionDataSelector query={query} />
           </div>
         </div>
