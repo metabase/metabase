@@ -223,7 +223,7 @@ export class ViewTitleHeader extends React.Component {
               />
             </Tooltip>
           )}
-          {isRunnable && !isNative && (
+          {isRunnable && (
             <RunButtonWithTooltip
               className={cx({ hidden: isShowingNotebook })}
               medium
@@ -247,21 +247,7 @@ export class ViewTitleHeader extends React.Component {
 
 export class ViewSubHeader extends React.Component {
   render() {
-    const {
-      question,
-
-      result,
-      isRunnable,
-      isRunning,
-      isResultDirty,
-
-      isPreviewable,
-      isPreviewing,
-      setIsPreviewing,
-
-      runQuestionQuery,
-      cancelQuery,
-    } = this.props;
+    const { isPreviewable, isPreviewing, setIsPreviewing } = this.props;
 
     const middle = [];
     const left = [];
@@ -274,22 +260,6 @@ export class ViewSubHeader extends React.Component {
           className="ml2"
           isPreviewing={isPreviewing}
           setIsPreviewing={setIsPreviewing}
-        />,
-      );
-    }
-    if (isRunnable && question.isNative()) {
-      middle.push(
-        <RunButtonWithTooltip
-          key="run"
-          medium
-          circular
-          result={result}
-          isRunnable={isRunnable}
-          isRunning={isRunning}
-          isDirty={isResultDirty}
-          isPreviewing={isPreviewing}
-          onRun={() => runQuestionQuery({ ignoreCache: true })}
-          onCancel={() => cancelQuery()}
         />,
       );
     }

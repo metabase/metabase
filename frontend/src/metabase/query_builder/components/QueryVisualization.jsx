@@ -102,7 +102,7 @@ export default class QueryVisualization extends Component {
       <div className={cx(className, "relative stacking-context")}>
         {isRunning ? (
           <VisualizationRunningState className="spread z2" />
-        ) : isResultDirty && !(result && result.error) ? (
+        ) : isResultDirty ? (
           <VisualizationDirtyState {...this.props} className="spread z2" />
         ) : null}
         {!isObjectDetail && (
