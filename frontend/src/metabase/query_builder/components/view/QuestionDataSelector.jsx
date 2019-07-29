@@ -2,7 +2,7 @@ import React from "react";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-export default function QuestionDataSelector({ query }) {
+export default function QuestionDataSelector({ query, triggerElement }) {
   return (
     <DatabaseSchemaAndTableDataSelector
       databases={query.metadata().databasesList()}
@@ -12,6 +12,7 @@ export default function QuestionDataSelector({ query }) {
         query.setTableId(tableId).update(null, { run: true })
       }
       isInitiallyOpen={!query.tableId()}
+      triggerElement={triggerElement}
     />
   );
 }
