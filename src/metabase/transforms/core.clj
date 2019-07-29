@@ -42,8 +42,8 @@
       (get-in bindings [source :dimensions table-or-dimension]))))
 
 (s/defn ^:private resolve-dimension-clauses :- (s/maybe MBQL)
-  [bindings :- Bindings, source :- SourceName, field-or-mbql :- (s/maybe MBQL)]
-  (mbql.u/replace field-or-mbql
+  [bindings :- Bindings, source :- SourceName, mbql-clause :- (s/maybe MBQL)]
+  (mbql.u/replace mbql-clause
     [:dimension dimension] (->> dimension
                                 (get-dimension-binding bindings source)
                                 (resolve-dimension-clauses bindings source))))
