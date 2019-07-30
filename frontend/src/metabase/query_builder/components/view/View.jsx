@@ -241,7 +241,7 @@ export default class View extends React.Component {
 
             <div className="flex-full flex flex-column flex-basis-none">
               {query instanceof NativeQuery && (
-                <div className="z2 hide sm-show border-bottom">
+                <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor
                     {...this.props}
                     isOpen={!card.dataset_query.native.query || isDirty}

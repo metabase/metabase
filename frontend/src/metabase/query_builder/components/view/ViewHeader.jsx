@@ -5,6 +5,7 @@ import cx from "classnames";
 import ViewButton from "./ViewButton";
 
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 import Button from "metabase/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
@@ -185,9 +186,13 @@ export class ViewTitleHeader extends React.Component {
             <NativeQueryButton size={20} question={question} />
           )}
           {isDirty ? (
-            <ViewButton medium ml={3} onClick={() => onOpenModal("save")}>
+            <Link
+              className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
+              mx={1}
+              onClick={() => onOpenModal("save")}
+            >
               {t`Save`}
-            </ViewButton>
+            </Link>
           ) : null}
           {QuestionFilterWidget.shouldRender(this.props) && (
             <QuestionFilterWidget
@@ -216,7 +221,7 @@ export class ViewTitleHeader extends React.Component {
                 primary={isShowingNotebook}
                 medium
                 icon="notebook"
-                ml={1}
+                ml={2}
                 onClick={() =>
                   setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
                 }

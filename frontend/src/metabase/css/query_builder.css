@@ -218,7 +218,18 @@
 }
 
 .Loading {
-  background-color: color(var(--color-bg-white) alpha(-18%));
+  background-color: color(var(--color-bg-white) alpha(-28%));
+  transition: opacity 0.5s;
+}
+.Loading.Loading--hidden {
+  background-color: transparent;
+}
+.Dirty {
+  background-color: color(var(--color-bg-white) alpha(-28%));
+  transition: opacity 0.5s;
+}
+.Dirty.Loading--hidden {
+  background-color: transparent;
 }
 
 /* query errors */
@@ -517,15 +528,12 @@
 }
 
 .RunButton {
-  z-index: 1;
   opacity: 1;
-  box-shadow: 0 1px 2px var(--color-shadow);
-  transition: transform 0.5s, opacity 0.5s;
-  position: relative;
+  transition: transform 0.25s, opacity 0.25s;
 }
 
 .RunButton.RunButton--hidden {
-  transform: translateY(-65px);
+  transform: translateY(-20px);
   opacity: 0;
 }
 

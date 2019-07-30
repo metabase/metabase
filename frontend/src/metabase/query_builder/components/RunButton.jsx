@@ -30,6 +30,7 @@ export default class RunButton extends Component {
       className,
       compact,
       circular,
+      hidden,
       ...props
     } = this.props;
     let buttonText = null;
@@ -56,7 +57,7 @@ export default class RunButton extends Component {
         {...props}
         icon={buttonIcon}
         primary={isDirty}
-        className={cx(className, { circular: circular })}
+        className={cx(className, "RunButton", { "RunButton--hidden": hidden, circular: circular })}
         onClick={isRunning ? onCancel : onRun}
       >
         {buttonText}

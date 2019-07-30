@@ -321,10 +321,10 @@ export default class Navbar extends Component {
               hover={{
                 backgroundColor: darken(colors["brand"]),
               }}
-              className="flex align-center rounded flex-no-shrink"
+              className="flex align-center rounded flex-no-shrink transition-background"
               data-metabase-event={`NavBar;New Question`}
             >
-              <Icon name="insight" mr={1} />
+              <Icon name="insight" mr={1} size={18} />
               <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
           )}
@@ -333,13 +333,13 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to="browse"
               p={1}
-              className="flex align-center rounded flex-no-shrink"
+              className="flex align-center rounded flex-no-shrink transition-background"
               data-metabase-event={`NavBar;Data Browse`}
               hover={{
                 backgroundColor: darken(colors["brand"]),
               }}
             >
-              <Icon name="table" mr={1} />
+              <Icon name="table_spaced" mr={1} size={14} />
               <h4 className="hide sm-show">{t`Browse Data`}</h4>
             </Link>
           )}

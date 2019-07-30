@@ -100,11 +100,12 @@ export default class QueryVisualization extends Component {
 
     return (
       <div className={cx(className, "relative stacking-context")}>
-        {isRunning ? (
-          <VisualizationRunningState className="spread z2" />
-        ) : isResultDirty ? (
-          <VisualizationDirtyState {...this.props} className="spread z2" />
-        ) : null}
+        {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
+        <VisualizationDirtyState
+          {...this.props}
+          hidden={!isResultDirty || isRunning}
+          className="spread z2"
+        />
         {!isObjectDetail && (
           <Warnings
             warnings={this.state.warnings}
@@ -118,7 +119,9 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error ? (
+          {result && result.error && isResultDirty ? null : result &&
+            result.error &&
+            !isResultDirty ? (
             <VisualizationError
               className="spread"
               error={result.error}
@@ -169,8 +172,13 @@ export const VisualizationDirtyState = ({
   isResultDirty,
   runQuestionQuery,
   cancelQuery,
+  hidden,
 }) => (
-  <div className={cx(className, "Loading flex flex-column layout-centered")}>
+  <div
+    className={cx(className, "Loading flex flex-column layout-centered", {
+      "Loading--hidden pointer-events-none": hidden,
+    })}
+  >
     <RunButtonWithTooltip
       className="shadowed"
       circular
@@ -180,6 +188,7 @@ export const VisualizationDirtyState = ({
       isDirty={isResultDirty}
       onRun={() => runQuestionQuery({ ignoreCache: true })}
       onCancel={() => cancelQuery()}
+      hidden={hidden}
     />
   </div>
 );
