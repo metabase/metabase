@@ -57,7 +57,10 @@ export default class RunButton extends Component {
         {...props}
         icon={buttonIcon}
         primary={isDirty}
-        className={cx(className, "RunButton", { "RunButton--hidden": hidden, circular: circular })}
+        className={cx(className, "RunButton", {
+          "RunButton--hidden": hidden,
+          circular: circular,
+        })}
         onClick={isRunning ? onCancel : onRun}
       >
         {buttonText}
