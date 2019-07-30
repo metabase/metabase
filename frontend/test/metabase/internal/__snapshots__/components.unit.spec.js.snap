@@ -398,7 +398,7 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
@@ -432,7 +432,7 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
@@ -466,7 +466,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
@@ -489,7 +489,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
@@ -513,7 +513,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
@@ -547,7 +547,7 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg

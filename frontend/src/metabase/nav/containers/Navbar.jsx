@@ -13,9 +13,9 @@ import { space, width } from "styled-system";
 import color from "color";
 
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import colors, { darken } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
 import Tooltip from "metabase/components/Tooltip";
@@ -316,21 +316,31 @@ export default class Navbar extends Component {
           {hasDataAccess && (
             <Link
               mr={[1, 2]}
-              to="browse"
-              className="Button Button--selected borderless flex-no-shrink"
-              data-metabase-event={`NavBar;Data Browse`}
+              to={Urls.newQuestionFlow()}
+              p={1}
+              hover={{
+                backgroundColor: darken(colors["brand"]),
+              }}
+              className="flex align-center rounded flex-no-shrink"
+              data-metabase-event={`NavBar;New Question`}
             >
-              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+              <Icon name="insight" mr={1} />
+              <h4 className="hide sm-show">{t`Ask a question`}</h4>
             </Link>
           )}
           {hasDataAccess && (
             <Link
               mr={[1, 2]}
-              to={Urls.newQuestionFlow()}
-              className="Button Button--selected borderless flex-no-shrink"
-              data-metabase-event={`NavBar;New Question`}
+              to="browse"
+              p={1}
+              className="flex align-center rounded flex-no-shrink"
+              data-metabase-event={`NavBar;Data Browse`}
+              hover={{
+                backgroundColor: darken(colors["brand"]),
+              }}
             >
-              <h4 className="hide sm-show">{t`Ask a question`}</h4>
+              <Icon name="table" mr={1} />
+              <h4 className="hide sm-show">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
@@ -361,17 +371,17 @@ export default class Navbar extends Component {
             ]}
           />
           {hasDataAccess && (
-            <Tooltip tooltip={t`Write SQL`}>
-              <Link
-                mr={[1, 2]}
-                ml={[1, 2]}
-                to={this.props.plainNativeQuery.question().getUrl()}
-                className="flex align-center hide sm-show flex-no-shrink"
-                data-metabase-event={`NavBar;SQL`}
-              >
-                <Icon size={19} name="sql" mr={1} />
-              </Link>
-            </Tooltip>
+            <IconWrapper mx={1}>
+              <Tooltip tooltip={t`Write SQL`}>
+                <Link
+                  to={this.props.plainNativeQuery.question().getUrl()}
+                  className="hide sm-show flex-no-shrink"
+                  data-metabase-event={`NavBar;SQL`}
+                >
+                  <Icon size={19} name="sql" />
+                </Link>
+              </Tooltip>
+            </IconWrapper>
           )}
           <ProfileLink {...this.props} />
         </Flex>
