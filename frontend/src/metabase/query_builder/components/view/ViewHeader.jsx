@@ -2,8 +2,6 @@ import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
-import ViewButton from "./ViewButton";
-
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Button from "metabase/components/Button";
