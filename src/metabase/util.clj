@@ -457,7 +457,7 @@
   (when (some? k)
     (if-let [namespac (when (instance? clojure.lang.Named k)
                         (namespace k))]
-      (str (namespace k) "/" (name k))
+      (str namespac "/" (name k))
       (name k))))
 
 (defn id
