@@ -16,8 +16,11 @@
    :row_count 2
    :data      {:rows        [[100]
                              [99]]
-               :columns     ["ID"]
-               :cols        [{:name "ID", :display_name "ID", :base_type :type/Integer, :source :native}]
+               :cols        [{:name         "ID"
+                              :display_name "ID"
+                              :base_type    :type/Integer
+                              :source       :native
+                              :field_ref    [:field-literal "ID" :type/Integer]}]
                :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
   (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
@@ -31,10 +34,21 @@
    :row_count 2
    :data      {:rows        [[100 "Mohawk Bend" 46]
                              [99 "Golden Road Brewing" 10]]
-               :columns     ["ID" "NAME" "CATEGORY_ID"]
-               :cols        [{:name "ID",          :display_name "ID",          :source :native, :base_type :type/Integer}
-                             {:name "NAME",        :display_name "Name",        :source :native, :base_type :type/Text}
-                             {:name "CATEGORY_ID", :display_name "Category ID", :source :native, :base_type :type/Integer}]
+               :cols        [{:name         "ID"
+                              :display_name "ID"
+                              :source       :native
+                              :base_type    :type/Integer
+                              :field_ref    [:field-literal "ID" :type/Integer]}
+                             {:name         "NAME"
+                              :display_name "NAME"
+                              :source       :native
+                              :base_type    :type/Text
+                              :field_ref    [:field-literal "NAME" :type/Text]}
+                             {:name         "CATEGORY_ID"
+                              :display_name "CATEGORY_ID"
+                              :source       :native
+                              :base_type    :type/Integer
+                              :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}]
                :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
   (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native

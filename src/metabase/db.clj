@@ -9,10 +9,9 @@
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [util :as u]]
-            [metabase.db
              [connection-pool :as connection-pool]
-             [spec :as dbspec]]
+             [util :as u]]
+            [metabase.db.spec :as dbspec]
             [metabase.plugins.classloader :as classloader]
             [metabase.util
              [date :as du]
@@ -496,7 +495,7 @@
 
      (type-keyword->descendants :type/Coordinate) ; -> #{\"type/Latitude\" \"type/Longitude\" \"type/Coordinate\"}"
   [type-keyword :- su/FieldType]
-  (set (map u/keyword->qualified-name (cons type-keyword (descendants type-keyword)))))
+  (set (map u/qualified-name (cons type-keyword (descendants type-keyword)))))
 
 (defn isa
   "Convenience for generating an HoneySQL `IN` clause for a keyword and all of its descendents.

@@ -6,7 +6,8 @@
             [metabase.test.util.async :as tu.async]
             [metabase.util :as u]
             [toucan.util.test :as tt])
-  (:import java.util.concurrent.Executors))
+  (:import java.util.concurrent.Executors
+           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (def ^:private ^:dynamic *dynamic-var* false)
 
@@ -41,7 +42,10 @@
 ;; binding should not be persisted between executions -- should be reset when we reuse a thread
 (expect
   false
-  (let [thread-pool (Executors/newSingleThreadExecutor)]
+  (let [thread-pool (Executors/newSingleThreadExecutor
+                     (.build
+                      (doto (BasicThreadFactory$Builder.)
+                        (.daemon true))))]
     (with-redefs [async-wait/db-thread-pool (constantly thread-pool)]
       (tt/with-temp Database [{db-id :id}]
         (binding [*dynamic-var* true]

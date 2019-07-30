@@ -18,7 +18,7 @@
   (str "http://localhost:" (config/config-str :mb-jetty-port) "/api/"))
 
 (defn build-url
-  "Build an API URL for `localhost` and `MB_JETTY_PORT` with URL-PARAM-KWARGS.
+  "Build an API URL for `localhost` and `MB_JETTY_PORT` with `url-param-kwargs`.
 
      (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url url-param-kwargs]
@@ -36,8 +36,8 @@
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
-  "Automatically recurse over RESPONSE and look for keys that are known to correspond to dates.
-   Parse their values and convert to `java.sql.Timestamps`."
+  "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
+  convert to `java.sql.Timestamps`."
   [response]
   (cond (sequential? response) (map auto-deserialize-dates response)
         (map? response) (->> response
@@ -67,8 +67,8 @@
 (declare client)
 
 (s/defn authenticate
-  "Authenticate a test user with USERNAME and PASSWORD, returning their Metabase Session token;
-   or throw an Exception if that fails."
+  "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
+  Exception if that fails."
   [credentials :- {:username s/Str, :password s/Str}]
   (try
     (:id (client :post 200 "session" credentials))
@@ -91,11 +91,13 @@
      {:body (json/generate-string http-body)})))
 
 (defn- check-status-code
-  "If an EXPECTED-STATUS-CODE was passed to the client, check that the actual status code matches, or throw an exception."
+  "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
+  exception."
   [method-name url body expected-status-code actual-status-code]
   (when expected-status-code
     (when (not= actual-status-code expected-status-code)
-      (let [message (format "%s %s expected a status code of %d, got %d." method-name url expected-status-code actual-status-code)
+      (let [message (format "%s %s expected a status code of %d, got %d."
+                            method-name url expected-status-code actual-status-code)
             body    (try
                       (json/parse-string body keyword)
                       (catch Throwable _
@@ -148,7 +150,7 @@
 
 (defn client
   "Perform an API call and return the response (for test purposes).
-   The first arg after URL will be passed as a JSON-encoded body if it is a map.
+   The first arg after `url` will be passed as a JSON-encoded body if it is a map.
    Other &rest kwargs will be passed as `GET` parameters.
 
   Examples:
@@ -159,13 +161,13 @@
 
   Args:
 
-   *  CREDENTIALS           Optional map of `:username` and `:password` or `X-METABASE-SESSION` token of a User who we
-                            should perform the request as
-   *  METHOD                `:get`, `:post`, `:delete`, or `:put`
-   *  EXPECTED-STATUS-CODE  When passed, throw an exception if the response has a different status code.
-   *  URL                   Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
-   *  HTTP-BODY-MAP         Optional map to send a the JSON-serialized HTTP body of the request
-   *  URL-KWARGS            key-value pairs that will be encoded and added to the URL as GET params"
+   *  `credentials`          Optional map of `:username` and `:password` or `X-METABASE-SESSION` token of a User who we
+                             should perform the request as
+   *  `method`               `:get`, `:post`, `:delete`, or `:put`
+   *  `expected-status-code` When passed, throw an exception if the response has a different status code.
+   *  `url`                  Base URL of the request, which will be appended to `*url-prefix*`. e.g. `card/1/favorite`
+   *  `http-body-map`        Optional map to send a the JSON-serialized HTTP body of the request
+   *  `url-kwargs`           key-value pairs that will be encoded and added to the URL as GET params"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
   [& args]
   (:body (apply client-full-response args)))

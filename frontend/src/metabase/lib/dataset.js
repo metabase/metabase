@@ -11,6 +11,8 @@ import type {
 import type { Card } from "metabase/meta/types/Card";
 import type { Field as FieldReference } from "metabase/meta/types/Query";
 
+import Dimension from "metabase-lib/lib/Dimension";
+
 type ColumnSetting = {
   name: ColumnName,
   fieldRef?: FieldReference,
@@ -53,7 +55,11 @@ export function fieldRefForColumn(
       // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
       return column.id;
     } else if (column.fk_field_id != null) {
-      return ["fk->", column.fk_field_id, column.id];
+      return [
+        "fk->",
+        ["field-id", column.fk_field_id],
+        ["field-id", column.id],
+      ];
     } else {
       return ["field-id", column.id];
     }
@@ -94,15 +100,21 @@ export function findColumnForColumnSetting(
   }
 }
 
+export function normalizeFieldRef(fieldRef: ?FieldReference): ?FieldReference {
+  const dimension = Dimension.parseMBQL(fieldRef);
+  return dimension && dimension.mbql();
+}
+
 export function findColumnIndexForColumnSetting(
   columns: Column[],
   columnSetting: ColumnSetting,
 ): number {
-  const { fieldRef } = columnSetting;
+  // NOTE: need to normalize field refs because they may be old style [fk->, 1, 2]
+  const fieldRef = normalizeFieldRef(columnSetting.fieldRef);
   // first try to find by fieldRef
   if (fieldRef != null) {
     const index = _.findIndex(columns, col =>
-      _.isEqual(fieldRef, fieldRefForColumn(col)),
+      _.isEqual(fieldRef, normalizeFieldRef(fieldRefForColumn(col))),
     );
     if (index >= 0) {
       return index;

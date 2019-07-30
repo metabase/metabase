@@ -50,9 +50,6 @@
                            :where     [:and
                                        [:in :source-fk.id (set fk-field-ids)]
                                        [:= :target-table.db_id (u/get-id (qp.store/database))]
-                                       #_(if source-table-id
-                                           [:= :source-fk.table_id source-table-id]
-                                           true)
                                        (mdb/isa :source-fk.special_type :type/FK)]})]
       (for [{:keys [fk-name table-name], :as info} infos]
         (assoc info :alias (join-alias table-name fk-name))))))

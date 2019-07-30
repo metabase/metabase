@@ -55,6 +55,17 @@ describe("LineAreaBarRenderer", () => {
     // ]);
   });
 
+  it("should display a warning for invalid dates", () => {
+    const onRender = jest.fn();
+    renderTimeseriesLine({
+      rowsOfSeries: [[["2019-W52", 1], ["2019-W53", 2], ["2019-W01", 3]]],
+      unit: "week",
+      onRender,
+    });
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
+  });
+
   ["Z", ...ALL_TZS].forEach(tz =>
     it(
       "should display hourly data (in " +
@@ -275,6 +286,7 @@ describe("LineAreaBarRenderer", () => {
   const renderTimeseriesLine = ({
     rowsOfSeries,
     onHoverChange,
+    onRender,
     unit,
     settings,
   }) => {
@@ -297,6 +309,7 @@ describe("LineAreaBarRenderer", () => {
       })),
       {
         onHoverChange,
+        onRender,
       },
     );
   };

@@ -9,11 +9,10 @@
              [date :as du]
              [encryption :as encryption]
              [i18n :refer [tru]]]
+            [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
-            [toucan
-             [models :as models]
-             [util :as toucan-util]])
+            [toucan.models :as models])
   (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
            java.sql.Blob
            java.util.zip.GZIPInputStream))
@@ -81,7 +80,7 @@
   :in  (comp json-in maybe-normalize)
   :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
 
-;; `metric-segment-definition` is, predicatbly, for Metric/Segment `:definition`s, which are just the inner MBQL query
+;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when definition
     (normalize/normalize-fragment [:query] definition)))
@@ -127,7 +126,7 @@
   :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
 (defn decompress
-  "Decompress COMPRESSED-BYTES."
+  "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
@@ -152,7 +151,7 @@
 ;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
 ;; handles those cases.
 (models/add-type! :keyword
-  :in  toucan-util/keyword->qualified-name
+  :in  u/qualified-name
   :out (comp keyword u/jdbc-clob->str))
 
 
@@ -178,7 +177,7 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defprotocol IObjectPermissions
+(p.types/defprotocol+ IObjectPermissions
   "Methods for determining whether the current user has read/write permissions for a given object."
 
   (perms-objects-set [this, ^clojure.lang.Keyword read-or-write]

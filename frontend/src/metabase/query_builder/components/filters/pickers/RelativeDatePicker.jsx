@@ -5,6 +5,8 @@ import React, { Component } from "react";
 import NumericInput from "metabase/components/NumericInput.jsx";
 import DateUnitSelector from "../DateUnitSelector";
 
+import { assoc } from "icepick";
+
 import type {
   TimeIntervalFilter,
   RelativeDatetimeUnit,
@@ -45,11 +47,9 @@ export default class RelativeDatePicker extends Component {
   };
 
   render() {
-    const {
-      filter: [op, field, intervals, unit],
-      onFilterChange,
-      formatter,
-    } = this.props;
+    const { filter, onFilterChange, formatter } = this.props;
+    const intervals = filter[2];
+    const unit = filter[3];
     return (
       <div className="flex-full mb2 flex align-center">
         <NumericInput
@@ -65,9 +65,7 @@ export default class RelativeDatePicker extends Component {
           value={
             typeof intervals === "number" ? Math.abs(intervals) : intervals
           }
-          onChange={value =>
-            onFilterChange([op, field, formatter(value), unit])
-          }
+          onChange={value => onFilterChange(assoc(filter, 2, formatter(value)))}
           placeholder="30"
         />
         <div className="flex-full mr2">
@@ -75,7 +73,7 @@ export default class RelativeDatePicker extends Component {
             open={this.state.showUnits}
             value={unit}
             onChange={value => {
-              onFilterChange([op, field, intervals, value]);
+              onFilterChange(assoc(filter, 3, value));
               this.setState({ showUnits: false });
             }}
             togglePicker={() =>

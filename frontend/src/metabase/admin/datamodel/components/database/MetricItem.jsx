@@ -23,8 +23,8 @@ export default class MetricItem extends Component {
 
     return (
       <tr className="mt1 mb3">
-        <td className="px1">{metric.name}</td>
-        <td className="px1 text-ellipsis">{description}</td>
+        <td className="px1 text-wrap">{metric.name}</td>
+        <td className="px1 text-wrap">{description}</td>
         <td className="px1 text-centered">
           <ObjectActionSelect
             object={metric}

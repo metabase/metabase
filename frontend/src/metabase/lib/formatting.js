@@ -381,8 +381,20 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  // The startOf/endOf transition needs to happen in "en" rather than the
+  // current locale. Other locales define week boundaries differently, and they
+  // don't line up with the server's grouping logic.
+  const start = m
+    .clone()
+    .locale("en")
+    .startOf(unit)
+    .locale(false);
+  const end = m
+    .clone()
+    .locale("en")
+    .endOf(unit)
+    .locale(false);
+
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
       // January 1, 2018 - January 2, 2019
@@ -526,19 +538,45 @@ export function formatEmail(
   }
 }
 
-// based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
-const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
+function getUrlProtocol(url) {
+  try {
+    const { protocol } = new URL(url);
+    return protocol;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+function isSafeProtocol(protocol) {
+  return (
+    protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
+  );
+}
+
+function isDefaultLinkProtocol(protocol) {
+  return (
+    protocol === "http:" || protocol === "https:" || protocol === "mailto:"
+  );
+}
 
 export function formatUrl(
   value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, column }: FormattingOptions = {},
 ) {
   const url = String(value);
+  const urlSpecialType = column && isa(column.special_type, TYPE.URL);
+  const protocol = getUrlProtocol(url);
   if (
     jsx &&
     rich &&
     (view_as === "link" || view_as === "auto") &&
-    URL_WHITELIST_REGEX.test(url)
+    // undefined protocol means url didn't parse
+    protocol &&
+    // if the column type is URL, we show any safe url as a link
+    // otherwise, we just show the most common protocols
+    (urlSpecialType
+      ? isSafeProtocol(protocol)
+      : isDefaultLinkProtocol(protocol))
   ) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
@@ -555,7 +593,9 @@ export function formatImage(
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
-  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+  const protocol = getUrlProtocol(url);
+  const acceptedProtocol = protocol === "http:" || protocol === "https:";
+  if (jsx && rich && view_as === "image" && acceptedProtocol) {
     return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
@@ -657,7 +697,11 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    return formatStringFallback(value, options);
+    if (column && column.special_type != null) {
+      return value;
+    } else {
+      return formatStringFallback(value, options);
+    }
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, options.column);
     if (range && !options.noRange) {

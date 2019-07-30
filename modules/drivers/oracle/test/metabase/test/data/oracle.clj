@@ -69,12 +69,6 @@
           session-schema
           (tx/db-qualified-table-name database-name table-name)))
 
-(defmethod tx/expected-base-type->actual :oracle [_ base-type]
-  ;; Oracle doesn't have INTEGERs
-  (if (isa? base-type :type/Integer)
-    :type/Decimal
-    base-type))
-
 (defmethod sql.tx/create-db-sql :oracle [& _] nil)
 
 (defmethod sql.tx/drop-db-if-exists-sql :oracle [& _] nil)

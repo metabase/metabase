@@ -390,6 +390,8 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     scale = d3.scale.linear();
   }
 
+  scale.clamp(true);
+
   if (axis.setting("auto_range")) {
     // elasticY not compatible with log scale
     if (axis.setting("scale") !== "log") {
@@ -408,15 +410,19 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     }
     axis.scale(scale);
   } else {
+    // We union data's yExtent with the range specified in the chart settings
+    // This avoids rendering issues with bars and lines overflowing the c
+    const [min, max] = d3.extent([
+      axis.setting("min"),
+      axis.setting("max"),
+      ...yExtent,
+    ]);
     if (
       axis.setting("scale") === "log" &&
-      !(
-        (axis.setting("min") < 0 && axis.setting("max") < 0) ||
-        (axis.setting("min") > 0 && axis.setting("max") > 0)
-      )
+      !((min < 0 && max < 0) || (min > 0 && max > 0))
     ) {
       throw "Y-axis must not cross 0 when using log scale.";
     }
-    axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]));
+    axis.scale(scale.domain([min, max]));
   }
 }

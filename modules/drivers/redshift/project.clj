@@ -1,4 +1,4 @@
-(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.18.1036"
+(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.27.1051"
   :min-lein-version "2.5.0"
 
   :repositories

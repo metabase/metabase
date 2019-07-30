@@ -5,12 +5,22 @@
   The various QP Store functions & macros in this namespace are primarily meant to help write QP Middleware tests, so
   you can test a given piece of middleware without having to worry about putting things in the QP Store
   yourself (since this is usually done by other middleware in the first place)."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor :as qp]
+  (:require [metabase
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
+            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data :as data]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
+
+;; TODO - I don't think we different QP test util namespaces? We should roll this namespace into
+;; `metabase.query-processor-test`
 
 (s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
   (or (get-in @@#'qp.store/*store* [:tables table-id])
@@ -89,3 +99,13 @@
                      (throw (ex-info "Query failure" results)))]
     {:dataset_query   query
      :result_metadata metadata}))
+
+(defn fk-table-alias-name
+  "Get the name that will be used for the alias for an implicit join (i.e., a join added as a result of using an `:fk->`
+  clause somewhere in the query.)
+
+    (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
+  [table-or-id field-or-id]
+  (#'add-implicit-joins/join-alias
+   (db/select-one-field :name Table :id (u/get-id table-or-id))
+   (db/select-one-field :name Field :id (u/get-id field-or-id))))

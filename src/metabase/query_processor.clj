@@ -2,10 +2,14 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
   (:require [medley.core :as m]
-            [metabase.driver :as driver]
+            [metabase
+             [config :as config]
+             [driver :as driver]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.query-processor.debug :as debug]
+            [metabase.query-processor
+             [debug :as debug]
+             [store :as qp.store]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
@@ -36,6 +40,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [pre-alias-aggregations :as pre-alias-ags]
              [process-userland-query :as process-userland-query]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database :as resolve-database]
@@ -105,6 +110,7 @@
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
+   #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
    ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
    #'resolve-joins/resolve-joins
@@ -237,6 +243,18 @@
       preprocess
       (m/dissoc-in [:middleware :disable-mbql->native?])))
 
+(defn query->expected-cols
+  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query amd calling `annotate` on
+  it."
+  [{query-type :type, :as query}]
+  (when-not (= query-type :query)
+    (throw (Exception. (str (tru "Can only determine expected columns for MBQL queries.")))))
+  (let [results (qp.store/with-store
+                  ((annotate/add-column-info (constantly nil))
+                   (query->preprocessed query)))]
+    (or (seq (:cols results))
+        (throw (ex-info (str (tru "No columns returned.")) results)))))
+
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
   SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
@@ -277,19 +295,23 @@
     {:status (s/enum :completed :failed :canceled), s/Any s/Any})
    "Valid query response (core.async channel or map with :status)"))
 
-(def ^:dynamic *debug*
-  "Bind this to `true` to print debugging messages when processing the query."
-  false)
+;; QP debugging is only enabled in dev mode
+(when config/is-dev?
+  (def ^:dynamic *debug*
+    "Bind this to `true` to print debugging messages when processing the query."
+    false))
 
-(s/defn process-query :- QueryResponse
+(def ^{:style/indent 0, :arglists '([query])} process-query
   "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a
   core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
   the core.async channel is closed, the query will be canceled."
-  {:style/indent 0}
-  [query]
-  ((if *debug*
-     debugging-pipeline
-     default-pipeline) query))
+  (if config/is-dev?
+    (s/fn :- QueryResponse
+      [query]
+      ((if *debug*
+         debugging-pipeline
+         default-pipeline) query))
+    default-pipeline))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
