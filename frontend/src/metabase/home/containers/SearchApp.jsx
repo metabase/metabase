@@ -7,6 +7,7 @@ import Link from "metabase/components/Link";
 import { Box, Flex } from "grid-styled";
 
 import Search from "metabase/entities/search";
+import Database from "metabase/entities/databases";
 
 import Card from "metabase/components/Card";
 import EmptyState from "metabase/components/EmptyState";
@@ -78,6 +79,11 @@ export default class SearchApp extends React.Component {
                   filter: "collection",
                   icon: "all",
                 },
+                {
+                  name: t`Tables`,
+                  filter: "table",
+                  icon: "table",
+                },
               ).filter(f => {
                 // check that results exist for a filter before displaying it
                 if (
@@ -145,21 +151,56 @@ export default class SearchApp extends React.Component {
 
 const SearchResultSection = ({ title, items }) => (
   <Card>
-    {items.map(item => (
-      <Link
-        to={item.getUrl()}
-        key={item.id}
-        data-metabase-event={`Search Results;Item Click;${item.model}`}
-      >
-        <EntityItem
-          variant="list"
-          name={item.getName()}
-          iconName={item.getIcon()}
-          iconColor={item.getColor()}
-          item={item}
-          extraInfo={item.extraInfo}
-        />
-      </Link>
-    ))}
+    {items.map(item => {
+      let extraInfo;
+      switch (item.model) {
+        case "table":
+        case "segment":
+        case "metric":
+          extraInfo = (
+            <Flex align="center" color={colors["text-medium"]}>
+              <Icon name="database" size={8} mr="4px" />
+              <span className="text-small text-bold" style={{ lineHeight: 1 }}>
+                <Database.Name id={item.database_id} />
+              </span>
+            </Flex>
+          );
+          break;
+        case "collection":
+          break;
+        default:
+          extraInfo = (
+            <div className="inline-block">
+              <Flex align="center" color={colors["text-medium"]}>
+                <Icon name="all" size={10} mr="4px" />
+                <span
+                  className="text-small text-bold"
+                  style={{ lineHeight: 1 }}
+                >
+                  {item.collection_name || t`Our Analytics`}
+                </span>
+              </Flex>
+            </div>
+          );
+          break;
+      }
+
+      return (
+        <Link
+          to={item.getUrl()}
+          key={item.id}
+          data-metabase-event={`Search Results;Item Click;${item.model}`}
+        >
+          <EntityItem
+            variant="list"
+            name={item.getName()}
+            iconName={item.getIcon()}
+            iconColor={item.getColor()}
+            item={item}
+            extraInfo={extraInfo}
+          />
+        </Link>
+      );
+    })}
   </Card>
 );

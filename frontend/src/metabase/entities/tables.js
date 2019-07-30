@@ -8,6 +8,9 @@ import {
 } from "metabase/lib/redux";
 import _ from "underscore";
 
+import * as Urls from "metabase/lib/urls";
+import colors from "metabase/lib/colors";
+
 import { createSelector } from "reselect";
 
 import { MetabaseApi } from "metabase/services";
@@ -164,6 +167,12 @@ const Tables = createEntity({
     }
 
     return state;
+  },
+  objectSelectors: {
+    getUrl: table =>
+      Urls.tableRowsQuery(table.database_id, table.table_id, null),
+    getIcon: table => "table",
+    getColor: table => colors["accent2"],
   },
 
   selectors: {
