@@ -109,15 +109,17 @@
 }
 
 /* text weight */
-.text-light {
-  font-weight: 300;
-}
+/* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {
   font-weight: 400;
 }
 .text-bold,
 :local(.text-bold) {
   font-weight: 700;
+}
+
+.text-heavy {
+  font-weight: 900;
 }
 
 /* text style */

@@ -82,15 +82,9 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleAddNewField = fieldRef => {
-    const { value, onChange, addField } = this.props;
-    onChange([
-      // remove duplicates
-      ...value.filter(
-        columnSetting => !_.isEqual(columnSetting.fieldRef, fieldRef),
-      ),
-      { fieldRef, enabled: true },
-    ]);
-    addField(fieldRef);
+    const { value, onChange } = this.props;
+    const columnSettings = [...value, { fieldRef, enabled: true }];
+    onChange(columnSettings);
   };
 
   getColumnName = columnSetting =>
@@ -102,18 +96,16 @@ export default class ChartSettingOrderedColumns extends Component {
 
   render() {
     const { value, question, columns } = this.props;
+    const query = question && question.query();
 
     let additionalFieldOptions = { count: 0 };
-    if (columns && question) {
-      const query = question.query();
-      if (query instanceof StructuredQuery) {
-        const fieldRefs = columns.map(column => fieldRefForColumn(column));
-        additionalFieldOptions = query.fieldsOptions(dimension => {
-          return !_.find(fieldRefs, fieldRef =>
-            dimension.isSameBaseDimension(fieldRef),
-          );
-        });
-      }
+    if (columns && query instanceof StructuredQuery) {
+      const fieldRefs = columns.map(column => fieldRefForColumn(column));
+      additionalFieldOptions = query.fieldsOptions(dimension => {
+        return !_.find(fieldRefs, fieldRef =>
+          dimension.isSameBaseDimension(fieldRef),
+        );
+      });
     }
 
     const [enabledColumns, disabledColumns] = _.partition(
@@ -166,7 +158,10 @@ export default class ChartSettingOrderedColumns extends Component {
             {additionalFieldOptions.fks.map(fk => (
               <div>
                 <div className="my2 text-medium text-bold text-uppercase text-small">
-                  {fk.field.target.table.display_name}
+                  {fk.name ||
+                    (fk.field.target
+                      ? fk.field.target.table.display_name
+                      : fk.field.display_name)}
                 </div>
                 {fk.dimensions.map((dimension, index) => (
                   <ColumnItem

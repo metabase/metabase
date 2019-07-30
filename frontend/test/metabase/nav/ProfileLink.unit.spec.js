@@ -17,7 +17,18 @@ describe("ProfileLink", () => {
         const normalUser = { is_superuser: false };
         const wrapper = shallow(<ProfileLink user={normalUser} context={""} />);
 
-        expect(wrapper.instance().generateOptionsForUser().length).toBe(4);
+        expect(
+          wrapper
+            .instance()
+            .generateOptionsForUser()
+            .map(o => o.title),
+        ).toEqual([
+          "Account settings",
+          "Activity",
+          "Help",
+          "About Metabase",
+          "Sign out",
+        ]);
       });
     });
     describe("admin", () => {
@@ -25,7 +36,19 @@ describe("ProfileLink", () => {
         const admin = { is_superuser: true };
         const wrapper = shallow(<ProfileLink user={admin} context={""} />);
 
-        expect(wrapper.instance().generateOptionsForUser().length).toBe(5);
+        expect(
+          wrapper
+            .instance()
+            .generateOptionsForUser()
+            .map(o => o.title),
+        ).toEqual([
+          "Account settings",
+          "Admin",
+          "Activity",
+          "Help",
+          "About Metabase",
+          "Sign out",
+        ]);
       });
     });
   });

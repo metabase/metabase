@@ -76,6 +76,12 @@ function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
   }
 
   if (clicked) {
+    // NOTE: certain values such as booleans were coerced to strings at some point. fix them.
+    parseValues(clicked);
+    for (const dimension of clicked.dimensions || []) {
+      parseValues(dimension);
+    }
+
     const isLine = this.classList.contains("dot");
     return {
       index: isSingleSeriesBar ? -1 : seriesIndex,
@@ -83,6 +89,16 @@ function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
       event: isLine ? null : d3.event,
       ...clicked,
     };
+  }
+}
+
+function parseValues(clicked) {
+  if (clicked.column && clicked.column.base_type === "type/Boolean") {
+    if (clicked.value === "true") {
+      clicked.value = true;
+    } else if (clicked.value === "false") {
+      clicked.value = false;
+    }
   }
 }
 

@@ -1,11 +1,12 @@
 /* @flow */
 
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import AggregationWidget_LEGACY from "./AggregationWidget.jsx";
-import BreakoutWidget_LEGACY from "./BreakoutWidget.jsx";
+
+import AggregationWidget from "./AggregationWidget.jsx";
+import BreakoutWidget from "./BreakoutWidget.jsx";
 import ExtendedOptions from "./ExtendedOptions.jsx";
 import FilterWidgetList from "./filters/FilterWidgetList.jsx";
 import FilterPopover from "./filters/FilterPopover.jsx";
@@ -53,7 +54,6 @@ type Props = {
   setSourceTableFn: (id: TableId) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
-  isShowingTutorial: boolean,
   isShowingDataReference: boolean,
 };
 
@@ -61,7 +61,7 @@ type State = {
   expanded: boolean,
 };
 
-export default class GuiQueryEditor extends Component {
+export default class GuiQueryEditor extends React.Component {
   props: Props;
   state: State = {
     expanded: true,
@@ -179,7 +179,7 @@ export default class GuiQueryEditor extends Component {
             <FilterPopover
               isNew
               query={query}
-              onCommitFilter={filter =>
+              onChangeFilter={filter =>
                 query.addFilter(filter).update(setDatasetQuery)
               }
               onClose={() => this.refs.filterPopover.close()}
@@ -214,20 +214,28 @@ export default class GuiQueryEditor extends Component {
 
       // Placeholder aggregation for showing the add button
       if (supportMultipleAggregations && !query.isBareRows()) {
-        aggregations.push([]);
+        aggregations.push(null);
       }
 
       const aggregationList = [];
       for (const [index, aggregation] of aggregations.entries()) {
         aggregationList.push(
           <AggregationWidget
+            className="View-section-aggregation QueryOption p1"
             key={"agg" + index}
-            index={index}
             aggregation={aggregation}
             query={query}
-            updateQuery={setDatasetQuery}
-            addButton={this.renderAdd(null)}
-          />,
+            onChangeAggregation={aggregation =>
+              aggregation
+                ? query
+                    .updateAggregation(index, aggregation)
+                    .update(setDatasetQuery)
+                : query.removeAggregation(index).update(setDatasetQuery)
+            }
+            showRawData
+          >
+            {this.renderAdd(null)}
+          </AggregationWidget>,
         );
         if (
           aggregations[index + 1] != null &&
@@ -266,8 +274,8 @@ export default class GuiQueryEditor extends Component {
       breakouts.push(null);
     }
 
-    for (let i = 0; i < breakouts.length; i++) {
-      const breakout = breakouts[i];
+    for (let index = 0; index < breakouts.length; index++) {
+      const breakout = breakouts[index];
 
       if (breakout == null) {
         breakoutList.push(<span key="nullBreakout" className="ml1" />);
@@ -275,19 +283,24 @@ export default class GuiQueryEditor extends Component {
 
       breakoutList.push(
         <BreakoutWidget
-          key={"breakout" + i}
-          className="View-section-breakout SelectionModule p1"
-          index={i}
+          key={"breakout" + (breakout ? index : "-new")}
+          className="View-section-breakout QueryOption p1"
           breakout={breakout}
           query={query}
-          updateQuery={setDatasetQuery}
-          addButton={this.renderAdd(i === 0 ? t`Add a grouping` : null)}
-        />,
+          breakoutOptions={query.breakoutOptions(breakout)}
+          onChangeBreakout={breakout =>
+            breakout
+              ? query.updateBreakout(index, breakout).update(setDatasetQuery)
+              : query.removeBreakout(index).update(setDatasetQuery)
+          }
+        >
+          {this.renderAdd(index === 0 ? t`Add a grouping` : null)}
+        </BreakoutWidget>,
       );
 
-      if (breakouts[i + 1] != null) {
+      if (breakouts[index + 1] != null) {
         breakoutList.push(
-          <span key={"and" + i} className="text-bold">{t`and`}</span>,
+          <span key={"and" + index} className="text-bold">{t`and`}</span>,
         );
       }
     }
@@ -304,14 +317,13 @@ export default class GuiQueryEditor extends Component {
   }
 
   renderDataSection() {
-    const { databases, query, isShowingTutorial } = this.props;
+    const { databases, query } = this.props;
     const tableMetadata = query.tableMetadata();
     const datasetQuery = query.datasetQuery();
     const databaseId = datasetQuery && datasetQuery.database;
     const sourceTableId =
       datasetQuery && datasetQuery.query && datasetQuery.query["source-table"];
-    const isInitiallyOpen =
-      (!datasetQuery.database || !sourceTableId) && !isShowingTutorial;
+    const isInitiallyOpen = !datasetQuery.database || !sourceTableId;
 
     return (
       <div
@@ -323,7 +335,6 @@ export default class GuiQueryEditor extends Component {
         {this.props.features.data ? (
           <DatabaseSchemaAndTableDataSelector
             databases={databases}
-            selected={sourceTableId}
             selectedDatabaseId={databaseId}
             selectedTableId={sourceTableId}
             setDatabaseFn={this.props.setDatabaseFn}
@@ -419,7 +430,7 @@ export default class GuiQueryEditor extends Component {
       datasetQuery.database != null &&
       !_.findWhere(databases, { id: datasetQuery.database });
     if (readOnly) {
-      return <div className="border-bottom border-med" />;
+      return <div className="border-bottom border-medium" />;
     }
 
     return (
@@ -445,46 +456,3 @@ export default class GuiQueryEditor extends Component {
     );
   }
 }
-
-export const AggregationWidget = ({
-  index,
-  aggregation,
-  query,
-  updateQuery,
-  addButton,
-}: Object) => (
-  <AggregationWidget_LEGACY
-    query={query}
-    aggregation={aggregation}
-    tableMetadata={query.tableMetadata()}
-    customFields={query.expressions()}
-    updateAggregation={aggregation =>
-      query.updateAggregation(index, aggregation).update(updateQuery)
-    }
-    removeAggregation={
-      query.canRemoveAggregation()
-        ? () => query.removeAggregation(index).update(updateQuery)
-        : null
-    }
-    addButton={addButton}
-  />
-);
-
-export const BreakoutWidget = ({
-  className,
-  index,
-  breakout,
-  query,
-  updateQuery,
-  addButton,
-}: Object) => (
-  <BreakoutWidget_LEGACY
-    className={className}
-    field={breakout}
-    fieldOptions={query.breakoutOptions(breakout)}
-    customFieldOptions={query.expressions()}
-    tableMetadata={query.tableMetadata()}
-    setField={field => query.updateBreakout(index, field).update(updateQuery)}
-    addButton={addButton}
-  />
-);

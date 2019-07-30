@@ -35,10 +35,10 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
   if (!series) {
     return {};
   }
-  const { CardVisualization } = getVisualizationRaw(series);
+  const { visualization } = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
-    ...(CardVisualization.settings || {}),
+    ...(visualization.settings || {}),
   };
   for (const id in definitions) {
     definitions[id].id = id;

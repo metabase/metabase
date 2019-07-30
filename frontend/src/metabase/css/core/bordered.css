@@ -1,6 +1,6 @@
 :root {
   --border-size: 1px;
-  --border-size-med: 2px;
+  --border-size-medium: 2px;
   --border-style: solid;
   --border-color: var(--color-border);
 }
@@ -64,7 +64,7 @@
 }
 
 .border-purple {
-  border-color: var(--color-accent2) !important;
+  border-color: var(--color-accent7) !important;
 }
 
 .border-error,
@@ -109,6 +109,6 @@
   border-style: dashed;
 }
 
-.border-med {
-  border-width: var(--border-size-med);
+.border-medium {
+  border-width: var(--border-size-medium);
 }

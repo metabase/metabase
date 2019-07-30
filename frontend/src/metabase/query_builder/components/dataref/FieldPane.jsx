@@ -9,7 +9,7 @@ import UseForButton from "./UseForButton.jsx";
 import { fetchTableMetadata, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { createCard } from "metabase/lib/card";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { isDimension, isSummable } from "metabase/lib/schema_metadata";
 import inflection from "inflection";
 
@@ -61,10 +61,10 @@ export default class FieldPane extends Component {
   // filterBy() {
   //     var datasetQuery = this.setDatabaseAndTable();
   //     // Add an aggregation so both aggregation and filter popovers aren't visible
-  //     if (!Query.hasValidAggregation(datasetQuery.query)) {
-  //         Query.clearAggregations(datasetQuery.query);
+  //     if (!Q_DEPRECATED.hasValidAggregation(datasetQuery.query)) {
+  //         Q_DEPRECATED.clearAggregations(datasetQuery.query);
   //     }
-  //     Query.addFilter(datasetQuery.query, [null, this.props.field.id, null]);
+  //     Q_DEPRECATED.addFilter(datasetQuery.query, [null, this.props.field.id, null]);
   //     this.props.setDatasetQuery(datasetQuery);
   // }
 
@@ -74,7 +74,7 @@ export default class FieldPane extends Component {
 
     if (query instanceof StructuredQuery) {
       // Add an aggregation so both aggregation and filter popovers aren't visible
-      if (!Query.hasValidAggregation(query.datasetQuery().query)) {
+      if (!Q_DEPRECATED.hasValidAggregation(query.datasetQuery().query)) {
         query = query.clearAggregations();
       }
 
@@ -92,7 +92,7 @@ export default class FieldPane extends Component {
     const dbId = metadata.tables[tableId].database.id;
 
     const card = createCard();
-    card.dataset_query = createQuery("query", dbId, tableId);
+    card.dataset_query = Q_DEPRECATED.createQuery("query", dbId, tableId);
     return card;
   };
 

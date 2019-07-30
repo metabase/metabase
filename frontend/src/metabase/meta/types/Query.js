@@ -70,10 +70,12 @@ export type NativeQuery = {
 };
 
 export type StructuredQuery = {
-  "source-table": ?TableId,
+  "source-table"?: ?TableId,
+  "source-query"?: ?StructuredQuery,
   aggregation?: AggregationClause,
   breakout?: BreakoutClause,
   filter?: FilterClause,
+  joins?: JoinClause,
   "order-by"?: OrderByClause,
   limit?: LimitClause,
   expressions?: ExpressionClause,
@@ -209,6 +211,25 @@ export type SegmentFilter = ["segment", SegmentId];
 export type OrderByClause = Array<OrderBy>;
 export type OrderBy = ["asc" | "desc", Field];
 
+export type JoinStrategy =
+  | "left-join"
+  | "right-join"
+  | "inner-join"
+  | "full-join";
+export type JoinAlias = string;
+export type JoinCondition = Filter;
+export type JoinFields = "all" | "none" | JoinedFieldReference[];
+
+export type JoinClause = Array<Join>;
+export type Join = {
+  "source-table"?: TableId,
+  "source-query"?: StructuredQuery,
+  condition: JoinCondition,
+  alias?: JoinAlias,
+  strategy?: JoinStrategy,
+  fields?: JoinFields,
+};
+
 export type LimitClause = number;
 
 export type Field = ConcreteField | AggregateField;
@@ -216,6 +237,7 @@ export type Field = ConcreteField | AggregateField;
 export type ConcreteField =
   | LocalFieldReference
   | ForeignFieldReference
+  | JoinedFieldReference
   | ExpressionReference
   | DatetimeField
   | BinnedField;
@@ -231,6 +253,8 @@ export type ForeignFieldReference = [
 export type ExpressionReference = ["expression", ExpressionName];
 
 export type FieldLiteral = ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
+
+export type JoinedFieldReference = ["joined-field", string, ConcreteField];
 
 export type DatetimeField =
   | [

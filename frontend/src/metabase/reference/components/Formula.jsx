@@ -65,7 +65,7 @@ export default class Formula extends Component {
               <QueryDefinition
                 className={S.formulaDefinitionInner}
                 object={entity}
-                tableMetadata={metadata.tables[entity.table_id]}
+                metadata={metadata}
               />
             </div>
           )}

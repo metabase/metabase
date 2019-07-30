@@ -709,38 +709,43 @@ function doGroupedBarStuff(parent) {
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
       .map(node => node.parentNode.parentNode.parentNode);
-    if (barCharts.length > 0) {
-      const oldBarWidth = parseFloat(
-        barCharts[0].querySelector("rect").getAttribute("width"),
-      );
-      const newBarWidthTotal = oldBarWidth / barCharts.length;
-      const seriesPadding =
-        newBarWidthTotal < 4 ? 0 : newBarWidthTotal < 8 ? 1 : 2;
-      const newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
-
-      chart.selectAll("g.sub rect").attr("width", newBarWidth);
-      barCharts.forEach((barChart, index) => {
-        barChart.setAttribute(
-          "transform",
-          "translate(" + (newBarWidth + seriesPadding) * index + ", 0)",
-        );
-      });
+    if (barCharts.length === 0) {
+      return;
     }
+    const bars = barCharts[0].querySelectorAll("rect");
+    if (bars.length < 1) {
+      return;
+    }
+    const oldBarWidth = parseFloat(bars[0].getAttribute("width"));
+    const newBarWidthTotal = oldBarWidth / barCharts.length;
+    const seriesPadding =
+      newBarWidthTotal < 4 ? 0 : newBarWidthTotal < 8 ? 1 : 2;
+    const newBarWidth = Math.max(1, newBarWidthTotal - seriesPadding);
+
+    chart.selectAll("g.sub rect").attr("width", newBarWidth);
+    barCharts.forEach((barChart, index) => {
+      barChart.setAttribute(
+        "transform",
+        "translate(" + (newBarWidth + seriesPadding) * index + ", 0)",
+      );
+    });
   });
 }
 
 // TODO - better name
 function doHistogramBarStuff(parent) {
   parent.on("renderlet.histogram-bar", function(chart) {
+    // manually size bars to fill space, minus 1 pixel padding
     const barCharts = chart
       .selectAll(".sub rect:first-child")[0]
       .map(node => node.parentNode.parentNode.parentNode);
-    if (!barCharts.length) {
+    if (barCharts.length === 0) {
       return;
     }
-
-    // manually size bars to fill space, minus 1 pixel padding
     const bars = barCharts[0].querySelectorAll("rect");
+    if (bars.length < 2) {
+      return;
+    }
     const barWidth = parseFloat(bars[0].getAttribute("width"));
     const newBarWidth =
       parseFloat(bars[1].getAttribute("x")) -
@@ -815,6 +820,8 @@ export default function lineAreaBar(
   const parent = dc.compositeChart(element);
   initChart(parent, element);
 
+  // add these convienence aliases so we don't have to pass a bunch of things around
+  parent.props = props;
   parent.settings = settings;
   parent.series = props.series;
 

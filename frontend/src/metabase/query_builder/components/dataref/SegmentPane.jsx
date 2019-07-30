@@ -12,7 +12,7 @@ import UseForButton from "./UseForButton.jsx";
 import QueryDefinition from "./QueryDefinition.jsx";
 
 import { createCard } from "metabase/lib/card";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -63,7 +63,7 @@ export default class SegmentPane extends Component {
 
     if (query instanceof StructuredQuery) {
       // Add an aggregation so both aggregation and filter popovers aren't visible
-      if (!Query.hasValidAggregation(query.datasetQuery().query)) {
+      if (!Q_DEPRECATED.hasValidAggregation(query.datasetQuery().query)) {
         query = query.clearAggregations();
       }
 
@@ -80,7 +80,11 @@ export default class SegmentPane extends Component {
 
     if (table) {
       const card = createCard();
-      card.dataset_query = createQuery("query", table.db_id, table.id);
+      card.dataset_query = Q_DEPRECATED.createQuery(
+        "query",
+        table.db_id,
+        table.id,
+      );
       return card;
     } else {
       throw new Error(
@@ -149,10 +153,7 @@ export default class SegmentPane extends Component {
           metadata && (
             <div>
               <p className="text-bold">{t`Segment Definition`}</p>
-              <QueryDefinition
-                object={segment}
-                tableMetadata={metadata.tables[segment.table_id]}
-              />
+              <QueryDefinition object={segment} metadata={metadata} />
             </div>
           )
         }

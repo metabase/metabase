@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
 import {
   isDate,
   isAddress,
@@ -54,6 +54,7 @@ export function getMode(
           const field = tableMetadata.fields_lookup[fieldId];
           if (
             field &&
+            field.table &&
             field.table.id === query["source-table"] &&
             isPK(field)
           ) {

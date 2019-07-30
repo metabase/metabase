@@ -225,7 +225,7 @@ describe("parameters", () => {
       app = mount(store.getAppContainer());
 
       await waitForRequestToComplete("GET", /^\/api\/card\/\d+/);
-      expect(app.find(".Header-title-name").text()).toEqual("Test Question");
+      expect(app.find("ViewHeading").text()).toEqual("Test Question");
 
       // wait for the query to load
       await waitForRequestToComplete("POST", /^\/api\/card\/\d+\/query/);

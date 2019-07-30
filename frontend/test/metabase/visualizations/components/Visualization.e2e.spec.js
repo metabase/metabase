@@ -169,7 +169,7 @@ describe("Visualization", () => {
             rawSeries: [TextCard("Foo")],
             isEditing: false,
           });
-          expect(viz.find(".Icon-editdocument").length).toEqual(0);
+          expect(viz.find(".Icon-edit_document").length).toEqual(0);
           expect(viz.find(".Icon-eye").length).toEqual(0);
         });
 
@@ -198,7 +198,7 @@ describe("Visualization", () => {
             rawSeries: [TextCard("Foo")],
             isEditing: true,
           });
-          expect(viz.find(".Icon-editdocument").length).toEqual(1);
+          expect(viz.find(".Icon-edit_document").length).toEqual(1);
           expect(viz.find(".Icon-eye").length).toEqual(1);
         });
 
@@ -220,7 +220,7 @@ describe("Visualization", () => {
             click(viz.find(".Icon-eye"));
             expect(viz.find("textarea").length).toEqual(0);
             expect(viz.find(".text-card-markdown").length).toEqual(1);
-            click(viz.find(".Icon-editdocument"));
+            click(viz.find(".Icon-edit_document"));
             expect(viz.find(".text-card-markdown").length).toEqual(0);
             expect(viz.find("textarea").length).toEqual(1);
           });

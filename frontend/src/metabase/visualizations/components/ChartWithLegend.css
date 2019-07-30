@@ -24,7 +24,7 @@
 /* VERTICAL */
 :local .ChartWithLegend.vertical {
   flex-direction: column-reverse;
-  justify-content: space-around;
+  /* justify-content: space-around; */
 }
 :local .ChartWithLegend.vertical .Legend {
   flex-shrink: 1;

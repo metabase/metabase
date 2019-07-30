@@ -1,3 +1,5 @@
+jest.mock("metabase/components/ExplicitSize");
+
 import React from "react";
 import { render, cleanup } from "@testing-library/react";
 

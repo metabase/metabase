@@ -14,6 +14,8 @@ import {
   invalid_orders_count_card,
 } from "__support__/sample_dataset_fixture";
 
+import { assoc, dissoc } from "icepick";
+
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -284,20 +286,19 @@ describe("Question", () => {
     describe("pivot(...)", async () => {
       const ordersCountQuestion = new Question(metadata, orders_count_card);
       it("works with a datetime dimension ", () => {
-        const pivotedCard = ordersCountQuestion.pivot([
-          "field-id",
-          ORDERS_CREATED_DATE_FIELD_ID,
+        const pivoted = ordersCountQuestion.pivot([
+          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
         ]);
-        expect(pivotedCard.canRun()).toBe(true);
+        expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(pivotedCard._card.dataset_query).toEqual({
+        expect(pivoted._card.dataset_query).toEqual({
           type: "query",
           database: DATABASE_ID,
           query: {
             "source-table": ORDERS_TABLE_ID,
             aggregation: [["count"]],
-            breakout: ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]],
           },
         });
         // Make sure we haven't mutated the underlying query
@@ -307,20 +308,19 @@ describe("Question", () => {
         });
       });
       it("works with PK dimension", () => {
-        const pivotedCard = ordersCountQuestion.pivot([
-          "field-id",
-          ORDERS_PK_FIELD_ID,
+        const pivoted = ordersCountQuestion.pivot([
+          ["field-id", ORDERS_PK_FIELD_ID],
         ]);
-        expect(pivotedCard.canRun()).toBe(true);
+        expect(pivoted.canRun()).toBe(true);
 
         // if I actually call the .query() method below, this blows up garbage collection =/
-        expect(pivotedCard._card.dataset_query).toEqual({
+        expect(pivoted._card.dataset_query).toEqual({
           type: "query",
           database: DATABASE_ID,
           query: {
             "source-table": ORDERS_TABLE_ID,
             aggregation: [["count"]],
-            breakout: ["field-id", ORDERS_PK_FIELD_ID],
+            breakout: [["field-id", ORDERS_PK_FIELD_ID]],
           },
         });
         // Make sure we haven't mutated the underlying query
@@ -532,8 +532,15 @@ describe("Question", () => {
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
     describe("getUrl(originalQuestion?)", () => {
-      it("returns a question with hash for an unsaved question", () => {
-        const question = new Question(metadata, orders_raw_card);
+      it("returns URL with ID for saved question", () => {
+        const question = new Question(
+          metadata,
+          assoc(orders_raw_card, "id", 1),
+        );
+        expect(question.getUrl()).toBe("/question/1");
+      });
+      it("returns a URL with hash for an unsaved question", () => {
+        const question = new Question(metadata, dissoc(orders_raw_card, "id"));
         expect(question.getUrl()).toBe(
           "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlLXRhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==",
         );

@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import cx from "classnames";
 
 import NumericInput from "metabase/components/NumericInput.jsx";
 import DateUnitSelector from "../DateUnitSelector";
@@ -28,6 +29,7 @@ type Props = {
   onFilterChange: (filter: TimeIntervalFilter) => void,
   formatter: (value: any) => any,
   hideTimeSelectors?: boolean,
+  className?: string,
 };
 
 type State = {
@@ -47,11 +49,11 @@ export default class RelativeDatePicker extends Component {
   };
 
   render() {
-    const { filter, onFilterChange, formatter } = this.props;
+    const { filter, onFilterChange, formatter, className } = this.props;
     const intervals = filter[2];
     const unit = filter[3];
     return (
-      <div className="flex-full mb2 flex align-center">
+      <div className={cx(className, "flex align-center")}>
         <NumericInput
           className="mr2 input border-purple text-right"
           style={{
@@ -68,7 +70,7 @@ export default class RelativeDatePicker extends Component {
           onChange={value => onFilterChange(assoc(filter, 2, formatter(value)))}
           placeholder="30"
         />
-        <div className="flex-full mr2">
+        <div className="flex-full">
           <DateUnitSelector
             open={this.state.showUnits}
             value={unit}

@@ -2,6 +2,7 @@
 
 import React, { Component } from "react";
 import { t, jt } from "ttag";
+import cx from "classnames";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
@@ -12,6 +13,7 @@ import Modal from "metabase/components/Modal";
 import { ALERT_TYPE_ROWS } from "metabase-lib/lib/Alert";
 
 type Props = {
+  className?: string,
   question: Question,
   isObjectDetail: boolean,
   result: any,
@@ -20,6 +22,10 @@ type Props = {
   lastRunDatasetQuery: DatasetQuery,
   navigateToNewCardInsideQB: any => void,
   rawSeries: any,
+
+  onOpenChartSettings: () => void,
+  onUpdateWarnings: () => void,
+  onUpdateVisualizationSettings: (settings: any) => void,
 };
 
 export default class VisualizationResult extends Component {
@@ -43,7 +49,7 @@ export default class VisualizationResult extends Component {
       navigateToNewCardInsideQB,
       result,
       rawSeries,
-      ...props
+      className,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -53,7 +59,7 @@ export default class VisualizationResult extends Component {
 
       // successful query but there were 0 rows returned with the result
       return (
-        <div className="flex flex-full">
+        <div className={cx(className, "flex")}>
           <ErrorMessage
             type="noRows"
             title="No results!"
@@ -91,12 +97,17 @@ export default class VisualizationResult extends Component {
     } else {
       return (
         <Visualization
+          className={className}
           rawSeries={rawSeries}
           onChangeCardAndRun={navigateToNewCardInsideQB}
           isEditing={true}
-          card={question.card()}
-          // Table:
-          {...props}
+          showTitle={false}
+          metadata={question.metadata()}
+          onOpenChartSettings={this.props.onOpenChartSettings}
+          onUpdateWarnings={this.props.onUpdateWarnings}
+          onUpdateVisualizationSettings={
+            this.props.onUpdateVisualizationSettings
+          }
         />
       );
     }

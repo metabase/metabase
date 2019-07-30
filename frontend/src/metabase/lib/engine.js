@@ -1,3 +1,5 @@
+import { formatSQL } from "metabase/lib/formatting";
+
 export function getEngineNativeType(engine) {
   switch (engine) {
     case "mongo":
@@ -38,6 +40,12 @@ export function formatJsonQuery(query, engine) {
   }
 }
 
+export function formatNativeQuery(query, engine) {
+  return getEngineNativeType(engine) === "json"
+    ? formatJsonQuery(query, engine)
+    : formatSQL(query);
+}
+
 const GA_ORDERED_PARAMS = [
   "ids",
   "start-date",
@@ -55,6 +63,9 @@ const GA_ORDERED_PARAMS = [
 
 // does 3 things: removes null values, sorts the keys by the order in the documentation, and formats with 2 space indents
 function formatGAQuery(query) {
+  if (!query) {
+    return "";
+  }
   const object = {};
   for (const param of GA_ORDERED_PARAMS) {
     if (query[param] != null) {

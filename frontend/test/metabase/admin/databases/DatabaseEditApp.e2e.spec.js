@@ -49,7 +49,7 @@ describe("DatabaseEditApp", () => {
         "Sample Dataset",
       );
       expect(editForm.find('input[name="db"]').props().value).toEqual(
-        expect.stringContaining("sample-dataset.db;USER=GUEST;PASSWORD=guest"),
+        expect.stringContaining("sample-dataset.db"),
       );
     });
 
@@ -106,7 +106,7 @@ describe("DatabaseEditApp", () => {
         "Sample Dataset",
       );
       expect(editForm.find('input[name="db"]').props().value).toEqual(
-        expect.stringContaining("sample-dataset.db;USER=GUEST;PASSWORD=guest"),
+        expect.stringContaining("sample-dataset.db"),
       );
 
       const letUserControlSchedulingField = editForm

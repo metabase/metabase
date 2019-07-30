@@ -689,7 +689,7 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
   if (!isRoot) {
     items.push({
       title: t`Edit this collection`,
-      icon: "editdocument",
+      icon: "edit_document",
       link: `/collection/${collectionId}/edit`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Edit Collection Click`,
     });
@@ -697,7 +697,7 @@ const CollectionEditMenu = ({ isRoot, isAdmin, collectionId }) => {
   if (!isRoot) {
     items.push({
       title: t`Archive this collection`,
-      icon: "viewArchive",
+      icon: "view_archive",
       link: `/collection/${collectionId}/archive`,
       event: `${ANALYTICS_CONTEXT};Edit Menu;Archive Collection`,
     });
@@ -712,7 +712,7 @@ const CollectionBurgerMenu = () => (
     items={[
       {
         title: t`View the archive`,
-        icon: "viewArchive",
+        icon: "view_archive",
         link: `/archive`,
         event: `${ANALYTICS_CONTEXT};Burger Menu;View Archive Click`,
       },

@@ -22,7 +22,7 @@ export const FILTERS = [
   {
     name: t`Questions`,
     filter: "card",
-    icon: "beaker",
+    icon: "bar",
   },
   {
     name: t`Pulses`,

@@ -194,7 +194,6 @@ const TransientTitle = ({ dashboard }) =>
 
 const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-medium text-bold">
-    {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}
@@ -226,11 +225,11 @@ const RELATED_CONTENT = {
   },
   "zoom-in": {
     title: t`Zoom in`,
-    icon: "zoom-in",
+    icon: "zoom_in",
   },
   "zoom-out": {
     title: t`Zoom out`,
-    icon: "zoom-out",
+    icon: "zoom_out",
   },
   related: {
     title: t`Related`,

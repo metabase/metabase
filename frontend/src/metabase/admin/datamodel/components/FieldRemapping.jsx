@@ -291,7 +291,7 @@ export default class FieldRemapping extends React.Component {
               }}
               table={table}
               onFieldChange={this.onForeignKeyFieldChange}
-              hideSectionHeader
+              hideSingleSectionTitle
             />
           </PopoverWithTrigger>,
           dismissedInitialFkTargetPopover && (
