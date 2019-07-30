@@ -12,9 +12,9 @@ Once you have the Enterprise edition running, to activate all of its features go
 
 Your Metabase instance will need to be able to access the internet (specifically `https://store.metabase.com/api/[token-id]`) in order to validate your token and grant access to the Enterprise feature set. 
 
-To route outbound Metabase traffic to your proxy, use the following command:
+If you need to route outbound Metabase traffic through a proxy on your network, use the following command:
 
-`java -DproxySet = true -DproxyHost = [your host] -DproxyPort = [your port] -jar. \ enterprise_metabase.jar`
+`java -DproxySet = true -DproxyHost = [your proxy's hostname] -DproxyPort = [your proxy's port] -jar. \ enterprise_metabase.jar`
 
 Depending on your organization's set-up, additional configuration steps may need to be taken. If the command above does not work for you, we would recommend reaching out to your internal infrastructure or dev ops teams for assistance.
 
