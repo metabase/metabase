@@ -18,7 +18,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   }
 
   // $FlowFixMe
-  let field = question.metadata().fields[clicked.column.id];
+  let field = question.metadata().field(clicked.column.id);
   if (!field) {
     return [];
   }
@@ -37,7 +37,8 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       section: "details",
       title: t`View details`,
       default: true,
-      question: () => question.drillPK(field, clicked && clicked.value),
+      question: () =>
+        field ? question.drillPK(field, clicked && clicked.value) : question,
     },
   ];
 };

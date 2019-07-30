@@ -74,6 +74,28 @@ export default class PieChart extends Component {
     }
   }
 
+  static placeholderSeries = [
+    {
+      card: {
+        display: "pie",
+        visualization_settings: { "pie.show_legend": false },
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: [
+          ["Doohickey", 3976],
+          ["Gadget", 4939],
+          ["Gizmo", 4784],
+          ["Widget", 5061],
+        ],
+        cols: [
+          { name: "Category", base_type: "type/Category" },
+          { name: "Count", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
+
   static settings = {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("pie.dimension", {
@@ -214,19 +236,6 @@ export default class PieChart extends Component {
       });
 
     const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
-    const decimals = computeMaxDecimalsForValues(
-      rows.map(row => row[metricIndex] / total),
-      { style: "percent", maximumSignificantDigits: 3 },
-    );
-    const formatPercent = (percent, jsx = true) =>
-      formatValue(percent, {
-        ...settings.column(cols[metricIndex]),
-        jsx,
-        majorWidth: 0,
-        number_style: "percent",
-        _numberFormatter: undefined, // remove the passed formatter
-        decimals,
-      });
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
@@ -265,6 +274,20 @@ export default class PieChart extends Component {
       }
       slices.push(otherSlice);
     }
+
+    const decimals = computeMaxDecimalsForValues(
+      slices.map(s => s.percentage),
+      { style: "percent", maximumSignificantDigits: 3 },
+    );
+    const formatPercent = (percent, jsx = true) =>
+      formatValue(percent, {
+        ...settings.column(cols[metricIndex]),
+        jsx,
+        majorWidth: 0,
+        number_style: "percent",
+        _numberFormatter: undefined, // remove the passed formatter
+        decimals,
+      });
 
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),

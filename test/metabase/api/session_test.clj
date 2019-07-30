@@ -10,11 +10,9 @@
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
-            [metabase.test
-             [data :refer :all]
-             [util :as tu]]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
+            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -24,8 +22,9 @@
 ;; Test that we can login
 (expect
   ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-  (do (db/simple-delete! Session, :user_id (test-users/user->id :rasta))
-      (tu/is-uuid-string? (:id (client :post 200 "session" (test-users/user->credentials :rasta))))))
+  (do
+    (db/simple-delete! Session, :user_id (test-users/user->id :rasta))
+    (tu/is-uuid-string? (:id (client :post 200 "session" (test-users/user->credentials :rasta))))))
 
 ;; Test for required params
 (expect {:errors {:username "value must be a non-blank string."}}
@@ -79,7 +78,8 @@
 (expect
   (et/with-fake-inbox
     (let [reset-fields-set? (fn []
-                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (test-users/user->id :rasta))]
+                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                                                                            :id (test-users/user->id :rasta))]
                                 (boolean (and reset_token reset_triggered))))]
       ;; make sure user is starting with no values
       (db/update! User (test-users/user->id :rasta), :reset_token nil, :reset_triggered nil)

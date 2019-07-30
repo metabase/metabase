@@ -9,11 +9,13 @@ import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
 
 import "./LineAreaBarChart.css";
 
-import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import {
-  getChartTypeFromData,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase/lib/schema_metadata";
+import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -26,8 +28,6 @@ import {
 
 import _ from "underscore";
 import cx from "classnames";
-
-const MAX_SERIES = 20;
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -83,7 +83,17 @@ export default class LineAreaBarChart extends Component {
   static minSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
-    return getChartTypeFromData(cols, rows, false) != null;
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
+  }
+
+  static isLiveResizable(series) {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
   }
 
   static checkRenderable(series, settings) {
@@ -148,6 +158,23 @@ export default class LineAreaBarChart extends Component {
 
     return true;
   }
+
+  static placeholderSeries = [
+    {
+      card: {
+        display: "line",
+        visualization_settings: {},
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: _.range(0, 11).map(i => [i, i]),
+        cols: [
+          { name: "x", base_type: "type/Integer" },
+          { name: "y", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
 
   static transformSeries(series) {
     const newSeries = [].concat(
@@ -238,12 +265,15 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
       onVisualizationClick,
       visualizationIsClickable,
+      onAddSeries,
+      onEditSeries,
+      onRemoveSeries,
     } = this.props;
 
     const settings = this.getSettings();
 
     let multiseriesHeaderSeries;
-    if (series.length > 1) {
+    if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
       multiseriesHeaderSeries = series;
     }
 
@@ -276,6 +306,9 @@ export default class LineAreaBarChart extends Component {
             onChangeCardAndRun={onChangeCardAndRun}
             onVisualizationClick={onVisualizationClick}
             visualizationIsClickable={visualizationIsClickable}
+            onAddSeries={onAddSeries}
+            onEditSeries={onEditSeries}
+            onRemoveSeries={onRemoveSeries}
           />
         ) : null}
         <CardRenderer

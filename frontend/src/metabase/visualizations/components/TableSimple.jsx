@@ -194,8 +194,8 @@ export default class TableSimple extends Component {
                             "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
                             {
                               "text-right": isColumnRightAligned(column),
-                              "Table-ID": isID(column),
-                              "Table-FK": isFK(column),
+                              "Table-ID": value != null && isID(column),
+                              "Table-FK": value != null && isFK(column),
                               link: isClickable && isID(column),
                             },
                           )}
@@ -259,7 +259,7 @@ export default class TableSimple extends Component {
               })}
               onClick={() => this.setState({ page: page - 1 })}
             >
-              <Icon name="left" size={10} />
+              <Icon name="triangle_left" size={10} />
             </span>
             <span
               className={cx("text-brand-hover pr1 cursor-pointer", {
@@ -267,7 +267,7 @@ export default class TableSimple extends Component {
               })}
               onClick={() => this.setState({ page: page + 1 })}
             >
-              <Icon name="right" size={10} />
+              <Icon name="triangle_right" size={10} />
             </span>
           </div>
         ) : null}

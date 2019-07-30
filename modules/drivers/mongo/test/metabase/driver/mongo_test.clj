@@ -79,7 +79,11 @@
   {:status    :completed
    :row_count 1
    :data      {:rows        [[1]]
-               :cols        [{:name "count", :display_name "count", :base_type :type/Integer, :source :native}]
+               :cols        [{:name         "count"
+                              :display_name "count"
+                              :base_type    :type/Integer
+                              :source       :native
+                              :field_ref    [:field-literal "count" :type/Integer]}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query

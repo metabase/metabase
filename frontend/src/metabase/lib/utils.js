@@ -1,6 +1,7 @@
 import generatePassword from "password-generator";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
+import _ from "underscore";
 
 const LAYOUT_PROPS = [
   "m",
@@ -24,15 +25,7 @@ const LAYOUT_PROPS = [
 ];
 
 export function stripLayoutProps(props) {
-  const newProps = props;
-
-  LAYOUT_PROPS.map(l => {
-    if (Object.keys(newProps).includes(l)) {
-      delete newProps[l];
-    }
-  });
-
-  return newProps;
+  return _.omit(props, LAYOUT_PROPS);
 }
 
 function s4() {
@@ -45,7 +38,7 @@ function s4() {
 const MetabaseUtils = {
   // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
   // `password_complexity` Setting; must be a map like {total: 6, number: 1}
-  generatePassword: function(complexity) {
+  generatePassword(complexity) {
     complexity =
       complexity || MetabaseSettings.passwordComplexityRequirements() || {};
     // generated password must be at least `complexity.total`, but can be longer
@@ -79,7 +72,7 @@ const MetabaseUtils = {
     }
   },
 
-  isEmpty: function(str) {
+  isEmpty(str) {
     if (str != null) {
       str = String(str);
     } // make sure 'str' is actually a string
@@ -87,7 +80,7 @@ const MetabaseUtils = {
   },
 
   // pretty limited.  just does 0-9 for right now.
-  numberToWord: function(num) {
+  numberToWord(num) {
     const names = [
       t`zero`,
       t`one`,
@@ -108,7 +101,7 @@ const MetabaseUtils = {
     }
   },
 
-  uuid: function() {
+  uuid() {
     return (
       s4() +
       s4() +
@@ -150,17 +143,25 @@ const MetabaseUtils = {
     );
   },
 
-  validEmail: function(email) {
+  validEmail(email) {
     const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     return re.test(email);
   },
 
-  equals: function(a, b) {
-    // FIXME: ugghhhhhhhhh
-    return JSON.stringify(a) === JSON.stringify(b);
+  equals(a, b) {
+    return _.isEqual(a, b);
   },
 
-  copy: function(a) {
+  propertiesEqual(a, b, properties = [...Object.keys(a), ...Object.keys(b)]) {
+    for (const property of properties) {
+      if (a[property] !== b[property]) {
+        return false;
+      }
+    }
+    return true;
+  },
+
+  copy(a) {
     // FIXME: ugghhhhhhhhh
     return JSON.parse(JSON.stringify(a));
   },
@@ -168,7 +169,7 @@ const MetabaseUtils = {
   // this should correctly compare all version formats Metabase uses, e.x.
   // 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
   // 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
-  compareVersions: function(aVersion, bVersion) {
+  compareVersions(aVersion, bVersion) {
     const SPECIAL_COMPONENTS = {
       snapshot: -4,
       alpha: -3,

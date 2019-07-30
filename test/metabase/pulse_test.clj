@@ -14,7 +14,7 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
-            [metabase.pulse.render :as render]
+            [metabase.pulse.render.body :as render.body]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
@@ -425,9 +425,9 @@
   (assoc result :attachments (for [attachment-info attachments]
                                (update attachment-info :attachment-bytes-thunk fn?))))
 
-(defprotocol WrappedFunction
-  (input [_])
-  (output [_]))
+(defprotocol ^:private WrappedFunction
+  (^:private input [_])
+  (^:private output [_]))
 
 (defn- invoke-with-wrapping
   "Apply `args` to `func`, capturing the arguments of the invocation and the result of the invocation. Store the arguments in
@@ -518,13 +518,13 @@
    [nil] ;; -> attached-results-text should return nil since it's a slack message
    ]
   (slack-test-setup
-   (with-redefs [render/attached-results-text (wrap-function (var-get #'render/attached-results-text))]
+   (with-redefs [render.body/attached-results-text (wrap-function (var-get #'render.body/attached-results-text))]
      (let [[pulse-results] (pulse/send-pulse! (pulse.model/retrieve-pulse pulse-id))]
        ;; If we don't force the thunk, the rendering code will never execute and attached-results-text won't be called
        (force-bytes-thunk pulse-results)
        [(thunk->boolean pulse-results)
-        (count (input (var-get #'render/attached-results-text)))
-        (output (var-get #'render/attached-results-text))]))))
+        (count (input (var-get #'render.body/attached-results-text)))
+        (output (var-get #'render.body/attached-results-text))]))))
 
 (defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
   (< 0 (alength (attachment-bytes-thunk))))

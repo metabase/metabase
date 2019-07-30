@@ -8,6 +8,8 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
+import { regexpEscape } from "metabase/lib/string";
+
 export default class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -30,7 +32,7 @@ export default class MetadataTableList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
@@ -47,9 +49,12 @@ export default class MetadataTableList extends Component {
         const row = (
           <li key={table.id}>
             <a
-              className={cx("AdminList-item flex align-center no-decoration", {
-                selected,
-              })}
+              className={cx(
+                "AdminList-item flex align-center no-decoration text-wrap",
+                {
+                  selected,
+                },
+              )}
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}

@@ -22,12 +22,12 @@ import {
   SAVE_DASHBOARD_AND_CARDS,
   SET_EDITING_DASHBOARD,
   SET_EDITING_PARAMETER_ID,
-  FETCH_REVISIONS,
   FETCH_CARD_DATA,
 } from "metabase/dashboard/dashboard";
 
 import Question from "metabase/entities/questions";
 import Search from "metabase/entities/search";
+import Revisions from "metabase/entities/revisions";
 
 import EditBar from "metabase/components/EditBar";
 
@@ -41,7 +41,7 @@ import ParameterWidget from "metabase/parameters/components/ParameterWidget";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import { PredefinedRelativeDatePicker } from "metabase/parameters/components/widgets/DateRelativeWidget";
 import HeaderModal from "metabase/components/HeaderModal";
-import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 
 // TODO Atte Keinänen 7/17/17: When we have a nice way to create dashboards in tests, this could use a real saved dashboard
 // instead of mocking the API endpoint
@@ -201,7 +201,7 @@ describe("Dashboard", () => {
       // Test parameter filter creation
       click(app.find(".Icon.Icon-pencil"));
       await store.waitForActions([SET_EDITING_DASHBOARD]);
-      click(app.find(".Icon.Icon-funneladd"));
+      click(app.find(".Icon.Icon-funnel_add"));
       // Choose Time filter type
       click(
         app
@@ -272,7 +272,9 @@ describe("Dashboard", () => {
 
       click(app.find(".Icon.Icon-history"));
 
-      await store.waitForActions([FETCH_REVISIONS]);
+      await store.waitForActions([Revisions.actionTypes.FETCH_LIST]);
+      await delay(10);
+
       const modal = app.find(DashboardHistoryModal);
       expect(modal.length).toBe(1);
       expect(store.getPath()).toBe(`${dashboardUrl}/history`);
@@ -289,7 +291,8 @@ describe("Dashboard", () => {
       const dashboardUrl = Urls.dashboard(dashboardId);
       store.pushPath(dashboardUrl + `/history`);
       const app = mount(store.getAppContainer());
-      await store.waitForActions([FETCH_REVISIONS]);
+      await store.waitForActions([Revisions.actionTypes.FETCH_LIST]);
+      await delay(10);
 
       const modal = app.find(DashboardHistoryModal);
       expect(modal.length).toBe(1);

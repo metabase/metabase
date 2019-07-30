@@ -185,9 +185,11 @@ describe("The Reference Section", () => {
       const qbQuery = getQuestion(store.getState()).query();
 
       // the granularity/subdimension should be applied correctly to the breakout
-      expect(qbQuery.breakouts()).toEqual([
-        ["datetime-field", ["field-id", 1], "month"], // depends on the date range
-      ]);
+      expect(JSON.stringify(qbQuery.breakouts())).toEqual(
+        JSON.stringify([
+          ["datetime-field", ["field-id", 1], "month"], // depends on the date range
+        ]),
+      );
     });
 
     it("should see the orders id field", async () => {

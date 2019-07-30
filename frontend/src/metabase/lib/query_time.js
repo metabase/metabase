@@ -182,6 +182,9 @@ export function generateTimeValueDescription(value, bucketing) {
 }
 
 export function formatBucketing(bucketing = "", n = 1) {
+  if (!bucketing) {
+    return "";
+  }
   switch (bucketing) {
     case "default":
       return ngettext(msgid`Default period`, `Default periods`, n);
@@ -273,7 +276,7 @@ export function parseFieldTargetId(field) {
       return field[1];
     }
     if (field[0] === "fk->") {
-      return field[1];
+      return parseFieldTargetId(field[1]);
     }
     if (field[0] === "datetime-field") {
       return parseFieldTargetId(field[1]);

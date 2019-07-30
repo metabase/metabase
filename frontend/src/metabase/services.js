@@ -196,6 +196,7 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
+  native: POST("/api/dataset/native"),
 };
 
 export const PulseApi = {

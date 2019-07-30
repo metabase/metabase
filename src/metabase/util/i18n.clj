@@ -3,6 +3,7 @@
   (:require [cheshire.generate :as json-gen]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [potemkin.types :as p.types]
             [puppetlabs.i18n.core :as i18n :refer [available-locales]]
             [schema.core :as s])
   (:import java.util.Locale))
@@ -31,16 +32,16 @@
       (log/errorf e "Unable to translate string '%s'" msg)
       msg)))
 
-(defrecord UserLocalizedString [ns-str msg args]
-  java.lang.Object
+(p.types/defrecord+ UserLocalizedString [ns-str msg args]
+  Object
   (toString [_]
     (translate ns-str msg args))
   schema.core.Schema
   (explain [this]
     (str this)))
 
-(defrecord SystemLocalizedString [ns-str msg args]
-  java.lang.Object
+(p.types/defrecord+ SystemLocalizedString [ns-str msg args]
+  Object
   (toString [_]
     (translate ns-str msg args))
   s/Schema
@@ -95,7 +96,7 @@
                      (str node)
                      node)) x))
 
-(defn ex-info
+(defn ^:deprecated ex-info
   "Just like `clojure.core/ex-info` but it is i18n-aware. It will call `str` on `msg` and walk `ex-data` converting any
   `SystemLocalizedString` and `UserLocalizedString`s to a regular string"
   ([msg ex-data-map]

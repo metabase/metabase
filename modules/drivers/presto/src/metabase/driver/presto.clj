@@ -166,9 +166,9 @@
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
-(defmethod driver/date-interval :presto
-  [_ unit amount]
-  (hsql/call :date_add (hx/literal unit) amount :%now))
+(defmethod driver/date-add :presto
+  [_ dt amount unit]
+  (hsql/call :date_add (hx/literal unit) amount dt))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
@@ -273,7 +273,7 @@
         columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
     (merge
-     {:columns (map (comp u/keyword->qualified-name :name) columns)
+     {:columns (map (comp u/qualified-name :name) columns)
       :rows    rows}
      ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
      ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want

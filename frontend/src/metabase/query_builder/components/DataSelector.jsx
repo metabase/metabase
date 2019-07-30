@@ -45,13 +45,15 @@ export const SchemaAndSegmentTriggerContent = ({
 }) => {
   if (selectedTable) {
     return (
-      <span className="text-grey no-decoration">
+      <span className="text-wrap text-grey no-decoration">
         {selectedTable.display_name || selectedTable.name}
       </span>
     );
   } else if (selectedSegment) {
     return (
-      <span className="text-grey no-decoration">{selectedSegment.name}</span>
+      <span className="text-wrap text-grey no-decoration">
+        {selectedSegment.name}
+      </span>
     );
   } else {
     return (
@@ -69,7 +71,9 @@ export const DatabaseDataSelector = props => (
 );
 export const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
-    <span className="text-grey no-decoration">{selectedDatabase.name}</span>
+    <span className="text-wrap text-grey no-decoration">
+      {selectedDatabase.name}
+    </span>
   ) : (
     <span className="text-medium no-decoration">{t`Select a database`}</span>
   );
@@ -122,7 +126,7 @@ export const SchemaAndTableDataSelector = props => (
 );
 export const TableTriggerContent = ({ selectedTable }) =>
   selectedTable ? (
-    <span className="text-grey no-decoration">
+    <span className="text-wrap text-grey no-decoration">
       {selectedTable.display_name || selectedTable.name}
     </span>
   ) : (
@@ -399,8 +403,14 @@ export default class DataSelector extends Component {
       className,
       style,
       triggerIconSize,
+      triggerElement,
       getTriggerElementContent,
     } = this.props;
+
+    if (triggerElement) {
+      return triggerElement;
+    }
+
     const {
       selectedDatabase,
       selectedSegment,
@@ -429,7 +439,7 @@ export default class DataSelector extends Component {
       return this.props.triggerClasses;
     }
     return this.props.renderAsSelect
-      ? "border-med bg-white block no-decoration"
+      ? "border-medium bg-white block no-decoration"
       : "flex align-center";
   }
 
@@ -561,6 +571,7 @@ export default class DataSelector extends Component {
         hasArrow={this.props.hasArrow}
         tetherOptions={this.props.tetherOptions}
         sizeToFit
+        isOpen={this.props.isOpen}
       >
         {this.renderActiveStep()}
       </PopoverWithTrigger>
@@ -645,10 +656,10 @@ const SegmentAndDatabasePicker = ({
       className="text-brand"
       sections={sections}
       onChange={onChangeSchema}
-      onChangeSection={index => {
-        index === 0
+      onChangeSection={(section, sectionIndex) => {
+        sectionIndex === 0
           ? onShowSegmentSection()
-          : onChangeDatabase(index - segmentItem.length, true);
+          : onChangeDatabase(sectionIndex - segmentItem.length, true);
       }}
       itemIsSelected={schema => selectedSchema === schema}
       renderSectionIcon={section => (
@@ -733,7 +744,9 @@ export const DatabaseSchemaPicker = ({
         className="text-brand"
         sections={sections}
         onChange={onChangeSchema}
-        onChangeSection={dbId => onChangeDatabase(dbId, true)}
+        onChangeSection={(section, sectionIndex) =>
+          onChangeDatabase(sectionIndex, true)
+        }
         itemIsSelected={schema => schema === selectedSchema}
         renderSectionIcon={item => (
           <Icon className="Icon text-default" name={item.icon} size={18} />
@@ -774,10 +787,12 @@ export const TablePicker = ({
         onClick={onBack}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className="ml1">{selectedDatabase.name}</span>
+        <span className="ml1 text-wrap">{selectedDatabase.name}</span>
       </span>
       {selectedSchema.name && (
-        <span className="ml1 text-slate">- {selectedSchema.name}</span>
+        <span className="ml1 text-wrap text-slate">
+          - {selectedSchema.name}
+        </span>
       )}
     </div>
   );
@@ -872,7 +887,9 @@ export class FieldPicker extends Component {
           onClick={onBack}
         >
           <Icon name="chevronleft" size={18} />
-          <span className="ml1">{selectedTable.display_name || t`Fields`}</span>
+          <span className="ml1 text-wrap">
+            {selectedTable.display_name || t`Fields`}
+          </span>
         </span>
       </span>
     );
@@ -934,7 +951,7 @@ export const SegmentPicker = ({
         onClick={onBack}
       >
         <Icon name="chevronleft" size={18} />
-        <span className="ml1">{t`Segments`}</span>
+        <span className="ml1 text-wrap">{t`Segments`}</span>
       </span>
     </span>
   );

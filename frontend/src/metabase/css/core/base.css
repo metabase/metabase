@@ -75,6 +75,10 @@ textarea {
 :local(.faded) {
   opacity: 0.4;
 }
+.fade-in-hover:hover {
+  opacity: 1;
+  transition: opacity 0.3s;
+}
 
 .MB-lightBG {
   background-color: var(--color-bg-light);

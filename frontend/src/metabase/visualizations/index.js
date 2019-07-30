@@ -54,7 +54,7 @@ export function registerVisualization(visualization) {
 export function getVisualizationRaw(series: Series) {
   return {
     series: series,
-    CardVisualization: visualizations.get(series[0].card.display),
+    visualization: visualizations.get(series[0].card.display),
   };
 }
 
@@ -65,15 +65,15 @@ export function getVisualizationTransformed(series: Series) {
   }
 
   // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
-  let CardVisualization, lastSeries;
+  let visualization, lastSeries;
   do {
-    CardVisualization = visualizations.get(series[0].card.display);
-    if (!CardVisualization) {
+    visualization = visualizations.get(series[0].card.display);
+    if (!visualization) {
       throw new Error(t`No visualization for ${series[0].card.display}`);
     }
     lastSeries = series;
-    if (typeof CardVisualization.transformSeries === "function") {
-      series = CardVisualization.transformSeries(series);
+    if (typeof visualization.transformSeries === "function") {
+      series = visualization.transformSeries(series);
     }
     if (series !== lastSeries) {
       series = [...series];
@@ -82,7 +82,12 @@ export function getVisualizationTransformed(series: Series) {
     }
   } while (series !== lastSeries);
 
-  return { series, CardVisualization };
+  return { series, visualization };
+}
+
+export function getIconForVisualizationType(display) {
+  const viz = visualizations.get(display);
+  return viz && viz.iconName;
 }
 
 export const extractRemappings = series => {

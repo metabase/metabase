@@ -129,6 +129,7 @@ export default class DateAllOptionsWidget extends Component {
     return (
       <div style={{ minWidth: "300px" }}>
         <DatePicker
+          className="m2"
           filter={this.state.filter}
           onFilterChange={this.setFilter}
           hideEmptinessOperators

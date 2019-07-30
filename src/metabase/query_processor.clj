@@ -7,7 +7,9 @@
              [driver :as driver]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.query-processor.debug :as debug]
+            [metabase.query-processor
+             [debug :as debug]
+             [store :as qp.store]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim]
              [add-implicit-clauses :as implicit-clauses]
@@ -38,6 +40,7 @@
              [normalize-query :as normalize]
              [parameters :as parameters]
              [permissions :as perms]
+             [pre-alias-aggregations :as pre-alias-ags]
              [process-userland-query :as process-userland-query]
              [reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
              [resolve-database :as resolve-database]
@@ -107,6 +110,7 @@
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
+   #'pre-alias-ags/pre-alias-aggregations
    #'cumulative-ags/handle-cumulative-aggregations
    ;; ▲▲▲ NO FK->s POINT ▲▲▲ Everything after this point will not see `:fk->` clauses, only `:joined-field`
    #'resolve-joins/resolve-joins
@@ -238,6 +242,18 @@
   (-> (update query :middleware assoc :disable-mbql->native? true)
       preprocess
       (m/dissoc-in [:middleware :disable-mbql->native?])))
+
+(defn query->expected-cols
+  "Return the `:cols` you would normally see in MBQL query results by preprocessing the query amd calling `annotate` on
+  it."
+  [{query-type :type, :as query}]
+  (when-not (= query-type :query)
+    (throw (Exception. (str (tru "Can only determine expected columns for MBQL queries.")))))
+  (let [results (qp.store/with-store
+                  ((annotate/add-column-info (constantly nil))
+                   (query->preprocessed query)))]
+    (or (seq (:cols results))
+        (throw (ex-info (str (tru "No columns returned.")) results)))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

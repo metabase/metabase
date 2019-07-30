@@ -182,6 +182,7 @@ export default class DatabaseConnectionStep extends Component {
                         ...databaseDetails.details,
                         name: databaseDetails.name,
                         is_full_sync: databaseDetails.is_full_sync,
+                        auto_run_queries: databaseDetails.auto_run_queries,
                       }
                     : null
                 }
