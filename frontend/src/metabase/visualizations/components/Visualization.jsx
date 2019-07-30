@@ -186,7 +186,7 @@ export default class Visualization extends React.PureComponent {
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
     // don't warn about truncated data for table since we show a warning in the row count
-    if (state.series[0].card.display !== "table") {
+    if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
           .filter(s => s.data && s.data.rows_truncated != null)
@@ -206,10 +206,14 @@ export default class Visualization extends React.PureComponent {
   }
 
   transform(newProps) {
-    const { series, visualization } = getVisualizationTransformed(
-      extractRemappings(newProps.rawSeries),
-    );
-    const computedSettings = getComputedSettingsForSeries(series);
+    const transformed = newProps.rawSeries
+      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
+      : null;
+    const series = transformed && transformed.series;
+    const visualization = transformed && transformed.visualization;
+    const computedSettings = series
+      ? getComputedSettingsForSeries(series)
+      : null;
     this.setState({
       hovered: null,
       clicked: null,
