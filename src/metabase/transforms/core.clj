@@ -131,7 +131,7 @@
     (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(defn- satisfy-requirements
+(s/defn ^:private satisfy-requirements :- Bindings
   [db-id schema {:keys [requires]}]
   (let [tables   (for [table (table/with-fields
                                (db/select 'Table :db_id db-id :schema schema))]
@@ -151,11 +151,11 @@
                                              (get-in table [:domain_entity :dimensions]))})
                   bindings))))
 
-(defn- store-requirements!
-  [db-id requirements]
+(s/defn ^:private store-requirements!
+  [db-id :- su/IntGreaterThanZero, bindings :- Bindings]
   (qp.store/fetch-and-store-database! db-id)
   (qp.store/fetch-and-store-fields!
-   (mapcat (comp (partial map u/get-id) :fields :entity val) requirements)))
+   (mapcat (comp (partial map u/get-id) :fields :entity val) bindings)))
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."

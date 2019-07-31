@@ -15,7 +15,9 @@
 
 (def FieldType
   "Field type designator -- a keyword derived from `type/*`"
-  (s/constrained s/Keyword #(isa? % :type/*)))
+  (s/constrained s/Keyword
+                                        ;#(isa? % :type/*)
+                 identity))
 
 (def ^:private DomainEntityReference s/Str)
 

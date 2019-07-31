@@ -11,6 +11,7 @@
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]
+             [domain-entities :as de.test]
              [transforms :as transforms.test]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
@@ -168,8 +169,9 @@
 (expect
   (with-rasta
     (transforms.test/with-test-transform-specs
-      (tu/with-model-cleanup ['Card 'Collection]
-        (transforms/apply-transform! (data/id) "PUBLIC" (first @transforms.specs/transform-specs))
-        (api-call "transform/%s" ["Test transform"]
-                  #(revoke-collection-permissions!
-                    (transforms.materialize/get-collection "Test transform")))))))
+      (de.test/with-test-domain-entity-specs
+        (tu/with-model-cleanup ['Card 'Collection]
+          (transforms/apply-transform! (data/id) "PUBLIC" (first @transforms.specs/transform-specs))
+          (api-call "transform/%s" ["Test transform"]
+                    #(revoke-collection-permissions!
+                      (transforms.materialize/get-collection "Test transform"))))))))

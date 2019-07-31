@@ -4,12 +4,8 @@
 (def test-transform-spec
   "A test transform spec written against our test DB."
   (-> {:name     "Test transform"
-       :requires {"Venues"     {:dimensions ["Category" ; Price
-                                             "FK" ; Category ID
-                                             ;; These are here just for uniquness
-                                             "Longitude"
-                                             "Latitude"]}}
-       :provides {"VenuesEnhanced" {:dimensions ["AvgPrice" "MinPrice" "MaxPrice"]}}
+       :requires "Venues"
+       :provides "VenuesEnhanced"
        :steps    {"CategoriesStats" {:source      "Venues"
                                      :aggregation {"AvgPrice" [:avg [:dimension "Category"]]
                                                    "MinPrice" [:min [:dimension "Category"]]
