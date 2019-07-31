@@ -57,15 +57,7 @@ export default class PartialQueryBuilder extends Component {
     }).query();
 
     const previewCard = {
-      dataset_query: {
-        ...datasetQuery,
-        query: {
-          aggregation: ["rows"],
-          breakout: [],
-          filter: [],
-          ...datasetQuery.query,
-        },
-      },
+      dataset_query: datasetQuery,
     };
     const previewUrl = Urls.question(null, previewCard);
 

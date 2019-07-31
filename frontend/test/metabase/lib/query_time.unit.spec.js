@@ -21,10 +21,10 @@ describe("query_time", () => {
 
     it("supports the legacy DatetimeField format", () => {
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]), // NOTE: intentional deprecated format
+        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]), // deprecated
       ).toBe("week");
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "day"]), // NOTE: intentional deprecated format
+        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "day"]), // deprecated
       ).toBe("day");
     });
     it("returns the default unit for FK reference", () => {

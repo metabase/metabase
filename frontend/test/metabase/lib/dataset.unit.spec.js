@@ -144,7 +144,7 @@ describe("metabase/util/dataset", () => {
     });
     it("should find column with non-normalized fieldRef", () => {
       const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["fk->", 2, 1], // NOTE: intentional deprecated format
+        fieldRef: ["fk->", 2, 1], // deprecated
       });
       expect(column).toBe(columns[1]);
     });

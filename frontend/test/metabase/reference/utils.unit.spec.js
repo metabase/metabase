@@ -147,7 +147,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -183,7 +183,7 @@ describe("Reference utils.js", () => {
           table: 4,
           display: "bar",
           breakout: [["field-id", 5]],
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -203,7 +203,7 @@ describe("Reference utils.js", () => {
           table: 4,
           display: "pie",
           breakout: [["field-id", 5]],
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -266,7 +266,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          aggregation: ["count"],
+          aggregation: [["count"]],
           filter: ["and", ["segment", 4]],
         }),
       );

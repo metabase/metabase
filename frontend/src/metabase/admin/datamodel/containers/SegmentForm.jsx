@@ -64,7 +64,7 @@ export default class SegmentForm extends Component {
       ...datasetQuery,
       query: {
         ...datasetQuery.query,
-        aggregation: ["count"],
+        aggregation: [["count"]],
       },
     });
   }

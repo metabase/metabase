@@ -70,9 +70,6 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not remove complete sort clauses", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["rows"],
-        breakout: [],
-        filter: [],
         "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -81,9 +78,6 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should remove incomplete sort clauses", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["rows"],
-        breakout: [],
-        filter: [],
         "order-by": [["asc", null]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -93,9 +87,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not remove sort clauses on aggregations if that aggregation supports it", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", 1]],
-        filter: [],
         "order-by": [["asc", ["aggregation", 0]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -104,9 +97,6 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should remove sort clauses on aggregations if that aggregation doesn't support it", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["rows"],
-        breakout: [],
-        filter: [],
         "order-by": [["asc", ["aggregation", 0]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -116,9 +106,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not remove sort clauses on fields appearing in breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", 1]],
-        filter: [],
         "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -127,9 +116,7 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should remove sort clauses on fields not appearing in breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
-        breakout: [],
-        filter: [],
+        aggregation: [["count"]],
         "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -139,9 +126,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not remove sort clauses with foreign keys on fields appearing in breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["fk->", ["field-id", 1], ["field-id", 2]]],
-        filter: [],
         "order-by": [["asc", ["fk->", ["field-id", 1], ["field-id", 2]]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -153,9 +139,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not remove sort clauses with datetime-fields on fields appearing in breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["datetime-field", ["field-id", 1], "week"]],
-        filter: [],
         "order-by": [["asc", ["datetime-field", ["field-id", 1], "week"]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -167,9 +152,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should replace order-by clauses with the exact matching datetime-fields version in the breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["datetime-field", ["field-id", 1], "week"]],
-        filter: [],
         "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -181,9 +165,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should replace order-by clauses with the exact matching fk-> version in the breakout", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["fk->", ["field-id", 1], ["field-id", 2]]],
-        filter: [],
         "order-by": [["asc", ["field-id", 2]]],
       };
       Q_DEPRECATED.cleanQuery(query);
@@ -197,9 +180,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should not mutate the query", () => {
       const query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", 1]],
-        filter: [],
       };
       Q_DEPRECATED.removeBreakout(query, 0);
       expect(query.breakout).toEqual([["field-id", 1]]);
@@ -207,9 +189,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should remove the dimension", () => {
       let query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", 1]],
-        filter: [],
       };
       query = Q_DEPRECATED.removeBreakout(query, 0);
       expect(query.breakout).toEqual(undefined);
@@ -217,9 +198,8 @@ describe("Legacy Q_DEPRECATED library", () => {
     it("should remove sort clauses for the dimension that was removed", () => {
       let query = {
         "source-table": 0,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", 1]],
-        filter: [],
         "order-by": [["asc", ["field-id", 1]]],
       };
       query = Q_DEPRECATED.removeBreakout(query, 0);
@@ -382,7 +362,7 @@ describe("AggregationClause", () => {
     it("should succeed on good clauses", () => {
       expect(A_DEPRECATED.isValid(["metric", 123])).toEqual(true);
       // TODO - actually this should be FALSE because rows is not a valid aggregation type!
-      expect(A_DEPRECATED.isValid(["rows"])).toEqual(true);
+      expect(A_DEPRECATED.isValid(["rows"])).toEqual(true); // deprecated
       expect(A_DEPRECATED.isValid(["sum", 456])).toEqual(true);
     });
   });
@@ -401,7 +381,7 @@ describe("AggregationClause", () => {
     });
 
     it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isBareRows(["rows"])).toEqual(true);
+      expect(A_DEPRECATED.isBareRows(["rows"])).toEqual(true); // deprecated
     });
   });
 
@@ -418,7 +398,7 @@ describe("AggregationClause", () => {
     });
 
     it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isStandard(["rows"])).toEqual(true);
+      expect(A_DEPRECATED.isStandard(["rows"])).toEqual(true); // deprecated
       expect(A_DEPRECATED.isStandard(["sum", 456])).toEqual(true);
     });
   });
@@ -432,7 +412,7 @@ describe("AggregationClause", () => {
       expect(A_DEPRECATED.isMetric("ab")).toEqual(false);
       expect(A_DEPRECATED.isMetric(["foo", null])).toEqual(false);
       expect(A_DEPRECATED.isMetric(["a", "b", "c"])).toEqual(false);
-      expect(A_DEPRECATED.isMetric(["rows"])).toEqual(false);
+      expect(A_DEPRECATED.isMetric(["rows"])).toEqual(false); // deprecated
       expect(A_DEPRECATED.isMetric(["sum", 456])).toEqual(false);
     });
 
@@ -453,7 +433,7 @@ describe("AggregationClause", () => {
 
   describe("getOperator", () => {
     it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.getOperator(["rows"])).toEqual("rows");
+      expect(A_DEPRECATED.getOperator(["rows"])).toEqual("rows"); // deprecated
       expect(A_DEPRECATED.getOperator(["sum", 123])).toEqual("sum");
     });
 
@@ -468,7 +448,7 @@ describe("AggregationClause", () => {
     });
 
     it("should be null on clauses w/out a field", () => {
-      expect(A_DEPRECATED.getField(["rows"])).toEqual(null);
+      expect(A_DEPRECATED.getField(["rows"])).toEqual(null); // deprecated
     });
 
     it("should be null on metric clauses", () => {

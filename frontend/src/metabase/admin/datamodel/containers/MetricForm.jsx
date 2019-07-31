@@ -57,7 +57,7 @@ export default class MetricForm extends Component {
     this.props.updatePreviewSummary({
       ...datasetQuery,
       query: {
-        aggregation: ["count"],
+        aggregation: [["count"]],
         ...datasetQuery.query,
       },
     });

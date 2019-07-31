@@ -414,7 +414,7 @@ describe("public/embedded", () => {
           type: "query",
           query: {
             "source-table": PEOPLE_TABLE_ID,
-            aggregation: ["count"],
+            aggregation: [["count"]],
           },
         },
       });
