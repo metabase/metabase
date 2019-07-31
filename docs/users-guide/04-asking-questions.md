@@ -91,20 +91,6 @@ If you have a question that isn't covered by an existing question, you can creat
 
 ### Using the Question Builder interface
 
-##### Using saved questions as source data
-
-If you've [saved some questions](06-sharing-answers.html), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
-
-You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
-
-**Note:** there are some kinds of saved questions that can't be used as source data:
-
-- Druid questions
-- Google Analytics questions
-- Mongo questions
-- questions that use `Cumulative Sum` or `Cumulative Count` aggregations
-- questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
-
 #### Filters
 
 ---
@@ -167,12 +153,6 @@ The different basic metrics are:
 ##### 3. Common metrics
 
 If your admins have created any named metrics that are specific to your company or organization, they will be in this dropdown under the **Common Metrics** section. These might be things like your company’s official way of calculating revenue.
-
-##### 4. Custom expressions
-
-Custom expressions allow you to do simple arithmetic within or between aggregation functions. For example, you could do `Average(FieldX) + Sum(FieldY)` or `Max(FieldX - FieldY)`, where `FieldX` and `FieldY` are fields in the currently selected table. You can either use your cursor to select suggested functions and fields, or simply start typing and use the autocomplete. If you are a Metabase administrator, you can now also use custom aggregation expressions when creating defined common metrics in the Admin Panel.
-
-Currently, you can use any of the basic aggregation functions listed in #2 above in your custom expression, and these basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide). You can also use parentheses to clarify the order of operations.
 
 #### Breaking out metrics: adding a grouping
 
