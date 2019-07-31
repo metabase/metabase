@@ -106,14 +106,15 @@ describe("Dimension", () => {
           expect(Dimension.parseMBQL(["field-id", 1], metadata).mbql()).toEqual(
             ["field-id", 1],
           );
-          expect(Dimension.parseMBQL(["fk->", 1, 2], metadata).mbql()).toEqual([
-            "fk->",
-            ["field-id", 1],
-            ["field-id", 2],
-          ]);
           expect(
             Dimension.parseMBQL(
-              ["datetime-field", 1, "month"],
+              ["fk->", ["field-id", 1], ["field-id", 2]],
+              metadata,
+            ).mbql(),
+          ).toEqual(["fk->", ["field-id", 1], ["field-id", 2]]);
+          expect(
+            Dimension.parseMBQL(
+              ["datetime-field", ["field-id", 1], "month"],
               metadata,
             ).mbql(),
           ).toEqual(["datetime-field", ["field-id", 1], "month"]);
@@ -149,13 +150,22 @@ describe("Dimension", () => {
           expect(d1.isEqual(1)).toEqual(true);
         });
         it("returns false for different type clauses", () => {
-          const d1 = Dimension.parseMBQL(["fk->", 1, 2], metadata);
+          const d1 = Dimension.parseMBQL(
+            ["fk->", ["field-id", 1], ["field-id", 2]],
+            metadata,
+          );
           const d2 = Dimension.parseMBQL(["field-id", 1], metadata);
           expect(d1.isEqual(d2)).toEqual(false);
         });
         it("returns false for same type clauses with different arguments", () => {
-          const d1 = Dimension.parseMBQL(["fk->", 1, 2], metadata);
-          const d2 = Dimension.parseMBQL(["fk->", 1, 3], metadata);
+          const d1 = Dimension.parseMBQL(
+            ["fk->", ["field-id", 1], ["field-id", 2]],
+            metadata,
+          );
+          const d2 = Dimension.parseMBQL(
+            ["fk->", ["field-id", 1], ["field-id", 3]],
+            metadata,
+          );
           expect(d1.isEqual(d2)).toEqual(false);
         });
       });

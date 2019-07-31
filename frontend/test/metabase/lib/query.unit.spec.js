@@ -73,10 +73,10 @@ describe("Legacy Q_DEPRECATED library", () => {
         aggregation: ["rows"],
         breakout: [],
         filter: [],
-        "order-by": [["asc", 1]],
+        "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
-      expect(query["order-by"]).toEqual([["asc", 1]]);
+      expect(query["order-by"]).toEqual([["asc", ["field-id", 1]]]);
     });
     it("should remove incomplete sort clauses", () => {
       const query = {
@@ -130,7 +130,7 @@ describe("Legacy Q_DEPRECATED library", () => {
         aggregation: ["count"],
         breakout: [],
         filter: [],
-        "order-by": [["asc", 1]],
+        "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual(undefined);
@@ -140,25 +140,27 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [["fk->", 1, 2]],
+        breakout: [["fk->", ["field-id", 1], ["field-id", 2]]],
         filter: [],
-        "order-by": [["asc", ["fk->", 1, 2]]],
+        "order-by": [["asc", ["fk->", ["field-id", 1], ["field-id", 2]]]],
       };
       Q_DEPRECATED.cleanQuery(query);
-      expect(query["order-by"]).toEqual([["asc", ["fk->", 1, 2]]]);
+      expect(query["order-by"]).toEqual([
+        ["asc", ["fk->", ["field-id", 1], ["field-id", 2]]],
+      ]);
     });
 
     it("should not remove sort clauses with datetime-fields on fields appearing in breakout", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [["datetime-field", 1, "as", "week"]],
+        breakout: [["datetime-field", ["field-id", 1], "week"]],
         filter: [],
-        "order-by": [["asc", ["datetime-field", 1, "as", "week"]]],
+        "order-by": [["asc", ["datetime-field", ["field-id", 1], "week"]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["datetime-field", 1, "as", "week"]],
+        ["asc", ["datetime-field", ["field-id", 1], "week"]],
       ]);
     });
 
@@ -166,13 +168,13 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [["datetime-field", 1, "as", "week"]],
+        breakout: [["datetime-field", ["field-id", 1], "week"]],
         filter: [],
-        "order-by": [["asc", 1]],
+        "order-by": [["asc", ["field-id", 1]]],
       };
       Q_DEPRECATED.cleanQuery(query);
       expect(query["order-by"]).toEqual([
-        ["asc", ["datetime-field", 1, "as", "week"]],
+        ["asc", ["datetime-field", ["field-id", 1], "week"]],
       ]);
     });
 
@@ -180,12 +182,14 @@ describe("Legacy Q_DEPRECATED library", () => {
       const query = {
         "source-table": 0,
         aggregation: ["count"],
-        breakout: [["fk->", 1, 2]],
+        breakout: [["fk->", ["field-id", 1], ["field-id", 2]]],
         filter: [],
-        "order-by": [["asc", 2]],
+        "order-by": [["asc", ["field-id", 2]]],
       };
       Q_DEPRECATED.cleanQuery(query);
-      expect(query["order-by"]).toEqual([["asc", ["fk->", 1, 2]]]);
+      expect(query["order-by"]).toEqual([
+        ["asc", ["fk->", ["field-id", 1], ["field-id", 2]]],
+      ]);
     });
   });
 
@@ -216,7 +220,7 @@ describe("Legacy Q_DEPRECATED library", () => {
         aggregation: ["count"],
         breakout: [["field-id", 1]],
         filter: [],
-        "order-by": [["asc", 1]],
+        "order-by": [["asc", ["field-id", 1]]],
       };
       query = Q_DEPRECATED.removeBreakout(query, 0);
       expect(query["order-by"]).toEqual(undefined);
@@ -262,7 +266,7 @@ describe("Legacy Q_DEPRECATED library", () => {
     });
     it("should return unit object for old-style datetime-field", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        ["datetime-field", 1, "as", "day"],
+        ["datetime-field", ["field-id", 1], "day"],
         table1,
       );
       expect(target.table).toEqual(table1);
@@ -272,7 +276,7 @@ describe("Legacy Q_DEPRECATED library", () => {
     });
     it("should return unit object for new-style datetime-field", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        ["datetime-field", 1, "as", "day"],
+        ["datetime-field", ["field-id", 1], "day"],
         table1,
       );
       expect(target.table).toEqual(table1);
@@ -282,7 +286,10 @@ describe("Legacy Q_DEPRECATED library", () => {
     });
 
     it("should return field object and table for old-style fk field", () => {
-      const target = Q_DEPRECATED.getFieldTarget(["fk->", 1, 2], table1);
+      const target = Q_DEPRECATED.getFieldTarget(
+        ["fk->", ["field-id", 1], ["field-id", 2]],
+        table1,
+      );
       expect(target.table).toEqual(table2);
       expect(target.field).toEqual(field2);
       expect(target.path).toEqual([field1]);
@@ -302,7 +309,7 @@ describe("Legacy Q_DEPRECATED library", () => {
 
     it("should return field object and table and unit for fk + datetime field", () => {
       const target = Q_DEPRECATED.getFieldTarget(
-        ["datetime-field", ["fk->", 1, 2], "day"],
+        ["datetime-field", ["fk->", ["field-id", 1], ["field-id", 2]], "day"],
         table1,
       );
       expect(target.table).toEqual(table2);
@@ -324,7 +331,9 @@ describe("Legacy Q_DEPRECATED library", () => {
 
 describe("isValidField", () => {
   it("should return true for old-style fk", () => {
-    expect(Q_DEPRECATED.isValidField(["fk->", 1, 2])).toBe(true);
+    expect(
+      Q_DEPRECATED.isValidField(["fk->", ["field-id", 1], ["field-id", 2]]),
+    ).toBe(true);
   });
   it("should return true for new-style fk", () => {
     expect(

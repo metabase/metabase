@@ -127,7 +127,7 @@ export const drillFilter = (card, value, column) => {
   if (isDate(column)) {
     filter = [
       "=",
-      ["datetime-field", getFieldRefFromColumn(column), "as", column.unit],
+      ["datetime-field", getFieldRefFromColumn(column), column.unit],
       parseTimestamp(value, column.unit).format(),
     ];
   } else {
@@ -293,12 +293,7 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
 
     // update the breakout
-    newCard = addOrUpdateBreakout(newCard, [
-      "datetime-field",
-      fieldRef,
-      "as",
-      unit,
-    ]);
+    newCard = addOrUpdateBreakout(newCard, ["datetime-field", fieldRef, unit]);
 
     // round to start of the original unit
     start = start.startOf(column.unit);
@@ -311,14 +306,14 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
       // is the start and end are the same (in whatever the original unit was) then just do an "="
       return addOrUpdateFilter(newCard, [
         "=",
-        ["datetime-field", fieldRef, "as", column.unit],
+        ["datetime-field", fieldRef, column.unit],
         start.format(),
       ]);
     } else {
       // otherwise do a between
       return addOrUpdateFilter(newCard, [
         "between",
-        ["datetime-field", fieldRef, "as", column.unit],
+        ["datetime-field", fieldRef, column.unit],
         start.format(),
         end.format(),
       ]);
