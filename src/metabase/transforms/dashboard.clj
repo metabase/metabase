@@ -52,7 +52,7 @@
                                          materialize/get-collection
                                          (db/select 'Card :collection_id)
                                          (group-by (comp some?
-                                                         (-> transform-spec :provides keys set)
+                                                         (-> transform-spec :provides set)
                                                          :name)))
         sources                     (->> steps
                                          (map (comp :source-table :query :dataset_query))

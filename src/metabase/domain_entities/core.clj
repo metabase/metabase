@@ -64,6 +64,7 @@
                 ((some-fn :fields :result_metadata) entity))))
 
 (defn satisfies-requierments?
+  "Does source entity satisfies requirements of given spec?"
   [entity {:keys [required_attributes]}]
   (every? (partial has-attribute? entity) required_attributes))
 
