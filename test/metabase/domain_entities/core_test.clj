@@ -40,7 +40,7 @@
    :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
                                    [(-> field (#'de/field-type) name) field]))
    :type                :DomainEntity/Venues
-   :descripton          nil
+   :description         nil
    :source-table        (data/id :venues)}
   (with-test-domain-entity-specs
     (de/domain-entity-for-table (hydrated-table :venues))))
