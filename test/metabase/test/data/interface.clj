@@ -352,7 +352,7 @@
    {:base_type    :type/Integer
     :special_type :type/Number
     :name         "count"
-    :display_name "count"
+    :display_name "Count"
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
