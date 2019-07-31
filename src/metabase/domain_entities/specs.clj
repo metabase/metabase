@@ -1,10 +1,13 @@
 (ns metabase.domain-entities.specs
   (:require [medley.core :as m]
-            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql
+             [normalize :as mbql.normalize]
+             [util :as mbql.u]]
             [metabase.util.yaml :as yaml]
             [schema
              [coerce :as sc]
-             [core :as s]]))
+             [core :as s]])
+  (:import [java.nio.file Files Path]))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"
@@ -56,10 +59,16 @@
         (dissoc :refines)
         (assoc :type spec-type))))
 
+(def ^:private ^{:arglists '([m])} add-name-from-key
+  (partial m/map-kv-vals (fn [k v]
+                           (assoc v :name k))))
+
 (def ^:private domain-entity-spec-parser
   (sc/coercer!
    DomainEntitySpec
    {MBQL                  mbql.normalize/normalize
+    Segments              add-name-from-key
+    Metrics               add-name-from-key
     BreakoutDimensions    (fn [breakout-dimensions]
                             (for [dimension breakout-dimensions]
                               (if (string? dimension)

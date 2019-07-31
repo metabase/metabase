@@ -1,6 +1,7 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require [expectations :refer [expect]]
+            [flatland.ordered.map :refer [ordered-map]]
             [metabase.util :as u]))
 
 ;;; `host-up?` and `host-port-up?`
@@ -239,3 +240,20 @@
 (expect [nil] (u/ensure-seq [nil]))
 (expect [42]  (u/ensure-seq 42))
 (expect [42]  (u/ensure-seq [42]))
+
+
+(expect
+  (into (ordered-map) [[:a []] [:b []] [:c [:a]] [:d [:a :b :c]] [:e [:d]]])
+  (u/topological-sort identity {:b []
+                              :c [:a]
+                              :e [:d]
+                              :d [:a :b :c]
+                              :a []}))
+
+(expect
+  nil
+  (u/topological-sort identity {}))
+
+(expect
+  nil
+  (u/topological-sort identity nil))

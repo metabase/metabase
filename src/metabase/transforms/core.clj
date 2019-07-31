@@ -133,8 +133,10 @@
 
 (defn- satisfy-requirements
   [db-id schema {:keys [requires]}]
-  (let [tables   (table/with-fields
-                   (db/select 'Table :db_id db-id :schema schema))
+  (let [tables   (for [table (table/with-fields
+                               (db/select 'Table :db_id db-id :schema schema))]
+                   ;; temporarily until we merge the sync PR
+                   (assoc table :domain_entity (de/domain-entity-for-table table)))
         bindings (into {}
                        (map (fn [requirement]
                               (let [t (get-in @domain-entity-specs [requirement :type])]

@@ -1,5 +1,6 @@
 (ns metabase.transforms.specs
-  (:require [medley.core :as m]
+  (:require [clojure.string :as str]
+            [medley.core :as m]
             [metabase.domain-entities.specs :refer [MBQL FieldType]]
             [metabase.mbql
              [normalize :as mbql.normalize]
@@ -11,7 +12,8 @@
              [yaml :as yaml]]
             [schema
              [coerce :as sc]
-             [core :as s]]))
+             [core :as s]])
+  (:import [java.nio.file Files Path]))
 
 (def ^:private Source s/Str)
 
