@@ -6,8 +6,7 @@
             [metabase.util.yaml :as yaml]
             [schema
              [coerce :as sc]
-             [core :as s]])
-  (:import [java.nio.file Files Path]))
+             [core :as s]]))
 
 (def MBQL
   "MBQL clause (ie. a vector starting with a keyword)"

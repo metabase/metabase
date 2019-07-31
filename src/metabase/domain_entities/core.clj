@@ -96,6 +96,7 @@
      :source-table        (u/get-id table)}))
 
 (defn domain-entity-for-table
+  "Find the best fitting domain entity for given table."
   [table]
   (let [table (assoc table :fields (table/fields table))]
     (some->> @domain-entity-specs

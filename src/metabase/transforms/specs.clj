@@ -1,7 +1,6 @@
 (ns metabase.transforms.specs
-  (:require [clojure.string :as str]
-            [medley.core :as m]
-            [metabase.domain-entities.specs :refer [MBQL FieldType]]
+  (:require [medley.core :as m]
+            [metabase.domain-entities.specs :refer [FieldType MBQL]]
             [metabase.mbql
              [normalize :as mbql.normalize]
              [schema :as mbql.schema]
@@ -12,8 +11,7 @@
              [yaml :as yaml]]
             [schema
              [coerce :as sc]
-             [core :as s]])
-  (:import [java.nio.file Files Path]))
+             [core :as s]]))
 
 (def ^:private Source s/Str)
 
@@ -105,14 +103,6 @@
 
 (def ^:private transforms-dir "transforms/")
 
-(defn- load-transforms-dir
-  [dir]
-  (yaml/with-resource [dir dir]
-    (with-open [ds (Files/newDirectoryStream dir)]
-      (->> ds
-           (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load (comp transform-spec-parser add-metadata-to-steps)))))))
-
 (def transform-specs
   "List of registered dataset transforms."
-  (delay (load-transforms-dir transforms-dir)))
+  (delay (yaml/load-dir transforms-dir (comp transform-spec-parser add-metadata-to-steps))))

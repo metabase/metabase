@@ -1,6 +1,5 @@
 (ns metabase.test.domain-entities
-  (:require [metabase.domain-entities.specs :as de.specs]
-            [metabase.models.table :as table]))
+  (:require [metabase.domain-entities.specs :as de.specs]))
 
 (def test-domain-entity-specs
   "A test domain specs written against our test DB."
