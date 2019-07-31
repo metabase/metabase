@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import UserAvatar from "metabase/components/UserAvatar";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class ActivityItem extends Component {
   static propTypes = {
@@ -21,7 +21,7 @@ export default class ActivityItem extends Component {
           {item.user ? (
             <UserAvatar user={item.user} bg={userColors} />
           ) : (
-            <IconBorder style={{ color: colors["text-light"] }}>
+            <IconBorder style={{ color: color("text-light") }}>
               <Icon name="sync" size={16} />
             </IconBorder>
           )}

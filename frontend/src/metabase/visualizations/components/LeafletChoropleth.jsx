@@ -1,6 +1,6 @@
 import React from "react";
 
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import CardRenderer from "./CardRenderer";
 
@@ -14,7 +14,7 @@ const LeafletChoropleth = ({
   series,
   geoJson,
   minimalBounds = computeMinimalBounds(geoJson.features),
-  getColor = () => normal.blue,
+  getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
 }) => (

@@ -10,7 +10,7 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { PermissionsApi } from "metabase/services";
 import { t } from "ttag";
@@ -71,11 +71,11 @@ const AddMemberAutocompleteSuggestion = ({
 );
 
 const COLORS = [
-  colors["brand"],
-  colors["accent1"],
-  colors["accent2"],
-  colors["accent3"],
-  colors["accent4"],
+  color("brand"),
+  color("accent1"),
+  color("accent2"),
+  color("accent3"),
+  color("accent4"),
 ];
 
 const AddMemberTypeahead = Typeahead({

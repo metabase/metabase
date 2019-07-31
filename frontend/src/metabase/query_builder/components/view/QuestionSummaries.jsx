@@ -8,14 +8,14 @@ import ViewButton from "./ViewButton";
 
 import SummarizeSidebar from "./sidebars/SummarizeSidebar";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const SummarizePill = props => (
-  <ViewPill icon="insight" color={colors["accent1"]} {...props} />
+  <ViewPill icon="insight" color={color("accent1")} {...props} />
 );
 
 const SummarizeButton = props => (
-  <ViewButton medium icon="insight" color={colors["accent1"]} {...props} />
+  <ViewButton medium icon="insight" color={color("accent1")} {...props} />
 );
 
 export default function QuestionSummaries({

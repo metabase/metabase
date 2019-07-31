@@ -52,6 +52,9 @@ export default colors;
 export const aliases = {
   summarize: "accent1",
   filter: "accent7",
+  database: "accent2",
+  dashboard: "brand",
+  pulse: "accent4",
 };
 
 export const harmony = [];

@@ -4,7 +4,7 @@ import ReactDOM from "react-dom";
 import GridItem from "./GridItem";
 
 import _ from "underscore";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class GridLayout extends Component {
   constructor(props, context) {
@@ -238,9 +238,9 @@ export default class GridLayout extends Component {
       _(cols)
         .times(
           i =>
-            `<rect stroke='${
-              colors["border"]
-            }' stroke-width='1' fill='none' x='${Math.round(
+            `<rect stroke='${color(
+              "border",
+            )}' stroke-width='1' fill='none' x='${Math.round(
               margin / 2 + i * cellSize.width,
             ) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(
               cellSize.width - margin - 3,

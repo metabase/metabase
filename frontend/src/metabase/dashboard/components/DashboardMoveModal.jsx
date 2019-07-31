@@ -9,7 +9,7 @@ import Link from "metabase/components/Link";
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Dashboards from "metabase/entities/dashboards";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
@@ -55,7 +55,7 @@ const DashbordMoveToast = ({ collection }) => (
     {jt`Dashboard moved to ${(
       <Link
         ml={1}
-        color={normal.blue}
+        color={color("brand")}
         to={Urls.collection(collection && collection.id)}
       >
         {collection ? collection.name : ROOT_COLLECTION.name}

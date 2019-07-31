@@ -18,10 +18,10 @@ import { isAdminGroup, getGroupNameLocalized } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-const LIGHT_BORDER = colors["text-light"];
-const DARK_BORDER = colors["text-medium"];
+const LIGHT_BORDER = color("text-light");
+const DARK_BORDER = color("text-medium");
 const BORDER_RADIUS = 4;
 
 const getBorderStyles = ({
@@ -48,8 +48,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
   icon: "unknown",
-  iconColor: colors["text-medium"],
-  bgColor: colors["bg-medium"],
+  iconColor: color("text-medium"),
+  bgColor: color("bg-medium"),
 };
 
 const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
@@ -274,7 +274,7 @@ class GroupPermissionCell extends Component {
                 size={28}
                 style={{
                   color: this.state.hovered
-                    ? colors["text-white"]
+                    ? color("text-white")
                     : option.iconColor,
                 }}
               />

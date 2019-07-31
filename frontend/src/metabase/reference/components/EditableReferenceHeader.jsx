@@ -14,7 +14,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
 import EditButton from "metabase/reference/components/EditButton";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -40,7 +40,7 @@ const EditableReferenceHeader = ({
         {headerIcon && (
           <IconBorder
             borderWidth="0"
-            style={{ backgroundColor: colors["bg-medium"] }}
+            style={{ backgroundColor: color("bg-medium") }}
           >
             <Icon
               className="text-brand"

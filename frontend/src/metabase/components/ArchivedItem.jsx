@@ -10,13 +10,13 @@ import IconWrapper from "metabase/components/IconWrapper";
 import Swapper from "metabase/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
-import colors from "metabase/lib/colors";
+import { color as c } from "metabase/lib/colors";
 
 const ArchivedItem = ({
   name,
   type,
   icon,
-  color = colors["text-light"],
+  color = c("text-light"),
   isAdmin = false,
   onUnarchive,
   onDelete,

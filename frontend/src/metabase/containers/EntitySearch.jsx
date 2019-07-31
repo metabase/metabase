@@ -16,7 +16,7 @@ import { KEYCODE_DOWN, KEYCODE_ENTER, KEYCODE_UP } from "metabase/lib/keyboard";
 import { LocationDescriptor } from "metabase/meta/types/index";
 import { parseHashOptions, updateQueryString } from "metabase/lib/browser";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const PAGE_SIZE = 10;
 
@@ -453,7 +453,7 @@ export const SearchResultsGroup = ({
       <div className="flex align-center bg-medium bordered mt3 px3 py2">
         <Icon
           className="mr1"
-          style={{ color: colors["text-light"] }}
+          style={{ color: color("text-light") }}
           name={groupIcon}
         />
         <h4>{groupName}</h4>

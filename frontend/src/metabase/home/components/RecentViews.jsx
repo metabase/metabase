@@ -8,7 +8,7 @@ import Link from "metabase/components/Link";
 import SidebarSection from "./SidebarSection";
 import * as Urls from "metabase/lib/urls";
 
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class RecentViews extends Component {
   static propTypes = {
@@ -49,7 +49,9 @@ export default class RecentViews extends Component {
                     size={18}
                     style={{
                       color:
-                        iconName === "dashboard" ? normal.purple : normal.blue,
+                        iconName === "dashboard"
+                          ? color("dashboard")
+                          : color("brand"),
                     }}
                   />
                   <Link

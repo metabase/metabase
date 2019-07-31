@@ -12,7 +12,7 @@ import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import { t } from "ttag";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const ReferenceHeader = ({
   name,
@@ -27,7 +27,7 @@ const ReferenceHeader = ({
         {headerIcon && (
           <IconBorder
             borderWidth="0"
-            style={{ backgroundColor: colors["bg-medium"] }}
+            style={{ backgroundColor: color("bg-medium") }}
           >
             <Icon
               className="text-brand"

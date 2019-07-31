@@ -10,7 +10,7 @@ import QuestionSelect from "metabase/containers/QuestionSelect";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
@@ -169,7 +169,7 @@ export default class PulseEditCards extends Component {
                   className="my4 ml3"
                   style={{
                     width: 375,
-                    borderTop: `1px dashed ${colors["border"]}`,
+                    borderTop: `1px dashed ${color("border")}`,
                   }}
                 />
               )}

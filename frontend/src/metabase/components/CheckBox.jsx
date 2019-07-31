@@ -4,7 +4,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 
-import colors, { normal as defaultColors } from "metabase/lib/colors";
+import { color as c, normal as defaultColors } from "metabase/lib/colors";
 
 export default class CheckBox extends Component {
   static propTypes = {
@@ -48,7 +48,7 @@ export default class CheckBox extends Component {
     } = this.props;
 
     const checkedColor = defaultColors[color];
-    const uncheckedColor = colors["text-light"];
+    const uncheckedColor = c("text-light");
 
     const checkboxStyle = {
       width: size,

@@ -4,25 +4,25 @@ import { Link } from "react-router";
 
 import Icon from "metabase/components/Icon";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const Item = styled.div`
   display: flex;
   align-items: center;
   cursor: pointer;
-  color: ${colors["text-medium"]};
+  color: ${color("text-medium")};
   padding: 0.85em 1.45em;
   text-decoration: none;
   transition: all 300ms linear;
   :hover {
-    color: ${colors["brand"]};
+    color: ${color("brand")};
   }
   > .Icon {
-    color: ${colors["text-light"]};
+    color: ${color("text-light")};
     margin-right: 0.65em;
   }
   :hover > .Icon {
-    color: ${colors["brand"]};
+    color: ${color("brand")};
     transition: all 300ms linear;
   },
   /* icon specific tweaks

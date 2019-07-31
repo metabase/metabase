@@ -44,7 +44,7 @@ import { rescanFieldValues, discardFieldValues } from "../field";
 // LIB
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
@@ -389,7 +389,7 @@ export const BackButton = ({
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 flex align-center justify-center inline"
-    style={{ backgroundColor: colors["bg-dark"] }}
+    style={{ backgroundColor: color("bg-dark") }}
   >
     <Icon name="arrow_back" />
   </Link>

@@ -49,16 +49,16 @@ const ALL_OPERATOR_NAMES = {
   ...STRING_OPERATOR_NAMES,
 };
 
-import colors, { desaturated } from "metabase/lib/colors";
+import { color, desaturated } from "metabase/lib/colors";
 
 const COLORS = Object.values(desaturated);
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [["white", color], [color, "white"]]),
   [
-    [colors.error, "white", colors.success],
-    [colors.success, "white", colors.error],
-    [colors.error, colors.warning, colors.success],
-    [colors.success, colors.warning, colors.error],
+    [color("error"), "white", color("success")],
+    [color("success"), "white", color("error")],
+    [color("error"), color("warning"), color("success")],
+    [color("success"), color("warning"), color("error")],
   ],
 );
 

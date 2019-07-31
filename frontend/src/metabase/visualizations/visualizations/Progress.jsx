@@ -7,7 +7,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import _ from "underscore";
 
@@ -67,7 +67,7 @@ export default class Progress extends Component {
       section: t`Display`,
       title: t`Color`,
       widget: "color",
-      default: normal.green,
+      default: color("accent1"),
     },
   };
 

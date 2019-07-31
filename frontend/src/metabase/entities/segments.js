@@ -3,7 +3,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 const Segments = createEntity({
@@ -33,7 +33,7 @@ const Segments = createEntity({
         null,
         segment.id,
       ),
-    getColor: segment => colors["accent7"],
+    getColor: segment => color("accent7"),
     getIcon: segment => "segment",
   },
 
