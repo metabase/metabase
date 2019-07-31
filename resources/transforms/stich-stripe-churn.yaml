@@ -1,17 +1,6 @@
 name: Stripe subscription churn
-requires:
-  Subscriptions:
-    dimensions:
-      - CreationTimestamp
-      - CancelationTimestamp
-provides:
-  MonthlyChurn:
-    dimensions:
-      - New
-      - Total
-      - Churned
-      - ChurnRate
-      - Month
+requires: Subscriptions
+provides: MonthlyChurn
 steps:
   SubscriptionsCleanedUp:
     source: Subscriptions

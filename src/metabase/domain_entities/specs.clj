@@ -1,32 +1,32 @@
 (ns metabase.domain-entities.specs
   (:require [medley.core :as m]
-            [metabase.mbql
-             [normalize :as mbql.normalize]
-             [util :as mbql.u]]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.util.yaml :as yaml]
             [schema
              [coerce :as sc]
              [core :as s]]))
 
-(def ^:private MBQL (s/pred mbql.u/mbql-clause?))
+(def MBQL
+  "MBQL clause (ie. a vector starting with a keyword)"
+  (s/pred mbql.u/mbql-clause?))
 
-(def ^:private DomainEntityReference keyword)
+(def FieldType
+  "Field type designator -- a keyword derived from `type/*`"
+  (s/constrained s/Keyword #(isa? % :type/*)))
+
+(def ^:private DomainEntityReference s/Str)
+
+(def ^:private DomainEntityType (s/constrained s/Keyword #(isa? % :DomainEntity/*)))
 
 (def ^:private Identifier s/Str)
 
 (def ^:private Description s/Str)
 
-(defn- field-type?
-  [t]
-  (isa? t :type/*))
-
-(def ^:private FieldType (s/constrained s/Keyword field-type?))
-
 (def ^:private Attributes [{(s/optional-key :field)         FieldType
                             (s/optional-key :domain_entity) DomainEntityReference
                             (s/optional-key :has_many)      {:domain_entity DomainEntityReference}}])
 
-(def ^:private BreakoutDimensions [(s/cond-pre FieldType MBQL)])
+(def ^:private BreakoutDimensions [MBQL])
 
 (def ^:private Metrics {Identifier {(s/required-key :aggregation) MBQL
                                     (s/required-key :name)        Identifier
@@ -39,21 +39,22 @@
                                      (s/optional-key :description) Description}})
 
 (def ^:private DomainEntitySpec {(s/required-key :name)                DomainEntityReference
+                                 (s/required-key :type)                DomainEntityType
                                  (s/optional-key :description)         Description
-                                 (s/optional-key :refines)             DomainEntityReference
                                  (s/required-key :required_attributes) Attributes
                                  (s/optional-key :optional_attributes) Attributes
                                  (s/optional-key :metrics)             Metrics
                                  (s/optional-key :segments)            Segments
                                  (s/optional-key :breakout_dimensions) BreakoutDimensions})
 
-(defonce ^:private ^{:doc "Domain entity spec hierarchy."}
-  hierarchy
-  (make-hierarchy))
-
 (defn- add-to-hiearchy!
-  [{:keys [name refines]}]
-  (derive hierarchy name (or refines :DomainEntity/*)))
+  [{:keys [name refines] :as spec}]
+  (let [spec-type (keyword "DomainEntity" name)
+        refines   (some->> refines (keyword "DomainEntity"))]
+    (derive spec-type (or refines :DomainEntity/*))
+    (-> spec
+        (dissoc :refines)
+        (assoc :type spec-type))))
 
 (def ^:private domain-entity-spec-parser
   (sc/coercer!
@@ -61,11 +62,12 @@
    {MBQL                  mbql.normalize/normalize
     BreakoutDimensions    (fn [breakout-dimensions]
                             (for [dimension breakout-dimensions]
-                              (if (s/check MBQL dimension)
-                                [:dimension dimension]
+                              (if (string? dimension)
+                                (do
+                                  (s/validate FieldType (keyword "type" dimension))
+                                  [:dimension dimension])
                                 dimension)))
     FieldType             (partial keyword "type")
-    DomainEntityReference (partial keyword "DomainEntity")
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                 name}))
 
@@ -73,5 +75,6 @@
 
 (def domain-entity-specs
   "List of registered domain entities."
-  (delay (yaml/load-dir domain-entities-dir (comp add-to-hiearchy!
-                                                  domain-entity-spec-parser))))
+  (delay (into {} (for [spec (yaml/load-dir domain-entities-dir (comp domain-entity-spec-parser
+                                                                      add-to-hiearchy!))]
+                    [(:name spec) spec]))))

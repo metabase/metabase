@@ -1,67 +1,36 @@
 (ns metabase.transforms.core
-  (:require [clojure.string :as str]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.domain-entities
+             [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
+             [specs :refer [domain-entity-specs]]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
-             [card :refer [Card]]
              [database :refer [Database]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.transforms
              [materialize :as materialize :refer [infer-cols]]
-             [specs :refer [MBQL Step transform-specs TransformSpec]]]
+             [specs :refer [Step transform-specs TransformSpec]]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(def ^:private SourceName s/Str)
-
-(def ^:private DimensionReference s/Str)
-
-(def ^:private DimensionBindings {DimensionReference MBQL})
-
-(def ^:private SourceEntity (s/cond-pre (type Table) (type Card)))
-
-(def ^:private Bindings {SourceName {(s/optional-key :entity)     SourceEntity
-                                     (s/required-key :dimensions) DimensionBindings}})
-
-(s/defn ^:private get-dimension-binding :- MBQL
-  [bindings :- Bindings, source :- SourceName, dimension-reference :- DimensionReference]
-  (let [[table-or-dimension maybe-dimension] (str/split dimension-reference #"\.")]
-    (if maybe-dimension
-      (cond->> (get-in bindings [table-or-dimension :dimensions maybe-dimension])
-        (not= source table-or-dimension) (vector :joined-field table-or-dimension))
-      (get-in bindings [source :dimensions table-or-dimension]))))
-
-(s/defn ^:private resolve-dimension-clauses :- (s/maybe MBQL)
-  [bindings :- Bindings, source :- SourceName, mbql-clause :- (s/maybe MBQL)]
-  (mbql.u/replace mbql-clause
-    [:dimension dimension] (->> dimension
-                                (get-dimension-binding bindings source)
-                                (resolve-dimension-clauses bindings source))))
-
 (s/defn ^:private add-bindings :- Bindings
   [bindings :- Bindings, source :- SourceName, new-bindings :- (s/maybe DimensionBindings)]
   (reduce-kv (fn [bindings name definition]
                (->> definition
-                    (resolve-dimension-clauses bindings source)
+                    (de/resolve-dimension-clauses bindings source)
                     (assoc-in bindings [source :dimensions name])))
              bindings
              new-bindings))
-
-(s/defn ^:private mbql-reference :- MBQL
-  [{:keys [id name base_type]}]
-  (if id
-    [:field-id id]
-    [:field-literal name base_type]))
 
 (defn- mbql-reference->col-name
   [mbql-reference]
@@ -83,7 +52,7 @@
                                key)
                       ;; If that doesn't work either, it's a duplicated col from a join
                       name))
-                (mbql-reference col)]))))
+                (de/mbql-reference col)]))))
 
 (defn- maybe-add-fields
   [bindings {:keys [aggregation source]} query]
@@ -114,7 +83,7 @@
   [bindings {:keys [name breakout]} query]
   (m/assoc-some query :breakout (not-empty
                                  (for [breakout breakout]
-                                   (resolve-dimension-clauses bindings name breakout)))))
+                                   (de/resolve-dimension-clauses bindings name breakout)))))
 
 (s/defn ^:private ->source-table-reference
   "Serialize `entity` into a form suitable as `:source-table` value."
@@ -128,7 +97,7 @@
   (m/assoc-some query :joins
     (not-empty
      (for [{:keys [source condition strategy]} joins]
-       (-> {:condition    (resolve-dimension-clauses bindings context-source condition)
+       (-> {:condition    (de/resolve-dimension-clauses bindings context-source condition)
             :source-table (-> source bindings :entity ->source-table-reference)
             :alias        source
             :fields       :all}
@@ -136,7 +105,7 @@
 
 (defn- maybe-add-filter
   [bindings {:keys [name filter]} query]
-  (m/assoc-some query :filter (resolve-dimension-clauses bindings name filter)))
+  (m/assoc-some query :filter (de/resolve-dimension-clauses bindings name filter)))
 
 (defn- maybe-add-limit
   [bindings {:keys [limit]} query]
@@ -162,29 +131,22 @@
     (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(def ^:private ^{:arglists '([field])} field-type
-  (some-fn :special_type :base_type))
-
-(defn- satisfies-requierment?
-  [{requirement-dimensions :dimensions} table]
-  (let [table-dimensions (map field-type (:fields table))]
-    (every? (fn [dimension]
-              (some #(isa? % dimension) table-dimensions))
-            requirement-dimensions)))
-
 (defn- satisfy-requirements
   [db-id schema {:keys [requires]}]
   (let [tables   (table/with-fields
                    (db/select 'Table :db_id db-id :schema schema))
-        bindings (m/map-vals (fn [requirement]
-                               (filter (partial satisfies-requierment? requirement) tables))
-                             requires)]
+        bindings (into {}
+                       (map (fn [requirement]
+                              (let [t (get-in @domain-entity-specs [requirement :type])]
+                                [requirement
+                                 (filter #(-> % :domain_entity :type (isa? t)) tables)])))
+                       requires)]
     ;; If multiple tables match punt for now
-    (when (every? (comp #{1} count second) bindings)
+    (when (every? (comp #{1} count val) bindings)
       (m/map-vals (fn [[table]]
                     {:entity     table
-                     :dimensions (into {} (for [field (:fields table)]
-                                            [(-> field field-type name) (mbql-reference field)]))})
+                     :dimensions (m/map-vals de/mbql-reference
+                                             (get-in table [:domain_entity :dimensions]))})
                   bindings))))
 
 (defn- store-requirements!
@@ -197,19 +159,17 @@
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), {:keys [steps provides] :as spec} :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
-  (let [initial-bindings (satisfy-requirements db-id schema spec)]
+  (when-let [initial-bindings (satisfy-requirements db-id schema spec)]
     (driver/with-driver (-> db-id Database :engine)
       (qp.store/with-store
         (store-requirements! db-id initial-bindings)
         (let [bindings (reduce transform-step! initial-bindings (vals steps))]
-          (for [[result-step {required-dimensions :dimensions}] provides]
-            (do
-              (when (not-every? (get-in bindings [result-step :dimensions]) required-dimensions)
-                (throw (Exception. (str (tru "Resulting transform {0} does not conform to expectations.\nExpected: {1}\nGot: {2}"
-                                             result-step
-                                             required-dimensions
-                                             (->> result-step bindings :dimensions keys))))))
-              (-> result-step bindings :entity u/get-id))))))))
+          (for [domain-entity-name provides]
+            (let [result (get-in bindings [domain-entity-name :entity])]
+              (assert (de/satisfies-requierments? result (@domain-entity-specs domain-entity-name))
+                (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
+                          domain-entity-name)))
+              (u/get-id result))))))))
 
 (defn candidates
   "Return a list of candidate transforms for a given table."

@@ -1,7 +1,6 @@
 (ns metabase.transforms.specs
-  (:require [clojure.set :as set]
-            [flatland.ordered.map :refer [ordered-map]]
-            [medley.core :as m]
+  (:require [medley.core :as m]
+            [metabase.domain-entities.specs :refer [MBQL FieldType]]
             [metabase.mbql
              [normalize :as mbql.normalize]
              [schema :as mbql.schema]
@@ -12,12 +11,7 @@
              [yaml :as yaml]]
             [schema
              [coerce :as sc]
-             [core :as s]]
-            [weavejester.dependency :as dep]))
-
-(def MBQL
-  "MBQL clause (ie. a vector starting with a keyword)"
-  (s/pred mbql.u/mbql-clause?))
+             [core :as s]]))
 
 (def ^:private Source s/Str)
 
@@ -56,15 +50,11 @@
 
 (def ^:private Steps {Source Step})
 
-(defn- field-type?
-  [t]
-  (isa? t :type/*))
+(def ^:private DomainEntity s/Str)
 
-(def ^:private FieldType (s/constrained s/Keyword field-type?))
+(def ^:private Requires [DomainEntity])
 
-(def ^:private Requires {Source {:dimensions [FieldType]}})
-
-(def ^:private Provides {Source {:dimensions [Dimension]}})
+(def ^:private Provides [DomainEntity])
 
 (def TransformSpec
   "Transform spec"
@@ -95,17 +85,18 @@
     Steps                    (fn [steps]
                                (->> steps
                                     stringify-keys
-                                    (topological-sort (fn [{:keys [source joins]}]
-                                                         (conj (map :source joins) source)))))
+                                    (u/topological-sort (fn [{:keys [source joins]}]
+                                                          (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
                                (for [breakout (u/ensure-seq breakouts)]
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))
     FieldType                (partial keyword "type")
+    [DomainEntity]           u/ensure-seq
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL}         (comp (partial topological-sort extract-dimensions)
+    {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)
                                    stringify-keys)
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                    name}))
@@ -122,4 +113,4 @@
 
 (def transform-specs
   "List of registered dataset transforms."
-  (delay (yaml/load-dir transforms-dir transform-spec-parser)))
+  (delay (load-transforms-dir transforms-dir)))

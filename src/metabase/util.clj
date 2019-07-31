@@ -3,6 +3,7 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
+             [set :as set]
              [string :as str]
              [walk :as walk]]
             [clojure.java.classpath :as classpath]
@@ -10,10 +11,12 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
+            [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec])
+            [ring.util.codec :as codec]
+            [weavejester.dependency :as dep])
   (:import [java.io BufferedReader Reader]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
