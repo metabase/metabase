@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import AccordianList from "metabase/components/AccordianList.jsx";
+import AccordionList from "metabase/components/AccordionList.jsx";
 import FieldList from "./FieldList.jsx";
 import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
 
@@ -428,7 +428,7 @@ export default class AggregationPopover extends Component {
       );
     } else {
       return (
-        <AccordianList
+        <AccordionList
           className="text-green"
           width={this.props.width}
           maxHeight={this.props.maxHeight}
