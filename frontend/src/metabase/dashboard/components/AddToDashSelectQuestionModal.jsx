@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
+import AddToDashboard from "metabase/questions/containers/AddToDashboard";
 
 export default class AddToDashSelectQuestionModal extends Component {
   constructor(props, context) {

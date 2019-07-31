@@ -4,7 +4,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
 import Swapper from "metabase/components/Swapper";

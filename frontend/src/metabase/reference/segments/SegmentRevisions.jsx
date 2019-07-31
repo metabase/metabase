@@ -20,10 +20,10 @@ import {
   getError,
 } from "../selectors";
 
-import Revision from "metabase/admin/datamodel/components/revisions/Revision.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import Revision from "metabase/admin/datamodel/components/revisions/Revision";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import EmptyState from "metabase/components/EmptyState";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 const emptyStateData = {
   message: t`There are no revisions for this segment`,

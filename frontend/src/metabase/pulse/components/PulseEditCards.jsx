@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
-import PulseCardPreview from "./PulseCardPreview.jsx";
+import PulseCardPreview from "./PulseCardPreview";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 

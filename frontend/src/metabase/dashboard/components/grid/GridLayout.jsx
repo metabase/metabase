@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import GridItem from "./GridItem.jsx";
+import GridItem from "./GridItem";
 
 import _ from "underscore";
 import colors from "metabase/lib/colors";

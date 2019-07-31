@@ -1,6 +1,6 @@
 import React from "react";
 
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ModalContent from "metabase/components/ModalContent";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";

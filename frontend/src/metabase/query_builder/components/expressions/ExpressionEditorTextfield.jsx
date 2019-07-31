@@ -18,9 +18,9 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
-import Popover from "metabase/components/Popover.jsx";
+import Popover from "metabase/components/Popover";
 
-import TokenizedInput from "./TokenizedInput.jsx";
+import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 

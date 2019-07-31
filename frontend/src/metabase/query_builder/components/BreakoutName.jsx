@@ -5,7 +5,7 @@ import React from "react";
 import type { Breakout } from "metabase/meta/types/Query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import FieldName from "./FieldName.jsx";
+import FieldName from "./FieldName";
 
 type Props = {
   breakout: Breakout,

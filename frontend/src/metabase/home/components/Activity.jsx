@@ -6,9 +6,9 @@ import { t } from "ttag";
 
 import colors from "metabase/lib/colors";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import ActivityItem from "./ActivityItem.jsx";
-import ActivityStory from "./ActivityStory.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import ActivityItem from "./ActivityItem";
+import ActivityStory from "./ActivityStory";
 
 import * as Urls from "metabase/lib/urls";
 

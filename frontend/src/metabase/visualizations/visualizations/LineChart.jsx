@@ -1,7 +1,7 @@
 /* @flow */
 
 import { t } from "ttag";
-import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
+import LineAreaBarChart from "../components/LineAreaBarChart";
 import { lineRenderer } from "../lib/LineAreaBarRenderer";
 
 import {

@@ -1,6 +1,6 @@
 import React from "react";
 
-import Calendar from "metabase/components/Calendar.jsx";
+import Calendar from "metabase/components/Calendar";
 import moment from "moment";
 
 const DateSingleWidget = ({ value, setValue, onClose }) => (

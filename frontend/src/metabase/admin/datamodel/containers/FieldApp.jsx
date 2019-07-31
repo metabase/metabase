@@ -22,11 +22,8 @@ import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import AdminLayout from "metabase/components/AdminLayout.jsx";
-import {
-  LeftNavPane,
-  LeftNavPaneItem,
-} from "metabase/components/LeftNavPane.jsx";
+import AdminLayout from "metabase/components/AdminLayout";
+import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 

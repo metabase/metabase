@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 
-import StaticParameterWidget from "./ParameterWidget.jsx";
+import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 

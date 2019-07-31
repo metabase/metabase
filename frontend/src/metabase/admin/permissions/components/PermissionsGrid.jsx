@@ -5,13 +5,13 @@ import { connect } from "react-redux";
 
 import { Link } from "react-router";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import ConfirmContent from "metabase/components/ConfirmContent.jsx";
-import Modal from "metabase/components/Modal.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 
-import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
+import FixedHeaderGrid from "./FixedHeaderGrid";
 import { AutoSizer } from "react-virtualized";
 
 import { isAdminGroup, getGroupNameLocalized } from "metabase/lib/groups";

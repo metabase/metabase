@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
 import { t } from "ttag";
 import cx from "classnames";
 

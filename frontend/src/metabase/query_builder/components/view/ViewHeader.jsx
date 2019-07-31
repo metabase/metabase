@@ -7,7 +7,7 @@ import Link from "metabase/components/Link";
 import Button from "metabase/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 

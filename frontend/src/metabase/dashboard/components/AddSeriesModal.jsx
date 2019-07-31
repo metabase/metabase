@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import colors from "metabase/lib/colors";

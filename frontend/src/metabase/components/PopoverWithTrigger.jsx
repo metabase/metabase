@@ -1,4 +1,4 @@
-import Triggerable from "./Triggerable.jsx";
-import Popover from "./Popover.jsx";
+import Triggerable from "./Triggerable";
+import Popover from "./Popover";
 
 export default Triggerable(Popover);

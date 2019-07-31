@@ -14,18 +14,18 @@ import colors from "metabase/lib/colors";
 
 import { PermissionsApi } from "metabase/services";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
-import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
-import Alert from "metabase/components/Alert.jsx";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import UserAvatar from "metabase/components/UserAvatar";
+import AdminEmptyText from "metabase/components/AdminEmptyText";
+import Alert from "metabase/components/Alert";
 
-import AdminContentTable from "metabase/components/AdminContentTable.jsx";
-import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
+import AdminContentTable from "metabase/components/AdminContentTable";
+import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
-import Typeahead from "metabase/hoc/Typeahead.jsx";
+import Typeahead from "metabase/hoc/Typeahead";
 
-import AddRow from "./AddRow.jsx";
+import AddRow from "./AddRow";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (

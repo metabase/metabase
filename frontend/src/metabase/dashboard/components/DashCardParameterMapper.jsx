@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper.jsx";
+import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper";
 
 import colors from "metabase/lib/colors";
 

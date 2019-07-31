@@ -8,7 +8,7 @@ import { createSelector } from "reselect";
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
 import ExplorePane from "metabase/components/ExplorePane";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import CollectionList from "metabase/components/CollectionList";
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { t, jt } from "ttag";
-import Code from "metabase/components/Code.jsx";
+import Code from "metabase/components/Code";
 import MetabaseSettings from "metabase/lib/settings";
 
 const EXAMPLES = {

@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 
 import { isObscured } from "metabase/lib/dom";
 
-import Tooltip from "./Tooltip.jsx";
+import Tooltip from "./Tooltip";
 
 import cx from "classnames";
 

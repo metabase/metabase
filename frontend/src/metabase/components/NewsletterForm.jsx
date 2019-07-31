@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
 export default class NewsletterForm extends Component {

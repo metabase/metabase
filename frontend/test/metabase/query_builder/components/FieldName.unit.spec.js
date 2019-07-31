@@ -9,7 +9,7 @@ import {
   PRODUCT_CATEGORY_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
-import FieldName from "metabase/query_builder/components/FieldName.jsx";
+import FieldName from "metabase/query_builder/components/FieldName";
 
 describe("FieldName", () => {
   it("should render regular field correctly", () => {

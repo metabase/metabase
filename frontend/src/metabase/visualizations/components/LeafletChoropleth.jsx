@@ -2,7 +2,7 @@ import React from "react";
 
 import { normal } from "metabase/lib/colors";
 
-import CardRenderer from "./CardRenderer.jsx";
+import CardRenderer from "./CardRenderer";
 
 // import L from "leaflet";
 import "leaflet/dist/leaflet.css";

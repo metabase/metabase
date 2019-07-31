@@ -3,10 +3,10 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 // components
-import Expandable from "metabase/components/Expandable.jsx";
+import Expandable from "metabase/components/Expandable";
 
 // lib
 import { createCard } from "metabase/lib/card";

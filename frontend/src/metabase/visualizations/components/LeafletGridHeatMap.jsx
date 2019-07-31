@@ -1,4 +1,4 @@
-import LeafletMap from "./LeafletMap.jsx";
+import LeafletMap from "./LeafletMap";
 import L from "leaflet";
 import { t } from "ttag";
 import d3 from "d3";

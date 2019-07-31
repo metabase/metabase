@@ -1,6 +1,6 @@
 import React from "react";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import colors from "metabase/lib/colors";
 
 const SidebarSection = ({ title, icon, extra, children }) => (

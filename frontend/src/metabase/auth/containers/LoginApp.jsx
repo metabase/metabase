@@ -4,14 +4,14 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import { t } from "ttag";
-import AuthScene from "../components/AuthScene.jsx";
-import SSOLoginButton from "../components/SSOLoginButton.jsx";
+import AuthScene from "../components/AuthScene";
+import SSOLoginButton from "../components/SSOLoginButton";
 import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
+import LogoIcon from "metabase/components/LogoIcon";
 import Settings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
 

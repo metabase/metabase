@@ -3,9 +3,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Tooltip from "metabase/components/Tooltip";
 
 import { t } from "ttag";
 import cx from "classnames";

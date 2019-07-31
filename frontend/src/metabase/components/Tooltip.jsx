@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import TooltipPopover from "./TooltipPopover.jsx";
+import TooltipPopover from "./TooltipPopover";
 
 // TOOLTIP_STACK and related functions are to ensure only the most recent tooltip is visible
 

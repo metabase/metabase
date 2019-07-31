@@ -3,12 +3,12 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings.jsx";
+import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";

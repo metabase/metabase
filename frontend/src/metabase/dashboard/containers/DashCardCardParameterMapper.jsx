@@ -6,10 +6,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import S from "./DashCardCardParameterMapper.css";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import AccordianList from "metabase/components/AccordianList";
+import Tooltip from "metabase/components/Tooltip";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 

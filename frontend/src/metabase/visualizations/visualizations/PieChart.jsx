@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip.jsx";
-import ChartWithLegend from "../components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
