@@ -379,7 +379,7 @@
 ;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
 (expect
   [{:base_type    "type/Integer"
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 1
@@ -406,7 +406,7 @@
 ;; Check that the generated query to fetch the query result metadata includes user information in the generated query
 (expect
   {:metadata-results     [{:base_type    "type/Integer"
-                           :display_name "count"
+                           :display_name "Count"
                            :name         "count"
                            :special_type "type/Quantity"
                            :fingerprint  {:global {:distinct-count 1
@@ -624,7 +624,7 @@
 ;; Make sure when updating a Card the correct query metadata is fetched (if incorrect)
 (expect
   [{:base_type    "type/Integer"
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 1
