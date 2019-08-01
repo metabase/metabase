@@ -61,6 +61,7 @@
                              :rows                    nil
                              :updated_at              $
                              :entity_name             nil
+                             :domain_entity           nil
                              :active                  true
                              :id                      (data/id :users)
                              :db_id                   (data/id)

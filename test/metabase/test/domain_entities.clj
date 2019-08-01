@@ -33,6 +33,7 @@
   "Evaluate `body` in a context where `domain-entities.specs/domain-entity-specs` have been swapped for `test-domain-entity-specs`"
   [& body]
   `(with-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)
+                 ;; This is somewhat hackish as it depends on the internals of how how we access `:domain_entity`,
                  table/with-domain-entity     (fn [tables#]
                                                 (for [table# tables#]
                                                   (assoc table# :domain_entity (de/domain-entity-for-table table#))))]

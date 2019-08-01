@@ -71,6 +71,7 @@
    :visibility_type         nil
    :db                      (db-details)
    :entity_name             nil
+   :domain_entity           nil
    :active                  true
    :db_id                   (data/id)
    :segments                []

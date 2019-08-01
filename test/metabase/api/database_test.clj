@@ -159,6 +159,7 @@
   {:description             nil
    :entity_name             nil
    :entity_type             "entity/GenericTable"
+   :domain_entity           nil
    :caveats                 nil
    :points_of_interest      nil
    :visibility_type         nil

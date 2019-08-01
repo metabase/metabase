@@ -28,7 +28,7 @@
 
 
 (expect
-  "Venues"
+  "VenuesEnhanced"
   (-> test-domain-entity-specs vals (#'de/best-match) :name))
 
 
@@ -41,6 +41,7 @@
                                    [(-> field (#'de/field-type) name) field]))
    :type                :DomainEntity/Venues
    :description         nil
-   :source_table        (data/id :venues)}
+   :source_table        (data/id :venues)
+   :name                "Venues"}
   (with-test-domain-entity-specs
     (de/domain-entity-for-table (hydrated-table :venues))))
