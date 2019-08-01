@@ -79,6 +79,7 @@
    Segment
    Metric
    MetricImportantField
+   DomainEntity
    Revision
    ViewLog
    Session
@@ -102,8 +103,7 @@
    Dimension
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
-   DataMigrations
-   DomainEntity])
+   DataMigrations])
 
 
 ;;; --------------------------------------------- H2 Connection Options ----------------------------------------------
