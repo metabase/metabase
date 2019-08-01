@@ -86,6 +86,7 @@
    :db_id                   true
    :description             nil
    :entity_name             nil
+   :domain_entity           nil
    :entity_type             :entity/GenericTable
    :id                      true
    :points_of_interest      nil

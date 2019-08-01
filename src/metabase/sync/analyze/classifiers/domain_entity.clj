@@ -14,8 +14,10 @@
                                   nil
 
                                   (:domain_entity table)
-                                  (u/get-id (db/update! 'DomainEntity (:domain_entity table)
-                                              domain-entity))
+                                  (do
+                                    (db/update! 'DomainEntity (:domain_entity table) domain-entity)
+                                    (:domain_entity table))
+
 
                                   :else
                                   (u/get-id (db/insert! 'DomainEntity
