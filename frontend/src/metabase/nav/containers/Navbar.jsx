@@ -287,8 +287,12 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const hasDataAccess = this.props.databases && this.props.databases.length > 0;
-    const hasNativeWrite = hasDataAccess && this.props.databases.filter(db => db.native_permissions === "write").length > 0;
+    const hasDataAccess =
+      this.props.databases && this.props.databases.length > 0;
+    const hasNativeWrite =
+      hasDataAccess &&
+      this.props.databases.filter(db => db.native_permissions === "write")
+        .length > 0;
 
     return (
       <Flex
