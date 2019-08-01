@@ -345,7 +345,7 @@ export default class Navbar extends Component {
           )}
           <EntityMenu
             tooltip={t`Create`}
-            className="hide sm-show mx1"
+            className="hide sm-show"
             triggerIcon="add"
             items={[
               /*

@@ -186,7 +186,6 @@ export class ViewTitleHeader extends React.Component {
           {isDirty ? (
             <Link
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
-              mx={1}
               onClick={() => onOpenModal("save")}
             >
               {t`Save`}

@@ -146,7 +146,7 @@ export default class QueryVisualization extends Component {
 
 export const VisualizationEmptyState = ({ className }) => (
   <div className={cx(className, "flex flex-column layout-centered text-light")}>
-    <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
+    <h1 />
   </div>
 );
 
@@ -167,6 +167,7 @@ export const VisualizationRunningState = ({ className }) => (
 export const VisualizationDirtyState = ({
   className,
   result,
+  isNative,
   isRunnable,
   isRunning,
   isResultDirty,
@@ -182,8 +183,11 @@ export const VisualizationDirtyState = ({
     <RunButtonWithTooltip
       className="shadowed"
       circular
+      compact
+      style={{ width: 90 }}
       result={result}
       isRunnable={isRunnable}
+      isNative={isNative}
       isRunning={isRunning}
       isDirty={isResultDirty}
       onRun={() => runQuestionQuery({ ignoreCache: true })}
