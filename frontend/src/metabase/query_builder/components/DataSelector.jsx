@@ -5,7 +5,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
+import AccordionList from "metabase/components/AccordionList.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { isQueryable } from "metabase/lib/table";
@@ -600,7 +600,7 @@ const DatabasePicker = ({
   ];
 
   return (
-    <AccordianList
+    <AccordionList
       id="DatabasePicker"
       key="databasePicker"
       className="text-brand"
@@ -650,7 +650,7 @@ const SegmentAndDatabasePicker = ({
   }
 
   return (
-    <AccordianList
+    <AccordionList
       id="SegmentAndDatabasePicker"
       key="segmentAndDatabasePicker"
       className="text-brand"
@@ -690,7 +690,7 @@ export const SchemaPicker = ({
   ];
   return (
     <div style={{ width: 300 }}>
-      <AccordianList
+      <AccordionList
         id="DatabaseSchemaPicker"
         key="databaseSchemaPicker"
         className="text-brand"
@@ -738,7 +738,7 @@ export const DatabaseSchemaPicker = ({
 
   return (
     <div className="scroll-y">
-      <AccordianList
+      <AccordionList
         id="DatabaseSchemaPicker"
         key="databaseSchemaPicker"
         className="text-brand"
@@ -826,7 +826,7 @@ export const TablePicker = ({
     ];
     return (
       <div style={{ width: 300 }} className="scroll-y">
-        <AccordianList
+        <AccordionList
           id="TablePicker"
           key="tablePicker"
           className="text-brand"
@@ -912,7 +912,7 @@ export class FieldPicker extends Component {
 
     return (
       <div style={{ width: 300 }}>
-        <AccordianList
+        <AccordionList
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
@@ -984,7 +984,7 @@ export const SegmentPicker = ({
   ];
 
   return (
-    <AccordianList
+    <AccordionList
       id="SegmentPicker"
       key="segmentPicker"
       className="text-brand"

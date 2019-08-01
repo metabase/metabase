@@ -1,7 +1,7 @@
 import React from "react";
 import { mount } from "enzyme";
 
-import AccordianList from "metabase/components/AccordianList";
+import AccordionList from "metabase/components/AccordionList";
 import ListSearchField from "metabase/components/ListSearchField";
 
 const SECTIONS = [
@@ -15,38 +15,38 @@ const SECTIONS = [
   },
 ];
 
-describe("AccordianList", () => {
+describe("AccordionList", () => {
   it("should open the first section by default", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(".List-section-header").length).toBe(2);
     expect(wrapper.find(".List-item").length).toBe(2);
   });
   it("should open the second section if initiallyOpenSection=1", () => {
     const wrapper = mount(
-      <AccordianList sections={SECTIONS} initiallyOpenSection={1} />,
+      <AccordionList sections={SECTIONS} initiallyOpenSection={1} />,
     );
     expect(wrapper.find(".List-item").length).toBe(1);
   });
   it("should not open a section if initiallyOpenSection=null", () => {
     const wrapper = mount(
-      <AccordianList sections={SECTIONS} initiallyOpenSection={null} />,
+      <AccordionList sections={SECTIONS} initiallyOpenSection={null} />,
     );
     expect(wrapper.find(".List-item").length).toBe(0);
   });
   it("should open all sections if alwaysExpanded is set", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} alwaysExpanded />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} alwaysExpanded />);
     expect(wrapper.find(".List-item").length).toBe(3);
   });
   it("should not show search field by default", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(ListSearchField).length).toBe(0);
   });
   it("should show search field is searchable is set", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} searchable />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} searchable />);
     expect(wrapper.find(ListSearchField).length).toBe(1);
   });
   it("should close the section when header is clicked", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(".List-item").length).toBe(2);
     wrapper
       .find(".List-section-header")
@@ -55,7 +55,7 @@ describe("AccordianList", () => {
     expect(wrapper.find(".List-item").length).toBe(0);
   });
   it("should switch sections when another section is clicked", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} />);
     expect(wrapper.find(".List-item").length).toBe(2);
     wrapper
       .find(".List-section-header")
@@ -64,7 +64,7 @@ describe("AccordianList", () => {
     expect(wrapper.find(".List-item").length).toBe(1);
   });
   it("should filter items when searched", () => {
-    const wrapper = mount(<AccordianList sections={SECTIONS} searchable />);
+    const wrapper = mount(<AccordionList sections={SECTIONS} searchable />);
     const searchInput = wrapper.find(ListSearchField).find("input");
     expect(wrapper.find(".List-item").length).toBe(2);
     searchInput.simulate("change", { target: { value: "Foo" } });
