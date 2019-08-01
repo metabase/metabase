@@ -343,7 +343,7 @@
         (count (candidate-tables (Database db-id)))))))
 
 (expect
-  5
+  6
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id}]
