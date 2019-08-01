@@ -1,11 +1,11 @@
 (ns metabase.models.domain-entity
   (:require [medley.core :as m]
-            [metabase.util :as u]
             [metabase.models
              [field :refer [Field]]
              [interface :as i]
              [permissions :as perms]
              [table :refer [Table]]]
+            [metabase.util :as u]
             [toucan.models :as models]))
 
 (models/defmodel DomainEntity :domain_entity)
