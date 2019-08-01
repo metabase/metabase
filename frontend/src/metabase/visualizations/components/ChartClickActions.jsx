@@ -213,9 +213,7 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx(
-    "text-brand-hover cursor-pointer no-decoration p1 mr1",
-  );
+  const className = cx("text-brand-hover cursor-pointer no-decoration p1 mr1");
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
