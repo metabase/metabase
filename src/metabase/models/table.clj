@@ -33,10 +33,11 @@
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
-  (db/delete! Segment     :table_id id)
-  (db/delete! Metric      :table_id id)
-  (db/delete! Field       :table_id id)
-  (db/delete! 'Card       :table_id id)
+  (db/delete! Segment       :table_id id)
+  (db/delete! Metric        :table_id id)
+  (db/delete! Field         :table_id id)
+  (db/delete! 'Card         :table_id id)
+  (db/delete! 'DomainEntity :source_table id)
   (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [table _]
@@ -141,6 +142,14 @@
         {:order-by [[:position :asc] [:name :asc]]}))
     tables))
 
+(defn with-domain-entity
+  "Efficiently hydrate DomainEntity for a collection of `tables`."
+  {:batched-hydrate :fields}
+  [tables]
+  (with-objects :domain_entity
+    (fn [table-ids]
+      (db/select 'DomainEntity :source_table [:in table-ids]))
+    tables))
 
 ;;; ------------------------------------------------ Convenience Fns -------------------------------------------------
 

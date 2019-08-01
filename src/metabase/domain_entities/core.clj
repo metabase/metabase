@@ -74,10 +74,11 @@
        (sort-by (juxt (comp count ancestors :type) (comp count :required_attributes)))
        last))
 
-(defn- instantiate-entities
-  [bindings source entities]
-  (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
-        (for [entity entities
+(defn- instantiate-dimensions
+  [bindings source coll]
+  (into (empty coll) ; this way we don't care if we're dealing with a map or a vec
+        ;; We have to go piece-wise to account for optional attributes
+        (for [entity coll
               :when (every? (get-in bindings [source :dimensions])
                             (mbql.u/match entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
@@ -88,13 +89,14 @@
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table
                           :dimensions (m/map-vals mbql-reference dimensions)}}]
-    {:metrics             (instantiate-entities bindings name metrics)
-     :segments            (instantiate-entities bindings name segments)
-     :breakout-dimensions (instantiate-entities bindings name breakout_dimensions)
+    {:metrics             (instantiate-dimensions bindings name metrics)
+     :segments            (instantiate-dimensions bindings name segments)
+     :breakout_dimensions (instantiate-dimensions bindings name breakout_dimensions)
      :dimensions          dimensions
      :type                type
+     :name                name
      :description         description
-     :source-table        (u/get-id table)}))
+     :source_table        (u/get-id table)}))
 
 (defn domain-entity-for-table
   "Find the best fitting domain entity for given table."

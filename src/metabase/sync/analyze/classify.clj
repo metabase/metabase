@@ -26,6 +26,7 @@
              [util :as sync-util]]
             [metabase.sync.analyze.classifiers
              [category :as category]
+             [domain-entity :as de]
              [name :as name]
              [no-preview-display :as no-preview-display]
              [text-fingerprint :as text-fingerprint]]
@@ -130,7 +131,7 @@
   "Run various classifiers on the TABLE. These do things like inferring (and
    setting) entitiy type of TABLE."
   [table :- i/TableInstance]
-  (save-model-updates! table (name/infer-entity-type table)))
+  (save-model-updates! table (-> table name/infer-entity-type de/assign-domain-entity!)))
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"

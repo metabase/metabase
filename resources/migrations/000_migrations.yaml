@@ -5275,3 +5275,80 @@ databaseChangeLog:
             columns:
               - column:
                   name: parent_id
+  - changeSet:
+      id: 102
+      author: sbelak
+      changes:
+        - createTable:
+            tableName: domain_entity
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: source_table
+                  type: int
+                  constraints:
+                    nullable: true
+                    references: metabase_table(id)
+                    foreignKeyName: fk_domain_entity_ref_source_table
+                    deferrable: false
+                    initiallyDeferred: false
+              - column:
+                  name: metrics
+                  type: text
+              - column:
+                  name: segments
+                  type: text
+              - column:
+                  name: dimensions
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: breakout_dimensions
+                  type: text
+              - column:
+                  name: description
+                  type: text
+              - column:
+                  name: type
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: DATETIME
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              name: domain_entity
+              type: int
+              constraints:
+                references: domain_entity(id)
+                foreignKeyName: fk_table_domain_entity
+                nullable: true
+                deferrable: false
+                initiallyDeferred: false
+        - createIndex:
+            tableName: domain_entity
+            indexName: idx_domain_entity_source_table
+            columns:
+              column:
+                name: source_table

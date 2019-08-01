@@ -36,11 +36,11 @@
   {:metrics             {"Avg Price" {:name        "Avg Price"
                                       :aggregation [:avg (#'de/mbql-reference (Field (data/id :venues :price)))]}}
    :segments            nil
-   :breakout-dimensions [(#'de/mbql-reference (Field (data/id :venues :category_id)))]
+   :breakout_dimensions [(#'de/mbql-reference (Field (data/id :venues :category_id)))]
    :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
                                    [(-> field (#'de/field-type) name) field]))
    :type                :DomainEntity/Venues
    :description         nil
-   :source-table        (data/id :venues)}
+   :source_table        (data/id :venues)}
   (with-test-domain-entity-specs
     (de/domain-entity-for-table (hydrated-table :venues))))
