@@ -315,7 +315,7 @@ export default class TableInteractive extends Component {
     const { dragColIndex } = this.state;
     return (
       // don't bother calling if we're dragging, but do it for headers to show isSortable
-      (dragColIndex == null || !clicked.value) &&
+      (dragColIndex == null || (clicked && clicked.value === undefined)) &&
       onVisualizationClick &&
       visualizationIsClickable &&
       visualizationIsClickable(clicked)
