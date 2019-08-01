@@ -144,7 +144,7 @@
 
 (defn with-domain-entity
   "Efficiently hydrate DomainEntity for a collection of `tables`."
-  {:batched-hydrate :fields}
+  {:batched-hydrate :domain_entity}
   [tables]
   (with-objects :domain_entity
     (fn [table-ids]

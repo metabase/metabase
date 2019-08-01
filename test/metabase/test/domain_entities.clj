@@ -1,5 +1,7 @@
 (ns metabase.test.domain-entities
-  (:require [metabase.domain-entities.specs :as de.specs]))
+  (:require [metabase.domain-entities
+             [core :as de]
+             [specs :as de.specs]]))
 
 (def test-domain-entity-specs
   "A test domain specs written against our test DB."
@@ -16,6 +18,7 @@
          :breakout_dimensions ["FK"]
          :metrics             {"Avg Price" {:aggregation [:avg [:dimension "Category"]]}}}
         {:name                "VenuesEnhanced"
+         :refines             "Venues"
          :required_attributes [{:field "AvgPrice"}
                                {:field "MinPrice"}
                                {:field "MaxPrice"}]}]
@@ -28,5 +31,8 @@
 (defmacro with-test-domain-entity-specs
   "Evaluate `body` in a context where `domain-entities.specs/domain-entity-specs` have been swapped for `test-domain-entity-specs`"
   [& body]
-  `(with-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)]
+  `(with-redefs [de.specs/domain-entity-specs (delay test-domain-entity-specs)
+                 table/with-domain-entity     (fn [tables#]
+                                                (for [table# tables#]
+                                                  (assoc table# :domain_entity (de/domain-entity-for-table table#))))]
      ~@body))

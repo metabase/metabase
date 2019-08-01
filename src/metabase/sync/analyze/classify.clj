@@ -40,7 +40,7 @@
 
 (def ^:private values-that-can-be-set
   "Columns of Field that classifiers are allowed to set."
-  #{:special_type :preview_display :has_field_values :entity_type})
+  #{:special_type :preview_display :has_field_values :entity_type :domain_entity})
 
 (def ^:private FieldOrTableInstance (s/either i/FieldInstance i/TableInstance))
 
