@@ -3,6 +3,7 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.mbql
              [schema :as mbql.s]
@@ -12,9 +13,8 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.store :as qp.store]
             [metabase.transforms
-             [materialize :as materialize :refer [infer-cols]]
+             [materialize :as materialize]
              [specs :refer [MBQL Step transform-specs TransformSpec]]]
             [metabase.util
              [i18n :refer [tru]]
@@ -73,7 +73,7 @@
   [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
-    (into {} (for [{:keys [name] :as col} (infer-cols query)]
+    (into {} (for [{:keys [name] :as col} (qp/query->expected-cols query)]
                [(if (flattened-bindings name)
                   name
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
@@ -172,7 +172,7 @@
               (some #(isa? % dimension) table-dimensions))
             requirement-dimensions)))
 
-(defn- satisfy-requirements
+(s/defn ^:private satisfy-requirements :- (s/maybe Bindings)
   [db-id schema {:keys [requires]}]
   (let [tables   (table/with-fields
                    (db/select 'Table :db_id db-id :schema schema))
@@ -187,29 +187,29 @@
                                             [(-> field field-type name) (mbql-reference field)]))})
                   bindings))))
 
-(defn- store-requirements!
-  [db-id requirements]
-  (qp.store/fetch-and-store-database! db-id)
-  (qp.store/fetch-and-store-fields!
-   (mapcat (comp (partial map u/get-id) :fields :entity val) requirements)))
-
 (s/defn apply-transform!
-  "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
+  "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.
+
+  The algorithm is as follows:
+  1) Try to find a set of tables in the given schema that match requirements.
+  2) If found, use these tables and their fields as the initial bindings.
+  3) Go through the transform steps, materialize them as cards and accure these and their result
+     cols to the bindings.
+  4) Check that all output cards have the expected result shape.
+  5) Return the ids of all the output cards."
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), {:keys [steps provides] :as spec} :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
   (let [initial-bindings (satisfy-requirements db-id schema spec)]
     (driver/with-driver (-> db-id Database :engine)
-      (qp.store/with-store
-        (store-requirements! db-id initial-bindings)
-        (let [bindings (reduce transform-step! initial-bindings (vals steps))]
-          (for [[result-step {required-dimensions :dimensions}] provides]
-            (do
-              (when (not-every? (get-in bindings [result-step :dimensions]) required-dimensions)
-                (throw (Exception. (str (tru "Resulting transform {0} does not conform to expectations.\nExpected: {1}\nGot: {2}"
-                                             result-step
-                                             required-dimensions
-                                             (->> result-step bindings :dimensions keys))))))
-              (-> result-step bindings :entity u/get-id))))))))
+      (let [bindings (reduce transform-step! initial-bindings (vals steps))]
+        (for [[result-step {required-dimensions :dimensions}] provides]
+          (do
+            (when (not-every? (get-in bindings [result-step :dimensions]) required-dimensions)
+              (throw (Exception. (str (tru "Resulting transform {0} does not conform to expectations.\nExpected: {1}\nGot: {2}"
+                                           result-step
+                                           required-dimensions
+                                           (->> result-step bindings :dimensions keys))))))
+            (-> result-step bindings :entity u/get-id)))))))
 
 (defn candidates
   "Return a list of candidate transforms for a given table."

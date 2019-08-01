@@ -2,31 +2,18 @@
   (:require [metabase.api.common :as api]
             [metabase.models
              [card :as card :refer [Card]]
-             [collection :as collection]]
-            [metabase.query-processor.middleware
-             [add-implicit-clauses :as qp.imlicit-clauses]
-             [annotate :as qp.annotate]
-             [fetch-source-query :as qp.source-query]
-             [resolve-joins :as qp.resolve-joins]]
-            [metabase.util :as u]
+             [collection :as collection :refer [Collection]]]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [toucan.db :as db]))
-
-(defn infer-cols
-  "Infer column types from given (MBQL) query."
-  [query]
-  (-> query
-      (#'qp.source-query/resolve-all)
-      (#'qp.imlicit-clauses/maybe-add-implicit-clauses)
-      (#'qp.resolve-joins/resolve-joins*)
-      (#'qp.annotate/add-column-info* nil)
-      :cols))
 
 (declare get-or-create-root-container-collection!)
 
 (defn- root-container-location
   []
   (collection/children-location
-   (db/select-one ['Collection :location :id]
+   (db/select-one [Collection :location :id]
      :id (get-or-create-root-container-collection!))))
 
 (defn get-collection
@@ -35,7 +22,7 @@
   ([collection-name]
    (get-collection collection-name (root-container-location)))
   ([collection-name location]
-   (db/select-one-id 'Collection
+   (db/select-one-id Collection
      :name     collection-name
      :location location)))
 
@@ -44,7 +31,7 @@
    (create-collection! collection-name color description (root-container-location)))
   ([collection-name color description location]
    (u/get-id
-    (db/insert! 'Collection
+    (db/insert! Collection
       {:name        collection-name
        :color       color
        :description description
@@ -74,7 +61,7 @@
         :description            description
         :name                   name
         :collection_id          (get-collection transform)
-        :result_metadata        (infer-cols query)
+        :result_metadata        (qp/query->expected-cols query)
         :visualization_settings {}
         :display                :table}
        card/populate-query-fields
