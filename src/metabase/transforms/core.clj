@@ -166,12 +166,13 @@
       (qp.store/with-store
         (store-requirements! db-id initial-bindings)
         (let [bindings (reduce transform-step! initial-bindings (vals steps))]
-          (for [domain-entity-name provides]
-            (let [result (get-in bindings [domain-entity-name :entity])]
-              (assert (de/satisfies-requierments? result (@domain-entity-specs domain-entity-name))
-                (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
-                          domain-entity-name)))
-              (u/get-id result))))))))
+          (doall
+           (for [domain-entity-name provides]
+             (let [result (get-in bindings [domain-entity-name :entity])]
+               (assert (de/satisfies-requierments? result (@domain-entity-specs domain-entity-name))
+                 (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
+                           domain-entity-name)))
+               (u/get-id result)))))))))
 
 (defn candidates
   "Return a list of candidate transforms for a given table."

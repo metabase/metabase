@@ -20,7 +20,7 @@
 
 (def ^:private DomainEntityReference s/Str)
 
-(def ^:private DomainEntityType (s/constrained s/Keyword #(isa? % :DomainEntity/*)))
+(def ^:private DomainEntityType (s/isa :DomainEntity/*))
 
 (def ^:private Identifier s/Str)
 

@@ -59,12 +59,13 @@
   [entity {:keys [field domain_entity has_many]}]
   (cond
     field (some (fn [col]
-                  (or (isa? (field-type col) field)
-                      (= (:name col) (name field))))
+                  (when (or (isa? (field-type col) field)
+                            (= (:name col) (name field)))
+                    col))
                 ((some-fn :fields :result_metadata) entity))))
 
 (defn satisfies-requierments?
-  "Does source entity satisfies requirements of given spec?"
+  "Does source entity satisfies requierments of given spec?"
   [entity {:keys [required_attributes]}]
   (every? (partial has-attribute? entity) required_attributes))
 

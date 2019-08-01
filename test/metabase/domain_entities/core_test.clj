@@ -6,7 +6,8 @@
              [table :as table :refer [Table]]]
             [metabase.test
              [data :as data]
-             [domain-entities :refer :all]]))
+             [domain-entities :refer :all]]
+            [toucan.hydrate :as hydrate]))
 
 
 (expect
@@ -20,18 +21,19 @@
 
 (defn- hydrated-table
   [table-name]
-  (let [table (-> table-name data/id Table)]
-    (assoc table :fields (table/fields table))))
+  (-> table-name data/id Table (hydrate/hydrate :fields)))
 
 (expect
   (de/satisfies-requierments? (hydrated-table :venues) (test-domain-entity-specs "Venues")))
 
 
+;; Do we correctly pick the best (most specific and most defined) candidate
 (expect
   "Venues"
   (-> test-domain-entity-specs vals (#'de/best-match) :name))
 
 
+;; Do all the MBQL snippets get instantiated correctly
 (expect
   {:metrics             {"Avg Price" {:name        "Avg Price"
                                       :aggregation [:avg (#'de/mbql-reference (Field (data/id :venues :price)))]}}
