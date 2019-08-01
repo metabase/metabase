@@ -22,9 +22,7 @@ Remove the old token from the Google Auth SSO tab in the Admin Panel and create 
 ## Helpful tidbits
 
 ### Accessing the Metabase server logs
-While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, you can also access them from the drop down menu in the upper right hand corner.
-
-![Logs Screenshot](images/ServerLogs.png)
+While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, if you are logged into Metabase with an admin account, you can also access them from the gear drop down menu in the upper right hand corner -> Admin -> Troubleshooting -> Logs.
 
 ### Checking for JavaScript errors in your web browser
 Metabase will print debugging information and errors to your browser's JavaScript Console.
