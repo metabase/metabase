@@ -5289,6 +5289,7 @@ databaseChangeLog:
                   constraints:
                     primaryKey: true
                     nullable: false
+              # Table (ID) for which this domain entity is instantiated
               - column:
                   name: source_table
                   type: int
@@ -5296,19 +5297,21 @@ databaseChangeLog:
                     nullable: false
                     references: metabase_table(id)
                     foreignKeyName: fk_domain_entity_ref_source_table
-                    deferrable: false
-                    initiallyDeferred: false
+              # JSON: map of MBQL snippets
               - column:
                   name: metrics
                   type: text
+              # JSON: map of MBQL snippets
               - column:
                   name: segments
                   type: text
+              # JSON: vector of field IDs
               - column:
                   name: dimensions
                   type: text
                   constraints:
                     nullable: false
+              # JSON: map of MBQL snippets
               - column:
                   name: breakout_dimensions
                   type: text
@@ -5344,8 +5347,7 @@ databaseChangeLog:
                 references: domain_entity(id)
                 foreignKeyName: fk_table_domain_entity
                 nullable: true
-                deferrable: false
-                initiallyDeferred: false
+                deleteCascade: true
         - createIndex:
             tableName: domain_entity
             indexName: idx_domain_entity_source_table

@@ -37,7 +37,6 @@
   (db/delete! Metric        :table_id id)
   (db/delete! Field         :table_id id)
   (db/delete! 'Card         :table_id id)
-  (db/update! Table id :domain_entity nil)
   (db/delete! 'DomainEntity :source_table id)
   (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
 
