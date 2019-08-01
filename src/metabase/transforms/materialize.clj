@@ -1,11 +1,11 @@
 (ns metabase.transforms.materialize
-  (:require [metabase.api.common :as api]
+  (:require [metabase
+             [query-processor :as qp]
+             [util :as u]]
+            [metabase.api.common :as api]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :as collection :refer [Collection]]]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [toucan.db :as db]))
 
 (declare get-or-create-root-container-collection!)
