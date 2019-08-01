@@ -61,7 +61,7 @@ export default function QuestionFilters({
       ))}
     </div>
   ) : (
-    <Tooltip tooltip={`Show filters`}>
+    <Tooltip tooltip={t`Show filters`}>
       <FilterPill invert icon="filter" onClick={onExpand}>
         {filters.length}
       </FilterPill>
