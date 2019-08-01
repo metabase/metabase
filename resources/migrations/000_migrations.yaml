@@ -5293,7 +5293,7 @@ databaseChangeLog:
                   name: source_table
                   type: int
                   constraints:
-                    nullable: true
+                    nullable: false
                     references: metabase_table(id)
                     foreignKeyName: fk_domain_entity_ref_source_table
                     deferrable: false

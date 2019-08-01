@@ -24,7 +24,7 @@
 (defn- api-call
   ([template args] (api-call template args (constantly true)))
   ([template args revoke-fn]
-   (with-rasta
+   (test-users/with-test-user :rasta
      (with-dashboard-cleanup
        (let [api-endpoint (apply format (str "automagic-dashboards/" template) args)]
          (and (some? ((test-users/user->client :rasta) :get 200 api-endpoint))
@@ -167,7 +167,7 @@
 ;;; ------------------- Transforms -------------------
 
 (expect
-  (with-rasta
+  (test-users/with-test-user :rasta
     (transforms.test/with-test-transform-specs
       (de.test/with-test-domain-entity-specs
         (tu/with-model-cleanup ['Card 'Collection]
