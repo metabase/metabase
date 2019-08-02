@@ -11,7 +11,6 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
-             [domain-entity :refer [DomainEntity]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.transforms
