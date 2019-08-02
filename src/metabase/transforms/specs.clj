@@ -7,7 +7,6 @@
              [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util
-             [files :as files]
              [schema :as su]
              [yaml :as yaml]]
             [schema

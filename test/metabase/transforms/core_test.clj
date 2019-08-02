@@ -1,15 +1,15 @@
 (ns metabase.transforms.core-test
   (:require [expectations :refer [expect]]
             [medley.core :as m]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.domain-entities
              [core :as de]
              [specs :as de.specs]]
             [metabase.models
-             [card :refer [Card]]
+             [card :as card :refer [Card]]
              [table :as table :refer [Table]]]
-            [metabase
-             [query-processor :as qp]
-             [util :as u]]
             [metabase.test
              [automagic-dashboards :refer [with-rasta]]
              [data :as data]
@@ -109,6 +109,27 @@
   @test-bindings
   (with-test-domain-entity-specs
     (#'t/tableset->bindings (filter (comp #{(data/id :venues)} u/get-id) (#'t/tableset (data/id) "PUBLIC")))))
+
+
+;; Is the validation of results working?
+(expect
+  (with-test-domain-entity-specs
+    (with-test-transform-specs
+      (#'t/validate-results {"VenuesEnhanced" {:entity     (card/map->CardInstance
+                                                             {:result_metadata [{:name "AvgPrice"}
+                                                                                {:name "MaxPrice"}
+                                                                                {:name "MinPrice"}]})
+                                               :dimensions {"D1" [:field-id 1]}}}
+                            (first @t.specs/transform-specs)))))
+
+;; ... and do we throw if we didn't get what we expected?
+(expect
+  java.lang.AssertionError
+  (with-test-domain-entity-specs
+    (with-test-transform-specs
+      (#'t/validate-results {"VenuesEnhanced" {:entity     (Table (data/id :venues))
+                                               :dimensions {"D1" [:field-id 1]}}}
+                            (first @t.specs/transform-specs)))))
 
 
 ;; Run the transform and make sure it produces the correct result
