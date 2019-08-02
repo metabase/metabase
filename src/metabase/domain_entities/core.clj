@@ -91,11 +91,12 @@
                           :dimensions (m/map-vals mbql-reference dimensions)}}]
     {:metrics             (instantiate-entities bindings name metrics)
      :segments            (instantiate-entities bindings name segments)
-     :breakout-dimensions (instantiate-entities bindings name breakout_dimensions)
+     :breakout_dimensions (instantiate-entities bindings name breakout_dimensions)
      :dimensions          dimensions
      :type                type
      :description         description
-     :source-table        (u/get-id table)}))
+     :source_table        (u/get-id table)
+     :name                name}))
 
 (defn domain-entity-for-table
   "Find the best fitting domain entity for given table."

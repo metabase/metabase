@@ -22,7 +22,6 @@
       (tu/with-model-cleanup ['Card 'Collection]
         (-> (t/apply-transform! (data/id) "PUBLIC" test-transform-spec)
             first
-            Card
             :dataset_query
             qp/process-query
             :data
