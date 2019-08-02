@@ -42,14 +42,16 @@
                                      (s/required-key :name)        Identifier
                                      (s/optional-key :description) Description}})
 
-(def ^:private DomainEntitySpec {(s/required-key :name)                DomainEntityReference
-                                 (s/required-key :type)                DomainEntityType
-                                 (s/optional-key :description)         Description
-                                 (s/required-key :required_attributes) Attributes
-                                 (s/optional-key :optional_attributes) Attributes
-                                 (s/optional-key :metrics)             Metrics
-                                 (s/optional-key :segments)            Segments
-                                 (s/optional-key :breakout_dimensions) BreakoutDimensions})
+(def DomainEntitySpec
+  "Domain entity spec"
+  {(s/required-key :name)                DomainEntityReference
+   (s/required-key :type)                DomainEntityType
+   (s/optional-key :description)         Description
+   (s/required-key :required_attributes) Attributes
+   (s/optional-key :optional_attributes) Attributes
+   (s/optional-key :metrics)             Metrics
+   (s/optional-key :segments)            Segments
+   (s/optional-key :breakout_dimensions) BreakoutDimensions})
 
 (defn- add-to-hiearchy!
   [{:keys [name refines] :as spec}]

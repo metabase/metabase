@@ -6,7 +6,7 @@
              [util :as u]]
             [metabase.domain-entities
              [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
-             [specs :refer [domain-entity-specs]]]
+             [specs :refer [domain-entity-specs DomainEntitySpec]]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -134,7 +134,7 @@
 (def ^:private Tableset [(type Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
-  [tableset :- Tableset, domain-entity :- (type DomainEntity)]
+  [tableset :- Tableset, domain-entity :- DomainEntitySpec]
   (filter #(-> % :domain_entity :type (isa? (:type domain-entity))) tableset))
 
 (s/defn ^:private tableset->bindings :- Bindings

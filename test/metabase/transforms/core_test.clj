@@ -32,6 +32,7 @@
   "Test transform"
   (with-test-transform-specs
     (with-test-domain-entity-specs
-      (-> (t/candidates (Table (data/id :venues)))
+      (-> (Table (data/id :venues))
+          t/candidates
           first
           :name))))
