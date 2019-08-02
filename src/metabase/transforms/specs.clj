@@ -7,6 +7,7 @@
              [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util
+             [files :as files]
              [schema :as su]
              [yaml :as yaml]]
             [schema
@@ -88,7 +89,7 @@
                                     (u/topological-sort (fn [{:keys [source joins]}]
                                                           (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
-                               (for [breakout (u/ensure-seq breakouts)]
+                               (for [breakout (u/one-or-many breakouts)]
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))

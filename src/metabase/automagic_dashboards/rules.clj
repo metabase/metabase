@@ -5,6 +5,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util
+             [files :as files]
              [i18n :refer [LocalizedString trs tru]]
              [schema :as su]
              [yaml :as yaml]]
@@ -227,8 +228,8 @@
 (def ^:private rules-validator
   (sc/coercer!
    Rule
-   {[s/Str]         u/ensure-seq
-    [OrderByPair]   u/ensure-seq
+   {[s/Str]         u/one-or-many
+    [OrderByPair]   u/one-or-many
     OrderByPair     (fn [x]
                       (if (string? x)
                         {x "ascending"}
@@ -246,7 +247,7 @@
     Card            (with-defaults {:score  max-score
                                     :width  populate/default-card-width
                                     :height populate/default-card-height})
-    [CardDimension] u/ensure-seq
+    [CardDimension] u/one-or-many
     CardDimension   (fn [x]
                       (if (string? x)
                         {x {}}
@@ -311,7 +312,7 @@
       ds))))
 
 (def ^:private rules (delay
-                      (yaml/with-resource [path rules-dir]
+                      (files/with-open-path-to-resource [path rules-dir]
                         (into {} (load-rule-dir path)))))
 
 (defn get-rules
