@@ -1,7 +1,7 @@
 import React from "react";
-import AccordianList from "metabase/components/AccordianList";
+import AccordionList from "metabase/components/AccordionList";
 
-export const component = AccordianList;
+export const component = AccordionList;
 
 // disable snapshot testing due to issue with Popover
 export const noSnapshotTest = true;
@@ -23,14 +23,14 @@ const sections = [
 
 export const examples = {
   Default: (
-    <AccordianList
+    <AccordionList
       className="text-brand full"
       sections={sections}
       itemIsSelected={item => item.name === "Foo"}
     />
   ),
   "Always Expanded": (
-    <AccordianList
+    <AccordionList
       className="text-brand full"
       sections={sections}
       itemIsSelected={item => item.name === "Foo"}
@@ -38,7 +38,7 @@ export const examples = {
     />
   ),
   Searchable: (
-    <AccordianList
+    <AccordionList
       className="text-brand full"
       sections={sections}
       itemIsSelected={item => item.name === "Foo"}
@@ -46,7 +46,7 @@ export const examples = {
     />
   ),
   "Hide Single Section Title": (
-    <AccordianList
+    <AccordionList
       className="text-brand full"
       sections={sections.slice(0, 1)}
       itemIsSelected={item => item.name === "Foo"}

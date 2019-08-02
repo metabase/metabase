@@ -11,12 +11,12 @@ import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
-// import type { Section } from "metabase/components/AccordianList";
-export type AccordianListItem = {};
+// import type { Section } from "metabase/components/AccordionList";
+export type AccordionListItem = {};
 
-export type AccordianListSection = {
+export type AccordionListSection = {
   name: ?string,
-  items: AccordianListItem[],
+  items: AccordionListItem[],
 };
 
 type Props = {
@@ -32,7 +32,7 @@ type Props = {
   query?: StructuredQuery,
   metadata?: Metadata,
 
-  // AccordianList props:
+  // AccordionList props:
   className?: string,
   maxHeight?: number,
   width?: number,
@@ -44,7 +44,7 @@ type Props = {
 };
 
 type State = {
-  sections: AccordianListSection[],
+  sections: AccordionListSection[],
 };
 
 // DEPRECATED: use DimensionList directly
@@ -94,7 +94,7 @@ export default class FieldList extends Component {
         dimension={field && Dimension.parseMBQL(field, metadata, query)}
         onChangeDimension={this.handleChangeDimension}
         onChange={this.handleChange}
-        // forward AccordianList props
+        // forward AccordionList props
         className={this.props.className}
         maxHeight={this.props.maxHeight}
         width={this.props.width}
