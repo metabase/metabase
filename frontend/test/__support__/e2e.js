@@ -164,6 +164,7 @@ export const createTestStore = async ({
   const store = getStore(reducers, history, undefined, createStore =>
     testStoreEnhancer(createStore, history, getRoutes),
   );
+
   store._setFinalStoreInstance(store);
 
   if (!publicApp) {

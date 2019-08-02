@@ -1,4 +1,4 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -22,7 +22,7 @@ import { TestModal } from "metabase/components/Modal";
 import Select from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
 import Radio from "metabase/components/Radio";
-import { click, clickButton } from "__support__/enzyme_utils";
+import { click, clickButton } from "__support__/enzyme";
 import { MetabaseApi } from "metabase/services";
 import _ from "underscore";
 

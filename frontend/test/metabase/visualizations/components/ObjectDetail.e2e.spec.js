@@ -2,9 +2,9 @@ import {
   useSharedAdminLogin,
   createSavedQuestion,
   createTestStore,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
-import { click, dispatchBrowserEvent } from "__support__/enzyme_utils";
+import { click, dispatchBrowserEvent } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 import { delay } from "metabase/lib/promise";

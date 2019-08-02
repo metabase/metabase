@@ -1,7 +1,7 @@
 import React from "react";
 import { mount } from "enzyme";
 
-import { setInputValue } from "__support__/enzyme_utils";
+import { setInputValue } from "__support__/enzyme";
 
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import DateOperatorSelector from "metabase/query_builder/components/filters/DateOperatorSelector";

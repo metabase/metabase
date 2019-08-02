@@ -9,12 +9,12 @@ import {
   restorePreviousLogin,
   waitForRequestToComplete,
   eventually,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
 import _ from "underscore";
 import jwt from "jsonwebtoken";
 
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 
