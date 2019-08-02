@@ -15,7 +15,7 @@ export type RenderItemWrapper = (
   children?: any,
 ) => React$Element;
 
-export default class AccordianList extends Component {
+export default class AccordionList extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -357,7 +357,7 @@ export default class AccordianList extends Component {
           }}
         >
           {rows.map(row => (
-            <AccordianListCell
+            <AccordionListCell
               {...this.props}
               row={row}
               sections={sections}
@@ -426,7 +426,7 @@ export default class AccordianList extends Component {
               parent={parent}
             >
               {({ measure }) => (
-                <AccordianListCell
+                <AccordionListCell
                   {...this.props}
                   style={style}
                   row={rows[index]}
@@ -454,7 +454,7 @@ export default class AccordianList extends Component {
   }
 }
 
-const AccordianListCell = ({
+const AccordionListCell = ({
   style,
   sections,
   row,

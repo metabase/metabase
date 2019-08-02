@@ -8,7 +8,7 @@ import S from "./DashCardCardParameterMapper.css";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
-import AccordianList from "metabase/components/AccordianList";
+import AccordionList from "metabase/components/AccordionList";
 import Tooltip from "metabase/components/Tooltip";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -208,7 +208,7 @@ export default class DashCardCardParameterMapper extends Component {
             </Tooltip>
           }
         >
-          <AccordianList
+          <AccordionList
             className="text-brand scroll-show scroll-y"
             style={{ maxHeight: 600 }}
             sections={sections}

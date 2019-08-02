@@ -4,19 +4,19 @@ import React, { Component } from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import AccordianList from "metabase/components/AccordianList";
+import AccordionList from "metabase/components/AccordionList";
 import Icon from "metabase/components/Icon";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 
 import Dimension, { BinnedDimension } from "metabase-lib/lib/Dimension";
 
-// import type { Section } from "metabase/components/AccordianList";
-export type AccordianListItem = {};
+// import type { Section } from "metabase/components/AccordionList";
+export type AccordionListItem = {};
 
-export type AccordianListSection = {
+export type AccordionListSection = {
   name: ?string,
-  items: AccordianListItem[],
+  items: AccordionListItem[],
 };
 
 type Props = {
@@ -29,10 +29,10 @@ type Props = {
   onChangeDimension: (dimension: Dimension) => void,
   onChange?: (item: any) => void,
 
-  onAddDimension?: (dimension: Dimension, item: AccordianListItem) => void,
-  onRemoveDimension?: (dimension: Dimension, item: AccordianListItem) => void,
+  onAddDimension?: (dimension: Dimension, item: AccordionListItem) => void,
+  onRemoveDimension?: (dimension: Dimension, item: AccordionListItem) => void,
 
-  sections: AccordianListSection[],
+  sections: AccordionListSection[],
 
   alwaysExpanded?: boolean,
   enableSubDimensions?: boolean,
@@ -40,7 +40,7 @@ type Props = {
 };
 
 type State = {
-  sections: AccordianListSection[],
+  sections: AccordionListSection[],
 };
 
 const SUBMENU_TETHER_OPTIONS = {
@@ -232,7 +232,7 @@ export default class DimensionList extends Component {
 
   render() {
     return (
-      <AccordianList
+      <AccordionList
         {...this.props}
         sections={this.state.sections}
         onChange={this.handleChange}
