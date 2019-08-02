@@ -10,6 +10,7 @@
              [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util
+             [files :as files]
              [schema :as su]
              [yaml :as yaml]]
             [schema
@@ -121,7 +122,7 @@
                                     (dependencies-sort (fn [{:keys [source joins]}]
                                                          (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
-                               (for [breakout (u/ensure-seq breakouts)]
+                               (for [breakout (u/one-or-many breakouts)]
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))
@@ -137,7 +138,7 @@
 
 (defn- load-transforms-dir
   [dir]
-  (yaml/with-resource [dir dir]
+  (files/with-open-path-to-resource [dir dir]
     (with-open [ds (Files/newDirectoryStream dir)]
       (->> ds
            (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
