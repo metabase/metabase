@@ -47,7 +47,7 @@
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
                   ;; our parlance
                   (or (some->> flattened-bindings
-                               (m/find-first (comp #{name} mbql-reference->col-name val))
+                               (m/find-first (comp #{name} mbql-reference->col-name))
                                key)
                       ;; If that doesn't work either, it's a duplicated col from a join
                       name))

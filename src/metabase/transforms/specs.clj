@@ -94,7 +94,7 @@
                                    [:dimension breakout]
                                    breakout)))
     FieldType                (partial keyword "type")
-    [DomainEntity]           u/ensure-seq
+    [DomainEntity]           u/one-or-many
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
     {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)
