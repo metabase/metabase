@@ -737,9 +737,9 @@
    Say you have a graph shaped like:
 
      a     b
-     | \   |
+     | \\  |
      c  |  |
-      \ | /
+     \\ | /
         d
         |
         e
@@ -755,7 +755,7 @@
    If the graph has cycles, throws an exception.
 
    https://en.wikipedia.org/wiki/Topological_sorting"
-  ([g] (topological-sort idnetitiy g))
+  ([g] (topological-sort identity g))
   ([edges-fn g]
    (transduce (map (juxt key (comp edges-fn val)))
               (fn
