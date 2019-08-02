@@ -1,4 +1,4 @@
-import { createTestStore, useSharedAdminLogin } from "__support__/e2e_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/e2e";
 import {
   deleteFieldDimension,
   fetchTableMetadata,

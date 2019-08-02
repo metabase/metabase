@@ -1,4 +1,4 @@
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 
 import React from "react";
 import PasswordReveal from "metabase/components/PasswordReveal";

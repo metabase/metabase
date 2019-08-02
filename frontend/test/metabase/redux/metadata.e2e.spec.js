@@ -5,7 +5,7 @@
  * - see if metadata loading actions can be safely used in isolation from each others
  */
 import { getMetadata } from "metabase/selectors/metadata";
-import { createTestStore, useSharedAdminLogin } from "__support__/e2e_tests";
+import { createTestStore, useSharedAdminLogin } from "__support__/e2e";
 import {
   fetchMetrics,
   fetchDatabases,

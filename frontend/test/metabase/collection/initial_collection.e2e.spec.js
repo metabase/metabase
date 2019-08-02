@@ -5,7 +5,7 @@ import {
   useSharedNormalLogin,
   eventually,
   cleanup,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
 import { mount } from "enzyme";
 

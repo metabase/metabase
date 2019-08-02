@@ -3,13 +3,13 @@ import {
   switchToPlainDatabase,
   BROWSER_HISTORY_REPLACE,
   login,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 import {
   chooseSelectOption,
   click,
   clickButton,
   setInputValue,
-} from "__support__/enzyme_utils";
+} from "__support__/enzyme";
 
 import {
   COMPLETE_SETUP,

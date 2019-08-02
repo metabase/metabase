@@ -1,7 +1,6 @@
 import React from "react";
-
 import { Provider } from "react-redux";
-import { mount } from "enzyme";
+import { mount } from "__support__/enzyme";
 
 import reducers from "metabase/reducers-main";
 import { getStore } from "metabase/store";
@@ -10,8 +9,6 @@ import { getStore } from "metabase/store";
 export { delay } from "metabase/lib/promise";
 
 import { MockResponse, MockRequest } from "xhr-mock";
-
-import { enhanceEnzymeWrapper } from "__support__/enzyme_utils";
 
 // helper for JSON responses, also defaults to 200 status code
 MockResponse.prototype.json = function(object) {
@@ -53,8 +50,6 @@ export function mountWithStore(element) {
   const store = getTestStore(reducers);
 
   const wrapper = mount(<Provider store={store}>{element}</Provider>);
-
-  enhanceEnzymeWrapper(wrapper);
 
   // NOTE: automatically call wrapper.update when the store changes:
   // https://github.com/airbnb/enzyme/blob/ed5848085051ac7afef64a7d045d53b1153a8fe7/docs/guides/migration-from-2-to-3.md#for-mount-updates-are-sometimes-required-when-they-werent-before

@@ -1,4 +1,4 @@
-import { useSharedAdminLogin } from "__support__/e2e_tests";
+import { useSharedAdminLogin } from "__support__/e2e";
 
 import { MetabaseApi } from "metabase/services";
 
