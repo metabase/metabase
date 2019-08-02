@@ -730,23 +730,47 @@
                  (apply pred args)))))
 
 (defn topological-sort
-  "Topologically sorts vertexs in graph g.
+  "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
+   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   (a graph), only sorted.
+
+   Say you have a graph shaped like:
+
+     a     b
+     | \   |
+     c  |  |
+      \ | /
+        d
+        |
+        e
+
+   (u/topological-sort identity {:b []
+                                 :c [:a]
+                                 :e [:d]
+                                 :d [:a :b :c]
+                                 :a []})
+
+   => (ordered-map :a [] :b [] :c [:a] :d [:a :b :c] :e [:d])
+
+   If the graph has cycles, throws an exception.
+
    https://en.wikipedia.org/wiki/Topological_sorting"
-  [edges g]
-  (transduce (map (juxt key (comp edges val)))
-             (fn
-               ([] (dep/graph))
-               ([acc [vertex edges]]
-                (reduce (fn [acc edge]
-                          (dep/depend acc vertex edge))
-                        acc
-                        edges))
-               ([acc]
-                (let [sorted      (filter g (dep/topo-sort acc))
-                      independent (set/difference (set (keys g)) (set sorted))]
-                  (not-empty
-                   (into (ordered-map)
-                         (map (fn [vertex]
-                                [vertex (g vertex)]))
-                         (concat independent sorted))))))
-             g))
+  ([g] (topological-sort idnetitiy g))
+  ([edges-fn g]
+   (transduce (map (juxt key (comp edges-fn val)))
+              (fn
+                ([] (dep/graph))
+                ([acc [vertex edges]]
+                 (reduce (fn [acc edge]
+                           (dep/depend acc vertex edge))
+                         acc
+                         edges))
+                ([acc]
+                 (let [sorted      (filter g (dep/topo-sort acc))
+                       independent (set/difference (set (keys g)) (set sorted))]
+                   (not-empty
+                    (into (ordered-map)
+                          (map (fn [vertex]
+                                 [vertex (g vertex)]))
+                          (concat independent sorted))))))
+              g)))

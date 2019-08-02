@@ -243,12 +243,12 @@
 
 
 (expect
-  (into (ordered-map) [[:a []] [:b []] [:c [:a]] [:d [:a :b :c]] [:e [:d]]])
+  (ordered-map :a [] :b [] :c [:a] :d [:a :b :c] :e [:d])
   (u/topological-sort identity {:b []
-                              :c [:a]
-                              :e [:d]
-                              :d [:a :b :c]
-                              :a []}))
+                                :c [:a]
+                                :e [:d]
+                                :d [:a :b :c]
+                                :a []}))
 
 (expect
   nil

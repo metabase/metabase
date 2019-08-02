@@ -2,6 +2,7 @@
   (:require [medley.core :as m]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.domain-entities
              [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
@@ -10,12 +11,11 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
-             [database :refer [Database]]
+             [domain-entity :refer [DomainEntity]]
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor.store :as qp.store]
             [metabase.transforms
-             [materialize :as materialize :refer [infer-cols]]
+             [materialize :as materialize]
              [specs :refer [Step transform-specs TransformSpec]]]
             [metabase.util
              [i18n :refer [tru]]
@@ -42,7 +42,7 @@
   [bindings :- Bindings, {:keys [joins name]} :- Step, query :- mbql.s/Query]
   (let [flattened-bindings (merge (apply merge (map (comp :dimensions bindings :source) joins))
                                   (get-in bindings [name :dimensions]))]
-    (into {} (for [{:keys [name] :as col} (infer-cols query)]
+    (into {} (for [{:keys [name] :as col} (qp/query->expected-cols query)]
                [(if (flattened-bindings name)
                   name
                   ;; If the col is not one of our own we have to reconstruct to what it refers in
@@ -131,50 +131,72 @@
     (assoc bindings name {:entity     (materialize/make-card-for-step! step query)
                           :dimensions (infer-resulting-dimensions local-bindings step query)})))
 
-(s/defn ^:private satisfy-requirements :- Bindings
-  [db-id schema {:keys [requires]}]
-  (let [tables   (table/with-fields
-                   (table/with-domain-entity
-                     (db/select 'Table :db_id db-id :schema schema)))
-        bindings (into {}
-                       (map (fn [requirement]
-                              (let [t (get-in @domain-entity-specs [requirement :type])]
-                                [requirement
-                                 (filter #(-> % :domain_entity :type (isa? t)) tables)])))
-                       requires)]
-    ;; If multiple tables match punt for now
-    (when (every? (comp #{1} count val) bindings)
-      (m/map-vals (fn [[table]]
-                    {:entity     table
-                     :dimensions (m/map-vals de/mbql-reference
-                                             (get-in table [:domain_entity :dimensions]))})
-                  bindings))))
+(def ^:private Tableset [(type Table)])
 
-(s/defn ^:private store-requirements!
-  [db-id :- su/IntGreaterThanZero, bindings :- Bindings]
-  (qp.store/fetch-and-store-database! db-id)
-  (qp.store/fetch-and-store-fields!
-   (mapcat (comp (partial map u/get-id) :fields :entity val) bindings)))
+(s/defn ^:private find-tables-with-domain-entity :- Tableset
+  [tableset :- Tableset, domain-entity :- (type DomainEntity)]
+  (filter #(-> % :domain_entity :type (isa? (:type domain-entity))) tableset))
+
+(s/defn ^:private tableset->bindings :- Bindings
+  [tableset :- Tableset]
+  (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity :as table} tableset]
+             [domain-entity-name
+              {:dimensions (m/map-vals de/mbql-reference dimensions)
+               :entity     table}])))
+
+(s/defn ^:private apply-transform-to-tableset! :- Bindings
+  [tableset :- Tableset, {:keys [steps provides]} :- TransformSpec]
+  (driver/with-driver (-> tableset first table/database :engine)
+    (reduce transform-step! (tableset->bindings tableset) (vals steps))))
+
+(s/defn ^:private resulting-entities :- [SourceEntity]
+  [bindings :- Bindings, {:keys [provides]} :- TransformSpec]
+  (map (comp :entity val) (select-keys bindings provides)))
+
+(s/defn ^:private validate-results :- Bindings
+  [bindings :- Bindings, {:keys [provides]} :- TransformSpec]
+  (doseq [domain-entity-name provides]
+    (assert (de/satisfies-requierments? (get-in bindings [domain-entity-name :entity])
+                                        (@domain-entity-specs domain-entity-name))
+      (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
+                domain-entity-name))))
+  bindings)
+
+(s/defn ^:private tables-matching-requirements :- (s/maybe Tableset)
+  [tableset :- Tableset, {:keys [requires]} :- TransformSpec]
+  (let [matches (map (comp (partial find-tables-with-domain-entity tableset)
+                           @domain-entity-specs)
+                     requires)]
+    (when (every? (comp #{1} count) matches)
+      (map first matches))))
+
+(s/defn ^:private tableset :- Tableset
+  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
+  (table/with-fields
+    (table/with-domain-entity
+      (db/select 'Table :db_id db-id :schema schema))))
 
 (s/defn apply-transform!
-  "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`."
-  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), {:keys [steps provides] :as spec} :- TransformSpec]
+  "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.
+
+  The algorithm is as follows:
+  1) Try to find a set of tables in the given schema that have required domain entities.
+  2) If found, use these tables and their fields as the initial bindings.
+  3) Go through the transform steps, materialize them as cards, and accure these and their result
+     cols to the bindings.
+  4) Check that all output cards have the expected result shape.
+  5) Return the output cards."
+  [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str), spec :- TransformSpec]
   (materialize/fresh-collection-for-transform! spec)
-  (when-let [initial-bindings (satisfy-requirements db-id schema spec)]
-    (driver/with-driver (-> db-id Database :engine)
-      (qp.store/with-store
-        (store-requirements! db-id initial-bindings)
-        (let [bindings (reduce transform-step! initial-bindings (vals steps))]
-          (for [domain-entity-name provides]
-            (let [result (get-in bindings [domain-entity-name :entity])]
-              (assert (de/satisfies-requierments? result (@domain-entity-specs domain-entity-name))
-                (str (tru "Resulting transforms do not conform to expectations.\nExpected: {0}"
-                          domain-entity-name)))
-              (u/get-id result))))))))
+  (some-> (tableset db-id schema)
+          (tables-matching-requirements spec)
+          (apply-transform-to-tableset! spec)
+          (validate-results spec)
+          (resulting-entities spec)))
 
 (defn candidates
   "Return a list of candidate transforms for a given table."
   [table]
-  (filter (comp (partial some (comp #{(u/get-id table)} u/get-id :entity val))
-                (partial satisfy-requirements (:db_id table) (:schema table)))
+  (filter (comp (partial some (comp #{(u/get-id table)} u/get-id))
+                (partial tables-matching-requirements (tableset (:db_id table) (:schema table))))
           @transform-specs))
