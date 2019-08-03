@@ -247,7 +247,7 @@
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (h/merge-left-join [Collection :collection]
-                         [:= collection-id-column :collection_id]))))
+                         [:= collection-id-column :collection.id]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
