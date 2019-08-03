@@ -160,6 +160,7 @@ addReactWrapperMethod("click", click);
 addReactWrapperMethod("clickButton", clickButton);
 addReactWrapperMethod("findByText", findByText);
 addReactWrapperMethod("findByIcon", findByIcon);
+addReactWrapperMethod("setInputValue", setInputValue);
 
 // creates the magic "async" namespace for `find` methods
 Object.defineProperty(ReactWrapper.prototype, "async", {
