@@ -32,8 +32,9 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 
-(defmethod driver/date-interval :postgres [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+(defmethod driver/date-add :postgres [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt)
+        (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres [_ message]
   (condp re-matches message

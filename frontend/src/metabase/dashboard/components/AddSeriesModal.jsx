@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import colors from "metabase/lib/colors";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -30,7 +30,7 @@ function getQueryColumns(card, databases) {
   if (!table) {
     return null;
   }
-  return Query.getQueryColumns(table, query);
+  return Q_DEPRECATED.getQueryColumns(table, query);
 }
 
 export default class AddSeriesModal extends Component {
@@ -90,9 +90,7 @@ export default class AddSeriesModal extends Component {
 
   async onCardChange(card, e) {
     const { dashcard, dashcardData } = this.props;
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     try {
       if (e.target.checked) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -111,7 +109,7 @@ export default class AddSeriesModal extends Component {
           card.id,
         ]);
         if (
-          CardVisualization.seriesAreCompatible(
+          visualization.seriesAreCompatible(
             { card: dashcard.card, data: sourceDataset.data },
             { card: card, data: seriesDataset.data },
           )
@@ -179,9 +177,7 @@ export default class AddSeriesModal extends Component {
       data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
     };
 
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
     return cards.filter(card => {
       try {
@@ -191,7 +187,7 @@ export default class AddSeriesModal extends Component {
         }
         if (card.dataset_query.type === "query") {
           if (
-            !CardVisualization.seriesAreCompatible(initialSeries, {
+            !visualization.seriesAreCompatible(initialSeries, {
               card: card,
               data: { cols: getQueryColumns(card, databases), rows: [] },
             })

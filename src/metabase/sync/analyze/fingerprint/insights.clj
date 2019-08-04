@@ -6,6 +6,7 @@
             [kixi.stats
              [core :as stats]
              [math :as math]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [redux.core :as redux]))
@@ -193,7 +194,8 @@
                             (stats/simple-linear-regression xfn yfn)
                             (best-fit xfn yfn)))
               (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
-                (let [unit         (if (contains? #{:default nil} (:unit datetime))
+                (let [unit         (if (or (nil? (:unit datetime))
+                                           (->> datetime :unit mbql.u/normalize-token (= :default)))
                                      (infer-unit x-previous x-current)
                                      (:unit datetime))
                       show-change? (valid-period? x-previous x-current unit)]
@@ -223,8 +225,9 @@
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
                                          (assoc col :position idx)))
-                          (group-by (fn [{:keys [base_type unit] :as field}]
+                          (group-by (fn [{:keys [base_type special_type unit] :as field}]
                                       (cond
+                                        (#{:type/FK :type/PK} special_type)          :others
                                         (datetime-truncated-to-year? field)          :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
                                         (field/unix-timestamp? field)                :datetimes

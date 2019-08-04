@@ -116,11 +116,9 @@ export default class DashboardGrid extends Component {
   }
 
   getLayoutForDashCard(dashcard) {
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
-    const minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
+    const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,

@@ -1,6 +1,6 @@
 import React from "react";
+import "@testing-library/jest-dom/extend-expect";
 import { render, fireEvent, cleanup } from "@testing-library/react";
-import "jest-dom/extend-expect";
 
 import ChartSettings from "metabase/visualizations/components/ChartSettings";
 
@@ -18,6 +18,10 @@ function widget(widget = {}) {
     widget: () => null,
     ...widget,
   };
+}
+
+function expectTabSelected(node, value) {
+  expect(node.parentNode.getAttribute("aria-selected")).toBe(String(value));
 }
 
 describe("ChartSettings", () => {
@@ -42,8 +46,8 @@ describe("ChartSettings", () => {
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
       />,
     );
-    expect(getByText("Foo")).toHaveClass("text-brand");
-    expect(getByText("Bar")).not.toHaveClass("text-brand");
+    expectTabSelected(getByText("Foo"), true);
+    expectTabSelected(getByText("Bar"), false);
   });
   it("should default to the DEFAULT_TAB_PRIORITY", () => {
     const { getByText } = render(
@@ -55,8 +59,8 @@ describe("ChartSettings", () => {
         ]}
       />,
     );
-    expect(getByText("Foo")).not.toHaveClass("text-brand");
-    expect(getByText("Display")).toHaveClass("text-brand");
+    expectTabSelected(getByText("Foo"), false);
+    expectTabSelected(getByText("Display"), true);
   });
   it("should be able to switch sections", () => {
     const { getByText } = render(
@@ -65,11 +69,11 @@ describe("ChartSettings", () => {
         widgets={[widget({ section: "Foo" }), widget({ section: "Bar" })]}
       />,
     );
-    expect(getByText("Foo")).toHaveClass("text-brand");
-    expect(getByText("Bar")).not.toHaveClass("text-brand");
+    expectTabSelected(getByText("Foo"), true);
+    expectTabSelected(getByText("Bar"), false);
     fireEvent.click(getByText("Bar"));
-    expect(getByText("Foo")).not.toHaveClass("text-brand");
-    expect(getByText("Bar")).toHaveClass("text-brand");
+    expectTabSelected(getByText("Foo"), false);
+    expectTabSelected(getByText("Bar"), true);
   });
 
   it("should show widget names", () => {

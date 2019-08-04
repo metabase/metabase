@@ -17,6 +17,7 @@ const BUTTON_VARIANTS = [
   "cancel",
   "success",
   "purple",
+  "white",
   "borderless",
   "onlyIcon",
 ];
@@ -27,6 +28,8 @@ const BaseButton = ({
   iconRight,
   iconSize,
   iconColor,
+  iconVertical,
+  color,
   children,
   ...props
 }) => {
@@ -39,15 +42,18 @@ const BaseButton = ({
   return (
     <button
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, variantClasses)}
+      className={cx("Button", className, "flex-no-shrink", variantClasses)}
     >
-      <div className="flex layout-centered">
+      <div
+        className={cx("flex layout-centered", { "flex-column": iconVertical })}
+        style={iconVertical ? { minWidth: 60 } : null}
+      >
         {icon && (
           <Icon
             color={iconColor}
             name={icon}
             size={iconSize ? iconSize : 14}
-            className={cx({ mr1: !onlyIcon })}
+            className={!onlyIcon ? (iconVertical ? "mb1" : "mr1") : null}
           />
         )}
         <div>{children}</div>
@@ -56,7 +62,7 @@ const BaseButton = ({
             color={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 14}
-            className={cx({ ml1: !onlyIcon })}
+            className={!onlyIcon ? (iconVertical ? "mt1" : "ml1") : null}
           />
         )}
       </div>

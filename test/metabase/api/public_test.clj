@@ -166,14 +166,14 @@
 
 ;; Check that we can exec a PublicCard and get results as CSV
 (expect
-  "count\n100\n"
+  "Count\n100\n"
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
 ;; Check that we can exec a PublicCard and get results as XLSX
 (expect
-  [{:col "count"} {:col 100.0}]
+  [{:col "Count"} {:col 100.0}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})

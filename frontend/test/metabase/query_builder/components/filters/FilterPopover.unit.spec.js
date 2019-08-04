@@ -1,7 +1,7 @@
 import "__support__/mocks";
 import React from "react";
 
-import { shallow, mount } from "enzyme";
+import { mount } from "enzyme";
 
 import Question from "metabase-lib/lib/Question";
 
@@ -21,24 +21,6 @@ import {
   StaticEntitiesProvider,
 } from "__support__/sample_dataset_fixture";
 
-const RELATIVE_DAY_FILTER = [
-  "time-interval",
-  ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-  -30,
-  "day",
-];
-const RELATIVE_DAY_FILTER_WITH_CURRENT_PERIOD = RELATIVE_DAY_FILTER.concat([
-  { "include-current": true },
-]);
-
-const NUMERIC_FILTER = ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 1234];
-
-const STRING_CONTAINS_FILTER = [
-  "contains",
-  ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
-  "asdf",
-];
-
 const QUERY = Question.create({
   databaseId: DATABASE_ID,
   tableId: ORDERS_TABLE_ID,
@@ -46,15 +28,34 @@ const QUERY = Question.create({
 })
   .query()
   .addAggregation(["count"])
-  .addFilter(RELATIVE_DAY_FILTER)
-  .addFilter(NUMERIC_FILTER)
-  .addFilter(STRING_CONTAINS_FILTER);
+  .addFilter([
+    "time-interval",
+    ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+    -30,
+    "day",
+  ])
+  .addFilter(["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 1234])
+  .addFilter([
+    "contains",
+    ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
+    "asdf",
+  ]);
+
+const [
+  RELATIVE_DAY_FILTER,
+  NUMERIC_FILTER,
+  STRING_CONTAINS_FILTER,
+] = QUERY.filters();
+
+const RELATIVE_DAY_FILTER_WITH_CURRENT_PERIOD = RELATIVE_DAY_FILTER.concat([
+  { "include-current": true },
+]);
 
 describe("FilterPopover", () => {
   describe("existing filter", () => {
     describe("DatePicker", () => {
       it("should render", () => {
-        const wrapper = shallow(
+        const wrapper = mount(
           <FilterPopover query={QUERY} filter={QUERY.filters()[0]} />,
         );
         expect(wrapper.find(DatePicker).length).toBe(1);

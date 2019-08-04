@@ -1,7 +1,7 @@
+import { state, ORDERS_TABLE_ID } from "__support__/sample_dataset_fixture";
+
 import Table from "metabase-lib/lib/metadata/Table";
 import Database from "metabase-lib/lib/metadata/Database";
-
-import { state, ORDERS_TABLE_ID } from "__support__/sample_dataset_fixture";
 
 import { getMetadata } from "metabase/selectors/metadata";
 

@@ -3,7 +3,10 @@ import { assoc, getIn } from "icepick";
 
 import Dashboards from "metabase/entities/dashboards";
 
-import Query, { AggregationClause } from "metabase/lib/query";
+import * as Query from "metabase/lib/query/query";
+import * as Filter from "metabase/lib/query/filter";
+import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+
 import { resourceListToMap } from "metabase/lib/redux";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
@@ -123,8 +126,7 @@ export const getMetricQuestions = createSelector(
           question.dataset_query.type === "query" &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
-            aggregation =>
-              AggregationClause.getMetric(aggregation) === metricId,
+            aggregation => A_DEPRECATED.getMetric(aggregation) === metricId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -150,7 +152,7 @@ export const getSegmentQuestions = createSelector(
         question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            filter => Query.isSegmentFilter(filter) && filter[1] === segmentId,
+            filter => Filter.isSegmentFilter(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),

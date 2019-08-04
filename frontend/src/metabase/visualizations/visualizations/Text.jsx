@@ -211,17 +211,20 @@ const TextActionButtons = ({
       >
         <a
           data-metabase-event={"Dashboard;Text;edit"}
-          className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-light text-medium-hover": isShowingRenderedOutput,
-            "text-brand": !isShowingRenderedOutput,
-          })}
+          className={cx(
+            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
+            {
+              "text-light text-medium-hover": isShowingRenderedOutput,
+              "text-brand": !isShowingRenderedOutput,
+            },
+          )}
           onClick={onEdit}
           style={HEADER_ACTION_STYLE}
         >
           <span className="flex align-center">
             <span className="flex">
               <Icon
-                name="editdocument"
+                name="edit_document"
                 style={{ top: 0, left: 0 }}
                 size={HEADER_ICON_SIZE}
               />
@@ -231,10 +234,13 @@ const TextActionButtons = ({
 
         <a
           data-metabase-event={"Dashboard;Text;preview"}
-          className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-light text-medium-hover": !isShowingRenderedOutput,
-            "text-brand": isShowingRenderedOutput,
-          })}
+          className={cx(
+            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
+            {
+              "text-light text-medium-hover": !isShowingRenderedOutput,
+              "text-brand": isShowingRenderedOutput,
+            },
+          )}
           onClick={onPreview}
           style={HEADER_ACTION_STYLE}
         >

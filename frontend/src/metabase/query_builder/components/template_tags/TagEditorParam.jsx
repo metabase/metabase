@@ -131,7 +131,7 @@ export default class TagEditorParam extends Component {
           <InputBlurChange
             type="text"
             value={tag["display-name"]}
-            className="AdminSelect p1 text-bold text-medium bordered border-med rounded full"
+            className="AdminSelect p1 text-bold text-medium bordered border-medium rounded full"
             onBlurChange={e =>
               this.setParameterAttribute("display-name", e.target.value)
             }
@@ -141,7 +141,7 @@ export default class TagEditorParam extends Component {
         <div className="pb1">
           <h5 className="pb1 text-normal">{t`Variable type`}</h5>
           <Select
-            className="border-med bg-white block"
+            className="border-medium bg-white block"
             value={tag.type}
             onChange={e => this.setType(e.target.value)}
             isInitiallyOpen={!tag.type}
@@ -180,7 +180,7 @@ export default class TagEditorParam extends Component {
           <div className="pb1">
             <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
             <Select
-              className="border-med bg-white block"
+              className="border-medium bg-white block"
               value={tag["widget-type"]}
               onChange={e =>
                 this.setParameterAttribute("widget-type", e.target.value)
@@ -219,7 +219,7 @@ export default class TagEditorParam extends Component {
               }}
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
-              className="AdminSelect p1 text-bold text-medium bordered border-med rounded bg-white"
+              className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"
               isEditing
               commitImmediately
             />

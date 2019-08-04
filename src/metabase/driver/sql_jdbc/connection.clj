@@ -4,9 +4,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
+             [connection-pool :as connection-pool]
              [driver :as driver]
              [util :as u]]
-            [metabase.db.connection-pool :as connection-pool]
             [metabase.models.database :refer [Database]]
             [metabase.util
              [i18n :refer [tru]]
@@ -52,7 +52,7 @@
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (tru "Closing old connection pool for database {0} ..." database-id)))
-  (connection-pool/destroy-connection-pool! (:datasource pool-spec))
+  (connection-pool/destroy-connection-pool! pool-spec)
   (when-let [ssh-tunnel (:ssh-tunnel pool-spec)]
     (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
 

@@ -131,7 +131,7 @@ const AdvancedSettingsPane = ({
 );
 
 const Section = ({ className, title, children }) => (
-  <div className={cx(className, "mb3 pb4 border-row-divider border-med")}>
+  <div className={cx(className, "mb3 pb4 border-row-divider border-medium")}>
     <h3>{title}</h3>
     {children}
   </div>

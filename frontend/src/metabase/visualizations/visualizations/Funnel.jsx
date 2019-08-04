@@ -66,6 +66,37 @@ export default class Funnel extends Component {
     }
   }
 
+  // NOTE: currently expects multi-series
+  static placeholderSeries = [
+    ["Homepage", 1000],
+    ["Product Page", 850],
+    ["Tiers Page", 700],
+    ["Trial Form", 200],
+    ["Trial Confirmation", 40],
+  ].map(row => ({
+    card: {
+      display: "funnel",
+      visualization_settings: {
+        "funnel.type": "funnel",
+        "funnel.dimension": "Total Sessions",
+      },
+      dataset_query: { type: "null" },
+    },
+    data: {
+      rows: [row],
+      cols: [
+        {
+          name: "Total Sessions",
+          base_type: "type/Text",
+        },
+        {
+          name: "Sessions",
+          base_type: "type/Integer",
+        },
+      ],
+    },
+  }));
+
   static settings = {
     ...columnSettings({ hidden: true }),
     ...dimensionSetting("funnel.dimension", {

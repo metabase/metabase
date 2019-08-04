@@ -110,7 +110,9 @@ export default ComposedComponent =>
         triggerClassesOpen,
         triggerClassesClose,
       } = this.props;
-      const { isOpen } = this.state;
+
+      const isOpen =
+        this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
 
       let { triggerElement } = this.props;
       if (triggerElement && triggerElement.type === Tooltip) {

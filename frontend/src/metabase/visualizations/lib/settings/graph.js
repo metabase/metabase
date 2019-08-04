@@ -3,17 +3,12 @@ import {
   isMetric,
   isNumeric,
   isAny,
-  isDate,
 } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
 import {
   columnsAreValid,
   getFriendlyName,
-  getChartTypeFromData,
-  getColumnCardinality,
-  DIMENSION_DIMENSION_METRIC,
-  DIMENSION_METRIC,
-  DIMENSION_METRIC_METRIC,
+  getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 
 import { seriesSetting } from "metabase/visualizations/lib/settings/series";
@@ -64,42 +59,8 @@ function getDefaultScatterColumns([
   }
 }
 
-function getDefaultLineAreaBarColumns([
-  {
-    data: { cols, rows },
-  },
-]) {
-  const type = getChartTypeFromData(cols, rows, false);
-  if (type === DIMENSION_DIMENSION_METRIC) {
-    const dimensions = [cols[0], cols[1]];
-    if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
-      // if the series dimension is a date but the axis dimension is not then swap them
-      dimensions.reverse();
-    } else if (
-      getColumnCardinality(cols, rows, 1) > getColumnCardinality(cols, rows, 0)
-    ) {
-      // if the series dimension is higher cardinality than the axis dimension then swap them
-      dimensions.reverse();
-    }
-    return {
-      dimensions: dimensions.map(col => col.name),
-      metrics: [cols[2].name],
-    };
-  } else if (type === DIMENSION_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: [cols[1].name],
-    };
-  } else if (type === DIMENSION_METRIC_METRIC) {
-    return {
-      dimensions: [cols[0].name],
-      metrics: cols.slice(1).map(col => col.name),
-    };
-  }
-  return {
-    dimensions: [null],
-    metrics: [null],
-  };
+function getDefaultLineAreaBarColumns(series) {
+  return getDefaultDimensionsAndMetrics(series);
 }
 
 export const GRAPH_DATA_SETTINGS = {
@@ -128,16 +89,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).dimensions,
     persistDefault: true,
@@ -167,16 +131,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
@@ -209,11 +176,13 @@ export const GRAPH_BUBBLE_SETTINGS = {
     section: t`Data`,
     title: t`Bubble size`,
     widget: "field",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        [card.visualization_settings["scatter.bubble"]],
-        data,
-        isNumeric,
+    isValid: (series, vizSettings) =>
+      series.some(({ card, data }) =>
+        columnsAreValid(
+          [card.visualization_settings["scatter.bubble"]],
+          data,
+          isNumeric,
+        ),
       ),
     getDefault: series => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {

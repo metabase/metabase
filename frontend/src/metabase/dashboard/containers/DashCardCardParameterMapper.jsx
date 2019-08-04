@@ -8,7 +8,7 @@ import S from "./DashCardCardParameterMapper.css";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
+import AccordionList from "metabase/components/AccordionList.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
@@ -146,10 +146,7 @@ export default class DashCardCardParameterMapper extends Component {
     }
 
     return (
-      <div
-        className="mx1 flex flex-column align-center"
-        onMouseDown={e => e.stopPropagation()}
-      >
+      <div className="mx1 flex flex-column align-center drag-disabled">
         {dashcard.series && dashcard.series.length > 0 && (
           <div
             className="h5 mb1 text-bold"
@@ -211,7 +208,7 @@ export default class DashCardCardParameterMapper extends Component {
             </Tooltip>
           }
         >
-          <AccordianList
+          <AccordionList
             className="text-brand scroll-show scroll-y"
             style={{ maxHeight: 600 }}
             sections={sections}

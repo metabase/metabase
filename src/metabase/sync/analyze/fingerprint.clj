@@ -87,7 +87,7 @@
   (->> (for [base-type base-types]
          (cons base-type (descendants base-type)))
        (reduce set/union)
-       (map u/keyword->qualified-name)
+       (map u/qualified-name)
        set))
 
 ;; It's even cooler if we could generate efficient SQL that looks at what types have already

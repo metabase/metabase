@@ -2,10 +2,11 @@
 
 exports[`Button should render correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
 >
   <div
     className="flex layout-centered"
+    style={null}
   >
     <div>
       Clickity click
@@ -16,17 +17,16 @@ exports[`Button should render correctly 1`] = `
 
 exports[`Button should render correctly with an icon 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
 >
   <div
     className="flex layout-centered"
+    style={null}
   >
     <svg
       className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={14}
-      name="star"
-      size={14}
       viewBox="0 0 32 32"
       width={14}
     >

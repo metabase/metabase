@@ -4,12 +4,16 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.query-processor
              [store :as qp.store]
              [test-util :as qp.test-util]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -87,14 +91,14 @@
       {:columns [:name]}))))
 
 ;; we should get `:fk_field_id` and information where possible when using `:joined-field` clauses; display_name should
-;; include the joined table
+;; include the joined table (for IMPLICIT JOINS)
 (expect
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
-       :display_name "VENUES → Name"
-       :fk_field_id  %category_id
+       :display_name "Venues → Name"
        :source       :fields
-       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
   (qp.test-util/with-everything-store
     (data/$ids venues
       (doall
@@ -108,27 +112,69 @@
                            :fk-field-id  %category_id}]}}
         {:columns [:name]})))))
 
+;; for EXPLICIT JOINS (which do not include an `:fk-field-id` in the Join info) the returned `:field_ref` should be a
+;; `joined-field` clause instead of an `fk->` clause
+(expect
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "Venues → Name"
+       :source       :fields
+       :field_ref    &CATEGORIES__via__CATEGORY_ID.categories.name))]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (doall
+       (annotate/column-info
+        {:type  :query
+         :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                 :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                           :source-table $$venues
+                           :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                           :strategy     :left-join}]}}
+        {:columns [:name]})))))
+
+;; we shuld use the `display_name` of a Table instead of its `name` in joined display names
+(expect
+  [(data/$ids venues
+     (assoc (info-for-field :categories :name)
+       :display_name "Geographical locations to share Tips about → Name" ; RIP GeoTips
+       :source       :fields
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (tu/with-temp-vals-in-db Table $$venues {:display_name "Geographical locations to share Tips about"}
+        (doall
+         (annotate/column-info
+          {:type  :query
+           :query {:fields [&CATEGORIES__via__CATEGORY_ID.categories.name]
+                   :joins  [{:alias        "CATEGORIES__via__CATEGORY_ID"
+                             :source-table $$venues
+                             :condition    [:= $category_id &CATEGORIES__via__CATEGORY_ID.categories.id]
+                             :strategy     :left-join
+                             :fk-field-id  %category_id}]}}
+          {:columns [:name]}))))))
+
 ;; when using `:joined-field` clauses for a join a source query (instead of a source table), `display_name` should
 ;; include the join alias
 (expect
   [(data/$ids venues
      (assoc (info-for-field :categories :name)
        :display_name "cats → Name"
-       :fk_field_id  %category_id
        :source       :fields
-       :field_ref    &cats.categories.name))]
- (qp.test-util/with-everything-store
-   (data/$ids venues
-     (doall
-      (annotate/column-info
-       {:type  :query
-        :query {:fields [&cats.categories.name]
-                :joins  [{:alias        "cats"
-                          :source-query {:source-table $$venues}
-                          :condition    [:= $category_id &cats.categories.id]
-                          :strategy     :left-join
-                          :fk-field-id  %category_id}]}}
-       {:columns [:name]})))))
+       :field_ref    $category_id->categories.name
+       :fk_field_id  %category_id))]
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (doall
+       (annotate/column-info
+        {:type  :query
+         :query {:fields [&cats.categories.name]
+                 :joins  [{:alias        "cats"
+                           :source-query {:source-table $$venues}
+                           :condition    [:= $category_id &cats.categories.id]
+                           :strategy     :left-join
+                           :fk-field-id  %category_id}]}}
+        {:columns [:name]})))))
 
 ;; when a `:datetime-field` form is used, we should add in info about the `:unit`
 (expect
@@ -194,7 +240,7 @@
 
 ;; For fields with parents we should return them with a combined name including parent's name
 (tt/expect-with-temp [Field [parent {:name "parent", :table_id (data/id :venues)}]
-                      Field [child  {:name "child",  :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+                      Field [child  {:name "child", :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
   {:description     nil
    :table_id        (data/id :venues)
    :special_type    nil
@@ -205,14 +251,15 @@
    :visibility_type :normal
    :display_name    "Child"
    :fingerprint     nil
+   :field_ref       [:field-id (u/get-id child)]
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
 
 ;; nested-nested fields should include grandparent name (etc)
 (tt/expect-with-temp [Field [grandparent {:name "grandparent", :table_id (data/id :venues)}]
-                      Field [parent      {:name "parent",      :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
-                      Field [child       {:name "child",       :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
+                      Field [parent      {:name "parent", :table_id (data/id :venues), :parent_id (u/get-id grandparent)}]
+                      Field [child       {:name "child", :table_id (data/id :venues), :parent_id (u/get-id parent)}]]
   {:description     nil
    :table_id        (data/id :venues)
    :special_type    nil
@@ -223,6 +270,7 @@
    :visibility_type :normal
    :display_name    "Child"
    :fingerprint     nil
+   :field_ref       [:field-id (u/get-id child)]
    :base_type       :type/Text}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause {} [:field-id (u/get-id child)])))
@@ -232,12 +280,43 @@
   {:name         "sum"
    :display_name "sum of User ID"
    :base_type    :type/Integer
+   :field_ref    [:field-literal "sum" :type/Integer]
    :special_type :type/FK}
   (qp.test-util/with-everything-store
     (#'annotate/col-info-for-field-clause
-     {:source-metadata [{:name "abc", :display_name "another Field",  :base_type :type/Integer, :special_type :type/FK}
+     {:source-metadata [{:name "abc", :display_name "another Field", :base_type :type/Integer, :special_type :type/FK}
                         {:name "sum", :display_name "sum of User ID", :base_type :type/Integer, :special_type :type/FK}]}
      [:field-literal "sum" :type/Integer])))
+
+;; col info for an `expression` should work as expected
+(expect
+  {:base_type       :type/Float
+   :special_type    :type/Number
+   :name            "double-price"
+   :display_name    "double-price"
+   :expression_name "double-price"
+   :field_ref       [:expression "double-price"]}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (#'annotate/col-info-for-field-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:expression "double-price"]))))
+
+;; if there is no matching expression it should give a meaningful error message
+(expect
+  {:message "No expression named double-price found. Found: (\"one-hundred\")"
+   :data    {:type        :invalid-query
+             :clause      [:expression "double-price"]
+             :expressions {"one-hundred" 100}}}
+  (try
+    (qp.test-util/with-everything-store
+      (data/$ids venues
+        (#'annotate/col-info-for-field-clause
+         {:expressions {"one-hundred" 100}}
+         [:expression "double-price"])))
+    (catch Throwable e
+      {:message (.getMessage e)
+       :data    (ex-data e)})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -245,39 +324,43 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; test that added information about aggregations looks the way we'd expect
-(defn- aggregation-names [ag-clause]
-  (binding [driver/*driver* :h2]
-    (qp.test-util/with-everything-store
-      {:name         (annotate/aggregation-name ag-clause)
-       :display_name (annotate/aggregation-display-name ag-clause)})))
+(defn- aggregation-names
+  ([ag-clause]
+   (aggregation-names {} ag-clause))
+
+  ([inner-query ag-clause]
+   (binding [driver/*driver* :h2]
+     (qp.test-util/with-everything-store
+       {:name         (annotate/aggregation-name ag-clause)
+        :display_name (annotate/aggregation-display-name inner-query ag-clause)}))))
 
 (expect
-  {:name "count", :display_name "count"}
+  {:name "count", :display_name "Count"}
   (aggregation-names [:count]))
 
 (expect
-  {:name "count", :display_name "distinct count of ID"}
+  {:name "count", :display_name "Distinct values of ID"}
   (aggregation-names [:distinct [:field-id (data/id :venues :id)]]))
 
 (expect
-  {:name "sum", :display_name "sum of ID"}
+  {:name "sum", :display_name "Sum of ID"}
   (aggregation-names [:sum [:field-id (data/id :venues :id)]]))
 
 (expect
-  {:name "count + 1", :display_name "count + 1"}
+  {:name "expression", :display_name "Count + 1"}
   (aggregation-names [:+ [:count] 1]))
 
 (expect
-  {:name         "min + (2 * avg)"
-   :display_name "minimum value of ID + (2 * average of Price)"}
+  {:name         "expression"
+   :display_name "Min of ID + (2 * Average of Price)"}
   (aggregation-names
    [:+
     [:min [:field-id (data/id :venues :id)]]
     [:* 2 [:avg [:field-id (data/id :venues :price)]]]]))
 
 (expect
-  {:name         "min + (2 * avg * 3 * (max - 4))"
-   :display_name "minimum value of ID + (2 * average of Price * 3 * (maximum value of Category ID - 4))"}
+  {:name         "expression"
+   :display_name "Min of ID + (2 * Average of Price * 3 * (Max of Category ID - 4))"}
   (aggregation-names
    [:+
     [:min [:field-id (data/id :venues :id)]]
@@ -289,63 +372,90 @@
       [:max [:field-id (data/id :venues :category_id)]]
       4]]]))
 
+;; `aggregation-options` (`:name` and `:display-name`)
 (expect
-  {:name "x", :display_name "x"}
+  {:name "generated_name", :display_name "User-specified Name"}
   (aggregation-names
-   [:named
+   [:aggregation-options
     [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
-    "x"]))
+    {:name "generated_name", :display-name "User-specified Name"}]))
 
+;; `aggregation-options` (`:name` only)
 (expect
-  {:name "My Cool Aggregation", :display_name "My Cool Aggregation"}
-  (aggregation-names [:named [:avg [:field-id (data/id :venues :price)]] "My Cool Aggregation"]))
+  {:name "generated_name", :display_name "Min of ID + (2 * Average of Price)"}
+  (aggregation-names
+   [:aggregation-options
+    [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
+    {:name "generated_name"}]))
+
+;; `aggregation-options` (`:display-name` only)
+(expect
+  {:name "expression", :display_name "User-specified Name"}
+  (aggregation-names
+   [:aggregation-options
+    [:+ [:min [:field-id (data/id :venues :id)]] [:* 2 [:avg [:field-id (data/id :venues :price)]]]]
+    {:display-name "User-specified Name"}]))
 
 ;; make sure custom aggregation names get included in the col info
-(defn- col-info-for-aggregation-clause [clause]
-  (binding [driver/*driver* :h2]
-    (#'annotate/col-info-for-aggregation-clause {} clause)))
+(defn- col-info-for-aggregation-clause
+  ([clause]
+   (col-info-for-aggregation-clause {} clause))
+
+  ([inner-query clause]
+   (binding [driver/*driver* :h2]
+     (#'annotate/col-info-for-aggregation-clause inner-query clause))))
 
 (expect
   {:base_type    :type/Float
    :special_type :type/Number
-   :name         "count / 2"
-   :display_name "count / 2"}
+   :name         "expression"
+   :display_name "Count / 2"}
   (col-info-for-aggregation-clause [:/ [:count] 2]))
 
 (expect
   {:base_type    :type/Float
    :special_type :type/Number
    :name         "sum"
-   :display_name "sum of Price + 1"}
+   :display_name "Sum of Price + 1"}
   (qp.test-util/with-everything-store
     (data/$ids venues
       (col-info-for-aggregation-clause [:sum [:+ $price 1]]))))
 
-;; if a `:named` aggregation supplies optional `:use-as-display-name?` `options` we should respect that
-;; `use-as-disply-name?` is `true` by default, e.g. in cases where the user supplies the names themselves
+;; col info for `:aggregation-options` (`:name` and `:display-name`)
 (expect
   {:base_type    :type/Integer
    :special_type :type/Category
    :settings     nil
-   :name         "sum"
-   :display_name "sum"}
+   :name         "sum_2"
+   :display_name "My custom name"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? true}]))))
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}]))))
 
-;; `use-as-display-name?` will normally be `false` when the `:named` clause is generated automatically, e.g. by the
-;; `pre-alias-aggregations` middleware. In this case we want to use the name internally in the query to prevent
-;; duplicate column names, but do not want to use them as display names. See
-;; https://github.com/metabase/mbql/releases/tag/1.2.0 for detailed explanation.
+;; col info for `:aggregation-options` (`:name` only)
+(expect
+  {:base_type    :type/Integer
+   :special_type :type/Category
+   :settings     nil
+   :name         "sum_2"
+   :display_name "Sum of Price"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:name "sum_2"}]))))
+
+;; col info for `:aggregation-options` (`:display-name` only)
 (expect
   {:base_type    :type/Integer
    :special_type :type/Category
    :settings     nil
    :name         "sum"
-   :display_name "sum of Price"}
+   :display_name "My Custom Name"}
   (qp.test-util/with-everything-store
     (data/$ids venues
-      (col-info-for-aggregation-clause [:named [:sum $price] "sum" {:use-as-display-name? false}]))))
+      (col-info-for-aggregation-clause
+       [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))
 
 ;; if a driver is kind enough to supply us with some information about the `:cols` that come back, we should include
 ;; that information in the results. Their information should be preferred over ours
@@ -362,6 +472,18 @@
                                             :columns ["totalEvents"]}))
      (data/mbql-query venues
        {:aggregation [[:metric "ga:totalEvents"]]}))))
+
+;; col info for an `expression` aggregation w/ a named expression should work as expected
+(expect
+  {:base_type    :type/Float
+   :special_type :type/Number
+   :name         "sum"
+   :display_name "Sum of double-price"}
+  (qp.test-util/with-everything-store
+    (data/$ids venues
+      (col-info-for-aggregation-clause
+       {:expressions {"double-price" [:* $price 2]}}
+       [:sum [:expression "double-price"]]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -394,22 +516,24 @@
      :display_name "count_2"
      :source       :aggregation
      :field_ref    [:aggregation 3]}]}
-  (binding [driver/*driver* :h2]
-    ((annotate/add-column-info (constantly {:cols    [{:name         "count"
-                                                       :display_name "count"
-                                                       :base_type    :type/Number}
-                                                      {:name         "sum"
-                                                       :display_name "sum"
-                                                       :base_type    :type/Number}
-                                                      {:name         "count"
-                                                       :display_name "count"
-                                                       :base_type    :type/Number}
-                                                      {:name         "count_2"
-                                                       :display_name "count_2"
-                                                       :base_type    :type/Number}]
-                                            :columns ["count" "sum" "count" "count_2"]}))
+  (driver/with-driver :h2
+    ((annotate/add-column-info (constantly {:cols [{:name         "count"
+                                                    :display_name "count"
+                                                    :base_type    :type/Number}
+                                                   {:name         "sum"
+                                                    :display_name "sum"
+                                                    :base_type    :type/Number}
+                                                   {:name         "count"
+                                                    :display_name "count"
+                                                    :base_type    :type/Number}
+                                                   {:name         "count_2"
+                                                    :display_name "count_2"
+                                                    :base_type    :type/Number}]}))
      (data/mbql-query venues
-       {:aggregation  [[:count] [:sum] [:count] [:named [:count] "count_2"]]}))))
+       {:aggregation  [[:count]
+                       [:sum]
+                       [:count]
+                       [:aggregation-options [:count] {:display-name "count_2"}]]}))))
 
 ;; make sure expressions come back with the right set of keys, including `:expression_name` (#8854)
 (expect
@@ -423,11 +547,52 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
-           {:expressions {"discount_price" [:* 0.9 [:field-id $price]]}
+           {:expressions {"discount_price" [:* 0.9 $price]}
             :fields      [$name [:expression "discount_price"]]
             :limit       10})))
       :cols
       second))
+
+
+;; make sure multiple expressions come back with deduplicated names
+(expect
+  [{:base_type    :type/Float
+    :special_type :type/Number
+    :name         "expression"
+    :display_name "0.9 * Average of Price"
+    :source       :aggregation
+    :field_ref    [:aggregation 0]}
+   {:base_type    :type/Float
+    :special_type :type/Number
+    :name         "expression_2"
+    :display_name "0.8 * Average of Price"
+    :source       :aggregation
+    :field_ref    [:aggregation 1]}]
+  (-> (driver/with-driver :h2
+        (qp.test-util/with-everything-store
+          ((annotate/add-column-info (constantly {}))
+           (data/mbql-query venues
+             {:aggregation [[:* 0.9 [:avg $price]]
+                            [:* 0.8 [:avg $price]]]
+              :limit       10}))))
+      :cols))
+
+(expect
+  {:name            "prev_month"
+   :display_name    "prev_month"
+   :base_type       :type/DateTime
+   :special_type    nil
+   :expression_name "prev_month"
+   :source          :fields
+   :field_ref       [:expression "prev_month"]}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query users
+           {:expressions {:prev_month [:+ $last_login [:interval -1 :month]]}
+            :fields      [[:expression "prev_month"]]
+            :limit       10})))
+      :cols
+      first))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

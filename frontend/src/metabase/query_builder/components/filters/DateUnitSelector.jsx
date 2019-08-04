@@ -14,6 +14,7 @@ type DateUnitSelectorProps = {
 };
 
 const DateUnitSelector = ({
+  className,
   open,
   value,
   onChange,
@@ -23,6 +24,7 @@ const DateUnitSelector = ({
   periods,
 }: DateUnitSelectorProps) => (
   <Select
+    className={className}
     value={value}
     onChange={e => onChange(e.target.value)}
     width={150}

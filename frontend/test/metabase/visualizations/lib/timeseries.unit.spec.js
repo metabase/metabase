@@ -132,6 +132,7 @@ describe("visualization.lib.timeseries", () => {
         10,
         [["2015-01-01T00:00:00.000Z"], ["2025-01-01T00:00:00.000Z"]],
       ],
+      ["day", 1, [["2019-01-01T00:00:00.000Z"]]],
     ];
 
     TEST_CASES.map(([expectedInterval, expectedCount, data]) => {

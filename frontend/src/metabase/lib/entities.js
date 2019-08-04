@@ -13,7 +13,9 @@ import {
 import { addUndo } from "metabase/redux/undo";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
-import { singularize } from "metabase/lib/formatting";
+
+// NOTE: need to use inflection directly here due to circular dependency
+import inflection from "inflection";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
@@ -182,7 +184,7 @@ export function createEntity(def: EntityDefinition): Entity {
   const entity: Entity = { ...def };
 
   if (!entity.nameOne) {
-    entity.nameOne = singularize(entity.name);
+    entity.nameOne = inflection.singularize(entity.name);
   }
   if (!entity.nameMany) {
     entity.nameMany = entity.name;

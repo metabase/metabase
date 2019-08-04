@@ -240,10 +240,12 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <Flex align="center">
-                              <h3>{database.name}</h3>
+                              <h3 className="text-wrap">{database.name}</h3>
                               <Box ml="auto" mr={1} className="hover-child">
                                 <Flex align="center">
-                                  <Tooltip tooltip={t`Learn about this table`}>
+                                  <Tooltip
+                                    tooltip={t`Learn about this database`}
+                                  >
                                     <Link
                                       to={`reference/databases/${database.id}`}
                                     >
@@ -308,7 +310,7 @@ export class AdminPinMessage extends React.Component {
           <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
           <Box ml={1}>
             <h3>{t`Your team's most important dashboards go here`}</h3>
-            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
+            <p className="m0 mt1 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
           </Box>
           <Icon
             className="hover-child text-brand-hover cursor-pointer bg-medium"

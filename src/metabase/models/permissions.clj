@@ -41,27 +41,27 @@
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
-(def ^:private ^:const valid-object-path-patterns
-  [#"^/db/(\d+)/$"                                              ; permissions for the entire DB -- native and all schemas
-   #"^/db/(\d+)/native/$"                                       ; permissions to create new native queries for the DB
-   #"^/db/(\d+)/schema/$"                                       ; permissions for all schemas in the DB
-   #"^/db/(\d+)/schema/([^/]*)/$"                               ; permissions for a specific schema
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/$"                   ; FULL permissions for a specific table
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/read/$"              ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/query/$"             ; Permissions to run any sort of query against a Table
-   #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$" ; Permissions to run a query against a Table using GTAP
-   #"^/collection/(\d+)/$"                                      ; readwrite permissions for a collection
-   #"^/collection/(\d+)/read/$"                                 ; read permissions for a collection
-   #"^/collection/root/$"                                       ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
-   #"^/collection/root/read/$"])                                ; read permissions for the 'Root' Collection
+(def ^:private valid-object-path-patterns
+  [#"^/db/\d+/$"                                          ; permissions for the entire DB -- native and all schemas
+   #"^/db/\d+/native/$"                                   ; permissions to create new native queries for the DB
+   #"^/db/\d+/schema/$"                                   ; permissions for all schemas in the DB
+   #"^/db/\d+/schema/[^/]*/$"                             ; permissions for a specific schema
+   #"^/db/\d+/schema/[^/]*/table/\d+/$"                   ; FULL permissions for a specific table
+   #"^/db/\d+/schema/[^/]*/table/\d+/read/$"              ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/\d+/schema/[^/]*/table/\d+/query/$"             ; Permissions to run any sort of query against a Table
+   #"^/db/\d+/schema/[^/]*/table/\d+/query/segmented/$"   ; Permissions to run a query against a Table using GTAP
+   #"^/collection/\d+/$"                                  ; readwrite permissions for a collection
+   #"^/collection/\d+/read/$"                             ; read permissions for a collection
+   #"^/collection/root/$"                                 ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
+   #"^/collection/root/read/$"])                          ; read permissions for the 'Root' Collection
 
 (defn valid-object-path?
-  "Does OBJECT-PATH follow a known, allowed format to an *object*?
-   (The root path, \"/\", is not considered an object; this returns `false` for it)."
+  "Does `object-path` follow a known, allowed format to an *object*? (The root path, \"/\", is not considered an object;
+  this returns `false` for it)."
   ^Boolean [^String object-path]
   (boolean (when (and (string? object-path)
                       (seq object-path))
-             (some (u/rpartial re-matches object-path)
+             (some #(re-matches % object-path)
                    valid-object-path-patterns))))
 
 (def ObjectPath
@@ -75,7 +75,7 @@
           "Valid user permissions path."))
 
 (defn- assert-not-admin-group
-  "Check to make sure the `:group_id` for PERMISSIONS entry isn't the admin group."
+  "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
@@ -83,14 +83,14 @@
              {:status-code 400}))))
 
 (defn- assert-valid-object
-  "Check to make sure the value of `:object` for PERMISSIONS entry is valid."
+  "Check to make sure the value of `:object` for `permissions` entry is valid."
   [{:keys [object]}]
   (when (and object
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ui18n/ex-info (tru "Invalid permissions object path: ''{0}''." object)
-             {:status-code 400}))))
+    (throw (ex-info (str (tru "Invalid permissions object path: ''{0}''." object))
+             {:status-code 400, :path object}))))
 
 (defn- assert-valid-metabot-permissions
   "MetaBot permissions can only be created for Collections, since MetaBot can only interact with objects that are always
@@ -98,11 +98,11 @@
   [{:keys [object group_id]}]
   (when (and (= group_id (:id (group/metabot)))
              (not (str/starts-with? object "/collection/")))
-    (throw (ui18n/ex-info (tru "MetaBot can only have Collection permissions.")
+    (throw (ex-info (str (tru "MetaBot can only have Collection permissions."))
              {:status-code 400}))))
 
 (defn- assert-valid
-  "Check to make sure this PERMISSIONS entry is something that's allowed to be saved (i.e. it has a valid `:object`
+  "Check to make sure this `permissions` entry is something that's allowed to be saved (i.e. it has a valid `:object`
    path and it's not for the admin group)."
   [permissions]
   (doseq [f [assert-not-admin-group
@@ -156,12 +156,12 @@
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
 (defn is-permissions-for-object?
-  "Does PERMISSIONS-PATH grant *full* access for OBJECT-PATH?"
+  "Does `permissions`-PATH grant *full* access for OBJECT-PATH?"
   [permissions-path object-path]
   (str/starts-with? object-path permissions-path))
 
 (defn is-partial-permissions-for-object?
-  "Does PERMISSIONS-PATH grant access full access for OBJECT-PATH *or* for a descendant of OBJECT-PATH?"
+  "Does `permissions`-PATH grant access full access for OBJECT-PATH *or* for a descendant of OBJECT-PATH?"
   [permissions-path object-path]
   (or (is-permissions-for-object? permissions-path object-path)
       (str/starts-with? permissions-path object-path)))
