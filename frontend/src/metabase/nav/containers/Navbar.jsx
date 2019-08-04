@@ -373,9 +373,10 @@ export default class Navbar extends Component {
                 <IconWrapper>
                   <Link
                     to={this.props.plainNativeQuery.question().getUrl()}
+                    className="flex align-center"
                     data-metabase-event={`NavBar;SQL`}
                   >
-                    <Icon size={19} name="sql" />
+                    <Icon size={19} name="sql" m={1} />
                   </Link>
                 </IconWrapper>
               </Tooltip>
