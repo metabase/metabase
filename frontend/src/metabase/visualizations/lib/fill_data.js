@@ -64,7 +64,16 @@ function fillMissingValuesInData(
         const timeZoneOffset = moment(xDomain[0]).utcOffset();
         // replace xValues with this range
         xValues = d3.time[interval]
-          .range(xDomain[0], moment(xDomain[1]).add(1, "ms"), count)
+          .range(
+            xDomain[0],
+            // `range` returns all interval boundaries. To make sure we capture
+            // the end of the range even, we move it over just less than one
+            // full interval.
+            moment(xDomain[1])
+              .add(1, interval)
+              .add(-1, "ms"),
+            count,
+          )
           .map(d => moment(d).utcOffset(timeZoneOffset, true));
         return fillMissingValues(
           rows,
