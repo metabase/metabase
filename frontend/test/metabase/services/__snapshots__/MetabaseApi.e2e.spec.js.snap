@@ -271,6 +271,7 @@ Object {
   "display_name": "Orders",
   "entity_name": null,
   "entity_type": "entity/TransactionTable",
+  "domain_entity": 1,
   "fields": Array [
     Object {
       "active": true,
@@ -1370,6 +1371,7 @@ Object {
   "display_name": "People",
   "entity_name": null,
   "entity_type": "entity/UserTable",
+  "domain_entity": null,
   "fields": Array [
     Object {
       "active": true,
@@ -2574,6 +2576,7 @@ Object {
   "display_name": "Products",
   "entity_name": null,
   "entity_type": "entity/ProductTable",
+  "domain_entity": null,
   "fields": Array [
     Object {
       "active": true,
@@ -3421,6 +3424,7 @@ Object {
   "display_name": "Reviews",
   "entity_name": null,
   "entity_type": "entity/GenericTable",
+  "domain_entity": null,
   "fields": Array [
     Object {
       "active": true,
