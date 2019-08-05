@@ -26,7 +26,7 @@ To get started, click the `Add a map` button. A modal will appear, asking for:
  * The JSON property that Metabase should use as your region's identifier (a distinct way of identifying this specific region map) 
  * The JSON property that Metabase should use as the sdisplay name (how the name of the region map appears in the user interface)
 
-If you do not currently have a GeoJSON file, there are many tools available to create one, such as [GeoJSON.io](https://www.geojson.io/). If you're just interested in reading more about GeoJSON, we recommend that you start [here](https://geojson.org/).
+If you do not currently have a GeoJSON file, there are many tools available to create one, such as [GeoJSON.io](geojson.io/). If you're just interested in reading more about GeoJSON, we recommend that you start [here](https://geojson.org/).
 
 ---
 
