@@ -178,8 +178,7 @@ export default class TagEditorParam extends Component {
             )}
             {hasSelectedDimensionField && !hasWidgetOptions && (
               <p className="pb1">
-                {t`Oh no! There are no filter widgets for this field. Select
-                another field or`}{" "}
+                {t`There aren't any filter widgets for this type of field yet.`}{" "}
                 <Link
                   to={MetabaseSettings.docsUrl(
                     "users-guide/13-sql-parameters",
@@ -188,35 +187,33 @@ export default class TagEditorParam extends Component {
                   target="_blank"
                   className="link"
                 >
-                  {t`read about this issue in the docs.`}
+                  {t`Learn more`}
                 </Link>
               </p>
             )}
           </div>
         )}
 
-        {hasWidgetOptions && (
-          <div className="pb1">
-            <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
-            <Select
-              className="border-med bg-white block"
-              value={tag["widget-type"]}
-              onChange={e =>
-                this.setParameterAttribute("widget-type", e.target.value)
-              }
-              isInitiallyOpen={!tag["widget-type"]}
-              placeholder={t`Select…`}
-            >
-              {[{ name: "None", type: undefined }]
-                .concat(widgetOptions)
-                .map(widgetOption => (
-                  <Option key={widgetOption.type} value={widgetOption.type}>
-                    {widgetOption.name}
-                  </Option>
-                ))}
-            </Select>
-          </div>
-        )}
+        <div className="pb1">
+          <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
+          <Select
+            className="border-med bg-white block"
+            value={tag["widget-type"]}
+            onChange={e =>
+              this.setParameterAttribute("widget-type", e.target.value)
+            }
+            isInitiallyOpen={!tag["widget-type"] && widgetOptions.length > 0}
+            placeholder={t`Select…`}
+          >
+            {[{ name: "None", type: undefined }]
+              .concat(widgetOptions)
+              .map(widgetOption => (
+                <Option key={widgetOption.type} value={widgetOption.type}>
+                  {widgetOption.name}
+                </Option>
+              ))}
+          </Select>
+        </div>
 
         <div className="flex align-center pb1">
           <h5 className="text-normal mr1">{t`Required?`}</h5>
