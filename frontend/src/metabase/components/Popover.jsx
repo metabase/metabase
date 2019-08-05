@@ -59,13 +59,13 @@ export default class Popover extends Component {
 
   static defaultProps = {
     isOpen: true,
-    hasArrow: true,
+    hasArrow: false,
     hasBackground: true,
     verticalAttachments: ["top", "bottom"],
-    horizontalAttachments: ["center", "left", "right"],
+    horizontalAttachments: ["left", "right"],
     alignVerticalEdge: false,
-    alignHorizontalEdge: false,
-    targetOffsetX: 24,
+    alignHorizontalEdge: true,
+    targetOffsetX: 0,
     targetOffsetY: 5,
     sizeToFit: false,
     autoWidth: false,
@@ -182,7 +182,7 @@ export default class Popover extends Component {
   }
 
   _getMaxHeight() {
-    const { top, bottom } = this._getTarget().getBoundingClientRect();
+    const { top, bottom } = this._getTargetElement().getBoundingClientRect();
 
     let attachments;
     if (this.props.pinInitialAttachment && this._best) {
@@ -249,7 +249,7 @@ export default class Popover extends Component {
     return best;
   }
 
-  _getTarget() {
+  _getTargetElement() {
     let target;
     if (this.props.targetEvent) {
       // create a fake element at the event coordinates
@@ -276,17 +276,17 @@ export default class Popover extends Component {
 
   _renderPopover(isOpen) {
     // popover is open, lets do this!
-    const popoverElement = this._getPopoverElement();
-    ReactDOM.unstable_renderSubtreeIntoContainer(
-      this,
-      <span>{isOpen ? this._popoverComponent() : null}</span>,
-      popoverElement,
-    );
-
     if (isOpen) {
+      const popoverElement = this._getPopoverElement();
+      ReactDOM.unstable_renderSubtreeIntoContainer(
+        this,
+        <span>{isOpen ? this._popoverComponent() : null}</span>,
+        popoverElement,
+      );
+
       const tetherOptions = {
         element: popoverElement,
-        target: this._getTarget(),
+        target: this._getTargetElement(),
       };
 
       if (this.props.tetherOptions) {
@@ -366,6 +366,10 @@ export default class Popover extends Component {
             body.classList.add("scroll-show");
           }
         }
+      }
+    } else {
+      if (this._popoverElement) {
+        ReactDOM.unmountComponentAtNode(this._popoverElement);
       }
     }
   }

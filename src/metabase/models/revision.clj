@@ -6,6 +6,7 @@
             [metabase.util
              [date :as du]
              [i18n :refer [tru]]]
+            [potemkin.types :as p.types]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -17,7 +18,7 @@
 
 ;;; # IRevisioned Protocl
 
-(defprotocol IRevisioned
+(p.types/defprotocol+ IRevisioned
   "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
    All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]

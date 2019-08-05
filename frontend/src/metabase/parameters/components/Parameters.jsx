@@ -175,6 +175,7 @@ export default class Parameters extends Component {
               parameters={parameters}
               editingParameter={editingParameter}
               setEditingParameter={setEditingParameter}
+              index={index}
               setName={
                 setParameterName &&
                 (name => setParameterName(parameter.id, name))

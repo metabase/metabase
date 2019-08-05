@@ -90,6 +90,8 @@ export type FormattingOptions = {
 
 type FormattedString = string | React$Element<any>;
 
+export const FK_SYMBOL = "→";
+
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
   maximumFractionDigits: 2,
@@ -381,8 +383,20 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  // The startOf/endOf transition needs to happen in "en" rather than the
+  // current locale. Other locales define week boundaries differently, and they
+  // don't line up with the server's grouping logic.
+  const start = m
+    .clone()
+    .locale("en")
+    .startOf(unit)
+    .locale(false);
+  const end = m
+    .clone()
+    .locale("en")
+    .endOf(unit)
+    .locale(false);
+
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
       // January 1, 2018 - January 2, 2019

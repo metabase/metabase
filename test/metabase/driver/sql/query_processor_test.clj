@@ -143,18 +143,18 @@
                           :fields       :none}]})))))
 
 
-;; This query tests that named aggregations are handled correctly
+;; Check that named aggregations are handled correctly
 (expect
   {:select   [[(id :field "PUBLIC" "VENUES" "PRICE")                        (id :field-alias "PRICE")]
-              [(hsql/call :avg (id :field "PUBLIC" "VENUES" "CATEGORY_ID")) (id :field-alias "my_average")]]
+              [(hsql/call :avg (id :field "PUBLIC" "VENUES" "CATEGORY_ID")) (id :field-alias "avg_2")]]
    :from     [(id :table "PUBLIC" "VENUES")]
-   :group-by [(id :field "PUBLIC" "VENUES" "PRICE")],
-   :order-by [[(id :field-alias "my_average") :asc]]}
+   :group-by [(id :field "PUBLIC" "VENUES" "PRICE")]
+   :order-by [[(id :field-alias "avg_2") :asc]]}
   (qp.test-util/with-everything-store
     (metabase.driver/with-driver :h2
       (#'sql.qp/mbql->honeysql
        ::id-swap
        (data/mbql-query venues
-         {:aggregation [[:named [:avg $category_id] "my_average"]]
-          :breakout    [$price]
-          :order-by    [[:asc [:aggregation 0]]]})))))
+                        {:aggregation [[:aggregation-options [:avg $category_id] {:name "avg_2"}]]
+                         :breakout    [$price]
+                         :order-by    [[:asc [:aggregation 0]]]})))))

@@ -240,7 +240,7 @@
                                  (-> column
                                      (set/rename-keys {:base-type :base_type})
                                      (dissoc :database-type)))]
-       {:columns (map (comp u/keyword->qualified-name :name) columns)
+       {:columns (map (comp u/qualified-name :name) columns)
         :cols    columns
         :rows    (for [^TableRow row (.getRows response)]
                    (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]

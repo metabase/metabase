@@ -37,7 +37,7 @@ describe("FieldName", () => {
         tableMetadata={metadata.tables[ORDERS_TABLE_ID]}
       />,
     );
-    expect(fieldName.text()).toEqual("ProductCategory");
+    expect(fieldName.text()).toEqual("Product → Category");
   });
   it("should render datetime correctly", () => {
     const fieldName = mount(

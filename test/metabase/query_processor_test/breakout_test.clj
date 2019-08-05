@@ -169,6 +169,17 @@
         {:aggregation [[:count]]
          :breakout    [[:binning-strategy $latitude :default]]}))))
 
+;; Can I use `:default` binning in a nested query?
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+  [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
+  (tu/with-temporary-setting-values [breakout-bin-width 5.0]
+    (qp.test/formatted-rows [1.0 int]
+      (data/run-mbql-query venues
+        {:source-query
+         {:source-table $$venues
+          :aggregation  [[:count]]
+          :breakout     [[:binning-strategy $latitude :default]]}}))))
+
 ;; Testing bin-width
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]

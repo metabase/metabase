@@ -19,6 +19,7 @@ export class NewQuestionStart extends Component {
       <NewQueryOptions
         getUrlForQuery={this.getUrlForQuery}
         metricSearchUrl="/question/new/metric"
+        dataBrowseUrl="/browse"
         segmentSearchUrl="/question/new/segment"
       />
     );

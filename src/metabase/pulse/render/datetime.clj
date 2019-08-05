@@ -8,9 +8,8 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import metabase.util.i18n.UserLocalizedString
-           [org.joda.time DateMidnight DateTime DateTimeZone]
-           org.joda.time.base.BaseSingleFieldPeriod))
+  (:import [org.joda.time DateTime DateTimeZone]
+           [org.joda.time.base BaseDateTime BaseSingleFieldPeriod]))
 
 (defn- reformat-timestamp [timezone old-format-timestamp new-format-string]
   (f/unparse (f/with-zone (f/formatter new-format-string)
@@ -38,15 +37,15 @@
     (reformat-timestamp timezone timestamp "MMM d, YYYY")))
 
 
-(def ^:private year  (comp t/year  t/now))
-(def ^:private month (comp t/month t/now))
-(def ^:private day   (comp t/day   t/now))
+(defn- year  [] (t/year  (t/now)))
+(defn- month [] (t/month (t/now)))
+(defn- day   [] (t/day   (t/now)))
 
 (def ^:private RenderableInterval
-  {:interval-start     DateMidnight
+  {:interval-start     BaseDateTime
    :interval           BaseSingleFieldPeriod
-   :this-interval-name UserLocalizedString
-   :last-interval-name UserLocalizedString})
+   :this-interval-name su/NonBlankString
+   :last-interval-name su/NonBlankString})
 
 (defmulti ^:private renderable-interval
   {:arglists '([unit])}
@@ -58,43 +57,42 @@
   [_]
   {:interval-start     (t/date-midnight (year) (month) (day))
    :interval           (t/days 1)
-   :this-interval-name (tru "Today")
-   :last-interval-name (tru "Yesterday")})
+   :this-interval-name (str (tru "Today"))
+   :last-interval-name (str (tru "Yesterday"))})
 
 (defn- start-of-this-week []
-  (-> (org.joda.time.LocalDate.) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay))
+  (-> (org.joda.time.LocalDate. (t/now)) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay))
 
 (s/defmethod renderable-interval :week :- RenderableInterval
   [_]
-  (start-of-this-week)
-  (t/weeks 1)
-  (tru "This week")
-  (tru "Last week"))
+  {:interval-start     (start-of-this-week)
+   :interval           (t/weeks 1)
+   :this-interval-name (str (tru "This week"))
+   :last-interval-name (str (tru "Last week"))})
 
 (s/defmethod renderable-interval :month :- RenderableInterval
   [_]
-  (t/date-midnight (year) (month))
-  (t/months 1)
-  (tru "This month")
-  (tru "Last month"))
+  {:interval-start     (t/date-midnight (year) (month))
+   :interval           (t/months 1)
+   :this-interval-name (str (tru "This month"))
+   :last-interval-name (str (tru "Last month"))})
 
 (defn- start-of-this-quarter []
   (t/date-midnight (year) (inc (* 3 (Math/floor (/ (dec (month))
                                                    3))))))
-
 (s/defmethod renderable-interval :quarter :- RenderableInterval
   [_]
-  (start-of-this-quarter)
-  (t/months 3)
-  (tru "This quarter")
-  (tru "Last quarter"))
+  {:interval-start     (start-of-this-quarter)
+   :interval           (t/months 3)
+   :this-interval-name (str (tru "This quarter"))
+   :last-interval-name (str (tru "Last quarter"))})
 
 (s/defmethod renderable-interval :year :- RenderableInterval
   [_]
-  (t/date-midnight (year))
-  (t/years 1)
-  (tru "This year")
-  (tru "Last year"))
+  {:interval-start     (t/date-midnight (year))
+   :interval           (t/years 1)
+   :this-interval-name (str (tru "This year"))
+   :last-interval-name (str (tru "Last year"))})
 
 (s/defn ^:private date->interval-name :- (s/maybe su/NonBlankString)
   [date :- (s/maybe DateTime), unit :- (s/maybe s/Keyword)]
@@ -112,8 +110,8 @@
 (s/defn format-timestamp-relative :- (s/maybe su/NonBlankString)
   "Formats timestamps with relative names (today, yesterday, this *, last *) based on column :unit, if possible,
   otherwie returns nil"
-  [timezone timestamp {:keys [unit]}]
-  (date->interval-name (du/str->date-time timestamp timezone) unit))
+  [timezone timestamp-str {:keys [unit]}]
+  (date->interval-name (du/str->date-time timestamp-str timezone) unit))
 
 (defn format-timestamp-pair
   "Formats a pair of timestamps, using relative formatting for the first timestamps if possible and 'Previous :unit' for

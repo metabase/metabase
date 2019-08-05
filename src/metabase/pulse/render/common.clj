@@ -2,6 +2,7 @@
   (:require [clojure.pprint :refer [cl-format]]
             [hiccup.util :as hutil]
             [metabase.util.ui-logic :as ui-logic]
+            [potemkin.types :as p.types]
             [schema.core :as s])
   (:import java.net.URL))
 
@@ -10,7 +11,7 @@
   {:attachments (s/maybe {s/Str URL})
    :content     [s/Any]})
 
-(defrecord NumericWrapper [num-str]
+(p.types/defrecord+ NumericWrapper [num-str]
   hutil/ToString
   (to-str [_] num-str)
 

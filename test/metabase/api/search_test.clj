@@ -9,6 +9,7 @@
              [collection :as coll :refer [Collection]]
              [dashboard :refer [Dashboard]]
              [dashboard-favorite :refer [DashboardFavorite]]
+             [database :refer [Database]]
              [metric :refer [Metric]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -24,12 +25,13 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(def default-search-row
+(def ^:private default-search-row
   {:id                  true
    :description         nil
    :archived            false
    :collection_id       false
    :collection_position nil
+   :collection_name     nil
    :favorite            nil
    :table_id            false
    :database_id         false
@@ -52,7 +54,7 @@
      {:name "dashboard test dashboard", :model "dashboard", :favorite false})
     (merge
      default-search-row
-     {:name "collection test collection", :model "collection", :collection_id true})
+     {:name "collection test collection", :model "collection", :collection_id true, :collection_name true})
     (merge
      default-search-row
      {:name "card test card", :model "card", :favorite false})
@@ -84,7 +86,7 @@
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
-                   #(assoc % :collection_id true)
+                   #(assoc % :collection_id true, :collection_name true)
                    (default-search-results)))
 
 (defn- do-with-search-items [search-string in-root-collection? f]
@@ -114,7 +116,11 @@
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
 (defn- search-request [user-kwd & params]
-  (tu/boolean-ids-and-timestamps (set (apply (test-users/user->client user-kwd) :get 200 "search" params))))
+  (set
+   (for [result (apply (test-users/user->client user-kwd) :get 200 "search" params)]
+     (-> result
+         tu/boolean-ids-and-timestamps
+         (update :collection_name #(some-> % string?))))))
 
 ;; Basic search, should find 1 of each entity type, all items in the root collection
 (expect
@@ -271,3 +277,29 @@
                 (and (= id (u/get-id pulse))
                      (= "pulse" model)))
               ((test-users/user->client :crowberto) :get 200 "search")))))
+
+;; You should see TABLES in the search results!
+(defn- default-table-search-row [table-name]
+  (merge
+   default-search-row
+   {:name table-name, :table_name table-name :table_id true, :archived nil, :model "table", :database_id true}))
+
+(let [table-name (tu/random-name)]
+  (expect
+    #{(default-table-search-row table-name)}
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :crowberto :q table-name))))
+
+(let [table-name (tu/random-name)]
+  (expect
+    #{(default-table-search-row table-name)}
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :rasta :q table-name))))
+
+;; you should not be able to see a Table if the current user doesn't have permissions for that Table
+(expect
+  #{}
+  (tt/with-temp* [Database [{db-id :id}]
+                  Table    [table {:db_id db-id}]]
+    (perms/revoke-permissions! (group/all-users) db-id)
+    (search-request :rasta :q (:name table))))

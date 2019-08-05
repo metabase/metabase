@@ -33,7 +33,7 @@ export default class ChartNestedSettingColumns extends React.Component {
               onClick={() => onChangeEditingObject()}
             >
               <Icon name="chevronleft" className="text-light" />
-              <span className="ml1 text-bold text-brand">
+              <span className="ml1 text-bold text-brand text-wrap">
                 {displayNameForColumn(object)}
               </span>
             </div>

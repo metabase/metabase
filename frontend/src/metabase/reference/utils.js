@@ -79,7 +79,7 @@ export const getQuestion = ({
         return [metadata.fields[fieldId].getDefaultBreakout()];
       }
       if (fieldId) {
-        return [fieldId];
+        return [["field-id", fieldId]];
       }
       return oldBreakout;
     })

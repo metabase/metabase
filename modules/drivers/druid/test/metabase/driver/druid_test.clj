@@ -325,7 +325,7 @@
    ["4"  245.0]]
   (qp.test/rows
     (druid-query
-      {:aggregation [[:named [:sum [:+ $venue_price 1]] "New Price"]]
+      {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
        :breakout    [$venue_price]})))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
@@ -337,7 +337,7 @@
    :columns ["venue_price" "Sum-41"]}
   (qp.test/rows+column-names
     (druid-query
-      {:aggregation [[:named [:- [:sum $venue_price] 41] "Sum-41"]]
+      {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
        :breakout    [$venue_price]})))
 
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses

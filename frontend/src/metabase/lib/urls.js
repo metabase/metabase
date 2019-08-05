@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 
 export const activity = "/activity";
 
-export const newQuestion = () => "/question/new";
+export const newQuestionFlow = () => "/question/new";
 
 export const newDashboard = collectionId =>
   `collection/${collectionId}/new_dashboard`;
@@ -48,8 +48,13 @@ const flattenParam = ([key, value]) => {
   return [[key, value]];
 };
 
-export function plainQuestion() {
-  return Question.create({ metadata: null }).getUrl();
+export function newQuestion({ mode, ...options } = {}) {
+  const url = Question.create(options).getUrl();
+  if (mode) {
+    return url.replace(/^\/question/, `/question\/${mode}`);
+  } else {
+    return url;
+  }
 }
 
 export function dashboard(dashboardId, { addCardWithId } = {}) {
@@ -157,4 +162,16 @@ export function deactivateUser(userId) {
 
 export function reactivateUser(userId) {
   return `/admin/people/${userId}/reactivate`;
+}
+
+export function browseDatabase(database) {
+  return `/browse/${database.id}`;
+}
+
+export function browseSchema(table) {
+  return `/browse/${table.db.id}/schema/${table.schema}`;
+}
+
+export function browseTable(table) {
+  return `/browse/${table.db.id}/schema/${table.schema}`;
 }

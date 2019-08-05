@@ -40,9 +40,9 @@
                                 (m/dissoc-in [:details :emails])))))))
 ;; create a channel then select its details
 (defn- create-pulse-then-select!
-  [name creator cards channels skip-if-empty?]
+  [pulse-name creator cards channels skip-if-empty?]
   (-> (create-pulse! cards channels
-        {:name          name
+        {:name          pulse-name
          :creator_id    (u/get-id creator)
          :skip_if_empty skip-if-empty?})
       remove-uneeded-pulse-keys))

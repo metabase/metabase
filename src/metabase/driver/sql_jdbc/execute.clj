@@ -195,7 +195,7 @@
                            :set-parameters (set-parameters-with-timezone timezone)
                            :max-rows       max-rows})]
     {:rows    (or rows [])
-     :columns (map u/keyword->qualified-name columns)}))
+     :columns (map u/qualified-name columns)}))
 
 
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------

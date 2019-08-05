@@ -66,7 +66,11 @@ export const BackendResource = createSharedResource("BackendResource", {
             MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
           },
-          stdio: "inherit",
+          stdio:
+            process.env["DISABLE_LOGGING"] ||
+            process.env["DISABLE_LOGGING_BACKEND"]
+              ? "ignore"
+              : "inherit",
         },
       );
     }

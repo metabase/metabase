@@ -9,7 +9,7 @@ import Radio from "metabase/components/Radio.jsx";
 import Button from "metabase/components/Button";
 import CollectionSelect from "metabase/containers/CollectionSelect";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { t } from "ttag";
 import "./SaveQuestionModal.css";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
@@ -18,7 +18,7 @@ export default class SaveQuestionModal extends Component {
   constructor(props, context) {
     super(props, context);
 
-    const isStructured = Query.isStructured(props.card.dataset_query);
+    const isStructured = Q_DEPRECATED.isStructured(props.card.dataset_query);
 
     this.state = {
       error: null,
@@ -26,7 +26,7 @@ export default class SaveQuestionModal extends Component {
       details: {
         name:
           props.card.name || isStructured
-            ? Query.generateQueryDescription(
+            ? Q_DEPRECATED.generateQueryDescription(
                 props.tableMetadata,
                 props.card.dataset_query.query,
               )
@@ -126,7 +126,7 @@ export default class SaveQuestionModal extends Component {
         await saveFn(card);
       }
 
-      this.props.onClose();
+      // this.props.onClose();
     } catch (error) {
       if (error && !error.isCanceled) {
         this.setState({ error: error });

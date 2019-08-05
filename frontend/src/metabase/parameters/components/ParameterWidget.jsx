@@ -15,6 +15,7 @@ import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 export default class ParameterWidget extends Component {
   state = {
     isEditingName: false,
+    editingNameValue: undefined,
     isFocused: false,
   };
 
@@ -111,9 +112,15 @@ export default class ParameterWidget extends Component {
                 p => p.name === parameter.name && p.id !== parameter.id,
               ),
             })}
-            value={parameter.name}
-            onChange={e => setName(e.target.value)}
-            onBlur={() => this.setState({ isEditingName: false })}
+            value={this.state.editingNameValue}
+            onChange={e => this.setState({ editingNameValue: e.target.value })}
+            onBlur={() => {
+              setName(this.state.editingNameValue);
+              this.setState({
+                isEditingName: false,
+                editingNameValue: undefined,
+              });
+            }}
             onKeyUp={e => {
               if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_ENTER) {
                 e.target.blur();
@@ -133,7 +140,12 @@ export default class ParameterWidget extends Component {
             name="pencil"
             size={12}
             className="text-brand cursor-pointer"
-            onClick={() => this.setState({ isEditingName: true })}
+            onClick={() => {
+              this.setState({
+                isEditingName: true,
+                editingNameValue: parameter.name,
+              });
+            }}
           />
         </span>
       );

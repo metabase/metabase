@@ -78,24 +78,42 @@
 (s/defn ^:private metric-info->ag-clause :- mbql.s/Aggregation
   "Return an appropriate aggregation clause from `metric-info`."
   [{{[aggregation] :aggregation} :definition, metric-name :name} :- MetricInfo
-   {:keys [wrap-in-named?]}                                      :- {:wrap-in-named? s/Bool}]
-  ;; try to give the resulting aggregation the name of the Metric it came from, unless it's already `:named` in
-  ;; which case keep that name
-  (if (or (not wrap-in-named?) (mbql.u/is-clause? :named aggregation))
+   {:keys [use-metric-name-as-display-name?]}                    :- {:use-metric-name-as-display-name? s/Bool}]
+  (if-not use-metric-name-as-display-name?
     aggregation
-    [:named aggregation metric-name]))
+    ;; try to give the resulting aggregation the name of the Metric it came from, unless it already has a display
+    ;; name in which case keep that name
+    (mbql.u/match-one aggregation
+      [:aggregation-options _ (_ :guard :display-name)]
+      &match
+
+      [:aggregation-options ag options]
+      [:aggregation-options ag (assoc options :display-name metric-name)]
+
+      _
+      [:aggregation-options &match {:display-name metric-name}])))
 
 (defn- replace-metrics-aggregations [query metric-id->info]
   (let [metric (fn [metric-id]
                  (or (get metric-id->info metric-id)
-                     (throw (IllegalArgumentException.
-                             (str (tru "Metric {0} does not exist, or is invalid." metric-id))))))]
+                     (throw (ex-info (str (tru "Metric {0} does not exist, or is invalid." metric-id))
+                              {:type :invalid-query, :metric metric-id}))))]
     (mbql.u/replace-in query [:query]
-      [:named [:metric (metric-id :guard (complement mbql.u/ga-id?))] metric-name]
-      [:named (metric-info->ag-clause (metric metric-id) {:wrap-in-named? false}) metric-name]
+      ;; if metric is wrapped in aggregation options that give it a display name, expand the metric but do not name it
+      [:aggregation-options [:metric (metric-id :guard (complement mbql.u/ga-id?))] (options :guard :display-name)]
+      [:aggregation-options
+       (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? false})
+       options]
 
+      ;; if metric is wrapped in aggregation options that *do not* give it a display name, expand the metric and then
+      ;; merge the options
+      [:aggregation-options [:metric (metric-id :guard (complement mbql.u/ga-id?))] options]
+      (let [[_ ag ag-options] (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true})]
+        [:aggregation-options ag (merge ag-options options)])
+
+      ;; otherwise for unwrapped metrics expand them in-place
       [:metric (metric-id :guard (complement mbql.u/ga-id?))]
-      (metric-info->ag-clause (metric metric-id) {:wrap-in-named? true}))))
+      (metric-info->ag-clause (metric metric-id) {:use-metric-name-as-display-name? true}))))
 
 (defn- add-metrics-clauses
   "Add appropriate `filter` and `aggregation` clauses for a sequence of Metrics.

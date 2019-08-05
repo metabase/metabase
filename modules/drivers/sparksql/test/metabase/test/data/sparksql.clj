@@ -45,7 +45,7 @@
 
 (defmethod sql.tx/qualified-name-components :sparksql
   [driver & args]
-  [(tx/format-name driver (u/keyword->qualified-name (last args)))])
+  [(tx/format-name driver (u/qualified-name (last args)))])
 
 (defmethod tx/dbdef->connection-details :sparksql
   [driver context {:keys [database-name]}]
