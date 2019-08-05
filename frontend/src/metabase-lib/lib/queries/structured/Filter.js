@@ -63,7 +63,7 @@ export default class Filter extends MBQLClause {
       const dimensionName = dimension && dimension.displayName();
       const operatorName = operator && operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
-      return t`${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
+      return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else {
       return t`Unknown Filter`;
     }
