@@ -15,7 +15,13 @@ const SummarizePill = props => (
 );
 
 const SummarizeButton = props => (
-  <ViewButton medium icon="insight" color={colors["accent1"]} {...props} />
+  <ViewButton
+    medium
+    icon="insight"
+    color={colors["accent1"]}
+    labelBreakpoint="sm"
+    {...props}
+  />
 );
 
 export default function QuestionSummaries({

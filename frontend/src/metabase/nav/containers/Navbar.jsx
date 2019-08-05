@@ -74,9 +74,8 @@ const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
+  flex: 1 0 auto;
   max-width: 50em;
-  min-width: 25em;
-  width: 100%;
   align-items: center;
   color: white;
   transition: background 300ms ease-in;
@@ -324,8 +323,8 @@ export default class Navbar extends Component {
               className="flex align-center rounded flex-no-shrink transition-background"
               data-metabase-event={`NavBar;New Question`}
             >
-              <Icon name="insight" mr={1} size={18} />
-              <h4 className="hide sm-show">{t`Ask a question`}</h4>
+              <Icon name="insight" size={18} />
+              <h4 className="hide sm-show ml1">{t`Ask a question`}</h4>
             </Link>
           )}
           {hasDataAccess && (
@@ -339,8 +338,8 @@ export default class Navbar extends Component {
                 backgroundColor: darken(colors["brand"]),
               }}
             >
-              <Icon name="table_spaced" mr={1} size={14} />
-              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide md-show ml1">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
@@ -371,16 +370,13 @@ export default class Navbar extends Component {
             ]}
           />
           {hasDataAccess && (
-            <IconWrapper mx={1}>
-              <Tooltip tooltip={t`Write SQL`}>
-                <Link
-                  to={this.props.plainNativeQuery.question().getUrl()}
-                  className="hide sm-show flex-no-shrink"
-                  data-metabase-event={`NavBar;SQL`}
-                >
-                  <Icon size={19} name="sql" />
-                </Link>
-              </Tooltip>
+            <IconWrapper mx={1} className="hide sm-show flex-no-shrink">
+              <Link
+                to={this.props.plainNativeQuery.question().getUrl()}
+                data-metabase-event={`NavBar;SQL`}
+              >
+                <Icon size={19} name="sql" tooltip={t`Write SQL`} />
+              </Link>
             </IconWrapper>
           )}
           <ProfileLink {...this.props} />

@@ -14,7 +14,13 @@ import { color } from "metabase/lib/colors";
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
 const FilterButton = props => (
-  <ViewButton medium icon="filter" color={color("filter")} {...props} />
+  <ViewButton
+    medium
+    icon="filter"
+    color={color("filter")}
+    labelBreakpoint="sm"
+    {...props}
+  />
 );
 
 export default function QuestionFilters({

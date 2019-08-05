@@ -79,6 +79,7 @@ const ViewFooter = ({
           isVisualized && (
             <VizTableToggle
               key="viz-table-toggle"
+              className="mx1"
               question={question}
               isShowingRawTable={isShowingRawTable}
               onShowTable={isShowingRawTable => {
@@ -150,14 +151,14 @@ const VizTypeButton = ({ question, result, ...props }) => {
   const icon = visualization && visualization.iconName;
 
   return (
-    <ViewButton medium icon={icon} {...props}>
+    <ViewButton medium icon={icon} labelBreakpoint="sm" {...props}>
       {t`Visualization`}
     </ViewButton>
   );
 };
 
 const VizSettingsButton = ({ ...props }) => (
-  <ViewButton medium icon="gear" {...props}>
+  <ViewButton medium icon="gear" labelBreakpoint="sm" {...props}>
     {t`Settings`}
   </ViewButton>
 );
@@ -190,10 +191,15 @@ ToggleIcon.defaultProps = {
   px: "8px",
 };
 
-const VizTableToggle = ({ question, isShowingRawTable, onShowTable }) => {
+const VizTableToggle = ({
+  className,
+  question,
+  isShowingRawTable,
+  onShowTable,
+}) => {
   const vizIcon = getIconForVisualizationType(question.display());
   return (
-    <Well onClick={() => onShowTable(!isShowingRawTable)}>
+    <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
       <ToggleIcon active={isShowingRawTable}>
         <Icon name="table2" />
       </ToggleIcon>
