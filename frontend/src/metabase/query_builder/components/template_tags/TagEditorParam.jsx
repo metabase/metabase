@@ -176,21 +176,6 @@ export default class TagEditorParam extends Component {
                 isInitiallyOpen={!tag.dimension}
               />
             )}
-            {hasSelectedDimensionField && !hasWidgetOptions && (
-              <p className="pb1">
-                {t`There aren't any filter widgets for this type of field yet.`}{" "}
-                <Link
-                  to={MetabaseSettings.docsUrl(
-                    "users-guide/13-sql-parameters",
-                    "the-field-filter-variable-type",
-                  )}
-                  target="_blank"
-                  className="link"
-                >
-                  {t`Learn more`}
-                </Link>
-              </p>
-            )}
           </div>
         )}
 
@@ -213,6 +198,21 @@ export default class TagEditorParam extends Component {
                 </Option>
               ))}
           </Select>
+          {hasSelectedDimensionField && !hasWidgetOptions && (
+            <p className="pb1">
+              {t`There aren't any filter widgets for this type of field yet.`}{" "}
+              <Link
+                to={MetabaseSettings.docsUrl(
+                  "users-guide/13-sql-parameters",
+                  "the-field-filter-variable-type",
+                )}
+                target="_blank"
+                className="link"
+              >
+                {t`Learn more`}
+              </Link>
+            </p>
+          )}
         </div>
 
         <div className="flex align-center pb1">
