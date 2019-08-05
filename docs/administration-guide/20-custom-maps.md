@@ -6,7 +6,7 @@ By default, Metabase uses OpenStreetMaps for map visualizations, but there are a
 
 To find the map settings:
 
-1. Click the gear icon in the upper right.
+1. Click the gear icon in the upper right and then select `Admin`
 2. Select `Maps` from the navigation on the left.
 
 ![Map Settings](images/MapSettings.png)
