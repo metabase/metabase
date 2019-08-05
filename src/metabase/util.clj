@@ -501,12 +501,18 @@
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
-(defn ensure-seq
-  "Wrap `x` into a vector if it is not already a sequence."
-  [x]
-  (if (or (sequential? x) (nil? x))
-    x
-    [x]))
+(defn one-or-many
+  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
+  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
+  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
+  your convenience.
+
+    (u/one-or-many 1)     ; -> [1]
+    (u/one-or-many [1 2]) ; -> [1 2]"
+  [arg]
+  (if ((some-fn sequential? set? nil?) arg)
+    arg
+    [arg]))
 
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
@@ -520,7 +526,7 @@
   [m keyseq]
   ;; TODO - use (empty m) once supported by model instances
   (into {} (for [k     keyseq
-                 :let  [[k & nested-keys] (ensure-seq k)
+                 :let  [[k & nested-keys] (one-or-many k)
                         v                 (get m k)]
                  :when (contains? m k)]
              {k (if-not (seq nested-keys)
@@ -647,19 +653,6 @@
   "Convert the keys in a map from `lisp-case` to `snake-case`."
   [m]
   (recursive-map-keys snake-key m))
-
-(defn one-or-many
-  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
-  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
-  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
-  your convenience.
-
-    (u/one-or-many 1)     ; -> [1]
-    (u/one-or-many [1 2]) ; -> [1 2]"
-  [arg]
-  (if ((some-fn sequential? set?) arg)
-    arg
-    [arg]))
 
 (def ^:private do-with-us-locale-lock (Object.))
 

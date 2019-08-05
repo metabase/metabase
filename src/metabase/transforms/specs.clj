@@ -88,12 +88,12 @@
                                     (u/topological-sort (fn [{:keys [source joins]}]
                                                           (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
-                               (for [breakout (u/ensure-seq breakouts)]
+                               (for [breakout (u/one-or-many breakouts)]
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))
     FieldType                (partial keyword "type")
-    [DomainEntity]           u/ensure-seq
+    [DomainEntity]           u/one-or-many
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
     {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)

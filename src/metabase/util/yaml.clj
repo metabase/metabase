@@ -2,29 +2,14 @@
   (:refer-clojure
    :exclude
    [load])
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [files :as files]
+             [i18n :refer [trs]]]
             [yaml.core :as yaml])
-  (:import java.net.URI
-           [java.nio.file Files FileSystem FileSystems Path]))
-
-(defmacro with-resource
-  "Setup all the JVM scaffolding to be able to treat /resources dir in a JAR the same as a normal directory.
-  Ie. support directory listing and such."
-  [[identifier path] & body]
-  `(let [^URI  path#           (-> ~path io/resource .toURI)
-         [jar# internal-path#] (-> path# .toString (str/split #"!" 2))]
-     (if internal-path#
-       (with-open [^FileSystem fs# (-> jar#
-                                       java.net.URI/create
-                                       (FileSystems/newFileSystem (java.util.HashMap.)))]
-         (let [~identifier (.getPath fs# internal-path# (into-array String []))]
-           ~@body))
-       (let [~identifier (.getPath ^FileSystem (FileSystems/getDefault) (.getPath path#) (into-array String []))]
-         ~@body))))
+  (:import [java.nio.file Files Path]))
 
 (defn load
   "Load YAML at path `f`, parse it, and (optionally) pass the result to `constructor`."
@@ -50,7 +35,7 @@
   "Load and parse all YAMLs in `dir`. Optionally pass each resulting data structure through `constructor-fn`."
   ([dir] (load-dir dir identity))
   ([dir constructor]
-   (with-resource [dir dir]
+   (files/with-open-path-to-resource [dir dir]
      (with-open [ds (Files/newDirectoryStream dir)]
        (->> ds
             (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
