@@ -108,7 +108,7 @@ export default class TagEditorParam extends Component {
   render() {
     const { tag, database, databases, metadata } = this.props;
 
-    let widgetOptions,
+    let widgetOptions = [],
       table,
       fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
@@ -202,7 +202,7 @@ export default class TagEditorParam extends Component {
             onChange={e =>
               this.setParameterAttribute("widget-type", e.target.value)
             }
-            isInitiallyOpen={!tag["widget-type"] && widgetOptions.length > 0}
+            isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
             placeholder={t`Select…`}
           >
             {[{ name: "None", type: undefined }]
