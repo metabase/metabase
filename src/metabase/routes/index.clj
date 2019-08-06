@@ -53,6 +53,11 @@
     (fn []
       (memoized-load-localization *locale*))))
 
+(defn- load-inlinejs* [resource-name]
+  (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
+
+(def ^:private ^{:arglists '([resource-name])} load-inlinejs (memoize load-inlinejs*))
+
 (defn- load-template [path variables]
   (try
     (stencil/render-file path variables)
@@ -65,9 +70,9 @@
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
-     {:bootstrapJS        (slurp (io/resource "frontend_client/index_inline_bootstrap.js"))
-      :googleAnalyticsJS  (slurp (io/resource "frontend_client/index_inline_ganalytics.js"))
-      :webFontConfigJS    (slurp (io/resource "frontend_client/index_inline_webfontconfig.js"))
+     {:bootstrapJS        (load-inlinejs "index_bootstrap")
+      :googleAnalyticsJS  (load-inlinejs "index_ganalytics")
+      :webFontConfigJS    (load-inlinejs "index_webfontconfig")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
       :uri                (h.util/escape-html uri)
@@ -79,7 +84,7 @@
 (defn- load-init-template []
   (load-template
     "frontend_client/init.html"
-    {:initJS (slurp (io/resource "frontend_client/init_inline.js"))}))
+    {:initJS (load-inlinejs "init")}))
 
 (defn- entrypoint
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
