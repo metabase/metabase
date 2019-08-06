@@ -3,6 +3,7 @@ import React from "react";
 import { Flex } from "grid-styled";
 import cx from "classnames";
 import _ from "underscore";
+import { t } from "ttag";
 
 import {
   NotebookCell,
@@ -146,7 +147,7 @@ class JoinClause extends React.Component {
               icon="table2"
               inactive={!joinedTable}
             >
-              {joinedTable ? joinedTable.displayName() : `Pick a table...`}
+              {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
             </NotebookCellItem>
           }
         />

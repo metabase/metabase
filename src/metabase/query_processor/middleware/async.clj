@@ -46,7 +46,7 @@
         (log/debug (trs "Got InterruptedException. Canceling query."))
         (a/close! out-chan))
       (do
-        (log/warn e (trs "Unhandled exception, exepected `catch-exceptions` middleware to handle it."))
+        (log/warn e (trs "Unhandled exception, expected `catch-exceptions` middleware to handle it."))
         (respond e)))))
 
 (def ^:private in-flight* (atom 0))
