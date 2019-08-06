@@ -44,6 +44,8 @@ import type {
   VisualizationProps,
   ClickObject,
 } from "metabase/meta/types/Visualization";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { DatasetData } from "metabase/meta/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -321,7 +323,7 @@ export default class TableInteractive extends Component {
     }
   }
 
-  getCellClickedObject(rowIndex, columnIndex) {
+  getCellClickedObject(rowIndex: number, columnIndex: number) {
     try {
       return this._getCellClickedObjectCached(
         this.props.data,
@@ -334,11 +336,16 @@ export default class TableInteractive extends Component {
     }
   }
   @memoize
-  _getCellClickedObjectCached(data, rowIndex, columnIndex, isPivoted) {
+  _getCellClickedObjectCached(
+    data: DatasetData,
+    rowIndex: number,
+    columnIndex: number,
+    isPivoted: boolean,
+  ) {
     return getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
   }
 
-  getHeaderClickedObject(columnIndex) {
+  getHeaderClickedObject(columnIndex: number) {
     try {
       return this._getHeaderClickedObjectCached(
         this.props.data,
@@ -350,11 +357,15 @@ export default class TableInteractive extends Component {
     }
   }
   @memoize
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
+  _getHeaderClickedObjectCached(
+    data: DatasetData,
+    columnIndex: number,
+    isPivoted: boolean,
+  ) {
     return getTableHeaderClickedObject(data, columnIndex, isPivoted);
   }
 
-  visualizationIsClickable(clicked) {
+  visualizationIsClickable(clicked: ?ClickObject) {
     try {
       const { onVisualizationClick, visualizationIsClickable } = this.props;
       const { dragColIndex } = this.state;
@@ -362,7 +373,8 @@ export default class TableInteractive extends Component {
         // don't bother calling if we're dragging, etc
         dragColIndex == null &&
         onVisualizationClick &&
-        visualizationIsClickable
+        visualizationIsClickable &&
+        clicked
       ) {
         return this._visualizationIsClickableCached(
           visualizationIsClickable,
@@ -374,12 +386,19 @@ export default class TableInteractive extends Component {
     }
   }
   @memoize
-  _visualizationIsClickableCached(visualizationIsClickable, clicked) {
+  _visualizationIsClickableCached(
+    visualizationIsClickable: Function,
+    clicked: ClickObject,
+  ) {
     return visualizationIsClickable(clicked);
   }
 
   @memoize
-  getCellBackgroundColor(settings, rowIndex, columnIndex) {
+  getCellBackgroundColor(
+    settings: VisualizationSettings,
+    rowIndex: number,
+    columnIndex: number,
+  ) {
     try {
       return settings["table._cell_background_getter"](rowIndex, columnIndex);
     } catch (e) {
@@ -388,7 +407,7 @@ export default class TableInteractive extends Component {
   }
 
   @memoize
-  getCellFormattedValue(value, columnSettings) {
+  getCellFormattedValue(value: Value, columnSettings: any) {
     try {
       return formatValue(value, {
         ...columnSettings,

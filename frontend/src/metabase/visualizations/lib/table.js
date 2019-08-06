@@ -51,6 +51,7 @@ export function getTableHeaderClickedObject(
   if (isPivoted) {
     // if it's a pivot table, the first column is
     if (columnIndex >= 0 && column) {
+      // $FlowFixMe: _dimension
       return column._dimension;
     } else {
       return null; // FIXME?
