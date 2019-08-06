@@ -1,6 +1,6 @@
 (ns metabase.models.user-test
   (:require [clojure.string :as str]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as email-test]
              [http-client :as http]
@@ -12,9 +12,9 @@
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :as user :refer [User]]]
-            [metabase.test.data.users :as test-users :refer [user->id]]
+            [metabase.test.data.users :as test-users]
             [metabase.test.util :as tu]
-            [metabase.util.password :as upass]
+            [metabase.util.password :as u.password]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
@@ -23,17 +23,17 @@
 ;;; Tests for permissions-set
 
 ;; Make sure the test users have valid permissions sets
-(expect (perms/is-permissions-set? (user/permissions-set (user->id :rasta))))
-(expect (perms/is-permissions-set? (user/permissions-set (user->id :crowberto))))
-(expect (perms/is-permissions-set? (user/permissions-set (user->id :lucky))))
-(expect (perms/is-permissions-set? (user/permissions-set (user->id :trashbird))))
+(expect (perms/is-permissions-set? (user/permissions-set (test-users/user->id :rasta))))
+(expect (perms/is-permissions-set? (user/permissions-set (test-users/user->id :crowberto))))
+(expect (perms/is-permissions-set? (user/permissions-set (test-users/user->id :lucky))))
+(expect (perms/is-permissions-set? (user/permissions-set (test-users/user->id :trashbird))))
 
 ;; Ok, adding a group with *no* permissions shouldn't suddenly break all the permissions sets
 ;; (This was a bug @tom found where a group with no permissions would cause the permissions set to contain `nil`).
 (expect
   (tt/with-temp* [PermissionsGroup           [{group-id :id}]
-                  PermissionsGroupMembership [_              {:group_id group-id, :user_id (user->id :rasta)}]]
-    (perms/is-permissions-set? (user/permissions-set (user->id :rasta)))))
+                  PermissionsGroupMembership [_              {:group_id group-id, :user_id (test-users/user->id :rasta)}]]
+    (perms/is-permissions-set? (user/permissions-set (test-users/user->id :rasta)))))
 
 ;; Does permissions-set include permissions for my Personal Collection?
 (defn- remove-non-collection-perms [perms-set]
@@ -41,24 +41,24 @@
              :when      (str/starts-with? perms-path "/collection/")]
          perms-path)))
 (expect
-  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))}
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (test-users/user->id :lucky)))}
   (tu/with-non-admin-groups-no-root-collection-perms
-    (-> (user/permissions-set (user->id :lucky))
+    (-> (user/permissions-set (test-users/user->id :lucky))
         remove-non-collection-perms)))
 
 ;; ...and for any descendant Collections of my Personal Collection?
 (expect
-  #{(perms/collection-readwrite-path (collection/user->personal-collection (user->id :lucky)))
+  #{(perms/collection-readwrite-path (collection/user->personal-collection (test-users/user->id :lucky)))
     "/collection/child/"
     "/collection/grandchild/"}
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [child-collection      {:name     "child"
                                                        :location (collection/children-location
                                                                   (collection/user->personal-collection
-                                                                   (user->id :lucky)))}]
+                                                                   (test-users/user->id :lucky)))}]
                     Collection [grandchild-collection {:name     "grandchild"
                                                        :location (collection/children-location child-collection)}]]
-      (->> (user/permissions-set (user->id :lucky))
+      (->> (user/permissions-set (test-users/user->id :lucky))
            remove-non-collection-perms
            (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))
 
@@ -87,7 +87,7 @@
 
 
 (defn- invite-user-accept-and-check-inboxes!
-  "Create user by passing INVITE-USER-ARGS to `create-and-invite-user!` or `create-new-google-auth-user!`,
+  "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,
   and return a map of addresses emails were sent to to the email subjects."
   [& {:keys [google-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
@@ -103,7 +103,7 @@
         (try
           (if google-auth?
             (user/create-new-google-auth-user! (dissoc new-user :password))
-            (user/create-and-invite-user!                 new-user invitor))
+            (user/create-and-invite-user! new-user invitor))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
           (sent-emails new-user-email new-user-first-name new-user-last-name)
@@ -172,7 +172,7 @@
                                       :last_name  "SomeLdapStuff"
                                       :password   "should be removed"})
     (let [{:keys [password password_salt]} (db/select-one [User :password :password_salt] :email "ldaptest@metabase.com")]
-      (upass/verify-password "should be removed" password_salt password))
+      (u.password/verify-password "should be removed" password_salt password))
     (finally
       (db/delete! User :email "ldaptest@metabase.com"))))
 

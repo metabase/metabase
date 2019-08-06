@@ -224,7 +224,7 @@ const TextActionButtons = ({
           <span className="flex align-center">
             <span className="flex">
               <Icon
-                name="editdocument"
+                name="edit_document"
                 style={{ top: 0, left: 0 }}
                 size={HEADER_ICON_SIZE}
               />

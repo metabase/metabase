@@ -37,8 +37,40 @@
 (expect false (u/url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 
+;;; `qualified-name`
+(expect
+  "keyword"
+  (u/qualified-name :keyword))
+
+(expect
+  "namespace/keyword"
+  (u/qualified-name :namespace/keyword))
+
+;; `qualified-name` should return strings as-is
+(expect
+  "some string"
+  (u/qualified-name "some string"))
+
+;; `qualified-name` should work on anything that implements `clojure.lang.Named`
+(expect
+  "namespace/name"
+  (u/qualified-name (reify clojure.lang.Named
+                      (getName [_] "name")
+                      (getNamespace [_] "namespace"))))
+
+;; `qualified-name` shouldn't throw an NPE (unlike `name`)
+(expect
+  nil
+  (u/qualified-name nil))
+
+;; we shouldn't ignore non-nil values -- `u/qualified-name` should throw an Exception if `name` would
+(expect
+  ClassCastException
+  (u/qualified-name false))
+
 ;;; `rpartial`
-(expect 3
+(expect
+  3
   ((u/rpartial - 5) 8))
 
 (expect -7

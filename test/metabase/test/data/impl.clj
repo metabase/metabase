@@ -67,7 +67,7 @@
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
           (when special-type
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
+            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
 (def ^:private create-database-timeout
   "Max amount of time to wait for driver text extensions to create a DB and load test data."

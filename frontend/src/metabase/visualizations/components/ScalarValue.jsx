@@ -55,7 +55,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         style={{ marginTop: 5, width: ICON_WIDTH }}
       >
         <Tooltip tooltip={description} maxWidth={"22em"}>
-          <Icon name="infooutlined" />
+          <Icon name="info_outline" />
         </Tooltip>
       </div>
     )}

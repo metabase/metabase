@@ -1,6 +1,3 @@
-// HACK: needed due to cyclical dependency issue
-import "metabase-lib/lib/Question";
-
 import {
   metadata,
   question,
@@ -12,21 +9,11 @@ import {
   MAIN_METRIC_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
   PRODUCT_TILE_FIELD_ID,
+  makeDatasetQuery,
 } from "__support__/sample_dataset_fixture";
 
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-
-function makeDatasetQuery(query) {
-  return {
-    type: "query",
-    database: DATABASE_ID,
-    query: {
-      "source-table": ORDERS_TABLE_ID,
-      ...query,
-    },
-  };
-}
 
 function makeQuery(query) {
   return new StructuredQuery(question, makeDatasetQuery(query));
@@ -161,22 +148,9 @@ describe("StructuredQuery unit tests", () => {
         expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
       });
       it("should return an actual count aggregation after trying to add it", () => {
-        expect(query.addAggregation(["count"]).aggregations()[0]).toEqual([
+        expect(query.addAggregation(["count"]).aggregations()[0][0]).toEqual(
           "count",
-        ]);
-      });
-    });
-    describe("aggregationsWrapped", () => {
-      it("should return an empty list for an empty query", () => {
-        expect(query.aggregationsWrapped().length).toBe(0);
-      });
-      it("should return a list with Aggregation after adding an aggregation", () => {
-        expect(
-          query
-            .addAggregation(["count"])
-            .aggregationsWrapped()[0]
-            .isValid(),
-        ).toBe(true);
+        );
       });
     });
 

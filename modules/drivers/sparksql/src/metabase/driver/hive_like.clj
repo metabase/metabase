@@ -125,7 +125,7 @@
         (let [statement        (into [statement] params)
               [columns & rows] (jdbc/query connection statement options)]
           {:rows    (or rows [])
-           :columns (map u/keyword->qualified-name columns)})))))
+           :columns (map u/qualified-name columns)})))))
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"

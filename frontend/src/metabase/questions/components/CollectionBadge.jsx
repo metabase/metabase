@@ -1,10 +1,11 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { Link } from "react-router";
 
+import Link from "metabase/components/Link";
 import Icon from "metabase/components/Icon";
 
-import * as Urls from "metabase/lib/urls";
+import { lighten } from "metabase/lib/colors";
+
 import Collection from "metabase/entities/collections";
 
 import cx from "classnames";
@@ -17,21 +18,42 @@ import cx from "classnames";
 })
 class CollectionBadge extends React.Component {
   render() {
-    const { analyticsContext, object, className } = this.props;
-    if (!object) {
+    const {
+      analyticsContext,
+      collection,
+      className,
+      hasBackground,
+      style = {},
+    } = this.props;
+    if (!collection) {
       return null;
     }
+    const backgroundStyle = hasBackground
+      ? {
+          backgroundColor: lighten("brand"),
+          paddingTop: "0.3em",
+          paddingBottom: "0.3em",
+          borderRadius: "0.4em",
+        }
+      : {};
+
     return (
       <Link
-        to={Urls.collection(object.id)}
-        className={cx(className, "block link")}
+        to={collection.getUrl()}
+        className={cx(
+          className,
+          "block cursor-pointer text-bold text-medium text-brand-hover",
+          { px1: hasBackground },
+        )}
+        style={{
+          ...backgroundStyle,
+          ...style,
+        }}
         data-metabase-event={`${analyticsContext};Collection Badge Click`}
       >
         <Flex align="center">
-          <Icon name={object.getIcon()} mr={1} />
-          <h5 className="text-uppercase text-wrap" style={{ fontWeight: 900 }}>
-            {object.name}
-          </h5>
+          <Icon name={collection.getIcon()} mr={1} size={13} />
+          <span className="text-wrap">{collection.getName()}</span>
         </Flex>
       </Link>
     );

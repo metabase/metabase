@@ -451,13 +451,17 @@
   [f coll]
   (into {} (map (juxt f identity)) coll))
 
-(defn keyword->qualified-name
-  "Return keyword K as a string, including its namespace, if any (unlike `name`).
+(defn qualified-name
+  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
+  (also unlike `name`).
 
-     (keyword->qualified-name :type/FK) ->  \"type/FK\""
+     (u/qualified-name :type/FK) -> \"type/FK\""
   [k]
-  (when k
-    (str/replace (str k) #"^:" "")))
+  (when (some? k)
+    (if-let [namespac (when (instance? clojure.lang.Named k)
+                        (namespace k))]
+      (str namespac "/" (name k))
+      (name k))))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.

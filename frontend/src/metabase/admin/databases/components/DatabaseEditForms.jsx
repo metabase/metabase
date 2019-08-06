@@ -56,6 +56,7 @@ export default class DatabaseEditForms extends Component {
               ...details,
               name: database.name,
               is_full_sync: database.is_full_sync,
+              auto_run_queries: database.auto_run_queries,
             }}
             engine={database.engine}
             engines={engines}

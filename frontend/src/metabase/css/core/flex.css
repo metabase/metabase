@@ -40,6 +40,10 @@
   flex-basis: auto;
 }
 
+.flex-basis-none {
+  flex-basis: 0;
+}
+
 .shrink-below-content-size {
   /* W3C spec says:
      * By default, flex items won’t shrink below their minimum content size (the length of the longest word or

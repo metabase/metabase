@@ -73,7 +73,7 @@
                              :type/*)]]
      (merge
       {:name         (name col)
-       :display_name (u/keyword->qualified-name col)
+       :display_name (u/qualified-name col)
        :base_type    base-type
        :source       :native}
       ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
@@ -165,7 +165,7 @@
 
     [:expression expression-name]
     (if-let [matching-expression (when (seq expressions)
-                                   (some expressions ((juxt keyword u/keyword->qualified-name) expression-name)))]
+                                   (some expressions ((juxt keyword u/qualified-name) expression-name)))]
       (merge
        ;; There's some inconsistency when expression names are keywords and when strings.
        ;; TODO: remove this duality once https://github.com/metabase/mbql/issues/5 is resolved.
@@ -272,24 +272,22 @@
               (for [arg args]
                 (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
 
-    [:count]
-    (str (tru "count"))
-
-    [:distinct    arg]   (str (tru "distinct count of {0}"     (aggregation-arg-display-name inner-query arg)))
-    [:count       arg]   (str (tru "count of {0}"              (aggregation-arg-display-name inner-query arg)))
-    [:avg         arg]   (str (tru "average of {0}"            (aggregation-arg-display-name inner-query arg)))
+    [:count]             (str (tru "Count"))
+    [:distinct    arg]   (str (tru "Distinct values of {0}"  (aggregation-arg-display-name inner-query arg)))
+    [:count       arg]   (str (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg)))
+    [:avg         arg]   (str (tru "Average of {0}"          (aggregation-arg-display-name inner-query arg)))
     ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (str (tru "count of {0}"              (aggregation-arg-display-name inner-query arg)))
-    [:cum-sum     arg]   (str (tru "sum of {0}"                (aggregation-arg-display-name inner-query arg)))
-    [:stddev      arg]   (str (tru "standard deviation of {0}" (aggregation-arg-display-name inner-query arg)))
-    [:sum         arg]   (str (tru "sum of {0}"                (aggregation-arg-display-name inner-query arg)))
-    [:min         arg]   (str (tru "minimum value of {0}"      (aggregation-arg-display-name inner-query arg)))
-    [:max         arg]   (str (tru "maximum value of {0}"      (aggregation-arg-display-name inner-query arg)))
+    [:cum-count   arg]   (str (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg)))
+    [:cum-sum     arg]   (str (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg)))
+    [:stddev      arg]   (str (tru "SD of {0}"               (aggregation-arg-display-name inner-query arg)))
+    [:sum         arg]   (str (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg)))
+    [:min         arg]   (str (tru "Min of {0}"              (aggregation-arg-display-name inner-query arg)))
+    [:max         arg]   (str (tru "Max of {0}"              (aggregation-arg-display-name inner-query arg)))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
-    [:sum-where   arg _] (str (tru "sum of {0} matching condition" (aggregation-arg-display-name inner-query arg)))
-    [:share       _]     (str (tru "share of rows matching condition"))
-    [:count-where _]     (str (tru "count of rows matching condition"))
+    [:sum-where   arg _] (str (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg)))
+    [:share       _]     (str (tru "Share of rows matching condition"))
+    [:count-where _]     (str (tru "Count of rows matching condition"))
 
     (_ :guard mbql.preds/Field?)
     (:display_name (col-info-for-field-clause inner-query ag-clause))
@@ -502,7 +500,7 @@
                  (nil? columns)))
     (let [sorted-columns (expected-column-sort-order query results)]
       (assoc results
-        :columns (map u/keyword->qualified-name sorted-columns)
+        :columns (map u/qualified-name sorted-columns)
         :rows    (for [row rows]
                    (for [col sorted-columns]
                      (get row col)))))))

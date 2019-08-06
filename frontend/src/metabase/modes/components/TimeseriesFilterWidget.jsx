@@ -9,7 +9,7 @@ import Button from "metabase/components/Button";
 
 import * as Query from "metabase/lib/query/query";
 import * as Filter from "metabase/lib/query/filter";
-import * as Field from "metabase/lib/query/field";
+import * as FieldRef from "metabase/lib/query/field_ref";
 import * as Card from "metabase/meta/Card";
 
 import {
@@ -72,7 +72,7 @@ export default class TimeseriesFilterWidget extends Component {
         filters,
         filter =>
           Filter.isFieldFilter(filter) &&
-          Field.getFieldTargetId(filter[1]) === timeFieldId,
+          FieldRef.getFieldTargetId(filter[1]) === timeFieldId,
       );
 
       let filter, currentFilter;
@@ -121,6 +121,7 @@ export default class TimeseriesFilterWidget extends Component {
         autoWidth={true}
       >
         <DatePicker
+          className="m2"
           filter={this.state.filter}
           onFilterChange={newFilter => {
             this.setState({ filter: newFilter });

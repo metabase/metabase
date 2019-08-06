@@ -5275,6 +5275,8 @@ databaseChangeLog:
             columns:
               - column:
                   name: parent_id
+
+# Persist domain entities
   - changeSet:
       id: 102
       author: sbelak
@@ -5354,3 +5356,19 @@ databaseChangeLog:
             columns:
               column:
                 name: source_table
+
+# A per-Database setting for the new Query Builder 3.0.
+  - changeSet:
+      id: 103
+      author: camsaul
+      comment: 'Added 0.32.10'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              name: auto_run_queries
+              remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
+              type: boolean
+              constraints:
+                nullable: false
+              defaultValueBoolean: true

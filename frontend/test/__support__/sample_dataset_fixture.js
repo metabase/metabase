@@ -2,7 +2,10 @@ import React from "react";
 import { Provider } from "react-redux";
 import { getStore } from "metabase/store";
 
+// StructuredQuery import needs to come before Question due to cyclical depedency issue
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Question from "metabase-lib/lib/Question";
+
 import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
 import _ from "underscore";
@@ -31,6 +34,7 @@ export const PEOPLE_LATITUDE_FIELD_ID = 14;
 export const PEOPLE_LONGITUDE_FIELD_ID = 15;
 export const PEOPLE_STATE_FIELD_ID = 19;
 
+// TODO: dump this from a real instance
 export const state = {
   entities: {
     metrics: {
@@ -105,6 +109,10 @@ export const state = {
           "foreign-keys",
           "native-parameters",
           "expressions",
+          "right-join",
+          "left-join",
+          "inner-join",
+          "nested-queries",
         ],
         name: "Sample Dataset",
         caveats: null,
@@ -1542,6 +1550,23 @@ export const clickedCreatedAtBreakoutHeader = {
     source: "breakout",
   },
 };
+
+// NOTE: defauts to orders table
+export function makeDatasetQuery(query = {}) {
+  return {
+    type: "query",
+    database: DATABASE_ID,
+    query: {
+      "source-table": query["source-query"] ? undefined : ORDERS_TABLE_ID,
+      ...query,
+    },
+  };
+}
+
+// NOTE: defauts to orders table
+export function makeStructuredQuery(query) {
+  return new StructuredQuery(question, makeDatasetQuery(query));
+}
 
 export const orders_past_300_days_segment = {
   id: null,

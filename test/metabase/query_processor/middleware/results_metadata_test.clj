@@ -174,7 +174,7 @@
     :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
                                                                          :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3

@@ -1,5 +1,5 @@
 import _ from "underscore";
-import Query, { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
@@ -18,7 +18,7 @@ export function createCard(name = null) {
 export function startNewCard(type, databaseId, tableId) {
   // create a brand new card to work from
   const card = createCard();
-  card.dataset_query = createQuery(type, databaseId, tableId);
+  card.dataset_query = Q_DEPRECATED.createQuery(type, databaseId, tableId);
 
   return card;
 }
@@ -68,25 +68,11 @@ export function isCardDirty(card, originalCard) {
   }
 }
 
-export function isCardRunnable(card, tableMetadata) {
-  if (!card) {
-    return false;
-  }
-  const datasetQuery = card.dataset_query;
-  if (datasetQuery.query) {
-    return Query.canRun(datasetQuery.query, tableMetadata);
-  } else {
-    return (
-      datasetQuery.database != undefined && datasetQuery.native.query !== ""
-    );
-  }
-}
-
 // TODO Atte Keinänen 5/31/17 Deprecated, we should move tests to Questions.spec.js
 export function serializeCardForUrl(card) {
   const dataset_query = Utils.copy(card.dataset_query);
   if (dataset_query.query) {
-    dataset_query.query = Query.cleanQuery(dataset_query.query);
+    dataset_query.query = Q_DEPRECATED.cleanQuery(dataset_query.query);
   }
 
   const cardCopy = {

@@ -83,7 +83,7 @@
      :source-metadata (concat
                        (venues-source-metadata :price)
                        [{:name         "count"
-                         :display_name "count"
+                         :display_name "Count"
                          :base_type    :type/Integer
                          :special_type :type/Number}])})
   (add-source-metadata
@@ -101,7 +101,7 @@
      :source-metadata (concat
                        (venues-source-metadata :price)
                        [{:name         "avg"
-                         :display_name "average of ID"
+                         :display_name "Average of ID"
                          :base_type    :type/BigInteger
                          :special_type :type/PK
                          :settings     nil}])})
@@ -140,7 +140,7 @@
 ;; Can we add source metadata for a source query that has a named aggregation? (w/ `:name` only)
 (expect
   [{:name         "some_generated_name"
-    :display_name "average of ID"
+    :display_name "Average of ID"
     :base_type    :type/BigInteger
     :special_type :type/PK
     :settings     nil}]
@@ -222,7 +222,7 @@
   (let [metadata (concat
                   (venues-source-metadata :price)
                   [{:name         "count"
-                    :display_name "count"
+                    :display_name "Count"
                     :base_type    :type/Integer
                     :special_type :type/Number}])]
     (data/mbql-query venues
@@ -272,7 +272,7 @@
      :source-metadata (concat
                        (venues-source-metadata :latitude)
                        [{:name         "count"
-                         :display_name "count"
+                         :display_name "Count"
                          :base_type    :type/Integer
                          :special_type :type/Number}])})
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]

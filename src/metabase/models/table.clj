@@ -64,7 +64,7 @@
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn fields
-  "Return the `FIELDS` belonging to a single TABLE."
+  "Return the Fields belonging to a single `table`."
   [{:keys [id]}]
   (db/select Field
     :table_id        id
@@ -73,17 +73,17 @@
     {:order-by [[:position :asc] [:name :asc]]}))
 
 (defn metrics
-  "Retrieve the `Metrics` for a single TABLE."
+  "Retrieve the Metrics for a single `table`."
   [{:keys [id]}]
   (retrieve-metrics id :all))
 
 (defn segments
-  "Retrieve the `Segments` for a single TABLE."
+  "Retrieve the Segments for a single `table`."
   [{:keys [id]}]
   (retrieve-segments id :all))
 
 (defn field-values
-  "Return the `FieldValues` for all `Fields` belonging to a single TABLE."
+  "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
   [{:keys [id]}]
   (let [field-ids (db/select-ids Field
@@ -94,7 +94,7 @@
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
 (defn pk-field-id
-  "Return the ID of the primary key `Field` for TABLE."
+  "Return the ID of the primary key `Field` for `table`."
   {:hydrate :pk_field, :arglists '([table])}
   [{:keys [id]}]
   (db/select-one-id Field

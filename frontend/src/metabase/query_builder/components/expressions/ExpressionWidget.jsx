@@ -11,10 +11,12 @@ export default class ExpressionWidget extends Component {
   static propTypes = {
     expression: PropTypes.array,
     name: PropTypes.string,
-    tableMetadata: PropTypes.object.isRequired,
-    onSetExpression: PropTypes.func.isRequired,
-    onRemoveExpression: PropTypes.func.isRequired,
-    onCancel: PropTypes.func.isRequired,
+    query: PropTypes.object.isRequired,
+    // deprecated:
+    tableMetadata: PropTypes.object,
+    onChangeExpression: PropTypes.func.isRequired,
+    onRemoveExpression: PropTypes.func,
+    onClose: PropTypes.func.isRequired,
   };
 
   static defaultProps = {
@@ -41,6 +43,8 @@ export default class ExpressionWidget extends Component {
   render() {
     const { expression } = this.state;
 
+    const tableMetadata = this.props.tableMetadata || this.props.query.table();
+
     return (
       <div style={{ maxWidth: "600px" }}>
         <div className="p2">
@@ -48,7 +52,7 @@ export default class ExpressionWidget extends Component {
           <div>
             <ExpressionEditorTextfield
               expression={expression}
-              tableMetadata={this.props.tableMetadata}
+              tableMetadata={tableMetadata}
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }
@@ -84,28 +88,32 @@ export default class ExpressionWidget extends Component {
           <div className="ml-auto">
             <button
               className="Button"
-              onClick={() => this.props.onCancel()}
+              onClick={() => this.props.onClose()}
             >{t`Cancel`}</button>
             <button
               className={cx("Button ml2", {
                 "Button--primary": this.isValid(),
               })}
-              onClick={() =>
-                this.props.onSetExpression(
+              onClick={() => {
+                this.props.onChangeExpression(
                   this.state.name,
                   this.state.expression,
-                )
-              }
+                );
+                this.props.onClose();
+              }}
               disabled={!this.isValid()}
             >
               {this.props.expression ? t`Update` : t`Done`}
             </button>
           </div>
           <div>
-            {this.props.expression ? (
+            {this.props.expression && this.props.onRemoveExpression ? (
               <a
                 className="pr2 ml2 text-error link"
-                onClick={() => this.props.onRemoveExpression(this.props.name)}
+                onClick={() => {
+                  this.props.onRemoveExpression(this.props.name);
+                  this.props.onClose();
+                }}
               >{t`Remove`}</a>
             ) : null}
           </div>

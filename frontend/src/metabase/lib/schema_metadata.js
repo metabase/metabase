@@ -136,7 +136,8 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col => col && col.source !== "aggregation";
+export const isDimension = col =>
+  col && col.source !== "aggregation" && !isDescription(col);
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 
@@ -156,6 +157,8 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.special_type == null || isa(field.special_type, TYPE.Number));
 
+export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
+
 export const isTime = field => isa(field && field.base_type, TYPE.Time);
 
 export const isAddress = field =>
@@ -172,6 +175,9 @@ export const isLongitude = field =>
 
 export const isCurrency = field =>
   isa(field && field.special_type, TYPE.Currency);
+
+export const isDescription = field =>
+  isa(field && field.special_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
@@ -448,6 +454,7 @@ function dimensionFields(fields) {
 
 const Aggregators = [
   {
+    // DEPRECATED: "rows" is equivalent to no aggregations
     name: t`Raw data`,
     short: "rows",
     description: t`Just a table with the rows in the answer, no additional operations.`,

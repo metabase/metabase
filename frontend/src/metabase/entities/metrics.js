@@ -2,6 +2,7 @@ import { createEntity } from "metabase/lib/entities";
 
 import { MetricSchema } from "metabase/schema";
 import colors from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
 const Metrics = createEntity({
   name: "metrics",
@@ -22,10 +23,11 @@ const Metrics = createEntity({
   },
 
   objectSelectors: {
-    getName: segment => segment && segment.name,
-    getUrl: segment => null,
-    getColor: () => colors["text-medium"],
-    getIcon: question => "sum",
+    getName: metric => metric && metric.name,
+    getUrl: metric =>
+      Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
+    getColor: metric => colors["accent1"],
+    getIcon: metric => "sum",
   },
 
   form: {

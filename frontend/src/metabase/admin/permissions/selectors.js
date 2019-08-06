@@ -260,7 +260,7 @@ const OPTION_CONTROLLED = {
   value: "controlled",
   title: t`Limit access`,
   tooltip: t`Limited access`,
-  icon: "permissionsLimited",
+  icon: "permissions_limited",
 };
 
 const OPTION_NONE = {

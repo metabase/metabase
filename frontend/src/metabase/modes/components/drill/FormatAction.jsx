@@ -23,7 +23,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   return [
     {
       name: "formatting",
-      section: "Formatting",
+      section: "formatting",
       title: t`Formatting`,
       action: () =>
         showChartSettings({

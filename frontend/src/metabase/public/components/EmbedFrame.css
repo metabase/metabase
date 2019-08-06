@@ -10,14 +10,14 @@
 
 .Theme--night.EmbedFrame {
   background-color: var(--color-bg-black);
-  border: 1px solid var(--color-accent2);
+  border: 1px solid var(--color-bg-dark);
 }
 
 .Theme--night .EmbedFrame-header,
 .Theme--night .EmbedFrame-footer {
   color: color(var(--color-text-white) alpha(-14%));
   background-color: var(--color-bg-black);
-  border-color: var(--color-accent2);
+  border-color: var(--color-bg-dark);
 }
 
 .Theme--night.EmbedFrame .fullscreen-night-text {

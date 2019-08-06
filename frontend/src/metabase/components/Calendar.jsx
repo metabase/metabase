@@ -21,7 +21,6 @@ export default class Calendar extends Component {
     selectedEnd: PropTypes.object,
     onChange: PropTypes.func.isRequired,
     isRangePicker: PropTypes.bool,
-    isDual: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -171,16 +170,7 @@ export default class Calendar extends Component {
 
   render() {
     const { current } = this.state;
-    if (this.props.isDual) {
-      return (
-        <div className="Grid Grid--1of2 Grid--gutters">
-          {this.renderCalender(current, "left")}
-          {this.renderCalender(moment(current).add(1, "month"), "right")}
-        </div>
-      );
-    } else {
-      return this.renderCalender(current);
-    }
+    return this.renderCalender(current);
   }
 }
 

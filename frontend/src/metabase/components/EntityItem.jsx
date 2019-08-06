@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
-import { Flex } from "grid-styled";
+import { Box, Flex } from "grid-styled";
 
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
@@ -37,6 +37,8 @@ const EntityItem = ({
   selectable,
   variant,
   item,
+  buttons,
+  extraInfo,
 }) => {
   const actions = [
     onPin && {
@@ -114,14 +116,25 @@ const EntityItem = ({
           <Icon name={iconName} color={iconColor} size={18} />
         )}
       </IconWrapper>
-      <h3 className="overflow-hidden">
-        <Ellipsified>{name}</Ellipsified>
-      </h3>
+      <Box>
+        <h3 className="overflow-hidden">
+          <Ellipsified>{name}</Ellipsified>
+        </h3>
+        <Box>{extraInfo && extraInfo}</Box>
+      </Box>
 
-      <Flex ml="auto" align="center" onClick={e => e.preventDefault()}>
+      <Flex ml="auto" pr={1} align="center" onClick={e => e.preventDefault()}>
+        {buttons}
+        {item.description && (
+          <Icon
+            tooltip={item.description}
+            name="info"
+            className="ml1 text-medium"
+          />
+        )}
         {actions.length > 0 && (
           <EntityMenu
-            className="hover-child"
+            className="ml1 hover-child"
             triggerIcon="ellipsis"
             items={actions}
           />

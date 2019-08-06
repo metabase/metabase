@@ -90,6 +90,8 @@ export type FormattingOptions = {
 
 type FormattedString = string | React$Element<any>;
 
+export const FK_SYMBOL = "→";
+
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
   maximumFractionDigits: 2,
