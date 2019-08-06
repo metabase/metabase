@@ -18,7 +18,6 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";

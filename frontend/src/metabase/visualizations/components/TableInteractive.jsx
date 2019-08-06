@@ -9,8 +9,10 @@ import Icon from "metabase/components/Icon.jsx";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
+import { memoize } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
+  getTableHeaderClickedObject,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
@@ -116,6 +118,8 @@ export default class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
+
+    window.METABASE_TABLE = this;
   }
 
   static propTypes = {
@@ -310,18 +314,6 @@ export default class TableInteractive extends Component {
     });
   }
 
-  visualizationIsClickable(clicked: ?ClickObject) {
-    const { onVisualizationClick, visualizationIsClickable } = this.props;
-    const { dragColIndex } = this.state;
-    return (
-      // don't bother calling if we're dragging
-      dragColIndex == null &&
-      onVisualizationClick &&
-      visualizationIsClickable &&
-      visualizationIsClickable(clicked)
-    );
-  }
-
   onVisualizationClick(clicked: ?ClickObject, element: HTMLElement) {
     const { onVisualizationClick } = this.props;
     if (this.visualizationIsClickable(clicked)) {
@@ -329,26 +321,102 @@ export default class TableInteractive extends Component {
     }
   }
 
+  getCellClickedObject(rowIndex, columnIndex) {
+    try {
+      return this._getCellClickedObjectCached(
+        this.props.data,
+        rowIndex,
+        columnIndex,
+        this.props.isPivoted,
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  @memoize
+  _getCellClickedObjectCached(data, rowIndex, columnIndex, isPivoted) {
+    return getTableCellClickedObject(data, rowIndex, columnIndex, isPivoted);
+  }
+
+  getHeaderClickedObject(columnIndex) {
+    try {
+      return this._getHeaderClickedObjectCached(
+        this.props.data,
+        columnIndex,
+        this.props.isPivoted,
+      );
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  @memoize
+  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
+    return getTableHeaderClickedObject(data, columnIndex, isPivoted);
+  }
+
+  visualizationIsClickable(clicked) {
+    try {
+      const { onVisualizationClick, visualizationIsClickable } = this.props;
+      const { dragColIndex } = this.state;
+      if (
+        // don't bother calling if we're dragging, etc
+        dragColIndex == null &&
+        onVisualizationClick &&
+        visualizationIsClickable
+      ) {
+        return this._visualizationIsClickableCached(
+          visualizationIsClickable,
+          clicked,
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  @memoize
+  _visualizationIsClickableCached(visualizationIsClickable, clicked) {
+    return visualizationIsClickable(clicked);
+  }
+
+  @memoize
+  getCellBackgroundColor(settings, rowIndex, columnIndex) {
+    try {
+      return settings["table._cell_background_getter"](rowIndex, columnIndex);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  @memoize
+  getCellFormattedValue(value, columnSettings) {
+    try {
+      return formatValue(value, {
+        ...columnSettings,
+        type: "cell",
+        jsx: true,
+        rich: true,
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
-    const { data, isPivoted, settings } = this.props;
+    const { data, settings } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
-    const getCellBackgroundColor = settings["table._cell_background_getter"];
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];
     const value = row[columnIndex];
 
-    const clicked = getTableCellClickedObject(
-      data,
+    const clicked = this.getCellClickedObject(rowIndex, columnIndex);
+    const isClickable = this.visualizationIsClickable(clicked);
+    const backgroundColor = this.getCellBackgroundColor(
+      settings,
       rowIndex,
       columnIndex,
-      isPivoted,
     );
-    const isClickable = this.visualizationIsClickable(clicked);
-    const backgroundColor =
-      getCellBackgroundColor &&
-      getCellBackgroundColor(value, rowIndex, column.name);
 
     const columnSettings = settings.column(column);
 
@@ -391,13 +459,8 @@ export default class TableInteractive extends Component {
               cellHeight={ROW_HEIGHT}
             />
           ) : (
+            this.getCellFormattedValue(value, columnSettings)
             /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
-            formatValue(value, {
-              ...columnSettings,
-              type: "cell",
-              jsx: true,
-              rich: true,
-            })
           ),
         )}
       </div>
@@ -465,28 +528,22 @@ export default class TableInteractive extends Component {
 
   tableHeaderRenderer = ({ key, style, columnIndex }: CellRendererProps) => {
     const {
+      data,
       sort,
       isPivoted,
       getColumnTitle,
       renderTableHeaderWrapper,
     } = this.props;
-    const { cols } = this.props.data;
+    const { dragColIndex } = this.state;
+    const { cols } = data;
     const column = cols[columnIndex];
 
     const columnTitle = getColumnTitle(columnIndex);
 
-    let clicked;
-    if (isPivoted) {
-      // if it's a pivot table, the first column is
-      if (columnIndex >= 0) {
-        clicked = column._dimension;
-      }
-    } else {
-      clicked = { column };
-    }
+    const clicked = this.getHeaderClickedObject(columnIndex);
 
-    const isDraggable = !this.props.isPivoted;
-    const isDragging = this.state.dragColIndex === columnIndex;
+    const isDraggable = !isPivoted;
+    const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source;
     const isRightAligned = isColumnRightAligned(column);
@@ -745,5 +802,31 @@ export default class TableInteractive extends Component {
         )}
       </ScrollSync>
     );
+  }
+
+  _benchmark() {
+    const grid = ReactDOM.findDOMNode(this.grid);
+    const height = grid.scrollHeight;
+    console.log("height", height);
+    let top = 0;
+    let start = Date.now();
+    // console.profile();
+    function next() {
+      grid.scrollTop = top;
+
+      setTimeout(() => {
+        const end = Date.now();
+        console.log(end - start);
+        start = end;
+
+        top += height / 10;
+        if (top < height - height / 10) {
+          next();
+        } else {
+          // console.profileEnd();
+        }
+      }, 40);
+    }
+    next();
   }
 }
