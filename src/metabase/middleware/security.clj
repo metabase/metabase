@@ -1,12 +1,25 @@
 (ns metabase.middleware.security
   "Ring middleware for adding security-related headers to API responses."
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [metabase.config :as config]
             [metabase.middleware.util :as middleware.u]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]]))
+             [i18n :as ui18n :refer [tru]]]
+            [ring.util.codec :refer [base64-encode]])
+  (:import java.security.MessageDigest))
+
+(defn- file-hash [resource-filename]
+  (base64-encode
+    (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
+               (.update (.getBytes (slurp (io/resource resource-filename))))))))
+
+(def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/index_inline_bootstrap.js"))
+(def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/index_inline_ganalytics.js"))
+(def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/index_inline_webfontconfig.js"))
+(def ^:private ^:const init-js-hash (file-hash "frontend_client/init_inline.js"))
 
 (defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."
@@ -41,11 +54,13 @@
                                  (when config/is-dev?
                                    "localhost:8080")
                                  ;; inline script in index.html that sets `MetabaseBootstrap` and the like
-                                 "'sha256-xlgrBEvjf72cXGba6bCV/PwIVp1DcbdhY74VIXN8fA4='"
+                                 (format "'sha256-%s'" index-bootstrap-js-hash)
                                  ;; Web Font Loader font configuration (WebFontConfig) in index.html
-                                 "'sha256-6xC9z5Dcryu9jbxUZkBJ5yUmSofhJjt7Mbnp/ijPkFs='"
+                                 (format "'sha256-%s'" index-webfontconfig-js-hash)
                                  ;; inline script in index.html that loads Google Analytics
-                                 "'sha256-uKEj/Qp9AmQA2Xv83bZX9mNVV2VWZteZjIsVNVzLkA0='"]
+                                 (format "'sha256-%s'" index-ganalytics-js-hash)
+                                 ;; inline script in init.html
+                                 (format "'sha256-%s'" init-js-hash)]
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
