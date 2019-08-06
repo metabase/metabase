@@ -83,7 +83,7 @@
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                 name}))
 
-(def ^:private domain-entities-dir "domain_entities/")
+(def ^:private domain-entities-dir "domain_entity_specs/")
 
 (def domain-entity-specs
   "List of registered domain entities."
