@@ -75,7 +75,7 @@
        (sort-by (juxt (comp count ancestors :type) (comp count :required_attributes)))
        last))
 
-(defn- instantiate-entities
+(defn- instantiate-dimensions
   [bindings source entities]
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
@@ -89,9 +89,9 @@
                               [(-> field field-type clojure.core/name) field]))
         bindings   {name {:entity     table
                           :dimensions (m/map-vals mbql-reference dimensions)}}]
-    {:metrics             (instantiate-entities bindings name metrics)
-     :segments            (instantiate-entities bindings name segments)
-     :breakout_dimensions (instantiate-entities bindings name breakout_dimensions)
+    {:metrics             (instantiate-dimensions bindings name metrics)
+     :segments            (instantiate-dimensions bindings name segments)
+     :breakout_dimensions (instantiate-dimensions bindings name breakout_dimensions)
      :dimensions          dimensions
      :type                type
      :description         description
@@ -107,3 +107,9 @@
              (filter (partial satisfies-requierments? table))
              best-match
              (instantiate-domain-entity table))))
+
+(defn with-domain-entity
+  "Fake hydration function."
+  [tables]
+  (for [table tables]
+    (assoc table :domain_entity (domain-entity-for-table table))))

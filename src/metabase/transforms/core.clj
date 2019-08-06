@@ -6,7 +6,7 @@
              [util :as u]]
             [metabase.domain-entities
              [core :as de :refer [Bindings DimensionBindings SourceEntity SourceName]]
-             [specs :refer [domain-entity-specs]]]
+             [specs :refer [domain-entity-specs DomainEntitySpec]]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -133,8 +133,8 @@
 (def ^:private Tableset [(type Table)])
 
 (s/defn ^:private find-tables-with-domain-entity :- Tableset
-  [tableset :- Tableset, domain-entity]
-  (filter #(-> % :domain_entity :type (isa? (:type domain-entity))) tableset))
+  [tableset :- Tableset, domain-entity-spec :- DomainEntitySpec]
+  (filter #(-> % :domain_entity :type (isa? (:type domain-entity-spec))) tableset))
 
 (s/defn ^:private tableset->bindings :- Bindings
   [tableset :- Tableset]
@@ -171,10 +171,9 @@
 
 (s/defn ^:private tableset :- Tableset
   [db-id :- su/IntGreaterThanZero, schema :- (s/maybe s/Str)]
-  (for [table (table/with-fields
-                (db/select 'Table :db_id db-id :schema schema))]
-    ;; temporarily until we merge the sync PR
-    (assoc table :domain_entity (de/domain-entity-for-table table))))
+  (table/with-fields
+    (de/with-domain-entity
+      (db/select 'Table :db_id db-id :schema schema))))
 
 (s/defn apply-transform!
   "Apply transform defined by transform spec `spec` to schema `schema` in database `db-id`.
