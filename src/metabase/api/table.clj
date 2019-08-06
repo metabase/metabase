@@ -10,9 +10,7 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]

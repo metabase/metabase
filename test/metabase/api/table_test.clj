@@ -10,7 +10,6 @@
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
