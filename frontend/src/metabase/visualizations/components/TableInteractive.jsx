@@ -335,6 +335,7 @@ export default class TableInteractive extends Component {
       console.error(e);
     }
   }
+  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   _getCellClickedObjectCached(
     data: DatasetData,
@@ -356,6 +357,7 @@ export default class TableInteractive extends Component {
       console.error(e);
     }
   }
+  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   _getHeaderClickedObjectCached(
     data: DatasetData,
@@ -385,6 +387,7 @@ export default class TableInteractive extends Component {
       console.error(e);
     }
   }
+  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   _visualizationIsClickableCached(
     visualizationIsClickable: Function,
@@ -393,6 +396,7 @@ export default class TableInteractive extends Component {
     return visualizationIsClickable(clicked);
   }
 
+  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   getCellBackgroundColor(
     settings: VisualizationSettings,
@@ -406,6 +410,7 @@ export default class TableInteractive extends Component {
     }
   }
 
+  // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
   @memoize
   getCellFormattedValue(value: Value, columnSettings: any) {
     try {
