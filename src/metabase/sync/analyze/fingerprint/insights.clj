@@ -112,8 +112,8 @@
                             (redux/post-complete
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
-                             (fn [[offset slope :as coeficients]]
-                               (when (every? numeric? coeficients)
+                             (fn [[offset slope]]
+                               (when (every? numeric? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
@@ -125,9 +125,10 @@
                       (reservoir-sample validation-set-size))})
    (fn [{:keys [validation-set fits]}]
      (some->> fits
-              (keep #(assoc % :mae (transduce identity
-                                              (mae (comp (:model %) first) second)
-                                              validation-set)))
+              (remove nil?)
+              (map #(assoc % :mae (transduce identity
+                                             (mae (comp (:model %) first) second)
+                                             validation-set)))
               (filter (comp numeric? :mae))
               not-empty
               (apply min-key :mae)
