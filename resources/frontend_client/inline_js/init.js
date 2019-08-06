@@ -44,8 +44,7 @@ function poll() {
   req.onreadystatechange = function() {
     if (req.readyState === 4) {
       if (req.status === 200) {
-        console.debug('all good!');
-        //window.location.reload();
+        window.location.reload();
       } else {
         try {
           var health = JSON.parse(req.responseText);
