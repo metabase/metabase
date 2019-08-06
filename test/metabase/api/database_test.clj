@@ -349,7 +349,7 @@
 (defn- virtual-table-for-card [card & {:as kvs}]
   (merge
    {:id           (format "card__%d" (u/get-id card))
-    :db_id        mbql.s/saved-questions-virtual-database-id
+    :db_id        (:database_id card)
     :display_name (:name card)
     :schema       "Everything else"
     :description  nil}

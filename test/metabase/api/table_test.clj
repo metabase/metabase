@@ -422,7 +422,7 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Go Dubs!"
      :schema            "Everything else"
-     :db_id             mbql.s/saved-questions-virtual-database-id
+     :db_id             (:database_id card)
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)
@@ -470,7 +470,7 @@
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
     {:display_name      "Users"
      :schema            "Everything else"
-     :db_id             mbql.s/saved-questions-virtual-database-id
+     :db_id             (:database_id card)
      :id                card-virtual-table-id
      :description       nil
      :dimension_options (default-dimension-options)

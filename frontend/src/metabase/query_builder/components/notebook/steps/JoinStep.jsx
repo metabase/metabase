@@ -122,11 +122,8 @@ class JoinClause extends React.Component {
         <DatabaseSchemaAndTableDataSelector
           databases={[
             query.database(),
-            ...query
-              .metadata()
-              .databasesList()
-              .filter(db => db.is_saved_questions),
-          ]}
+            query.database().savedQuestionsDatabase(),
+          ].filter(d => d)}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={join.joinSourceTableId()}
           setSourceTableFn={tableId => {
