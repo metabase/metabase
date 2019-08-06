@@ -42,7 +42,7 @@
                                      (s/required-key :name)        Identifier
                                      (s/optional-key :description) Description}})
 
-(def ^:private DomainEntitySpec
+(def DomainEntitySpec
   "Domain entity spec"
   {(s/required-key :name)                DomainEntityReference
    (s/required-key :type)                DomainEntityType
