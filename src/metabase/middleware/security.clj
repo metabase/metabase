@@ -21,6 +21,20 @@
 (def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/inline_js/index_webfontconfig.js"))
 (def ^:private ^:const init-js-hash (file-hash "frontend_client/inline_js/init.js"))
 
+(defonce ^:private ^:const inline-js-hashes
+  (let [file-hash (fn [resource-filename]
+                    (base64-encode
+                     (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
+                                (.update (.getBytes (slurp (io/resource resource-filename))))))))]
+    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
+                     "frontend_client/inline_js/index_bootstrap.js"
+                     ;; inline script in index.html that loads Google Analytics
+                     "frontend_client/inline_js/index_ganalytics.js"
+                     ;; Web Font Loader font configuration (WebFontConfig) in index.html
+                     "frontend_client/inline_js/index_webfontconfig.js"
+                     ;; inline script in init.html
+                     "frontend_client/inline_js/init.js"])))
+
 (defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."
   []
@@ -43,24 +57,18 @@
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
-                  :script-src   ["'self'"
-                                 "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
-                                 "https://maps.google.com"
-                                 "https://apis.google.com"
-                                 "https://www.google-analytics.com" ; Safari requires the protocol
-                                 "https://*.googleapis.com"
-                                 "*.gstatic.com"
-                                 ;; for webpack hot reloading
-                                 (when config/is-dev?
-                                   "localhost:8080")
-                                 ;; inline script in index.html that sets `MetabaseBootstrap` and the like
-                                 (format "'sha256-%s'" index-bootstrap-js-hash)
-                                 ;; Web Font Loader font configuration (WebFontConfig) in index.html
-                                 (format "'sha256-%s'" index-webfontconfig-js-hash)
-                                 ;; inline script in index.html that loads Google Analytics
-                                 (format "'sha256-%s'" index-ganalytics-js-hash)
-                                 ;; inline script in init.html
-                                 (format "'sha256-%s'" init-js-hash)]
+                  :script-src   (concat
+                                  ["'self'"
+                                   "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
+                                   "https://maps.google.com"
+                                   "https://apis.google.com"
+                                   "https://www.google-analytics.com" ; Safari requires the protocol
+                                   "https://*.googleapis.com"
+                                   "*.gstatic.com"
+                                   ;; for webpack hot reloading
+                                   (when config/is-dev?
+                                     "localhost:8080")]
+                                  (map (partial format "'sha256-%s'") inline-js-hashes))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
