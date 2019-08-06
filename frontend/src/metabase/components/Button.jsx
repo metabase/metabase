@@ -51,7 +51,7 @@ const BaseButton = ({
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}
         {children && (
-          <span
+          <div
             className={cx({
               [iconVertical ? "mt1" : "ml1"]: icon,
               [iconVertical ? "mb1" : "mr1"]: iconRight,
@@ -59,7 +59,7 @@ const BaseButton = ({
             })}
           >
             {children}
-          </span>
+          </div>
         )}
         {iconRight && (
           <Icon
