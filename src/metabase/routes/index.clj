@@ -53,7 +53,6 @@
     (fn []
       (memoized-load-localization *locale*))))
 
-
 (defn- load-template [path variables]
   (try
     (stencil/render-file path variables)
@@ -66,7 +65,10 @@
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
-     {:bootstrapJSON      (escape-script (json/generate-string public-settings))
+     {:bootstrapJS        (slurp (io/resource "frontend_client/index_inline_bootstrap.js"))
+      :googleAnalyticsJS  (slurp (io/resource "frontend_client/index_inline_ganalytics.js"))
+      :webFontConfigJS    (slurp (io/resource "frontend_client/index_inline_webfontconfig.js"))
+      :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
       :uri                (h.util/escape-html uri)
       :baseHref           (h.util/escape-html (base-href))
@@ -74,13 +76,18 @@
       :enableGoogleAuth   (boolean google_auth_client_id)
       :enableAnonTracking (boolean anon_tracking_enabled)})))
 
+(defn- load-init-template []
+  (load-template
+    "frontend_client/init.html"
+    {:initJS (slurp (io/resource "frontend_client/init_inline.js"))}))
+
 (defn- entrypoint
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
    (-> (if (init-status/complete?)
          (resp/response (load-entrypoint-template entrypoint-name embeddable? uri))
-         (resp/resource-response "frontend_client/init.html"))
+         (resp/response (load-init-template)))
        (resp/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
