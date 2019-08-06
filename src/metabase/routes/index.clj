@@ -90,10 +90,10 @@
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
-   (-> (if (init-status/complete?)
-         (resp/response (load-entrypoint-template entrypoint-name embeddable? uri))
-         (resp/response (load-init-template)))
-       (resp/content-type "text/html; charset=utf-8"))))
+    (-> (resp/response (if (init-status/complete?)
+                         (load-entrypoint-template entrypoint-name embeddable? uri)
+                         (load-init-template)))
+        (resp/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
