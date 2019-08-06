@@ -16,10 +16,10 @@
     (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
                (.update (.getBytes (slurp (io/resource resource-filename))))))))
 
-(def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/index_inline_bootstrap.js"))
-(def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/index_inline_ganalytics.js"))
-(def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/index_inline_webfontconfig.js"))
-(def ^:private ^:const init-js-hash (file-hash "frontend_client/init_inline.js"))
+(def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/inline_js/index_bootstrap.js"))
+(def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/inline_js/index_ganalytics.js"))
+(def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/inline_js/index_webfontconfig.js"))
+(def ^:private ^:const init-js-hash (file-hash "frontend_client/inline_js/init.js"))
 
 (defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."
