@@ -18,9 +18,6 @@
   []
   (reverse (seq @messages*)))
 
-(def ^:private ^{:arglists '([])} site-uuid
-  (memoize (fn [] (setting/get-string :site-uuid))))
-
 (defonce ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
 
 (defn- event->log-data [^LoggingEvent event]
@@ -29,7 +26,7 @@
    :fqns      (.getLoggerName event)
    :msg       (.getMessage event)
    :exception (.getThrowableStrRep event)
-   :site_uuid (site-uuid)})
+   :site_uuid (setting/get-string :site-uuid)})
 
 (defn- metabase-appender ^Appender []
   (proxy [AppenderSkeleton] []
