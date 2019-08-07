@@ -96,7 +96,7 @@ export default class Logs extends Component {
     });
 
     return (
-      <LoadingAndErrorWrapper loading={!filteredLogs || filteredLogs.length === 0}>
+      <div>
         <div className="Form-field">
           <label className="Form-label">
             Select Metabase process
@@ -114,20 +114,22 @@ export default class Logs extends Component {
           </label>
         </div>
 
-        {() => (
-          <div
-            className="rounded bordered bg-light"
-            style={{
-              fontFamily: '"Lucida Console", Monaco, monospace',
-              fontSize: "14px",
-              whiteSpace: "pre-line",
-              padding: "1em",
-            }}
-          >
-            {reactAnsiStyle(React, renderedLogs.join("\n"))}
-          </div>
-        )}
-      </LoadingAndErrorWrapper>
+        <LoadingAndErrorWrapper loading={!filteredLogs || filteredLogs.length === 0}>
+          {() => (
+            <div
+              className="rounded bordered bg-light"
+              style={{
+                fontFamily: '"Lucida Console", Monaco, monospace',
+                fontSize: "14px",
+                whiteSpace: "pre-line",
+                padding: "1em",
+              }}
+            >
+              {reactAnsiStyle(React, renderedLogs.join("\n"))}
+            </div>
+          )}
+        </LoadingAndErrorWrapper>
+      </div>
     );
   }
 }
