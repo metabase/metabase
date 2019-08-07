@@ -232,3 +232,12 @@
    :types                 (types/types->parents :type/*)
    :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info})
+
+;; This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during this specifc
+;; run. Restarting the server will change this UUID, and each server in a hortizontal cluster will have its own ID,
+;; making this different from the `site-uuid` Setting. The local process UUID is used to differentiate different
+;; horizontally clustered MB instances so we can determine which of them will handle MetaBot duties.
+;;
+;; It used to live at `metabase.metabot.instance/local-process-uuid`
+(defonce local-process-uuid
+  (str (UUID/randomUUID)))
