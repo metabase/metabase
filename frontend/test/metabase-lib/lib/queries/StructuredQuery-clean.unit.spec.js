@@ -275,6 +275,16 @@ describe("StructuredQuery", () => {
         expect(q.clean().query()).toEqual({ "source-table": ORDERS_TABLE_ID });
       });
 
+      xit("should remove unecessary layers of nesting", () => {
+        const q = makeStructuredQuery().nest();
+        expect(
+          q
+            .clean()
+            .question()
+            .card().dataset_query.query,
+        ).toEqual({ "source-table": ORDERS_TABLE_ID });
+      });
+
       it("should remove clauses dependent on removed clauses in the parent", () => {
         const q = makeStructuredQuery()
           .addBreakout(["field-id", ORDERS_PRODUCT_FK_FIELD_ID])
