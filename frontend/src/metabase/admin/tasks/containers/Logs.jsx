@@ -10,6 +10,7 @@ import "react-ansi-style/inject-css";
 
 import _ from "underscore";
 import moment from "moment";
+import { t } from "ttag";
 
 import { addCSSRule } from "metabase/lib/dom";
 import colors from "metabase/lib/colors";
@@ -35,6 +36,7 @@ export default class Logs extends Component {
     this.state = {
       logs: [],
       scrollToBottom: true,
+      selectedProcessUUID: "ALL",
     };
 
     this._onScroll = () => {
@@ -81,18 +83,37 @@ export default class Logs extends Component {
   }
 
   render() {
-    const { logs } = this.state;
-    const renderedEvents = logs.map(ev => {
-      if (_.isString(ev)) {
-        return ev;
-      }
-
+    const { logs, selectedProcessUUID } = this.state;
+    const filteredLogs = logs.filter(
+      ev => !selectedProcessUUID || selectedProcessUUID === "ALL" || ev.process_uuid === selectedProcessUUID
+    );
+    const processUUIDs = _.uniq(
+      logs.map(ev => ev.process_uuid).filter(Boolean)
+    ).sort();
+    const renderedLogs = filteredLogs.map(ev => {
       const timestamp = moment(ev.timestamp).format()
       return `[${ev.process_uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
     });
 
     return (
-      <LoadingAndErrorWrapper loading={!logs || logs.length === 0}>
+      <LoadingAndErrorWrapper loading={!filteredLogs || filteredLogs.length === 0}>
+        <div className="Form-field">
+          <label className="Form-label">
+            Select Metabase process
+          </label>
+          <label className="Select mt1">
+            <select
+              className="Select"
+              defaultValue="ALL"
+              onChange={e => this.setState({ selectedProcessUUID: e.target.value })}
+            >
+              <option value="" disabled>{t`Select Metabase process UUID`}</option>
+              <option value="ALL">{t`All Metabase processes`}</option>
+              {processUUIDs.map(uuid => <option key={uuid} value={uuid}>{uuid}</option>)}
+            </select>
+          </label>
+        </div>
+
         {() => (
           <div
             className="rounded bordered bg-light"
@@ -103,7 +124,7 @@ export default class Logs extends Component {
               padding: "1em",
             }}
           >
-            {reactAnsiStyle(React, renderedEvents.join("\n"))}
+            {reactAnsiStyle(React, renderedLogs.join("\n"))}
           </div>
         )}
       </LoadingAndErrorWrapper>
