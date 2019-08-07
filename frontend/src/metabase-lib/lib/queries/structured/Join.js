@@ -1,6 +1,7 @@
 /* @flow */
 
 import { MBQLObjectClause } from "./MBQLClause";
+import { t } from "ttag";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
@@ -18,10 +19,10 @@ import type {
 import _ from "underscore";
 
 const JOIN_STRATEGY_OPTIONS = [
-  { value: "left-join", name: "Left outer join", icon: "join_left_outer" }, // default
-  { value: "right-join", name: "Right outer join", icon: "join_right_outer" },
-  { value: "inner-join", name: "Inner join", icon: "join_inner" },
-  { value: "full-join", name: "Full outer join", icon: "join_full_outer" },
+  { value: "left-join", name: t`Left outer join`, icon: "join_left_outer" }, // default
+  { value: "right-join", name: t`Right outer join`, icon: "join_right_outer" },
+  { value: "inner-join", name: t`Inner join`, icon: "join_inner" },
+  { value: "full-join", name: t`Full outer join`, icon: "join_full_outer" },
 ];
 
 export default class Join extends MBQLObjectClause {
