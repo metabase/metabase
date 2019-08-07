@@ -85,36 +85,48 @@ export default class Logs extends Component {
   render() {
     const { logs, selectedProcessUUID } = this.state;
     const filteredLogs = logs.filter(
-      ev => !selectedProcessUUID || selectedProcessUUID === "ALL" || ev.process_uuid === selectedProcessUUID
+      ev =>
+        !selectedProcessUUID ||
+        selectedProcessUUID === "ALL" ||
+        ev.process_uuid === selectedProcessUUID,
     );
     const processUUIDs = _.uniq(
-      logs.map(ev => ev.process_uuid).filter(Boolean)
+      logs.map(ev => ev.process_uuid).filter(Boolean),
     ).sort();
     const renderedLogs = filteredLogs.map(ev => {
-      const timestamp = moment(ev.timestamp).format()
-      return `[${ev.process_uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
+      const timestamp = moment(ev.timestamp).format();
+      const uuid = ev.process_uuid || "---";
+      return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
     });
 
     return (
       <div>
         <div className="Form-field">
-          <label className="Form-label">
-            Select Metabase process
-          </label>
+          <label className="Form-label">Select Metabase process</label>
           <label className="Select mt1">
             <select
               className="Select"
               defaultValue="ALL"
-              onChange={e => this.setState({ selectedProcessUUID: e.target.value })}
+              onChange={e =>
+                this.setState({ selectedProcessUUID: e.target.value })
+              }
             >
-              <option value="" disabled>{t`Select Metabase process UUID`}</option>
+              <option value="" disabled>
+                {t`Select Metabase process UUID`}
+              </option>
               <option value="ALL">{t`All Metabase processes`}</option>
-              {processUUIDs.map(uuid => <option key={uuid} value={uuid}>{uuid}</option>)}
+              {processUUIDs.map(uuid => (
+                <option key={uuid} value={uuid}>
+                  {uuid}
+                </option>
+              ))}
             </select>
           </label>
         </div>
 
-        <LoadingAndErrorWrapper loading={!filteredLogs || filteredLogs.length === 0}>
+        <LoadingAndErrorWrapper
+          loading={!filteredLogs || filteredLogs.length === 0}
+        >
           {() => (
             <div
               className="rounded bordered bg-light"
