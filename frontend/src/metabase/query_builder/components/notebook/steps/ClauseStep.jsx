@@ -39,6 +39,7 @@ export default function ClauseStep({
               )}
             </NotebookCellItem>
           }
+          sizeToFit
         >
           {renderPopover(item, index)}
         </PopoverWithTrigger>
@@ -50,6 +51,7 @@ export default function ClauseStep({
             initialAddText={items.length === 0 && initialAddText}
           />
         }
+        sizeToFit
         isInitiallyOpen={isLastOpened}
       >
         {renderPopover()}

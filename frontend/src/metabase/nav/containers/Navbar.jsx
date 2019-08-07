@@ -18,7 +18,6 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
@@ -74,9 +73,8 @@ const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
+  flex: 1 0 auto;
   max-width: 50em;
-  min-width: 9em;
-  width: 100%;
   align-items: center;
   color: white;
   transition: background 300ms ease-in;
@@ -345,7 +343,7 @@ export default class Navbar extends Component {
               }}
             >
               <Icon name="table_spaced" size={14} />
-              <h4 className="hide sm-show ml1 text-nowrap">{t`Browse Data`}</h4>
+              <h4 className="hide md-show ml1 text-nowrap">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
@@ -368,19 +366,16 @@ export default class Navbar extends Component {
             ]}
           />
           {hasNativeWrite && (
-            <div className="relative hide sm-show mr1">
-              <Tooltip tooltip={t`Write SQL`}>
-                <IconWrapper>
-                  <Link
-                    to={this.props.plainNativeQuery.question().getUrl()}
-                    className="flex align-center"
-                    data-metabase-event={`NavBar;SQL`}
-                  >
-                    <Icon size={19} name="sql" m={1} />
-                  </Link>
-                </IconWrapper>
-              </Tooltip>
-            </div>
+            <Link
+              to={this.props.plainNativeQuery.question().getUrl()}
+              mx={1}
+              className="hide sm-show flex-no-shrink"
+              data-metabase-event={`NavBar;SQL`}
+            >
+              <IconWrapper>
+                <Icon size={19} name="sql" tooltip={t`Write SQL`} />
+              </IconWrapper>
+            </Link>
           )}
           <ProfileLink {...this.props} />
         </Flex>
