@@ -3,8 +3,7 @@
             [clj-time
              [coerce :as coerce]
              [format :as time]]
-            [clojure.string :as str]
-            [metabase.models.setting :as setting])
+            [metabase.public-settings :refer [local-process-uuid]])
   (:import [org.apache.log4j Appender AppenderSkeleton Logger]
            org.apache.log4j.spi.LoggingEvent))
 
@@ -18,13 +17,13 @@
   (reverse (seq @messages*)))
 
 (defn- event->log-data [^LoggingEvent event]
-  {:timestamp (time/unparse (time/formatter :date-time)
-                            (coerce/from-long (.getTimeStamp event)))
-   :level     (.getLevel event)
-   :fqns      (.getLoggerName event)
-   :msg       (.getMessage event)
-   :exception (.getThrowableStrRep event)
-   :site_uuid (setting/get-string :site-uuid)})
+  {:timestamp    (time/unparse (time/formatter :date-time)
+                               (coerce/from-long (.getTimeStamp event)))
+   :level        (.getLevel event)
+   :fqns         (.getLoggerName event)
+   :msg          (.getMessage event)
+   :exception    (.getThrowableStrRep event)
+   :process_uuid local-process-uuid})
 
 (defn- metabase-appender ^Appender []
   (proxy [AppenderSkeleton] []
