@@ -9,6 +9,7 @@ import reactAnsiStyle from "react-ansi-style";
 import "react-ansi-style/inject-css";
 
 import _ from "underscore";
+import moment from "moment";
 
 import { addCSSRule } from "metabase/lib/dom";
 import colors from "metabase/lib/colors";
@@ -85,7 +86,9 @@ export default class Logs extends Component {
       if (_.isString(ev)) {
         return ev;
       }
-      return `[${ev.site_uuid}] ${ev.timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
+
+      const timestamp = moment(ev.timestamp).format()
+      return `[${ev.process_uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
     });
 
     return (

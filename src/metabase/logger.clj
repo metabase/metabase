@@ -2,7 +2,6 @@
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clj-time
              [coerce :as coerce]
-             [core :as t]
              [format :as time]]
             [clojure.string :as str]
             [metabase.models.setting :as setting])
@@ -18,10 +17,9 @@
   []
   (reverse (seq @messages*)))
 
-(defonce ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
-
 (defn- event->log-data [^LoggingEvent event]
-  {:timestamp (time/unparse formatter (coerce/from-long (.getTimeStamp event)))
+  {:timestamp (time/unparse (time/formatter :date-time)
+                            (coerce/from-long (.getTimeStamp event)))
    :level     (.getLevel event)
    :fqns      (.getLoggerName event)
    :msg       (.getMessage event)
