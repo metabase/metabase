@@ -270,12 +270,12 @@ describe("StructuredQuery", () => {
         expect(q.clean() === q).toBe(true);
       });
 
-      it("should remove unecessary layers of nesting", () => {
+      it("should remove unecessary layers of nesting via query()", () => {
         const q = makeStructuredQuery().nest();
         expect(q.clean().query()).toEqual({ "source-table": ORDERS_TABLE_ID });
       });
 
-      xit("should remove unecessary layers of nesting", () => {
+      it("should remove unecessary layers of nesting via question()", () => {
         const q = makeStructuredQuery().nest();
         expect(
           q
