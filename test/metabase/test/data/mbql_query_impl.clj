@@ -85,7 +85,8 @@
     (apply mbql-field strategy clause-type source-table-symb args)))
 
 (defn- token->sigil [token]
-  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
+  (when-let [[_ sigil] (or (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))
+                           (re-matches #"^([FTRLJD]\.).*[\w/]$"   (str token)))]
     sigil))
 
 (defmulti ^:private parse-token-by-sigil
@@ -138,6 +139,23 @@
   [_ token]
   (list 'metabase.test.data/id (keyword (.substring (str token) 2))))
 
+(defn- parse-with-replaced-sigil [source-table-token token original-sigil new-sigil]
+  (parse-token-by-sigil source-table-token (symbol (str new-sigil (.substring (str token) (count original-sigil))))))
+
+(defn- define-sigil-alias [sigil alias-sigil]
+  (let [method (fn [source-table-symb token]
+                 (parse-with-replaced-sigil source-table-symb token alias-sigil sigil))]
+    (.addMethod ^clojure.lang.MultiFn parse-token-by-sigil alias-sigil method)))
+
+(def ^:private alias->sigil
+  {"F." "$"
+   "T." "$$"
+   "R." "%"
+   "L." "*"
+   "J." "&"
+   "D." "!"})
+(doseq [[alias sigil] alias->sigil]
+  (define-sigil-alias sigil alias))
 
 (defn parse-tokens
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls

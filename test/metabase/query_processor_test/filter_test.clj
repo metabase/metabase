@@ -466,7 +466,7 @@
     (qp.test/format-rows-by [int]
       (data/run-mbql-query checkins
         {:aggregation [[:count]]
-         :filter      [:between [:datetime-field $date :minute] "2015-01-01T12:30:00" "2015-05-31"]}))))
+         :filter      [:between D.minute.date "2015-01-01T12:30:00" "2015-05-31"]}))))
 
 ;; make sure that filtering with dates bucketing by weeks works (#4956)
 (qp.test/expect-with-non-timeseries-dbs
@@ -475,4 +475,4 @@
     (qp.test/format-rows-by [int]
       (data/run-mbql-query checkins
         {:aggregation [[:count]]
-         :filter      [:= [:datetime-field $date :week] "2015-06-21T07:00:00.000000000-00:00"]}))))
+         :filter      [:= D.week.date "2015-06-21T07:00:00.000000000-00:00"]}))))

@@ -123,12 +123,12 @@
 
   Cheatsheet:
 
-  *  `$`  = wrapped Field ID
-  *  `$$` = table ID
-  *  `%`  = raw Field ID
-  *  `*`  = field-literal for Field in app DB; `*field/type` for others
-  *  `&`  = wrap in `joined-field`
-  *  `!`  = wrap in `:datetime-field`
+  *  `F.` or `$`  = wrapped Field ID
+  *  `T.` or `$$` = table ID
+  *  `R.` or `%`  = raw Field ID
+  *  `L.` or `*`  = field-literal for Field in app DB; `*field/type` for others
+  *  `J.` or `&`  = wrap in `joined-field`
+  *  `D.` or `!`  = wrap in `:datetime-field`
 
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
