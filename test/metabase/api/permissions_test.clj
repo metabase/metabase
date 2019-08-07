@@ -46,14 +46,27 @@
 
 ;; make sure we can update the perms graph from the API
 (expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     :all}
+  (tt/with-temp PermissionsGroup [group]
+    ((test-users/user->client :crowberto) :put 200 "permissions/graph"
+     (assoc-in (perms/graph)
+               [:groups (u/get-id group) (data/id) :schemas]
+               {"PUBLIC" {(data/id :venues) :all}}))
+    (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))
+
+(expect
  {(data/id :categories) :none
   (data/id :checkins)   :none
   (data/id :users)      :none
-  (data/id :venues)     :all}
+  (data/id :venues)     {:read  :all
+                         :query :segmented}}
  (tt/with-temp PermissionsGroup [group]
    (test-users/create-users-if-needed!)
    ((test-users/user->client :crowberto) :put 200 "permissions/graph"
     (assoc-in (perms/graph)
               [:groups (u/get-id group) (data/id) :schemas]
-              {"PUBLIC" {(data/id :venues) :all}}))
+              {"PUBLIC" {(data/id :venues) {:read :all, :query :segmented}}}))
    (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))

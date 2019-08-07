@@ -164,6 +164,14 @@
     (cond-> (mbql-query-impl/parse-tokens table-name outer-query)
       (not (:native outer-query)) (update :query mbql-query-impl/maybe-add-source-table table-name)))))
 
+(defmacro native-query
+  "Like `mbql-query`, but for native queries."
+  {:style/indent 0}
+  [inner-native-query]
+  `{:database (id)
+    :type     :native
+    :native   ~inner-native-query})
+
 (defmacro run-mbql-query
   "Like `mbql-query`, but runs the query as well."
   {:style/indent 1}

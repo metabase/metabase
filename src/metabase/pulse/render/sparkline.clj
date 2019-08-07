@@ -2,7 +2,8 @@
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [common :as common]
-             [image-bundle :as image-bundle]]
+             [image-bundle :as image-bundle]
+             [style :as style]]
             [metabase.util
              [date :as du]
              [i18n :refer [tru]]])
@@ -18,6 +19,15 @@
 (def ^:private ^:const width      524)
 (def ^:private ^:const height     524)
 
+(defn- color-awt [^String color]
+  (Color/decode color))
+
+(defn- alpha-awt [^Color color, alpha]
+  (Color. (.getRed color)
+          (.getGreen color)
+          (.getBlue color)
+          (int (* alpha 255))))
+
 (defn- render-sparkline-to-png
   "Takes two arrays of numbers between 0 and 1 and plots them as a sparkline"
   [xs ys]
@@ -27,12 +37,12 @@
           yt    (map #(+ pad (- height (* height %))) ys)]
       (doto (.createGraphics image)
         (.setRenderingHints (RenderingHints. RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON))
-        (.setColor (Color. 211 227 241))
+        (.setColor (alpha-awt (color-awt (style/primary-color)) 0.2))
         (.setStroke (BasicStroke. thickness BasicStroke/CAP_ROUND BasicStroke/JOIN_ROUND))
         (.drawPolyline (int-array (count xt) xt)
                        (int-array (count yt) yt)
                        (count xt))
-        (.setColor (Color. 45 134 212))
+        (.setColor (color-awt (style/primary-color)))
         (.fillOval (- (last xt) dot-radius)
                    (- (last yt) dot-radius)
                    (* 2 dot-radius)

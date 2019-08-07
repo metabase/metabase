@@ -25,13 +25,8 @@
 
 ;; If query is already native, `query->native` should still do stuff like parsing parameters
 (expect
-  {:query         "SELECT * FROM VENUES WHERE price = 3;"
-   :template-tags {"price"
-                   {:name         "price"
-                    :display-name "Price"
-                    :type         :number
-                    :required     false}}
-   :params        []}
+  {:query  "SELECT * FROM VENUES WHERE price = 3;"
+   :params []}
   (qp/query->native
     {:database   (data/id)
      :type       :native

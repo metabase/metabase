@@ -1,11 +1,9 @@
 (ns metabase.integrations.ldap
   (:require [cheshire.core :as json]
             [clj-ldap.client :as ldap]
-            [clojure
-             [set :as set]
-             [string :as str]]
+            [clojure.string :as str]
+            [metabase.integrations.common :as integrations.common]
             [metabase.models
-             [permissions-group :as group :refer [PermissionsGroup]]
              [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util :as u]
@@ -140,14 +138,15 @@
 (defn test-ldap-connection
   "Test the connection to an LDAP server to determine if we can find the search base.
 
-   Takes in a dictionary of properties such as:
-       {:host       \"localhost\"
-        :port       389
-        :bind-dn    \"cn=Directory Manager\"
-        :password   \"password\"
-        :security   \"none\"
-        :user-base  \"ou=Birds,dc=metabase,dc=com\"
-        :group-base \"ou=Groups,dc=metabase,dc=com\"}"
+  Takes in a dictionary of properties such as:
+
+    {:host       \"localhost\"
+     :port       389
+     :bind-dn    \"cn=Directory Manager\"
+     :password   \"password\"
+     :security   \"none\"
+     :user-base  \"ou=Birds,dc=metabase,dc=com\"
+     :group-base \"ou=Groups,dc=metabase,dc=com\"}"
   [{:keys [user-base group-base], :as details}]
   (try
     (with-open [^LDAPConnectionPool conn (ldap/connect (details->ldap-options details))]
@@ -169,59 +168,54 @@
     (catch Exception e
       {:status :ERROR, :message (.getMessage e)})))
 
+(defn- search [conn, ^String username]
+  (first
+   (ldap/search
+    conn
+    (ldap-user-base)
+    {:scope      :sub
+     :filter     (str/replace (ldap-user-filter) filter-placeholder (Filter/encodeValue username))
+     :size-limit 1})))
+
 (defn find-user
   "Gets user information for the supplied username."
-  ([^String username]
-    (with-connection find-user username))
-  ([conn ^String username]
-    (let [fname-attr (keyword (ldap-attribute-firstname))
-          lname-attr (keyword (ldap-attribute-lastname))
-          email-attr (keyword (ldap-attribute-email))]
-      (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
-                                                              :filter     (str/replace (ldap-user-filter) filter-placeholder (Filter/encodeValue username))
-                                                              :attributes [fname-attr lname-attr email-attr :memberOf]
-                                                              :size-limit 1})]
-        (let [dn    (:dn result)
-              fname (get result fname-attr)
-              lname (get result lname-attr)
-              email (get result email-attr)]
-          ;; Make sure we got everything as these are all required for new accounts
-          (when-not (some empty? [fname lname email])
-            ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-            ;; Otherwise we have to make the inverse query to get them
-            (let [groups (when (ldap-group-sync)
-                           (or (:memberOf result) (get-user-groups dn) []))]
-              {:dn         dn
-               :first-name fname
-               :last-name  lname
-               :email      email
-               :groups     groups})))))))
+  ([username]
+   (with-connection find-user username))
+
+  ([conn username]
+   (when-let [{:keys [dn], :as result} (search conn username)]
+     (let [{fname (keyword (ldap-attribute-firstname))
+            lname (keyword (ldap-attribute-lastname))
+            email (keyword (ldap-attribute-email))}    result]
+       ;; Make sure we got everything as these are all required for new accounts
+       (when-not (some empty? [dn fname lname email])
+         {:dn         dn
+          :first-name fname
+          :last-name  lname
+          :email      email
+          :groups     (when (ldap-group-sync)
+                        ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
+                        ;; Otherwise we have to make the inverse query to get them
+                        (or (:memberOf result) (get-user-groups dn) []))})))))
 
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."
   ([user-info password]
-    (with-connection verify-password user-info password))
+   (with-connection verify-password user-info password))
+
   ([conn user-info password]
-    (if (string? user-info)
-      (ldap/bind? conn user-info password)
-      (ldap/bind? conn (:dn user-info) password))))
+   (let [dn (if (string? user-info) user-info (:dn user-info))]
+     (ldap/bind? conn dn password))))
 
 (defn fetch-or-create-user!
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
-  [{:keys [first-name last-name email groups]} password]
+  [{:keys [first-name last-name email groups]}]
   (let [user (or (db/select-one [User :id :last_login] :email email)
-                 (user/create-new-ldap-auth-user! {:first_name first-name
-                                                   :last_name  last-name
-                                                   :email      email}))]
+                 (user/create-new-ldap-auth-user!
+                  {:first_name first-name
+                   :last_name  last-name
+                   :email      email}))]
     (u/prog1 user
       (when (ldap-group-sync)
-        (let [special-ids #{(:id (group/admin)) (:id (group/all-users))}
-              current-ids (set (map :group_id (db/select ['PermissionsGroupMembership :group_id] :user_id (:id user))))
-              ldap-ids    (when-let [ids (seq (ldap-groups->mb-group-ids groups))]
-                            (set (map :id (db/select [PermissionsGroup :id] :id [:in ids]))))
-              to-remove   (set/difference current-ids ldap-ids special-ids)
-              to-add      (set/difference ldap-ids current-ids)]
-          (when (seq to-remove)
-            (db/delete! 'PermissionsGroupMembership :group_id [:in to-remove], :user_id (:id user)))
-          (doseq [id to-add]
-            (db/insert! 'PermissionsGroupMembership :group_id id, :user_id (:id user))))))))
+        (let [group-ids (ldap-groups->mb-group-ids groups)]
+          (integrations.common/sync-group-memberships! user group-ids))))))
