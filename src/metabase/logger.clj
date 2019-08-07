@@ -4,7 +4,8 @@
              [coerce :as coerce]
              [core :as t]
              [format :as time]]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [metabase.models.setting :as setting])
   (:import [org.apache.log4j Appender AppenderSkeleton Logger]
            org.apache.log4j.spi.LoggingEvent))
 
@@ -17,26 +18,23 @@
   []
   (reverse (seq @messages*)))
 
+(def ^:private ^{:arglists '([])} site-uuid
+  (memoize (fn [] (setting/get-string :site-uuid))))
+
 (defonce ^:private formatter (time/formatter "MMM dd HH:mm:ss" (t/default-time-zone)))
 
-(defn- event->log-string [^LoggingEvent event]
-  ;; for messages that include an Exception, include the string representation of it (i.e., its stacktrace)
-  ;; separated by newlines
-  (str/join
-   "\n"
-   (cons
-    (let [ts    (time/unparse formatter (coerce/from-long (.getTimeStamp event)))
-          level (.getLevel event)
-          fqns  (.getLoggerName event)
-          msg   (.getMessage event)]
-      (format "%s \033[1m%s %s\033[0m :: %s" ts level fqns msg))
-    (seq (.getThrowableStrRep event)))))
-
+(defn- event->log-data [^LoggingEvent event]
+  {:timestamp (time/unparse formatter (coerce/from-long (.getTimeStamp event)))
+   :level     (.getLevel event)
+   :fqns      (.getLoggerName event)
+   :msg       (.getMessage event)
+   :exception (.getThrowableStrRep event)
+   :site_uuid (site-uuid)})
 
 (defn- metabase-appender ^Appender []
   (proxy [AppenderSkeleton] []
     (append [event]
-      (swap! messages* conj (event->log-string event))
+      (swap! messages* conj (event->log-data event))
       nil)
     (close []
       nil)

@@ -81,6 +81,13 @@ export default class Logs extends Component {
 
   render() {
     const { logs } = this.state;
+    const renderedEvents = logs.map(ev => {
+      if (_.isString(ev)) {
+        return ev;
+      }
+      return `[${ev.site_uuid}] ${ev.timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
+    });
+
     return (
       <LoadingAndErrorWrapper loading={!logs || logs.length === 0}>
         {() => (
@@ -93,7 +100,7 @@ export default class Logs extends Component {
               padding: "1em",
             }}
           >
-            {reactAnsiStyle(React, logs.join("\n"))}
+            {reactAnsiStyle(React, renderedEvents.join("\n"))}
           </div>
         )}
       </LoadingAndErrorWrapper>
