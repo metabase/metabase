@@ -28,8 +28,7 @@
              [date :as du]
              [i18n :refer [trs]]]
             [toucan.db :as db])
-  (:import java.sql.Timestamp
-           java.util.UUID))
+  (:import java.sql.Timestamp))
 
 (defsetting ^:private metabot-instance-uuid
   "UUID of the active MetaBot instance (the Metabase process currently handling MetaBot duties.)"
