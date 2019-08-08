@@ -22,7 +22,7 @@
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
-             [public-settings :refer [local-process-uuid]]
+             [config :refer [local-process-uuid]]
              [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util

@@ -3,7 +3,7 @@
             [clj-time
              [coerce :as coerce]
              [format :as time]]
-            [metabase.public-settings :refer [local-process-uuid]])
+            [metabase.config :refer [local-process-uuid]])
   (:import [org.apache.log4j Appender AppenderSkeleton Logger]
            org.apache.log4j.spi.LoggingEvent))
 
