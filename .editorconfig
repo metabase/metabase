@@ -23,6 +23,9 @@ indent_size = 2
 [*.html]
 indent_size = 2
 
+[*.mustache]
+indent_size = 2
+
 [*.js]
 indent_size = 2
 

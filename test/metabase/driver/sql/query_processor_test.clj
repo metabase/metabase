@@ -5,9 +5,8 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [metabase.util
-             [honeysql-extensions :as hx]
-             [pretty :refer [PrettyPrintable]]])
+            [metabase.util.honeysql-extensions :as hx]
+            [pretty.core :refer [PrettyPrintable]])
   (:import metabase.util.honeysql_extensions.Identifier))
 
 ;; make sure our logic for deciding which order to process keys in the query works as expected
@@ -158,3 +157,14 @@
                         {:aggregation [[:aggregation-options [:avg $category_id] {:name "avg_2"}]]
                          :breakout    [$price]
                          :order-by    [[:asc [:aggregation 0]]]})))))
+
+;; params from source queries should get passed in to the top-level. Semicolons should be removed
+(expect
+  {:query "SELECT \"source\".* FROM (SELECT * FROM some_table WHERE name = ?) \"source\" WHERE \"source\".\"name\" <> ?"
+   :params ["Cam" "Lucky Pigeon"]}
+  (qp.test-util/with-everything-store
+    (metabase.driver/with-driver :h2
+      (sql.qp/mbql->native :h2
+        (data/mbql-query venues
+          {:source-query {:native "SELECT * FROM some_table WHERE name = ?;", :params ["Cam"]}
+           :filter       [:!= *name/Integer "Lucky Pigeon"]})))))

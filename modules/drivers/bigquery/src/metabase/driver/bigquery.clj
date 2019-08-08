@@ -333,7 +333,7 @@
 
 (s/defn ^:private honeysql-form->sql :- s/Str
   [honeysql-form :- su/Map]
-  (let [[sql & args] (sql.qp/honeysql-form->sql+args :bigquery honeysql-form)]
+  (let [[sql & args] (sql.qp/format-honeysql :bigquery honeysql-form)]
     (when (seq args)
       (throw (Exception. (str (tru "BigQuery statements can''t be parameterized!")))))
     sql))

@@ -153,6 +153,7 @@
     (when (:dataset_query card)
       (check-for-circular-source-query-references card))))
 
+;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'PulseCard :card_id id)
   (db/delete! 'Revision :model "Card", :model_id id)

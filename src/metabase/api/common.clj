@@ -314,9 +314,18 @@
 
      (api/+check-superuser routes)"
   [handler]
-  (fn [request]
-    (check-superuser)
-    (handler request)))
+  (fn
+    ([request]
+     (check-superuser)
+     (handler request))
+    ([request respond raise]
+     (if-let [e (try
+                  (check-superuser)
+                  nil
+                  (catch Throwable e
+                    e))]
+       (raise e)
+       (handler request respond raise)))))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------
