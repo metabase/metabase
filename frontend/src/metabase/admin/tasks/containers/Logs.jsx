@@ -12,6 +12,7 @@ import _ from "underscore";
 import moment from "moment";
 import { t } from "ttag";
 
+import Select, { Option } from "metabase/components/Select";
 import { addCSSRule } from "metabase/lib/dom";
 import colors from "metabase/lib/colors";
 
@@ -109,30 +110,36 @@ export default class Logs extends Component {
       return `[${uuid}] ${timestamp} ${ev.level} ${ev.fqns} ${ev.msg}`;
     });
 
+    let processUUIDSelect = null;
+    if (processUUIDs.length > 1) {
+      const options = [
+        <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
+      ].concat(processUUIDs.map(uuid => (
+        <Option key={uuid} value={uuid}>
+          <code>{uuid}</code>
+        </Option>
+      )));
+
+      processUUIDSelect = (
+        <div className="pb1">
+          <label>{t`Select Metabase process`}</label>
+
+          <Select
+            defaultValue="ALL"
+            value={this.state.selectedProcessUUID}
+            onChange={e =>
+              this.setState({ selectedProcessUUID: e.target.value })
+            }
+          >
+            {options}
+          </Select>
+        </div>
+      );
+    }
+
     return (
       <div>
-        <div className="Form-field">
-          <label className="Form-label">Select Metabase process</label>
-          <label className="Select mt1">
-            <select
-              className="Select"
-              defaultValue="ALL"
-              onChange={e =>
-                this.setState({ selectedProcessUUID: e.target.value })
-              }
-            >
-              <option value="" disabled>
-                {t`Select Metabase process UUID`}
-              </option>
-              <option value="ALL">{t`All Metabase processes`}</option>
-              {processUUIDs.map(uuid => (
-                <option key={uuid} value={uuid}>
-                  {uuid}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        {processUUIDSelect}
 
         <LoadingAndErrorWrapper
           loading={!filteredLogs || filteredLogs.length === 0}
