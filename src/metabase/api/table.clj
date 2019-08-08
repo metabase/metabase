@@ -10,9 +10,7 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql
-             [schema :as mbql.s]
-             [util :as mbql.u]]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -266,7 +264,7 @@
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
     (cond-> {:id           (str "card__" (u/get-id card))
-             :db_id        mbql.s/saved-questions-virtual-database-id
+             :db_id        (:database_id card)
              :display_name (:name card)
              :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
