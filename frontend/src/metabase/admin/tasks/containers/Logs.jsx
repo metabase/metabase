@@ -113,12 +113,14 @@ export default class Logs extends Component {
     let processUUIDSelect = null;
     if (processUUIDs.length > 1) {
       const options = [
-        <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
-      ].concat(processUUIDs.map(uuid => (
-        <Option key={uuid} value={uuid}>
-          <code>{uuid}</code>
-        </Option>
-      )));
+        <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>,
+      ].concat(
+        processUUIDs.map(uuid => (
+          <Option key={uuid} value={uuid}>
+            <code>{uuid}</code>
+          </Option>
+        )),
+      );
 
       processUUIDSelect = (
         <div className="pb1">
