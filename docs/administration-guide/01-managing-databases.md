@@ -78,6 +78,10 @@ If you'd like to sync your database manually at any time, click on it from the D
 
 ![Database connection](images/DatabaseConnection.png)
 
+#### Query Auto-Running Settings
+
+By default, Metabase will auto-run queries as users use the Summarize and Filter buttons when viewing a table or chart. If your users are exploring data that is stored in a slow database, you may want to turn the auto-run off to avoid re-running the query every time your users change an option in the Summarize view. Turning this off presents the users with the option to re-run the query when they choose to.
+
 #### Scanning for field values
 
 When Metabase first connects to your database, it takes a look at the metadata of the fields in your tables and automatically assigns them a field type. Metabase also takes a sample of each table to look for URLs, JSON, encoded strings, etc. If a field is classified wrong, you can always manually edit it from the **Metadata** tab in the Admin Panel.
