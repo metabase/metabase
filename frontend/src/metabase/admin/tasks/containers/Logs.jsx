@@ -30,6 +30,16 @@ for (const [name, color] of Object.entries(ANSI_COLORS)) {
   addCSSRule(`.react-ansi-style-${name}`, `color: ${color} !important`);
 }
 
+function logEventUniqueValue(ev) {
+  return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
+}
+
+function mergeLogs(...logArrays) {
+  let logs = Array.prototype.concat(...logArrays);
+  logs = _.sortBy(logs, ev => [ev.timestamp, ev.process_uuid, ev.msg]);
+  return _.uniq(logs, true, logEventUniqueValue);
+}
+
 export default class Logs extends Component {
   constructor() {
     super();
@@ -55,7 +65,7 @@ export default class Logs extends Component {
 
   async fetchLogs() {
     const logs = await UtilApi.logs();
-    this.setState({ logs: logs.reverse() });
+    this.setState({ logs: mergeLogs(this.state.logs, logs.reverse()) });
   }
 
   componentWillMount() {
