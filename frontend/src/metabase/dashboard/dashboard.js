@@ -444,7 +444,7 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
   card,
   dashcard,
-  { reload, clear } = {},
+  { reload, clear, ignoreCache } = {},
 ) {
   return async function(dispatch, getState) {
     // If the dataset_query was filtered then we don't have permisison to view this card, so
@@ -529,6 +529,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             parameters: datasetQuery.parameters
               ? JSON.stringify(datasetQuery.parameters)
               : undefined,
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
@@ -541,18 +542,26 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             dashcardId: dashcard.id,
             cardId: card.id,
             ...getParametersBySlug(dashboard.parameters, parameterValues),
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
       );
     } else if (dashboardType === "transient") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(datasetQuery, queryOptions),
+        MetabaseApi.dataset(
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          queryOptions,
+        ),
       );
     } else {
       result = await fetchDataOrError(
         CardApi.query(
-          { cardId: card.id, parameters: datasetQuery.parameters },
+          {
+            cardId: card.id,
+            parameters: datasetQuery.parameters,
+            ignore_cache: ignoreCache,
+          },
           queryOptions,
         ),
       );

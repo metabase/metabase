@@ -190,6 +190,7 @@ export default (ComposedComponent: ReactClass<any>) =>
           this.props.fetchDashboardCardData({
             reload: true,
             clear: false,
+            ignoreCache: true,
           });
         } else {
           this.setState({ refreshElapsed });
