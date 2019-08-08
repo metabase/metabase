@@ -468,24 +468,6 @@
           (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
                   (update :collection_id (partial = (u/get-id collection)))))))))
 
-;; Users with segmented permissions should be able to save cards
-(let [card-name (tu/random-name)]
-  (expect
-    true
-    (tu/with-model-cleanup [Card]
-      (tt/with-temp* [Database                   [db]
-                      Collection                 [collection]
-                      Table                      [table {:db_id (u/get-id db)}]
-                      PermissionsGroup           [group]
-                      PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]]
-        (data/with-db db
-          (perms/revoke-permissions! (perms-group/all-users) db)
-          (perms/grant-permissions! group (perms/table-segmented-query-path table))
-          (perms/grant-collection-readwrite-permissions! group collection)
-          (boolean ((test-users/user->client :rasta) :post 200 "card"
-                    (assoc (card-with-name-and-query card-name (mbql-count-query db table))
-                      :collection_id (u/get-id collection)))))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            FETCHING A SPECIFIC CARD                                            |
@@ -699,24 +681,6 @@
       ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
        {:collection_position nil})
       (db/select-one-field :collection_position Card :id (u/get-id card)))))
-
-;; Users with segmented permissions should be able to update the query associated to a card
-(expect
-  "Another Name"
-  (tu/with-model-cleanup [Card]
-    (tt/with-temp* [Database                   [db]
-                    Collection                 [collection]
-                    Table                      [table {:db_id (u/get-id db)}]
-                    PermissionsGroup           [group]
-                    PermissionsGroupMembership [_ {:user_id (test-users/user->id :rasta), :group_id (u/get-id group)}]
-                    Card                       [card {:name "Some Name", :collection_id (u/get-id collection)}]]
-      (data/with-db db
-        (perms/revoke-permissions! (perms-group/all-users) db)
-        (perms/grant-permissions! group (perms/table-segmented-query-path table))
-        (perms/grant-collection-readwrite-permissions! group collection)
-        (:name ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card))
-                {:name          "Another Name"
-                 :dataset_query (mbql-count-query db table)}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
