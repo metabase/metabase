@@ -30,7 +30,7 @@ import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
 
-const MAX_PIE_SIZE = 750;
+const MAX_PIE_SIZE = 550;
 
 const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
