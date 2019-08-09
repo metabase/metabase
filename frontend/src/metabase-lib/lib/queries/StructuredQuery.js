@@ -1428,7 +1428,4 @@ class NestedStructuredQuery extends StructuredQuery {
   parentQuery() {
     return this._parent.setSourceQuery(this.query());
   }
-  question() {
-    return this.parentQuery().question();
-  }
 }
