@@ -176,31 +176,40 @@ export default class View extends React.Component {
     return (
       <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
-          <Motion
-            defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
-            style={
-              isNewQuestion ? { opacity: spring(0) } : { opacity: spring(1) }
-            }
-          >
-            {({ opacity }) => (
-              <div className="flex-no-shrink z3 bg-white relative">
-                <ViewTitleHeader
-                  {...this.props}
-                  style={{ opacity }}
-                  py={1}
-                  className="border-bottom"
-                />
-                {opacity < 1 && (
-                  <NewQuestionHeader
-                    className="spread"
-                    style={{ opacity: 1 - opacity }}
-                  />
+          <div className="bg-brand">
+            <div
+              className="bg-white"
+              style={{ borderTopLeftRadius: 8, borderTopRightRadius: 8 }}
+            >
+              <Motion
+                defaultStyle={isNewQuestion ? { opacity: 0 } : { opacity: 1 }}
+                style={
+                  isNewQuestion
+                    ? { opacity: spring(0) }
+                    : { opacity: spring(1) }
+                }
+              >
+                {({ opacity }) => (
+                  <div className="flex-no-shrink z3 relative">
+                    <ViewTitleHeader
+                      {...this.props}
+                      style={{ opacity }}
+                      py={1}
+                      className="border-bottom"
+                    />
+                    {opacity < 1 && (
+                      <NewQuestionHeader
+                        className="spread"
+                        style={{ opacity: 1 - opacity }}
+                      />
+                    )}
+                  </div>
                 )}
-              </div>
-            )}
-          </Motion>
+              </Motion>
+            </div>
+          </div>
 
-          <div className="flex flex-full relative">
+          <div className="flex flex-full relative overflow-hidden">
             {query instanceof StructuredQuery && (
               <Motion
                 defaultStyle={
