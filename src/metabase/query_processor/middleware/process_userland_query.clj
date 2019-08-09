@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]]
+             [i18n :refer [lazy-tru trs tru]]]
             [toucan.db :as db]))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
@@ -95,7 +95,7 @@
     (raise (Exception. (trs "Unexpected nil response from query processor.")))
 
     (not status)
-    (raise (Exception. (str (tru "Invalid response from database driver. No :status provided.")
+    (raise (Exception. (str (lazy-tru "Invalid response from database driver. No :status provided.")
                             " "
                             result)))
 

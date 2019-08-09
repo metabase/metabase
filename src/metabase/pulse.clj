@@ -13,7 +13,7 @@
              [pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [lazy-tru trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
             [schema.core :as s]
@@ -107,11 +107,11 @@
                                                             (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
-      (throw (Exception. (str (tru "Unable to compare results to goal for alert.")
+      (throw (Exception. (str (lazy-tru "Unable to compare results to goal for alert.")
                               " "
-                              (tru "Question ID is ''{0}'' with visualization settings ''{1}''"
-                                   (get-in results [:card :id])
-                                   (pr-str (get-in results [:card :visualization_settings])))))))
+                              (lazy-tru "Question ID is ''{0}'' with visualization settings ''{1}''"
+                                        (get-in results [:card :id])
+                                        (pr-str (get-in results [:card :visualization_settings])))))))
     (some (fn [row]
             (goal-comparison goal-val (comparison-col-rowfn row)))
           (get-in first-result [:result :data :rows]))))

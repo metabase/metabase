@@ -13,7 +13,7 @@
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [lazy-tru tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -53,9 +53,9 @@
     (let [expected-count (count columns)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (lazy-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                             (lazy-tru "Expected {0} columns, but first row of resuls has {1} columns."
                                   expected-count actual-count))
                  {:expected-columns columns
                   :first-row        (first rows)}))))))
@@ -364,13 +364,13 @@
       (when-not (= expected-count actual-count)
         (throw
          (Exception.
-          (str (tru "Query processor error: mismatched number of columns in query and results.")
+          (str (lazy-tru "Query processor error: mismatched number of columns in query and results.")
                " "
-               (tru "Expected {0} fields, got {1}" expected-count actual-count)
+               (lazy-tru "Expected {0} fields, got {1}" expected-count actual-count)
                "\n"
-               (tru "Expected: {0}" (mapv :name returned-mbql-columns))
+               (lazy-tru "Expected: {0}" (mapv :name returned-mbql-columns))
                "\n"
-               (tru "Actual: {0}" (vec (:columns results))))))))))
+               (lazy-tru "Actual: {0}" (vec (:columns results))))))))))
 
 (s/defn ^:private cols-for-fields
   [{:keys [fields], :as inner-query} :- su/Map]

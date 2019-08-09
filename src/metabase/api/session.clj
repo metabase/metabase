@@ -19,7 +19,7 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [lazy-tru trs tru]]
              [password :as pass]
              [schema :as su]]
             [schema.core :as s]
@@ -203,10 +203,10 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
+  (lazy-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
 (defsetting google-auth-auto-create-accounts-domain
-  (tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
+  (lazy-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
 
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]

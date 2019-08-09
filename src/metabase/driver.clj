@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [lazy-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -36,7 +36,7 @@
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
 (defsetting report-timezone
-  (tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  (lazy-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
     (setting/set-string! :report-timezone new-value)

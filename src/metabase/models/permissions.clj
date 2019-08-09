@@ -15,7 +15,7 @@
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [lazy-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -245,8 +245,8 @@
     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
 
 (defn- pre-update [_]
-  (throw (Exception. (str (tru "You cannot update a permissions entry!")
-                          (tru "Delete it and create a new one.")))))
+  (throw (Exception. (str (lazy-tru "You cannot update a permissions entry!")
+                          (lazy-tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
@@ -574,9 +574,9 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+    (throw (ui18n/ex-info (str (lazy-tru "Looks like someone else edited the permissions and your data is out of date.")
                                " "
-                               (tru "Please fetch new data and try again."))
+                               (lazy-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

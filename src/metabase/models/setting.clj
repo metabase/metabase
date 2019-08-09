@@ -43,7 +43,7 @@
             [metabase.models.setting.cache :as cache]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [lazy-trs lazy-tru trs tru]]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -238,9 +238,9 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn (tru "Error inserting a new Setting:") "\n"
+         (log/warn (lazy-tru "Error inserting a new Setting:") "\n"
                    (.getMessage e) "\n"
-                   (tru "Assuming Setting already exists in DB and updating existing value."))
+                   (lazy-tru "Assuming Setting already exists in DB and updating existing value."))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]

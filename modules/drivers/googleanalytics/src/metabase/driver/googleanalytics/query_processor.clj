@@ -7,7 +7,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [lazy-tru tru]]
              [schema :as su]]
             [schema.core :as s])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))

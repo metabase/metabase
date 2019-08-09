@@ -6,7 +6,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [lazy-tru tru]]
              [schema :as su]]
             [ring.util.response :as rr]
             [schema.core :as s])
@@ -112,7 +112,7 @@
     (valid-json-url-or-resource? geo-url-or-uri)))
 
 (defsetting custom-geojson
-  (tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
+  (lazy-tru "JSON containing information about custom GeoJSON files for use in map visualizations instead of the default US State or World GeoJSON.")
   :type    :json
   :default {}
   :getter  (fn [] (merge (setting/get-json :custom-geojson) builtin-geojson))
