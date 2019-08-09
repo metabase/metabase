@@ -49,6 +49,14 @@ const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
 api.basename = BASENAME;
 
+try {
+  window.localStorage; // This will trigger an exception if access is denied.
+  window.hasLocalStorage = true;
+} catch (e) {
+  console.warn("localStorage not available:", e);
+  window.hasLocalStorage = false;
+}
+
 const browserHistory = useRouterHistory(createHistory)({
   basename: BASENAME,
 });

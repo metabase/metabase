@@ -52,6 +52,6 @@ export function enableTranslatedStringReplacement() {
   };
 }
 
-if (window.localStorage && window.localStorage["metabase-i18n-debug"]) {
+if (window.hasLocalStorage && window.localStorage["metabase-i18n-debug"]) {
   enableTranslatedStringReplacement();
 }
