@@ -57,6 +57,7 @@ export default class RunButton extends Component {
         {...props}
         icon={buttonIcon}
         primary={isDirty}
+        iconSize={16}
         className={cx(className, "RunButton", {
           "RunButton--hidden": hidden,
           circular: circular,

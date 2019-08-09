@@ -247,7 +247,7 @@
     (cond-> honeysql-query
       (not= collection-id-column :collection.id)
       (h/merge-left-join [Collection :collection]
-                         [:= collection-id-column :collection_id]))))
+                         [:= collection-id-column :collection.id]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -309,7 +309,10 @@
          :from   [[(merge
                     base-query
                     {:select [:id :schema :db_id :name :description
-                              [(hx/concat "/db/" :db_id "/" :schema "/" :id "/") :path]]})
+                              [(hx/concat (hx/literal "/db/") :db_id (hx/literal "/")
+                                          (hsql/call :case [:not= :schema nil] :schema :else (hx/literal "")) (hx/literal "/")
+                                          :id (hx/literal "/"))
+                               :path]]})
                    :table]]
          :where  (cons
                   :or

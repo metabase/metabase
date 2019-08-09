@@ -171,6 +171,8 @@ export default class View extends React.Component {
 
     const isNewQuestion = query instanceof StructuredQuery && !query.table();
 
+    const isSidebarOpen = leftSideBar || rightSideBar;
+
     return (
       <div className={fitClassNames}>
         <div className={cx("QueryBuilder flex flex-column bg-white spread")}>
@@ -239,7 +241,11 @@ export default class View extends React.Component {
               {leftSideBar}
             </ViewSidebar>
 
-            <div className="flex-full flex flex-column flex-basis-none">
+            <div
+              className={cx("flex-full flex flex-column flex-basis-none", {
+                "hide sm-show": isSidebarOpen,
+              })}
+            >
               {query instanceof NativeQuery && (
                 <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor

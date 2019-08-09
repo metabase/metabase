@@ -18,7 +18,6 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
@@ -74,9 +73,8 @@ const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
+  flex: 1 0 auto;
   max-width: 50em;
-  min-width: 25em;
-  width: 100%;
   align-items: center;
   color: white;
   transition: background 300ms ease-in;
@@ -289,6 +287,11 @@ export default class Navbar extends Component {
   renderMainNav() {
     const hasDataAccess =
       this.props.databases && this.props.databases.length > 0;
+    const hasNativeWrite =
+      hasDataAccess &&
+      this.props.databases.filter(db => db.native_permissions === "write")
+        .length > 0;
+
     return (
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
@@ -321,11 +324,11 @@ export default class Navbar extends Component {
               hover={{
                 backgroundColor: darken(colors["brand"]),
               }}
-              className="flex align-center rounded flex-no-shrink transition-background"
+              className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;New Question`}
             >
-              <Icon name="insight" mr={1} size={18} />
-              <h4 className="hide sm-show">{t`Ask a question`}</h4>
+              <Icon name="insight" size={18} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Ask a question`}</h4>
             </Link>
           )}
           {hasDataAccess && (
@@ -333,29 +336,21 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to="browse"
               p={1}
-              className="flex align-center rounded flex-no-shrink transition-background"
+              className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;Data Browse`}
               hover={{
                 backgroundColor: darken(colors["brand"]),
               }}
             >
-              <Icon name="table_spaced" mr={1} size={14} />
-              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide md-show ml1 text-nowrap">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
             tooltip={t`Create`}
-            className="hide sm-show mx1"
+            className="hide sm-show mr1"
             triggerIcon="add"
             items={[
-              /*
-              {
-                title: t`New notebook`,
-                icon: `notebook`,
-                link: hasDataAccess && this.props.query.question().getUrl(),
-                event: `NavBar;New Custom Question;`,
-              },
-              */
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
@@ -370,18 +365,17 @@ export default class Navbar extends Component {
               },
             ]}
           />
-          {hasDataAccess && (
-            <IconWrapper mx={1}>
-              <Tooltip tooltip={t`Write SQL`}>
-                <Link
-                  to={this.props.plainNativeQuery.question().getUrl()}
-                  className="hide sm-show flex-no-shrink"
-                  data-metabase-event={`NavBar;SQL`}
-                >
-                  <Icon size={19} name="sql" />
-                </Link>
-              </Tooltip>
-            </IconWrapper>
+          {hasNativeWrite && (
+            <Link
+              to={this.props.plainNativeQuery.question().getUrl()}
+              mx={1}
+              className="hide sm-show flex-no-shrink"
+              data-metabase-event={`NavBar;SQL`}
+            >
+              <IconWrapper>
+                <Icon size={19} name="sql" tooltip={t`Write SQL`} />
+              </IconWrapper>
+            </Link>
           )}
           <ProfileLink {...this.props} />
         </Flex>

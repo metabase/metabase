@@ -590,6 +590,39 @@
                     Permissions [perms {:group_id (u/get-id (group/metabot)), :object (perms/object-path db)}]]
       (contains? (:groups (perms/graph)) (u/get-id (group/metabot))))))
 
+;; Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :all
+                          :query :none}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-read-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :none
+                          :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :all
+                          :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/update-graph! [(u/get-id group) (data/id) :schemas]
+                         {"PUBLIC"
+                          {(data/id :venues)
+                           {:read :all, :query :segmented}}})
+    (test-data-graph group)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |

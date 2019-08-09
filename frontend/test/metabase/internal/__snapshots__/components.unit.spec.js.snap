@@ -8,7 +8,9 @@ exports[`Button should render "" correctly 1`] = `
     className="flex layout-centered"
     style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -23,7 +25,9 @@ exports[`Button should render "primary" correctly 1`] = `
     className="flex layout-centered"
     style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -39,7 +43,7 @@ exports[`Button should render "with an icon" correctly 1`] = `
     style={null}
   >
     <svg
-      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
+      className="Icon Icon-star Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={14}
       viewBox="0 0 32 32"
@@ -49,7 +53,9 @@ exports[`Button should render "with an icon" correctly 1`] = `
         d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
       />
     </svg>
-    <div>
+    <div
+      className="ml1"
+    >
       Clickity click
     </div>
   </div>
@@ -70,7 +76,9 @@ exports[`ButtonBar should render "default" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Button
         </div>
       </div>
@@ -96,7 +104,9 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Left
         </div>
       </div>
@@ -112,7 +122,9 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Right
         </div>
       </div>
@@ -135,7 +147,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Left
         </div>
       </div>
@@ -151,7 +165,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Center
         </div>
       </div>
@@ -167,7 +183,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Right
         </div>
       </div>
@@ -635,7 +653,9 @@ exports[`ModalContent should render "default" correctly 1`] = `
               className="flex layout-centered"
               style={null}
             >
-              <div>
+              <div
+                className=""
+              >
                 Ok
               </div>
             </div>

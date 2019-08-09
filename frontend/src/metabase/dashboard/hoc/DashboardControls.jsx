@@ -158,14 +158,14 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.setState({ isNightMode });
       };
 
-      setFullscreen = (isFullscreen, browserFullscreen = true) => {
+      setFullscreen = async (isFullscreen, browserFullscreen = true) => {
         isFullscreen = !!isFullscreen;
         if (isFullscreen !== this.state.isFullscreen) {
           if (screenfull.enabled && browserFullscreen) {
             if (isFullscreen) {
-              screenfull.request();
+              await screenfull.request();
             } else {
-              screenfull.exit();
+              await screenfull.exit();
             }
           }
           this.setState({ isFullscreen });
@@ -190,6 +190,7 @@ export default (ComposedComponent: ReactClass<any>) =>
           this.props.fetchDashboardCardData({
             reload: true,
             clear: false,
+            ignoreCache: true,
           });
         } else {
           this.setState({ refreshElapsed });

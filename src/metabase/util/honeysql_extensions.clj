@@ -7,8 +7,8 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.util.pretty :refer [PrettyPrintable]]
             [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
