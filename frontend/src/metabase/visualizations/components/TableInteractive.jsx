@@ -372,8 +372,8 @@ export default class TableInteractive extends Component {
       const { onVisualizationClick, visualizationIsClickable } = this.props;
       const { dragColIndex } = this.state;
       if (
-        // don't bother calling if we're dragging, etc
-        dragColIndex == null &&
+        // don't bother calling if we're dragging, but do it for headers to show isSortable
+        (dragColIndex == null || (clicked && clicked.value === undefined)) &&
         onVisualizationClick &&
         visualizationIsClickable &&
         clicked
@@ -569,7 +569,7 @@ export default class TableInteractive extends Component {
     const isDraggable = !isPivoted;
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
-    const isSortable = isClickable && column.source;
+    const isSortable = isClickable && column.source && !isPivoted;
     const isRightAligned = isColumnRightAligned(column);
 
     // TODO MBQL: use query lib to get the sort field
