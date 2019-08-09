@@ -447,3 +447,18 @@
                          :condition    [:= *user_id &v.venues.id]}]
          :order-by     [[:asc $id]]
          :limit        2}))))
+
+;; we should be able to use a SQL question as a source query in a Join
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :left-join)
+  [[1 "2014-04-07T00:00:00.000Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
+   [2 "2014-09-18T00:00:00.000Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
+  (tt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
+                                               (data/native-query (qp/query->native (data/mbql-query venues))))]
+    (qp.test/formatted-rows [int identity int int int identity int 4.0 4.0 int]
+      (data/run-mbql-query checkins
+        {:joins    [{:fields       :all
+                     :source-table (str "card__" card-id)
+                     :alias        "card"
+                     :condition    [:= $venue_id &card.*venues.id]}]
+         :order-by [[:asc $id]]
+         :limit    2}))))

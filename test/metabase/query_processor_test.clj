@@ -211,14 +211,40 @@
       (m/dissoc-in [:data :results_metadata])
       (m/dissoc-in [:data :insights])))
 
-(defn- default-format-rows-by-fns [table-kw]
-  (case table-kw
-    :categories [int identity]
-    :checkins   [int identity int int]
-    :users      [int identity identity]
-    :venues     [int identity int 4.0 4.0 int]
-    (throw
-     (IllegalArgumentException. (format "Sorry, we don't have default format-rows-by fns for Table %s." table-kw)))))
+(defmulti format-rows-fns
+  "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
+  rows with `format-rows-by` or `formatted-rows`. The first arg to these macros is converted to a sequence of
+  functions by calling this function.
+
+  Sequential args are assumed to already be a sequence of functions and are returned as-is. Keywords can be thought of
+  as aliases and map to a pre-defined sequence of functions. The usual test data tables have predefined fn sequences;
+  you can add addition ones for use locally by adding more implementations for this method.
+
+    (format-rows-fns [int identity]) ;-> [int identity]
+    (format-rows-fns :venues)        ;-> [int identity int 4.0 4.0 int]"
+  {:arglists '([keyword-or-fns-seq])}
+  (fn [x]
+    (if (keyword? x) x (class x))))
+
+(defmethod format-rows-fns clojure.lang.Sequential
+  [this]
+  this)
+
+(defmethod format-rows-fns :categories
+  [_]
+  [int identity])
+
+(defmethod format-rows-fns :checkins
+  [_]
+  [int identity int int])
+
+(defmethod format-rows-fns :users
+  [_]
+  [int identity identity])
+
+(defmethod format-rows-fns :venues
+  [_]
+  [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn
   "Handle a value formatting function passed to `format-rows-by`."
@@ -254,11 +280,7 @@
      (println "Error running query:" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
-   (let [format-fns (map
-                     format-rows-fn
-                     (if (keyword? format-fns)
-                       (default-format-rows-by-fns format-fns)
-                       format-fns))]
+   (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
      (-> response
          ((fn format-rows [rows]
             (cond
