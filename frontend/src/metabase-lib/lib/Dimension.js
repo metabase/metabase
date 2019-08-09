@@ -896,6 +896,27 @@ export class JoinedDimension extends FieldDimension {
     return null;
   }
 
+  subDisplayName(): string {
+    return this._parent.subDisplayName();
+  }
+
+  subTriggerDisplayName() {
+    return this._parent.subTriggerDisplayName();
+  }
+
+  defaultDimension(...args) {
+    const defaultDimension = this._parent.defaultDimension(...args);
+    if (defaultDimension) {
+      return new JoinedDimension(
+        defaultDimension,
+        this._args,
+        this._metadata,
+        this._query,
+      );
+    }
+    return null;
+  }
+
   mbql(): ForeignFieldReference {
     return ["joined-field", this._args[0], this._parent.mbql()];
   }
