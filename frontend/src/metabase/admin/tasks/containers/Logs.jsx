@@ -31,14 +31,18 @@ for (const [name, color] of Object.entries(ANSI_COLORS)) {
   addCSSRule(`.react-ansi-style-${name}`, `color: ${color} !important`);
 }
 
-function logEventUniqueValue(ev) {
+function logEventKey(ev) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
 }
 
 function mergeLogs(...logArrays) {
-  let logs = Array.prototype.concat(...logArrays);
-  logs = _.sortBy(logs, ev => [ev.timestamp, ev.process_uuid, ev.msg]);
-  return _.uniq(logs, true, logEventUniqueValue);
+  return _.chain(logArrays)
+    .flatten(true)
+    .sortBy(ev => ev.msg)
+    .sortBy(ev => ev.process_uuid)
+    .sortBy(ev => ev.timestamp)
+    .uniq(true, logEventKey)
+    .value();
 }
 
 export default class Logs extends Component {
