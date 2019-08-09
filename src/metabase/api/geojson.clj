@@ -54,7 +54,7 @@
             (valid-json? resource)
             (catch JsonParseException e
               (rethrow-with-message (tru "Unable to parse resource `{0}` as JSON" relative-path-with-prefix) e)))
-          (throw (FileNotFoundException. (str (tru "Unable to find JSON via relative path `{0}`" relative-path-with-prefix)))))))))
+          (throw (FileNotFoundException. (tru "Unable to find JSON via relative path `{0}`" relative-path-with-prefix))))))))
 
 (defn- valid-json-url?
   "Is URL a valid HTTP URL and does it point to valid JSON?"
@@ -85,7 +85,7 @@
   (memoize (fn [url-or-resource-path]
              (or (valid-json-url? url-or-resource-path)
                  (valid-json-resource? url-or-resource-path)
-                 (throw (Exception. (str (tru "Invalid JSON URL or resource: {0}" url-or-resource-path))))))))
+                 (throw (Exception. (tru "Invalid JSON URL or resource: {0}" url-or-resource-path)))))))
 
 (def ^:private CustomGeoJSON
   {s/Keyword {:name                     s/Str

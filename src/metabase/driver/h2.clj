@@ -64,7 +64,7 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
-            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
+            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
 
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))

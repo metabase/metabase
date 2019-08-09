@@ -515,11 +515,11 @@
                                                               :week-of-year]))))
 
 (expect
-  (map str [(tru "{0}st" 1)
-            (tru "{0}nd" 22)
-            (tru "{0}rd" 303)
-            (tru "{0}th" 0)
-            (tru "{0}th" 8)])
+  [(tru "{0}st" 1)
+   (tru "{0}nd" 22)
+   (tru "{0}rd" 303)
+   (tru "{0}th" 0)
+   (tru "{0}th" 8)]
   (map (comp str #'magic/pluralize) [1 22 303 0 8]))
 
 ;; Make sure we have handlers for all the units available

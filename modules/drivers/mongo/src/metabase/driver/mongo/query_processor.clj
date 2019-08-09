@@ -428,7 +428,7 @@
 
     :else
     (throw
-     (ex-info (str (tru "Don't know how to handle aggregation {0}" ag))
+     (ex-info (tru "Don't know how to handle aggregation {0}" ag)
        {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
@@ -736,7 +736,7 @@
           actual-cols     (set (keys (first results)))
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
-        (throw (Exception. (str (tru "Unexpected columns in results: {0}" (sort not-in-expected)))))))))
+        (throw (Exception. (tru "Unexpected columns in results: {0}" (sort not-in-expected))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."

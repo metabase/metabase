@@ -99,8 +99,8 @@
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
     (when-not (get-method name->human-readable-name (keyword new-strategy))
       (throw (IllegalArgumentException.
-              (str (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-                        new-strategy (keys (methods name->human-readable-name)))))))
+               (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
+                    new-strategy (keys (methods name->human-readable-name))))))
     (let [old-strategy (setting/get-string :humanization-strategy)]
       ;; ok, now set the new value
       (setting/set-string! :humanization-strategy (some-> new-value name))

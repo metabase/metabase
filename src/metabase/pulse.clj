@@ -140,7 +140,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (str (tru "Unrecognized alert with condition ''{0}''" alert_condition))]
+    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
@@ -197,7 +197,7 @@
 
 (defmethod notification :default
   [_ _ {:keys [channel_type] :as channel}]
-  (let [^String ex-msg (str (tru "Unrecognized channel type {0}" (pr-str channel_type)))]
+  (let [^String ex-msg (tru "Unrecognized channel type {0}" (pr-str channel_type))]
     (throw (UnsupportedOperationException. ex-msg))))
 
 (defn- pulse->notifications [{:keys [cards channels channel-ids], pulse-id :id, :as pulse}]

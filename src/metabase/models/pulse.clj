@@ -54,7 +54,7 @@
    ;; can only have one Card
    (-> (hydrate alert :cards) :cards first)
    ;; if there's still not a Card, throw an Exception!
-   (throw (Exception. (str (tru "Invalid Alert: Alert does not have a Card assoicated with it"))))))
+   (throw (Exception. (tru "Invalid Alert: Alert does not have a Card assoicated with it")))))
 
 (defn- perms-objects-set
   "Permissions to read or write a *Pulse* are the same as those of its parent Collection.

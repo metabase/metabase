@@ -122,7 +122,7 @@
       (try
         (apply classloader/require expected-ns require-options)
         (catch Throwable _
-          (throw (Exception. (str (tru "Could not find {0} driver." driver)))))))))
+          (throw (Exception. (tru "Could not find {0} driver." driver))))))))
 
 (defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -142,7 +142,7 @@
           (require-driver-ns driver :reload)
           ;; if *still* not registered, throw an Exception
           (when-not (registered? driver)
-            (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
+            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
 (s/defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -174,8 +174,8 @@
     (let [old-abstract? (boolean (abstract? driver))
           new-abstract? (boolean new-abstract?)]
       (when (not= old-abstract? new-abstract?)
-        (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                     driver old-abstract? new-abstract?))))))))
+        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
+                                driver old-abstract? new-abstract?)))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
@@ -220,7 +220,7 @@
       (when abstract?
         (doseq [parent parents
                 :when  (concrete? parent)]
-          (throw (ex-info (str (trs "Abstract drivers cannot derive from concrete parent drivers."))
+          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
                    {:driver driver, :parent parent}))))
       ;; validate that the registration isn't stomping on things
       (check-abstractness-hasnt-changed driver abstract?)
@@ -544,7 +544,7 @@
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
-      (throw (Exception. (str (tru "Invalid driver feature: {0}" feature)))))
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 

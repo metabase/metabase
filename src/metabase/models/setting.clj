@@ -95,7 +95,7 @@
     (let [k (keyword setting-or-name)]
       (or (@registered-settings k)
           (throw (Exception.
-                  (str (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))))
+                  (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -156,7 +156,7 @@
       "true"  true
       "false" false
       (throw (Exception.
-              (str (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))))
+              (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn get-boolean
   "Get boolean value of (presumably `:boolean`) `setting-or-name`. This is the default getter for `:boolean` settings.
@@ -462,8 +462,8 @@
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
     (throw (IllegalArgumentException.
-            (str (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
-                      (pr-str desc))))))
+             (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
+                  (pr-str desc)))))
   desc)
 
 (defmacro defsetting
@@ -585,7 +585,7 @@
      :env_name       (env-var-name setting)
      :description    (str description)
      :default        (if set-via-env-var?
-                       (str (tru "Using value of env var {0}" (str \$ (env-var-name setting))))
+                       (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
 (defn all

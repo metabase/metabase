@@ -160,16 +160,16 @@
     (card-with-name card-id-or-name)
 
     :else
-    (throw (Exception. (str (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
+    (throw (Exception. (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name)))))
 
 (defmethod command :show
   ([_]
-   (str (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`.")))
+   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."))
 
   ([_ card-id-or-name]
    (let [{card-id :id} (id-or-name->card card-id-or-name)]
      (when-not card-id
-       (throw (Exception. (str (tru "Card {0} not found." card-id-or-name)))))
+       (throw (Exception. (tru "Card {0} not found." card-id-or-name))))
      (with-metabot-permissions
        (read-check Card card-id))
      (metabot.slack/async
@@ -177,7 +177,7 @@
                           (pulse/create-slack-attachment-data
                            [(pulse/execute-card card-id, :context :metabot)]))]
          (metabot.slack/post-chat-message! nil attachments)))
-     (str (tru "Ok, just a second..."))))
+     (tru "Ok, just a second...")))
 
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my
   ;; wacky card")

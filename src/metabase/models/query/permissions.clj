@@ -84,7 +84,7 @@
   query."
   [source-card-id :- su/IntGreaterThanZero]
   (i/perms-objects-set (or (db/select-one ['Card :collection_id] :id source-card-id)
-                           (throw (Exception. (str (tru "Card {0} does not exist." source-card-id)))))
+                           (throw (Exception. (tru "Card {0} does not exist." source-card-id))))
                        :read))
 
 (defn- preprocess-query [query]
@@ -127,7 +127,7 @@
     (empty? query)                   #{}
     (= (keyword query-type) :native) #{(perms/adhoc-native-query-path database)}
     (= (keyword query-type) :query)  (mbql-permissions-path-set query perms-opts)
-    :else                            (throw (Exception. (str (tru "Invalid query type: {0}" query-type))))))
+    :else                            (throw (Exception. (tru "Invalid query type: {0}" query-type)))))
 
 (defn perms-set
   "Calculate the set of permissions required to run an ad-hoc `query`. Returns permissions for full table access.

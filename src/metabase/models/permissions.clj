@@ -89,7 +89,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (str (tru "Invalid permissions object path: ''{0}''." object))
+    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400, :path object}))))
 
 (defn- assert-valid-metabot-permissions
@@ -98,7 +98,7 @@
   [{:keys [object group_id]}]
   (when (and (= group_id (:id (group/metabot)))
              (not (str/starts-with? object "/collection/")))
-    (throw (ex-info (str (tru "MetaBot can only have Collection permissions."))
+    (throw (ex-info (tru "MetaBot can only have Collection permissions.")
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -490,7 +490,7 @@
            (if (map? collection-or-id)
              collection-or-id
              (db/select-one 'Collection :id (u/get-id collection-or-id))))
-      (throw (Exception. (str (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
+      (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants."))))))
 
 (defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."

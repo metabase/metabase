@@ -87,7 +87,7 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (let [^String msg (str (tru "SMTP host is not set."))]
+    (let [^String msg (tru "SMTP host is not set.")]
       (throw (Exception. msg))))
   ;; Now send the email
   (send-email! (smtp-settings)

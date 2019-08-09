@@ -65,7 +65,7 @@
           ;; slurp will throw a FileNotFoundException for 404s, so in that case just return an appropriate
           ;; 'Not Found' message
           (catch java.io.FileNotFoundException e
-            {:valid false, :status (str (tru "Unable to validate token: 404 not found."))})
+            {:valid false, :status (tru "Unable to validate token: 404 not found.")})
           ;; if there was any other error fetching the token, log it and return a generic message about the
           ;; token being invalid. This message will get displayed in the Settings page in the admin panel so
           ;; we do not want something complicated
@@ -75,7 +75,7 @@
                                         " "
                                         (.getMessage e))})))
    fetch-token-status-timeout-ms
-   {:valid false, :status (str (tru "Token validation timed out."))}))
+   {:valid false, :status (tru "Token validation timed out.")}))
 
 (def ^:private ^{:arglists '([token])} fetch-token-status
   "TTL-memoized version of `fetch-token-status*`. Caches API responses for 5 minutes. This is important to avoid making
@@ -118,7 +118,7 @@
     (try
       (when (seq new-value)
         (when (s/check ValidToken new-value)
-          (throw (ex-info (str (tru "Token format is invalid. Token should be 64 hexadecimal characters."))
+          (throw (ex-info (tru "Token format is invalid. Token should be 64 hexadecimal characters.")
                    {:status-code 400})))
         (valid-token->features new-value)
         (log/info (trs "Token is valid.")))

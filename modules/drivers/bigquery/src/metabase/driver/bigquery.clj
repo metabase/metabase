@@ -335,7 +335,7 @@
   [honeysql-form :- su/Map]
   (let [[sql & args] (sql.qp/honeysql-form->sql+args :bigquery honeysql-form)]
     (when (seq args)
-      (throw (Exception. (str (tru "BigQuery statements can''t be parameterized!")))))
+      (throw (Exception. (tru "BigQuery statements can''t be parameterized!"))))
     sql))
 
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be

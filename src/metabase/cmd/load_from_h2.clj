@@ -237,7 +237,7 @@
   (mdb/setup-db!)
 
   (assert (#{:postgres :mysql} (mdb/db-type))
-    (str (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB.")))
+    (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
 
   (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
     (jdbc/db-set-rollback-only! target-db-conn)

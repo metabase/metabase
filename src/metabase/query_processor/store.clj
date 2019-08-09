@@ -26,7 +26,7 @@
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
 (def ^:private uninitialized-store
-  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
+  (delay (throw (Exception. (tru "Error: Query Processor store is not initialized.")))))
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
@@ -140,7 +140,7 @@
 (s/defn ^:private db-id :- su/IntGreaterThanZero
   []
   (or (get-in @*store* [:database :id])
-      (throw (Exception. (str (tru "Cannot store Tables or Fields before Database is stored."))))))
+      (throw (Exception. (tru "Cannot store Tables or Fields before Database is stored.")))))
 
 (s/defn fetch-and-store-database!
   "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
@@ -150,12 +150,12 @@
   (if-let [existing-db-id (get-in @*store* [:database :id])]
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
-      (throw (ex-info (str (tru "Attempting to fetch second Database. Queries can only reference one Database."))
+      (throw (ex-info (tru "Attempting to fetch second Database. Queries can only reference one Database.")
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
      (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
-         (throw (ex-info (str (tru "Database {0} does not exist." (str database-id)))
+         (throw (ex-info (tru "Database {0} does not exist." (str database-id))
                   {:database database-id}))))))
 
 (def ^:private IDs
@@ -179,7 +179,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (str (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id))
+           (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id)
              {:table id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [table fetched-tables]
@@ -207,7 +207,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (str (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id))
+           (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
              {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
@@ -221,16 +221,16 @@
   returned."
   []
   (or (:database @*store*)
-      (throw (Exception. (str (tru "Error: Database is not present in the Query Processor Store."))))))
+      (throw (Exception. (tru "Error: Database is not present in the Query Processor Store.")))))
 
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:tables table-id])
-      (throw (Exception. (str (tru "Error: Table {0} is not present in the Query Processor Store." table-id))))))
+      (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id)))))
 
 (s/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:fields field-id])
-      (throw (Exception. (str (tru "Error: Field {0} is not present in the Query Processor Store." field-id))))))
+      (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))

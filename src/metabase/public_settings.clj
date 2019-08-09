@@ -54,7 +54,7 @@
             (str "http://" s))]
     ;; check that the URL is valid
     (assert (u/url? s)
-      (str (tru "Invalid site URL: {0}" s)))
+      (tru "Invalid site URL: {0}" s))
     s))
 
 ;; This value is *guaranteed* to never have a trailing slash :D

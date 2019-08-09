@@ -92,7 +92,7 @@
     ;; if the result itself is invalid there's something wrong in the QP -- not just with the query. Pass an
     ;; Exception up to the top-level handler; this is basically a 500 situation
     (nil? result)
-    (raise (Exception. (str (trs "Unexpected nil response from query processor."))))
+    (raise (Exception. (trs "Unexpected nil response from query processor.")))
 
     (not status)
     (raise (Exception. (str (tru "Invalid response from database driver. No :status provided.")

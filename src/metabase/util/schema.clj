@@ -75,7 +75,7 @@
 (declare api-error-message)
 
 (defn- create-cond-schema-message [child-schemas]
-  (str (tru "value must satisfy one of the following requirements: ")
+  (tru "value must satisfy one of the following requirements: "
        (str/join " " (for [[i child-schema] (m/indexed child-schemas)]
                        (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
@@ -111,9 +111,9 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (tru "value must be an array.") (when (= (count schema) 1)
-                                               (when-let [message (api-error-message (first schema))]
-                                                 (str " " (tru "Each {0}" message))))))))
+        (tru "value must be an array." (when (= (count schema) 1)
+                                         (when-let [message (api-error-message (first schema))]
+                                           (str " " (tru "Each {0}" message))))))))
 
 
 (defn non-empty

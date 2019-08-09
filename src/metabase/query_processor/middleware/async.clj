@@ -34,7 +34,7 @@
     (try
       ;; out-chan might already be closed if query was canceled. NBD if that's the case
       (a/>!! out-chan (if (nil? result)
-                        (Exception. (str (trs "Unexpectedly got `nil` Query Processor response.")))
+                        (Exception. (trs "Unexpectedly got `nil` Query Processor response."))
                         result))
       (finally
         (a/close! out-chan)))))
@@ -86,7 +86,7 @@
       (not= port out-chan)
       (do
         (a/close! out-chan)
-        (throw (TimeoutException. (str (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms))))))
+        (throw (TimeoutException. (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms)))))
 
       :else
       result)))

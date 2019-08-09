@@ -80,7 +80,7 @@
   :setter  (fn [new-value]
              (doseq [k (keys new-value)]
                (when-not (DN/isValidDN (name k))
-                 (throw (IllegalArgumentException. (str (tru "{0} is not a valid DN." (name k)))))))
+                 (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
 (defn ldap-configured?

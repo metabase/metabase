@@ -16,9 +16,9 @@
   (mbql.u/match-one query
     (m :guard (every-pred map? :source-table (comp (complement positive-int?) :source-table)))
     (throw
-     (ex-info
-         (str (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m)))
-       {:form m}))))
+      (ex-info
+        (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m))
+        {:form m}))))
 
 (s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZero}))
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
