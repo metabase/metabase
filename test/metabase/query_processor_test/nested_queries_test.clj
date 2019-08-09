@@ -593,13 +593,12 @@
 ;; out what you were referring to and behave appropriately
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
   [[10]]
-  (qp.test/format-rows-by [int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:source-query {:source-table $$venues
-                        :fields       [$id $name $category_id $latitude $longitude $price]}
-         :aggregation  [[:count]]
-         :filter       [:= $category_id 50]}))))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query venues
+      {:source-query {:source-table $$venues
+                      :fields       [$id $name $category_id $latitude $longitude $price]}
+       :aggregation  [[:count]]
+       :filter       [:= $category_id 50]})))
 
 ;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -610,40 +609,37 @@
    [37 "bigmista's barbecue"  5 34.118  -118.26  2]
    [38 "Zeke's Smokehouse"    5 34.2053 -118.226 2]
    [39 "Baby Blues BBQ"       5 34.0003 -118.465 2]]
-  (qp.test/format-rows-by :venues
-    (qp.test/rows
-      (qp/process-query
-        (data/mbql-query venues
-          {:source-query
-           {:source-table $$venues
-            :filter       [:= $venues.category_id->categories.name "BBQ"]
-            :order-by     [[:asc $id]]}})))))
+  (qp.test/formatted-rows :venues
+    (qp/process-query
+      (data/mbql-query venues
+        {:source-query
+         {:source-table $$venues
+          :filter       [:= $venues.category_id->categories.name "BBQ"]
+          :order-by     [[:asc $id]]}}))))
 
 ;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [[395]
    [980]]
-  (qp.test/format-rows-by [int]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:source-query {:source-table $$checkins
-                        :order-by     [[:asc $id]]}
-         :fields       [$id]
-         :filter       [:= *date "2014-03-30"]}))))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :order-by     [[:asc $id]]}
+       :fields       [$id]
+       :filter       [:= *date "2014-03-30"]})))
 
 ;; make sure filters in source queries are applied correctly!
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [["Fred 62"     1]
    ["Frolic Room" 1]]
-  (qp.test/format-rows-by [str int]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:source-query {:source-table $$checkins
-                        :filter       [:> $date "2015-01-01"]}
-         :aggregation  [:count]
-         :order-by     [[:asc $venue_id->venues.name]]
-         :breakout     [$venue_id->venues.name]
-         :filter       [:starts-with $venue_id->venues.name "F"]}))))
+  (qp.test/formatted-rows [str int]
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :filter       [:> $date "2015-01-01"]}
+       :aggregation  [:count]
+       :order-by     [[:asc $venue_id->venues.name]]
+       :breakout     [$venue_id->venues.name]
+       :filter       [:starts-with $venue_id->venues.name "F"]})))
 
 ;; Do nested queries work with two of the same aggregation? (#9767)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -675,15 +671,14 @@
 ;; can you use nested queries that have expressions in them?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
   [[30] [20]]
-  (qp.test/format-rows-by [int int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:source-query
-         {:source-table $$venues
-          :fields       [[:expression "price-times-ten"]]
-          :expressions  {"price-times-ten" [:* $price 10]}
-          :order-by     [[:asc $id]]
-          :limit        2}}))))
+  (qp.test/formatted-rows [int int]
+    (data/run-mbql-query venues
+      {:source-query
+       {:source-table $$venues
+        :fields       [[:expression "price-times-ten"]]
+        :expressions  {"price-times-ten" [:* $price 10]}
+        :order-by     [[:asc $id]]
+        :limit        2}})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
   [[30] [20]]
@@ -693,7 +688,6 @@
                                                        :order-by     [[:asc $id]]
                                                        :limit        2})}]
 
-    (qp.test/format-rows-by [int int]
-      (qp.test/rows
-        (data/run-mbql-query nil
-          {:source-table (str "card__" card-id)})))))
+    (qp.test/formatted-rows [int int]
+      (data/run-mbql-query nil
+        {:source-table (str "card__" card-id)}))))

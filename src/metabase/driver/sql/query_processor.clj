@@ -23,6 +23,7 @@
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]
              [schema :as su]]
+            [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import metabase.util.honeysql_extensions.Identifier))
@@ -39,6 +40,21 @@
   find referenced aggregations (otherwise something like [:aggregation 0] could be ambiguous in a nested query).
   Each nested query increments this counter by 1."
   0)
+
+(p.types/deftype+ SQLSourceQuery [sql params]
+  hformat/ToSql
+  (to-sql [_]
+    (dorun (map hformat/add-anon-param params))
+    ;; strip off any trailing semicolons
+    (str "(" (str/replace sql #";+\s*$" "") ")"))
+  PrettyPrintable
+  (pretty [_]
+    (list 'SQLSourceQuery. sql params))
+  Object
+  (equals [_ other]
+    (and (instance? SQLSourceQuery other)
+         (= sql    (.sql ^SQLSourceQuery other))
+         (= params (.params ^SQLSourceQuery other)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -477,8 +493,14 @@
 (defmethod join-source :sql
   [driver {:keys [source-table source-query]}]
   (binding [*table-alias* nil]
-    (if source-query
+    (cond
+      (and source-query (:native source-query))
+      (SQLSourceQuery. (:native source-query) (:params source-query))
+
+      source-query
       (build-honeysql-form driver {:query source-query})
+
+      :else
       (->honeysql driver (qp.store/table source-table)))))
 
 (def ^:private HoneySQLJoin
@@ -628,16 +650,6 @@
     SELECT source.*
     FROM ( SELECT * FROM some_table ) source"
   :source)
-
-(deftype ^:private SQLSourceQuery [sql params]
-  hformat/ToSql
-  (to-sql [_]
-    (dorun (map hformat/add-anon-param params))
-    ;; strip off any trailing semicolons
-    (str "(" (str/replace sql #";+\s*$" "") ")"))
-  PrettyPrintable
-  (pretty [_]
-    (list 'SQLSourceQuery. sql params)))
 
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
