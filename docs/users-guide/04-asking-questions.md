@@ -234,6 +234,8 @@ You can write SQL (or your database's native querying language) directly into th
 
 To try it out, type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click **Run query** and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
 
+**Tip!** You can run part of a query by selecting the part you'd like to run and holding down ctrl+alt+enter (on Windows) and ctrl+option+enter (on Mac).
+
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
 
 ---
