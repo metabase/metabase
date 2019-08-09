@@ -30,6 +30,7 @@ const ANSI_COLORS = {
 for (const [name, color] of Object.entries(ANSI_COLORS)) {
   addCSSRule(`.react-ansi-style-${name}`, `color: ${color} !important`);
 }
+const MAX_LOGS = 50000;
 
 function logEventKey(ev) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
@@ -42,6 +43,7 @@ function mergeLogs(...logArrays) {
     .sortBy(ev => ev.process_uuid)
     .sortBy(ev => ev.timestamp)
     .uniq(true, logEventKey)
+    .last(MAX_LOGS)
     .value();
 }
 
