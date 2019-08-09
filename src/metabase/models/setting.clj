@@ -444,7 +444,7 @@
     ((set symbols) (first expression))))
 
 (defn- valid-trs-or-tru? [desc]
-  (is-expression? #{'trs 'tru `trs `tru} desc))
+  (is-expression? #{'lazy-trs 'lazy-tru `lazy-trs `lazy-tru} desc))
 
 (defn- valid-str-of-trs-or-tru? [maybe-str-expr]
   (when (is-expression? #{'str `str} maybe-str-expr)
@@ -470,7 +470,7 @@
   "Defines a new Setting that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
 
-     (defsetting mandrill-api-key \"API key for Mandrill.\")
+     (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
      (mandrill-api-key)           ; get the value
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value
