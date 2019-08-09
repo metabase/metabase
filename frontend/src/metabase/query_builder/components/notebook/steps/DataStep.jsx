@@ -30,7 +30,7 @@ export default function DataStep({ color, query, updateQuery }) {
       />
       {query.table() && query.isRaw() && (
         <DataFieldsPicker
-          className="ml-auto mb1"
+          className="ml-auto mb1 text-bold"
           query={query}
           updateQuery={updateQuery}
         />
