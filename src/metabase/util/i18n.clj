@@ -81,12 +81,12 @@
 (defmacro tru
   "Applies `str` to `lazy-tru`'s expansion."
   [msg & args]
-  `(str (lazy-tru ~msg ~@(vec args))))
+  `(str (lazy-tru ~msg ~@args)))
 
 (defmacro trs
   "Applies `str` to `lazy-trs`'s expansion."
   [msg & args]
-  `(str (lazy-trs ~msg ~@(vec args))))
+  `(str (lazy-trs ~msg ~@args)))
 
 (def ^:private localized-string-checker
   "Compiled checker for `LocalizedString`s which is more efficient when used repeatedly like in `localized-string?`
