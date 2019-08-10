@@ -10,8 +10,7 @@
              [data :as data]
              [transforms :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :as test-users]
-            [toucan.util.test :as tt]))
+            [metabase.test.data.users :as test-users]))
 
 (defn- test-endpoint
   []
