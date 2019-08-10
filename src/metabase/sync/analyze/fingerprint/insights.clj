@@ -95,11 +95,11 @@
 
 (def ^:private ^:const ^Long validation-set-size 20)
 
-(defn- numeric?
+(defn- real-number?
   [x]
-  (not (or (nil? x)
-           (Double/isNaN x)
-           (Double/isInfinite x))))
+  (and (number? x)
+       (not (Double/isNaN x))
+       (not (Double/isInfinite x))))
 
 (defn- best-fit
   "Fit curves from `trendline-function-families` and pick the one with the smallest RMSE.
@@ -113,7 +113,7 @@
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               (when (every? numeric? [offset slope])
+                               (when (every? real-number? [offset slope])
                                  {:model   (model offset slope)
                                   :formula (formula offset slope)}))))
                           (apply redux/juxt))
@@ -129,7 +129,7 @@
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
-              (filter (comp numeric? :mae))
+              (filter (comp real-number? :mae))
               not-empty
               (apply min-key :mae)
               :formula))))
