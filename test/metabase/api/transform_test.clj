@@ -8,10 +8,10 @@
             [metabase.query-processor :as qp]
             [metabase.test
              [data :as data]
+             [domain-entities :refer :all]
              [transforms :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :as test-users]
-            [toucan.util.test :as tt]))
+            [metabase.test.data.users :as test-users]))
 
 (defn- test-endpoint
   []
@@ -24,14 +24,14 @@
    [11 3 34.0406 -118.428 "The Apple Pan" 2 2 11 2 1 1]]
   (test-users/with-test-user :rasta
     (with-test-transform-specs
-      (tu/with-model-cleanup [Card Collection]
-        (-> ((test-users/user->client :rasta) :get 200 (test-endpoint))
-            first
-            Card
-            :dataset_query
-            qp/process-query
-            :data
-            :rows)))))
+      (with-test-domain-entity-specs
+        (tu/with-model-cleanup [Card Collection]
+          (-> ((test-users/user->client :rasta) :get 200 (test-endpoint))
+              first
+              :dataset_query
+              qp/process-query
+              :data
+              :rows))))))
 
 ;; Do we correctly check for permissions?
 (expect
