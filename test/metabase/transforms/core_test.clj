@@ -10,8 +10,7 @@
              [data :as data]
              [transforms :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :as test-users]
-            [metabase.transforms.core :as t]))
+            [metabase.test.data.users :as test-users]))
 
 (expect
   [:field-id (data/id :venues :price)]
