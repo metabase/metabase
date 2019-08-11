@@ -3,8 +3,7 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]
-             [util :as u]]
+             [query-processor-test :as qp.test]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
@@ -273,7 +272,7 @@
   [[29 "20th Century Cafe" 12  37.775 -122.423 2]
    [ 8 "25°"               11 34.1015 -118.342 2]
    [93 "33 Taps"            7 34.1018 -118.326 2]]
-  (qp.test/formatted-venues-rows
+  (qp.test/format-rows-by :venues
    (qp.test/rows
      (data/run-mbql-query venues
        {:source-table $$venues
@@ -293,8 +292,7 @@
    :columns
    (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (data/mbql-query categories))]
-    (qp.test/format-rows-by [int identity int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int
-                             int identity]
+    (qp.test/format-rows-by [int identity int 4.0 4.0 int int identity]
       (qp.test/rows+column-names
         (data/run-mbql-query venues
           {:joins    [{:alias        "cat"
@@ -408,15 +406,34 @@
 ;;
 ;; (Multiple columns named `id` in the example below)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
-  {:rows
+  {:columns (mapv
+             data/format-name
+             ["id"     "date"   "user_id"     "venue_id"                       ; checkins
+              "id_2"   "name"   "last_login"                                   ; users
+              "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
+   :rows
    ;; again, not sure why Oracle is the only driver giving us wrong answers here
    (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
-     [[1 (str "2014-04-07T" tz) 5 12 5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
-      [2 (str "2014-09-18T" tz) 1 31 1 "Red Medicine"                  4 10.065 -165.374 3]])
-   :columns (mapv data/format-name
-                  ["id" "date" "user_id" "venue_id" "id_2" "name" "category_id" "latitude" "longitude" "price"])}
+     [[1 (str "2014-04-07T" tz) 5 12
+       5 "Quentin Sören" "2014-10-03T17:30:00.000Z"
+       5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
+      [2 (str "2014-09-18T" tz) 1 31
+       1 "Plato Yeshua" "2014-04-01T08:30:00.000Z"
+       1 "Red Medicine" 4 10.065 -165.374 3]])}
   (qp.test/rows+column-names
-    (qp.test/format-rows-by [int str int int int str int (partial u/round-to-decimals 3) (partial u/round-to-decimals 3) int]
+    (qp.test/format-rows-by [int    ; checkins.id
+                             str    ; checkins.date
+                             int    ; checkins.user_id
+                             int    ; checkins.venue_id
+                             int    ; users.id
+                             str    ; users.name
+                             str    ; users.last_login
+                             int    ; venues.id
+                             str    ; venues.name
+                             int    ; venues.category_id
+                             3.0    ; venues.latitude
+                             3.0    ; venues.longitude
+                             int]   ; venues.price
       (data/run-mbql-query checkins
         {:source-query {:source-table $$checkins
                         :joins
@@ -430,15 +447,3 @@
                          :condition    [:= *user_id &v.venues.id]}]
          :order-by     [[:asc $id]]
          :limit        2}))))
-
-
-
-;; TODO Can we join against a source nested native query?
-
-;; TODO Do joins inside nested queries work?
-
-;; TODO Do multiple joins work, and return columns in the correct order?
-
-;; TODO Can we join the same table twice with different conditions?
-
-;; TODO Can we join the same table twice with the same condition?

@@ -23,6 +23,11 @@ export const PASSWORD_RESET_MANUAL =
   "metabase/entities/users/RESET_PASSWORD_MANUAL";
 export const RESEND_INVITE = "metabase/entities/users/RESEND_INVITE";
 
+// TODO: It'd be nice to import loadMemberships, but we need to resolve a circular dependency
+function loadMemberships() {
+  return require("metabase/admin/people/people").loadMemberships();
+}
+
 const BASE_FORM_FIELDS: FormFieldDefinition[] = [
   {
     name: "first_name",
@@ -74,6 +79,8 @@ const Users = createEntity({
         };
       }
       const result = await thunkCreator(user)(dispatch, getState);
+
+      dispatch(loadMemberships());
       return {
         // HACK: include user ID and password for temporaryPasswords reducer
         id: result.result,
@@ -85,7 +92,7 @@ const Users = createEntity({
       const result = await thunkCreator(...args)(dispatch, getState);
       // HACK: reload memberships when updating a user
       // TODO: only do this if group_ids changes
-      dispatch(require("metabase/admin/people/people").loadMemberships());
+      dispatch(loadMemberships());
       return result;
     },
   },

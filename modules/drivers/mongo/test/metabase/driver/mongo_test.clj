@@ -79,8 +79,11 @@
   {:status    :completed
    :row_count 1
    :data      {:rows        [[1]]
-               :columns     ["count"]
-               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer, :source :native}]
+               :cols        [{:name         "count"
+                              :display_name "count"
+                              :base_type    :type/Integer
+                              :source       :native
+                              :field_ref    [:field-literal "count" :type/Integer]}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query
@@ -284,10 +287,9 @@
 ;; and #8894)
 (datasets/expect-with-driver :mongo
   ;; if the column does not come back in the results for a given document we should fill in the missing values with nils
-  {:columns ["_id" "name" "parent_id"]
-   :rows    [[1 "African"  nil]
-             [2 "American" nil]
-             [3 "Artisan"  nil]]}
+  {:rows [[1 "African"  nil]
+          [2 "American" nil]
+          [3 "Artisan"  nil]]}
   ;; add a temporary Field that doesn't actually exist to test data categories
   (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
     ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`

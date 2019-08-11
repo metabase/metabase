@@ -175,11 +175,13 @@
       (try
         (jdbc/query conn (into [stmt] params) opts)
         (catch InterruptedException e
-          (log/warn (tru "Client closed connection, canceling query"))
-          ;; This is what does the real work of canceling the query. We aren't checking the result of
-          ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
-          (.cancel stmt)
-          (throw e))))))
+          (try
+            (log/warn (tru "Client closed connection, canceling query"))
+            ;; This is what does the real work of canceling the query. We aren't checking the result of
+            ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
+            (.cancel stmt)
+            (finally
+              (throw e))))))))
 
 (defn- run-query
   "Run the query itself."
@@ -193,7 +195,7 @@
                            :set-parameters (set-parameters-with-timezone timezone)
                            :max-rows       max-rows})]
     {:rows    (or rows [])
-     :columns (map u/keyword->qualified-name columns)}))
+     :columns (map u/qualified-name columns)}))
 
 
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------

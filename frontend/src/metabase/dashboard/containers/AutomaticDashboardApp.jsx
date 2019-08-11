@@ -119,7 +119,9 @@ class AutomaticDashboardApp extends React.Component {
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr2" size={24} />
               <div>
-                <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
+                <h2 className="text-wrap mr2">
+                  {dashboard && <TransientTitle dashboard={dashboard} />}
+                </h2>
                 {dashboard && dashboard.transient_filters && (
                   <TransientFilters
                     filter={dashboard.transient_filters}
@@ -131,7 +133,7 @@ class AutomaticDashboardApp extends React.Component {
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
               ) : (
                 <ActionButton
-                  className="ml-auto"
+                  className="ml-auto text-nowrap"
                   success
                   borderless
                   actionFn={this.save}
@@ -261,7 +263,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                     mr={1}
                     size={22}
                   />
-                  <h4>{item.title}</h4>
+                  <h4 className="text-wrap">{item.title}</h4>
                   <Box ml="auto" className="hover-child">
                     <Tooltip tooltip={item.description}>
                       <Icon name="question" color={colors["bg-dark"]} />

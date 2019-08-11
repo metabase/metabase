@@ -61,46 +61,51 @@
 
 ;;; ----------------------------------------------- Filtered Fetch Fns -----------------------------------------------
 
-(defn- cards:all
-  "Return all `Cards`."
-  []
+(defmulti ^:private cards-for-filter-option*
+  {:arglists '([filter-option & args])}
+  (fn [filter-option & _]
+    (keyword filter-option)))
+
+;; return all Cards. This is the default filter option.
+(defmethod cards-for-filter-option* :all
+  [_]
   (db/select Card, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards:mine
-  "Return all `Cards` created by current user."
-  []
+;; return Cards created by the current user
+(defmethod cards-for-filter-option* :mine
+  [_]
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards:fav
-  "Return all `Cards` favorited by the current user."
-  []
+;;return all Cards favorited by the current user.
+(defmethod cards-for-filter-option* :fav
+  [_]
   (->> (hydrate (db/select [CardFavorite :card_id], :owner_id api/*current-user-id*)
                 :card)
        (map :card)
        (filter (complement :archived))
        (sort-by :name)))
 
-(defn- cards:database
-  "Return all `Cards` belonging to `Database` with DATABASE-ID."
-  [database-id]
+;; Return all Cards belonging to Database with `database-id`.
+(defmethod cards-for-filter-option* :database
+  [_ database-id]
   (db/select Card, :database_id database-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-(defn- cards:table
-  "Return all `Cards` belonging to `Table` with TABLE-ID."
-  [table-id]
+;; Return all Cards belonging to `Table` with `table-id`.
+(defmethod cards-for-filter-option* :table
+  [_ table-id]
   (db/select Card, :table_id table-id, :archived false, {:order-by [[:%lower.name :asc]]}))
 
 (s/defn ^:private cards-with-ids :- (s/maybe [CardInstance])
-  "Return unarchived `Cards` with CARD-IDS.
-   Make sure cards are returned in the same order as CARD-IDS`; `[in card-ids]` won't preserve the order."
+  "Return unarchived Cards with `card-ids`.
+  Make sure cards are returned in the same order as `card-ids`; `[in card-ids]` won't preserve the order."
   [card-ids :- [su/IntGreaterThanZero]]
   (when (seq card-ids)
     (let [card-id->card (u/key-by :id (db/select Card, :id [:in (set card-ids)], :archived false))]
       (filter identity (map card-id->card card-ids)))))
 
-(defn- cards:recent
-  "Return the 10 `Cards` most recently viewed by the current user, sorted by how recently they were viewed."
-  []
+;; Return the 10 Cards most recently viewed by the current user, sorted by how recently they were viewed.
+(defmethod cards-for-filter-option* :recent
+  [_]
   (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%max.timestamp :max]]
                                    :model   "card"
                                    :user_id api/*current-user-id*
@@ -108,37 +113,23 @@
                                     :order-by [[:max :desc]]
                                     :limit    10}))))
 
-(defn- cards:popular
-  "All `Cards`, sorted by popularity (the total number of times they are viewed in `ViewLogs`).
-  (yes, this isn't actually filtering anything, but for the sake of simplicitiy it is included amongst the filter
-  options for the time being)."
-  []
+;; All Cards, sorted by popularity (the total number of times they are viewed in `ViewLogs`). (yes, this isn't
+;; actually filtering anything, but for the sake of simplicitiy it is included amongst the filter options for the time
+;; being).
+(defmethod cards-for-filter-option* :popular
+  [_]
   (cards-with-ids (map :model_id (db/select [ViewLog :model_id [:%count.* :count]]
                                    :model "card"
                                    {:group-by [:model_id]
                                     :order-by [[:count :desc]]}))))
 
-(defn- cards:archived
-  "`Cards` that have been archived."
-  []
+;; Cards that have been archived.
+(defmethod cards-for-filter-option* :archived
+  [_]
   (db/select Card, :archived true, {:order-by [[:%lower.name :asc]]}))
 
-(def ^:private filter-option->fn
-  "Functions that should be used to return cards for a given filter option. These functions are all be called with
-  `model-id` as the sole paramenter; functions that don't use the param discard it via `u/drop-first-arg`.
-
-     ((filter->option->fn :recent) model-id) -> (cards:recent)"
-  {:all      (u/drop-first-arg cards:all)
-   :mine     (u/drop-first-arg cards:mine)
-   :fav      (u/drop-first-arg cards:fav)
-   :database cards:database
-   :table    cards:table
-   :recent   (u/drop-first-arg cards:recent)
-   :popular  (u/drop-first-arg cards:popular)
-   :archived (u/drop-first-arg cards:archived)})
-
-(defn- cards-for-filter-option [filter-option model-id]
-  (-> ((filter-option->fn (or filter-option :all)) model-id)
+(defn- cards-for-filter-option [filter-option model-id-or-nil]
+  (-> (apply cards-for-filter-option* (or filter-option :all) (when model-id-or-nil [model-id-or-nil]))
       (hydrate :creator :collection :favorite)))
 
 
@@ -146,7 +137,7 @@
 
 (def ^:private CardFilterOption
   "Schema for a valid card filter option."
-  (apply s/enum (map name (keys filter-option->fn))))
+  (apply s/enum (map name (keys (methods cards-for-filter-option*)))))
 
 (api/defendpoint GET "/"
   "Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is

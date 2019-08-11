@@ -43,8 +43,9 @@ export const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
+        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+
       server.process = spawn(
         "java",
         [
@@ -62,6 +63,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           env: {
             MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
+            MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
           },
           stdio: "inherit",
@@ -98,7 +100,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.h2.db`);
+        await fs.unlink(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },

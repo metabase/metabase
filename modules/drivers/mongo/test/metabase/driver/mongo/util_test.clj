@@ -3,9 +3,7 @@
             [metabase.driver.mongo.util :as mongo-util]
             [metabase.driver.util :as driver.u]
             [metabase.test.util.log :as tu.log])
-  (:import com.mongodb.ReadPreference
-           (com.mongodb MongoClient DB ServerAddress MongoClientException)))
-
+  (:import [com.mongodb DB MongoClient MongoClientException ReadPreference ServerAddress]))
 
 (defn- connect-mongo [opts]
   (let [connection-info (#'mongo-util/details->mongo-connection-info
@@ -216,7 +214,7 @@
       .build))
 
 (expect
-  #"We couldn't connect to the ssh tunnel host"
+  com.jcraft.jsch.JSchException
   (try
     (let [engine :mongo
           details {:ssl            false
@@ -231,5 +229,8 @@
                    :tunnel-user    "bogus"}]
       (tu.log/suppress-output
         (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-    (catch Exception e
-      (.getMessage e))))
+    (catch Throwable e
+      (loop [^Throwable e e]
+        (or (when (instance? com.jcraft.jsch.JSchException e)
+              e)
+            (some-> (.getCause e) recur))))))

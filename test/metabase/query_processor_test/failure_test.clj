@@ -21,8 +21,7 @@
    :query    {:source-table (data/id :venues)
               :fields       [[:datetime-field [:field-id (data/id :venues :id)] :month]]
               :limit        qp.i/absolute-max-results}
-   :driver   :h2
-   :settings {}})
+   :driver   :h2})
 
 (def ^:private bad-query:native
   {:query  (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "
@@ -60,6 +59,7 @@
    :row_count    (s/eq 0)
    :running_time (s/constrained s/Int (complement neg?))
    :preprocessed (s/eq (assoc-in (bad-query:preprocessed) [:middleware :userland-query?] true))
-   :data         (s/eq {:rows [], :cols [], :columns []})}
+   :data         {:rows (s/eq [])
+                  :cols (s/eq [])}}
   (tu.log/suppress-output
     (qp/process-query-and-save-execution! (bad-query) {:context :question})))

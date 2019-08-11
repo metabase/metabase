@@ -67,7 +67,7 @@
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
           (when special-type
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
+            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
 (def ^:private create-database-timeout
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -96,7 +96,8 @@
       ;; make sure we're returing an up-to-date copy of the DB
       (Database (u/get-id db)))
     (catch Throwable e
-      (log/error e (format "Failed to create %s '%s' test database" driver database-name))
+      (printf "Failed to create %s '%s' test database:\n" driver database-name)
+      (println e)
       (when config/is-test?
         (System/exit -1)))))
 
@@ -206,13 +207,12 @@
   standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db}                            (*get-db*)
-        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])
-        copy-name                                              (format "%s___COPY" original-name)]
-    (try
-      (let [{new-db-id :id, :as new-db} (db/insert! Database (assoc original-db :name copy-name))]
+        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
+    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
+      (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f))
-      (finally (db/delete! Database :engine (name engine), :name copy-name)))))
+        (do-with-db new-db f)
+        (finally (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

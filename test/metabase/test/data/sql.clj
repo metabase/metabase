@@ -2,11 +2,8 @@
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
             [metabase.driver :as driver]
-            [metabase.driver.sql
-             [query-processor :as sql.qp]
-             [util :as sql.u]]
-            [metabase.test.data.interface :as tx]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))
 
 (driver/register! :sql/test-extensions, :abstract? true)
@@ -49,20 +46,6 @@
   ([_ db-name table-name]            [table-name])
   ([_ db-name table-name field-name] [table-name field-name]))
 
-(defn qualified-identifier
-  "Call `qualified-name-components` on a set of string or keyword names, then pass it to `hx/identifier`. The resulting
-  object can be included directly in a HoneySQL form and will automatically be converted to an appropriately quoted
-  identifer when the HoneySQL form is compiled.
-
-    (qualified-identifier \"my_db\" \"my_table\") ; -> (hx/identifier :table \"MY_DB\" \"MY_TABLE\") ; for H2"
-  {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
-  [driver & names]
-  (->> names
-       (apply qualified-name-components driver)
-       (map (partial tx/format-name driver))
-       (apply hx/identifier)
-       (sql.qp/->honeysql driver)))
-
 (defn qualify-and-quote
   "Qualify names and combine into a single, quoted string. By default, this passes the results of
   `qualified-name-components` to `tx/format-name` and then to `sql.u/quote-name`.
@@ -70,7 +53,7 @@
     (qualify-and-quote [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
-  `qualified-identifier` instead."
+  `hx/identifier` instead."
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name])}
   [driver & names]
   (let [identifier-type (condp = (count names)

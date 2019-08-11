@@ -141,19 +141,21 @@
             (try
               @results-future
               (catch InterruptedException e
-                (if id
-                  ;; If we have a query id, we can cancel the query
-                  (try
-                    (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
-                          adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
-                      (http/delete adjustedUri(details->request details-with-tunnel)))
-                    ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
-                    ;; covering it up with a failed cancel
-                    (catch Exception e
-                      (log/error e (trs "Error canceling query with ID {0}" id))))
-                  (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
-                ;; Propagate the error so that any finalizers can still run
-                (throw e)))))))))
+                (try
+                  (if id
+                    ;; If we have a query id, we can cancel the query
+                    (try
+                      (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
+                            adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
+                        (http/delete adjustedUri(details->request details-with-tunnel)))
+                      ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+                      ;; covering it up with a failed cancel
+                      (catch Exception e
+                        (log/error e (trs "Error canceling query with ID {0}" id))))
+                    (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
+                  (finally
+                    ;; Propagate the error so that any finalizers can still run
+                    (throw e)))))))))))
 
 
 ;;; `:sql` driver implementation
@@ -164,9 +166,9 @@
                         (format "SHOW SCHEMAS FROM %s LIKE 'information_schema'" (sql.u/quote-name driver :database catalog)))]
     (= v "information_schema")))
 
-(defmethod driver/date-interval :presto
-  [_ unit amount]
-  (hsql/call :date_add (hx/literal unit) amount :%now))
+(defmethod driver/date-add :presto
+  [_ dt amount unit]
+  (hsql/call :date_add (hx/literal unit) amount dt))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
@@ -271,7 +273,7 @@
         columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
     (merge
-     {:columns (map (comp u/keyword->qualified-name :name) columns)
+     {:columns (map (comp u/qualified-name :name) columns)
       :rows    rows}
      ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
      ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want

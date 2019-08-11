@@ -225,8 +225,8 @@ export function getTableDimensions(
             parentName: stripId(field.display_name),
             target: [
               "fk->",
-              field.id,
-              getDimensionTargetFieldId(dimension.target),
+              ["field-id", field.id],
+              ["field-id", getDimensionTargetFieldId(dimension.target)],
             ],
             depth: dimension.depth + 1,
           }),
@@ -382,6 +382,9 @@ export function setParameterName(
   parameter: Parameter,
   name: string,
 ): Parameter {
+  if (!name) {
+    name = "unnamed";
+  }
   const slug = slugify(name);
   return {
     ...parameter,

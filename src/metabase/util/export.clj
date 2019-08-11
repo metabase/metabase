@@ -24,36 +24,38 @@
   (cons (map :display_name (get-in results [:result :data :cols]))
         (get-in results [:result :data :rows])))
 
-(defn- export-to-xlsx [columns rows]
-  (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name columns) rows))
+(defn- export-to-xlsx [column-names rows]
+  (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name column-names) rows))
         ;; note: byte array streams don't need to be closed
         out (ByteArrayOutputStream.)]
     (spreadsheet/save-workbook! out wb)
     (ByteArrayInputStream. (.toByteArray out))))
 
 (defn export-to-xlsx-file
-  "Write an XLS file to `FILE` with the header a and rows found in `RESULTS`"
-  [^File file results]
+  "Write an XLS file to `file` with the header a and rows found in `results`"
+  [^File file, results]
   (let [file-path (.getAbsolutePath file)]
     (->> (results->cells results)
-         (spreadsheet/create-workbook "Query result" )
+         (spreadsheet/create-workbook "Query result")
          (spreadsheet/save-workbook! file-path))))
 
-(defn- export-to-csv [columns rows]
+(defn- export-to-csv [column-names rows]
   (with-out-str
     ;; turn keywords into strings, otherwise we get colons in our output
-    (csv/write-csv *out* (into [(mapv name columns)] rows))))
+    (csv/write-csv *out* (into [(mapv name column-names)] rows))))
 
 (defn export-to-csv-writer
-  "Write a CSV to `FILE` with the header a and rows found in `RESULTS`"
+  "Write a CSV to `file` with the header a and rows found in `results`"
   [^File file results]
   (with-open [fw (java.io.FileWriter. file)]
     (csv/write-csv fw (results->cells results))))
 
-(defn- export-to-json [columns rows]
+(defn- export-to-json [column-names rows]
   (for [row rows]
-    (zipmap columns row)))
+    (zipmap column-names row)))
 
+;; TODO - we should rewrite this whole thing as 4 multimethods. Then it would be possible to add new export types via
+;; plugins, etc.
 (def export-formats
   "Map of export types to their relevant metadata"
   {"csv"  {:export-fn    export-to-csv

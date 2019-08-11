@@ -240,10 +240,12 @@ class Overworld extends React.Component {
                               size={28}
                             />
                             <Flex align="center">
-                              <h3>{database.name}</h3>
+                              <h3 className="text-wrap">{database.name}</h3>
                               <Box ml="auto" mr={1} className="hover-child">
                                 <Flex align="center">
-                                  <Tooltip tooltip={t`Learn about this table`}>
+                                  <Tooltip
+                                    tooltip={t`Learn about this database`}
+                                  >
                                     <Link
                                       to={`reference/databases/${database.id}`}
                                     >

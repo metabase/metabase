@@ -251,6 +251,7 @@
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
    (check-embedding-enabled-for-object (db/select-one [entity :enable_embedding] :id id)))
+
   ([object]
    (api/check-embedding-enabled)
    (api/check-404 object)

@@ -71,7 +71,7 @@
     (ex-info "An error occurred while running the query." {:status-code 400})
     (u/select-nested-keys
      results
-     [[:data :columns :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
+     [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).

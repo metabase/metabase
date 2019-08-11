@@ -128,16 +128,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`X-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).dimensions,
     persistDefault: true,
@@ -167,16 +170,19 @@ export const GRAPH_DATA_SETTINGS = {
     section: t`Data`,
     title: t`Y-axis`,
     widget: "fields",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        card.visualization_settings["graph.dimensions"],
-        data,
-        vizSettings["graph._dimension_filter"],
-      ) &&
-      columnsAreValid(
-        card.visualization_settings["graph.metrics"],
-        data,
-        vizSettings["graph._metric_filter"],
+    isValid: (series, vizSettings) =>
+      series.some(
+        ({ card, data }) =>
+          columnsAreValid(
+            card.visualization_settings["graph.dimensions"],
+            data,
+            vizSettings["graph._dimension_filter"],
+          ) &&
+          columnsAreValid(
+            card.visualization_settings["graph.metrics"],
+            data,
+            vizSettings["graph._metric_filter"],
+          ),
       ),
     getDefault: (series, vizSettings) => getDefaultColumns(series).metrics,
     persistDefault: true,
@@ -209,11 +215,13 @@ export const GRAPH_BUBBLE_SETTINGS = {
     section: t`Data`,
     title: t`Bubble size`,
     widget: "field",
-    isValid: ([{ card, data }], vizSettings) =>
-      columnsAreValid(
-        [card.visualization_settings["scatter.bubble"]],
-        data,
-        isNumeric,
+    isValid: (series, vizSettings) =>
+      series.some(({ card, data }) =>
+        columnsAreValid(
+          [card.visualization_settings["scatter.bubble"]],
+          data,
+          isNumeric,
+        ),
       ),
     getDefault: series => getDefaultColumns(series).bubble,
     getProps: ([{ card, data }], vizSettings, onChange) => {

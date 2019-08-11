@@ -5,13 +5,8 @@ import EntityObjectLoader, { entityObjectLoader } from "./EntityObjectLoader";
 import EntityName from "./EntityName";
 import EntityForm from "./EntityForm";
 
-import inflection from "inflection";
-
 export function addEntityContainers(entity) {
-  // NOTE: need to use inflection directly here due to circular dependency
-  const ObjectName = inflection.capitalize(
-    entity.nameOne || inflection.singularize(entity.name),
-  );
+  const ObjectName = entity.nameOne;
 
   // Entity.load higher-order component
   entity.load = ({ id, ...props } = {}) =>

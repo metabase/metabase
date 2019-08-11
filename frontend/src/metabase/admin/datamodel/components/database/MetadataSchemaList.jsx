@@ -6,6 +6,8 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
+import { regexpEscape } from "metabase/lib/string";
+
 export default class MetadataSchemaList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -22,7 +24,7 @@ export default class MetadataSchemaList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
