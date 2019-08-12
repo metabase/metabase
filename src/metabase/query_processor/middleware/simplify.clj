@@ -14,7 +14,9 @@
                               (when (= (get metadata k) v)
                                 metadata))
                             source-metadata)
-          can-unwrap? (and match (= (:unit match) unit))]
+          can-unwrap? (and match
+                           (= unit :year)
+                           (= (:unit match) unit))]
       (if can-unwrap?
         field
         &match))))
