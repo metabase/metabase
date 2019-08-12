@@ -232,7 +232,7 @@ export class ViewTitleHeader extends React.Component {
             <RunButtonWithTooltip
               className={cx("text-brand-hover", {
                 hidden: isShowingNotebook,
-                "text-white-hover": isDirty,
+                "text-white-hover": isResultDirty && isRunnable,
               })}
               medium
               borderless
