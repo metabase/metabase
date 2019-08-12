@@ -1,0 +1,31 @@
+## Asking more advanced questions in the SQL/native query editor
+
+---
+
+If you ever need to ask questions that can't be expressed using the question builder, you can use **SQL** instead.
+
+### What's SQL?
+
+SQL (pronounced "sequel") stands for Structured Query Language, and is a widely used standard for getting data from databases. To learn more about it, check out this [SQL Tutorial](http://www.w3schools.com/sql/default.asp).
+
+Even if you don't understand SQL or how to use it, it's worthwhile to understand how to use it inside Metabase because sometimes other people will share SQL-based questions that might be useful to you.
+
+### Starting a new SQL query
+
+If you have the [permissions](../administration-guide/05-setting-permissions.md) to use the SQL editor, when you click the Ask a Question button you'll see an option to start a new SQL query. There's also a shortcut to the editor in the top nav bar; it's the little console icon.
+
+You can write SQL (or your database's native querying language) directly into the editor that appears.
+
+![SQL editor](images/SQLInterface.png)
+
+To try it out, type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
+
+**Tip!** You can run part of a query by selecting the part you'd like to run and holding down ctrl+alt+enter (on Windows) and ctrl+option+enter (on Mac).
+
+Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
+
+---
+
+## Next: Creating charts
+
+Now that you have an answer to your question, you can now learn more about [visualizing answers](05-visualizing-results.md).
