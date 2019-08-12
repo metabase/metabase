@@ -120,14 +120,15 @@ export default class Logs extends Component {
     if (processUUIDs.length > 1) {
       processUUIDSelect = (
         <div className="pb1">
-          <label>{t`Select Metabase process`}</label>
-
+          <label>{t`Select Metabase process:`}</label>
           <Select
             defaultValue="ALL"
             value={this.state.selectedProcessUUID}
             onChange={e =>
               this.setState({ selectedProcessUUID: e.target.value })
             }
+            className="inline-block ml1"
+            width={400}
           >
             <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
             {processUUIDs.map(uuid => (
