@@ -374,9 +374,9 @@
   (tt/with-temp Card [{card-id               :id
                        {source-query :query} :dataset_query
                        source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                       (data/mbql-query checkins
-                         {:aggregation [[:count]]
-                          :breakout    [!month.date]}))]
+                                                                (data/mbql-query checkins
+                                                                  {:aggregation [[:count]]
+                                                                   :breakout    [!month.date]}))]
     (qp.test/rows+column-names
       (qp.test/format-rows-by [identity int identity int]
         (data/run-mbql-query checkins
