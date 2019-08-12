@@ -8,7 +8,7 @@
              [cron :as cron-util]
              [date :as du]
              [encryption :as encryption]
-             [i18n :refer [tru trs]]]
+             [i18n :refer [trs tru]]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
