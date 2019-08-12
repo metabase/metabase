@@ -23,7 +23,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [lazy-tru tru]]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -480,21 +480,21 @@
                                (t.format/unparse
                                 (t.format/formatter formatter (t/time-zone-for-id tz)) dt))]
   (expect
-    (map str [(lazy-tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
-              (lazy-tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
-              (lazy-tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
-              (lazy-tru "in {0} week - {1}"
-                        (#'magic/pluralize (date/date-extract :week-of-year dt tz))
-                        (str (date/date-extract :year dt tz)))
-              (lazy-tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
-              (lazy-tru "in Q{0} - {1}"
-                        (date/date-extract :quarter-of-year dt tz)
-                        (str (date/date-extract :year dt tz)))
+    (map str [(tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
+              (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
+              (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+              (tru "in {0} week - {1}"
+                   (#'magic/pluralize (date/date-extract :week-of-year dt tz))
+                   (str (date/date-extract :year dt tz)))
+              (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
+              (tru "in Q{0} - {1}"
+                   (date/date-extract :quarter-of-year dt tz)
+                   (str (date/date-extract :year dt tz)))
               (unparse-with-formatter "YYYY" dt)
               (unparse-with-formatter "EEEE" dt)
-              (lazy-tru "at {0}" (unparse-with-formatter "h a" dt))
+              (tru "at {0}" (unparse-with-formatter "h a" dt))
               (unparse-with-formatter "MMMM" dt)
-              (lazy-tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
+              (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
               (date/date-extract :minute-of-hour dt tz)
               (date/date-extract :day-of-month dt tz)
               (date/date-extract :week-of-year dt tz)])
@@ -515,11 +515,11 @@
                                                               :week-of-year]))))
 
 (expect
-  [(tru "{0}st" 1)
-   (tru "{0}nd" 22)
-   (tru "{0}rd" 303)
-   (tru "{0}th" 0)
-   (tru "{0}th" 8)]
+  (map str [(tru "{0}st" 1)
+            (tru "{0}nd" 22)
+            (tru "{0}rd" 303)
+            (tru "{0}th" 0)
+            (tru "{0}th" 8)])
   (map (comp str #'magic/pluralize) [1 22 303 0 8]))
 
 ;; Make sure we have handlers for all the units available
