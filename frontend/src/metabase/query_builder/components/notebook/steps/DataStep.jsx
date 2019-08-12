@@ -1,15 +1,17 @@
 import React from "react";
-
+import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 
-export default function DataStep({ color, query, updateQuery }) {
+import { getDatabasesList } from "metabase/query_builder/selectors";
+
+function DataStep({ color, query, databases, updateQuery }) {
   return (
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
-        databases={query.metadata().databasesList()}
+        databases={databases}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
         setSourceTableFn={tableId =>
@@ -30,7 +32,7 @@ export default function DataStep({ color, query, updateQuery }) {
       />
       {query.table() && query.isRaw() && (
         <DataFieldsPicker
-          className="ml-auto mb1"
+          className="ml-auto mb1 text-bold"
           query={query}
           updateQuery={updateQuery}
         />
@@ -38,6 +40,10 @@ export default function DataStep({ color, query, updateQuery }) {
     </NotebookCell>
   );
 }
+
+export default connect(state => ({ databases: getDatabasesList(state) }))(
+  DataStep,
+);
 
 import FieldsPicker from "./FieldsPicker";
 

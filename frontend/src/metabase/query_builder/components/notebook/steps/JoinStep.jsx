@@ -94,6 +94,7 @@ class JoinClause extends React.Component {
           triggerElement={
             strategyOption ? (
               <Icon
+                tooltip={t`Change join type`}
                 className="text-brand mr1"
                 name={strategyOption.icon}
                 size={32}
@@ -190,7 +191,7 @@ class JoinClause extends React.Component {
 
         {join.isValid() && (
           <JoinFieldsPicker
-            className="mb1 ml-auto"
+            className="mb1 ml-auto text-bold"
             join={join}
             updateQuery={updateQuery}
           />

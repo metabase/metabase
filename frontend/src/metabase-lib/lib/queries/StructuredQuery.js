@@ -11,6 +11,7 @@ import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
+import { t } from "ttag";
 
 import { memoize } from "metabase-lib/lib/utils";
 
@@ -711,7 +712,29 @@ export default class StructuredQuery extends AtomicQuery {
     }
     queries.reverse();
 
-    return [].concat(...queries.map(q => q.filterFieldOptionSections(filter)));
+    const sections = [].concat(
+      ...queries.map(q => q.filterFieldOptionSections(filter)),
+    );
+
+    // special logic to only show aggregation dimensions for post-aggregation dimensions
+    if (queries.length > 1) {
+      // set the section title to `Metrics`
+      sections[0].name = t`Metrics`;
+      // only include aggregation dimensions
+      sections[0].items = sections[0].items.filter(item => {
+        if (item.dimension) {
+          const sourceDimension = queries[0].dimensionForSourceQuery(
+            item.dimension,
+          );
+          if (sourceDimension) {
+            return sourceDimension instanceof AggregationDimension;
+          }
+        }
+        return true;
+      });
+    }
+
+    return sections;
   }
 
   /**
@@ -1427,8 +1450,5 @@ class NestedStructuredQuery extends StructuredQuery {
 
   parentQuery() {
     return this._parent.setSourceQuery(this.query());
-  }
-  question() {
-    return this.parentQuery().question();
   }
 }

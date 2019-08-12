@@ -88,7 +88,7 @@ const SubHeadBreadcrumbs = ({ parts }) => (
 );
 
 const HeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center mr2">
+  <span className="flex align-center">
     {parts.map(({ name, icon, href }, index) => [
       <MaybeLink
         key={index}

@@ -146,17 +146,19 @@ export class ViewTitleHeader extends React.Component {
               </ViewHeading>
               {showFiltersInHeading &&
                 QuestionFilters.shouldRender(this.props) && (
-                  <QuestionFilters
-                    question={question}
-                    expanded={isFiltersExpanded}
-                    onExpand={this.expandFilters}
-                    onCollapse={this.collapseFilters}
-                  />
+                  <div className="ml2">
+                    <QuestionFilters
+                      question={question}
+                      expanded={isFiltersExpanded}
+                      onExpand={this.expandFilters}
+                      onCollapse={this.collapseFilters}
+                    />
+                  </div>
                 )}
               {QuestionLineage.shouldRender(this.props) && (
                 <ViewSubHeading>
                   <QuestionLineage
-                    className={isSummarized ? "ml2" : isNative ? "ml2" : ""}
+                    className="ml2"
                     question={question}
                     originalQuestion={originalQuestion}
                   />
@@ -186,7 +188,6 @@ export class ViewTitleHeader extends React.Component {
           {isDirty ? (
             <Link
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
-              mx={1}
               onClick={() => onOpenModal("save")}
             >
               {t`Save`}
