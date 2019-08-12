@@ -25,6 +25,7 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [params :as params]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [embed :as embed]
              [i18n :refer [tru]]
@@ -121,7 +122,7 @@
 ;;; ----------------------------------------------- Public Dashboards ------------------------------------------------
 
 (defn public-dashboard
-  "Return a public Dashboard matching key-value CONDITIONS, removing all columns that should not be visible to the
+  "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
@@ -234,16 +235,20 @@
 
 (defn public-dashcard-results-async
   "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
-  `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard.
-
-  Otherwise returns channel for fetching results."
-  [dashboard-id card-id parameters & {:keys [context]
-                                      :or   {context :public-dashboard}}]
+  `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Otherwise returns channel for
+  fetching results."
+  {:style/indent 3}
+  [dashboard-id card-id parameters & {:keys [context constraints]
+                                      :or   {context :public-dashboard
+                                             constraints constraints/default-query-constraints}}]
   (check-card-is-in-dashboard card-id dashboard-id)
-  (run-query-for-card-with-id-async card-id (resolve-params dashboard-id (if (string? parameters)
-                                                                           (json/parse-string parameters keyword)
-                                                                           parameters))
-    :context context, :dashboard-id dashboard-id))
+  (let [params (resolve-params dashboard-id (if (string? parameters)
+                                              (json/parse-string parameters keyword)
+                                              parameters))]
+    (run-query-for-card-with-id-async card-id params
+      :dashboard-id dashboard-id
+      :context      context
+      :constraints  constraints)))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
