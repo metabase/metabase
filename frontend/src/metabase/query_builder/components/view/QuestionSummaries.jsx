@@ -40,7 +40,6 @@ export default function QuestionSummaries({
 }
 
 export function QuestionSummarizeWidget({
-  question,
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,

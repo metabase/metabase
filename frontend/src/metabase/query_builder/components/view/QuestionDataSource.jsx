@@ -77,7 +77,7 @@ const QuestionDataSource = ({
 export default QuestionDataSource;
 
 const SubHeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center text-medium text-bold">
+  <span className="flex align-center flex-wrap text-medium text-bold">
     {parts.map(({ name, icon, href }, index) => (
       <MaybeLink key={index} to={href} className="flex align-center mr2">
         {icon && <Icon name={icon} mr={"5px"} size={11} />}
@@ -88,7 +88,7 @@ const SubHeadBreadcrumbs = ({ parts }) => (
 );
 
 const HeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center">
+  <span className="flex align-center flex-wrap">
     {parts.map(({ name, icon, href }, index) => [
       <MaybeLink
         key={index}

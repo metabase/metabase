@@ -17,6 +17,9 @@ import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
+import { QuestionFilterWidget } from "./QuestionFilters";
+import { QuestionSummarizeWidget } from "./QuestionSummaries";
+
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 
@@ -45,6 +48,14 @@ const ViewFooter = ({
   isPreviewing,
   isResultDirty,
   isVisualized,
+  queryBuilderMode,
+
+  isShowingFilterSidebar,
+  onAddFilter,
+  onCloseFilter,
+  isShowingSummarySidebar,
+  onEditSummary,
+  onCloseSummary,
 }) => {
   if (!result || isObjectDetail) {
     return null;
@@ -55,6 +66,27 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
+          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
+            <QuestionFilterWidget
+              className="sm-hide"
+              mr={1}
+              isShowingFilterSidebar={isShowingFilterSidebar}
+              onAddFilter={onAddFilter}
+              onCloseFilter={onCloseFilter}
+            />
+          ),
+          QuestionSummarizeWidget.shouldRender({
+            question,
+            queryBuilderMode,
+          }) && (
+            <QuestionSummarizeWidget
+              className="sm-hide"
+              mr={1}
+              isShowingSummarySidebar={isShowingSummarySidebar}
+              onEditSummary={onEditSummary}
+              onCloseSummary={onCloseSummary}
+            />
+          ),
           <VizTypeButton
             key="viz-type"
             question={question}

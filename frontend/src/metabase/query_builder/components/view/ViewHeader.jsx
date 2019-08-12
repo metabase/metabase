@@ -96,6 +96,7 @@ export class ViewTitleHeader extends React.Component {
 
     return (
       <ViewSection
+        align="flex-start"
         className={cx("border-bottom", className)}
         style={style}
         py={[1]}
@@ -119,7 +120,7 @@ export class ViewTitleHeader extends React.Component {
                 onOpenModal={onOpenModal}
               />
             </div>
-            <ViewSubHeading className="flex align-center">
+            <ViewSubHeading className="flex align-center flex-wrap">
               <CollectionBadge collectionId={question.collectionId()} />
               <span className="mx2 text-light text-smaller">•</span>
 
@@ -136,7 +137,7 @@ export class ViewTitleHeader extends React.Component {
           </div>
         ) : (
           <div className="mb1">
-            <div className="flex align-baseline">
+            <div className="flex align-baseline flex-wrap">
               <ViewHeading className="mt1" style={{ marginBottom: 4 }}>
                 {isNative ? (
                   t`New question`
@@ -165,7 +166,7 @@ export class ViewTitleHeader extends React.Component {
                 </ViewSubHeading>
               )}
             </div>
-            <div className="flex align-center">
+            <div className="flex align-center flex-wrap">
               {isSummarized && (
                 <QuestionDataSource question={question} subHead />
               )}
@@ -181,7 +182,7 @@ export class ViewTitleHeader extends React.Component {
             </div>
           </div>
         )}
-        <div className="ml-auto flex align-center">
+        <div className="ml-auto flex align-center py2">
           {NativeQueryButton.shouldRender(this.props) && (
             <NativeQueryButton size={20} question={question} />
           )}
@@ -195,8 +196,8 @@ export class ViewTitleHeader extends React.Component {
           ) : null}
           {QuestionFilterWidget.shouldRender(this.props) && (
             <QuestionFilterWidget
+              className="hide sm-show"
               ml={1}
-              query={question.query()}
               isShowingFilterSidebar={isShowingFilterSidebar}
               onAddFilter={onAddFilter}
               onCloseFilter={onCloseFilter}
@@ -204,8 +205,8 @@ export class ViewTitleHeader extends React.Component {
           )}
           {QuestionSummarizeWidget.shouldRender(this.props) && (
             <QuestionSummarizeWidget
+              className="hide sm-show"
               ml={1}
-              question={question}
               isShowingSummarySidebar={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
               onCloseSummary={onCloseSummary}
@@ -221,6 +222,7 @@ export class ViewTitleHeader extends React.Component {
                 medium
                 icon="notebook"
                 ml={2}
+                className="hide sm-show"
                 onClick={() =>
                   setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
                 }
@@ -229,7 +231,7 @@ export class ViewTitleHeader extends React.Component {
           )}
           {isRunnable && (
             <RunButtonWithTooltip
-              className={cx({ hidden: isShowingNotebook })}
+              className={cx("hide sm-show", { hidden: isShowingNotebook })}
               medium
               borderless
               ml={1}

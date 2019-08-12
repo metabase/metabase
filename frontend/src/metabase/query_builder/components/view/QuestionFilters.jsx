@@ -76,7 +76,6 @@ export default function QuestionFilters({
 }
 
 export function QuestionFilterWidget({
-  query,
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,
