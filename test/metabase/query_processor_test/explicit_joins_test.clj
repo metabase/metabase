@@ -388,25 +388,6 @@
            :order-by     [[:asc *checkins.date]]
            :limit        3})))))
 
-;; NOCOMMIT
-(defn- x []
-  (tt/with-temp Card [{card-id               :id
-                       {source-query :query} :dataset_query
-                       source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                       (data/mbql-query checkins
-                         {:aggregation [[:count]]
-                          :breakout    [!month.date]}))]
-    (qp.test/rows+column-names
-      (qp.test/format-rows-by [identity int identity int]
-        (data/run-mbql-query checkins
-          {:source-query source-query
-           :joins        [{:source-table (str "card__" card-id)
-                           :alias        "checkins_by_month"
-                           :fields       :all
-                           :condition    [:= *checkins.date &checkins_by_month.*checkins.date]}]
-           :order-by     [[:asc *checkins.date]]
-           :limit        3})))))
-
 ;; Should be able to use a joined field in a `:time-interval` clause
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
   {:rows    []

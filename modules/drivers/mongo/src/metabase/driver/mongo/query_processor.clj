@@ -259,7 +259,7 @@
       :month-of-year   (extract :month)
       :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (extract :year))))
+      :year            (stringify "yyyy-01-01"))))
 
 
 ;; TODO - where's the part where we handle include-current?

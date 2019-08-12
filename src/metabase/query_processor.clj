@@ -15,7 +15,6 @@
              [add-implicit-clauses :as implicit-clauses]
              [add-implicit-joins :as add-implicit-joins]
              [add-row-count-and-status :as row-count-and-status]
-             [simplify :as simplify]
              [add-settings :as add-settings]
              [add-source-metadata :as add-source-metadata]
              [annotate :as annotate]
@@ -106,7 +105,6 @@
 (def ^:private pipeline
   ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
   [#'mbql-to-native/mbql->native
-   #'simplify/eliminate-unneeded-datetime-field-casts
    #'annotate/result-rows-maps->vectors
    #'check-features/check-features
    #'wrap-value-literals/wrap-value-literals

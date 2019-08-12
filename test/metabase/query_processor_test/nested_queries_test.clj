@@ -698,11 +698,11 @@
 ;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
 ;; than timestamps
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
-  [[2013]]
-  (qp.test/formatted-rows [int]
+  [["2013-01-01T00:00:00.000Z"]]
+  (qp.test/rows
     (data/run-mbql-query checkins
       {:source-query {:source-table $$checkins
                       :fields       [!year.date]
                       :order-by     [[:asc !year.date]]
                       :limit        1}
-       :fields       [!year.*.date]})))
+       :fields       [!year.*date]})))

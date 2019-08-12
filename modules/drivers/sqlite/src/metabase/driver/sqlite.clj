@@ -92,7 +92,7 @@
 (defmethod sql.qp/date [:sqlite :week-of-year]   [_ _ expr] (hx/->integer (hx/inc (strftime "%W" (ts->str expr)))))
 (defmethod sql.qp/date [:sqlite :month]          [_ _ expr] (->date (ts->str expr) (hx/literal "start of month")))
 (defmethod sql.qp/date [:sqlite :month-of-year]  [_ _ expr] (hx/->integer (strftime "%m" (ts->str expr))))
-
+(defmethod sql.qp/date [:sqlite :year]           [_ _ expr] (->date (ts->str expr) (hx/literal "start of year")))
 ;;    DATE(DATE(%s, 'start of month'), '-' || ((STRFTIME('%m', %s) - 1) % 3) || ' months')
 ;; -> DATE(DATE('2015-11-16', 'start of month'), '-' || ((STRFTIME('%m', '2015-11-16') - 1) % 3) || ' months')
 ;; -> DATE('2015-11-01', '-' || ((11 - 1) % 3) || ' months')
@@ -114,9 +114,6 @@
   (hx// (hx/+ (strftime "%m" (ts->str expr))
               2)
         3))
-
-(defmethod sql.qp/date [:sqlite :year] [_ _ expr]
-  (hx/->integer (strftime "%Y" (ts->str expr))))
 
 (defmethod driver/date-add :sqlite [driver dt amount unit]
   (let [[multiplier sqlite-unit] (case unit

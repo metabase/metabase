@@ -718,9 +718,9 @@
 ;;; date bucketing - year
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [[2013 235]
-             [2014 498]
-             [2015 267]]}
+   :rows    [["2013-01-01T00:00:00.000Z" 235]
+             ["2014-01-01T00:00:00.000Z" 498]
+             ["2015-01-01T00:00:00.000Z" 267]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:aggregation [[:count]]
