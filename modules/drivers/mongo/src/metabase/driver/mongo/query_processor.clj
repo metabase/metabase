@@ -218,7 +218,7 @@
                                                    {$mod [{$add [month 2]}
                                                           3]}]}
                                        3]})
-          :year            {$year column})))))
+          :year            (stringify "%Y"))))))
 
 
 (defmethod ->rvalue :datetime-field [this]

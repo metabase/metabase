@@ -795,8 +795,7 @@
     :day-of-year
     :week-of-year
     :month-of-year
-    :quarter-of-year
-    :year})
+    :quarter-of-year})
 
 (defmethod ->dimension-rvalue nil
   [_]

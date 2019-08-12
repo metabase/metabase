@@ -3,6 +3,7 @@
   (:require [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
@@ -698,7 +699,7 @@
 ;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
 ;; than timestamps
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
-  [["2013-01-01T00:00:00.000Z"]]
+  [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00.000Z")]]
   (qp.test/rows
     (data/run-mbql-query checkins
       {:source-query {:source-table $$checkins
