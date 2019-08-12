@@ -129,7 +129,10 @@ class JoinClause extends React.Component {
           selectedDatabaseId={query.databaseId()}
           selectedTableId={join.joinSourceTableId()}
           setSourceTableFn={tableId => {
-            const newJoin = join.setJoinSourceTableId(tableId);
+            const newJoin = join
+              .setJoinSourceTableId(tableId)
+              .setDefaultCondition()
+              .setDefaultAlias();
             newJoin.parent().update(updateQuery);
             // _parentDimensionPicker won't be rendered until next update
             if (!newJoin.parentDimension()) {
@@ -162,6 +165,7 @@ class JoinClause extends React.Component {
               onChange={fieldRef => {
                 join
                   .setParentDimension(fieldRef)
+                  .setDefaultAlias()
                   .parent()
                   .update(updateQuery);
                 if (!join.joinDimension()) {
