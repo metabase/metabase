@@ -691,3 +691,18 @@
     (qp.test/formatted-rows [int int]
       (data/run-mbql-query nil
         {:source-table (str "card__" card-id)}))))
+
+;; If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)
+;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
+;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another query
+;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
+;; than timestamps
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
+  [[2013]]
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :fields       [!year.date]
+                      :order-by     [[:asc !year.date]]
+                      :limit        1}
+       :fields       [!year.*.date]})))
