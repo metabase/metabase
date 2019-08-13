@@ -12,6 +12,7 @@
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]
+             [domain-entities :as de.test]
              [transforms :as transforms.test]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
@@ -175,18 +176,19 @@
    [11 3 34.0406 -118.428 "The Apple Pan" 2 2 11 2 1 1]]
   (test-users/with-test-user :rasta
     (transforms.test/with-test-transform-specs
-      (tu/with-model-cleanup ['Card 'Collection]
-        (transforms/apply-transform! (data/id) "PUBLIC" (first @transforms.specs/transform-specs))
-        (api-call "transform/%s" ["Test transform"]
-                  #(revoke-collection-permissions!
-                    (transforms.materialize/get-collection "Test transform"))
-                  (fn [dashboard]
-                    (->> dashboard
-                        :ordered_cards
-                        (sort-by (juxt :row :col))
-                        last
-                        :card
-                        :dataset_query
-                        qp/process-query
-                        :data
-                        :rows)))))))
+      (de.test/with-test-domain-entity-specs
+        (tu/with-model-cleanup ['Card 'Collection]
+          (transforms/apply-transform! (data/id) "PUBLIC" (first @transforms.specs/transform-specs))
+          (api-call "transform/%s" ["Test transform"]
+                    #(revoke-collection-permissions!
+                      (transforms.materialize/get-collection "Test transform"))
+                    (fn [dashboard]
+                      (->> dashboard
+                           :ordered_cards
+                           (sort-by (juxt :row :col))
+                           last
+                           :card
+                           :dataset_query
+                           qp/process-query
+                           :data
+                           :rows))))))))

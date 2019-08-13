@@ -3,6 +3,7 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
+             [set :as set]
              [string :as str]
              [walk :as walk]]
             [clojure.java.classpath :as classpath]
@@ -10,10 +11,12 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
+            [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec])
+            [ring.util.codec :as codec]
+            [weavejester.dependency :as dep])
   (:import [java.io BufferedReader Reader]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
@@ -718,3 +721,49 @@
   (fn [& args]
     (apply xor (for [pred preds]
                  (apply pred args)))))
+
+(defn topological-sort
+  "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
+   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   (a graph), only sorted.
+
+   Say you have a graph shaped like:
+
+     a     b
+     | \\  |
+     c  |  |
+     \\ | /
+        d
+        |
+        e
+
+   (u/topological-sort identity {:b []
+                                 :c [:a]
+                                 :e [:d]
+                                 :d [:a :b :c]
+                                 :a []})
+
+   => (ordered-map :a [] :b [] :c [:a] :d [:a :b :c] :e [:d])
+
+   If the graph has cycles, throws an exception.
+
+   https://en.wikipedia.org/wiki/Topological_sorting"
+  ([g] (topological-sort identity g))
+  ([edges-fn g]
+   (transduce (map (juxt key (comp edges-fn val)))
+              (fn
+                ([] (dep/graph))
+                ([acc [vertex edges]]
+                 (reduce (fn [acc edge]
+                           (dep/depend acc vertex edge))
+                         acc
+                         edges))
+                ([acc]
+                 (let [sorted      (filter g (dep/topo-sort acc))
+                       independent (set/difference (set (keys g)) (set sorted))]
+                   (not-empty
+                    (into (ordered-map)
+                          (map (fn [vertex]
+                                 [vertex (g vertex)]))
+                          (concat independent sorted))))))
+              g)))

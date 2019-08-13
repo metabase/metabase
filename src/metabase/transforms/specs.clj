@@ -1,27 +1,17 @@
 (ns metabase.transforms.specs
-  (:require [clojure
-             [set :as set]
-             [string :as str]]
-            [flatland.ordered.map :refer [ordered-map]]
-            [medley.core :as m]
+  (:require [medley.core :as m]
+            [metabase.domain-entities.specs :refer [FieldType MBQL]]
             [metabase.mbql
              [normalize :as mbql.normalize]
              [schema :as mbql.schema]
              [util :as mbql.u]]
             [metabase.util :as u]
             [metabase.util
-             [files :as files]
              [schema :as su]
              [yaml :as yaml]]
             [schema
              [coerce :as sc]
-             [core :as s]]
-            [weavejester.dependency :as dep])
-  (:import [java.nio.file Files Path]))
-
-(def MBQL
-  "MBQL clause (ie. a vector starting with a keyword)"
-  (s/pred mbql.u/mbql-clause?))
+             [core :as s]]))
 
 (def ^:private Source s/Str)
 
@@ -60,15 +50,11 @@
 
 (def ^:private Steps {Source Step})
 
-(defn- field-type?
-  [t]
-  (isa? t :type/*))
+(def ^:private DomainEntity s/Str)
 
-(def ^:private FieldType (s/constrained s/Keyword field-type?))
+(def ^:private Requires [DomainEntity])
 
-(def ^:private Requires {Source {:dimensions [FieldType]}})
-
-(def ^:private Provides {Source {:dimensions [Dimension]}})
+(def ^:private Provides [DomainEntity])
 
 (def TransformSpec
   "Transform spec"
@@ -77,26 +63,6 @@
    (s/required-key :provides)    Provides
    (s/required-key :steps)       Steps
    (s/optional-key :description) Description})
-
-(defn- dependencies-sort
-  [dependencies-fn g]
-  (transduce (map (juxt key (comp dependencies-fn val)))
-             (fn
-               ([] (dep/graph))
-               ([acc [el dependencies]]
-                (reduce (fn [acc dependency]
-                          (dep/depend acc el dependency))
-                        acc
-                        dependencies))
-               ([acc]
-                (let [sorted      (filter g (dep/topo-sort acc))
-                      independent (set/difference (set (keys g)) (set sorted))]
-                  (not-empty
-                   (into (ordered-map)
-                         (map (fn [el]
-                                [el (g el)]))
-                         (concat independent sorted))))))
-             g))
 
 (defn- extract-dimensions
   [mbql]
@@ -119,31 +85,24 @@
     Steps                    (fn [steps]
                                (->> steps
                                     stringify-keys
-                                    (dependencies-sort (fn [{:keys [source joins]}]
-                                                         (conj (map :source joins) source)))))
+                                    (u/topological-sort (fn [{:keys [source joins]}]
+                                                          (conj (map :source joins) source)))))
     Breakout                 (fn [breakouts]
                                (for [breakout (u/one-or-many breakouts)]
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))
     FieldType                (partial keyword "type")
+    [DomainEntity]           u/one-or-many
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
-    {Dimension MBQL}         (comp (partial dependencies-sort extract-dimensions)
+    {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)
                                    stringify-keys)
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                    name}))
 
 (def ^:private transforms-dir "transforms/")
 
-(defn- load-transforms-dir
-  [dir]
-  (files/with-open-path-to-resource [dir dir]
-    (with-open [ds (Files/newDirectoryStream dir)]
-      (->> ds
-           (filter (comp #(str/ends-with? % ".yaml") str/lower-case (memfn ^Path getFileName)))
-           (mapv (partial yaml/load (comp transform-spec-parser add-metadata-to-steps)))))))
-
 (def transform-specs
   "List of registered dataset transforms."
-  (delay (load-transforms-dir transforms-dir)))
+  (delay (yaml/load-dir transforms-dir (comp transform-spec-parser add-metadata-to-steps))))
