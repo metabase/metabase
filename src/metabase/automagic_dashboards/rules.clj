@@ -1,20 +1,19 @@
 (ns metabase.automagic-dashboards.rules
   "Validation, transformation to cannonical form, and loading of heuristics."
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util
+             [files :as files]
              [i18n :refer [LocalizedString trs tru]]
-             [schema :as su]]
+             [schema :as su]
+             [yaml :as yaml]]
             [schema
              [coerce :as sc]
              [core :as s]]
-            [schema.spec.core :as spec]
-            [yaml.core :as yaml])
-  (:import [java.nio.file Files FileSystem FileSystems Path]))
+            [schema.spec.core :as spec])
+  (:import [java.nio.file Files Path]))
 
 (def ^Long ^:const max-score
   "Maximal (and default) value for heuristics scores."
@@ -226,18 +225,11 @@
         x
         {identifier {k definition}}))))
 
-(defn ensure-seq
-  "Wrap `x` into a vector if it is not already a sequence."
-  [x]
-  (if (or (sequential? x) (nil? x))
-    x
-    [x]))
-
 (def ^:private rules-validator
   (sc/coercer!
    Rule
-   {[s/Str]         ensure-seq
-    [OrderByPair]   ensure-seq
+   {[s/Str]         u/one-or-many
+    [OrderByPair]   u/one-or-many
     OrderByPair     (fn [x]
                       (if (string? x)
                         {x "ascending"}
@@ -255,7 +247,7 @@
     Card            (with-defaults {:score  max-score
                                     :width  populate/default-card-width
                                     :height populate/default-card-height})
-    [CardDimension] ensure-seq
+    [CardDimension] u/one-or-many
     CardDimension   (fn [x]
                       (if (string? x)
                         {x {}}
@@ -285,28 +277,14 @@
   [rule]
   (transduce (map (comp count ancestors)) + (:applies_to rule)))
 
-(defn- load-rule
-  [^Path f]
-  (try
-    (let [entity-type (file->entity-type f)]
-      (-> f
-          .toUri
-          slurp
-          yaml/parse-string
-          (assoc :rule        entity-type
-                 :specificity 0)
-          (update :applies_to #(or % entity-type))
-          rules-validator
-          (as-> rule (assoc rule :specificity (specificity rule)))))
-    (catch Exception e
-      (log/error (trs "Error parsing {0}:\n{1}"
-                      (.getFileName f)
-                      (or (some-> e
-                                  ex-data
-                                  (select-keys [:error :value])
-                                  u/pprint-to-str)
-                          e)))
-      nil)))
+(defn- make-rule
+  [entity-type r]
+  (-> r
+      (assoc :rule        entity-type
+             :specificity 0)
+      (update :applies_to #(or % entity-type))
+      rules-validator
+      (as-> rule (assoc rule :specificity (specificity rule)))))
 
 (defn- trim-trailing-slash
   [s]
@@ -318,33 +296,23 @@
   ([dir] (load-rule-dir dir [] {}))
   ([dir path rules]
    (with-open [ds (Files/newDirectoryStream dir)]
-     (reduce (fn [rules ^Path f]
-               (cond
-                 (Files/isDirectory f (into-array java.nio.file.LinkOption []))
-                 (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
+     (reduce
+      (fn [rules ^Path f]
+        (let [entity-type (file->entity-type f)]
+          (cond
+            (Files/isDirectory f (into-array java.nio.file.LinkOption []))
+            (load-rule-dir f (->> f (.getFileName) str trim-trailing-slash (conj path)) rules)
 
-                 (file->entity-type f)
-                 (assoc-in rules (concat path [(file->entity-type f) ::leaf]) (load-rule f))
+            entity-type
+            (assoc-in rules (concat path [entity-type ::leaf]) (yaml/load (partial make-rule entity-type) f))
 
-                 :else
-                 rules))
-             rules
-             ds))))
-
-(defmacro ^:private with-resource
-  [[identifier path] & body]
-  `(let [[jar# path#] (-> ~path .toString (str/split #"!" 2))]
-     (if path#
-       (with-open [^FileSystem fs# (-> jar#
-                                       java.net.URI/create
-                                       (FileSystems/newFileSystem (java.util.HashMap.)))]
-         (let [~identifier (.getPath fs# path# (into-array String []))]
-           ~@body))
-       (let [~identifier (.getPath (FileSystems/getDefault) (.getPath ~path) (into-array String []))]
-         ~@body))))
+            :else
+            rules)))
+      rules
+      ds))))
 
 (def ^:private rules (delay
-                      (with-resource [path (-> rules-dir io/resource .toURI)]
+                      (files/with-open-path-to-resource [path rules-dir]
                         (into {} (load-rule-dir path)))))
 
 (defn get-rules
