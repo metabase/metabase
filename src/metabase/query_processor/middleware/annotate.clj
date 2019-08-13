@@ -320,7 +320,6 @@
       :special_type :type/Number}
      (ag->name-info inner-query &match))
 
-    ; TODO - should we be doing this for `:sum-where` as well?
     [:count-where _]
     (merge
      {:base_type    :type/Integer

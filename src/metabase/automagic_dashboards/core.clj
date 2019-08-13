@@ -826,7 +826,7 @@
       :entity
       related/related
       (update :fields (partial remove key-col?))
-      (->> (m/map-vals (comp (partial map ->related-entity) rules/ensure-seq)))))
+      (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]

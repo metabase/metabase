@@ -5,10 +5,11 @@
             [environ.core :as env]
             [metabase.plugins
              [classloader :as classloader]
-             [files :as files]
              [initialize :as initialize]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [files :as files]
+             [i18n :refer [trs]]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
 
