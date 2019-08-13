@@ -5,7 +5,7 @@ import moment from "moment";
 import _ from "underscore";
 
 import { isDate } from "metabase/lib/schema_metadata";
-import { parseTimestamp } from "metabase/lib/time";
+import { parseTimestamp, TIMESTAMP_FORMATS } from "metabase/lib/time";
 
 const TIMESERIES_UNITS = new Set([
   "minute",
@@ -22,7 +22,7 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
   return (
     (isDate(cols[i]) &&
       (cols[i].unit == null || TIMESERIES_UNITS.has(cols[i].unit))) ||
-    moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
+    moment(rows[0] && rows[0][i], TIMESTAMP_FORMATS, true).isValid()
   );
 }
 

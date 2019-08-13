@@ -40,13 +40,15 @@ const NUMERIC_UNIT_FORMATS = {
       .startOf("quarter"),
 };
 
+export const TIMESTAMP_FORMATS = [moment.ISO_8601, "YYYY-MM-DD:ZZ"];
+
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
 export function parseTimestamp(value, unit) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
-    return moment.parseZone(value);
+    return moment.parseZone(value, TIMESTAMP_FORMATS);
   } else if (unit in NUMERIC_UNIT_FORMATS) {
     return NUMERIC_UNIT_FORMATS[unit](value);
   } else {

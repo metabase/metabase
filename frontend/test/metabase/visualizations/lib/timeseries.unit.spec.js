@@ -8,7 +8,7 @@ import { TYPE } from "metabase/lib/types";
 describe("visualization.lib.timeseries", () => {
   describe("dimensionIsTimeseries", () => {
     // examples from https://en.wikipedia.org/wiki/ISO_8601
-    const ISO_8601_DATES = [
+    const VALID_DATES = [
       "2016-02-12",
       "2016-02-12T03:21:55+00:00",
       "2016-02-12T03:21:55Z",
@@ -16,6 +16,7 @@ describe("visualization.lib.timeseries", () => {
       "2016-W06",
       "2016-W06-5",
       "2016-043",
+      "2016-02-03:+00:00",
     ];
 
     const NOT_DATES = ["100", "100 %", "scanner 005"];
@@ -35,16 +36,16 @@ describe("visualization.lib.timeseries", () => {
         dimensionIsTimeseries({ cols: [{ base_type: TYPE.DateTime }] }),
       ).toBe(true);
     });
-    ISO_8601_DATES.forEach(isoDate => {
+    VALID_DATES.forEach(date => {
       it(
-        "should detect values with ISO 8601 formatted string '" +
-          isoDate +
+        "should detect values with validly formatted string '" +
+          date +
           "' as timeseries",
         () => {
           expect(
             dimensionIsTimeseries({
               cols: [{ base_type: TYPE.Text }],
-              rows: [[isoDate]],
+              rows: [[date]],
             }),
           ).toBe(true);
         },
