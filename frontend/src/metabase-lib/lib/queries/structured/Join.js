@@ -141,7 +141,7 @@ export default class Join extends MBQLObjectClause {
 
   setDefaultAlias() {
     const parentDimension = this.parentDimension();
-    if (parentDimension && parentDimension.field().isID()) {
+    if (parentDimension && parentDimension.field().isFK()) {
       return this.setAlias(parentDimension.field().targetDisplayName());
     } else {
       const table = this.joinedTable();
