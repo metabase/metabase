@@ -86,12 +86,16 @@
     str))
 
 (defmacro tru
-  "Applies `str` to `deferred-tru`'s expansion."
+  "Applies `str` to `deferred-tru`'s expansion.
+  Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
+  applied to the result."
   [msg & args]
   `(str* (deferred-tru ~msg ~@args)))
 
 (defmacro trs
-  "Applies `str` to `deferred-trs`'s expansion."
+  "Applies `str` to `deferred-trs`'s expansion.
+  Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
+  applied to the result."
   [msg & args]
   `(str* (deferred-trs ~msg ~@args)))
 
