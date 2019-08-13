@@ -40,7 +40,7 @@
 (def default-host-details
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
-   :display-name (tru "Host")
+   :display-name (lazy-tru "Host")
    :default      "localhost"})
 
 (def default-port-details

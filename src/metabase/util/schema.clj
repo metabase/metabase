@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [lazy-tru tru]]
              [password :as password]]
             [schema
              [core :as s]
@@ -144,86 +144,86 @@
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (with-api-error-message (s/constrained s/Str (complement str/blank?) "Non-blank string")
-    (tru "value must be a non-blank string.")))
+    (lazy-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (tru "Integer greater than or equal to zero"))
-    (tru "value must be an integer greater than or equal to zero.")))
+      (s/constrained s/Int (partial <= 0) (lazy-tru "Integer greater than or equal to zero"))
+    (lazy-tru "value must be an integer greater than or equal to zero.")))
 
 ;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero
   "Schema representing an integer than must also be greater than zero."
   (with-api-error-message
-      (s/constrained s/Int (partial < 0) (tru "Integer greater than zero"))
-    (tru "value must be an integer greater than zero.")))
+      (s/constrained s/Int (partial < 0) (lazy-tru "Integer greater than zero"))
+    (lazy-tru "value must be an integer greater than zero.")))
 
 (def NonNegativeInt
   "Schema representing an integer 0 or greater"
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (tru "Integer greater than or equal to zero"))
-    (tru "value must be an integer zero or greater.")))
+      (s/constrained s/Int (partial <= 0) (lazy-tru "Integer greater than or equal to zero"))
+    (lazy-tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (with-api-error-message
-      (s/constrained s/Num (partial < 0) (tru "Number greater than zero"))
-    (tru "value must be a number greater than zero.")))
+      (s/constrained s/Num (partial < 0) (lazy-tru "Number greater than zero"))
+    (lazy-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
-  (s/named (s/cond-pre s/Keyword s/Str) (tru "Keyword or string")))
+  (s/named (s/cond-pre s/Keyword s/Str) (lazy-tru "Keyword or string")))
 
 (def FieldType
   "Schema for a valid Field type (does it derive from `:type/*`)?"
-  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (tru "Valid field type"))
-    (tru "value must be a valid field type.")))
+  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (lazy-tru "Valid field type"))
+    (lazy-tru "value must be a valid field type.")))
 
 (def FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
-  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (tru "Valid field type (keyword or string)"))
-    (tru "value must be a valid field type (keyword or string).")))
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (lazy-tru "Valid field type (keyword or string)"))
+    (lazy-tru "value must be a valid field type (keyword or string).")))
 
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
-  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (tru "Valid entity type (keyword or string)"))
-   (tru "value must be a valid entity type (keyword or string).")))
+  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (lazy-tru "Valid entity type (keyword or string)"))
+   (lazy-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
   "Schema for a valid map."
-  (with-api-error-message (s/pred map? (tru "Valid map"))
-    (tru "value must be a map.")))
+  (with-api-error-message (s/pred map? (lazy-tru "Valid map"))
+    (lazy-tru "value must be a map.")))
 
 (def Email
   "Schema for a valid email string."
-  (with-api-error-message (s/constrained s/Str u/email? (tru "Valid email address"))
-    (tru "value must be a valid email address.")))
+  (with-api-error-message (s/constrained s/Str u/email? (lazy-tru "Valid email address"))
+    (lazy-tru "value must be a valid email address.")))
 
 (def ComplexPassword
   "Schema for a valid password of sufficient complexity."
   (with-api-error-message (s/constrained s/Str password/is-complex?)
-    (tru "Insufficient password strength")))
+    (lazy-tru "Insufficient password strength")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (Integer/parseInt %)))
-    (tru "value must be a valid integer.")))
+    (lazy-tru "value must be a valid integer.")))
 
 (def IntStringGreaterThanZero
   "Schema for a string that can be parsed as an integer, and is greater than zero.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
-    (tru "value must be a valid integer greater than zero.")))
+    (lazy-tru "value must be a valid integer greater than zero.")))
 
 (def IntStringGreaterThanOrEqualToZero
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
-    (tru "value must be a valid integer greater than or equal to zero.")))
+    (lazy-tru "value must be a valid integer greater than or equal to zero.")))
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
@@ -234,14 +234,14 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
-    (tru "value must be a valid boolean string (''true'' or ''false'').")))
+    (lazy-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
-    (tru "value must be a valid JSON string.")))
+    (lazy-tru "value must be a valid JSON string.")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
-    (tru "value must be a valid embedding params map.")))
+    (lazy-tru "value must be a valid embedding params map.")))

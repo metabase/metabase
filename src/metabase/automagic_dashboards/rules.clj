@@ -7,7 +7,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [LocalizedString trs tru]]
+             [i18n :refer [lazy-tru LocalizedString trs]]
              [schema :as su]]
             [schema
              [coerce :as sc]
@@ -274,7 +274,7 @@
                           [(if (-> table-type ->entity table-type?)
                              (->entity table-type)
                              (->type table-type))])))
-    LocalizedString #(tru %)}))
+    LocalizedString #(lazy-tru %)}))
 
 (def ^:private rules-dir "automagic_dashboards/")
 
