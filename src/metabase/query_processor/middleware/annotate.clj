@@ -98,13 +98,17 @@
 
 ;;; --------------------------------------------------- Field Info ---------------------------------------------------
 
-(s/defn ^:private display-name-for-joined-field
-  "Return an appropriate display name for a joined field that includes the table it came from if applicable."
-  [field-display-name {:keys [source-table], join-alias :alias}]
-  (let [join-display-name (if (integer? source-table)
-                            (some (qp.store/table source-table) [:display_name :name])
-                            join-alias)]
-    (format "%s → %s" join-display-name field-display-name)))
+(defn- display-name-for-joined-field
+  "Return an appropriate display name for a joined field. For *explicitly* joined Fields, the qualifier is the join
+  alias; for implicitly joined fields, it is the display name of the foreign key used to create the join."
+  [field-display-name {:keys [fk-field-id], join-alias :alias}]
+  (let [qualifier (if fk-field-id
+                    ;; strip off trailing ` id` from FK display name
+                    (str/replace (:display_name (qp.store/field fk-field-id))
+                                 #"(?i)\sid$"
+                                 "")
+                    join-alias)]
+    (format "%s → %s" qualifier field-display-name)))
 
 (defn- infer-expression-type
   [expression]

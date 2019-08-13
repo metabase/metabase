@@ -2,16 +2,16 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -168,12 +168,10 @@
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
-  (let [source-col              (col source-table-kw source-field-kw)
-        dest-col                (col dest-table-kw dest-field-kw)
-        dest-table-display-name (db/select-one-field :display_name Table :id (data/id dest-table-kw))
-        dest-table-name         (db/select-one-field :name Table :id (data/id dest-table-kw))]
+  (let [source-col (col source-table-kw source-field-kw)
+        dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
-        (update :display_name (partial format "%s → %s" (or dest-table-display-name dest-table-name)))
+        (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
                :fk_field_id (:id source-col)))))
 
