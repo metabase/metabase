@@ -254,7 +254,7 @@ export default class DatabaseDetailsForm extends Component {
       );
     } else if (field.name === "add-comment") {
       const on =
-        details["add-comment"] == undefined ? false : details["add-comment"];
+        details["add-comment"] == undefined ? true : details["add-comment"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">

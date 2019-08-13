@@ -40,7 +40,6 @@ driver:
       display-name: Add SQL comment from queries
       default: true
       type: boolean
-      required: true
 init:
   - step: load-namespace
     namespace: metabase.driver.bigquery
