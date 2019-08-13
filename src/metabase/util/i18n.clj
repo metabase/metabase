@@ -78,15 +78,22 @@
   [msg & args]
   `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
+(def str*
+  "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
+  (if *compile-files*
+    (fn [& _]
+      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
+    str))
+
 (defmacro tru
   "Applies `str` to `deferred-tru`'s expansion."
   [msg & args]
-  `(str (deferred-tru ~msg ~@args)))
+  `(str* (deferred-tru ~msg ~@args)))
 
 (defmacro trs
   "Applies `str` to `deferred-trs`'s expansion."
   [msg & args]
-  `(str (deferred-trs ~msg ~@args)))
+  `(str* (deferred-trs ~msg ~@args)))
 
 (def ^:private localized-string-checker
   "Compiled checker for `LocalizedString`s which is more efficient when used repeatedly like in `localized-string?`
