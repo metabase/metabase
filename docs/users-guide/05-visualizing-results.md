@@ -39,19 +39,19 @@ This option is for displaying a single number, nice and big. The options for num
 
 ![Number](images/visualizations/number.png)
 
-#### Smart numbers
+#### Trends
 
-The Smart Number visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Smart Number will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Smart Number will show you the most recent day compared to the day before that.
+The Trend visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
 
 ![Smart Number](images/visualizations/smart-number.png)
 
-By default, Smart Numbers will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
+By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
 
 ![Smart Number settings](images/visualizations/smart-scalar-settings.png)
 
 #### Progress bars
 
-Progress bars are for comparing a single number to a goal value that you set. Open up the chart options for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
+Progress bars are for comparing a single number to a goal value that you set. Open up the settings for your progress bar to choose a value for your goal, and Metabase will show you how far away your question's current result is from the goal.
 
 ![Progress bar](images/visualizations/progress.png)
 
@@ -73,7 +73,7 @@ The Table option is good for looking at tabular data (duh), or for lists of thin
 
 ![Additional fields](images/visualizations/add-fields.png)
 
-Open up the visualization options for a table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables that you can add to the current table view.
+Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables, if any, that you can add to the current table view.
 
 To hide a column, click the X icon on it; that'll send it down to the "More columns" area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the "Visible columns" section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
@@ -111,7 +111,7 @@ Currency columns have all the same options as numbers, plus the following:
 
 ##### Formatting data in charts
 
-While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization options, select the `Data` tab:
+While we're talking about formatting, we thought you should also know that you can access formatting options for the columns used in a chart. Just open the visualization settings and select the `Data` tab:
 
 ![Chart formatting](images/visualizations/chart-formatting.png)
 
