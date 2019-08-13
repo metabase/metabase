@@ -161,7 +161,7 @@
   (date-part :quarter expr))
 
 (defmethod sql.qp/date [:sqlserver :year] [_ _ expr]
-  (date-part :year expr))
+  (hsql/call :datefromparts (hx/year expr) 1 1))
 
 
 (defmethod driver/date-add :sqlserver [_ dt amount unit]
