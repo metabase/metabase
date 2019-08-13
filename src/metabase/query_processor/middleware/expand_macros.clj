@@ -14,8 +14,9 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
