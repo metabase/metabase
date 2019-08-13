@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [deferred-tru tru]]
+             [i18n :refer [deferred-tru]]
              [password :as password]]
             [schema
              [core :as s]
