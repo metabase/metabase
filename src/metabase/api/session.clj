@@ -47,8 +47,8 @@
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
-(def ^:private password-fail-message (tru "Password did not match stored password."))
-(def ^:private password-fail-snippet (tru "did not match stored password"))
+(def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
+(def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
 (s/defn ^:private ldap-login :- (s/maybe UUID)
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be

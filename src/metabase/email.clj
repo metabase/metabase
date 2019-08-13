@@ -33,7 +33,7 @@
 
 (defsetting email-smtp-security
   (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :default (tru "none")
+  :default (deferred-tru "none")
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))

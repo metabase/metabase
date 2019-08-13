@@ -7,7 +7,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [deferred-tru LocalizedString trs]]
+             [i18n :refer [deferred-trs deferred-tru LocalizedString trs]]
              [schema :as su]]
             [schema
              [coerce :as sc]
@@ -21,7 +21,7 @@
   100)
 
 (def ^:private Score (s/constrained s/Int #(<= 0 % max-score)
-                                    (trs "0 <= score <= {0}" max-score)))
+                                    (deferred-trs "0 <= score <= {0}" max-score)))
 
 (def ^:private MBQL [s/Any])
 
@@ -82,7 +82,7 @@
 (def ^:private Visualization [(s/one s/Str "visualization") su/Map])
 
 (def ^:private Width  (s/constrained s/Int #(<= 1 % populate/grid-width)
-                                     (trs "1 <= width <= {0}" populate/grid-width)))
+                                     (deferred-trs "1 <= width <= {0}" populate/grid-width)))
 (def ^:private Height (s/constrained s/Int pos?))
 
 (def ^:private CardDimension {Identifier {(s/optional-key :aggregation) s/Str}})
@@ -202,13 +202,13 @@
     (s/optional-key :groups)            Groups
     (s/optional-key :indepth)           [s/Any]
     (s/optional-key :dashboard_filters) [s/Str]}
-   valid-metrics-references?            (trs "Valid metrics references")
-   valid-filters-references?            (trs "Valid filters references")
-   valid-group-references?              (trs "Valid group references")
-   valid-order-by-references?           (trs "Valid order_by references")
-   valid-dashboard-filters-references?  (trs "Valid dashboard filters references")
-   valid-dimension-references?          (trs "Valid dimension references")
-   valid-breakout-dimension-references? (trs "Valid card dimension references")))
+   valid-metrics-references?            (deferred-trs "Valid metrics references")
+   valid-filters-references?            (deferred-trs "Valid filters references")
+   valid-group-references?              (deferred-trs "Valid group references")
+   valid-order-by-references?           (deferred-trs "Valid order_by references")
+   valid-dashboard-filters-references?  (deferred-trs "Valid dashboard filters references")
+   valid-dimension-references?          (deferred-trs "Valid dimension references")
+   valid-breakout-dimension-references? (deferred-trs "Valid card dimension references")))
 
 (defn- with-defaults
   [defaults]

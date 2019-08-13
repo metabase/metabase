@@ -40,7 +40,7 @@
             [metabase.sync.analyze.classify :as classify]
             [metabase.util
              [date :as date]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -74,15 +74,15 @@
   (comp (some-fn :display_name :name) :source))
 
 (def ^:private op->name
-  {:sum       (tru "sum")
-   :avg       (tru "average")
-   :min       (tru "minumum")
-   :max       (tru "maximum")
-   :count     (tru "number")
-   :distinct  (tru "distinct count")
-   :stddev    (tru "standard deviation")
-   :cum-count (tru "cumulative count")
-   :cum-sum   (tru "cumulative sum")})
+  {:sum       (deferred-tru "sum")
+   :avg       (deferred-tru "average")
+   :min       (deferred-tru "minumum")
+   :max       (deferred-tru "maximum")
+   :count     (deferred-tru "number")
+   :distinct  (deferred-tru "distinct count")
+   :stddev    (deferred-tru "standard deviation")
+   :cum-count (deferred-tru "cumulative count")
+   :cum-sum   (deferred-tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
   (every-pred (partial mbql.u/is-clause? :metric)
@@ -1114,14 +1114,14 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  (tru "minute")
-                                :hour-of-day     (tru "hour")
-                                :day-of-week     (tru "day of week")
-                                :day-of-month    (tru "day of month")
-                                :day-of-year     (tru "day of year")
-                                :week-of-year    (tru "week")
-                                :month-of-year   (tru "month")
-                                :quarter-of-year (tru "quarter")}
+(def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
+                                :hour-of-day     (deferred-tru "hour")
+                                :day-of-week     (deferred-tru "day of week")
+                                :day-of-month    (deferred-tru "day of month")
+                                :day-of-year     (deferred-tru "day of year")
+                                :week-of-year    (deferred-tru "week")
+                                :month-of-year   (deferred-tru "month")
+                                :quarter-of-year (deferred-tru "quarter")}
                                qp.util/normalize-token))
 
 (defn- field-name

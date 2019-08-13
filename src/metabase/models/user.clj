@@ -15,7 +15,7 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -178,7 +178,7 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
   (su/with-api-error-message {su/KeywordOrString (s/cond-pre s/Str s/Num)}
-    (tru "value must be a map with each value either a string or number.")))
+    (deferred-tru "value must be a map with each value either a string or number.")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"

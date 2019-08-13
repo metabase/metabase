@@ -66,11 +66,12 @@
    These are used as a fallback by API param validation if no value for `:api-error-message` is present."
   [existing-schema]
   (cond
-    (= existing-schema s/Int)                           (tru "value must be an integer.")
-    (= existing-schema s/Str)                           (tru "value must be a string.")
-    (= existing-schema s/Bool)                          (tru "value must be a boolean.")
-    (instance? java.util.regex.Pattern existing-schema) (tru "value must be a string that matches the regex `{0}`."
-                                                             existing-schema)))
+    (= existing-schema s/Int)                           (deferred-tru "value must be an integer.")
+    (= existing-schema s/Str)                           (deferred-tru "value must be a string.")
+    (= existing-schema s/Bool)                          (deferred-tru "value must be a boolean.")
+    (instance? java.util.regex.Pattern existing-schema) (deferred-tru
+                                                          "value must be a string that matches the regex `{0}`."
+                                                          existing-schema)))
 
 (declare api-error-message)
 
@@ -93,11 +94,11 @@
       ;; "value may be nil, or if non-nil, value must be ..."
       (when (instance? schema.core.Maybe schema)
         (when-let [message (api-error-message (:schema schema))]
-          (tru "value may be nil, or if non-nil, {0}" message)))
+          (deferred-tru "value may be nil, or if non-nil, {0}" message)))
       ;; we can do something similar for enum schemas which are also likely to be defined inline
       (when (instance? schema.core.EnumSchema schema)
-        (tru "value must be one of: {0}." (str/join ", " (for [v (sort (:vs schema))]
-                                                           (str "`" v "`")))))
+        (deferred-tru "value must be one of: {0}." (str/join ", " (for [v (sort (:vs schema))]
+                                                                    (str "`" v "`")))))
       ;; For cond-pre schemas we'll generate something like
       ;; value must satisfy one of the following requirements:
       ;; 1) value must be a boolean.
@@ -112,8 +113,8 @@
       ;; do the same for sequences of a schema
       (when (vector? schema)
         (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                    (when-let [message (api-error-message (first schema))]
-                                                      (str " " (deferred-tru "Each {0}" message))))))))
+                                                        (when-let [message (api-error-message (first schema))]
+                                                          (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
