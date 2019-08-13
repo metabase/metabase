@@ -84,7 +84,7 @@
 (defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:vertica :week] [_ _ expr]
   (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
