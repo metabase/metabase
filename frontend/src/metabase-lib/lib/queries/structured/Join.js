@@ -40,8 +40,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   displayName() {
-    const table = this.joinedTable();
-    return table && table.displayName();
+    return this.alias;
   }
 
   /**
