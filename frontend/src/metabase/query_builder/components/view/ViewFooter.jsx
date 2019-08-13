@@ -70,6 +70,7 @@ const ViewFooter = ({
             <QuestionFilterWidget
               className="sm-hide"
               mr={1}
+              p={2}
               isShowingFilterSidebar={isShowingFilterSidebar}
               onAddFilter={onAddFilter}
               onCloseFilter={onCloseFilter}
@@ -82,6 +83,7 @@ const ViewFooter = ({
             <QuestionSummarizeWidget
               className="sm-hide"
               mr={1}
+              p={2}
               isShowingSummarySidebar={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
               onCloseSummary={onCloseSummary}
@@ -99,6 +101,7 @@ const ViewFooter = ({
           <VizSettingsButton
             key="viz-settings"
             ml={1}
+            mr={[3, 0]}
             active={isShowingChartSettingsSidebar}
             onClick={
               isShowingChartSettingsSidebar
@@ -183,14 +186,14 @@ const VizTypeButton = ({ question, result, ...props }) => {
   const icon = visualization && visualization.iconName;
 
   return (
-    <ViewButton medium icon={icon} labelBreakpoint="sm" {...props}>
+    <ViewButton medium p={[2, 1]} icon={icon} labelBreakpoint="sm" {...props}>
       {t`Visualization`}
     </ViewButton>
   );
 };
 
 const VizSettingsButton = ({ ...props }) => (
-  <ViewButton medium icon="gear" labelBreakpoint="sm" {...props}>
+  <ViewButton medium p={[2, 1]} icon="gear" labelBreakpoint="sm" {...props}>
     {t`Settings`}
   </ViewButton>
 );
