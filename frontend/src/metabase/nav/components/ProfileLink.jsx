@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -55,11 +55,15 @@ export default class ProfileLink extends Component {
         },
       ]),
       {
+        title: t`Activity`,
+        icon: null,
+        link: "/activity",
+        event: `Navbar;Profile Dropdown;Activity ${tag}`,
+      },
+      {
         title: t`Help`,
         icon: null,
-        // HACK - for some reason if you use // react router treats the link
-        // as a non local route
-        link: `//metabase.com/docs/${tag}`,
+        link: MetabaseSettings.docsUrl(),
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },

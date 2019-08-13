@@ -22,7 +22,8 @@
             [metabase.automagic-dashboards
              [filters :as filters]
              [populate :as populate]
-             [rules :as rules]]
+             [rules :as rules]
+             [visualization-macros :as visualization]]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
@@ -88,7 +89,7 @@
               (complement mbql.u/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
-  (partial mbql.u/is-clause? :named))
+  (partial mbql.u/is-clause? :aggregation-options))
 
 (def ^:private ^{:arglists '([metric])} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))
@@ -488,9 +489,9 @@
               {})))
 
 (defn- build-order-by
-  [dimensions metrics order-by]
-  (let [dimensions (set dimensions)]
-    (for [[identifier ordering] (map first order-by)]
+  [{:keys [dimensions metrics order_by]}]
+  (let [dimensions (into #{} (map ffirst) dimensions)]
+    (for [[identifier ordering] (map first order_by)]
       [(if (= ordering "ascending")
          :asc
          :desc)
@@ -605,9 +606,8 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
-  (let [order_by        (build-order-by dimensions metrics order_by)
-        metrics         (map (partial get (:metrics context)) metrics)
+  [context {:keys [metrics filters dimensions score limit query] :as card}]
+  (let [metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
                           (:query-filter context) (conj {:filter (:query-filter context)}))
         score           (if query
@@ -633,23 +633,29 @@
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
-                (let [query (if query
-                              (build-query context bindings query)
-                              (build-query context bindings
-                                           filters
-                                           metrics
-                                           dimensions
-                                           limit
-                                           order_by))]
+                (let [metrics (for [metric metrics]
+                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                                 :metric (:metric metric)
+                                 :op     (-> metric :metric metric-op)})
+                      card    (visualization/expand-visualization
+                               card
+                               (map (comp bindings second) dimensions)
+                               metrics)
+                      query   (if query
+                                (build-query context bindings query)
+                                (build-query context bindings
+                                             filters
+                                             metrics
+                                             dimensions
+                                             limit
+                                             (build-order-by card)))]
                   (-> card
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       (for [metric metrics]
-                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
-                                               :op   (-> metric :metric metric-op)})
+                             :metrics       metrics
                              :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 

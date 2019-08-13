@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 
 import PulseEditName from "./PulseEditName.jsx";
 import PulseEditCollection from "./PulseEditCollection";
@@ -50,7 +50,7 @@ export default class PulseEdit extends Component {
   }
 
   handleSave = async () => {
-    let pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
+    const pulse = cleanPulse(this.props.pulse, this.props.formInput.channels);
     await this.props.updateEditingPulse(pulse);
     await this.props.saveEditingPulse();
 
@@ -85,35 +85,37 @@ export default class PulseEdit extends Component {
   };
 
   getConfirmItems() {
-    return this.props.pulse.channels.map(
-      (c, index) =>
-        c.channel_type === "email" ? (
-          <span key={index}>
-            {jt`This pulse will no longer be emailed to ${(
-              <strong>
-                {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                  c.recipients.length,
-                )}
-              </strong>
-            )} ${<strong>{c.schedule_type}</strong>}`}.
-          </span>
-        ) : c.channel_type === "slack" ? (
-          <span key={index}>
-            {jt`Slack channel ${(
-              <strong>{c.details && c.details.channel}</strong>
-            )} will no longer get this pulse ${(
-              <strong>{c.schedule_type}</strong>
-            )}`}.
-          </span>
-        ) : (
-          <span key={index}>
-            {jt`Channel ${(
-              <strong>{c.channel_type}</strong>
-            )} will no longer receive this pulse ${(
-              <strong>{c.schedule_type}</strong>
-            )}`}.
-          </span>
-        ),
+    return this.props.pulse.channels.map((c, index) =>
+      c.channel_type === "email" ? (
+        <span key={index}>
+          {jt`This pulse will no longer be emailed to ${(
+            <strong>
+              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+                c.recipients.length,
+              )}
+            </strong>
+          )} ${<strong>{c.schedule_type}</strong>}`}
+          .
+        </span>
+      ) : c.channel_type === "slack" ? (
+        <span key={index}>
+          {jt`Slack channel ${(
+            <strong>{c.details && c.details.channel}</strong>
+          )} will no longer get this pulse ${(
+            <strong>{c.schedule_type}</strong>
+          )}`}
+          .
+        </span>
+      ) : (
+        <span key={index}>
+          {jt`Channel ${(
+            <strong>{c.channel_type}</strong>
+          )} will no longer receive this pulse ${(
+            <strong>{c.schedule_type}</strong>
+          )}`}
+          .
+        </span>
+      ),
     );
   }
 
@@ -188,24 +190,23 @@ export default class PulseEdit extends Component {
           <Button onClick={() => this.props.goBack()} ml={2}>
             {t`Cancel`}
           </Button>
-          {pulse.id != null &&
-            !pulse.archived && (
-              <ModalWithTrigger
-                triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
-                triggerElement={t`Archive`}
-              >
-                {({ onClose }) => (
-                  <DeleteModalWithConfirm
-                    objectType="pulse"
-                    title={t`Archive` + ' "' + pulse.name + '"?'}
-                    buttonText={t`Archive`}
-                    confirmItems={this.getConfirmItems()}
-                    onClose={onClose}
-                    onDelete={this.handleArchive}
-                  />
-                )}
-              </ModalWithTrigger>
-            )}
+          {pulse.id != null && !pulse.archived && (
+            <ModalWithTrigger
+              triggerClasses="Button Button--danger flex-align-right flex-no-shrink"
+              triggerElement={t`Archive`}
+            >
+              {({ onClose }) => (
+                <DeleteModalWithConfirm
+                  objectType="pulse"
+                  title={t`Archive` + ' "' + pulse.name + '"?'}
+                  buttonText={t`Archive`}
+                  confirmItems={this.getConfirmItems()}
+                  onClose={onClose}
+                  onDelete={this.handleArchive}
+                />
+              )}
+            </ModalWithTrigger>
+          )}
         </div>
       </div>
     );

@@ -5,7 +5,10 @@ import { push } from "react-router-redux";
 import NewQueryOptions from "./containers/NewQueryOptions";
 import MetricSearch from "./containers/MetricSearch";
 
-@connect(null, { onChangeLocation: push })
+@connect(
+  null,
+  { onChangeLocation: push },
+)
 export class NewQuestionStart extends Component {
   getUrlForQuery = query => {
     return query.question().getUrl();
@@ -16,13 +19,17 @@ export class NewQuestionStart extends Component {
       <NewQueryOptions
         getUrlForQuery={this.getUrlForQuery}
         metricSearchUrl="/question/new/metric"
+        dataBrowseUrl="/browse"
         segmentSearchUrl="/question/new/segment"
       />
     );
   }
 }
 
-@connect(null, { onChangeLocation: push })
+@connect(
+  null,
+  { onChangeLocation: push },
+)
 export class NewQuestionMetricSearch extends Component {
   getUrlForQuery = query => {
     return query.question().getUrl();

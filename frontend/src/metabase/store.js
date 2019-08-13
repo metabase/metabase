@@ -24,8 +24,8 @@ const thunkWithDispatchAction = ({ dispatch, getState }) => next => action => {
   return next(action);
 };
 
-const devToolsExtension = window.devToolsExtension
-  ? window.devToolsExtension()
+const devToolsExtension = window.__REDUX_DEVTOOLS_EXTENSION__
+  ? window.__REDUX_DEVTOOLS_EXTENSION__()
   : f => f;
 
 export function getStore(reducers, history, intialState, enhancer = a => a) {
@@ -45,6 +45,10 @@ export function getStore(reducers, history, intialState, enhancer = a => a) {
   return createStore(
     reducer,
     intialState,
-    compose(applyMiddleware(...middleware), devToolsExtension, enhancer),
+    compose(
+      applyMiddleware(...middleware),
+      devToolsExtension,
+      enhancer,
+    ),
   );
 }

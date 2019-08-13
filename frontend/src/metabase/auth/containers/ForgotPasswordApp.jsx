@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import BackToLogin from "../components/BackToLogin.jsx";
 import FormField from "metabase/components/form/FormField.jsx";

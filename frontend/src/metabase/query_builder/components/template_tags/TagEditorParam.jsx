@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
 
@@ -29,7 +29,10 @@ type Props = {
   fetchField: FieldId => void,
 };
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchField },
+)
 export default class TagEditorParam extends Component {
   props: Props;
 
@@ -128,7 +131,7 @@ export default class TagEditorParam extends Component {
           <InputBlurChange
             type="text"
             value={tag["display-name"]}
-            className="AdminSelect p1 text-bold text-medium bordered border-med rounded full"
+            className="AdminSelect p1 text-bold text-medium bordered border-medium rounded full"
             onBlurChange={e =>
               this.setParameterAttribute("display-name", e.target.value)
             }
@@ -138,7 +141,7 @@ export default class TagEditorParam extends Component {
         <div className="pb1">
           <h5 className="pb1 text-normal">{t`Variable type`}</h5>
           <Select
-            className="border-med bg-white block"
+            className="border-medium bg-white block"
             value={tag.type}
             onChange={e => this.setType(e.target.value)}
             isInitiallyOpen={!tag.type}
@@ -173,29 +176,28 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        {widgetOptions &&
-          widgetOptions.length > 0 && (
-            <div className="pb1">
-              <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
-              <Select
-                className="border-med bg-white block"
-                value={tag["widget-type"]}
-                onChange={e =>
-                  this.setParameterAttribute("widget-type", e.target.value)
-                }
-                isInitiallyOpen={!tag["widget-type"]}
-                placeholder={t`Select…`}
-              >
-                {[{ name: "None", type: undefined }]
-                  .concat(widgetOptions)
-                  .map(widgetOption => (
-                    <Option key={widgetOption.type} value={widgetOption.type}>
-                      {widgetOption.name}
-                    </Option>
-                  ))}
-              </Select>
-            </div>
-          )}
+        {widgetOptions && widgetOptions.length > 0 && (
+          <div className="pb1">
+            <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
+            <Select
+              className="border-medium bg-white block"
+              value={tag["widget-type"]}
+              onChange={e =>
+                this.setParameterAttribute("widget-type", e.target.value)
+              }
+              isInitiallyOpen={!tag["widget-type"]}
+              placeholder={t`Select…`}
+            >
+              {[{ name: "None", type: undefined }]
+                .concat(widgetOptions)
+                .map(widgetOption => (
+                  <Option key={widgetOption.type} value={widgetOption.type}>
+                    {widgetOption.name}
+                  </Option>
+                ))}
+            </Select>
+          </div>
+        )}
 
         <div className="flex align-center pb1">
           <h5 className="text-normal mr1">{t`Required?`}</h5>
@@ -217,7 +219,7 @@ export default class TagEditorParam extends Component {
               }}
               value={tag.default}
               setValue={value => this.setParameterAttribute("default", value)}
-              className="AdminSelect p1 text-bold text-medium bordered border-med rounded bg-white"
+              className="AdminSelect p1 text-bold text-medium bordered border-medium rounded bg-white"
               isEditing
               commitImmediately
             />

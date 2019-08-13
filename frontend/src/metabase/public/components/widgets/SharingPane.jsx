@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import RetinaImage from "react-retina-image";
 import Icon from "metabase/components/Icon";
 import Toggle from "metabase/components/Toggle";
@@ -66,42 +66,41 @@ export default class SharingPane extends Component {
 
     return (
       <div className="pt2 ml-auto mr-auto" style={{ maxWidth: 600 }}>
-        {isAdmin &&
-          isPublicSharingEnabled && (
-            <div className="pb2 mb4 border-bottom flex align-center">
-              <h4>{t`Enable sharing`}</h4>
-              <div className="ml-auto">
-                {resource.public_uuid ? (
-                  <Confirm
-                    title={t`Disable this public link?`}
-                    content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
-                    action={() => {
-                      MetabaseAnalytics.trackEvent(
-                        "Sharing Modal",
-                        "Public Link Disabled",
-                        resourceType,
-                      );
-                      onDisablePublicLink();
-                    }}
-                  >
-                    <Toggle value={true} />
-                  </Confirm>
-                ) : (
-                  <Toggle
-                    value={false}
-                    onChange={() => {
-                      MetabaseAnalytics.trackEvent(
-                        "Sharing Modal",
-                        "Public Link Enabled",
-                        resourceType,
-                      );
-                      onCreatePublicLink();
-                    }}
-                  />
-                )}
-              </div>
+        {isAdmin && isPublicSharingEnabled && (
+          <div className="pb2 mb4 border-bottom flex align-center">
+            <h4>{t`Enable sharing`}</h4>
+            <div className="ml-auto">
+              {resource.public_uuid ? (
+                <Confirm
+                  title={t`Disable this public link?`}
+                  content={t`This will cause the existing link to stop working. You can re-enable it, but when you do it will be a different link.`}
+                  action={() => {
+                    MetabaseAnalytics.trackEvent(
+                      "Sharing Modal",
+                      "Public Link Disabled",
+                      resourceType,
+                    );
+                    onDisablePublicLink();
+                  }}
+                >
+                  <Toggle value={true} />
+                </Confirm>
+              ) : (
+                <Toggle
+                  value={false}
+                  onChange={() => {
+                    MetabaseAnalytics.trackEvent(
+                      "Sharing Modal",
+                      "Public Link Enabled",
+                      resourceType,
+                    );
+                    onCreatePublicLink();
+                  }}
+                />
+              )}
             </div>
-          )}
+          </div>
+        )}
         <div
           className={cx("mb4 flex align-center", {
             disabled: !resource.public_uuid,
@@ -117,31 +116,28 @@ export default class SharingPane extends Component {
             <h3 className="text-brand mb1">{t`Public link`}</h3>
             <div className="mb1">{t`Share this ${resourceType} with people who don't have a Metabase account using the URL below:`}</div>
             <CopyWidget value={publicLink} />
-            {extensions &&
-              extensions.length > 0 && (
-                <div className="mt1">
-                  {extensions.map(extension => (
-                    <span
-                      className={cx(
-                        "cursor-pointer text-brand-hover text-bold text-uppercase",
-                        extension === this.state.extension
-                          ? "text-brand"
-                          : "text-light",
-                      )}
-                      onClick={() =>
-                        this.setState({
-                          extension:
-                            extension === this.state.extension
-                              ? null
-                              : extension,
-                        })
-                      }
-                    >
-                      {extension}{" "}
-                    </span>
-                  ))}
-                </div>
-              )}
+            {extensions && extensions.length > 0 && (
+              <div className="mt1">
+                {extensions.map(extension => (
+                  <span
+                    className={cx(
+                      "cursor-pointer text-brand-hover text-bold text-uppercase",
+                      extension === this.state.extension
+                        ? "text-brand"
+                        : "text-light",
+                    )}
+                    onClick={() =>
+                      this.setState({
+                        extension:
+                          extension === this.state.extension ? null : extension,
+                      })
+                    }
+                  >
+                    {extension}{" "}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div

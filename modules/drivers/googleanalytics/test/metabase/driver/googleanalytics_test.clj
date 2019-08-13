@@ -14,7 +14,9 @@
              [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.data.users :as users]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -87,6 +89,31 @@
   (ga-query {:start-date "2016-11-08", :end-date "2016-11-08"})
   (mbql->native {:query {:filter [:= (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
 
+;; tests off by one day correction for gt/lt operators (GA doesn't support exclusive ranges)
+(expect
+  (ga-query {:start-date "2016-11-09", :end-date "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :day) [:absolute-datetime #inst "2016-11-08" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2005-01-01", :end-date "2016-10-01"})
+  (mbql->native {:query {:filter [:< (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2005-01-01", :end-date "2016-10-02"})
+  (mbql->native {:query {:filter [:<= (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]}}))
+
+(expect
+  (ga-query {:start-date "2016-09-10", :end-date "2016-10-01"})
+  (mbql->native {:query {:filter [:and
+                                  [:< (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]
+                                  [:> (ga-date-field :day) [:absolute-datetime #inst "2016-09-09" :day]]]}}))
+
+(expect
+  (ga-query {:start-date "2016-09-10", :end-date "2016-10-02"})
+  (mbql->native {:query {:filter [:and
+                                  [:<= (ga-date-field :day) [:absolute-datetime #inst "2016-10-02" :day]]
+                                  [:> (ga-date-field :day) [:absolute-datetime #inst "2016-09-09" :day]]]}}))
+
 ;; relative date -- last month
 (expect
   (ga-query {:start-date (du/format-date "yyyy-MM-01" (du/relative-date :month -1))
@@ -117,6 +144,23 @@
              :end-date   (du/format-date "yyyy-01-01")})
   (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))
 
+;; a range starting from 30 days ago excluding that first day until today
+(expect
+  (ga-query {:start-date "29daysAgo"
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))
+
+(expect
+  (ga-query {:start-date "30daysAgo"
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))
+
+;; last year excluding the first day of the range
+(expect
+  (ga-query {:start-date (du/format-date "yyyy-MM-dd" (du/relative-date :day 1 (du/date-trunc :year (du/relative-date :year -1))))
+             :end-date   "today"})
+  (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))
+
 ;; limit
 (expect
   (ga-query {:max-results 25})
@@ -127,15 +171,16 @@
 
 (defn- do-with-some-fields [f]
   (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
-                  Table    [table              {:name "98765432"}]
-                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text"}]
-                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text"}]
-                  Field    [date-field         {:name "ga:date", :base_type "type/Date"}]]
-    (f {:db                 db
-        :table              table
-        :event-action-field event-action-field
-        :event-label-field  event-label-field
-        :date-field         date-field})))
+                  Table    [table              {:name "98765432", :db_id (u/get-id db)}]
+                  Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
+                  Field    [date-field         {:name "ga:date", :base_type "type/Date", :table_id (u/get-id table)}]]
+    (data/with-db db
+      (f {:db                 db
+          :table              table
+          :event-action-field event-action-field
+          :event-label-field  event-label-field
+          :date-field         date-field}))))
 
 ;; let's try a real-life GA query and see how it looks when it's all put together. This one has already been
 ;; preprocessed, so we're just checking it gets converted to the correct native query
@@ -187,11 +232,11 @@
 (expect
   expected-ga-query
   (do-with-some-fields
-   (fn [{:keys [table event-action-field event-label-field date-field], :as objects}]
+   (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
      (qp.store/with-store
-       (qp.store/store-table! table)
-       (doseq [field [event-action-field event-label-field date-field]]
-         (qp.store/store-field! field))
+       (qp.store/fetch-and-store-database! (u/get-id db))
+       (qp.store/fetch-and-store-tables! [(u/get-id table)])
+       (qp.store/fetch-and-store-fields! (map u/get-id [event-action-field event-label-field date-field]))
        (ga.qp/mbql->native (preprocessed-query-with-some-fields objects))))))
 
 ;; this was the above query before it was preprocessed. Make sure we actually handle everything correctly end-to-end
@@ -211,15 +256,15 @@
 (expect
   expected-ga-query
   (do-with-some-fields
-   (comp metabase.query-processor/query->native query-with-some-fields)))
+   (comp qp/query->native query-with-some-fields)))
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
+;; TODO - Saw random test failure
 (expect
   {:row_count 1
    :status    :completed
-   :data      {:columns     [:ga:eventLabel :ga:totalEvents]
-               :rows        [["Toucan Sighting" 1000]]
+   :data      {:rows        [["Toucan Sighting" 1000]]
                :native_form expected-ga-query
                :cols        [{:description     "This is ga:eventLabel"
                               :special_type    nil
@@ -245,11 +290,11 @@
        (let [results {:columns [:ga:eventLabel :ga:totalEvents]
                       :cols    [{}, {:base_type :type/Text}]
                       :rows    [["Toucan Sighting" 1000]]}
-             qp      (#'metabase.query-processor/qp-pipeline (constantly results))
+             qp      (#'metabase.query-processor/build-pipeline (constantly results))
              query   (query-with-some-fields objects)]
          (-> (tu/doall-recursive (qp query))
              (update-in [:data :cols] #(for [col %]
-                                         (dissoc col :table_id :id)))
+                                         (dissoc col :table_id :id :field_ref)))
              (m/dissoc-in [:data :results_metadata])
              (m/dissoc-in [:data :insights])))))))
 

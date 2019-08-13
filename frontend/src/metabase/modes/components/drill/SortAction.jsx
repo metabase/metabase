@@ -1,8 +1,9 @@
 /* @flow */
 
-import Query from "metabase/lib/query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { t } from "c-3po";
+import Dimension from "metabase-lib/lib/Dimension";
+
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
@@ -31,7 +32,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
 
   const [sortDirection, sortFieldRef] = query.sorts()[0] || [];
   const isAlreadySorted =
-    sortFieldRef != null && Query.isSameField(sortFieldRef, fieldRef);
+    sortFieldRef != null && Dimension.isEqual(fieldRef, sortFieldRef);
 
   const actions = [];
   if (!isAlreadySorted || sortDirection === "desc") {

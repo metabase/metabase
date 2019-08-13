@@ -63,6 +63,8 @@ If you want to help, try out Metabase. Use it at your company, and report back t
 
 Spend time on discourse.metabase.com and on new issues and try to reproduce the bugs reported. For people having trouble with their databases where you have significant knowledge, help them out. Who knows, maybe they'll end up helping you with something in the future.
 
+It is helpful if you understand our [prioritization framework](https://github.com/metabase/metabase/wiki/Bug-Prioritization) when responding.
+
 ### Tell your friends
 
 Let your friends know about Metabase. Start a user group in your area. [Tweet about us](http://twitter.com/metabase). Blog about how you're using Metabase, and share what you've learned.

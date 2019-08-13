@@ -1,6 +1,3 @@
-// HACK: needed due to cyclical dependency issue
-import "metabase-lib/lib/Question";
-
 import {
   question,
   DATABASE_ID,
@@ -90,7 +87,7 @@ describe("NativeQuery", () => {
         expect(query.isEmpty()).toBe(true);
       });
       it("Verify that a simple query is not isEmpty()", () => {
-        expect(query.updateQueryText("SELECT * FROM ORDERS").isEmpty()).toBe(
+        expect(query.setQueryText("SELECT * FROM ORDERS").isEmpty()).toBe(
           false,
         );
       });
@@ -109,10 +106,10 @@ describe("NativeQuery", () => {
       });
     });
 
-    describe("updateCollection(newCollection) selects or updates a target table for you mongo native query", () => {
+    describe("setCollectionName(newCollection) selects or updates a target table for you mongo native query", () => {
       it("allows you to update mongo collections", () => {
         const fakeCollectionID = 9999;
-        const fakeMongoQuery = makeMongoQuery("").updateCollection(
+        const fakeMongoQuery = makeMongoQuery("").setCollectionName(
           fakeCollectionID,
         );
         expect(fakeMongoQuery.collection()).toBe(fakeCollectionID);
@@ -124,9 +121,7 @@ describe("NativeQuery", () => {
     describe("table()", () => {
       it("returns null for a non-mongo query", () => {
         expect(query.table()).toBe(null);
-        expect(query.updateQueryText("SELECT * FROM ORDERS").table()).toBe(
-          null,
-        );
+        expect(query.setQueryText("SELECT * FROM ORDERS").table()).toBe(null);
       });
     });
   });
@@ -136,10 +131,10 @@ describe("NativeQuery", () => {
         "SELECT * FROM ORDERS",
       );
     });
-    describe("You can update query text the same way as well via updateQueryText(newQueryText)", () => {
+    describe("You can update query text the same way as well via setQueryText(newQueryText)", () => {
       const newQuery = makeQuery("SELECT 1");
       expect(newQuery.queryText()).toEqual("SELECT 1");
-      const newerQuery = newQuery.updateQueryText("SELECT 2");
+      const newerQuery = newQuery.setQueryText("SELECT 2");
       expect(newerQuery.queryText()).toEqual("SELECT 2");
     });
     describe("lineCount() lets you know how long your query is", () => {
@@ -150,12 +145,12 @@ describe("NativeQuery", () => {
   describe("Native Queries support Templates and Parameters", () => {
     describe("You can get the number of parameters via templateTags()", () => {
       it("Non templated queries don't have parameters", () => {
-        const newQuery = makeQuery().updateQueryText("SELECT 1");
+        const newQuery = makeQuery().setQueryText("SELECT 1");
         expect(newQuery.templateTags().length).toBe(0);
       });
 
       it("Templated queries do have parameters", () => {
-        const newQuery = makeQuery().updateQueryText(
+        const newQuery = makeQuery().setQueryText(
           "SELECT * from ORDERS where total < {{max_price}}",
         );
         expect(newQuery.templateTags().length).toBe(1);
@@ -163,12 +158,12 @@ describe("NativeQuery", () => {
     });
     describe("You can get a pre-structured map keyed by name via templateTagsMap()", () => {
       it("Non templated queries don't have parameters", () => {
-        const newQuery = makeQuery().updateQueryText("SELECT 1");
+        const newQuery = makeQuery().setQueryText("SELECT 1");
         expect(newQuery.templateTagsMap()).toEqual({});
       });
 
       it("Templated queries do have parameters", () => {
-        const newQuery = makeQuery().updateQueryText(
+        const newQuery = makeQuery().setQueryText(
           "SELECT * from ORDERS where total < {{max_price}}",
         );
         const tagMaps = newQuery.templateTagsMap();

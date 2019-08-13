@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import * as Urls from "metabase/lib/urls";
 

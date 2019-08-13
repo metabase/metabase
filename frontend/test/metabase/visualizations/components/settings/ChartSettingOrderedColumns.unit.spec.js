@@ -62,20 +62,17 @@ describe("ChartSettingOrderedColumns", () => {
   describe("for structured queries", () => {
     it("should list and add additional columns", () => {
       const onChange = jest.fn();
-      const addField = jest.fn();
       const setting = renderChartSettingOrderedColumns({
         value: [],
         columns: [],
         question,
         onChange,
-        addField,
       });
       expect(setting.find(".Icon-add")).toHaveLength(28);
       setting
         .find(".Icon-add")
         .first()
         .simulate("click");
-      expect(addField.mock.calls).toEqual([[["field-id", 1]]]);
       expect(onChange.mock.calls).toEqual([
         [[{ fieldRef: ["field-id", 1], enabled: true }]],
       ]);

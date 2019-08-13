@@ -7,6 +7,7 @@ import TokenField from "metabase/components/TokenField";
 // We have to do some mocking here to avoid calls to GA and to Metabase settings
 jest.mock("metabase/lib/settings", () => ({
   get: () => "v",
+  docsUrl: () => "d",
 }));
 
 global.ga = jest.fn();

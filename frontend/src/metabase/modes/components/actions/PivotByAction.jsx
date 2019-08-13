@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from "c-3po";
+import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
@@ -35,7 +35,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
     return [];
   }
 
-  let dimensions = (clicked && clicked.dimensions) || [];
+  const dimensions = (clicked && clicked.dimensions) || [];
 
   const breakoutOptions = query.breakoutOptions(null, fieldFilter);
   if (breakoutOptions.count === 0) {
@@ -60,7 +60,7 @@ export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
         <BreakoutPopover
           query={query}
           breakoutOptions={breakoutOptions}
-          onCommitBreakout={breakout => {
+          onChangeBreakout={breakout => {
             const nextCard = question.pivot([breakout], dimensions).card();
             if (nextCard) {
               onChangeCardAndRun({ nextCard });

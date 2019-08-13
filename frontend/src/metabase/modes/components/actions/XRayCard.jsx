@@ -7,7 +7,7 @@ import type {
 
 import MetabaseSettings from "metabase/lib/settings";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import { utf8_to_b64url } from "metabase/lib/card";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {

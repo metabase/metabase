@@ -7,7 +7,7 @@ import Link from "metabase/components/Link";
 import ExternalLink from "metabase/components/ExternalLink";
 import Confirm from "metabase/components/Confirm";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { CardApi, DashboardApi } from "metabase/services";
 import * as Urls from "metabase/lib/urls";
 
@@ -101,6 +101,7 @@ export default class PublicLinksListing extends Component {
                       <Link
                         to={getUrl(link)}
                         onClick={() => this.trackEvent("Entity Link Clicked")}
+                        className="text-wrap"
                       >
                         {link.name}
                       </Link>
@@ -110,6 +111,7 @@ export default class PublicLinksListing extends Component {
                         <ExternalLink
                           href={getPublicUrl(link)}
                           onClick={() => this.trackEvent("Public Link Clicked")}
+                          className="link text-wrap"
                         >
                           {getPublicUrl(link)}
                         </ExternalLink>

@@ -11,7 +11,11 @@ import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
 function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
-  let [{ data: { cols } }] = series;
+  let [
+    {
+      data: { cols },
+    },
+  ] = series;
   const seriesIndex = determineSeriesIndexFromElement(this, isStacked);
   const card = series[seriesIndex].card;
   const isSingleSeriesBar =
@@ -72,6 +76,12 @@ function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
   }
 
   if (clicked) {
+    // NOTE: certain values such as booleans were coerced to strings at some point. fix them.
+    parseValues(clicked);
+    for (const dimension of clicked.dimensions || []) {
+      parseValues(dimension);
+    }
+
     const isLine = this.classList.contains("dot");
     return {
       index: isSingleSeriesBar ? -1 : seriesIndex,
@@ -79,6 +89,16 @@ function clickObjectFromEvent(d, { series, isStacked, isScalarSeries }) {
       event: isLine ? null : d3.event,
       ...clicked,
     };
+  }
+}
+
+function parseValues(clicked) {
+  if (clicked.column && clicked.column.base_type === "type/Boolean") {
+    if (clicked.value === "true") {
+      clicked.value = true;
+    } else if (clicked.value === "false") {
+      clicked.value = false;
+    }
   }
 }
 
@@ -92,7 +112,11 @@ function applyChartTooltips(
   onHoverChange,
   onVisualizationClick,
 ) {
-  let [{ data: { cols } }] = series;
+  let [
+    {
+      data: { cols },
+    },
+  ] = series;
   chart.on("renderlet.tooltips", function(chart) {
     // remove built-in tooltips
     chart.selectAll("title").remove();
@@ -170,6 +194,7 @@ function applyChartTooltips(
                   ? formatValue(d.data.value, {
                       number_style: "percent",
                       column: cols[1],
+                      decimals: cols[1].decimals,
                     })
                   : d.data.value,
                 col: { ...cols[1] },
@@ -206,7 +231,7 @@ function applyChartTooltips(
             const seriesData = series[seriesIndex].data || {};
             const rawCols = seriesData._rawCols;
             const rows = seriesData && seriesData.rows;
-            const rowIndex = rows && i % (rows.length + 1) - 1;
+            const rowIndex = rows && (i % (rows.length + 1)) - 1;
             const row = rowIndex != null && seriesData.rows[rowIndex];
             const rawRow = row && row._origin && row._origin.row; // get the raw query result row
             // make sure the row index we've determined with our formula above is correct. Check the

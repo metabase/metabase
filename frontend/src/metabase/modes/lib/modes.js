@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
 import {
   isDate,
   isAddress,
@@ -54,6 +54,7 @@ export function getMode(
           const field = tableMetadata.fields_lookup[fieldId];
           if (
             field &&
+            field.table &&
             field.table.id === query["source-table"] &&
             isPK(field)
           ) {
@@ -72,7 +73,7 @@ export function getMode(
       return MetricMode;
     }
     if (aggregations.length > 0 && breakouts.length > 0) {
-      let breakoutFields = breakouts.map(
+      const breakoutFields = breakouts.map(
         breakout =>
           (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
       );

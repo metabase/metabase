@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { withRouter } from "react-router";
 
 import Icon from "metabase/components/Icon";
@@ -22,7 +22,7 @@ export const FILTERS = [
   {
     name: t`Questions`,
     filter: "card",
-    icon: "beaker",
+    icon: "bar",
   },
   {
     name: t`Pulses`,

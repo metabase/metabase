@@ -3,12 +3,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import AutosizeTextarea from "react-textarea-autosize";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
 type Props = {
-  values: Array<string | null>,
+  values: Array<string>,
   onValuesChange: (values: any[]) => void,
   validations: boolean[],
   placeholder?: string,
@@ -65,7 +65,7 @@ export default class TextPicker extends Component {
   }
 
   render() {
-    let { validations, multi, onCommit } = this.props;
+    const { validations, multi, onCommit } = this.props;
     const hasInvalidValues = _.some(validations, v => v === false);
 
     const commitOnEnter = e => {

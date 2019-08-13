@@ -1,4 +1,4 @@
-# API Documentation for Metabase v0.30.0-snapshot
+# API Documentation for Metabase v0.32.2
 
 ## `GET /api/activity/`
 
@@ -16,7 +16,7 @@ Delete an Alert. (DEPRECATED -- don't delete a Alert anymore -- archive it inste
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/alert/`
@@ -34,7 +34,7 @@ Fetch all questions for the given question (`Card`) id
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/alert/`
@@ -53,7 +53,7 @@ Create a new Alert.
 
 *  **`alert_above_goal`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`new-alert-request-body`**
+*  **`new-alert-request-body`** 
 
 
 ## `PUT /api/alert/:id`
@@ -62,7 +62,7 @@ Update a `Alert` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`alert_condition`** value may be nil, or if non-nil, value must be one of: `goal`, `rows`.
 
@@ -76,7 +76,7 @@ Update a `Alert` with ID.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`alert-updates`**
+*  **`alert-updates`** 
 
 
 ## `PUT /api/alert/:id/unsubscribe`
@@ -85,7 +85,7 @@ Unsubscribes a user from the given alert
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query`
@@ -96,7 +96,7 @@ Return an automagic dashboard for entity `entity` with id `ìd`.
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`show`** invalid show value
 
@@ -111,7 +111,7 @@ Return an automagic dashboard analyzing cell in  automagic dashboard for entity 
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`cell-query`** value couldn't be parsed as base64 encoded JSON
 
@@ -128,7 +128,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`cell-query`** value couldn't be parsed as base64 encoded JSON
 
@@ -136,7 +136,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`comparison-entity`** Invalid comparison entity type. Can only be one of "table", "segment", or "adhoc"
 
-*  **`comparison-entity-id-or-query`**
+*  **`comparison-entity-id-or-query`** 
 
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query/rule/:prefix/:rule`
@@ -148,7 +148,7 @@ Return an automagic dashboard analyzing cell in question  with id `id` defined b
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`cell-query`** value couldn't be parsed as base64 encoded JSON
 
@@ -169,7 +169,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`cell-query`** value couldn't be parsed as base64 encoded JSON
 
@@ -181,7 +181,7 @@ Return an automagic comparison dashboard for cell in automagic dashboard for ent
 
 *  **`comparison-entity`** Invalid comparison entity type. Can only be one of "table", "segment", or "adhoc"
 
-*  **`comparison-entity-id-or-query`**
+*  **`comparison-entity-id-or-query`** 
 
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/compare/:comparison-entity/:comparison-entity-id-or-query`
@@ -193,13 +193,13 @@ Return an automagic comparison dashboard for entity `entity` with id `ìd` compa
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`show`** invalid show value
 
 *  **`comparison-entity`** Invalid comparison entity type. Can only be one of "table", "segment", or "adhoc"
 
-*  **`comparison-entity-id-or-query`**
+*  **`comparison-entity-id-or-query`** 
 
 
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:rule`
@@ -210,7 +210,7 @@ Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`prefix`** invalid value for prefix
 
@@ -228,7 +228,7 @@ Return an automagic comparison dashboard for entity `entity` with id `ìd` using
 
 *  **`entity`** Invalid entity type
 
-*  **`entity-id-or-query`**
+*  **`entity-id-or-query`** 
 
 *  **`prefix`** invalid value for prefix
 
@@ -238,7 +238,7 @@ Return an automagic comparison dashboard for entity `entity` with id `ìd` using
 
 *  **`comparison-entity`** Invalid comparison entity type. Can only be one of "table", "segment", or "adhoc"
 
-*  **`comparison-entity-id-or-query`**
+*  **`comparison-entity-id-or-query`** 
 
 
 ## `GET /api/automagic-dashboards/database/:id/candidates`
@@ -247,7 +247,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `DELETE /api/card/:card-id/favorite`
@@ -256,7 +256,7 @@ Unfavorite a Card.
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
 
 ## `DELETE /api/card/:card-id/public_link`
@@ -267,7 +267,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
 
 ## `DELETE /api/card/:id`
@@ -276,7 +276,7 @@ Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/card/`
@@ -298,7 +298,7 @@ Get `Card` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/card/:id/related`
@@ -307,7 +307,7 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/card/embeddable`
@@ -345,7 +345,7 @@ Create a new `Card`.
 
 *  **`name`** value must be a non-blank string.
 
-*  **`dataset_query`**
+*  **`dataset_query`** 
 
 *  **`display`** value must be a non-blank string.
 
@@ -356,7 +356,7 @@ Favorite a Card.
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
 
 ## `POST /api/card/:card-id/public_link`
@@ -369,7 +369,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
 
 ## `POST /api/card/:card-id/query`
@@ -378,9 +378,9 @@ Run the query associated with a Card.
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
-*  **`parameters`**
+*  **`parameters`** 
 
 *  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
 
@@ -392,11 +392,15 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 ##### PARAMS:
 
-*  **`card-id`**
+*  **`card-id`** 
 
 *  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `POST /api/card/collections`
@@ -417,7 +421,7 @@ Return related entities for an ad-hoc query.
 
 ##### PARAMS:
 
-*  **`query`**
+*  **`query`** 
 
 
 ## `PUT /api/card/:id`
@@ -442,7 +446,7 @@ Update a `Card`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`card-updates`**
+*  **`card-updates`** 
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -450,7 +454,7 @@ Update a `Card`.
 
 *  **`dataset_query`** value may be nil, or if non-nil, value must be a map.
 
-*  **`id`**
+*  **`id`** 
 
 *  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -474,7 +478,7 @@ Fetch a specific Collection with standard details added
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/collection/:id/items`
@@ -486,7 +490,7 @@ Fetch a specific Collection's items with the following options:
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`model`** value may be nil, or if non-nil, value must be one of: `card`, `collection`, `dashboard`, `pulse`.
 
@@ -546,7 +550,7 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -558,7 +562,7 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 *  **`parent_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`collection-updates`**
+*  **`collection-updates`** 
 
 
 ## `PUT /api/collection/graph`
@@ -580,25 +584,25 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`dashboard-id`**
+*  **`dashboard-id`** 
 
 
 ## `DELETE /api/dashboard/:id`
 
-Delete a `Dashboard`.
+Delete a Dashboard.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `DELETE /api/dashboard/:id/cards`
 
-Remove a `DashboardCard` from a `Dashboard`.
+Remove a DashboardCard from a Dashboard.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`dashcardId`** value must be a valid integer greater than zero.
 
@@ -609,7 +613,7 @@ Unfavorite a Dashboard.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/dashboard/`
@@ -627,11 +631,11 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
 
 ## `GET /api/dashboard/:id`
 
-Get `Dashboard` with ID.
+Get Dashboard with `id`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/dashboard/:id/related`
@@ -640,16 +644,16 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/dashboard/:id/revisions`
 
-Fetch `Revisions` for `Dashboard` with ID.
+Fetch Revisions for Dashboard with `id`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/dashboard/embeddable`
@@ -670,7 +674,7 @@ You must be a superuser to do this.
 
 ## `POST /api/dashboard/`
 
-Create a new `Dashboard`.
+Create a new Dashboard.
 
 ##### PARAMS:
 
@@ -684,7 +688,7 @@ Create a new `Dashboard`.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`dashboard`**
+*  **`dashboard`** 
 
 
 ## `POST /api/dashboard/:dashboard-id/public_link`
@@ -697,24 +701,43 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`dashboard-id`**
+*  **`dashboard-id`** 
+
+
+## `POST /api/dashboard/:from-dashboard-id/copy`
+
+Copy a Dashboard.
+
+##### PARAMS:
+
+*  **`from-dashboard-id`** 
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`description`** value may be nil, or if non-nil, value must be a string.
+
+*  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`dashboard`** 
 
 
 ## `POST /api/dashboard/:id/cards`
 
-Add a `Card` to a `Dashboard`.
+Add a Card to a Dashboard.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`cardId`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`parameter_mappings`** value must be an array. Each value must be a map.
 
-*  **`series`**
+*  **`series`** 
 
-*  **`dashboard-card`**
+*  **`dashboard-card`** 
 
 
 ## `POST /api/dashboard/:id/favorite`
@@ -723,16 +746,16 @@ Favorite a Dashboard.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/dashboard/:id/revert`
 
-Revert a `Dashboard` to a prior `Revision`.
+Revert a Dashboard to a prior Revision.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
 
@@ -743,7 +766,7 @@ Save a denormalized description of dashboard.
 
 ##### PARAMS:
 
-*  **`dashboard`**
+*  **`dashboard`** 
 
 
 ## `POST /api/dashboard/save/collection/:parent-collection-id`
@@ -752,14 +775,14 @@ Save a denormalized description of dashboard into collection with ID `:parent-co
 
 ##### PARAMS:
 
-*  **`parent-collection-id`**
+*  **`parent-collection-id`** 
 
-*  **`dashboard`**
+*  **`dashboard`** 
 
 
 ## `PUT /api/dashboard/:id`
 
-Update a `Dashboard`.
+Update a Dashboard.
 
   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
@@ -783,7 +806,7 @@ Update a `Dashboard`.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`dash-updates`**
+*  **`dash-updates`** 
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -791,14 +814,14 @@ Update a `Dashboard`.
 
 *  **`embedding_params`** value may be nil, or if non-nil, value must be a valid embedding params map.
 
-*  **`id`**
+*  **`id`** 
 
 *  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 
 ## `PUT /api/dashboard/:id/cards`
 
-Update `Cards` on a `Dashboard`. Request body should have the form:
+Update Cards on a Dashboard. Request body should have the form:
 
     {:cards [{:id     ...
               :sizeX  ...
@@ -810,9 +833,9 @@ Update `Cards` on a `Dashboard`. Request body should have the form:
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
-*  **`cards`**
+*  **`cards`** 
 
 
 ## `DELETE /api/database/:id`
@@ -821,7 +844,7 @@ Delete a `Database`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/`
@@ -843,7 +866,7 @@ Get `Database` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/:id/autocomplete_suggestions`
@@ -857,7 +880,7 @@ Return a list of autocomplete suggestions for a given PREFIX.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`prefix`** value must be a non-blank string.
 
@@ -868,7 +891,7 @@ Get a list of all `Fields` in `Database`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/:id/idfields`
@@ -877,7 +900,7 @@ Get a list of all primary key `Fields` for `Database`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/:id/metadata`
@@ -887,7 +910,7 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/:id/schema/:schema`
@@ -896,9 +919,9 @@ Returns a list of tables for the given database `id` and `schema`
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
-*  **`schema`**
+*  **`schema`** 
 
 
 ## `GET /api/database/:id/schemas`
@@ -907,7 +930,7 @@ Returns a list of all the schemas found for the database `id`
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/database/:virtual-db/metadata`
@@ -945,7 +968,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/database/:id/rescan_values`
@@ -956,7 +979,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/database/:id/sync`
@@ -965,7 +988,7 @@ Update the metadata for this `Database`. This happens asynchronously.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/database/:id/sync_schema`
@@ -976,7 +999,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/database/sample_dataset`
@@ -1019,13 +1042,13 @@ You must be a superuser to do this.
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
-*  **`is_full_sync`**
+*  **`is_full_sync`** 
 
 *  **`details`** value may be nil, or if non-nil, value must be a map.
 
-*  **`id`**
+*  **`id`** 
 
-*  **`is_on_demand`**
+*  **`is_on_demand`** 
 
 
 ## `POST /api/dataset/`
@@ -1036,7 +1059,7 @@ Execute a query and retrieve the results in the usual format.
 
 *  **`database`** value must be an integer.
 
-*  **`query`**
+*  **`query`** 
 
 
 ## `POST /api/dataset/:export-format`
@@ -1049,6 +1072,10 @@ Execute a query and download the result data as a file in the specified format.
 
 *  **`query`** value must be a valid JSON string.
 
+*  **`respond`** 
+
+*  **`raise`** 
+
 
 ## `POST /api/dataset/duration`
 
@@ -1056,9 +1083,9 @@ Get historical query execution duration.
 
 ##### PARAMS:
 
-*  **`database`**
+*  **`database`** 
 
-*  **`query`**
+*  **`query`** 
 
 
 ## `DELETE /api/email/`
@@ -1077,7 +1104,7 @@ You must be a superuser to do this.
 
 ## `PUT /api/email/`
 
-Update multiple `Settings` values.  You must be a superuser to do this.
+Update multiple email Settings. You must be a superuser to do this.
 
 You must be a superuser to do this.
 
@@ -1096,7 +1123,7 @@ Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 
 ## `GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id`
@@ -1106,11 +1133,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`remapped-id`**
+*  **`remapped-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1121,11 +1148,11 @@ Search for values of a Field that is referenced by an embedded Card.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`search-field-id`**
+*  **`search-field-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1138,9 +1165,9 @@ Fetch FieldValues for a Field that is referenced by an embedded Card.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
 
 ## `GET /api/embed/card/:token/query`
@@ -1154,11 +1181,11 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`&`**
+*  **`&`** 
 
-*  **`query-params`**
+*  **`query-params`** 
 
 
 ## `GET /api/embed/card/:token/query/:export-format`
@@ -1167,13 +1194,15 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 *  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
-*  **`&`**
+*  **`query-params`** 
 
-*  **`query-params`**
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `GET /api/embed/dashboard/:token`
@@ -1186,44 +1215,47 @@ Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 
 ## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
-Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`
+Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key`
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`dashcard-id`**
+*  **`dashcard-id`** 
 
-*  **`card-id`**
+*  **`card-id`** 
 
-*  **`&`**
+*  **`&`** 
 
-*  **`query-params`**
+*  **`query-params`** 
 
 
 ## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format`
 
-Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the `embedding-secret-key`
-   return the data in one of the export formats
+Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key` return the data in one of the export formats
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 *  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
-*  **`dashcard-id`**
+*  **`dashcard-id`** 
 
-*  **`card-id`**
+*  **`card-id`** 
 
-*  **`&`**
+*  **`query-params`** 
 
-*  **`query-params`**
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id`
@@ -1233,11 +1265,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`remapped-id`**
+*  **`remapped-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1248,11 +1280,11 @@ Search for values of a Field that is referenced by a Card in an embedded Dashboa
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`search-field-id`**
+*  **`search-field-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1265,9 +1297,9 @@ Fetch FieldValues for a Field that is used as a param in an embedded Dashboard.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
 
 ## `DELETE /api/field/:id/dimension`
@@ -1276,7 +1308,7 @@ Remove the dimension associated to field at ID
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/field/:id`
@@ -1285,7 +1317,7 @@ Get `Field` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/field/:id/related`
@@ -1294,7 +1326,7 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/field/:id/remapping/:remapped-id`
@@ -1303,22 +1335,23 @@ Fetch remapped Field values.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
-*  **`remapped-id`**
+*  **`remapped-id`** 
 
-*  **`value`**
+*  **`value`** 
 
 
 ## `GET /api/field/:id/search/:search-id`
 
-Search for values of a Field that match values of another Field when breaking out by the
+Search for values of a Field with `search-id` that start with `value`. See docstring for
+  `metabase.api.field/search-values` for a more detailed explanation.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
-*  **`search-id`**
+*  **`search-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1331,7 +1364,7 @@ Get the count and distinct count of `Field` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/field/:id/values`
@@ -1341,7 +1374,7 @@ If a Field's value of `has_field_values` is `list`, return a list of all the dis
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/field/field-literal%2C:field-name%2Ctype%2F:field-type/values`
@@ -1351,7 +1384,7 @@ Implementation of the field values endpoint for fields in the Saved Questions 'v
 
 ##### PARAMS:
 
-*  **`_`**
+*  **`_`** 
 
 
 ## `POST /api/field/:id/dimension`
@@ -1360,7 +1393,7 @@ Sets the dimension for the given field at ID
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`type`** value must be one of: `external`, `internal`.
 
@@ -1378,7 +1411,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/field/:id/rescan_values`
@@ -1390,7 +1423,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/field/:id/values`
@@ -1400,7 +1433,7 @@ Update the fields values and human-readable values for a `Field` whose special t
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`value-pairs`** value must be an array. Each value must be an array.
 
@@ -1423,11 +1456,13 @@ Update `Field` with ID.
 
 *  **`has_field_values`** value may be nil, or if non-nil, value must be one of: `auto-list`, `list`, `none`, `search`.
 
+*  **`settings`** value may be nil, or if non-nil, value must be a map.
+
 *  **`caveats`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`fk_target_field_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/geojson/:key`
@@ -1453,13 +1488,11 @@ You must be a superuser to do this.
 
 ## `DELETE /api/metric/:id`
 
-Delete a `Metric`.
-
-You must be a superuser to do this.
+Archive a Metric. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`revision_message`** value must be a non-blank string.
 
@@ -1470,18 +1503,16 @@ Fetch *all* `Metrics`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/metric/:id`
 
 Fetch `Metric` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/metric/:id/related`
@@ -1490,31 +1521,27 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/metric/:id/revisions`
 
 Fetch `Revisions` for `Metric` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/metric/`
 
 Create a new `Metric`.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
-*  **`description`**
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`table_id`** value must be an integer greater than zero.
 
@@ -1525,11 +1552,9 @@ You must be a superuser to do this.
 
 Revert a `Metric` to a prior `Revision`.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
 
@@ -1538,17 +1563,27 @@ You must be a superuser to do this.
 
 Update a `Metric` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
-*  **`definition`** value must be a map.
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`name`** value must be a non-blank string.
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`definition`** value may be nil, or if non-nil, value must be a map.
 
 *  **`revision_message`** value must be a non-blank string.
+
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+
+*  **`id`** 
+
+*  **`how_is_this_calculated`** value may be nil, or if non-nil, value must be a string.
 
 
 ## `PUT /api/metric/:id/important_fields`
@@ -1560,7 +1595,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`important_field_ids`** value must be an array. Each value must be an integer greater than zero.
 
@@ -1572,11 +1607,11 @@ Notification about a potential schema change to one of our `Databases`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
-*  **`table_id`**
+*  **`table_id`** 
 
-*  **`table_name`**
+*  **`table_name`** 
 
 
 ## `DELETE /api/permissions/group/:group-id`
@@ -1587,7 +1622,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`group-id`**
+*  **`group-id`** 
 
 
 ## `DELETE /api/permissions/membership/:id`
@@ -1598,7 +1633,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/permissions/graph`
@@ -1623,7 +1658,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/permissions/membership`
@@ -1687,7 +1722,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`group-id`**
+*  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
 
@@ -1698,7 +1733,7 @@ Fetch a Card you're considering embedding by passing a JWT TOKEN.
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 
 ## `GET /api/preview-embed/card/:token/query`
@@ -1707,20 +1742,20 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`&`**
+*  **`&`** 
 
-*  **`query-params`**
+*  **`query-params`** 
 
 
 ## `GET /api/preview-embed/dashboard/:token`
 
-Fetch a Dashboard you're considering embedding by passing a JWT TOKEN.
+Fetch a Dashboard you're considering embedding by passing a JWT TOKEN. 
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
 
 ## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
@@ -1729,15 +1764,15 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 
 ##### PARAMS:
 
-*  **`token`**
+*  **`token`** 
 
-*  **`dashcard-id`**
+*  **`dashcard-id`** 
 
-*  **`card-id`**
+*  **`card-id`** 
 
-*  **`&`**
+*  **`&`** 
 
-*  **`query-params`**
+*  **`query-params`** 
 
 
 ## `GET /api/public/card/:uuid`
@@ -1747,7 +1782,7 @@ Fetch a publicly-accessible Card an return query results as well as `:card` info
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
 
 ## `GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id`
@@ -1757,11 +1792,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`remapped-id`**
+*  **`remapped-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1772,11 +1807,11 @@ Search for values of a Field that is referenced by a public Card.
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`search-field-id`**
+*  **`search-field-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1789,9 +1824,9 @@ Fetch FieldValues for a Field that is referenced by a public Card.
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
 
 ## `GET /api/public/card/:uuid/query`
@@ -1801,7 +1836,7 @@ Fetch a publicly-accessible Card an return query results as well as `:card` info
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -1813,11 +1848,15 @@ Fetch a publicly-accessible Card and return query results in the specified forma
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
 *  **`export-format`** value must be one of: `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+*  **`respond`** 
+
+*  **`raise`** 
 
 
 ## `GET /api/public/dashboard/:uuid`
@@ -1826,7 +1865,7 @@ Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
 
 ## `GET /api/public/dashboard/:uuid/card/:card-id`
@@ -1836,9 +1875,9 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`card-id`**
+*  **`card-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
@@ -1850,11 +1889,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`remapped-id`**
+*  **`remapped-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1865,11 +1904,11 @@ Search for values of a Field that is referenced by a Card in a public Dashboard.
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
-*  **`search-field-id`**
+*  **`search-field-id`** 
 
 *  **`value`** value must be a non-blank string.
 
@@ -1882,9 +1921,9 @@ Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard
 
 ##### PARAMS:
 
-*  **`uuid`**
+*  **`uuid`** 
 
-*  **`field-id`**
+*  **`field-id`** 
 
 
 ## `GET /api/public/oembed`
@@ -1908,7 +1947,7 @@ Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instea
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/pulse/`
@@ -1926,7 +1965,7 @@ Fetch `Pulse` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/pulse/form_input`
@@ -1940,7 +1979,7 @@ Get HTML rendering of a Card with `id`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/pulse/preview_card_info/:id`
@@ -1949,7 +1988,7 @@ Get JSON object containing HTML rendering of a Card with `id` and other informat
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/pulse/preview_card_png/:id`
@@ -1958,7 +1997,7 @@ Get PNG rendering of a Card with `id`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/pulse/`
@@ -2005,7 +2044,7 @@ Update a Pulse with `id`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -2019,7 +2058,7 @@ Update a Pulse with `id`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
-*  **`pulse-updates`**
+*  **`pulse-updates`** 
 
 
 ## `GET /api/revision/`
@@ -2059,13 +2098,11 @@ Search Cards, Dashboards, Collections and Pulses for the substring `q`.
 
 ## `DELETE /api/segment/:id`
 
-Delete a `Segment`.
-
-You must be a superuser to do this.
+Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.)
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`revision_message`** value must be a non-blank string.
 
@@ -2079,11 +2116,9 @@ Fetch *all* `Segments`.
 
 Fetch `Segment` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/segment/:id/related`
@@ -2092,31 +2127,27 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/segment/:id/revisions`
 
 Fetch `Revisions` for `Segment` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/segment/`
 
 Create a new `Segment`.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
-*  **`description`**
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
 *  **`table_id`** value must be an integer greater than zero.
 
@@ -2127,11 +2158,9 @@ You must be a superuser to do this.
 
 Revert a `Segement` to a prior `Revision`.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
 
@@ -2140,17 +2169,25 @@ You must be a superuser to do this.
 
 Update a `Segment` with ID.
 
-You must be a superuser to do this.
-
 ##### PARAMS:
 
-*  **`id`**
+*  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
-*  **`name`** value must be a non-blank string.
+*  **`description`** value may be nil, or if non-nil, value must be a string.
 
-*  **`definition`** value must be a map.
+*  **`archived`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`definition`** value may be nil, or if non-nil, value must be a map.
 
 *  **`revision_message`** value must be a non-blank string.
+
+*  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+
+*  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`caveats`** value may be nil, or if non-nil, value must be a string.
+
+*  **`id`** 
 
 
 ## `DELETE /api/session/`
@@ -2159,7 +2196,7 @@ Logout.
 
 ##### PARAMS:
 
-*  **`session_id`** value must be a non-blank string.
+*  **`metabase-session-id`** 
 
 
 ## `GET /api/session/password_reset_token_valid`
@@ -2186,7 +2223,9 @@ Login.
 
 *  **`password`** value must be a non-blank string.
 
-*  **`remote-address`**
+*  **`remote-address`** 
+
+*  **`request`** 
 
 
 ## `POST /api/session/forgot_password`
@@ -2195,11 +2234,11 @@ Send a reset email when user has forgotten their password.
 
 ##### PARAMS:
 
-*  **`server-name`**
+*  **`server-name`** 
 
 *  **`email`** value must be a valid email address.
 
-*  **`remote-address`**
+*  **`remote-address`** 
 
 
 ## `POST /api/session/google_auth`
@@ -2210,7 +2249,9 @@ Login with Google Auth.
 
 *  **`token`** value must be a non-blank string.
 
-*  **`remote-address`**
+*  **`remote-address`** 
+
+*  **`request`** 
 
 
 ## `POST /api/session/reset_password`
@@ -2222,6 +2263,8 @@ Reset password with a reset token.
 *  **`token`** value must be a non-blank string.
 
 *  **`password`** Insufficient password strength
+
+*  **`request`** 
 
 
 ## `GET /api/setting/`
@@ -2250,7 +2293,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`settings`**
+*  **`settings`** 
 
 
 ## `PUT /api/setting/:key`
@@ -2264,7 +2307,7 @@ You must be a superuser to do this.
 
 *  **`key`** value must be a non-blank string.
 
-*  **`value`**
+*  **`value`** 
 
 
 ## `GET /api/setup/admin_checklist`
@@ -2281,7 +2324,7 @@ Special endpoint for creating the first user during setup.
 
 ##### PARAMS:
 
-*  **`engine`**
+*  **`engine`** 
 
 *  **`schedules`** value may be nil, or if non-nil, value must be a valid map of schedule maps for a DB.
 
@@ -2291,19 +2334,21 @@ Special endpoint for creating the first user during setup.
 
 *  **`first_name`** value must be a non-blank string.
 
+*  **`request`** 
+
 *  **`password`** Insufficient password strength
 
-*  **`name`**
+*  **`name`** 
 
-*  **`is_full_sync`**
+*  **`is_full_sync`** 
 
 *  **`site_name`** value must be a non-blank string.
 
 *  **`token`** Token does not match the setup token.
 
-*  **`details`**
+*  **`details`** 
 
-*  **`is_on_demand`**
+*  **`is_on_demand`** 
 
 *  **`last_name`** value must be a non-blank string.
 
@@ -2316,7 +2361,7 @@ Validate that we can connect to a database given a set of details.
 
 *  **`engine`** value must be a valid database engine.
 
-*  **`details`**
+*  **`details`** 
 
 *  **`token`** Token does not match the setup token.
 
@@ -2333,7 +2378,7 @@ You must be a superuser to do this.
 
 *  **`metabot-enabled`** value must be a boolean.
 
-*  **`slack-settings`**
+*  **`slack-settings`** 
 
 
 ## `GET /api/table/`
@@ -2347,7 +2392,7 @@ Get `Table` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/table/:id/fks`
@@ -2356,7 +2401,7 @@ Get all foreign keys whose destination is a `Field` that belongs to this `Table`
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/table/:id/query_metadata`
@@ -2369,7 +2414,7 @@ Get metadata about a `Table` useful for running queries.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -2380,7 +2425,7 @@ Return related entities.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/table/card__:id/fks`
@@ -2395,7 +2440,7 @@ Return metadata for the 'virtual' table for a Card.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/table/:id/discard_values`
@@ -2407,7 +2452,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `POST /api/table/:id/rescan_values`
@@ -2419,7 +2464,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `PUT /api/table/:id`
@@ -2428,7 +2473,7 @@ Update `Table` with ID.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`display_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
@@ -2443,6 +2488,35 @@ Update `Table` with ID.
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
+
+
+## `GET /api/task/`
+
+Fetch a list of recent tasks stored as Task History
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
+
+*  **`offset`** value may be nil, or if non-nil, value must be a valid integer greater than or equal to zero.
+
+
+## `GET /api/task/:id`
+
+Get `TaskHistory` entry with ID.
+
+##### PARAMS:
+
+*  **`id`** 
+
+
+## `GET /api/task/info`
+
+Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).
+
+You must be a superuser to do this.
 
 
 ## `GET /api/tiles/:zoom/:x/:y/:lat-field-id/:lon-field-id/:lat-col-idx/:lon-col-idx/`
@@ -2479,7 +2553,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/user/`
@@ -2499,7 +2573,7 @@ Fetch a `User`. You must be fetching yourself *or* be a superuser.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/user/current`
@@ -2521,7 +2595,9 @@ You must be a superuser to do this.
 
 *  **`email`** value must be a valid email address.
 
-*  **`password`**
+*  **`password`** 
+
+*  **`group_ids`** value may be nil, or if non-nil, value must be an array. Each value must be an integer greater than zero.
 
 *  **`login_attributes`** value may be nil, or if non-nil, value must be a map with each value either a string or number.
 
@@ -2534,7 +2610,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `PUT /api/user/:id`
@@ -2543,7 +2619,7 @@ Update an existing, active `User`.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`email`** value may be nil, or if non-nil, value must be a valid email address.
 
@@ -2551,7 +2627,9 @@ Update an existing, active `User`.
 
 *  **`last_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
-*  **`is_superuser`**
+*  **`group_ids`** value may be nil, or if non-nil, value must be an array. Each value must be an integer greater than zero.
+
+*  **`is_superuser`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`login_attributes`** value may be nil, or if non-nil, value must be a map with each value either a string or number.
 
@@ -2562,11 +2640,11 @@ Update a user's password.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 *  **`password`** Insufficient password strength
 
-*  **`old_password`**
+*  **`old_password`** 
 
 
 ## `PUT /api/user/:id/qbnewb`
@@ -2575,7 +2653,7 @@ Indicate that a user has been informed about the vast intricacies of 'the' Query
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `PUT /api/user/:id/reactivate`
@@ -2586,7 +2664,7 @@ You must be a superuser to do this.
 
 ##### PARAMS:
 
-*  **`id`**
+*  **`id`** 
 
 
 ## `GET /api/util/logs`
@@ -2598,7 +2676,7 @@ You must be a superuser to do this.
 
 ## `GET /api/util/random_token`
 
-Return a cryptographically secure random 32-byte token, encoded as a hexidecimal string.
+Return a cryptographically secure random 32-byte token, encoded as a hexadecimal string.
    Intended for use when creating a value for `embedding-secret-key`.
 
 

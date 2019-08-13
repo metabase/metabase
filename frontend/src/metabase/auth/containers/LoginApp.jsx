@@ -3,7 +3,7 @@ import { findDOMNode } from "react-dom";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import SSOLoginButton from "../components/SSOLoginButton.jsx";
 import Button from "metabase/components/Button";
@@ -28,7 +28,10 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class LoginApp extends Component {
   constructor(props, context) {
     super(props, context);
@@ -40,7 +43,7 @@ export default class LoginApp extends Component {
   }
 
   validateForm() {
-    let { credentials } = this.state;
+    const { credentials } = this.state;
 
     let valid = true;
 
@@ -58,7 +61,7 @@ export default class LoginApp extends Component {
 
     const { loginGoogle, location } = this.props;
 
-    let ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
+    const ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
     function attachGoogleAuth() {
       // if gapi isn't loaded yet then wait 100ms and check again. Keep doing this until we're ready
@@ -68,7 +71,7 @@ export default class LoginApp extends Component {
       }
       try {
         window.gapi.load("auth2", () => {
-          let auth2 = window.gapi.auth2.init({
+          const auth2 = window.gapi.auth2.init({
             client_id: Settings.get("google_auth_client_id"),
             cookiepolicy: "single_host_origin",
           });
@@ -103,8 +106,8 @@ export default class LoginApp extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { login, location } = this.props;
-    let { credentials } = this.state;
+    const { login, location } = this.props;
+    const { credentials } = this.state;
 
     login(credentials, location.query.redirect);
   }

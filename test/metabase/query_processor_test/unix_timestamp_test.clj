@@ -2,8 +2,7 @@
   "Tests for UNIX timestamp support."
   (:require [metabase
              [driver :as driver]
-             [query-processor-test :refer :all]]
-            [metabase.query-processor-test.date-bucketing-test :as dbt]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.test
              [data :as data]
              [util :as tu]]))
@@ -37,7 +36,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (dbt/tz-shifted-engine-bug? driver/*driver*)
+    (qp.test/tz-shifted-driver-bug? driver/*driver*)
     [["2015-06-01T00:00:00.000-07:00" 6]
      ["2015-06-02T00:00:00.000-07:00" 10]
      ["2015-06-03T00:00:00.000-07:00" 4]

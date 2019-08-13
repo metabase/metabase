@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   isa,
   isFK as isTypeFK,
@@ -136,7 +136,8 @@ export const isSummable = isFieldType.bind(null, SUMMABLE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
-export const isDimension = col => col && col.source !== "aggregation";
+export const isDimension = col =>
+  col && col.source !== "aggregation" && !isDescription(col);
 export const isMetric = col =>
   col && col.source !== "breakout" && isSummable(col);
 
@@ -156,6 +157,8 @@ export const isNumber = field =>
   isNumericBaseType(field) &&
   (field.special_type == null || isa(field.special_type, TYPE.Number));
 
+export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
+
 export const isTime = field => isa(field && field.base_type, TYPE.Time);
 
 export const isAddress = field =>
@@ -172,6 +175,9 @@ export const isLongitude = field =>
 
 export const isCurrency = field =>
   isa(field && field.special_type, TYPE.Currency);
+
+export const isDescription = field =>
+  isa(field && field.special_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
@@ -446,8 +452,9 @@ function dimensionFields(fields) {
   return _.filter(fields, isDimension);
 }
 
-let Aggregators = [
+const Aggregators = [
   {
+    // DEPRECATED: "rows" is equivalent to no aggregations
     name: t`Raw data`,
     short: "rows",
     description: t`Just a table with the rows in the answer, no additional operations.`,
@@ -529,7 +536,7 @@ let Aggregators = [
   },
 ];
 
-let BreakoutAggregator = {
+const BreakoutAggregator = {
   name: t`Break out by dimension`,
   short: "breakout",
   validFieldsFilters: [dimensionFields],
@@ -581,14 +588,14 @@ export const isCompatibleAggregatorForField = (aggregator, field) =>
   aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
 
 export function getBreakouts(fields) {
-  let result = populateFields(BreakoutAggregator, fields);
+  const result = populateFields(BreakoutAggregator, fields);
   result.fields = result.fields[0];
   result.validFieldsFilter = result.validFieldsFilters[0];
   return result;
 }
 
 export function addValidOperatorsToFields(table) {
-  for (let field of table.fields) {
+  for (const field of table.fields) {
     field.operators = getOperators(field, table);
   }
   table.aggregation_options = getAggregatorsWithFields(table);
@@ -643,30 +650,6 @@ export const ICON_MAPPING = {
 
 export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
-}
-
-export function computeMetadataStrength(table) {
-  let total = 0;
-  let completed = 0;
-  function score(value) {
-    total++;
-    if (value) {
-      completed++;
-    }
-  }
-
-  score(table.description);
-  if (table.fields) {
-    table.fields.forEach(function(field) {
-      score(field.description);
-      score(field.special_type);
-      if (isFK(field)) {
-        score(field.target);
-      }
-    });
-  }
-
-  return completed / total;
 }
 
 export function getFilterArgumentFormatOptions(operator, index) {

@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Ellipsified from "metabase/components/Ellipsified";
 
@@ -53,7 +53,11 @@ export default class Scalar extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -92,11 +96,26 @@ export default class Scalar extends Component {
   static settings = {
     ...fieldSetting("scalar.field", {
       title: t`Field to show`,
-      getDefault: ([{ data: { cols } }]) => cols[0].name,
-      getHidden: ([{ data: { cols } }]) => cols.length < 2,
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols[0].name,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.length < 2,
     }),
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
@@ -142,9 +161,14 @@ export default class Scalar extends Component {
   }
 
   render() {
-    let {
+    const {
       actionButtons,
-      series: [{ card, data: { cols, rows } }],
+      series: [
+        {
+          card,
+          data: { cols, rows },
+        },
+      ],
       isDashboard,
       onChangeCardAndRun,
       gridSize,
@@ -152,8 +176,6 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
     } = this.props;
-
-    let isSmall = gridSize && gridSize.width < 4;
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
@@ -166,9 +188,14 @@ export default class Scalar extends Component {
     };
 
     const fullScalarValue = formatValue(value, formatOptions);
-    const compactScalarValue = isSmall
-      ? formatValue(value, { ...formatOptions, compact: true })
-      : fullScalarValue;
+    const compactScalarValue = formatValue(value, {
+      ...formatOptions,
+      compact: true,
+    });
+
+    const displayCompact =
+      fullScalarValue.length > 6 && gridSize && gridSize.width < 4;
+    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = { value, column };
     const isClickable = visualizationIsClickable(clicked);
@@ -183,7 +210,7 @@ export default class Scalar extends Component {
             "text-brand-hover cursor-pointer": isClickable,
           })}
           tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== compactScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
           style={{ maxWidth: "100%" }}
         >
           <span
@@ -195,7 +222,7 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={compactScalarValue} />
+            <ScalarValue value={displayValue} />
           </span>
         </Ellipsified>
         {isDashboard && (

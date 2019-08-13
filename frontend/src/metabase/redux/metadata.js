@@ -128,9 +128,9 @@ export const fetchTables = (reload = false) => {
 };
 
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
-export const fetchTableMetadata = (tableId, reload = false) => {
+export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchTableMetadata({ id: tableId }, reload);
+  return Tables.actions.fetchTableMetadata({ id }, { reload });
 };
 
 export const fetchField = (id, reload = false) => {
@@ -139,9 +139,9 @@ export const fetchField = (id, reload = false) => {
 };
 
 export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
-export const fetchFieldValues = (fieldId, reload) => {
+export const fetchFieldValues = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchFieldValues");
-  return Fields.actions.fetchFieldValues({ id: fieldId }, reload);
+  return Fields.actions.fetchFieldValues({ id }, reload);
 };
 
 export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();

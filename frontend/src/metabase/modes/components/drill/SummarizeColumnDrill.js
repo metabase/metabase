@@ -5,7 +5,7 @@ import {
   getAggregator,
   isCompatibleAggregatorForField,
 } from "metabase/lib/schema_metadata";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type {
   ClickAction,
   ClickActionProps,
@@ -61,5 +61,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       ...action,
       question: () =>
         question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
+      action: () => dispatch => {
+        // HACK: drill through closes sidebars, so open sidebar asynchronously
+        setTimeout(() => {
+          dispatch({ type: "metabase/qb/EDIT_SUMMARY" });
+        });
+      },
     }));
 };

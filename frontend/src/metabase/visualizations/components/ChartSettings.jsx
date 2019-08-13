@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
 import Button from "metabase/components/Button";
@@ -101,30 +101,52 @@ class ChartSettings extends Component {
     );
   }
 
-  render() {
-    const { isDashboard, question, addField, series, children } = this.props;
-    const { currentWidget } = this.state;
+  _getWidgets() {
+    if (this.props.widgets) {
+      return this.props.widgets;
+    } else {
+      const { isDashboard } = this.props;
+      const transformedSeries = this._getTransformedSeries();
 
+      return getSettingsWidgetsForSeries(
+        transformedSeries,
+        this.handleChangeSettings,
+        isDashboard,
+      );
+    }
+  }
+
+  // TODO: move this logic out of the React component
+  _getRawSeries() {
+    const { series } = this.props;
     const settings = this._getSettings();
-
     const rawSeries = assocIn(
       series,
       [0, "card", "visualization_settings"],
       settings,
     );
-
+    return rawSeries;
+  }
+  _getTransformedSeries() {
+    const rawSeries = this._getRawSeries();
     const { series: transformedSeries } = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
+    return transformedSeries;
+  }
+
+  render() {
+    const { question, addField, noPreview, children } = this.props;
+    const { currentWidget } = this.state;
+
+    const settings = this._getSettings();
+    const widgets = this._getWidgets();
+    const rawSeries = this._getRawSeries();
 
     const widgetsById = {};
-
     const sections = {};
-    for (const widget of getSettingsWidgetsForSeries(
-      transformedSeries,
-      this.handleChangeSettings,
-      isDashboard,
-    )) {
+
+    for (const widget of widgets) {
       widgetsById[widget.id] = widget;
       if (widget.widget && !widget.hidden) {
         sections[widget.section] = sections[widget.section] || [];
@@ -134,18 +156,19 @@ class ChartSettings extends Component {
 
     // Move settings from the "undefined" section in the first tab
     if (sections["undefined"] && Object.values(sections).length > 1) {
-      let extra = sections["undefined"];
+      const extra = sections["undefined"];
       delete sections["undefined"];
       Object.values(sections)[0].unshift(...extra);
     }
 
     const sectionNames = Object.keys(sections);
     const currentSection =
-      this.state.currentSection ||
-      _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-      sectionNames[0];
+      this.state.currentSection && sections[this.state.currentSection]
+        ? this.state.currentSection
+        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0];
 
-    let widgets;
+    let visibleWidgets;
     let widget = currentWidget && widgetsById[currentWidget.id];
     if (widget) {
       widget = {
@@ -156,9 +179,9 @@ class ChartSettings extends Component {
           ...(currentWidget.props || {}),
         },
       };
-      widgets = [widget];
+      visibleWidgets = [widget];
     } else {
-      widgets = sections[currentSection];
+      visibleWidgets = sections[currentSection] || [];
     }
 
     const extraWidgetProps = {
@@ -176,11 +199,11 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        underlined
+        bubble
       />
     );
 
-    const widgetList = widgets.map(widget => (
+    const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
         key={`${widget.id}`}
         {...widget}
@@ -204,46 +227,50 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
+      <div>
         {sectionNames.length > 1 && (
-          <div className="border-bottom flex flex-no-shrink pl4">
-            {sectionPicker}
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
+        )}
+        {noPreview ? (
+          <div className="full-height relative scroll-y scroll-show py4">
+            {widgetList}
+          </div>
+        ) : (
+          <div className="full-height relative">
+            <div className="Grid spread">
+              <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+                {widgetList}
+              </div>
+              <div className="Grid-cell flex flex-column pt2">
+                <div className="mx4 flex flex-column">
+                  <Warnings
+                    className="mx2 align-self-end text-gold"
+                    warnings={this.state.warnings}
+                    size={20}
+                  />
+                </div>
+                <div className="mx4 flex-full relative">
+                  <Visualization
+                    className="spread"
+                    rawSeries={rawSeries}
+                    showTitle
+                    isEditing
+                    isDashboard
+                    isSettings
+                    showWarnings
+                    onUpdateVisualizationSettings={this.handleChangeSettings}
+                    onUpdateWarnings={warnings => this.setState({ warnings })}
+                  />
+                </div>
+                <ChartSettingsFooter
+                  onDone={this.handleDone}
+                  onCancel={this.handleCancel}
+                  onReset={onReset}
+                />
+              </div>
+            </div>
           </div>
         )}
-        <div className="full-height relative">
-          <div className="Grid spread">
-            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-              {widgetList}
-            </div>
-            <div className="Grid-cell flex flex-column pt2">
-              <div className="mx4 flex flex-column">
-                <Warnings
-                  className="mx2 align-self-end text-gold"
-                  warnings={this.state.warnings}
-                  size={20}
-                />
-              </div>
-              <div className="mx4 flex-full relative">
-                <Visualization
-                  className="spread"
-                  rawSeries={rawSeries}
-                  showTitle
-                  isEditing
-                  isDashboard
-                  isSettings
-                  showWarnings
-                  onUpdateVisualizationSettings={this.handleChangeSettings}
-                  onUpdateWarnings={warnings => this.setState({ warnings })}
-                />
-              </div>
-              <ChartSettingsFooter
-                onDone={this.handleDone}
-                onCancel={this.handleCancel}
-                onReset={onReset}
-              />
-            </div>
-          </div>
-        </div>
       </div>
     );
   }

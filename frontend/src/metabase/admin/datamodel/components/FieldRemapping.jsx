@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -115,7 +115,7 @@ export default class FieldRemapping extends React.Component {
         "Change Remapping Type",
         "No Remapping",
       );
-      await deleteFieldDimension(field.id);
+      await deleteFieldDimension({ id: field.id });
       this.setState({ hasChanged: false });
     } else if (mappingType.type === "foreign") {
       // Try to find a entity name field from target table and choose it as remapping target field if it exists
@@ -127,11 +127,14 @@ export default class FieldRemapping extends React.Component {
           "Change Remapping Type",
           "Foreign Key",
         );
-        await updateFieldDimension(field.id, {
-          type: "external",
-          name: field.display_name,
-          human_readable_field_id: entityNameFieldId,
-        });
+        await updateFieldDimension(
+          { id: field.id },
+          {
+            type: "external",
+            name: field.display_name,
+            human_readable_field_id: entityNameFieldId,
+          },
+        );
       } else {
         // Enter a special state where we are choosing an initial value for FK target
         this.setState({
@@ -145,11 +148,14 @@ export default class FieldRemapping extends React.Component {
         "Change Remapping Type",
         "Custom Remappings",
       );
-      await updateFieldDimension(field.id, {
-        type: "internal",
-        name: field.display_name,
-        human_readable_field_id: null,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: "internal",
+          name: field.display_name,
+          human_readable_field_id: null,
+        },
+      );
       this.setState({ hasChanged: true });
     } else {
       throw new Error(t`Unrecognized mapping type`);
@@ -157,7 +163,7 @@ export default class FieldRemapping extends React.Component {
 
     // TODO Atte Keinänen 7/11/17: It's a pretty heavy approach to reload the whole table after a single field
     // has been updated; would be nicer to just fetch a single field. MetabaseApi.field_get seems to exist for that
-    await fetchTableMetadata(table.id, true);
+    await fetchTableMetadata({ id: table.id }, { reload: true });
   };
 
   onForeignKeyFieldChange = async foreignKeyClause => {
@@ -174,13 +180,16 @@ export default class FieldRemapping extends React.Component {
     const dimension = Dimension.parseMBQL(foreignKeyClause);
     if (dimension && dimension instanceof FKDimension) {
       MetabaseAnalytics.trackEvent("Data Model", "Update FK Remapping Target");
-      await updateFieldDimension(field.id, {
-        type: "external",
-        name: field.display_name,
-        human_readable_field_id: dimension.destination().field().id,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: "external",
+          name: field.display_name,
+          human_readable_field_id: dimension.destination().field().id,
+        },
+      );
 
-      await fetchTableMetadata(table.id, true);
+      await fetchTableMetadata({ id: table.id }, { reload: true });
 
       this.refs.fkPopover.close();
     } else {
@@ -190,7 +199,7 @@ export default class FieldRemapping extends React.Component {
 
   onUpdateRemappings = remappings => {
     const { field, updateFieldValues } = this.props;
-    return updateFieldValues(field.id, Array.from(remappings));
+    return updateFieldValues({ id: field.id }, Array.from(remappings));
   };
 
   // TODO Atte Keinänen 7/11/17: Should we have stricter criteria for valid remapping targets?
@@ -282,7 +291,7 @@ export default class FieldRemapping extends React.Component {
               }}
               table={table}
               onFieldChange={this.onForeignKeyFieldChange}
-              hideSectionHeader
+              hideSingleSectionTitle
             />
           </PopoverWithTrigger>,
           dismissedInitialFkTargetPopover && (

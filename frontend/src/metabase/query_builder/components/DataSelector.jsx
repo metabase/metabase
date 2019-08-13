@@ -1,15 +1,16 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
+import AccordionList from "metabase/components/AccordionList.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { isQueryable } from "metabase/lib/table";
 import { titleize, humanize } from "metabase/lib/formatting";
+import MetabaseSettings from "metabase/lib/settings";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -44,13 +45,15 @@ export const SchemaAndSegmentTriggerContent = ({
 }) => {
   if (selectedTable) {
     return (
-      <span className="text-grey no-decoration">
+      <span className="text-wrap text-grey no-decoration">
         {selectedTable.display_name || selectedTable.name}
       </span>
     );
   } else if (selectedSegment) {
     return (
-      <span className="text-grey no-decoration">{selectedSegment.name}</span>
+      <span className="text-wrap text-grey no-decoration">
+        {selectedSegment.name}
+      </span>
     );
   } else {
     return (
@@ -68,7 +71,9 @@ export const DatabaseDataSelector = props => (
 );
 export const DatabaseTriggerContent = ({ selectedDatabase }) =>
   selectedDatabase ? (
-    <span className="text-grey no-decoration">{selectedDatabase.name}</span>
+    <span className="text-wrap text-grey no-decoration">
+      {selectedDatabase.name}
+    </span>
   ) : (
     <span className="text-medium no-decoration">{t`Select a database`}</span>
   );
@@ -121,14 +126,17 @@ export const SchemaAndTableDataSelector = props => (
 );
 export const TableTriggerContent = ({ selectedTable }) =>
   selectedTable ? (
-    <span className="text-grey no-decoration">
+    <span className="text-wrap text-grey no-decoration">
       {selectedTable.display_name || selectedTable.name}
     </span>
   ) : (
     <span className="text-medium no-decoration">{t`Select a table`}</span>
   );
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchTableMetadata })
+@connect(
+  state => ({ metadata: getMetadata(state) }),
+  { fetchTableMetadata },
+)
 export default class DataSelector extends Component {
   constructor(props) {
     super();
@@ -148,8 +156,8 @@ export default class DataSelector extends Component {
       props.databases &&
       props.databases.map(database => {
         let schemas = {};
-        for (let table of database.tables.filter(isQueryable)) {
-          let name = table.schema || "";
+        for (const table of database.tables.filter(isQueryable)) {
+          const name = table.schema || "";
           schemas[name] = schemas[name] || {
             name: titleize(humanize(name)),
             database: database,
@@ -181,7 +189,7 @@ export default class DataSelector extends Component {
       _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
 
     // remove the schema step if a database is already selected and the database does not have more than one schema.
-    let steps = [...props.steps];
+    const steps = [...props.steps];
     if (
       selectedDatabase &&
       !hasMultipleSchemas &&
@@ -267,13 +275,13 @@ export default class DataSelector extends Component {
         this.switchToStep(TABLE_STEP);
       }
     } else {
-      let firstStep = this.state.steps[0];
+      const firstStep = this.state.steps[0];
       this.switchToStep(firstStep);
     }
   }
 
   nextStep = (stateChange = {}) => {
-    let activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
+    const activeStepIndex = this.state.steps.indexOf(this.state.activeStep);
     if (activeStepIndex + 1 >= this.state.steps.length) {
       this.setState(stateChange);
       this.refs.popover.toggle();
@@ -330,7 +338,7 @@ export default class DataSelector extends Component {
   };
 
   onChangeDatabase = (index, schemaInSameStep) => {
-    let database = this.state.databases[index];
+    const database = this.state.databases[index];
     let schema =
       database && (database.schemas.length > 1 ? null : database.schemas[0]);
     if (database && database.tables.length === 0) {
@@ -395,8 +403,14 @@ export default class DataSelector extends Component {
       className,
       style,
       triggerIconSize,
+      triggerElement,
       getTriggerElementContent,
     } = this.props;
+
+    if (triggerElement) {
+      return triggerElement;
+    }
+
     const {
       selectedDatabase,
       selectedSegment,
@@ -425,7 +439,7 @@ export default class DataSelector extends Component {
       return this.props.triggerClasses;
     }
     return this.props.renderAsSelect
-      ? "border-med bg-white block no-decoration"
+      ? "border-medium bg-white block no-decoration"
       : "flex align-center";
   }
 
@@ -557,6 +571,7 @@ export default class DataSelector extends Component {
         hasArrow={this.props.hasArrow}
         tetherOptions={this.props.tetherOptions}
         sizeToFit
+        isOpen={this.props.isOpen}
       >
         {this.renderActiveStep()}
       </PopoverWithTrigger>
@@ -574,7 +589,7 @@ const DatabasePicker = ({
     return <DataSelectorLoading />;
   }
 
-  let sections = [
+  const sections = [
     {
       items: databases.map((database, index) => ({
         name: database.name,
@@ -585,7 +600,7 @@ const DatabasePicker = ({
   ];
 
   return (
-    <AccordianList
+    <AccordionList
       id="DatabasePicker"
       key="databasePicker"
       className="text-brand"
@@ -635,16 +650,16 @@ const SegmentAndDatabasePicker = ({
   }
 
   return (
-    <AccordianList
+    <AccordionList
       id="SegmentAndDatabasePicker"
       key="segmentAndDatabasePicker"
       className="text-brand"
       sections={sections}
       onChange={onChangeSchema}
-      onChangeSection={index => {
-        index === 0
+      onChangeSection={(section, sectionIndex) => {
+        sectionIndex === 0
           ? onShowSegmentSection()
-          : onChangeDatabase(index - segmentItem.length, true);
+          : onChangeDatabase(sectionIndex - segmentItem.length, true);
       }}
       itemIsSelected={schema => selectedSchema === schema}
       renderSectionIcon={section => (
@@ -668,14 +683,14 @@ export const SchemaPicker = ({
   onChangeSchema,
   hasAdjacentStep,
 }) => {
-  let sections = [
+  const sections = [
     {
       items: selectedDatabase.schemas,
     },
   ];
   return (
     <div style={{ width: 300 }}>
-      <AccordianList
+      <AccordionList
         id="DatabaseSchemaPicker"
         key="databaseSchemaPicker"
         className="text-brand"
@@ -723,13 +738,15 @@ export const DatabaseSchemaPicker = ({
 
   return (
     <div className="scroll-y">
-      <AccordianList
+      <AccordionList
         id="DatabaseSchemaPicker"
         key="databaseSchemaPicker"
         className="text-brand"
         sections={sections}
         onChange={onChangeSchema}
-        onChangeSection={dbId => onChangeDatabase(dbId, true)}
+        onChangeSection={(section, sectionIndex) =>
+          onChangeDatabase(sectionIndex, true)
+        }
         itemIsSelected={schema => schema === selectedSchema}
         renderSectionIcon={item => (
           <Icon className="Icon text-default" name={item.icon} size={18} />
@@ -761,7 +778,7 @@ export const TablePicker = ({
   }
 
   const isSavedQuestionList = selectedDatabase.is_saved_questions;
-  let header = (
+  const header = (
     <div className="flex flex-wrap align-center">
       <span
         className={cx("flex align-center", {
@@ -770,10 +787,12 @@ export const TablePicker = ({
         onClick={onBack}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className="ml1">{selectedDatabase.name}</span>
+        <span className="ml1 text-wrap">{selectedDatabase.name}</span>
       </span>
       {selectedSchema.name && (
-        <span className="ml1 text-slate">- {selectedSchema.name}</span>
+        <span className="ml1 text-wrap text-slate">
+          - {selectedSchema.name}
+        </span>
       )}
     </div>
   );
@@ -794,7 +813,7 @@ export const TablePicker = ({
       </section>
     );
   } else {
-    let sections = [
+    const sections = [
       {
         name: header,
         items: selectedSchema.tables.map(table => ({
@@ -807,7 +826,7 @@ export const TablePicker = ({
     ];
     return (
       <div style={{ width: 300 }} className="scroll-y">
-        <AccordianList
+        <AccordionList
           id="TablePicker"
           key="tablePicker"
           className="text-brand"
@@ -829,7 +848,10 @@ export const TablePicker = ({
           <div className="bg-light p2 text-centered border-top">
             {t`Is a question missing?`}
             <a
-              href="http://metabase.com/docs/latest/users-guide/04-asking-questions.html#source-data"
+              href={MetabaseSettings.docsUrl(
+                "users-guide/04-asking-questions",
+                "source-data",
+              )}
               className="block link"
             >{t`Learn more about nested queries`}</a>
           </div>
@@ -865,7 +887,9 @@ export class FieldPicker extends Component {
           onClick={onBack}
         >
           <Icon name="chevronleft" size={18} />
-          <span className="ml1">{selectedTable.display_name || t`Fields`}</span>
+          <span className="ml1 text-wrap">
+            {selectedTable.display_name || t`Fields`}
+          </span>
         </span>
       </span>
     );
@@ -888,7 +912,7 @@ export class FieldPicker extends Component {
 
     return (
       <div style={{ width: 300 }}>
-        <AccordianList
+        <AccordionList
           id="FieldPicker"
           key="fieldPicker"
           className="text-brand"
@@ -927,7 +951,7 @@ export const SegmentPicker = ({
         onClick={onBack}
       >
         <Icon name="chevronleft" size={18} />
-        <span className="ml1">{t`Segments`}</span>
+        <span className="ml1 text-wrap">{t`Segments`}</span>
       </span>
     </span>
   );
@@ -960,7 +984,7 @@ export const SegmentPicker = ({
   ];
 
   return (
-    <AccordianList
+    <AccordionList
       id="SegmentPicker"
       key="segmentPicker"
       className="text-brand"

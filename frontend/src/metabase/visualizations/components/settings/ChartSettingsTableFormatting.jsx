@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";
@@ -223,12 +223,12 @@ const RuleListing = ({ rules, cols, onEdit, onAdd, onRemove, onMove }) => (
 
 const RulePreview = ({ rule, cols, onClick, onRemove }) => (
   <div
-    className="my2 bordered rounded shadowed cursor-pointer overflow-hidden bg-white"
+    className="my2 bordered rounded shadowed cursor-pointer bg-white"
     onClick={onClick}
   >
     <div className="p1 border-bottom relative bg-light">
       <div className="px1 flex align-center relative">
-        <span className="h4 flex-full text-dark">
+        <span className="h4 flex-auto text-dark text-wrap">
           {rule.columns.length > 0 ? (
             rule.columns
               .map(
@@ -255,7 +255,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
     <div className="p2 flex align-center">
       <RuleBackground
         rule={rule}
-        className={cx("mr2 flex-no-shrink rounded overflow-hidden", {
+        className={cx("mr2 flex-no-shrink rounded", {
           bordered: rule.type === "range",
         })}
         style={{ width: 40, height: 40 }}
@@ -289,12 +289,12 @@ const RuleDescription = ({ rule }) => (
     {rule.type === "range"
       ? t`Cells in this column will be tinted based on their values.`
       : rule.type === "single"
-        ? jt`When a cell in these columns ${(
-            <span className="text-bold">
-              {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
-            </span>
-          )} it will be tinted this color.`
-        : null}
+      ? jt`When a cell in these columns ${(
+          <span className="text-bold">
+            {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
+          </span>
+        )} it will be tinted this color.`
+      : null}
   </span>
 );
 

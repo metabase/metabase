@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
 import fitViewport from "metabase/hoc/FitViewPort";
@@ -40,7 +40,7 @@ export const GenericError = ({
 export const NotFound = () => (
   <ErrorPageWrapper>
     <EmptyState
-      illustrationElement={<img src="../app/assets/img/no_results.svg" />}
+      illustrationElement={<img src="app/assets/img/no_results.svg" />}
       title={t`We're a little lost...`}
       message={t`The page you asked for couldn't be found.`}
       link={Urls.question()}
@@ -61,7 +61,7 @@ export const Archived = ({ entityName, linkTo }) => (
   <ErrorPageWrapper>
     <EmptyState
       title={t`This ${entityName} has been archived`}
-      illustrationElement={<Icon name="viewArchive" size={100} />}
+      illustrationElement={<Icon name="view_archive" size={100} />}
       link={linkTo}
     />
   </ErrorPageWrapper>

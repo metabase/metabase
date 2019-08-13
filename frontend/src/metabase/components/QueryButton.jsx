@@ -13,7 +13,7 @@ const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
     <Link className={S.queryButton} onClick={onClick} to={link}>
       <Icon
         className={iconClass}
-        size={20}
+        size={14}
         {...(typeof icon === "string" ? { name: icon } : icon)}
       />
       <span className={cx(S.queryButtonText, "text-brand-hover")}>{text}</span>

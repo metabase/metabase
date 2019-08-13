@@ -19,11 +19,7 @@ export default class ActivityItem extends Component {
       <div className="ml1 flex align-center mr2">
         <span>
           {item.user ? (
-            <UserAvatar
-              user={item.user}
-              background={userColors}
-              style={{ color: colors["text-white"], borderWidth: 0 }}
-            />
+            <UserAvatar user={item.user} bg={userColors} />
           ) : (
             <IconBorder style={{ color: colors["text-light"] }}>
               <Icon name="sync" size={16} />
@@ -32,7 +28,7 @@ export default class ActivityItem extends Component {
         </span>
 
         <div className="ml2 full flex align-center">
-          <div className="text-medium">
+          <div className="text-medium text-wrap">
             <span className="text-dark">{description.userName}</span>&nbsp;
             {description.summary}
           </div>

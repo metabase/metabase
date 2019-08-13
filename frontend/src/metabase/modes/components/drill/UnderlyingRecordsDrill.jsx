@@ -1,6 +1,6 @@
 /* @flow */
 
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 import { inflect } from "metabase/lib/formatting";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -11,6 +11,10 @@ import type {
 } from "metabase/meta/types/Visualization";
 
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+  // removes post-aggregation filter stage
+  clicked = clicked && question.topLevelClicked(clicked);
+  question = question.topLevelQuestion();
+
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];
@@ -24,7 +28,10 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   // the metric value should be the number of rows that will be displayed
   const count = typeof clicked.value === "number" ? clicked.value : 2;
 
-  const inflectedTableName = inflect(query.table().display_name, count);
+  const recordName = query.table().displayName();
+  const inflectedTableName = recordName
+    ? inflect(recordName, count)
+    : ngettext(msgid`record`, `records`, count);
   return [
     {
       name: "underlying-records",

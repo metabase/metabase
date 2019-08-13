@@ -22,25 +22,27 @@
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like [_ database-type]
-  ({ ;; Numeric types
-    :tinyint                     :type/Integer
-    :smallint                    :type/Integer
-    :int                         :type/Integer
-    :integer                     :type/Integer
-    :bigint                      :type/BigInteger
-    :float                       :type/Float
-    :double                      :type/Float
-    (keyword "double precision") :type/Float
-    :decimal                     :type/Decimal
-    ;; Date/Time types
-    :timestamp                   :type/DateTime
-    :date                        :type/Date
-    :interval                    :type/*
-    :string                      :type/Text
-    :varchar                     :type/Text
-    :char                        :type/Text
-    :boolean                     :type/Boolean
-    :binary                      :type/*} database-type))
+  (condp re-matches (name database-type)
+    #"boolean"          :type/Boolean
+    #"tinyint"          :type/Integer
+    #"smallint"         :type/Integer
+    #"int"              :type/Integer
+    #"bigint"           :type/BigInteger
+    #"float"            :type/Float
+    #"double"           :type/Float
+    #"double precision" :type/Double
+    #"decimal.*"        :type/Decimal
+    #"char.*"           :type/Text
+    #"varchar.*"        :type/Text
+    #"string.*"         :type/Text
+    #"binary*"          :type/*
+    #"date"             :type/Date
+    #"time"             :type/Time
+    #"timestamp"        :type/DateTime
+    #"interval"         :type/*
+    #"array.*"          :type/Array
+    #"map"              :type/Dictionary
+    #".*"               :type/*))
 
 (defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
 
@@ -92,8 +94,8 @@
                 1)
           3)))
 
-(defmethod driver/date-interval :hive-like [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
+(defmethod driver/date-add :hive-like [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
@@ -114,7 +116,7 @@
 (defn- run-query
   "Run the query itself."
   [{sql :query, :keys [params remark max-rows]} connection]
-  (let [sql     (str "-- " remark "\n" (hx/unescape-dots sql))
+  (let [sql     (str "-- " remark "\n" sql)
         options {:identifiers identity
                  :as-arrays?  true
                  :max-rows    max-rows}]
@@ -123,7 +125,7 @@
         (let [statement        (into [statement] params)
               [columns & rows] (jdbc/query connection statement options)]
           {:rows    (or rows [])
-           :columns (map u/keyword->qualified-name columns)})))))
+           :columns (map u/qualified-name columns)})))))
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"

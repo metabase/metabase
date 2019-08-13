@@ -15,8 +15,6 @@ exports[`Calendar should render correctly 1`] = `
         className="Icon Icon-chevronleft Icon-cxuQhR kTAgZA"
         fill="currentcolor"
         height={10}
-        name="chevronleft"
-        size={10}
         viewBox="0 0 32 32"
         width={10}
       >
@@ -44,8 +42,6 @@ exports[`Calendar should render correctly 1`] = `
         className="Icon Icon-chevronright Icon-cxuQhR kTAgZA"
         fill="currentcolor"
         height={10}
-        name="chevronright"
-        size={10}
         viewBox="0 0 32 32"
         width={10}
       >

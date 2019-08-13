@@ -4,6 +4,10 @@
              [format :as tformat]]
             [clojure.string :as str]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [driver :as driver]
+             [util :as u]]
             [metabase.driver
              [bigquery :as bigquery]
              [google :as google]]
@@ -11,7 +15,6 @@
              [datasets :as datasets]
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -24,25 +27,37 @@
 
 (sql.tx/add-test-extensions! :bigquery)
 
+;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
+;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
+;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
+;; tests are not appropriate for BigQuery, so they're disabled for the time being.
+;;
+;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
+;; relationships for FK tables
+(defmethod driver/supports? [:bigquery :foreign-keys] [_ _] (not config/is-test?))
+
+
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
-(def ^:private ^String normalize-name (comp (u/rpartial str/replace #"-" "_") name))
+(def ^:private ^String normalize-name (comp #(str/replace % #"-" "_") name))
 
-(def ^:private ^:const details
-  (datasets/when-testing-driver :bigquery
-    (reduce (fn [acc env-var]
-              (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
-            {}
-            [:project-id :client-id :client-secret :access-token :refresh-token])))
+(def ^:private details
+  (delay
+   (datasets/when-testing-driver :bigquery
+     (reduce
+      (fn [acc env-var]
+        (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
+      {}
+      [:project-id :client-id :client-secret :access-token :refresh-token]))))
 
-(def ^:private ^:const ^String project-id (:project-id details))
+(def ^:private ^String project-id (:project-id @details))
 
 (def ^:private ^Bigquery bigquery
   (datasets/when-testing-driver :bigquery
-    (#'bigquery/database->client {:details details})))
+    (#'bigquery/database->client {:details @details})))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
-  (assoc details :dataset-id (normalize-name database-name)))
+  (assoc @details :dataset-id (normalize-name database-name)))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------

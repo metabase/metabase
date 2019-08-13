@@ -1,6 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 import User from "metabase/entities/users";

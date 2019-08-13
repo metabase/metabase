@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import d3 from "d3";
 import cx from "classnames";
 
@@ -25,8 +25,8 @@ const INNER_RADIUS_RATIO = 3.7 / 5;
 const INNER_RADIUS = OUTER_RADIUS * INNER_RADIUS_RATIO;
 
 // arrow shape, currently an equilateral triangle
-const ARROW_HEIGHT = (OUTER_RADIUS - INNER_RADIUS) * 2.5 / 4; // 2/3 of segment thickness
-const ARROW_BASE = ARROW_HEIGHT / Math.tan(64 / 180 * Math.PI);
+const ARROW_HEIGHT = ((OUTER_RADIUS - INNER_RADIUS) * 2.5) / 4; // 2/3 of segment thickness
+const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
@@ -49,8 +49,8 @@ const LABEL_OFFSET_PERCENT = 1.025;
 // total degrees of the arc (180 = semicircle, etc)
 const ARC_DEGREES = 180 + 45 * 2; // semicircle plus a bit
 
-const radians = degrees => degrees * Math.PI / 180;
-const degrees = radians => radians * 180 / Math.PI;
+const radians = degrees => (degrees * Math.PI) / 180;
+const degrees = radians => (radians * 180) / Math.PI;
 
 const segmentIsValid = s => !isNaN(s.min) && !isNaN(s.max);
 
@@ -67,7 +67,11 @@ export default class Gauge extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (!isNumeric(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
@@ -81,7 +85,14 @@ export default class Gauge extends Component {
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
     }),
@@ -154,7 +165,11 @@ export default class Gauge extends Component {
 
   render() {
     const {
-      series: [{ data: { rows, cols } }],
+      series: [
+        {
+          data: { rows, cols },
+        },
+      ],
       settings,
       className,
       isSettings,
@@ -170,13 +185,13 @@ export default class Gauge extends Component {
     const svgAspectRatio = viewBoxHeight / viewBoxWidth;
     const containerAspectRadio = height / width;
 
-    let svgWidth, svgHeight;
+    let svgWidth;
     if (containerAspectRadio < svgAspectRatio) {
       svgWidth = Math.min(MAX_WIDTH, height / svgAspectRatio);
     } else {
       svgWidth = Math.min(MAX_WIDTH, width);
     }
-    svgHeight = svgWidth * svgAspectRatio;
+    const svgHeight = svgWidth * svgAspectRatio;
 
     const showLabels = svgWidth > MIN_WIDTH_LABEL_THRESHOLD;
 
@@ -188,8 +203,8 @@ export default class Gauge extends Component {
       .linear()
       .domain(range) // NOTE: confusing, but the "range" is the domain for the arc scale
       .range([
-        ARC_DEGREES / 180 * -Math.PI / 2,
-        ARC_DEGREES / 180 * Math.PI / 2,
+        ((ARC_DEGREES / 180) * -Math.PI) / 2,
+        ((ARC_DEGREES / 180) * Math.PI) / 2,
       ])
       .clamp(true);
 
@@ -238,8 +253,7 @@ export default class Gauge extends Component {
             viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
           >
             <g
-              transform={`translate(${viewBoxWidth *
-                expandWidthFactor /
+              transform={`translate(${(viewBoxWidth * expandWidthFactor) /
                 2},50)`}
             >
               {/* BACKGROUND ARC */}

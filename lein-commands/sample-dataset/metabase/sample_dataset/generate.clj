@@ -3,7 +3,7 @@
    Run this with `lein generate-sample-dataset`."
   (:require [clojure
              [edn :as edn]
-             [string :as s]]
+             [string :as str]]
             [clojure.java
              [io :as io]
              [jdbc :as jdbc]]
@@ -51,7 +51,7 @@
 
 (defn- load-addresses! []
   (println "Loading addresses...")
-  (reset! addresses (edn/read-string (slurp "sample_dataset/metabase/sample_dataset/addresses.edn")))
+  (reset! addresses (edn/read-string (slurp "lein-commands/sample-dataset/metabase/sample_dataset/addresses.edn")))
   :ok)
 
 (defn- next-address []
@@ -393,9 +393,9 @@
          (every? string? (vals field->type))]
    :post [(string? %)]}
   (format "CREATE TABLE \"%s\" (\"ID\" BIGINT AUTO_INCREMENT, %s, PRIMARY KEY (\"ID\"));"
-          (s/upper-case (name table-name))
+          (str/upper-case (name table-name))
           (apply str (->> (for [[field type] (seq field->type)]
-                            (format "\"%s\" %s" (s/upper-case (name field)) type))
+                            (format "\"%s\" %s" (str/upper-case (name field)) type))
                           (interpose ", ")))))
 
 (def ^:private ^:const tables
@@ -518,20 +518,20 @@
      (doseq [[table rows] (seq data)]
        (assert (keyword? table))
        (assert (sequential? rows))
-       (let [table-name (s/upper-case (name table))]
+       (let [table-name (str/upper-case (name table))]
          (println (format "Inserting %d rows into %s..." (count rows) table-name))
          (jdbc/insert-multi! db table-name (for [row rows]
                                              (into {} (for [[k v] (seq row)]
-                                                        {(s/upper-case (name k)) v}))))))
+                                                        {(str/upper-case (name k)) v}))))))
 
      ;; Insert the _metabase_metadata table
      (println "Inserting _metabase_metadata...")
      (jdbc/execute! db ["CREATE TABLE \"_METABASE_METADATA\" (\"KEYPATH\" VARCHAR(255), \"VALUE\" VARCHAR(255), PRIMARY KEY (\"KEYPATH\"));"])
      (jdbc/insert-multi! db "_METABASE_METADATA" (reduce concat (for [[table-name {table-description :description, columns :columns}] metabase-metadata]
-                                                                  (let [table-name (s/upper-case (name table-name))]
+                                                                  (let [table-name (str/upper-case (name table-name))]
                                                                     (conj (for [[column-name kvs] columns
                                                                                 [k v]             kvs]
-                                                                            {:keypath (format "%s.%s.%s" table-name (s/upper-case (name column-name)) (name k))
+                                                                            {:keypath (format "%s.%s.%s" table-name (str/upper-case (name column-name)) (name k))
                                                                              :value   v})
                                                                           {:keypath (format "%s.description" table-name)
                                                                            :value table-description})))))
@@ -540,7 +540,7 @@
      (println "Preparing database for export...")
      (jdbc/execute! db ["CREATE USER GUEST PASSWORD 'guest';"])
      (doseq [table (conj (keys data) "_METABASE_METADATA")]
-       (jdbc/execute! db [(format "GRANT SELECT ON %s TO GUEST;" (s/upper-case (name table)))]))
+       (jdbc/execute! db [(format "GRANT SELECT ON %s TO GUEST;" (str/upper-case (name table)))]))
 
      (println "Done."))))
 

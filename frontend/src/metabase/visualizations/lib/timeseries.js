@@ -196,11 +196,15 @@ function computeTimeseriesDataInvervalIndex(xValues, unit) {
   if (unit && INTERVAL_INDEX_BY_UNIT[unit] != undefined) {
     return INTERVAL_INDEX_BY_UNIT[unit];
   }
+  // Always use 'day' when there's just one value.
+  if (xValues.length === 1) {
+    return TIMESERIES_INTERVALS.findIndex(ti => ti.interval === "day");
+  }
   // Keep track of the value seen for each level of granularity,
   // if any don't match then we know the data is *at least* that granular.
-  let values = [];
+  const values = [];
   let index = TIMESERIES_INTERVALS.length;
-  for (let xValue of xValues) {
+  for (const xValue of xValues) {
     // Only need to check more granular than the current interval
     for (let i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
       const interval = TIMESERIES_INTERVALS[i];

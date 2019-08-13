@@ -2,8 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
+import MetabaseSettings from "metabase/lib/settings";
 
 import S from "metabase/components/List.css";
 
@@ -25,8 +26,10 @@ const emptyStateData = {
   message: t`Segments will appear here once your admins have created some`,
   image: "app/assets/img/segments-list",
   adminAction: t`Learn how to create segments`,
-  adminLink:
-    "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html",
+  adminLink: MetabaseSettings.docsUrl(
+    "administration-guide/07-segments-and-metrics",
+    "creating-a-segment",
+  ),
 };
 
 const mapStateToProps = (state, props) => ({
@@ -39,7 +42,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class SegmentList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
 
@@ -44,7 +44,10 @@ const mapDispatchToProps = {
   saveDashboard: Dashboards.actions.save,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @DashboardData
 @withToast
 @title(({ dashboard }) => dashboard && dashboard.name)
@@ -116,20 +119,21 @@ class AutomaticDashboardApp extends React.Component {
             <div className="wrapper flex align-center">
               <Icon name="bolt" className="text-gold mr2" size={24} />
               <div>
-                <h2>{dashboard && <TransientTitle dashboard={dashboard} />}</h2>
-                {dashboard &&
-                  dashboard.transient_filters && (
-                    <TransientFilters
-                      filter={dashboard.transient_filters}
-                      metadata={this.props.metadata}
-                    />
-                  )}
+                <h2 className="text-wrap mr2">
+                  {dashboard && <TransientTitle dashboard={dashboard} />}
+                </h2>
+                {dashboard && dashboard.transient_filters && (
+                  <TransientFilters
+                    filter={dashboard.transient_filters}
+                    metadata={this.props.metadata}
+                  />
+                )}
               </div>
               {savedDashboardId != null ? (
                 <Button className="ml-auto" disabled>{t`Saved`}</Button>
               ) : (
                 <ActionButton
-                  className="ml-auto"
+                  className="ml-auto text-nowrap"
                   success
                   borderless
                   actionFn={this.save}
@@ -141,21 +145,20 @@ class AutomaticDashboardApp extends React.Component {
           </div>
 
           <div className="wrapper pb4">
-            {parameters &&
-              parameters.length > 0 && (
-                <div className="px1 pt1">
-                  <Parameters
-                    parameters={parameters.map(p => ({
-                      ...p,
-                      value: parameterValues && parameterValues[p.id],
-                    }))}
-                    query={location.query}
-                    setParameterValue={setParameterValue}
-                    syncQueryString
-                    isQB
-                  />
-                </div>
-              )}
+            {parameters && parameters.length > 0 && (
+              <div className="px1 pt1">
+                <Parameters
+                  parameters={parameters.map(p => ({
+                    ...p,
+                    value: parameterValues && parameterValues[p.id],
+                  }))}
+                  query={location.query}
+                  setParameterValue={setParameterValue}
+                  syncQueryString
+                  isQB
+                />
+              </div>
+            )}
             <Dashboard {...this.props} />
           </div>
           {more && (
@@ -191,7 +194,6 @@ const TransientTitle = ({ dashboard }) =>
 
 const TransientFilters = ({ filter, metadata }) => (
   <div className="mt1 flex align-center text-medium text-bold">
-    {/* $FlowFixMe */}
     {Q.getFilters({ filter }).map((f, index) => (
       <TransientFilter key={index} filter={f} metadata={metadata} />
     ))}
@@ -223,11 +225,11 @@ const RELATED_CONTENT = {
   },
   "zoom-in": {
     title: t`Zoom in`,
-    icon: "zoom-in",
+    icon: "zoom_in",
   },
   "zoom-out": {
     title: t`Zoom out`,
-    icon: "zoom-out",
+    icon: "zoom_out",
   },
   related: {
     title: t`Related`,
@@ -260,7 +262,7 @@ const SuggestionsList = ({ suggestions, section }) => (
                     mr={1}
                     size={22}
                   />
-                  <h4>{item.title}</h4>
+                  <h4 className="text-wrap">{item.title}</h4>
                   <Box ml="auto" className="hover-child">
                     <Tooltip tooltip={item.description}>
                       <Icon name="question" color={colors["bg-dark"]} />

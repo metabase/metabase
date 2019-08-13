@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import S from "./SearchHeader.css";
 import Icon from "metabase/components/Icon.jsx";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const SearchHeader = ({
   searchText,
@@ -24,15 +24,14 @@ const SearchHeader = ({
       autoFocus={!!autoFocus}
       ref={inputRef || (() => {})}
     />
-    {resetSearchText &&
-      searchText !== "" && (
-        <Icon
-          name="close"
-          className="cursor-pointer text-light"
-          size={18}
-          onClick={resetSearchText}
-        />
-      )}
+    {resetSearchText && searchText !== "" && (
+      <Icon
+        name="close"
+        className="cursor-pointer text-light"
+        size={18}
+        onClick={resetSearchText}
+      />
+    )}
   </div>
 );
 

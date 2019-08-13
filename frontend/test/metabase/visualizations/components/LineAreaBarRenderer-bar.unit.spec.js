@@ -5,6 +5,8 @@ import {
   StringColumn,
   dispatchUIEvent,
   renderLineAreaBar,
+  createFixture,
+  cleanupFixture,
 } from "../__support__/visualizations";
 
 const DEFAULT_SETTINGS = {
@@ -25,7 +27,7 @@ const DEFAULT_COLUMN_SETTINGS = {
   date_style: "MMMM D, YYYY",
 };
 
-function MainSeries(chartType, settings = {}) {
+function MainSeries(chartType, settings = {}, value = 1) {
   return {
     card: {
       display: chartType,
@@ -39,12 +41,12 @@ function MainSeries(chartType, settings = {}) {
         StringColumn({ display_name: "Category", source: "breakout" }),
         NumberColumn({ display_name: "Sum", source: "aggregation" }),
       ],
-      rows: [["A", 1]],
+      rows: [["A", value]],
     },
   };
 }
 
-function ExtraSeries() {
+function ExtraSeries(count = 2) {
   return {
     card: {},
     data: {
@@ -52,7 +54,7 @@ function ExtraSeries() {
         StringColumn({ display_name: "Category", source: "breakout" }),
         NumberColumn({ display_name: "Count", source: "aggregation" }),
       ],
-      rows: [["A", 2]],
+      rows: [["A", count]],
     },
   };
 }
@@ -62,15 +64,11 @@ describe("LineAreaBarRenderer-bar", () => {
   const qsa = selector => [...element.querySelectorAll(selector)];
 
   beforeEach(function() {
-    document.body.insertAdjacentHTML(
-      "afterbegin",
-      '<div id="fixture" style="height: 800px; width: 1200px;">',
-    );
-    element = document.getElementById("fixture");
+    element = createFixture();
   });
 
   afterEach(function() {
-    document.body.removeChild(document.getElementById("fixture"));
+    cleanupFixture(element);
   });
 
   it(`should render an bar chart with 1 series`, () => {
@@ -158,6 +156,44 @@ describe("LineAreaBarRenderer-bar", () => {
     expect(getDataKeyValues(calls[1][0])).toEqual([
       { key: "Category", value: "A" },
       { key: "% Count", value: "67%" },
+    ]);
+  });
+
+  it(`should render a normalized bar chart with consistent precision`, () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(
+      element,
+      [
+        MainSeries("bar", { "stackable.stack_type": "normalized" }),
+        ExtraSeries(999),
+      ],
+      { onHoverChange },
+    );
+
+    // hover over each bar
+    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
+    dispatchUIEvent(qsa(".bar, .dot")[1], "mousemove");
+
+    const values = onHoverChange.mock.calls.map(
+      call => getDataKeyValues(call[0])[1].value,
+    );
+    expect(values).toEqual(["0.1%", "99.9%"]);
+  });
+
+  it(`should render an bar normalized chart with just one series`, () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(
+      element,
+      [MainSeries("bar", { "stackable.stack_type": "normalized" }, 3)],
+      { onHoverChange },
+    );
+
+    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
+
+    const { calls } = onHoverChange.mock;
+    expect(getDataKeyValues(calls[0][0])).toEqual([
+      { key: "Category", value: "A" },
+      { key: "% Sum", value: "100%" },
     ]);
   });
 

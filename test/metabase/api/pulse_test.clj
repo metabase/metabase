@@ -1,13 +1,15 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
-            [metabase.api.card-test :as card-api-test]
+            [metabase.api
+             [card-test :as card-api-test]
+             [pulse :as pulse-api]]
             [metabase.integrations.slack :as slack]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -89,8 +91,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (:body middleware/response-unauthentic) (http/client :get 401 "pulse"))
-(expect (:body middleware/response-unauthentic) (http/client :put 401 "pulse/13"))
+(expect (:body middleware.u/response-unauthentic) (http/client :get 401 "pulse"))
+(expect (:body middleware.u/response-unauthentic) (http/client :put 401 "pulse/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -912,6 +914,17 @@
             ;; Don't update the pulse, but test the pulse with the updated recipients
             {:response ((user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))
              :emails   (et/regex-email-bodies #"A Pulse")}))))))
+
+;; A Card saved with `:async?` true should not be ran async for a Pulse
+(expect
+  map?
+  (#'pulse-api/pulse-card-query-results
+   {:id            1
+    :dataset_query {:database (data/id)
+                    :type     :query
+                    :query    {:source-table (data/id :venues)
+                               :limit        1}
+                    :async?   true}}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

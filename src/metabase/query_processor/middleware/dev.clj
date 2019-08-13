@@ -9,14 +9,16 @@
 
 (def QPResultsFormat
   "Schema for the expected format of results returned by a query processor."
-  {:columns               [(s/cond-pre s/Keyword s/Str)]
-   ;; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
-   ;; If QPs do add it, those will be merged in with what annotate adds
-   ;;
-   ;; A more complete schema is used to check this in `annotate`
-   (s/optional-key :cols) [{s/Keyword s/Any}]
-   :rows                  s/Any
-   s/Keyword              s/Any})
+  (s/constrained
+   { ;; This is optional because QPs don't neccesarily have to add it themselves; annotate will take care of that
+    ;; If QPs do add it, those will be merged in with what annotate adds
+    ;;
+    ;; A more complete schema is used to check this in `annotate`
+    (s/optional-key :cols) [{s/Keyword s/Any}]
+    :rows                  s/Any
+    s/Keyword              s/Any}
+   (complement :columns)
+   "QP results should no longer include :columns."))
 
 (def ^{:arglists '([results])} validate-results
   "Validate that the RESULTS of executing a query match the `QPResultsFormat` schema. Throws an `Exception` if they are

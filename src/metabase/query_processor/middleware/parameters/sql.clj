@@ -7,9 +7,7 @@
             [honeysql.core :as hsql]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver
-             [sql :as sql]
-             [util :as driver.u]]
+            [metabase.driver.sql :as sql]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
@@ -137,7 +135,7 @@
 ;;                                    :value  "\2015-01-01~2016-09-01"\}}}
 
 (s/defn ^:private param-with-target
-  "Return the param in PARAMS with a matching TARGET. TARGET is something like:
+  "Return the param in `params` with a matching `target`. `target` is something like:
 
      [:dimension [:template-tag <param-name>]] ; for Dimensions (Field Filters)
      [:variable  [:template-tag <param-name>]] ; for other types of params"
@@ -274,7 +272,7 @@
     value))
 
 (s/defn ^:private value-for-tag :- ParamValue
-  "Given a map TAG (a value in the `:template-tags` dictionary) return the corresponding value from the PARAMS
+  "Given a map TAG (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The VALUE is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag :- TagParam, params :- (s/maybe [DimensionValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
@@ -356,25 +354,26 @@
     :else                                  (dimension-value->equals-clause-sql value)))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
-  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  "Convert `x` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [x]
   (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver/*driver*), :allow-dashed-names? true)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
 (s/defn ^:private field->identifier :- su/NonBlankString
-  "Return an approprate snippet to represent this FIELD in SQL given its param type.
+  "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
-   the PARAM-TYPE."
+   the `param-type`."
   [field param-type]
-  (-> (honeysql->replacement-snippet-info (let [identifier (sql.qp/field->identifier driver/*driver* field)]
-                                            (if (date-params/date-type? param-type)
-                                              (sql.qp/date driver/*driver* :day identifier)
-                                              identifier)))
-      :replacement-snippet))
+  (:replacement-snippet
+   (honeysql->replacement-snippet-info
+    (let [identifier (sql.qp/->honeysql driver/*driver* (sql.qp/field->identifier driver/*driver* field))]
+      (if (date-params/date-type? param-type)
+        (sql.qp/date driver/*driver* :day identifier)
+        identifier)))))
 
 (s/defn ^:private combine-replacement-snippet-maps :- ParamSnippetInfo
-  "Combine multiple REPLACEMENT-SNIPPET-MAPS into a single map using a SQL `AND` clause."
+  "Combine multiple `replacement-snippet-maps` into a single map using a SQL `AND` clause."
   [replacement-snippet-maps :- [ParamSnippetInfo]]
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
@@ -541,22 +540,29 @@
   {:query  s/Str
    :params [s/Any]})
 
-(s/defn ^:private parse-optional :- ParseTemplateResponse
+(defn- parse-one-optional-param
+  "Parse a single optional param."
+  [param-key->value {:keys [delimited-body suffix]}]
+  (let [optional-clause (parse-params delimited-body param-key->value)]
+    (if (some no-value-param? optional-clause)
+      (parse-params-or-throw suffix param-key->value)
+      (concat optional-clause (parse-params-or-throw suffix param-key->value)))))
+
+(s/defn ^:private parse-optional-params :- ParseTemplateResponse
   "Attempts to parse SQL parameter string `s`. Parses any optional clauses or parameters found, returns a query map."
   [s :- s/Str, param-key->value :- ParamValues]
-  (let [{:keys [prefix delimited-strings]} (split-delimited-string "[[" "]]" s)]
-    (reduce merge-query-map empty-query-map
-            (apply concat (parse-params-or-throw prefix param-key->value)
-                   (for [{:keys [delimited-body suffix]} delimited-strings
-                         :let [optional-clause (parse-params delimited-body param-key->value)]]
-                     (if (some no-value-param? optional-clause)
-                       (parse-params-or-throw suffix param-key->value)
-                       (concat optional-clause (parse-params-or-throw suffix param-key->value))))))))
+  (let [{:keys [prefix delimited-strings]} (split-delimited-string "[[" "]]" s)
+        parsed                             (apply
+                                            concat
+                                            (parse-params-or-throw prefix param-key->value)
+                                            (for [parsed-delimited-string delimited-strings]
+                                              (parse-one-optional-param param-key->value parsed-delimited-string)))]
+    (reduce merge-query-map empty-query-map parsed)))
 
 (s/defn ^:private parse-template :- ParseTemplateResponse
   [sql :- s/Str, param-key->value :- ParamValues]
   (-> sql
-      (parse-optional param-key->value)
+      (parse-optional-params param-key->value)
       (update :query str/trim)))
 
 
@@ -568,19 +574,9 @@
   [{sql :query, :as native}, param-key->value :- ParamValues]
   (merge native (parse-template sql param-key->value)))
 
-;; TODO - this can probably be taken out since driver/*driver* should always be bound...
-(defn- ensure-driver
-  "Depending on where the query came from (the user, permissions check etc) there might not be an driver associated to
-  the query. If there is no driver, use the database to find the right driver or throw."
-  [{:keys [driver database] :as query}]
-  (or driver
-      (driver.u/database->driver database)
-      (throw (IllegalArgumentException. "Could not resolve driver"))))
-
 (defn expand
-  "Expand parameters inside a *SQL* QUERY."
+  "Expand parameters inside a *SQL* `query`."
   [query]
-  (binding [driver/*driver* (ensure-driver query)]
-    (if (driver/supports? driver/*driver* :native-parameters)
-      (update query :native expand-query-params (query->params-map query))
-      query)))
+  (if (driver/supports? driver/*driver* :native-parameters)
+    (update query :native expand-query-params (query->params-map query))
+    query))

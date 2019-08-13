@@ -14,7 +14,8 @@ import {
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import Query from "metabase/lib/query";
+import { fieldRefForColumn } from "metabase/lib/dataset";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -100,6 +101,7 @@ export default class TableInteractive extends Component {
   columnNeedsResize: { [key: number]: boolean };
   _div: HTMLElement;
   _totalContentWidth: ?number;
+  _previousOverscrollBehaviorX: any;
 
   header: GridComponent;
   grid: GridComponent;
@@ -211,7 +213,9 @@ export default class TableInteractive extends Component {
   }
 
   _measure() {
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
 
     ReactDOM.render(
       <div style={{ display: "flex" }}>
@@ -287,7 +291,7 @@ export default class TableInteractive extends Component {
 
   onColumnResize(columnIndex: number, width: number) {
     const { settings } = this.props;
-    let columnWidthsSetting = settings["table.column_widths"]
+    const columnWidthsSetting = settings["table.column_widths"]
       ? settings["table.column_widths"].slice()
       : [];
     columnWidthsSetting[columnIndex] = Math.max(MIN_COLUMN_WIDTH, width);
@@ -366,8 +370,8 @@ export default class TableInteractive extends Component {
           "TableInteractive-emptyCell": value == null,
           "cursor-pointer": isClickable,
           "justify-end": isColumnRightAligned(column),
-          "Table-ID": isID(column),
-          "Table-FK": isFK(column),
+          "Table-ID": value != null && isID(column),
+          "Table-FK": value != null && isFK(column),
           link: isClickable && isID(column),
         })}
         onMouseUp={
@@ -488,12 +492,14 @@ export default class TableInteractive extends Component {
     const isRightAligned = isColumnRightAligned(column);
 
     // TODO MBQL: use query lib to get the sort field
-    const isSorted =
-      sort &&
-      sort[0] &&
-      sort[0][1] &&
-      Query.getFieldTargetId(sort[0][1]) === column.id;
-    const isAscending = sort && sort[0] && sort[0][0] === "asc";
+    const fieldRef = fieldRefForColumn(column, cols);
+    const sortIndex = _.findIndex(
+      sort,
+      sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
+    );
+    const isSorted = sortIndex >= 0;
+    const isAscending = isSorted && sort[sortIndex][0] === "asc";
+
     return (
       <Draggable
         /* needs to be index+name+counter so Draggable resets after each drag */
@@ -574,23 +580,21 @@ export default class TableInteractive extends Component {
         >
           {renderTableHeaderWrapper(
             <Ellipsified tooltip={columnTitle}>
-              {isSortable &&
-                isRightAligned && (
-                  <Icon
-                    className="Icon mr1"
-                    name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
-                  />
-                )}
+              {isSortable && isRightAligned && (
+                <Icon
+                  className="Icon mr1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
               {columnTitle}
-              {isSortable &&
-                !isRightAligned && (
-                  <Icon
-                    className="Icon ml1"
-                    name={isAscending ? "chevronup" : "chevrondown"}
-                    size={8}
-                  />
-                )}
+              {isSortable && !isRightAligned && (
+                <Icon
+                  className="Icon ml1"
+                  name={isAscending ? "chevronup" : "chevrondown"}
+                  size={8}
+                />
+              )}
             </Ellipsified>,
             column,
             columnIndex,
@@ -637,8 +641,26 @@ export default class TableInteractive extends Component {
     );
   };
 
+  handleOnMouseEnter = () => {
+    // prevent touchpad gestures from navigating forward/back if you're expecting to just scroll the table
+    // https://stackoverflow.com/a/50846937
+    // $FlowFixMe: overscrollBehaviorX
+    this._previousOverscrollBehaviorX = document.body.style.overscrollBehaviorX;
+    // $FlowFixMe: overscrollBehaviorX
+    document.body.style.overscrollBehaviorX = "none";
+  };
+  handleOnMouseLeave = () => {
+    // $FlowFixMe: overscrollBehaviorX
+    document.body.style.overscrollBehaviorX = this._previousOverscrollBehaviorX;
+  };
+
   render() {
-    const { width, height, data: { cols, rows }, className } = this.props;
+    const {
+      width,
+      height,
+      data: { cols, rows },
+      className,
+    } = this.props;
 
     if (!width || !height) {
       return <div className={className} />;
@@ -656,6 +678,8 @@ export default class TableInteractive extends Component {
               // no hover if we're dragging a column
               "TableInteractive--noHover": this.state.dragColIndex != null,
             })}
+            onMouseEnter={this.handleOnMouseEnter}
+            onMouseLeave={this.handleOnMouseLeave}
           >
             <canvas
               className="spread"

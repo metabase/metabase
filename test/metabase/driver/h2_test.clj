@@ -12,28 +12,47 @@
 
 ;; Check that the functions for exploding a connection string's options work as expected
 (expect
-    ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
+  ["file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}]
   (#'h2/connection-string->file+options "file:my-file;OPTION_1=TRUE;OPTION_2=100;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))
 
-(expect "file:my-file;OPTION_1=TRUE;OPTION_2=100;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"
+(expect
+  "file:my-file;OPTION_1=TRUE;OPTION_2=100;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"
   (#'h2/file+options->connection-string "file:my-file" {"OPTION_1" "TRUE", "OPTION_2" "100", "LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON" "NICE_TRY"}))
 
 
 ;; Check that we add safe connection options to connection strings
-(expect "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+(expect
+  "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
   (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))
 
 ;; Check that we override shady connection string options set by shady admins with safe ones
-(expect "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
+(expect
+  "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE;ACCESS_MODE_DATA=r"
   (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;ACCESS_MODE_DATA=rws"))
+
+;; make sure we return the USER from db details if it is a keyword key in details...
+(expect
+  "cam"
+  (#'h2/db-details->user {:db "file:my_db.db", :USER "cam"}))
+
+;; or a string key...
+(expect
+  "cam"
+  (#'h2/db-details->user {:db "file:my_db.db", "USER" "cam"}))
+
+;; or part of the `db` connection string itself
+(expect
+  "cam"
+  (#'h2/db-details->user {:db "file:my_db.db;USER=cam"}))
 
 
 ;; Make sure we *cannot* connect to a non-existent database
-(expect :exception-thrown
+(expect
+  ::exception-thrown
   (try (driver/can-connect? :h2 {:db (str (System/getProperty "user.dir") "/toucan_sightings")})
        (catch org.h2.jdbc.JdbcSQLException e
          (and (re-matches #"Database .+ not found .+" (.getMessage e))
-              :exception-thrown))))
+              ::exception-thrown))))
 
 ;; Check that we can connect to a non-existent Database when we enable potentailly unsafe connections (e.g. to the
 ;; Metabase database)

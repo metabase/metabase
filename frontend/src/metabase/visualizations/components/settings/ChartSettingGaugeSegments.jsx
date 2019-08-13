@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 import colors, { normal } from "metabase/lib/colors";
@@ -114,7 +114,7 @@ function newSegment(segments) {
     : -1;
   const nextColor =
     lastColorIndex >= 0
-      ? palette[lastColorIndex + 1 % palette.length]
+      ? palette[lastColorIndex + (1 % palette.length)]
       : palette[0];
 
   return {

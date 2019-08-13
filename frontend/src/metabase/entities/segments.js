@@ -4,23 +4,20 @@ import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";
 import colors from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
 
 const Segments = createEntity({
   name: "segments",
+  nameOne: "segment",
   path: "/api/segment",
   schema: SegmentSchema,
 
   objectActions: {
-    setArchived: ({ id }, archived, opts) =>
-      Segments.actions.update(
-        { id },
-        {
-          archived,
-          // NOTE: this is still required by the endpoint even though we don't really use it
-          revision_message: archived ? "(Archive)" : "(Unarchive)",
-        },
-        opts,
-      ),
+    setArchived: (
+      { id },
+      archived,
+      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
+    ) => Segments.actions.update({ id }, { archived, revision_message }),
 
     // NOTE: DELETE not currently implemented
     // $FlowFixMe: no official way to disable builtin actions yet
@@ -29,9 +26,15 @@ const Segments = createEntity({
 
   objectSelectors: {
     getName: segment => segment && segment.name,
-    getUrl: segment => null,
-    getColor: () => colors["text-medium"],
-    getIcon: question => "segment",
+    getUrl: segment =>
+      Urls.tableRowsQuery(
+        segment.database_id,
+        segment.table_id,
+        null,
+        segment.id,
+      ),
+    getColor: segment => colors["accent7"],
+    getIcon: segment => "segment",
   },
 
   form: {

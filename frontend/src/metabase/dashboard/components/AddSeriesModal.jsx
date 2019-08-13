@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import colors from "metabase/lib/colors";
 
 import { getVisualizationRaw } from "metabase/visualizations";
@@ -18,19 +18,19 @@ import cx from "classnames";
 import { getIn } from "icepick";
 
 function getQueryColumns(card, databases) {
-  let dbId = card.dataset_query.database;
+  const dbId = card.dataset_query.database;
   if (card.dataset_query.type !== "query") {
     return null;
   }
-  let query = card.dataset_query.query;
-  let table =
+  const query = card.dataset_query.query;
+  const table =
     databases &&
     databases[dbId] &&
     databases[dbId].tables_lookup[query["source-table"]];
   if (!table) {
     return null;
   }
-  return Query.getQueryColumns(table, query);
+  return Q_DEPRECATED.getQueryColumns(table, query);
 }
 
 export default class AddSeriesModal extends Component {
@@ -90,7 +90,7 @@ export default class AddSeriesModal extends Component {
 
   async onCardChange(card, e) {
     const { dashcard, dashcardData } = this.props;
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     try {
       if (e.target.checked) {
         if (getIn(dashcardData, [dashcard.id, card.id]) === undefined) {
@@ -100,16 +100,16 @@ export default class AddSeriesModal extends Component {
             clear: true,
           });
         }
-        let sourceDataset = getIn(this.props.dashcardData, [
+        const sourceDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           dashcard.card.id,
         ]);
-        let seriesDataset = getIn(this.props.dashcardData, [
+        const seriesDataset = getIn(this.props.dashcardData, [
           dashcard.id,
           card.id,
         ]);
         if (
-          CardVisualization.seriesAreCompatible(
+          visualization.seriesAreCompatible(
             { card: dashcard.card, data: sourceDataset.data },
             { card: card, data: seriesDataset.data },
           )
@@ -177,7 +177,7 @@ export default class AddSeriesModal extends Component {
       data: getIn(dashcardData, [dashcard.id, dashcard.card.id, "data"]),
     };
 
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
 
     return cards.filter(card => {
       try {
@@ -187,7 +187,7 @@ export default class AddSeriesModal extends Component {
         }
         if (card.dataset_query.type === "query") {
           if (
-            !CardVisualization.seriesAreCompatible(initialSeries, {
+            !visualization.seriesAreCompatible(initialSeries, {
               card: card,
               data: { cols: getQueryColumns(card, databases), rows: [] },
             })
@@ -230,14 +230,14 @@ export default class AddSeriesModal extends Component {
       });
     }
 
-    let badCards = this.state.badCards;
+    const badCards = this.state.badCards;
 
-    let enabledCards = {};
-    for (let c of this.state.series) {
+    const enabledCards = {};
+    for (const c of this.state.series) {
       enabledCards[c.id] = true;
     }
 
-    let series = [dashcard.card]
+    const series = [dashcard.card]
       .concat(this.state.series)
       .map(card => ({
         card: card,

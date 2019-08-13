@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
@@ -19,7 +19,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
-  static uiName = "Smart Number";
+  static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
@@ -31,7 +31,14 @@ export default class Smart extends React.Component {
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
       ],
     }),
@@ -46,7 +53,14 @@ export default class Smart extends React.Component {
   }
 
   // Smart scalars need to have a breakout
-  static checkRenderable([{ data: { insights } }], settings) {
+  static checkRenderable(
+    [
+      {
+        data: { insights },
+      },
+    ],
+    settings,
+  ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
         t`Group by a time field to see how this has changed over time`,
@@ -63,7 +77,12 @@ export default class Smart extends React.Component {
       isFullscreen,
       settings,
       visualizationIsClickable,
-      series: [{ card, data: { rows, cols } }],
+      series: [
+        {
+          card,
+          data: { rows, cols },
+        },
+      ],
       rawSeries,
     } = this.props;
 
@@ -75,7 +94,7 @@ export default class Smart extends React.Component {
     const column = cols[metricIndex];
     const dimensionColumn = cols[dimensionIndex];
 
-    let granularity =
+    const granularity =
       dimensionColumn && dimensionColumn.unit
         ? formatBucketing(dimensionColumn.unit).toLowerCase()
         : null;
@@ -171,7 +190,7 @@ export default class Smart extends React.Component {
           ) : (
             <Flex align="center" mt={1} flexWrap="wrap">
               <Flex align="center" color={color}>
-                <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
+                <Icon name={isNegative ? "arrow_down" : "arrow_up"} />
                 {changeDisplay}
               </Flex>
               <h4

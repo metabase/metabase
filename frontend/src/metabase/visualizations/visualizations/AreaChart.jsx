@@ -1,8 +1,9 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { areaRenderer } from "../lib/LineAreaBarRenderer";
+import { assocIn } from "icepick";
 
 import {
   GRAPH_DATA_SETTINGS,
@@ -29,4 +30,10 @@ export default class AreaChart extends LineAreaBarChart {
   };
 
   static renderer = areaRenderer;
+
+  static placeholderSeries = assocIn(
+    LineAreaBarChart.placeholderSeries,
+    [0, "card", "display"],
+    "area",
+  );
 }
