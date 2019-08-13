@@ -96,13 +96,12 @@ export class ViewTitleHeader extends React.Component {
 
     return (
       <ViewSection
-        align="flex-start"
         className={cx("border-bottom", className)}
         style={style}
         py={[1]}
       >
         {isSaved ? (
-          <div className="mb1">
+          <div>
             <div className="flex align-center">
               <ViewHeading className="mr1">
                 {question.displayName()}
@@ -121,12 +120,18 @@ export class ViewTitleHeader extends React.Component {
               />
             </div>
             <ViewSubHeading className="flex align-center flex-wrap">
-              <CollectionBadge collectionId={question.collectionId()} />
-              <span className="mx2 text-light text-smaller">•</span>
+              <CollectionBadge
+                className="mb1"
+                collectionId={question.collectionId()}
+              />
 
-              <QuestionDataSource question={question} subHead />
+              <span className="mb1 mx2 text-light text-smaller">•</span>
+
+              <QuestionDataSource className="mb1" question={question} subHead />
+
               {QuestionFilters.shouldRender(this.props) && (
                 <QuestionFilters
+                  className="mb1"
                   question={question}
                   expanded={isFiltersExpanded}
                   onExpand={this.expandFilters}
@@ -136,9 +141,9 @@ export class ViewTitleHeader extends React.Component {
             </ViewSubHeading>
           </div>
         ) : (
-          <div className="mb1">
+          <div>
             <div className="flex align-baseline flex-wrap">
-              <ViewHeading className="mt1" style={{ marginBottom: 4 }}>
+              <ViewHeading className="mt1 mr2 mb1">
                 {isNative ? (
                   t`New question`
                 ) : (
@@ -147,32 +152,34 @@ export class ViewTitleHeader extends React.Component {
               </ViewHeading>
               {showFiltersInHeading &&
                 QuestionFilters.shouldRender(this.props) && (
-                  <div className="ml2">
-                    <QuestionFilters
-                      question={question}
-                      expanded={isFiltersExpanded}
-                      onExpand={this.expandFilters}
-                      onCollapse={this.collapseFilters}
-                    />
-                  </div>
+                  <QuestionFilters
+                    className="mr2 mb1"
+                    question={question}
+                    expanded={isFiltersExpanded}
+                    onExpand={this.expandFilters}
+                    onCollapse={this.collapseFilters}
+                  />
                 )}
               {QuestionLineage.shouldRender(this.props) && (
-                <ViewSubHeading>
-                  <QuestionLineage
-                    className="ml2"
-                    question={question}
-                    originalQuestion={originalQuestion}
-                  />
-                </ViewSubHeading>
+                <QuestionLineage
+                  className="mr2 mb1"
+                  question={question}
+                  originalQuestion={originalQuestion}
+                />
               )}
             </div>
             <div className="flex align-center flex-wrap">
               {isSummarized && (
-                <QuestionDataSource question={question} subHead />
+                <QuestionDataSource
+                  className="mb1"
+                  question={question}
+                  subHead
+                />
               )}
               {!showFiltersInHeading &&
                 QuestionFilters.shouldRender(this.props) && (
                   <QuestionFilters
+                    className="mb1"
                     question={question}
                     expanded={isFiltersExpanded}
                     onExpand={this.expandFilters}
@@ -182,7 +189,7 @@ export class ViewTitleHeader extends React.Component {
             </div>
           </div>
         )}
-        <div className="ml-auto flex align-center py2">
+        <div className="ml-auto flex align-center py1">
           {NativeQueryButton.shouldRender(this.props) && (
             <NativeQueryButton size={20} question={question} />
           )}
@@ -220,10 +227,11 @@ export class ViewTitleHeader extends React.Component {
                 borderless={!isShowingNotebook}
                 primary={isShowingNotebook}
                 medium
-                className={cx({ "text-brand-hover": !isShowingNotebook })}
+                className={cx("hide sm-show", {
+                  "text-brand-hover": !isShowingNotebook,
+                })}
                 icon="notebook"
                 ml={2}
-                className="hide sm-show"
                 onClick={() =>
                   setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
                 }
