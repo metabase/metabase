@@ -12,7 +12,13 @@ const ViewSection = ({
   className,
   ...props
 }) => (
-  <Flex align={align} px={3} style={style} {...props} className={className} />
+  <Flex
+    align={align}
+    px={[1, 3]}
+    style={style}
+    {...props}
+    className={className}
+  />
 );
 
 export const ViewHeading = ({ ...props }) => <Subhead {...props} />;
