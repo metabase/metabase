@@ -219,6 +219,7 @@ export class ViewTitleHeader extends React.Component {
                 borderless={!isShowingNotebook}
                 primary={isShowingNotebook}
                 medium
+                className={cx({ "text-brand-hover": !isShowingNotebook })}
                 icon="notebook"
                 ml={2}
                 onClick={() =>
@@ -229,7 +230,10 @@ export class ViewTitleHeader extends React.Component {
           )}
           {isRunnable && (
             <RunButtonWithTooltip
-              className={cx({ hidden: isShowingNotebook })}
+              className={cx("text-brand-hover", {
+                hidden: isShowingNotebook,
+                "text-white-hover": isResultDirty && isRunnable,
+              })}
               medium
               borderless
               ml={1}
