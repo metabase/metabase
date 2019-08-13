@@ -1,3 +1,6 @@
+# Operations Guide
+
+This guide contains detailed information about how to install and configure Metabase for production use.
 
 **Covered in this guide:**
 
