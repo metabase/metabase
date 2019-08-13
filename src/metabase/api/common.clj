@@ -11,7 +11,7 @@
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
             [metabase.util
-             [i18n :as ui18n :refer [deferred-tru trs tru]]
+             [i18n :as ui18n :refer [deferred-trs deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -245,7 +245,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
@@ -266,7 +266,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
