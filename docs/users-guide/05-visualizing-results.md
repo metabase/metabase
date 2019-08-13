@@ -23,7 +23,7 @@ In Metabase, an answer to a question can be visualized in a number of ways:
 
 To change how the answer to your question is displayed, click on the Visualization button in the bottom-right of the screen to open the visualization selection sidebar.
 
-![visualizechoices](images/VisualizeChoices.png)
+![Visualization options](images/VisualizeChoices.png)
 
 If a particular visualization doesn’t really make sense for your answer, that option will appear grayed-out in the sidebar. You can still select a grayed-out option, though you might need to open the chart options to make your selection work with your data.
 
@@ -31,7 +31,7 @@ Once a question is answered, you can save or download the answer, or add it to a
 
 ### Visualization types and options
 
-Each visualization type has its own advanced options you can tweak. Just click the gear icon next to the visualization selector. Here's an overview of what you can do:
+Each visualization type has its own advanced options you can tweak. Just click the Settings button next to the Visualization button to see all your options. The options panel also automatically opens up whenever you pick a new visualization type. Here's an overview of what you can do:
 
 #### Numbers
 
