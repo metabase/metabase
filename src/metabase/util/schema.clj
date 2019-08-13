@@ -75,7 +75,7 @@
 (declare api-error-message)
 
 (defn- create-cond-schema-message [child-schemas]
-  (tru "value must satisfy one of the following requirements: "
+  (str (lazy-tru "value must satisfy one of the following requirements: ")
        (str/join " " (for [[i child-schema] (m/indexed child-schemas)]
                        (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
@@ -111,9 +111,9 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (tru "value must be an array." (when (= (count schema) 1)
-                                         (when-let [message (api-error-message (first schema))]
-                                           (str " " (tru "Each {0}" message))))))))
+        (str (lazy-tru "value must be an array.") (when (= (count schema) 1)
+                                                    (when-let [message (api-error-message (first schema))]
+                                                      (str " " (lazy-tru "Each {0}" message))))))))
 
 
 (defn non-empty
@@ -121,7 +121,7 @@
    (i.e., it must satisfy `seq`)."
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
-    (str (api-error-message schema) " " (tru "The array cannot be empty."))))
+    (str (api-error-message schema) " " (lazy-tru "The array cannot be empty."))))
 
 (defn empty-or-distinct?
   "True if `coll` is either empty or distinct."
@@ -134,7 +134,7 @@
   "Add an additional constraint to `schema` (presumably an array) that requires all elements to be distinct."
   [schema]
   (with-api-error-message (s/constrained schema empty-or-distinct? "distinct")
-    (str (api-error-message schema) " " (tru "All elements must be distinct."))))
+    (str (api-error-message schema) " " (lazy-tru "All elements must be distinct."))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
