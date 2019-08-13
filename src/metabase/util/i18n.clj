@@ -78,7 +78,7 @@
   [msg & args]
   `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
-(def str* ^String
+(def ^String str*
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
