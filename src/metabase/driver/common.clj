@@ -10,26 +10,26 @@
              [util :as u]]
             [metabase.driver.util :as driver.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [lazy-tru trs tru]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import java.text.SimpleDateFormat
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port (str (lazy-tru "Hmm, we couldn''t connect to the database.")
+  {:cannot-connect-check-host-and-port (str (deferred-tru "Hmm, we couldn''t connect to the database.")
                                             " "
-                                            (lazy-tru "Make sure your host and port settings are correct"))
-   :ssh-tunnel-auth-fail               (str (lazy-tru "We couldn''t connect to the ssh tunnel host.")
+                                            (deferred-tru "Make sure your host and port settings are correct"))
+   :ssh-tunnel-auth-fail               (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
                                             " "
-                                            (lazy-tru "Check the username, password."))
-   :ssh-tunnel-connection-fail         (str (lazy-tru "We couldn''t connect to the ssh tunnel host.")
+                                            (deferred-tru "Check the username, password."))
+   :ssh-tunnel-connection-fail         (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
                                             " "
-                                            (lazy-tru "Check the hostname and port."))
+                                            (deferred-tru "Check the hostname and port."))
    :database-name-incorrect            (tru "Looks like the database name is incorrect.")
-   :invalid-hostname                   (str (lazy-tru "It looks like your host is invalid.")
+   :invalid-hostname                   (str (deferred-tru "It looks like your host is invalid.")
                                             " "
-                                            (lazy-tru "Please double-check it and try again."))
+                                            (deferred-tru "Please double-check it and try again."))
    :password-incorrect                 (tru "Looks like your password is incorrect.")
    :password-required                  (tru "Looks like you forgot to enter your password.")
    :username-incorrect                 (tru "Looks like your username is incorrect.")
@@ -40,7 +40,7 @@
 (def default-host-details
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
-   :display-name (lazy-tru "Host")
+   :display-name (deferred-tru "Host")
    :default      "localhost"})
 
 (def default-port-details

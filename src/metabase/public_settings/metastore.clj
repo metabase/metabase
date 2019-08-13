@@ -10,7 +10,7 @@
              [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util
-             [i18n :refer [lazy-tru trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -71,7 +71,7 @@
           ;; we do not want something complicated
           (catch Throwable e
             (log/error e (trs "Error fetching token status:"))
-            {:valid false, :status (str (lazy-tru "There was an error checking whether this token was valid:")
+            {:valid false, :status (str (deferred-tru "There was an error checking whether this token was valid:")
                                         " "
                                         (.getMessage e))})))
    fetch-token-status-timeout-ms
@@ -111,7 +111,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
-  (lazy-tru "Token for premium features. Go to the MetaStore to get yours!")
+  (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it

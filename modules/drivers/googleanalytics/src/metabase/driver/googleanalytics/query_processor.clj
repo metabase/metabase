@@ -7,7 +7,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [lazy-tru tru]]
+             [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
@@ -236,7 +236,7 @@
 
 (defn- try-reduce-filters [[filter1 filter2]]
   (merge-with
-    (fn [_ _] (throw (Exception. (str (lazy-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
+    (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
     filter1 filter2))
 
 (defmethod parse-filter:interval :and [[_ & subclauses]]

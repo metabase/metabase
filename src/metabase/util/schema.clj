@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [lazy-tru tru]]
+             [i18n :refer [deferred-tru tru]]
              [password :as password]]
             [schema
              [core :as s]
@@ -75,7 +75,7 @@
 (declare api-error-message)
 
 (defn- create-cond-schema-message [child-schemas]
-  (str (lazy-tru "value must satisfy one of the following requirements: ")
+  (str (deferred-tru "value must satisfy one of the following requirements: ")
        (str/join " " (for [[i child-schema] (m/indexed child-schemas)]
                        (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
@@ -111,9 +111,9 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (lazy-tru "value must be an array.") (when (= (count schema) 1)
+        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
                                                     (when-let [message (api-error-message (first schema))]
-                                                      (str " " (lazy-tru "Each {0}" message))))))))
+                                                      (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
@@ -121,7 +121,7 @@
    (i.e., it must satisfy `seq`)."
   [schema]
   (with-api-error-message (s/constrained schema seq "Non-empty")
-    (str (api-error-message schema) " " (lazy-tru "The array cannot be empty."))))
+    (str (api-error-message schema) " " (deferred-tru "The array cannot be empty."))))
 
 (defn empty-or-distinct?
   "True if `coll` is either empty or distinct."
@@ -134,7 +134,7 @@
   "Add an additional constraint to `schema` (presumably an array) that requires all elements to be distinct."
   [schema]
   (with-api-error-message (s/constrained schema empty-or-distinct? "distinct")
-    (str (api-error-message schema) " " (lazy-tru "All elements must be distinct."))))
+    (str (api-error-message schema) " " (deferred-tru "All elements must be distinct."))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -144,86 +144,86 @@
 (def NonBlankString
   "Schema for a string that cannot be blank."
   (with-api-error-message (s/constrained s/Str (complement str/blank?) "Non-blank string")
-    (lazy-tru "value must be a non-blank string.")))
+    (deferred-tru "value must be a non-blank string.")))
 
 (def IntGreaterThanOrEqualToZero
   "Schema representing an integer than must also be greater than or equal to zero."
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (lazy-tru "Integer greater than or equal to zero"))
-    (lazy-tru "value must be an integer greater than or equal to zero.")))
+      (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
+    (deferred-tru "value must be an integer greater than or equal to zero.")))
 
 ;; TODO - rename this to `PositiveInt`?
 (def IntGreaterThanZero
   "Schema representing an integer than must also be greater than zero."
   (with-api-error-message
-      (s/constrained s/Int (partial < 0) (lazy-tru "Integer greater than zero"))
-    (lazy-tru "value must be an integer greater than zero.")))
+      (s/constrained s/Int (partial < 0) (deferred-tru "Integer greater than zero"))
+    (deferred-tru "value must be an integer greater than zero.")))
 
 (def NonNegativeInt
   "Schema representing an integer 0 or greater"
   (with-api-error-message
-      (s/constrained s/Int (partial <= 0) (lazy-tru "Integer greater than or equal to zero"))
-    (lazy-tru "value must be an integer zero or greater.")))
+      (s/constrained s/Int (partial <= 0) (deferred-tru "Integer greater than or equal to zero"))
+    (deferred-tru "value must be an integer zero or greater.")))
 
 (def PositiveNum
   "Schema representing a numeric value greater than zero. This allows floating point numbers and integers."
   (with-api-error-message
-      (s/constrained s/Num (partial < 0) (lazy-tru "Number greater than zero"))
-    (lazy-tru "value must be a number greater than zero.")))
+      (s/constrained s/Num (partial < 0) (deferred-tru "Number greater than zero"))
+    (deferred-tru "value must be a number greater than zero.")))
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
-  (s/named (s/cond-pre s/Keyword s/Str) (lazy-tru "Keyword or string")))
+  (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string")))
 
 (def FieldType
   "Schema for a valid Field type (does it derive from `:type/*`)?"
-  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (lazy-tru "Valid field type"))
-    (lazy-tru "value must be a valid field type.")))
+  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (deferred-tru "Valid field type"))
+    (deferred-tru "value must be a valid field type.")))
 
 (def FieldTypeKeywordOrString
   "Like `FieldType` (e.g. a valid derivative of `:type/*`) but allows either a keyword or a string.
    This is useful especially for validating API input or objects coming out of the DB as it is unlikely
    those values will be encoded as keywords at that point."
-  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (lazy-tru "Valid field type (keyword or string)"))
-    (lazy-tru "value must be a valid field type (keyword or string).")))
+  (with-api-error-message (s/pred #(isa? (keyword %) :type/*) (deferred-tru "Valid field type (keyword or string)"))
+    (deferred-tru "value must be a valid field type (keyword or string).")))
 
 (def EntityTypeKeywordOrString
   "Validates entity type derivatives of `:entity/*`. Allows strings or keywords"
-  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (lazy-tru "Valid entity type (keyword or string)"))
-   (lazy-tru "value must be a valid entity type (keyword or string).")))
+  (with-api-error-message (s/pred #(isa? (keyword %) :entity/*) (deferred-tru "Valid entity type (keyword or string)"))
+   (deferred-tru "value must be a valid entity type (keyword or string).")))
 
 (def Map
   "Schema for a valid map."
-  (with-api-error-message (s/pred map? (lazy-tru "Valid map"))
-    (lazy-tru "value must be a map.")))
+  (with-api-error-message (s/pred map? (deferred-tru "Valid map"))
+    (deferred-tru "value must be a map.")))
 
 (def Email
   "Schema for a valid email string."
-  (with-api-error-message (s/constrained s/Str u/email? (lazy-tru "Valid email address"))
-    (lazy-tru "value must be a valid email address.")))
+  (with-api-error-message (s/constrained s/Str u/email? (deferred-tru "Valid email address"))
+    (deferred-tru "value must be a valid email address.")))
 
 (def ComplexPassword
   "Schema for a valid password of sufficient complexity."
   (with-api-error-message (s/constrained s/Str password/is-complex?)
-    (lazy-tru "Insufficient password strength")))
+    (deferred-tru "Insufficient password strength")))
 
 (def IntString
   "Schema for a string that can be parsed as an integer.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (Integer/parseInt %)))
-    (lazy-tru "value must be a valid integer.")))
+    (deferred-tru "value must be a valid integer.")))
 
 (def IntStringGreaterThanZero
   "Schema for a string that can be parsed as an integer, and is greater than zero.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (< 0 (Integer/parseInt %))))
-    (lazy-tru "value must be a valid integer greater than zero.")))
+    (deferred-tru "value must be a valid integer greater than zero.")))
 
 (def IntStringGreaterThanOrEqualToZero
   "Schema for a string that can be parsed as an integer, and is greater than or equal to zero.
    Something that adheres to this schema is guaranteed to to work with `Integer/parseInt`."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (<= 0 (Integer/parseInt %))))
-    (lazy-tru "value must be a valid integer greater than or equal to zero.")))
+    (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
 (defn- boolean-string? ^Boolean [s]
   (boolean (when (string? s)
@@ -234,14 +234,14 @@
   "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
    Something that adheres to this schema is guaranteed to to work with `Boolean/parseBoolean`."
   (with-api-error-message (s/constrained s/Str boolean-string?)
-    (lazy-tru "value must be a valid boolean string (''true'' or ''false'').")))
+    (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
   (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
-    (lazy-tru "value must be a valid JSON string.")))
+    (deferred-tru "value must be a valid JSON string.")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
-    (lazy-tru "value must be a valid embedding params map.")))
+    (deferred-tru "value must be a valid embedding params map.")))

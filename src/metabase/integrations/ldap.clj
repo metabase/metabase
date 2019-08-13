@@ -9,7 +9,7 @@
              [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [lazy-tru tru]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [toucan.db :as db])
   (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool LDAPException]))
 
@@ -17,19 +17,19 @@
   "{login}")
 
 (defsetting ldap-enabled
-  (lazy-tru "Enable LDAP authentication.")
+  (deferred-tru "Enable LDAP authentication.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-host
-  (lazy-tru "Server hostname."))
+  (deferred-tru "Server hostname."))
 
 (defsetting ldap-port
-  (lazy-tru "Server port, usually 389 or 636 if SSL is used.")
+  (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
   :default "389")
 
 (defsetting ldap-security
-  (lazy-tru "Use SSL, TLS or plain text.")
+  (deferred-tru "Use SSL, TLS or plain text.")
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
@@ -37,42 +37,42 @@
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
-  (lazy-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
+  (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
 
 (defsetting ldap-password
-  (lazy-tru "The password to bind with for the lookup user.")
+  (deferred-tru "The password to bind with for the lookup user.")
   :sensitive? true)
 
 (defsetting ldap-user-base
-  (lazy-tru "Search base for users. (Will be searched recursively)"))
+  (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (lazy-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (lazy-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
+  (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail")
 
 (defsetting ldap-attribute-firstname
-  (lazy-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
+  (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName")
 
 (defsetting ldap-attribute-lastname
-  (lazy-tru "Attribute to use for the user''s last name. (usually ''sn'')")
+  (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn")
 
 (defsetting ldap-group-sync
-  (lazy-tru "Enable group membership synchronization with LDAP.")
+  (deferred-tru "Enable group membership synchronization with LDAP.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-group-base
-  (lazy-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
   ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of MB groups IDs
-  (lazy-tru "JSON containing LDAP to Metabase group mappings.")
+  (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
   :default {}
   :getter  (fn []

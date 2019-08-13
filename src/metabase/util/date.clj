@@ -8,7 +8,7 @@
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [lazy-trs]]
+             [i18n :refer [deferred-trs]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
@@ -60,18 +60,18 @@
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
-          (log/warn (str (lazy-trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (lazy-trs "JVM timezone is {0} and detected database timezone is {1}."
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
                                    (.getID jvm-timezone) (.getID data-timezone))
                          " "
-                         (lazy-trs "Configure a report timezone to ensure proper date and time conversions."))))
+                         (deferred-trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
-          (log/warn (str (lazy-trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (lazy-trs "JVM timezone is {0} and detected database timezone is {1}."
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
                                    (.getID jvm-timezone) (.getID data-timezone)))))))))
 
 (defn call-with-effective-timezone

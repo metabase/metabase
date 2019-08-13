@@ -13,7 +13,7 @@
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [i18n :refer [lazy-tru tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -53,9 +53,9 @@
     (let [expected-count (count columns)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (lazy-tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (lazy-tru "Expected {0} columns, but first row of resuls has {1} columns."
+                             (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
                                   expected-count actual-count))
                  {:expected-columns columns
                   :first-row        (first rows)}))))))
@@ -364,13 +364,13 @@
       (when-not (= expected-count actual-count)
         (throw
          (Exception.
-          (str (lazy-tru "Query processor error: mismatched number of columns in query and results.")
+          (str (deferred-tru "Query processor error: mismatched number of columns in query and results.")
                " "
-               (lazy-tru "Expected {0} fields, got {1}" expected-count actual-count)
+               (deferred-tru "Expected {0} fields, got {1}" expected-count actual-count)
                "\n"
-               (lazy-tru "Expected: {0}" (mapv :name returned-mbql-columns))
+               (deferred-tru "Expected: {0}" (mapv :name returned-mbql-columns))
                "\n"
-               (lazy-tru "Actual: {0}" (vec (:columns results))))))))))
+               (deferred-tru "Actual: {0}" (vec (:columns results))))))))))
 
 (s/defn ^:private cols-for-fields
   [{:keys [fields], :as inner-query} :- su/Map]

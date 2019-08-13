@@ -17,7 +17,7 @@
             [metabase.util
              [date :as du]
              [export :as export]
-             [i18n :refer [lazy-trs trs tru]]
+             [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
@@ -47,9 +47,9 @@
 
 (defn- abandonment-context []
   {:heading      (trs "We’d love your feedback.")
-   :callToAction (str (lazy-trs "It looks like Metabase wasn’t quite a match for you.")
+   :callToAction (str (deferred-trs "It looks like Metabase wasn’t quite a match for you.")
                       " "
-                      (lazy-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
+                      (deferred-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
    :link         "https://metabase.com/feedback/inactive"})
 
 (defn- follow-up-context []

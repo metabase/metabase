@@ -16,7 +16,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [lazy-tru tru]]])
+             [i18n :refer [deferred-tru tru]]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -31,7 +31,7 @@
 (defmethod driver/connection-properties :h2 [_]
   [{:name         "db"
     :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (lazy-tru "Users/camsaul/bird_sightings/toucans"))
+    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
 (defn- connection-string->file+options

@@ -21,7 +21,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [lazy-tru tru]]
+             [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [monger
              [collection :as mc]
@@ -90,7 +90,7 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green (str "\n" (lazy-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
+    (log/debug (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
                  (->> form
                       ;; strip namespace qualifiers from Monger form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %))

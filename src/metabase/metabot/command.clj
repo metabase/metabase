@@ -17,7 +17,7 @@
              [permissions :refer [Permissions]]
              [permissions-group :as perms-group]]
             [metabase.util
-             [i18n :refer [lazy-tru trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [urls :as urls]]
             [toucan.db :as db]))
 
@@ -125,7 +125,7 @@
 
 (defmethod command :list [& _]
   (let [cards (list-cards)]
-    (str (lazy-tru "Here''s your {0} most recent cards:" (count cards))
+    (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
          "\n"
           (format-cards-list cards))))
 
@@ -145,7 +145,7 @@
       (throw
        (Exception.
         (str
-         (lazy-tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
+         (deferred-tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
          "\n"
          (format-cards-list cards)))))
     first-card))
@@ -195,7 +195,7 @@
 
 (defmethod command :help [& _]
   (str
-   (lazy-tru "Here''s what I can do: ")
+   (deferred-tru "Here''s what I can do: ")
    (str/join ", " (for [cmd (listed-commands)]
                     (str \` (name cmd) \`)))))
 
