@@ -163,16 +163,15 @@
       round-to-2-decimals
       (->> (tu/round-fingerprint-cols [:columns]))))
 
-;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
-;; do datetime breakouts on years
+;; make sure that a Card where a DateTime column is broken out by year works the way we'd expect
 (expect
-  [{:base_type    "type/Text"
+  [{:base_type    "type/Date"
     :display_name "Date"
     :name         "DATE"
-    :unit         nil
+    :unit         "year"
     :special_type nil
     :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
-                                                                         :latest   "2015-12-29T00:00:00.000Z"}}}}
+                                                                                   :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
     :display_name "Count"
     :name         "count"

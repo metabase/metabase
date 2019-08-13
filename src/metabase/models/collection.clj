@@ -20,6 +20,7 @@
             [metabase.util
              [i18n :as ui18n :refer [trs tru]]
              [schema :as su]]
+            [potemkin.types :as p.types]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -168,7 +169,7 @@
 ;; Collection in many of the functions in this namespace. The Root Collection is not a true Collection, but instead
 ;; represents things that have no collection_id, or are otherwise to be seen at the top-level by the current user.
 
-(defrecord ^:private RootCollection [])
+(p.types/defrecord+ ^:private RootCollection [])
 
 (u/strict-extend RootCollection
   i/IObjectPermissions
