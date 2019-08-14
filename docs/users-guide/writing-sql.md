@@ -30,6 +30,8 @@ If you or someone else wrote a SQL query that includes [variables](13-sql-parame
 
 ![SQL filter](images/SQL-filter-widget.png)
 
+Writing SQL queries that use variables or parameters can be very powerful, but it's also a bit more advanced, so that topic has its own page if you'd like to [learn more](13-sql-parameters.md).
+
 ---
 
 ## Next: Creating charts
