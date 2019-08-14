@@ -1,6 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -182,9 +183,6 @@ export class ViewTitleHeader extends React.Component {
           </div>
         )}
         <div className="ml-auto flex align-center">
-          {NativeQueryButton.shouldRender(this.props) && (
-            <NativeQueryButton size={20} question={question} />
-          )}
           {isDirty ? (
             <Link
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
@@ -228,10 +226,19 @@ export class ViewTitleHeader extends React.Component {
               />
             </Tooltip>
           )}
+          {NativeQueryButton.shouldRender(this.props) && (
+            <Box
+              ml={2}
+              p={1}
+              className="text-medium text-brand-hover cursor-pointer"
+            >
+              <NativeQueryButton size={16} question={question} />
+            </Box>
+          )}
           {isRunnable && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover", {
-                hidden: isShowingNotebook,
+                hide: isShowingNotebook,
                 "text-white-hover": isResultDirty && isRunnable,
               })}
               medium
