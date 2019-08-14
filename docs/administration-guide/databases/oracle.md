@@ -15,10 +15,10 @@ Before downloading this JAR you may need to sign up for a free account with Orac
 
 ### Adding the Oracle JDBC Driver JAR to the Metabase Plugins Directory
 
-#### When running from a JAR
-
 Metabase will automatically make the Oracle driver available if it finds the Oracle JDBC driver JAR in the Metabase plugins directory when it starts up.
 All you need to do is create the directory, move the JAR you just downloaded into it, and restart Metabase.
+
+#### When running from a JAR
 
 By default, the plugins directory is called `plugins`, and lives in the same directory as the Metabase JAR.
 
