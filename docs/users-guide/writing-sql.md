@@ -6,9 +6,9 @@ If you ever need to ask questions that can't be expressed using the question bui
 
 ### What's SQL?
 
-SQL (pronounced "sequel") stands for Structured Query Language, and is a widely used standard for getting data from databases. To learn more about it, check out this [SQL Tutorial](http://www.w3schools.com/sql/default.asp).
+SQL (pronounced "sequel") stands for Structured Query Language, and is a widely used standard for getting data from databases. We won't try to teach you all about SQL in this guide, but to learn more about it, check out this [SQL Tutorial](http://www.w3schools.com/sql/default.asp).
 
-Even if you don't understand SQL or how to use it, it's worthwhile to understand how to use it inside Metabase because sometimes other people will share SQL-based questions that might be useful to you.
+Even if you don't understand SQL or how to use it, it's worthwhile to understand how works inside Metabase because sometimes other people will share SQL-based questions that might be useful to you.
 
 ### Starting a new SQL query
 
@@ -20,9 +20,15 @@ You can write SQL (or your database's native querying language) directly into th
 
 To try it out, type the command `select sum(subtotal), created_at from orders group by created_at`. Don't worry if you don't understand this just yet. Click the blue run button and note the table that comes back is the same as if you had asked for the sum of Subtotal in the Orders table, grouped by Created At.
 
-**Tip!** You can run part of a query by selecting the part you'd like to run and holding down ctrl+alt+enter (on Windows) and ctrl+option+enter (on Mac).
+**Tip!** You can run your SQL query by pressing `ctrl` + `enter` on Windows, or `command` + `return` on a Mac. You can also run only a specific section of a query by selecting the part you'd like to run and pressing `ctrl` + `alt` + `enter` on Windows, or `command` + `option` + `return` on a Mac.
 
 Questions asked using SQL can be saved, downloaded, or added to a dashboard just like questions asked using the question builder.
+
+### Using SQL filters
+
+If you or someone else wrote a SQL query that includes [variables](13-sql-parameters.md), your question might have filter widgets at the top of the screen. These let you modify and filter the SQL query before it's run, changing the results you might get.
+
+![SQL filter](images/SQL-filter-widget.png)
 
 ---
 

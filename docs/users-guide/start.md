@@ -24,7 +24,7 @@
 
 **More**
 
-- [Learning about your data](12-data-model-reference.md)
+- [Referencing your data model while writing SQL](12-data-model-reference.md)
 - [Creating SQL Templates](13-sql-parameters.md)
 - [Getting automatic insights with X-rays](14-x-rays.md)
 - [Setting and getting alerts](15-alerts.md)
