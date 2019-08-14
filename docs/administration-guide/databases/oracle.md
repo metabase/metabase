@@ -5,7 +5,7 @@ include it as part of Metabase. Luckily, downloading it yourself and making it a
 
 ### Downloading the Oracle JDBC Driver JAR
 
-You can download the JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/features/jdbc/jdbc-ucp-122-3110062.html).
+You can download the JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
 Head to this page, accept the license agreement, and download `ojdbc8.jar`:
 
 ![Oracle JDBC Download](../images/oracle_jdbc_download.png)
