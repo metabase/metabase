@@ -9,7 +9,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import { Flex } from "grid-styled";
 import styled from "styled-components";
-import { space, width } from "styled-system";
+import { space } from "styled-system";
 import color from "color";
 
 import * as Urls from "metabase/lib/urls";
