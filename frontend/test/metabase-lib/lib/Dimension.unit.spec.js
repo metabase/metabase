@@ -432,6 +432,43 @@ describe("Dimension", () => {
       });
     });
 
+    describe("JoinedDimension", () => {
+      let dimension = null;
+      beforeAll(() => {
+        dimension = Dimension.parseMBQL(
+          ["joined-field", "join1", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          metadata,
+        );
+      });
+
+      describe("INSTANCE METHODS", () => {
+        describe("mbql()", () => {
+          it('returns a "joined-field" clause', () => {
+            expect(dimension.mbql()).toEqual([
+              "joined-field",
+              "join1",
+              ["field-id", ORDERS_TOTAL_FIELD_ID],
+            ]);
+          });
+        });
+        describe("displayName()", () => {
+          it("returns the field name", () => {
+            expect(dimension.displayName()).toEqual("Total");
+          });
+        });
+        describe("subDisplayName()", () => {
+          it("returns 'Default' for numeric fields", () => {
+            expect(dimension.subDisplayName()).toEqual("Default");
+          });
+        });
+        describe("subTriggerDisplayName()", () => {
+          it("returns 'Unbinned' if the dimension is a binnable number", () => {
+            expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
+          });
+        });
+      });
+    });
+
     describe("AggregationDimension", () => {
       let dimension = null;
       beforeAll(() => {
