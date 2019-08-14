@@ -1,3 +1,7 @@
+#### [FAQs](faq/start.md)
+
+Frequently asked questions about Metabase.
+
 ## In-depth Guides
 
 #### [Troubleshooting Guide](troubleshooting-guide/index.md)
