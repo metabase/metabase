@@ -1,3 +1,3 @@
 # How do I integrate Metabase and our single-sign on (SSO) option?
 
-The open-source edition of Metabase allows you to [integrate with LDAP or Google sign-in](https://metabase.com/docs/latest/administration-guide/10-single-sign-on.html). If you’re using a [SAML](https://metabase.com/docs/latest/enterprise-guide/authenticating-with-saml.html) or [JWT](https://metabase.com/docs/latest/enterprise-guide/authenticating-with-jwt.html) SSO solution, you will need [Metabase Enterprise](https://metabase.com/enterprise/).
+The open-source edition of Metabase allows you to [integrate with LDAP or Google sign-in](../../administration-guide/10-single-sign-on.html). If you’re using a [SAML](../../enterprise-guide/authenticating-with-saml.html) or [JWT](../..enterprise-guide/authenticating-with-jwt.html) SSO solution, you will need [Metabase Enterprise](https://metabase.com/enterprise/).
