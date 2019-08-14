@@ -149,7 +149,7 @@ Area charts are useful when comparing the proportions of two metrics over time. 
 ![Stacked area chart](images/visualizations/area.png)
 
 **Trend lines**
-Another useful option for line, area, bar, and scatter charts is trend lines. If you have a question where you're grouping by a time field, open up the visualization options by clicking the gear icon, and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. This will even work if you have multiple numbers selected in the View section of your question. It won't work, however, if you have any groupings beyond the one time field.
+Another useful option for line, area, bar, and scatter charts is trend lines. If you have a question where you're grouping by a time field, open up the visualization settings and turn the `Show trend line` toggle on to display a trend line. Metabase will choose the best type of line to fit to the trend of your series. This will even work if you have multiple metrics selected in your summary. But it won't work if you have any groupings beyond the one time field.
 
 ![Trend lines](images/visualizations/trend-lines.png)
 
@@ -163,11 +163,11 @@ Metabase will pick one of your series to display as a line, and another to displ
 
 ![Line + bar](images/visualizations/combo-chart-settings.png)
 
-To use a Line + Bar chart, you'll either need to have two or more numbers selected in the View section of your question, with one or two grouping columns, like this…
+To use a Line + Bar chart, you'll either need to have two or more metrics selected in the Summarize By section of your question, with one or two grouping columns, like this…
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-1.png)
 
-…or you'll need a question with a single item in the View section, with two grouping columns, like this:
+…or you'll need a question with a single metric and with two grouping columns, like this:
 
 ![Data for Line + Bar chart](images/visualizations/combo-chart-data-2.png)
 
@@ -200,7 +200,7 @@ These three charting types have very similar options, which are broken up into t
 
 Scatterplots are useful for visualizing the correlation between two variables, like comparing the age of your users vs. how many dollars they've spent on your products. To use a scatterplot, you'll need to ask a question that results in two numeric columns, like `Count of Orders grouped by Customer Age`. Alternatively, you can use a raw data table and select the two numeric fields you want to use in the chart options.
 
-If you have a third numeric field, you can also create a bubble chart. Select the Scatter visualization, then open up the chart options and select a field in the `bubble size` dropdown. This field will be used to determine the size of each bubble on your chart. For example, you could use a field that contains the total dollar amount for each x-y pair — i.e., larger bubbles for larger total dollar amounts spent on orders.
+If you have a third numeric field, you can also create a bubble chart. Select the Scatter visualization, then open up the chart settings and select a field in the `bubble size` dropdown. This field will be used to determine the size of each bubble on your chart. For example, you could use a field that contains the total dollar amount for each x-y pair — i.e., larger bubbles for larger total dollar amounts spent on orders.
 
 Scatterplots and bubble charts also have similar chart options as line, bar, and area charts, including the option to display trend or goal lines.
 
