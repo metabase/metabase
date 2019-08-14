@@ -46,7 +46,6 @@
 :local .ChartWithLegend.vertical.flexChart .Legend {
   flex-grow: 0;
   flex-shrink: 0;
-  max-height: 25%;
 }
 :local .ChartWithLegend.vertical.flexChart .Chart {
   flex-grow: 1;
