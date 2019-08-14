@@ -27,21 +27,20 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { getPath, getContext, getUser } from "../selectors";
-import Database from "metabase/entities/databases";
-
 import {
-  getCurrentQuery,
-  getNewQueryOptions,
+  getHasDataAccess,
+  getHasNativeWrite,
   getPlainNativeQuery,
 } from "metabase/new_query/selectors";
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
-  query: getCurrentQuery(state),
-  plainNativeQuery: getPlainNativeQuery(state),
-  newQueryOptions: getNewQueryOptions(state),
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
+  plainNativeQuery: getPlainNativeQuery(state),
+  hasDataAccess: getHasDataAccess(state),
+  hasNativeWrite: getHasNativeWrite(state),
 });
 
 const mapDispatchToProps = {
@@ -285,12 +284,7 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const hasDataAccess =
-      this.props.databases && this.props.databases.length > 0;
-    const hasNativeWrite =
-      hasDataAccess &&
-      this.props.databases.filter(db => db.native_permissions === "write")
-        .length > 0;
+    const { hasDataAccess, hasNativeWrite } = this.props;
 
     return (
       <Flex

@@ -48,10 +48,7 @@ import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 import EntityPage from "metabase/components/EntityPage.jsx";
 // new question
-import {
-  NewQuestionStart,
-  NewQuestionMetricSearch,
-} from "metabase/new_query/router_wrappers";
+import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
@@ -225,14 +222,11 @@ export const getRoutes = store => (
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
           {/* NEW QUESTION FLOW */}
-          <Route path="new" title={t`New Question`}>
-            <IndexRoute component={NewQuestionStart} />
-            <Route
-              path="metric"
-              title={t`Metrics`}
-              component={NewQuestionMetricSearch}
-            />
-          </Route>
+          <Route
+            path="new"
+            title={t`New Question`}
+            component={NewQueryOptions}
+          />
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":cardId" component={QueryBuilder} />
           <Route path=":cardId/notebook" component={QueryBuilder} />
