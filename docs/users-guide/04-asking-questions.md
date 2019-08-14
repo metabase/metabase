@@ -6,6 +6,8 @@ Metabase's two core concepts are questions and their corresponding answers. Ever
 
 ### Ways to start a new question
 
+![The new question menu](./images/new-question.png)
+
 When you click the Ask a Question button, you'll see that there are three ways to ask a specific question in Metabase:
 
 1. The simple question mode, which lets you filter, summarize, and visualize data.
