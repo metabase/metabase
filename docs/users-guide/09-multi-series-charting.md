@@ -51,9 +51,9 @@ If you need to compare single numbers and get a sense of how they differ, Metaba
 
 ### Creating a multi-series visualization in the query builder.
 
-If you’re creating a new question in the query builder, you can also view the result as a multi-series visualization. To do this you’ll need to summarize and add two groupings to your question.
+If you’re creating a new question you can also view the result as a multi-series visualization. To do this you’ll need to summarize and add two groupings to your question.
 
-As an example, we might want to see which service is referring the most people to our product. (In the sample dataset that ships with Metabase this would involve using the `Source` and `Created At` columns of the `People` table.)
+As an example, we might want to see which website or service is referring the most people to our website. (In the sample dataset that ships with Metabase this would involve using the `Source` and `Created At` columns of the `People` table.)
 
 To do this we’d click the Summarize button, and then add `Source` and `Created At` as groupings (the `count of rows` metric that we want is already selected by default). [Learn more about asking questions](04-asking-questions.md).
 
