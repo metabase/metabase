@@ -152,7 +152,6 @@ To add external dependency JAR files such as the Oracle or Vertica JDBC drivers 
 
       docker run -d -p 3000:3000 \
       --mount type=bind,source=/path/to/plugins,destination=/plugins \
-      -e "JAVA_TIMEZONE=US/Pacific" \
       --name metabase metabase/metabase
 
 Note that Metabase will use this directory to extract plugins bundled with the default Metabase distribution (such as drivers for various databases such as SQLite), thus it must be readable and writable by Docker.
