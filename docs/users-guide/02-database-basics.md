@@ -70,7 +70,7 @@ If we wanted to analyze our hypothetical app's database with Metabase, we could 
 
     What's the average age of all customers who made reservations in February of 2015?
 
-To do this, we’d open up the Reservation table, add a filter to only look at reservations between February 1 and February 28, 2015, select Average for the View. For the Field, now we put our foreign key to use and select Age from the _Customers_ table that our Reservations table references — each reservation will now have a corresponding customer age, matched up by the customer ID.
+To do this, we’d open up the Reservation table, add a filter to only look at reservations between February 1 and February 28, 2015, and select `Average of…`. To select the average of Age specifically, we now put our foreign key to use and select Age from the _Customers_ table that our Reservations table references.
 
 ---
 
