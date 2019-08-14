@@ -5,7 +5,8 @@
             [metabase.public-settings :as public-settings]
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]
+            [puppetlabs.i18n.core :as i18n]))
 
  ;; double-check that setting the `site-url` setting will automatically strip off trailing slashes
 (expect

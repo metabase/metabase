@@ -22,20 +22,20 @@
              [dashboard :as transform.dashboard]
              [materialize :as transform.materialize]]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
-    (tru "invalid show value")))
+    (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
   (su/with-api-error-message
       (s/pred (fn [prefix]
                 (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
-    (tru "invalid value for prefix")))
+    (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
@@ -47,7 +47,7 @@
                                     :rule)
                               (rules/get-rules [toplevel])))
                       ["table" "metric" "field"])))
-    (tru "invalid value for rule name")))
+    (deferred-tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
@@ -55,7 +55,7 @@
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
       (s/pred decode-base64-json)
-    (tru "value couldn''t be parsed as base64 encoded JSON")))
+    (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -96,12 +96,12 @@
 (def ^:private Entity
   (su/with-api-error-message
       (apply s/enum (keys ->entity))
-    (tru "Invalid entity type")))
+    (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
   (su/with-api-error-message
       (s/enum "segment" "adhoc" "table")
-    (tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
+    (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `ìd`."

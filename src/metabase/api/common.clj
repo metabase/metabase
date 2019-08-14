@@ -11,7 +11,7 @@
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
             [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-trs deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -144,7 +144,7 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private generic-400
-  [400 (tru "Invalid Request.")])
+  [400 (deferred-tru "Invalid Request.")])
 
 (defn check-400
   "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -159,7 +159,7 @@
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 (tru "Not found.")])
+  [404 (deferred-tru "Not found.")])
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -196,7 +196,7 @@
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
-  [500 (tru "Internal server error.")])
+  [500 (deferred-tru "Internal server error.")])
 
 (defn check-500
   "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -245,7 +245,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
@@ -266,7 +266,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages

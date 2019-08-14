@@ -19,7 +19,7 @@
              [setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]
              [password :as pass]
              [schema :as su]]
             [schema.core :as s]
@@ -47,8 +47,8 @@
    ;; IP Address doesn't have an actual UI field so just show error by username
    :ip-address (throttle/make-throttler :username, :attempts-threshold 50)})
 
-(def ^:private password-fail-message (tru "Password did not match stored password."))
-(def ^:private password-fail-snippet (tru "did not match stored password"))
+(def ^:private password-fail-message (deferred-tru "Password did not match stored password."))
+(def ^:private password-fail-snippet (deferred-tru "did not match stored password"))
 
 (s/defn ^:private ldap-login :- (s/maybe UUID)
   "If LDAP is enabled and a matching user exists return a new Session for them, or `nil` if they couldn't be
@@ -203,10 +203,10 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  (tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
+  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
 
 (defsetting google-auth-auto-create-accounts-domain
-  (tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
+  (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
 
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]

@@ -15,7 +15,7 @@
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -89,7 +89,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (str (tru "Invalid permissions object path: ''{0}''." object))
+    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400, :path object}))))
 
 (defn- assert-valid-metabot-permissions
@@ -98,7 +98,7 @@
   [{:keys [object group_id]}]
   (when (and (= group_id (:id (group/metabot)))
              (not (str/starts-with? object "/collection/")))
-    (throw (ex-info (str (tru "MetaBot can only have Collection permissions."))
+    (throw (ex-info (tru "MetaBot can only have Collection permissions.")
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -245,8 +245,8 @@
     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
 
 (defn- pre-update [_]
-  (throw (Exception. (str (tru "You cannot update a permissions entry!")
-                          (tru "Delete it and create a new one.")))))
+  (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
+                          (deferred-tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
@@ -490,7 +490,7 @@
            (if (map? collection-or-id)
              collection-or-id
              (db/select-one 'Collection :id (u/get-id collection-or-id))))
-      (throw (Exception. (str (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
+      (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants."))))))
 
 (defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
@@ -574,9 +574,9 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+    (throw (ui18n/ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
                                " "
-                               (tru "Please fetch new data and try again."))
+                               (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!

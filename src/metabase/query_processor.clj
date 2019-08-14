@@ -231,7 +231,7 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
+                  (throw (ex-info (tru "Error preprocessing query") results)))))))]
     (receive-native-query (build-pipeline deliver-native-query))))
 
 (defn query->preprocessed
@@ -248,12 +248,12 @@
   it."
   [{query-type :type, :as query}]
   (when-not (= query-type :query)
-    (throw (Exception. (str (tru "Can only determine expected columns for MBQL queries.")))))
+    (throw (Exception. (tru "Can only determine expected columns for MBQL queries."))))
   (let [results (qp.store/with-store
                   ((annotate/add-column-info (constantly nil))
                    (query->preprocessed query)))]
     (or (seq (:cols results))
-        (throw (ex-info (str (tru "No columns returned.")) results)))))
+        (throw (ex-info (tru "No columns returned.") results)))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -266,7 +266,7 @@
   (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
-        (throw (ex-info (str (tru "No native form returned."))
+        (throw (ex-info (tru "No native form returned.")
                  (or results {}))))))
 
 (defn query->native-with-spliced-params

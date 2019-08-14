@@ -94,7 +94,7 @@
   [card-id :- su/IntGreaterThanZero]
   (let [card
         (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
-            (throw (ex-info (str (tru "Card {0} does not exist." card-id))
+            (throw (ex-info (tru "Card {0} does not exist." card-id)
                      {:card-id card-id})))
 
         {{mbql-query                     :query
@@ -109,7 +109,7 @@
             (when native-query
               (cond-> {:native (trim-query card-id native-query)}
                 (seq template-tags) (assoc :template-tags template-tags)))
-            (throw (ex-info (str (tru "Missing source query in Card {0}" card-id))
+            (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                      {:card card})))]
     ;; log the query at this point, it's useful for some purposes
     ;;

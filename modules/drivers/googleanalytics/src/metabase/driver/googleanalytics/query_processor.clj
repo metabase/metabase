@@ -7,7 +7,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
@@ -231,12 +231,12 @@
 (defn- maybe-get-only-filter-or-throw [filters]
   (when-let [filters (seq (filter some? filters))]
     (when (> (count filters) 1)
-      (throw (Exception. (str (tru "Multiple date filters are not supported")))))
+      (throw (Exception. (tru "Multiple date filters are not supported"))))
     (first filters)))
 
 (defn- try-reduce-filters [[filter1 filter2]]
   (merge-with
-    (fn [_ _] (throw (Exception. (str (tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
+    (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
     filter1 filter2))
 
 (defmethod parse-filter:interval :and [[_ & subclauses]]
@@ -249,7 +249,7 @@
   (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
 
 (defmethod parse-filter:interval :not [[& _]]
-  (throw (Exception. (str (tru ":not is not yet implemented")))))
+  (throw (Exception. (tru ":not is not yet implemented"))))
 
 (defn- remove-non-datetime-filter-clauses
   "Replace any filter clauses that operate on a non-datetime Field with `nil`."
@@ -295,7 +295,7 @@
   [{filter-clause :filter}]
   (let [segments (mbql.u/match filter-clause [:segment (segment-name :guard mbql.u/ga-id?)] segment-name)]
     (when (> (count segments) 1)
-      (throw (Exception. (str (tru "Only one Google Analytics segment allowed at a time.")))))
+      (throw (Exception. (tru "Only one Google Analytics segment allowed at a time."))))
     (first segments)))
 
 (defn- handle-filter:built-in-segment

@@ -216,7 +216,7 @@
                    (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
                    ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
                    ;; trying to inject new params
-                   (throw (Exception. (str (tru "Invalid param: {0}" slug)))))]]
+                   (throw (Exception. (tru "Invalid param: {0}" slug))))]]
         (merge query-param dashboard-param)))))
 
 (defn- check-card-is-in-dashboard

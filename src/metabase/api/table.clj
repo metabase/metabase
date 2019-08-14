@@ -21,7 +21,7 @@
              [table :as table :refer [Table]]]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -80,9 +80,9 @@
         (sync/sync-table! updated-table))
       updated-table)))
 
-(def ^:private auto-bin-str (tru "Auto bin"))
-(def ^:private dont-bin-str (tru "Don''t bin"))
-(def ^:private day-str (tru "Day"))
+(def ^:private auto-bin-str (deferred-tru "Auto bin"))
+(def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private day-str (deferred-tru "Day"))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -93,30 +93,30 @@
                      :mbql ["datetime-field" nil param]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(tru "Minute") "minute"]
-                   [(tru "Hour") "hour"]
+                  [[(deferred-tru "Minute") "minute"]
+                   [(deferred-tru "Hour") "hour"]
                    [day-str "day"]
-                   [(tru "Week") "week"]
-                   [(tru "Month") "month"]
-                   [(tru "Quarter") "quarter"]
-                   [(tru "Year") "year"]
-                   [(tru "Minute of Hour") "minute-of-hour"]
-                   [(tru "Hour of Day") "hour-of-day"]
-                   [(tru "Day of Week") "day-of-week"]
-                   [(tru "Day of Month") "day-of-month"]
-                   [(tru "Day of Year") "day-of-year"]
-                   [(tru "Week of Year") "week-of-year"]
-                   [(tru "Month of Year") "month-of-year"]
-                   [(tru "Quarter of Year") "quarter-of-year"]])
+                   [(deferred-tru "Week") "week"]
+                   [(deferred-tru "Month") "month"]
+                   [(deferred-tru "Quarter") "quarter"]
+                   [(deferred-tru "Year") "year"]
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
+                   [(deferred-tru "Hour of Day") "hour-of-day"]
+                   [(deferred-tru "Day of Week") "day-of-week"]
+                   [(deferred-tru "Day of Month") "day-of-month"]
+                   [(deferred-tru "Day of Year") "day-of-year"]
+                   [(deferred-tru "Week of Year") "week-of-year"]
+                   [(deferred-tru "Month of Year") "month-of-year"]
+                   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
              (conj
               (mapv (fn [[name params]]
                       {:name name
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Number"})
                     [default-entry
-                     [(tru "10 bins") ["num-bins" 10]]
-                     [(tru "50 bins") ["num-bins" 50]]
-                     [(tru "100 bins") ["num-bins" 100]]])
+                     [(deferred-tru "10 bins") ["num-bins" 10]]
+                     [(deferred-tru "50 bins") ["num-bins" 50]]
+                     [(deferred-tru "100 bins") ["num-bins" 100]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Number"})
@@ -126,10 +126,10 @@
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Coordinate"})
                     [default-entry
-                     [(tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                     [(tru "Bin every 1 degree") ["bin-width" 1.0]]
-                     [(tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                     [(tru "Bin every 20 degrees") ["bin-width" 20.0]]])
+                     [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
+                     [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
+                     [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
+                     [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Coordinate"})))))

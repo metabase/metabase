@@ -13,7 +13,7 @@
             [metabase.models.humanization :as humanization]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -53,9 +53,9 @@
     (let [expected-count (count columns)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
-        (throw (ex-info (str (tru "Query processor error: number of columns returned by driver does not match results.")
+        (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
-                             (tru "Expected {0} columns, but first row of resuls has {1} columns."
+                             (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
                                   expected-count actual-count))
                  {:expected-columns columns
                   :first-row        (first rows)}))))))
@@ -175,7 +175,7 @@
         ;; provided so the FE can add easily add sorts and the like when someone clicks a column header
         :expression_name expression-name
         :field_ref       &match})
-      (throw (ex-info (str (tru "No expression named {0} found. Found: {1}" expression-name (keys expressions)))
+      (throw (ex-info (tru "No expression named {0} found. Found: {1}" expression-name (keys expressions))
                {:type :invalid-query, :clause &match, :expressions expressions})))
 
     [:field-id id]
@@ -188,7 +188,7 @@
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
-    _ (throw (ex-info (str (tru "Don't know how to get information about Field:") " " &match)
+    _ (throw (ex-info (tru "Don't know how to get information about Field:" " " &match)
                {:field &match}))))
 
 
@@ -218,7 +218,7 @@
   These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause."
   [ag-clause :- mbql.s/Aggregation & [{:keys [recursive-name-fn], :or {recursive-name-fn aggregation-name}}]]
   (when-not driver/*driver*
-    (throw (Exception. (str (tru "*driver* is unbound.")))))
+    (throw (Exception. (tru "*driver* is unbound."))))
   (mbql.u/match-one ag-clause
     [:aggregation-options _ (options :guard :name)]
     (:name options)
@@ -272,22 +272,22 @@
               (for [arg args]
                 (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
 
-    [:count]             (str (tru "Count"))
-    [:distinct    arg]   (str (tru "Distinct values of {0}"  (aggregation-arg-display-name inner-query arg)))
-    [:count       arg]   (str (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg)))
-    [:avg         arg]   (str (tru "Average of {0}"          (aggregation-arg-display-name inner-query arg)))
+    [:count]             (tru "Count")
+    [:distinct    arg]   (tru "Distinct values of {0}"  (aggregation-arg-display-name inner-query arg))
+    [:count       arg]   (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg))
+    [:avg         arg]   (tru "Average of {0}"          (aggregation-arg-display-name inner-query arg))
     ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (str (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg)))
-    [:cum-sum     arg]   (str (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg)))
-    [:stddev      arg]   (str (tru "SD of {0}"               (aggregation-arg-display-name inner-query arg)))
-    [:sum         arg]   (str (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg)))
-    [:min         arg]   (str (tru "Min of {0}"              (aggregation-arg-display-name inner-query arg)))
-    [:max         arg]   (str (tru "Max of {0}"              (aggregation-arg-display-name inner-query arg)))
+    [:cum-count   arg]   (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg))
+    [:cum-sum     arg]   (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:stddev      arg]   (tru "SD of {0}"               (aggregation-arg-display-name inner-query arg))
+    [:sum         arg]   (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:min         arg]   (tru "Min of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:max         arg]   (tru "Max of {0}"              (aggregation-arg-display-name inner-query arg))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
-    [:sum-where   arg _] (str (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg)))
-    [:share       _]     (str (tru "Share of rows matching condition"))
-    [:count-where _]     (str (tru "Count of rows matching condition"))
+    [:sum-where   arg _] (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg))
+    [:share       _]     (tru "Share of rows matching condition")
+    [:count-where _]     (tru "Count of rows matching condition")
 
     (_ :guard mbql.preds/Field?)
     (:display_name (col-info-for-field-clause inner-query ag-clause))
@@ -363,13 +363,13 @@
       (when-not (= expected-count actual-count)
         (throw
          (Exception.
-          (str (tru "Query processor error: mismatched number of columns in query and results.")
+          (str (deferred-tru "Query processor error: mismatched number of columns in query and results.")
                " "
-               (tru "Expected {0} fields, got {1}" expected-count actual-count)
+               (deferred-tru "Expected {0} fields, got {1}" expected-count actual-count)
                "\n"
-               (tru "Expected: {0}" (mapv :name returned-mbql-columns))
+               (deferred-tru "Expected: {0}" (mapv :name returned-mbql-columns))
                "\n"
-               (tru "Actual: {0}" (vec (:columns results))))))))))
+               (deferred-tru "Actual: {0}" (vec (:columns results))))))))))
 
 (s/defn ^:private cols-for-fields
   [{:keys [fields], :as inner-query} :- su/Map]

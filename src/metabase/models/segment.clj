@@ -22,7 +22,7 @@
     ;; throw an Exception if someone tries to update creator_id
     (when (contains? updates :creator_id)
       (when (not= creator_id (db/select-one-field :creator_id Segment :id id))
-        (throw (UnsupportedOperationException. (str (tru "You cannot update the creator_id of a Segment."))))))))
+        (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a Segment.")))))))
 
 (defn- perms-objects-set [segment read-or-write]
   (let [table (or (:table segment)

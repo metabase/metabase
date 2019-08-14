@@ -45,7 +45,7 @@
                    (* 2 dot-radius)))
       ;; returns `true` if successful -- see JavaDoc
       (when-not (ImageIO/write image "png" os)
-        (throw (Exception. (str (tru "No appropriate image writer found!")))))
+        (throw (Exception. (tru "No appropriate image writer found!"))))
       (.toByteArray os))))
 
 (defn- format-val-fn [timezone cols x-axis-rowfn]

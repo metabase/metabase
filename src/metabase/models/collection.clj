@@ -189,7 +189,7 @@
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   []
   (assoc root-collection
-    :name (str (tru "Our analytics"))
+    :name (tru "Our analytics")
     :id   "root"))
 
 (defn- is-root-collection? [x]
@@ -487,10 +487,10 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to archive the Root Collection...
   (when (is-root-collection? collection)
-    (throw (Exception. (str (tru "You cannot archive the Root Collection.")))))
+    (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (db/exists? Collection :id (u/get-id collection), :personal_owner_id [:not= nil])
-    (throw (Exception. (str (tru "You cannot archive a Personal Collection.")))))
+    (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
                            (parent collection)
@@ -521,12 +521,12 @@
   [collection :- CollectionWithLocationAndIDOrRoot, new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (is-root-collection? collection)
-    (throw (Exception. (str (tru "You cannot move the Root Collection.")))))
+    (throw (Exception. (tru "You cannot move the Root Collection."))))
   ;; Needless to say, it makes no sense to move a Collection into itself or into one of its descendants. So let's make
   ;; sure we're not doing that...
   (when (contains? (set (location-path->ids (children-location new-parent)))
                    (u/get-id collection))
-    (throw (Exception. (str (tru "You cannot move a Collection into itself or into one of its descendants.")))))
+    (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-archiving collection))))
@@ -812,7 +812,7 @@
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
-      (throw (Exception. (str (tru "You cannot delete a Personal Collection!"))))))
+      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
   (db/execute! {:delete-from Permissions
                 :where       [:or
@@ -1019,7 +1019,7 @@
   ;; the same first & last name! This will *ruin* their lives :(
   (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
                                                          :id (u/get-id user-or-id))]
-    (str (tru "{0} {1}''s Personal Collection" first-name last-name))))
+    (tru "{0} {1}''s Personal Collection" first-name last-name)))
 
 (s/defn user->personal-collection :- CollectionInstance
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
