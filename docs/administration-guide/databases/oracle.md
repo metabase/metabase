@@ -10,7 +10,7 @@ Head to this page, accept the license agreement, and download `ojdbc8.jar`:
 
 ![Oracle JDBC Download](../images/oracle_jdbc_download.png)
 
-Before downloading this JAR you may need to sign up for a free account with Oracle. We recommend downloading version 12.2.0.1 or greater of the Oracle JDBC driver.
+Before downloading this JAR you may need to sign up for a free account with Oracle. We have had success with the latest version at the time of this writing, 19.3 (even with older Oracle 12c databases), but any version *should* work. 
 
 
 ### Adding the Oracle JDBC Driver JAR to the Metabase Plugins Directory
