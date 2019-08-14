@@ -9,7 +9,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import { Flex } from "grid-styled";
 import styled from "styled-components";
-import { space, width } from "styled-system";
+import { space } from "styled-system";
 import color from "color";
 
 import * as Urls from "metabase/lib/urls";
@@ -27,21 +27,20 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { getPath, getContext, getUser } from "../selectors";
-import Database from "metabase/entities/databases";
-
 import {
-  getCurrentQuery,
-  getNewQueryOptions,
+  getHasDataAccess,
+  getHasNativeWrite,
   getPlainNativeQuery,
 } from "metabase/new_query/selectors";
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
-  query: getCurrentQuery(state),
-  plainNativeQuery: getPlainNativeQuery(state),
-  newQueryOptions: getNewQueryOptions(state),
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
+  plainNativeQuery: getPlainNativeQuery(state),
+  hasDataAccess: getHasDataAccess(state),
+  hasNativeWrite: getHasNativeWrite(state),
 });
 
 const mapDispatchToProps = {
@@ -84,7 +83,8 @@ const SearchWrapper = Flex.extend`
 `;
 
 const SearchInput = styled.input`
-  ${space} ${width} background-color: transparent;
+  ${space} background-color: transparent;
+  width: 0;
   border: none;
   color: white;
   font-size: 1em;
@@ -147,7 +147,6 @@ class SearchBar extends React.Component {
         >
           <Icon name="search" ml={2} />
           <SearchInput
-            w={1}
             py={2}
             pr={2}
             pl={1}
@@ -285,12 +284,7 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const hasDataAccess =
-      this.props.databases && this.props.databases.length > 0;
-    const hasNativeWrite =
-      hasDataAccess &&
-      this.props.databases.filter(db => db.native_permissions === "write")
-        .length > 0;
+    const { hasDataAccess, hasNativeWrite } = this.props;
 
     return (
       <Flex

@@ -1,7 +1,6 @@
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-import Link from "metabase/components/Link";
+import Badge, { MaybeLink } from "metabase/components/Badge";
 
 import { browseDatabase, browseSchema } from "metabase/lib/urls";
 
@@ -14,6 +13,7 @@ const QuestionDataSource = ({
   query = question.query(),
   subHead,
   noLink,
+  ...props
 }) => {
   const parts = [];
 
@@ -68,27 +68,28 @@ const QuestionDataSource = ({
   }
 
   return subHead ? (
-    <SubHeadBreadcrumbs parts={parts} />
+    <SubHeadBreadcrumbs parts={parts} {...props} />
   ) : (
-    <HeadBreadcrumbs parts={parts} />
+    <HeadBreadcrumbs parts={parts} {...props} />
   );
 };
 
 export default QuestionDataSource;
 
-const SubHeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center text-medium text-bold">
-    {parts.map(({ name, icon, href }, index) => (
-      <MaybeLink key={index} to={href} className="flex align-center mr2">
-        {icon && <Icon name={icon} mr={"5px"} size={11} />}
-        {name}
-      </MaybeLink>
-    ))}
+const SubHeadBreadcrumbs = ({ parts, className }) => (
+  <span className={className}>
+    <span className="flex align-center flex-wrap mbn1">
+      {parts.map(({ name, icon, href }, index) => (
+        <Badge key={index} className="mr2 mb1" icon={icon} to={href}>
+          {name}
+        </Badge>
+      ))}
+    </span>
   </span>
 );
 
 const HeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center">
+  <span className="flex align-center flex-wrap">
     {parts.map(({ name, icon, href }, index) => [
       <MaybeLink
         key={index}
@@ -105,10 +106,3 @@ const HeadBreadcrumbs = ({ parts }) => (
     ])}
   </span>
 );
-
-const MaybeLink = ({ to, className, ...props }) =>
-  to ? (
-    <Link to={to} {...props} className={cx(className, "text-brand-hover")} />
-  ) : (
-    <span {...props} className={className} />
-  );
