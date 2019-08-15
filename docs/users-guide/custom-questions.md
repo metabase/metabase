@@ -1,8 +1,6 @@
 ## Creating custom questions with the notebook editor
 
----
-
-If you have a question that's a bit more involved than a [simple question](04-asking-questions.md), you can create a custom question using the notebook editor. You can get there by clicking the Ask a Question button in the top nav bar and selecting Custom Question. If you're on a question detail page, you can also open up the editor by clicking the icon in the top right of the screen.
+If you have a question that's a bit more involved than a [simple question](04-asking-questions.md), you can create a custom question using the notebook editor. You can get there by clicking the Ask a Question button in the top nav bar and selecting Custom Question. If you started from a Simple question or a saved question, you can get back to the custom question notebook editor by clicking the icon in the top-right of the screen.
 
 ### The parts of the notebook
 
@@ -105,7 +103,7 @@ By default, Metabase will do a left outer join, but you can click on the Venn di
 - **Left outer join:** select all records from Table A, along with records from Table B that meet the join condition, if any.
 - **Right outer join:** select all records from Table B, along with records from Table B that meet the join condition, if any.
 - **Inner join:** only select the records from Table A and B where the join condition is met.
-- **Full outer join:** select all records from both tables, whether or not the join condition is met.
+- **Full outer join:** select all records from both tables, whether or not the join condition is met. This is not available for MySQL or H2, and is only available for some database types, like Spark SQL, SQL Server, and SQLite.
 
 **A left outer join example:** If Table A is Orders and Table B is Customers, and assuming you do a join where the `customer_id` column in Orders is equal to the `ID` column in Customers, when you do a left outer join your results will be a full list of all your orders, and each order row will also display the columns of the customer who placed that order. Since a single customer can place many orders, a given customer's information might be repeated many times for different order rows. If there isn't a corresponding customer for a given order, the order's information will be shown, but the customer columns will just be blank for that row.
 
@@ -113,11 +111,11 @@ By default, Metabase will do a left outer join, but you can click on the Venn di
 
 In many cases you might have tables A, B, and C, where A and B have a connection, and B and C have a connection, but A and C don't. If you want to join A to B to C, all you have to do is add multiple join steps. Click on Join Data, join table A to table B, then click the Join Data step below that completed join block to add a second join step, and join the results of your last join to table C.
 
-![An A to B to C join](./images/notebook/join-a-b-c)
+![An A to B to C join](./images/notebook/join-a-b-c.png)
 
 ### Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the bottom-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor, using this generated SQL as a starting point. It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor, using this generated SQL as a starting point. It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
 
 ---
 

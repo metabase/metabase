@@ -10,12 +10,13 @@ So, you've [gotten Metabase up and running](../operations-guide/start.md) and [c
 
 ### The home page
 
-![The home page](./images/metabase-homepage.png)
+![The home page](../images/EmptyHomepage.png)
 
 Fresh out of the box, Metabase will show you a few things on the home page:
-* Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them.
-* An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
-* A list of the databases you've connected to Metabase.
+
+- Some [automatic explorations](14-x-rays.md) of your tables that you can look at and save as a dashboard if you like any of them.
+- An area where things you or your teammates create will show up, along with a link to see all the dashboards, questions, and pulses you have.
+- A list of the databases you've connected to Metabase.
 
 ![Our data](./images/our-data.png)
 
@@ -33,7 +34,7 @@ As you and your team create dashboards and collections, they'll start to show up
 
 ### Ask a question or write a query
 
-Click the `Ask a question button` in the top-right of Metabase to start a new simple exploration of one of your tables, ask a more detailed custom question using the notebook editor, or write a new SQL query if you want to really dig in.
+Click the `Ask a question` button in the top-right of Metabase to start a new simple exploration of one of your tables, ask a more detailed custom question using the notebook editor, or write a new SQL query if you want to really dig in.
 
 ### Make a new dashboard or pulse
 

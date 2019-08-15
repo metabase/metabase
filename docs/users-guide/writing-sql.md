@@ -1,7 +1,5 @@
 ## Asking more advanced questions in the SQL/native query editor
 
----
-
 If you ever need to ask questions that can't be expressed using the question builder, you can use **SQL** instead.
 
 ### What's SQL?

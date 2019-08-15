@@ -1,4 +1,4 @@
-### Exploring in Metabase
+## Exploring in Metabase
 
 #### See what your teammates have made
 
@@ -16,7 +16,9 @@ Collections in Metabase are a lot like folders. They're where all your team's da
 
 ![A collection](./images/collection-detail.png)
 
-If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up nice and large at the top of a collection. Collections also have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
+If your teammates are cool, they'll have pinned some important dashboards or questions within your collections; if so, those important or useful items will show up nice and large at the top of a collection. Any dashboards that are pinned in the top-level, "Our Analytics" collection will also show up on the Metabase homepage.
+
+Collections also have a list of any other items that are saved within them, as well as a list of other collections that are saved inside the current one.
 
 #### Exploring dashboards
 

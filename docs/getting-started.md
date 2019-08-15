@@ -8,7 +8,7 @@ The way you log in to Metabase will depend on how you or your admin set it up, s
 
 ## The homepage
 
-![The home page](./users-guide/images/metabase-homepage.png)
+![The home page](./images/EmptyHomepage.png)
 
 Fresh out of the box, Metabase will show you a few things on the home page:
 
@@ -22,13 +22,13 @@ Fresh out of the box, Metabase will show you a few things on the home page:
 
 But, enough about that — let’s get to asking questions. For the next few examples, we'll be using the **Sample Dataset** that comes with Metabase.
 
-Go ahead and click **Ask a question** at the top of the screen. There are several ways you can ask a question in Metabase, but we'll click on the Simple Question option for now. You'll then need to pick the table that you have a question about. Once you do, you'll see the table's contents.
+Go ahead and click **Ask a question** at the top of the screen. There are several ways you can ask a question in Metabase, but we'll click on the Simple Question option for now. You'll then need to pick the table that you have a question about. Click the database that the table is in, then pick the table from the list. Once you do, you'll see the table's contents.
 
 ![The Orders table](images/OrdersTable.png)
 
 ## Our first question
 
-The Orders table has a bunch of fake data in it about product orders for a made up company. Let's start with a simple question about these orders: how many orders have been placed with a subtotal (before tax) greater than \$40? More precisely, this question translates to, "How many records (or rows) are in the table 'Orders' with a value greater than 40 in the Subtotal column?”
+The Orders table has a bunch of fake data in it about product orders for a made up company. Let's start with a simple question about these orders: how many orders have been placed with a subtotal (before tax) greater than \$40? More precisely, this question translates to: "How many records (or rows) are in the table 'Orders' with a value greater than 40 in the Subtotal column?”
 
 To find out, we want to _filter_ the data by **the field we’re interested in**, which is **Subtotal**. Since each row in this table represents one order, counting how many rows there are after we’ve filtered them will give us the answer we want.
 
@@ -54,7 +54,7 @@ So it looks like there were 16,309 orders, each with a subtotal greater than \$4
 
 Okay, so that’s pretty useful, but it would be even _more_ useful if we could know in _which months_ our customers placed these big orders. That’s not hard to do at all.
 
-Back in the Summarize sidebar, below where we picked our metric, there's a list of all the columns that we can use as **groupings**. The one we want is **Created At**, because this will now give us a separate total count of orders over \$40 for each month the orders were placed in (or “created at”). So we’ll select **Created At**, and Metabase immediately shows us a line chart of the orders over time.
+If we open up the Summarize sidebar again, below where we picked our metric, there's a list of all the columns that we can use as **groupings**. The one we want is **Created At**, because this will now give us a separate total count of orders over \$40 for each month the orders were placed in (or “created at”). So we’ll select **Created At**, and Metabase immediately shows us a line chart of the orders over time.
 
 ![Created At](images/CreatedAt.png)
 
@@ -74,7 +74,7 @@ Sweet! Looks like business is booming — up and to the right is always good.
 
 You’ll notice that some visualizations aren’t the best way to show an answer to a question. If Metabase think that's the case with a specific answer and visualization combination, that visualization choice will appear faded in the sidebar. For example, it wouldn't make sense to show the total number of orders over \$40 as a single bar graph, or as a map.
 
-If you want, you can try playing around with your question, like changing the number 40 to a different number. To do that, just click on the filter page below the page title.
+If you want, you can try playing around with your question, like changing the number 40 to a different number. To do that, just click on the filter badge below the page title.
 
 ## Sharing answers with others
 

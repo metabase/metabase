@@ -52,7 +52,7 @@ Lastly, you can get an alert when one of your saved questions returns any result
 
 ![Bad reviews](./images/alerts/bad-reviews.png)
 
-You probably don't want to be alerted about all the bad reviews you've _ever_ gotten, but just recent ones, you'd probably also add a filter to only include results from yesterday or today, depending on how often you want to check for these bad reviews. At this point, when you check the results of this question, it probably won't return any results, which is a good thing.
+You probably don't want to be alerted about all the bad reviews you've _ever_ gotten, but just recent ones. So you can add a filter to only include results from yesterday or today, depending on how often you want to check for these bad reviews. At this point, when you check the results of this question, it probably won't return any results, which is a good thing.
 
 ![No results](./images/alerts/no-results.png)
 

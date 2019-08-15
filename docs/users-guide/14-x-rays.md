@@ -1,7 +1,5 @@
 ## X-rays
 
----
-
 X-rays are a fast and easy way to get automatic insights and explorations of your data.
 
 ### Viewing x-rays by clicking on charts or tables
@@ -25,9 +23,11 @@ If you're already looking at an x-ray of a table or a segment, Metabase will als
 
 Another great way to get to know your data is by x-raying your tables. From the home page, scroll to the bottom of the screen, click on one of your connected databases, and then click the bolt icon on a table to view an x-ray of it.
 
-## X-rays in the Data Reference
+## X-rays in the data browser and data reference
 
-You can also view an x-ray by navigating to a table, field, metric, or segment in the Data Reference. Just click the x-ray link in the lefthand sidebar.
+You can also view an x-ray by browsing to a table and clicking on the lightning bolt icon. Click on the `Browse Data` button in the top navigation, select a database, and hover over a table to see the icon.
+
+From the Browse Data page, you can also click on `Learn about our data` to view the Data Reference section. From here you can navigate through databases, tables, columns, metrics, or segments, and you can click on the x-ray link in the left sidebar to see an x-ray of the item you're currently viewing.
 
 ![Data Reference x-ray](images/x-rays/data-reference.png)
 

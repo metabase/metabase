@@ -1,4 +1,4 @@
-### A Short Overview of Databases
+## A Short Overview of Databases
 
 Before you jump into working with Metabase, it's helpful to know a few key database terms.
 

@@ -1,7 +1,5 @@
 ## Asking questions in Metabase
 
----
-
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the Ask a Question button at the top of the screen.
 
 ### Ways to start a new question
@@ -45,6 +43,8 @@ One important thing to understand when filtering on a date column is the differe
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called "segments," and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
 Once you're happy with your filter, click Done, and your data will be updated with your filter applied. If you want to edit your filter, just click the little purple token at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
+
+![An active filter](./images/notebook/filter-badge.png)
 
 #### Summarizing
 

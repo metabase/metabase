@@ -1,7 +1,5 @@
 ## Visualizing results
 
----
-
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data overall using charts.
 
 In Metabase, an answer to a question can be visualized in a number of ways:
@@ -35,7 +33,7 @@ Each visualization type has its own advanced options you can tweak. Just click t
 
 #### Numbers
 
-This option is for displaying a single number, nice and big. The options for numbers include adding character prefixes or suffixes to it (so you can do things like put a currency symbol in front or a percent at the end), setting the number of decimal places you want to include, and multiplying your result by a number (like if you want to multiply a decimal by 100 to make it look like a percent).
+This option is for displaying a single number, nice and big. The options for numbers include adding character prefixes or suffixes to it (so you can do things like put a currency symbol in front or a percent at the end), setting the number of decimal places you want to include, and multiplying your result by a number (like if you want to multiply a decimal by 100 to make it look like a percent). If you want to _divide_ by a number, then just multiply it by a decimal (e.g, if your result is `100`, but you want it to display as `1`, simply multiply it by 0.01).
 
 ![Number](images/visualizations/number.png)
 
@@ -226,8 +224,8 @@ For example, I might have an Opportunities table, and I could create a question 
 
 When you select the Map visualization setting, Metabase will automatically try and pick the best kind of map to use based on the table or result set you're currently looking at. Here are the maps that Metabase uses:
 
-- **United States Map** — Creating a map of the United States from your data requires your results to contain a column that contains states. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
-- **Country Map** — To visualize your results in the format of a map of the world broken out by country, your result must contain a field with countries. (E.g., count of users by country.)
+- **United States Map** — Creating a map of the United States from your data requires your results to contain a column that contains names of states or two-letter state codes. This lets you do things like visualize the count of your users broken out by state, with darker states representing more users.
+- **World Map** — To visualize your results in the format of a map of the world broken out by country, your result must contain a column with two-letter country codes. (E.g., count of users by country.)
 
 ![Region map](images/visualizations/map.png)
 
