@@ -40,7 +40,7 @@ export default class Table extends Base {
 
   newQuestion(): Question {
     let question = Question.create({
-      databaseId: this.db_id,
+      databaseId: this.db.id,
       tableId: this.id,
       metadata: this.metadata,
     });
