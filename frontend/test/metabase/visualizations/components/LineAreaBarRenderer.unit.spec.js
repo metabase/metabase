@@ -66,7 +66,7 @@ describe("LineAreaBarRenderer", () => {
     expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
   });
 
-  ["Z", ...ALL_TZS].forEach(tz =>
+  ["Z", ...ALL_TZS].forEach(tz => {
     it(
       "should display hourly data (in " +
         tz +
@@ -100,8 +100,38 @@ describe("LineAreaBarRenderer", () => {
           expected,
         );
       },
-    ),
-  );
+    );
+
+    it(`should display daily data (in ${tz} timezone) in X axis and tooltip consistently`, () => {
+      const onHoverChange = jest.fn();
+
+      const rows = [
+        ["2016-10-03T00:00:00.000" + tz, 1],
+        ["2016-10-04T00:00:00.000" + tz, 1],
+      ];
+
+      renderTimeseriesLine({
+        rowsOfSeries: [rows],
+        unit: "day",
+        onHoverChange,
+      });
+
+      dispatchUIEvent(qs(".dot"), "mousemove");
+
+      const expected = rows.map(row =>
+        formatValue(row[0], {
+          column: DateTimeColumn({ unit: "day" }),
+        }),
+      );
+      expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
+        expected[0],
+        "1",
+      ]);
+      expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(
+        expected,
+      );
+    });
+  });
 
   it("should display hourly data (in the browser's timezone) in X axis and tooltip consistently and correctly", () => {
     const onHoverChange = jest.fn();
