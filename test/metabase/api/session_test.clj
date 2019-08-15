@@ -1,9 +1,11 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [expectations :refer [expect]]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
-             [http-client :refer [client]]
+             [http-client :refer [client] :as http-client]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.session :as session-api]
@@ -55,6 +57,30 @@
     [(login)
      ;; Trying to login immediately again should still return throttling error
      (login)]))
+
+(defn- xfwd-request [username]
+  (try
+    (http/post (http-client/build-url "session" {})
+               {:form-params {"username" username,
+                              "password" "incorrect-password"}
+                :content-type :json
+                :headers {"x-forwarded-for" "10.1.2.3"}})
+    (catch clojure.lang.ExceptionInfo e
+      (:object (ex-data e)))))
+
+(expect
+  #"Too many attempts! You must wait 15 seconds before trying again."
+  (with-redefs [metabase.api.session/request-source-header "x-forwarded-for"]
+    (do
+      (dotimes [n 50]
+        (let [response    (xfwd-request (format "user-%d" n))
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      (-> (xfwd-request "last-user")
+          :body
+          json/parse-string
+          (get "errors")
+          (get "username")))))
 
 
 ;; ## DELETE /api/session

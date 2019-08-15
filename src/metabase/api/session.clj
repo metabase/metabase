@@ -76,6 +76,7 @@
       (create-session! user))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
+(def ^:private request-source-header (config/config-kw :mb-session-throttle-source-header))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
@@ -97,16 +98,37 @@
          {:status-code 400
           :errors      {:password password-fail-snippet}}))))
 
+(defn- source-address
+  [request]
+  "The `:mb-session-throttle-source-header` header's value, or the `(:remote-addr request)` if not set."
+  (if request-source-header
+    (if-let [header-value ((:headers request) request-source-header)]
+      header-value
+      (:remote-addr request))
+    (:remote-addr request)))
+
+(defn- do-login
+  "Logs user in and creates an appropriate Ring response containing the newly created session's ID."
+  [username password request]
+  (let [session-id (login username password)
+        response   {:id session-id}]
+    (mw.session/set-session-cookie request response session-id)))
+
 (api/defendpoint POST "/"
   "Login."
-  [:as {{:keys [username password]} :body, remote-address :remote-addr, :as request}]
+  [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (throttle/with-throttling (login-throttlers :ip-address) remote-address
-    (throttle/with-throttling (login-throttlers :username) username
-      (let [session-id (login username password)
-            response   {:id session-id}]
-        (mw.session/set-session-cookie request response session-id)))))
+  (let [request-address (source-address request)]
+    (if throttling-disabled?
+      (do-login username password request)
+      (try
+        (throttle/with-throttling (login-throttlers :ip-address) request-address
+          (throttle/with-throttling (login-throttlers :username) username
+            (do-login username password request)))
+        (catch clojure.lang.ExceptionInfo e
+          (throw (ex-info (ex-message e)
+                          (assoc (ex-data e) :status-code 400))))))))
 
 
 (api/defendpoint DELETE "/"
