@@ -175,6 +175,7 @@ export class ViewTitleHeader extends React.Component {
                   className="mb1"
                   question={question}
                   subHead
+                  data-metabase-event={`Question Data Source Click`}
                 />
               )}
               {!showFiltersInHeading &&
@@ -194,6 +195,11 @@ export class ViewTitleHeader extends React.Component {
           {isDirty ? (
             <Link
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
+              data-metabase-event={
+                isShowingNotebook
+                  ? `Notebook Mode; Click Save`
+                  : `View Mode; Click Save`
+              }
               onClick={() => onOpenModal("save")}
             >
               {t`Save`}
@@ -206,6 +212,7 @@ export class ViewTitleHeader extends React.Component {
               isShowingFilterSidebar={isShowingFilterSidebar}
               onAddFilter={onAddFilter}
               onCloseFilter={onCloseFilter}
+              data-metabase-event={`View Mode; Open Filter Widget`}
             />
           )}
           {QuestionSummarizeWidget.shouldRender(this.props) && (
@@ -215,6 +222,7 @@ export class ViewTitleHeader extends React.Component {
               isShowingSummarySidebar={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
               onCloseSummary={onCloseSummary}
+              data-metabase-event={`View Mode; Open Summary Widget`}
             />
           )}
           {question.isStructured() && (
@@ -224,6 +232,11 @@ export class ViewTitleHeader extends React.Component {
               <Button
                 borderless={!isShowingNotebook}
                 primary={isShowingNotebook}
+                data-metabase-event={
+                  isShowingNotebook
+                    ? `Notebook Mode;Go to View Mode`
+                    : `View Mode; Go to Notebook Mode`
+                }
                 medium
                 className={cx("hide sm-show", {
                   "text-brand-hover": !isShowingNotebook,
@@ -242,7 +255,11 @@ export class ViewTitleHeader extends React.Component {
               p={1}
               className="text-medium text-brand-hover cursor-pointer"
             >
-              <NativeQueryButton size={16} question={question} />
+              <NativeQueryButton
+                size={16}
+                question={question}
+                data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+              />
             </Box>
           )}
           {isRunnable && (
