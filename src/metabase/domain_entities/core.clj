@@ -1,7 +1,7 @@
 (ns metabase.domain-entities.core
   (:require [clojure.string :as str]
             [medley.core :as m]
-            [metabase.domain-entities.specs :refer [domain-entity-specs MBQL]]
+            [metabase.domain-entities.specs :refer [domain-entity-specs MBQL DomainEntitySpec]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
@@ -56,37 +56,70 @@
     [:field-literal name base_type]))
 
 (defn- has-attribute?
-  [entity {:keys [field domain_entity has_many]}]
+  [entity {:keys [field domain_entity has_many dimension]}]
   (cond
-    field (some (fn [col]
-                  (when (or (isa? (field-type col) field)
-                            (= (:name col) (name field)))
-                    col))
-                ((some-fn :fields :result_metadata) entity))))
+    dimension (some #(isa? (field-type %) dimension) ((some-fn :fields :result_metadata) entity))
+    field     (some (comp #{field} :name) ((some-fn :fields :result_metadata) entity))))
 
-(defn satisfies-requierments?
+(s/defn satisfies-requierments? :- s/Bool
   "Does source entity satisfies requierments of given spec?"
-  [entity {:keys [required_attributes]}]
+  [entity :- SourceEntity, {:keys [required_attributes]} :- DomainEntitySpec]
   (every? (partial has-attribute? entity) required_attributes))
 
-(defn- best-match
-  [candidates]
+(def ^:private ^{:arglists '([t])} number-of-ancestors
+  (comp count ancestors))
+
+(s/defn ^:private most-specific-domain-entity :- (s/maybe DomainEntitySpec)
+  [candidates :- [DomainEntitySpec]]
   (->> candidates
-       (sort-by (juxt (comp count ancestors :type) (comp count :required_attributes)))
+       (sort-by (juxt (comp number-of-ancestors :type) (comp count :required_attributes)))
        last))
 
-(defn- instantiate-dimensions
-  [bindings source entities]
+(s/defn ^:private instantiate-dimensions
+  [bindings :- Bindings, source :- SourceName, entities]
   (into (empty entities) ; this way we don't care if we're dealing with a map or a vec
         (for [entity entities
               :when (every? (get-in bindings [source :dimensions])
                             (mbql.u/match entity [:dimension dimension] dimension))]
           (resolve-dimension-clauses bindings source entity))))
 
+(defn- best-match-for-dimension
+  ;; Pick the field most suitable to be a dimension.
+  ;;
+  ;; This is a rough heuristic relying on:
+  ;; 1) how we do type classification (see `metabase.sync.analyze.classifiers.name`), and
+  ;; 2) how our type hierarchy works.
+  ;;
+  ;; The idea is that we want the *least* specific type available. Reason being, more specific
+  ;; means more additional meaning which probably diverges from our intention (or the spec is bad
+  ;; and should use a more specific type).
+  ;;
+  ;; If all field types are of the same specificity, the longer names probably have additional
+  ;; qualifiers which we don't understan, nor are we interested in.
+  ;;
+  ;; Eg. if there are fields named `start` and `billing_period_start`,  we probably want the former
+  ;; as a match for out `:type/CreationTimestamp`.
+  [fields]
+  (->> fields
+       (sort-by (juxt (comp number-of-ancestors field-type) (comp count :name)))
+       first))
+
+(defn- fields->dimensions
+  [{:keys [required_attributes optional_attributes]} fields]
+  (into {}
+        (comp (filter (some-fn :field :dimension))
+              (map (fn [{:keys [field dimension]}]
+                     (if dimension
+                       [(name dimension) (->> fields
+                                              (filter #(isa? (field-type %) dimension))
+                                              best-match-for-dimension)]
+                       ;; We assume names are unique
+                       [field (m/find-first (comp #{field} :name) fields)]))))
+        (concat required_attributes optional_attributes)))
+
 (defn- instantiate-domain-entity
-  [table {:keys [name description required_attributes optional_attributes metrics segments breakout_dimensions type]}]
-  (let [dimensions (into {} (for [field (:fields table)]
-                              [(-> field field-type clojure.core/name) field]))
+  [table {:keys [name description metrics segments breakout_dimensions type] :as spec}]
+  (let [dimensions (fields->dimensions spec (:fields table))
         bindings   {name {:entity     table
                           :dimensions (m/map-vals mbql-reference dimensions)}}]
     {:metrics             (instantiate-dimensions bindings name metrics)
@@ -105,7 +138,7 @@
     (some->> @domain-entity-specs
              vals
              (filter (partial satisfies-requierments? table))
-             best-match
+             most-specific-domain-entity
              (instantiate-domain-entity table))))
 
 (defn with-domain-entity

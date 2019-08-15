@@ -1,8 +1,8 @@
 name: Transactions
 description: Transaction (orders) data
 required_attributes:
-  - field: Income
-  - field: CreationTimestamp
+  - dimension: Income
+  - dimension: CreationTimestamp
 optional_attributes:
   - field: Discount
   - field: Quantity

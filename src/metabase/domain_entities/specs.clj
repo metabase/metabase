@@ -3,7 +3,9 @@
             [metabase.mbql
              [normalize :as mbql.normalize]
              [util :as mbql.u]]
-            [metabase.util.yaml :as yaml]
+            [metabase.util
+             [schema :as su]
+             [yaml :as yaml]]
             [schema
              [coerce :as sc]
              [core :as s]]))
@@ -12,21 +14,18 @@
   "MBQL clause (ie. a vector starting with a keyword)"
   (s/pred mbql.u/mbql-clause?))
 
-(def FieldType
-  "Field type designator -- a keyword derived from `type/*`"
-  (s/constrained s/Keyword
-                                        ;#(isa? % :type/*)
-                 identity))
-
 (def ^:private DomainEntityReference s/Str)
 
 (def ^:private DomainEntityType (s/isa :DomainEntity/*))
 
 (def ^:private Identifier s/Str)
 
+(def ^:private FieldName s/Str)
+
 (def ^:private Description s/Str)
 
-(def ^:private Attributes [{(s/optional-key :field)         FieldType
+(def ^:private Attributes [{(s/optional-key :field)         FieldName
+                            (s/optional-key :dimension)     su/FieldType
                             (s/optional-key :domain_entity) DomainEntityReference
                             (s/optional-key :has_many)      {:domain_entity DomainEntityReference}}])
 
@@ -76,10 +75,10 @@
                             (for [dimension breakout-dimensions]
                               (if (string? dimension)
                                 (do
-                                  (s/validate FieldType (keyword "type" dimension))
+                                  (s/validate su/FieldType (keyword "type" dimension))
                                   [:dimension dimension])
                                 dimension)))
-    FieldType             (partial keyword "type")
+    su/FieldType          (partial keyword "type")
     ;; Some map keys are names (ie. strings) while the rest are keywords, a distinction lost in YAML
     s/Str                 name}))
 

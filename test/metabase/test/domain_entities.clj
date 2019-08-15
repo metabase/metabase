@@ -4,17 +4,17 @@
 (def test-domain-entity-specs
   "A test domain specs written against our test DB."
   (->> [{:name                "Venues parent"
-         :required_attributes [{:field "Longitude"}
-                               {:field "Latitude"}]}
+         :required_attributes [{:dimension "Longitude"}
+                               {:dimension "Latitude"}]}
         {:name                "Venues"
-         :required_attributes [{:field "Category"} ; Price
-                               {:field "FK"} ; Category ID
+         :required_attributes [{:field "PRICE"} ; Price
+                               {:dimension "FK"} ; Category ID
                                ;; These are here just for uniquness
-                               {:field "Longitude"}
-                               {:field "Latitude"}]
+                               {:dimension "Longitude"}
+                               {:dimension "Latitude"}]
          :refines             "Venues parent"
          :breakout_dimensions ["FK"]
-         :metrics             {"Avg Price" {:aggregation [:avg [:dimension "Category"]]}}}
+         :metrics             {"Avg Price" {:aggregation [:avg [:dimension "PRICE"]]}}}
         {:name                "VenuesEnhanced"
          :required_attributes [{:field "AvgPrice"}
                                {:field "MinPrice"}

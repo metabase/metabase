@@ -1,6 +1,6 @@
 (ns metabase.transforms.specs
   (:require [medley.core :as m]
-            [metabase.domain-entities.specs :refer [FieldType MBQL]]
+            [metabase.domain-entities.specs :refer [MBQL]]
             [metabase.mbql
              [normalize :as mbql.normalize]
              [schema :as mbql.schema]
@@ -92,7 +92,6 @@
                                  (if (s/check MBQL breakout)
                                    [:dimension breakout]
                                    breakout)))
-    FieldType                (partial keyword "type")
     [DomainEntity]           u/one-or-many
     mbql.schema/JoinStrategy keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly

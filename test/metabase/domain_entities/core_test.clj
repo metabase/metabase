@@ -27,10 +27,33 @@
   (de/satisfies-requierments? (hydrated-table :venues) (test-domain-entity-specs "Venues")))
 
 
+;; Pick the least specific type
+(expect
+  {:special_type :type/Float}
+  (#'de/best-match-for-dimension [{:special_type :type/Income}
+                                  {:special_type :type/Float}
+                                  {:special_type :type/Currency}]))
+
+;; ... if there's a tie, pick the shortest name
+(expect
+  {:special_type :type/Income :name "income"}
+  (#'de/best-match-for-dimension [{:special_type :type/Income :name "income_after_taxes"}
+                                  {:special_type :type/Income :name "income"}]))
+
+
+;; Do we correctly build a dimensions map of a table for a given spec
+(expect
+  {"PRICE"     (Field (data/id :venues :price))
+   "FK"        (Field (data/id :venues :category_id))
+   "Longitude" (Field (data/id :venues :longitude))
+   "Latitude"  (Field (data/id :venues :latitude))}
+  (#'de/fields->dimensions (test-domain-entity-specs "Venues") (:fields (hydrated-table :venues))))
+
+
 ;; Do we correctly pick the best (most specific and most defined) candidate
 (expect
   "Venues"
-  (-> test-domain-entity-specs vals (#'de/best-match) :name))
+  (-> test-domain-entity-specs vals (#'de/most-specific-domain-entity) :name))
 
 
 ;; Do all the MBQL snippets get instantiated correctly
@@ -39,8 +62,8 @@
                                       :aggregation [:avg (#'de/mbql-reference (Field (data/id :venues :price)))]}}
    :segments            nil
    :breakout_dimensions [(#'de/mbql-reference (Field (data/id :venues :category_id)))]
-   :dimensions          (into {} (for [field (:fields (hydrated-table :venues))]
-                                   [(-> field (#'de/field-type) name) field]))
+   :dimensions          (#'de/fields->dimensions (test-domain-entity-specs "Venues")
+                                                 (:fields (hydrated-table :venues)))
    :type                :DomainEntity/Venues
    :description         nil
    :source_table        (data/id :venues)
