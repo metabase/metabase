@@ -69,18 +69,24 @@
       (:object (ex-data e)))))
 
 (expect
-  #"Too many attempts! You must wait 15 seconds before trying again."
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 42 seconds before trying again."]
   (with-redefs [metabase.api.session/request-source-header "x-forwarded-for"]
     (do
       (dotimes [n 50]
         (let [response    (xfwd-request (format "user-%d" n))
               status-code (:status response)]
           (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
-      (-> (xfwd-request "last-user")
-          :body
-          json/parse-string
-          (get "errors")
-          (get "username")))))
+      [(-> (xfwd-request "last-user")
+            :body
+            json/parse-string
+            (get "errors")
+            (get "username"))
+       (-> (xfwd-request "last-user")
+            :body
+            json/parse-string
+            (get "errors")
+            (get "username"))])))
 
 
 ;; ## DELETE /api/session
