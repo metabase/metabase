@@ -4,9 +4,7 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
-            [metabase.domain-entities
-             [core :as de]
-             [specs :as de.specs]]
+            [metabase.domain-entities.specs :as de.specs]
             [metabase.models
              [card :as card :refer [Card]]
              [collection :refer [Collection]]
