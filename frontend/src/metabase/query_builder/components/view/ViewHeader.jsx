@@ -248,7 +248,7 @@ export class ViewTitleHeader extends React.Component {
           {isRunnable && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover hide", {
-                "sm-show": !isShowingNotebook,
+                "sm-show": !isShowingNotebook || isNative,
                 "text-white-hover": isResultDirty && isRunnable,
               })}
               medium
