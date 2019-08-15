@@ -7,12 +7,12 @@
        :requires "Venues"
        :provides "VenuesEnhanced"
        :steps    {"CategoriesStats" {:source      "Venues"
-                                     :aggregation {"AvgPrice" [:avg [:dimension "Category"]]
-                                                   "MinPrice" [:min [:dimension "Category"]]
-                                                   "MaxPrice" [:max [:dimension "Category"]]}
+                                     :aggregation {"AvgPrice" [:avg [:dimension "PRICE"]]
+                                                   "MinPrice" [:min [:dimension "PRICE"]]
+                                                   "MaxPrice" [:max [:dimension "PRICE"]]}
                                      :breakout    "FK"}
                   "VenuesEnhanced"  {:source      "Venues"
-                                     :expressions {"RelativePrice" [:/ [:dimension "Category"]
+                                     :expressions {"RelativePrice" [:/ [:dimension "PRICE"]
                                                                     [:dimension "CategoriesStats.AvgPrice"]]}
                                      :joins       [{:source    "CategoriesStats"
                                                     :condition [:= [:dimension "FK"]
