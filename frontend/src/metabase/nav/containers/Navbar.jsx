@@ -144,10 +144,10 @@ class SearchBar extends React.Component {
           onClick={() => this.setState({ active: true })}
           active={active}
         >
-          <Icon name="search" ml={2} />
+          <Icon name="search" ml={["10px", 2]} />
           <SearchInput
             py={2}
-            pr={2}
+            pr={[0, 2]}
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
