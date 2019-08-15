@@ -102,11 +102,11 @@
   [:as {{:keys [username password]} :body, remote-address :remote-addr, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (throttle-check (login-throttlers :ip-address) remote-address)
-  (throttle-check (login-throttlers :username)   username)
-  (let [session-id (login username password)
-        response   {:id session-id}]
-    (mw.session/set-session-cookie request response session-id)))
+  (throttle/with-throttling (login-throttlers :ip-address) remote-address
+    (throttle/with-throttling (login-throttlers :username) username
+      (let [session-id (login username password)
+            response   {:id session-id}]
+        (mw.session/set-session-cookie request response session-id)))))
 
 
 (api/defendpoint DELETE "/"
