@@ -19,9 +19,9 @@
 
 ;; Run the transform and make sure it produces the correct result
 (expect
-  [[4 1 10.0646 -165.374 "Red Medicine" 3 1 4 3 2 1]
-   [11 2 34.0996 -118.329 "Stout Burgers & Beers" 2 2 11 2 1 1]
-   [11 3 34.0406 -118.428 "The Apple Pan" 2 2 11 2 1 1]]
+  [[1 "Red Medicine" 3 4 -165.374 10.0646 1 4 3 2 1]
+   [2 "Stout Burgers & Beers" 2 11 -118.329 34.0996 2 11 2 1 1]
+   [3 "The Apple Pan" 2 11 -118.428 34.0406 2 11 2 1 1]]
   (test-users/with-test-user :rasta
     (with-test-transform-specs
       (with-test-domain-entity-specs

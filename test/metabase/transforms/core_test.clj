@@ -26,9 +26,13 @@
 (def test-bindings
   (delay
    (with-test-domain-entity-specs
-     (let [table (m/find-first (comp #{(data/id :venues)} u/get-id) (#'t/tableset (data/id) "PUBLIC"))]
-       {"Venues" {:dimensions (m/map-vals de/mbql-reference (get-in table [:domain_entity :dimensions]))
-                  :entity     table}}))))
+     {"Venues" {:dimensions {"ID"        [:field-id (data/id :venues :id)],
+                             "NAME"      [:field-id (data/id :venues :name)],
+                             "PRICE"     [:field-id (data/id :venues :price)],
+                             "FK"        [:field-id (data/id :venues :category_id)],
+                             "Longitude" [:field-id (data/id :venues :longitude)],
+                             "Latitude"  [:field-id (data/id :venues :latitude)]}
+                :entity     (m/find-first (comp #{(data/id :venues)} u/get-id) (#'t/tableset (data/id) "PUBLIC"))}})))
 
 ;; Can we accure bindings?
 (let [new-bindings {"D2" [:sum [:field-id 4]]
