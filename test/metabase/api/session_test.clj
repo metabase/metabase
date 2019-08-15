@@ -48,8 +48,8 @@
 ;; Test that people get blocked from attempting to login if they try too many times (Check that throttling works at
 ;; the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
 (expect
-    [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
-     {:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}]
+  [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
+   {:errors {:username "Too many attempts! You must wait 42 seconds before trying again."}}]
   (let [login #(client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})]
     ;; attempt to log in 10 times
     (dorun (repeatedly 10 login))
