@@ -100,10 +100,9 @@ export default class ChartSettingOrderedColumns extends Component {
 
     let additionalFieldOptions = { count: 0 };
     if (columns && query instanceof StructuredQuery) {
-      const fieldRefs = columns.map(column => fieldRefForColumn(column));
       additionalFieldOptions = query.fieldsOptions(dimension => {
-        return !_.find(fieldRefs, fieldRef =>
-          dimension.isSameBaseDimension(fieldRef),
+        return !_.find(columns, column =>
+          dimension.isSameBaseDimension(column.field_ref),
         );
       });
     }
