@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import Dimension from "metabase-lib/lib/Dimension";
+
 import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 
@@ -23,7 +25,7 @@ export function formatAggregationName(aggregationOption) {
   return VALID_AGGREGATIONS.get(aggregationOption.short);
 }
 
-function formatIdentifier(name) {
+export function formatIdentifier(name) {
   return /^\w+$/.test(name) && !isReservedWord(name)
     ? name
     : JSON.stringify(name);
@@ -47,19 +49,13 @@ export function isExpression(expr) {
   return (
     isMath(expr) ||
     isAggregation(expr) ||
-    isField(expr) ||
-    isMetric(expr) ||
-    isExpressionReference(expr)
+    isFieldReference(expr) ||
+    isMetric(expr)
   );
 }
 
-export function isField(expr) {
-  return (
-    Array.isArray(expr) &&
-    expr.length === 2 &&
-    expr[0] === "field-id" &&
-    typeof expr[1] === "number"
-  );
+export function isFieldReference(expr) {
+  return !!Dimension.parseMBQL(expr);
 }
 
 export function isMetric(expr) {
@@ -88,15 +84,6 @@ export function isAggregation(expr) {
   );
 }
 
-export function isExpressionReference(expr) {
-  return (
-    Array.isArray(expr) &&
-    expr.length === 2 &&
-    expr[0] === "expression" &&
-    typeof expr[1] === "string"
-  );
-}
-
 export function isValidArg(arg) {
-  return isExpression(arg) || isField(arg) || typeof arg === "number";
+  return isExpression(arg) || isFieldReference(arg) || typeof arg === "number";
 }

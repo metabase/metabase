@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import _ from "underscore";
 import { t } from "ttag";
 import ExpressionEditorTextfield from "./ExpressionEditorTextfield.jsx";
 import { isExpression } from "metabase/lib/expressions";
@@ -12,8 +11,6 @@ export default class ExpressionWidget extends Component {
     expression: PropTypes.array,
     name: PropTypes.string,
     query: PropTypes.object.isRequired,
-    // deprecated:
-    tableMetadata: PropTypes.object,
     onChangeExpression: PropTypes.func.isRequired,
     onRemoveExpression: PropTypes.func,
     onClose: PropTypes.func.isRequired,
@@ -37,13 +34,12 @@ export default class ExpressionWidget extends Component {
 
   isValid() {
     const { name, expression, error } = this.state;
-    return !_.isEmpty(name) && !error && isExpression(expression);
+    return !!name && !error && isExpression(expression);
   }
 
   render() {
+    const { query } = this.props;
     const { expression } = this.state;
-
-    const tableMetadata = this.props.tableMetadata || this.props.query.table();
 
     return (
       <div style={{ maxWidth: "600px" }}>
@@ -52,7 +48,9 @@ export default class ExpressionWidget extends Component {
           <div>
             <ExpressionEditorTextfield
               expression={expression}
-              tableMetadata={tableMetadata}
+              query={query}
+              tableMetadata={query.tableMetadata()} // DEPRECATED
+              customFields={query.customFields()} // DEPRECATED
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }

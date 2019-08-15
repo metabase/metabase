@@ -50,6 +50,7 @@ const AggregationName = ({
   }
   return A_DEPRECATED.isCustom(aggregation) ? (
     <CustomAggregation
+      query={query}
       aggregation={aggregation}
       tableMetadata={tableMetadata}
       customFields={customFields}
@@ -76,15 +77,12 @@ const NamedAggregation = ({ aggregation, className }) => (
 );
 
 const CustomAggregation = ({
+  query,
   aggregation,
   tableMetadata,
   customFields,
   className,
-}) => (
-  <span className={className}>
-    {format(aggregation, { tableMetadata, customFields })}
-  </span>
-);
+}) => <span className={className}>{format(aggregation, { query })}</span>;
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
   const metricId = A_DEPRECATED.getMetric(aggregation);

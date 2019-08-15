@@ -236,7 +236,7 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     return ["metric", metricId];
   }
   _fieldReference(fieldName, fieldId) {
-    return ["field-id", fieldId];
+    return Array.isArray(fieldId) ? fieldId : ["field-id", fieldId];
   }
   _expressionReference(fieldName) {
     return ["expression", fieldName];

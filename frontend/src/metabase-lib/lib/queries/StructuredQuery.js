@@ -279,6 +279,13 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   /**
+   * @deprecated Alias of `expressions()`. Use only when partially porting old code that expects a prop called `customFields`.
+   */
+  customFields(): ?TableMetadata {
+    return this.expressions();
+  }
+
+  /**
    * Removes invalid clauses from the query (and source-query, recursively)
    */
   clean() {
@@ -565,10 +572,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   formatExpression(expression) {
-    return formatExpression(expression, {
-      tableMetadata: this.tableMetadata(),
-      customFields: this.expressions(),
-    });
+    return formatExpression(expression, { query: this });
   }
 
   /**

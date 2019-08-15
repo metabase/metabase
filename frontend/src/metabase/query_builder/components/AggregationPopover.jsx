@@ -344,6 +344,7 @@ export default class AggregationPopover extends Component {
             <ExpressionEditorTextfield
               startRule="aggregation"
               expression={aggregation}
+              query={query}
               tableMetadata={tableMetadata}
               customFields={customFields}
               onChange={parsedExpression =>
