@@ -30,6 +30,7 @@ export const MAIN_METRIC_ID = 1;
 export const PRODUCT_CATEGORY_FIELD_ID = 21;
 export const PRODUCT_CREATED_AT_FIELD_ID = 22;
 export const PRODUCT_PK_FIELD_ID = 24;
+export const PRODUCT_PRICE_FIELD_ID = 25;
 export const PRODUCT_TILE_FIELD_ID = 27;
 
 export const PEOPLE_LATITUDE_FIELD_ID = 14;

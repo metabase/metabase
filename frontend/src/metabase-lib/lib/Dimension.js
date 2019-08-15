@@ -934,6 +934,12 @@ export class JoinedDimension extends FieldDimension {
     return this._args[0];
   }
 
+  join() {
+    return _.findWhere(this._query && this._query.joins(), {
+      alias: this.joinAlias(),
+    });
+  }
+
   mbql(): ForeignFieldReference {
     return ["joined-field", this._args[0], this._parent.mbql()];
   }

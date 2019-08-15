@@ -11,7 +11,7 @@ import type {
 import type { Field as FieldReference } from "metabase/meta/types/Query";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
 import type Question from "metabase-lib/lib/Question";
 
 type ColumnSetting = {
@@ -182,21 +182,40 @@ export function syncTableColumnsToQuery(question: Question): Question {
   if (columnSettings && query instanceof StructuredQuery) {
     // clear `fields` first
     query = query.clearFields();
+
+    // do this before clearing join columns since the default is "none" thus joined columns will be removed
     const columnDimensions = query.columnDimensions();
     const columnNames = query.columnNames();
+
+    // clear join's `fields`
+    for (let i = query.joins().length - 1; i >= 0; i--) {
+      const join = query.joins()[i];
+      query = join.clearFields().parent();
+    }
+
     for (const columnSetting of columnSettings) {
       if (columnSetting.enabled) {
+        let fieldRef;
         if (columnSetting.fieldRef) {
-          query = query.addField(columnSetting.fieldRef);
+          fieldRef = columnSetting.fieldRef;
         } else if (columnSetting.name) {
-          const index = _.findIndex(
-            columnNames,
-            name => name === columnSetting.name,
-          );
+          const index = _.findIndex(columnNames, n => n === columnSetting.name);
           if (index >= 0) {
-            query = query.addField(columnDimensions[index].mbql());
+            fieldRef = columnDimensions[index].mbql();
+          }
+        }
+        if (fieldRef) {
+          const dimension = query.parseFieldReference(fieldRef);
+          // NOTE: this logic should probably be in StructuredQuery
+          if (dimension instanceof JoinedDimension) {
+            const join = dimension.join();
+            if (join) {
+              query = join.addField(dimension.mbql()).parent();
+            } else {
+              console.warn("missing join?", query, dimension);
+            }
           } else {
-            console.warn("Unknown column", columnSetting);
+            query = query.addField(dimension.mbql());
           }
         } else {
           console.warn("Unknown column", columnSetting);
