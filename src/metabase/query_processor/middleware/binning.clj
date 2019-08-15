@@ -48,7 +48,8 @@
                                                  (apply min user-maxes))
                                                global-max)]
     (when-not (and min-value max-value)
-      (throw (Exception. (str (tru "Unable to bin Field without a min/max value")))))
+      (throw (ex-info (tru "Unable to bin Field without a min/max value")
+               {:field-id field-id, :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
 
@@ -158,36 +159,62 @@
     :default
     (resolve-default-strategy metadata min-value max-value)))
 
+(defn- matching-metadata [field-id-or-name source-metadata]
+  (if (integer? field-id-or-name)
+    ;; for Field IDs, just fetch the Field from the Store
+    (qp.store/field field-id-or-name)
+    ;; for field literals, we require `source-metadata` from the source query
+    (do
+      ;; make sure source-metadata exists
+      (when-not source-metadata
+        (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
+                 {:field-literal field-id-or-name})))
+      ;; try to find field in source-metadata with matching name
+      (or
+       (some
+        (fn [metadata]
+          (when (= (:name metadata) field-id-or-name)
+            metadata))
+        source-metadata)
+       (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
+                            field-id-or-name)
+                {:field-literal field-id-or-name, :resolved-metadata source-metadata}))))))
+
 (s/defn ^:private update-binned-field :- mbql.s/binning-strategy
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."
-  [query, field-id->filters :- FieldID->Filters, [_ field-clause strategy strategy-param] :- mbql.s/binning-strategy]
+  [{:keys [source-metadata], :as inner-query}
+   field-id->filters                        :- FieldID->Filters
+   [_ field-clause strategy strategy-param] :- mbql.s/binning-strategy]
   (let [field-id-or-name                (mbql.u/field-clause->id-or-literal field-clause)
-        metadata                        (if (integer? field-id-or-name)
-                                          (qp.store/field field-id-or-name)
-                                          (some (fn [metadata]
-                                                  (when (= (:name metadata) field-id-or-name)
-                                                    metadata))
-                                                (:source-metadata query)))
+        metadata                        (matching-metadata field-id-or-name source-metadata)
         {:keys [min-value max-value]
          :as   min-max}                 (extract-bounds (when (integer? field-id-or-name) field-id-or-name)
-                                                        (:fingerprint metadata)
-                                                        field-id->filters)
+         (:fingerprint metadata)
+         field-id->filters)
         [new-strategy resolved-options] (resolve-options strategy strategy-param metadata min-value max-value)
-        resolved-options (merge min-max resolved-options)]
+        resolved-options                (merge min-max resolved-options)]
     ;; Bail out and use unmodifed version if we can't converge on a nice version.
     [:binning-strategy field-clause new-strategy strategy-param (or (nicer-breakout new-strategy resolved-options)
                                                                     resolved-options)]))
 
+(defn update-binning-strategy-in-inner-query
+  "Update `:binning-strategy` clauses in an `inner` [MBQL] query."
+  [{filters :filter, :as inner-query}]
+  (let [field-id->filters (filter->field-map filters)]
+    (mbql.u/replace inner-query
+      :binning-strategy
+      (try
+        (update-binned-field inner-query field-id->filters &match)
+        (catch Throwable e
+          (throw (ex-info (.getMessage e) {:clause &match} e)))))))
 
-(defn- update-binning-strategy* [{query-type :type, :as query}]
+
+(defn- update-binning-strategy* [{query-type :type, inner-query :query, :as query}]
   (if (= query-type :native)
     query
-    (let [field-id->filters (filter->field-map (get-in query [:query :filter]))]
-      (mbql.u/replace-in query [:query]
-        :binning-strategy
-        (update-binned-field query field-id->filters &match)))))
+    (update query :query update-binning-strategy-in-inner-query)))
 
 (defn update-binning-strategy
   "When a binned field is found, it might need to be updated if a relevant query criteria affects the min/max value of

@@ -1,5 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [i18n :refer [trs]]
@@ -74,7 +75,7 @@
   "Fetch a sequence of distinct values for `field` that are below the `total-max-length` threshold. If the values are
   past the threshold, this returns `nil`."
   [field]
-  (require 'metabase.db.metadata-queries)
+  (classloader/require 'metabase.db.metadata-queries)
   (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
     (when (values-less-than-total-max-length? values)
       values)))

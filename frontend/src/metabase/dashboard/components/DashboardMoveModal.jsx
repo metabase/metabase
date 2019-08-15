@@ -1,7 +1,7 @@
 import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
@@ -19,7 +19,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 class DashboardMoveModal extends React.Component {
   render() {
     const { onClose, setDashboardCollection } = this.props;

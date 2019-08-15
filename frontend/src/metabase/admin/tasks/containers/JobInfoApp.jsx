@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { connect } from "react-redux";
 
 import { Box, Flex } from "grid-styled";
@@ -56,7 +56,10 @@ const renderJobsTable = jobs => {
   );
 };
 
-@connect(null, { fetchJobInfo })
+@connect(
+  null,
+  { fetchJobInfo },
+)
 export default class JobInfoApp extends React.Component {
   async componentDidMount() {
     try {

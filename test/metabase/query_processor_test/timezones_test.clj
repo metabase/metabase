@@ -3,29 +3,22 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qpt]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :refer [Table]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [dataset-definitions :as defs]
              [datasets :refer [expect-with-drivers]]
-             [interface :as i]
              [sql :as sql.tx]]
             [toucan.db :as db]))
-
-(defn- call-with-timezones-db [f]
-  ;; Does the database exist?
-  (when-not (i/metabase-instance defs/test-data-with-timezones driver/*driver*)
-    ;; The database doesn't exist, so we need to create it
-    (data/get-or-create-database! defs/test-data-with-timezones))
-  ;; The database can now be used in tests
-  (data/with-db (data/get-or-create-database! defs/test-data-with-timezones)
-    (f)))
 
 (defmacro ^:private with-tz-db
   "Calls `with-db` on the `test-data-with-timezones` dataset and ensures the timestamps are fixed up on MySQL"
   [& body]
-  `(call-with-timezones-db (fn [] ~@body)))
+  `(data/dataset ~'test-data-with-timezones
+     ~@body))
 
 (def ^:private default-utc-results
   #{[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]})
@@ -50,30 +43,26 @@
           qpt/rows
           set))))
 
+(defn- table-identifier [table-key]
+  (let [table-name (db/select-one-field :name Table, :id (data/id table-key))]
+    (sql.tx/qualify-and-quote driver/*driver* (:name (data/db)) table-name)))
+
 (defn- users-table-identifier []
-  ;; HACK ! I don't have all day to write protocol methods to make this work the "right" way so for BigQuery and
-  (if (= driver/*driver* :bigquery)
-    "[test_data_with_timezones.users]"
-    (let [{table-name :name, schema :schema} (db/select-one ['Table :name :schema], :id (data/id :users))]
-      (str (when (seq schema)
-             (str (sql.tx/quote-name driver/*driver* schema) \.))
-           (sql.tx/quote-name driver/*driver* table-name)))))
+  (table-identifier :users))
 
-(defn- field-identifier [& kwds]
-  (let [field (db/select-one ['Field :name :table_id] :id (apply data/id kwds))
-        {table-name :name, schema :schema} (db/select-one ['Table :name :schema] :id (:table_id field))]
-    (str (when (seq schema)
-           (str (sql.tx/quote-name driver/*driver* schema) \.))
-         (sql.tx/quote-name driver/*driver* table-name) \. (sql.tx/quote-name driver/*driver* (:name field)))))
+(defn- field-identifier [table-key & field-keys]
+  (let [table-name (db/select-one-field :name Table, :id (data/id table-key))
+        field-name (db/select-one-field :name Field, :id (apply data/id table-key field-keys))]
+    (sql.tx/qualify-and-quote driver/*driver* (:name (data/db)) table-name field-name)))
 
-(def ^:private process-query' (comp set qpt/rows qp/process-query))
+(def ^:private query-rows-set (comp set qpt/rows qp/process-query))
 
 ;; Test that native dates are parsed with the report timezone (when supported)
 (expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (process-query'
+      (query-rows-set
        {:database   (data/id)
         :type       :native
         :native     {:query         (format "select %s, %s, %s from %s where cast(last_login as date) between {{date1}} and {{date2}}"
@@ -91,7 +80,7 @@
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (process-query'
+      (query-rows-set
        {:database   (data/id)
         :type       :native
         :native     {:query         (format "select %s, %s, %s from %s where {{ts_range}}"
@@ -108,7 +97,7 @@
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-      (process-query'
+      (query-rows-set
        {:database (data/id)
         :type :native
         :native     {:query         (format "select %s, %s, %s from %s where {{just_a_date}}"

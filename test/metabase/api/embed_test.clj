@@ -4,12 +4,13 @@
              [jwt :as jwt]
              [util :as buddy-util]]
             [clj-time.core :as time]
+            [clojure.string :as str]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
-             [config :as config]
              [http-client :as http]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.api
              [embed :as embed-api]
@@ -33,10 +34,13 @@
 
 (defn sign [claims] (jwt/sign claims *secret-key*))
 
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (tu/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
 (defmacro with-new-secret-key {:style/indent 0} [& body]
-  `(binding [*secret-key* (random-embedding-secret-key)]
-     (tu/with-temporary-setting-values [~'embedding-secret-key *secret-key*]
-       ~@body)))
+  `(do-with-new-secret-key (fn [] ~@body)))
 
 (defn card-token {:style/indent 1} [card-or-id & [additional-token-params]]
   (sign (merge {:resource {:question (u/get-id card-or-id)}
@@ -67,12 +71,7 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:columns  ["count"]
-                 :cols     [{:base_type    "type/Integer"
-                             :special_type "type/Number"
-                             :name         "count"
-                             :display_name "count"
-                             :source       "aggregation"}]
+   {:data       {:cols     [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                  :rows     [[100]]
                  :insights nil}
     :json_query {:parameters nil}
@@ -80,14 +79,14 @@
   ([results-format]
    (case results-format
      ""      (successful-query-results)
-     "/json" [{:count 100}]
-     "/csv"  "count\n100\n"
+     "/json" [{:Count 100}]
+     "/csv"  "Count\n100\n"
      "/xlsx" (fn [body]
                (->> (ByteArrayInputStream. body)
                     spreadsheet/load-workbook
                     (spreadsheet/select-sheet "Query result")
                     (spreadsheet/select-columns {:A :col})
-                    (= [{:col "count"} {:col 100.0}]))))))
+                    (= [{:col "Count"} {:col 100.0}]))))))
 
 (defn dissoc-id-and-name {:style/indent 0} [obj]
   (dissoc obj :id :name))
@@ -322,8 +321,9 @@
   (with-embedding-enabled-and-new-secret-key
     (tt/with-temp Card [card (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
-        (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))
+      (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
+        (tu/with-temporary-setting-values [site-url http/*url-prefix*]
+          (http/client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014")))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------

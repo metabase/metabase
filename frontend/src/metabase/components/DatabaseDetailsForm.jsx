@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -64,8 +64,8 @@ export default class DatabaseDetailsForm extends Component {
   };
 
   validateForm() {
-    let { engine, engines } = this.props;
-    let { details } = this.state;
+    const { engine, engines } = this.props;
+    const { details } = this.state;
 
     let valid = true;
 
@@ -75,7 +75,7 @@ export default class DatabaseDetailsForm extends Component {
     }
 
     // go over individual fields
-    for (let field of engines[engine]["details-fields"]) {
+    for (const field of engines[engine]["details-fields"]) {
       // tunnel fields aren't required if tunnel isn't enabled
       if (!details["tunnel-enabled"] && isTunnelField(field)) {
         continue;
@@ -113,18 +113,19 @@ export default class DatabaseDetailsForm extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { engine, engines, submitFn } = this.props;
-    let { details } = this.state;
+    const { engine, engines, submitFn } = this.props;
+    const { details } = this.state;
 
-    let request = {
+    const request = {
       engine: engine,
       name: details.name,
       details: {},
       // use the existing is_full_sync setting in case that "let user control scheduling" setting is enabled
       is_full_sync: details.is_full_sync,
+      auto_run_queries: details.auto_run_queries,
     };
 
-    for (let field of engines[engine]["details-fields"]) {
+    for (const field of engines[engine]["details-fields"]) {
       let val = details[field.name] === "" ? null : details[field.name];
 
       if (val && field.type === "integer") {
@@ -146,8 +147,8 @@ export default class DatabaseDetailsForm extends Component {
   }
 
   renderFieldInput(field, fieldIndex) {
-    let { details } = this.state;
-    let value = (details && details[field.name]) || "";
+    const { details } = this.state;
+    const value = (details && details[field.name]) || "";
 
     switch (field.type) {
       case "boolean":
@@ -195,14 +196,15 @@ export default class DatabaseDetailsForm extends Component {
   }
 
   renderField(field, fieldIndex) {
-    let { engine } = this.props;
+    const { engine } = this.props;
+    const { details } = this.state;
     window.ENGINE = engine;
 
     if (field.name === "tunnel-enabled") {
-      let on =
-        this.state.details["tunnel-enabled"] == undefined
+      const on =
+        details["tunnel-enabled"] == undefined
           ? false
-          : this.state.details["tunnel-enabled"];
+          : details["tunnel-enabled"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">
@@ -223,14 +225,14 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
-    } else if (isTunnelField(field) && !this.state.details["tunnel-enabled"]) {
+    } else if (isTunnelField(field) && !details["tunnel-enabled"]) {
       // don't show tunnel fields if tunnel isn't enabled
       return null;
     } else if (field.name === "use-jvm-timezone") {
-      let on =
-        this.state.details["use-jvm-timezone"] == undefined
+      const on =
+        details["use-jvm-timezone"] == undefined
           ? false
-          : this.state.details["use-jvm-timezone"];
+          : details["use-jvm-timezone"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">
@@ -250,11 +252,33 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
+    } else if (field.name === "use-srv") {
+      const on = details["use-srv"] == null ? false : details["use-srv"];
+      return (
+        <FormField key={field.name} fieldName={field.name}>
+          <div className="flex align-center Form-offset">
+            <div className="Grid-cell--top">
+              <Toggle
+                value={on}
+                onChange={val => this.onChange("use-srv", val)}
+              />
+            </div>
+            <div className="px2">
+              <h3>{t`Use DNS SRV when connecting`}</h3>
+              <div style={{ maxWidth: "40rem" }} className="pt1">
+                {t`Using this option requires that provided host is a FQDN.  If connecting to 
+                an Atlas cluster, you might need to enable this option.  If you don't know what this means,
+                leave this disabled.`}
+              </div>
+            </div>
+          </div>
+        </FormField>
+      );
     } else if (field.name === "let-user-control-scheduling") {
-      let on =
-        this.state.details["let-user-control-scheduling"] == undefined
+      const on =
+        details["let-user-control-scheduling"] == null
           ? false
-          : this.state.details["let-user-control-scheduling"];
+          : details["let-user-control-scheduling"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">
@@ -267,8 +291,7 @@ export default class DatabaseDetailsForm extends Component {
               />
             </div>
             <div className="px2">
-              <h3
-              >{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
+              <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
                 {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.
                                 If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
@@ -277,13 +300,36 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
+    } else if (field.name === "auto_run_queries") {
+      const on =
+        details["auto_run_queries"] == null
+          ? true
+          : details["auto_run_queries"];
+      return (
+        <FormField key={field.name} fieldName={field.name}>
+          <div className="flex align-center Form-offset">
+            <div className="Grid-cell--top">
+              <Toggle
+                value={on}
+                onChange={val => this.onChange("auto_run_queries", val)}
+              />
+            </div>
+            <div className="px2">
+              <h3>{t`Automatically run queries when doing simple filtering and summarizing`}</h3>
+              <div style={{ maxWidth: "40rem" }} className="pt1">
+                {t`When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`}
+              </div>
+            </div>
+          </div>
+        </FormField>
+      );
     } else if (field.name === "client-id" && CREDENTIALS_URL_PREFIXES[engine]) {
-      let { details } = this.state;
-      let projectID = details && details["project-id"];
-      let credentialsURLLink;
+      const { details } = this.state;
+      const projectID = details && details["project-id"];
       // if (projectID) {
-      let credentialsURL = CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
-      credentialsURLLink = (
+      const credentialsURL =
+        CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
+      const credentialsURLLink = (
         <div className="flex align-center Form-offset">
           <div className="Grid-cell--top">
             {jt`${(
@@ -305,11 +351,11 @@ export default class DatabaseDetailsForm extends Component {
         </FormField>
       );
     } else if (field.name === "auth-code" && AUTH_URL_PREFIXES[engine]) {
-      let { details } = this.state;
+      const { details } = this.state;
       const clientID = details && details["client-id"];
       let authURLLink;
       if (clientID) {
-        let authURL = AUTH_URL_PREFIXES[engine] + clientID;
+        const authURL = AUTH_URL_PREFIXES[engine] + clientID;
         authURLLink = (
           <div className="flex align-center Form-offset">
             <div className="Grid-cell--top">
@@ -325,7 +371,8 @@ export default class DatabaseDetailsForm extends Component {
                   <a
                     href={AUTH_URL_PREFIXES["bigquery_with_drive"] + clientID}
                     target="_blank"
-                  >{t`with Google Drive permissions`}</a>)
+                  >{t`with Google Drive permissions`}</a>
+                  )
                 </span>
               )}
             </div>
@@ -388,12 +435,12 @@ export default class DatabaseDetailsForm extends Component {
       isNewDatabase,
       submitting,
     } = this.props;
-    let { valid, details } = this.state;
+    const { valid, details } = this.state;
 
     const willProceedToNextDbCreationStep =
       isNewDatabase && details["let-user-control-scheduling"];
 
-    let fields = [
+    const fields = [
       {
         name: "name",
         "display-name": t`Name`,
@@ -403,6 +450,10 @@ export default class DatabaseDetailsForm extends Component {
       ...engines[engine]["details-fields"],
       {
         name: "let-user-control-scheduling",
+        required: true,
+      },
+      {
+        name: "auto_run_queries",
         required: true,
       },
     ];
@@ -424,7 +475,9 @@ export default class DatabaseDetailsForm extends Component {
           >
             {submitting
               ? t`Saving...`
-              : willProceedToNextDbCreationStep ? t`Next` : submitButtonText}
+              : willProceedToNextDbCreationStep
+              ? t`Next`
+              : submitButtonText}
           </button>
           <FormMessage formError={formError} formSuccess={formSuccess} />
         </div>

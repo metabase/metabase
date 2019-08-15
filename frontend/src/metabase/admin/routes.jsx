@@ -1,7 +1,7 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";

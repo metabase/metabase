@@ -9,7 +9,7 @@ import { Box } from "grid-styled";
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
 import EmptyState from "metabase/components/EmptyState";
 
@@ -34,7 +34,7 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { Revision, RevisionId } from "metabase/meta/types/Revision";
+import type { Revision } from "metabase/meta/types/Revision";
 import type {
   Parameter,
   ParameterId,
@@ -66,12 +66,6 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttributes: ({ [attribute: string]: any }) => void,
   fetchDashboardCardData: (options: {
@@ -145,8 +139,6 @@ export default class Dashboard extends Component {
     archiveDashboard: PropTypes.func.isRequired,
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
@@ -236,7 +228,7 @@ export default class Dashboard extends Component {
       isNightMode,
       hideParameters,
     } = this.props;
-    let { error } = this.state;
+    const { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -284,12 +276,11 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
               />
             </header>
-            {!isFullscreen &&
-              parametersWidget && (
-                <div className="wrapper flex flex-column align-start mt2 relative z2">
-                  {parametersWidget}
-                </div>
-              )}
+            {!isFullscreen && parametersWidget && (
+              <div className="wrapper flex flex-column align-start mt2 relative z2">
+                {parametersWidget}
+              </div>
+            )}
             <div className="wrapper">
               {dashboard.ordered_cards.length === 0 ? (
                 <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>

@@ -3,7 +3,8 @@ import ReactDOM from "react-dom";
 
 export default ComposedComponent =>
   class extends Component {
-    static displayName = "BodyComponent[" +
+    static displayName =
+      "BodyComponent[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
@@ -47,7 +48,8 @@ export default ComposedComponent =>
  */
 export const TestBodyComponent = ComposedComponent =>
   class extends Component {
-    static displayName = "TestBodyComponent[" +
+    static displayName =
+      "TestBodyComponent[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

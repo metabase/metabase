@@ -15,7 +15,7 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -89,9 +89,14 @@
   (cond-> user
     reset_token (assoc :reset_token (creds/hash-bcrypt reset_token))))
 
-(defn- post-select [{:keys [first_name last_name], :as user}]
+(defn add-common-name
+  "Add a `:common_name` key to `user` by combining their first and last names."
+  [{:keys [first_name last_name], :as user}]
   (cond-> user
     (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+
+(defn- post-select [user]
+  (add-common-name user))
 
 ;; `pre-delete` is more for the benefit of tests than anything else since these days we archive users instead of fully
 ;; deleting them. In other words the following code is only ever called by tests
@@ -173,7 +178,7 @@
 (def LoginAttributes
   "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
   (su/with-api-error-message {su/KeywordOrString (s/cond-pre s/Str s/Num)}
-    (tru "value must be a map with each value either a string or number.")))
+    (deferred-tru "value must be a map with each value either a string or number.")))
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"

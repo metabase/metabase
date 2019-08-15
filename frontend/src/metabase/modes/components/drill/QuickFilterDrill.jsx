@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from "c-3po";
+import { jt } from "ttag";
 import { TYPE, isa, isFK, isPK } from "metabase/lib/types";
 import { singularize, pluralize, stripId } from "metabase/lib/formatting";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -27,7 +27,10 @@ function getFiltersForColumn(column) {
   }
 }
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default function QuickFilterDrill({
+  question,
+  clicked,
+}: ClickActionProps): ClickAction[] {
   const query = question.query();
   if (
     !(query instanceof StructuredQuery) ||
@@ -61,11 +64,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     ];
   }
 
-  let operators = getFiltersForColumn(column) || [];
+  const operators = getFiltersForColumn(column) || [];
   return operators.map(({ name, operator }) => ({
     name: operator,
     section: "filter",
     title: <span className="h2">{name}</span>,
     question: () => question.filter(operator, column, value),
   }));
-};
+}

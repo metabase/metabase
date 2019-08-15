@@ -79,8 +79,11 @@
   {:status    :completed
    :row_count 1
    :data      {:rows        [[1]]
-               :columns     ["count"]
-               :cols        [{:name "count", :display_name "Count", :base_type :type/Integer, :source :native}]
+               :cols        [{:name         "count"
+                              :display_name "count"
+                              :base_type    :type/Integer
+                              :source       :native
+                              :field_ref    [:field-literal "count" :type/Integer]}]
                :native_form {:collection "venues"
                              :query      native-query}}}
   (-> (qp/process-query {:native   {:query      native-query
@@ -126,12 +129,12 @@
   (driver/describe-table :mongo (data/db) (Table (data/id :venues))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
-(tx/def-database-definition ^:private all-null-columns
+(tx/defdataset ^:private all-null-columns
   [["bird_species"
-     [{:field-name "name", :base-type :type/Text}
-      {:field-name "favorite_snack", :base-type :type/Text}]
-     [["House Finch" nil]
-      ["Mourning Dove" nil]]]])
+    [{:field-name "name", :base-type :type/Text}
+     {:field-name "favorite_snack", :base-type :type/Text}]
+    [["House Finch" nil]
+     ["Mourning Dove" nil]]]])
 
 (datasets/expect-with-driver :mongo
   [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
@@ -198,7 +201,7 @@
 
 
 ;;; Check that we support Mongo BSON ID and can filter by it (#1367)
-(tx/def-database-definition ^:private with-bson-ids
+(tx/defdataset ^:private with-bson-ids
   [["birds"
      [{:field-name "name", :base-type :type/Text}
       {:field-name "bird_id", :base-type :type/MongoBSONID}]
@@ -284,10 +287,9 @@
 ;; and #8894)
 (datasets/expect-with-driver :mongo
   ;; if the column does not come back in the results for a given document we should fill in the missing values with nils
-  {:columns ["_id" "name" "parent_id"]
-   :rows    [[1 "African"  nil]
-             [2 "American" nil]
-             [3 "Artisan"  nil]]}
+  {:rows [[1 "African"  nil]
+          [2 "American" nil]
+          [3 "Artisan"  nil]]}
   ;; add a temporary Field that doesn't actually exist to test data categories
   (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
     ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`

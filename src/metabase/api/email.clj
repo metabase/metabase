@@ -74,7 +74,9 @@
   (api/check-superuser)
   (let [email-settings (select-keys settings (keys mb-to-smtp-settings))
         smtp-settings  (-> (set/rename-keys email-settings mb-to-smtp-settings)
-                           (assoc :port (Integer/parseInt (:email-smtp-port settings))))
+                           (assoc :port (some-> (:email-smtp-port settings) Integer/parseInt)))
+        ;; TODO - this is :thumbs_down`, we should just use `with-redefs` for `email/test-smtp-connection` where
+        ;; needed in the tests. FIXME!
         response       (if-not config/is-test?
                          ;; in normal conditions, validate connection
                          (email/test-smtp-connection smtp-settings)

@@ -4,9 +4,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
+             [connection-pool :as connection-pool]
              [driver :as driver]
              [util :as u]]
-            [metabase.db.connection-pool :as connection-pool]
             [metabase.models.database :refer [Database]]
             [metabase.util
              [i18n :refer [tru]]
@@ -52,7 +52,7 @@
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (tru "Closing old connection pool for database {0} ..." database-id)))
-  (connection-pool/destroy-connection-pool! (:datasource pool-spec))
+  (connection-pool/destroy-connection-pool! pool-spec)
   (when-let [ssh-tunnel (:ssh-tunnel pool-spec)]
     (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
 
@@ -79,7 +79,7 @@
   [_ database]
   (set-pool! (u/get-id database) nil))
 
-(def ^:private db->pooled-spec-lock (Object.))
+(def ^:private create-pool-lock (Object.))
 
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`.
@@ -92,7 +92,7 @@
    ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
    ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
    ;; one thread will be creating a pool at a given instant.
-   (locking db->pooled-spec-lock
+   (locking create-pool-lock
      (or
       ;; check if another thread created the pool while we were waiting to acquire the lock
       (get @database-id->connection-pool (u/get-id database-or-id))

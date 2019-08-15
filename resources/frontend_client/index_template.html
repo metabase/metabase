@@ -1,98 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8" />
-        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/app/assets/img/apple-touch-icon.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="/app/assets/img/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="/app/assets/img/favicon-16x16.png">
-        <link rel="manifest" href="/app/assets/img/site.webmanifest">
-        <link rel="mask-icon" href="/app/assets/img/safari-pinned-tab.svg" color="#62a8e6">
-        <link rel="shortcut icon" href="/app/assets/img/favicon.ico">
-        <meta name="msapplication-TileColor" content="#2d89ef">
-        <meta name="msapplication-config" content="/app/assets/img/browserconfig.xml">
-        <meta name="theme-color" content="#ffffff">
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/app/assets/img/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/app/assets/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/app/assets/img/favicon-16x16.png">
+    <link rel="manifest" href="/app/assets/img/site.webmanifest">
+    <link rel="mask-icon" href="/app/assets/img/safari-pinned-tab.svg" color="#62a8e6">
+    <link rel="shortcut icon" href="/app/assets/img/favicon.ico">
+    <meta name="msapplication-TileColor" content="#2d89ef">
+    <meta name="msapplication-config" content="/app/assets/img/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="base-href" content="{{{baseHref}}}" />
+    <meta name="uri" content="{{{uri}}}" />
 
-        {{{embed_code}}}
+    {{{embedCode}}}
 
-        <title>Metabase</title>
+    <title>Metabase</title>
 
-        <base href={{{base_href}}} />
+    <base href="{{{baseHref}}}" />
 
-        <script type="text/javascript">
-            (function() {
-                window.MetabaseBootstrap = {{{bootstrap_json}}};
-                window.MetabaseLocalization = {{{localization_json}}};
+    <script type="application/json" id="_metabaseBootstrap">
+      {{{bootstrapJSON}}}
+    </script>
 
-                var configuredRoot = {{{base_href}}};
-                var actualRoot = "/";
+    <script type="application/json" id="_metabaseLocalization">
+      {{{localizationJSON}}}
+    </script>
 
-                // Add trailing slashes
-                var backendPathname = {{{uri}}}.replace(/\/*$/, "/");
-                // e.x. "/questions/"
-                var frontendPathname = window.location.pathname.replace(/\/*$/, "/");
-                // e.x. "/metabase/questions/"
-                if (backendPathname === frontendPathname.slice(-backendPathname.length)) {
-                    // Remove the backend pathname from the end of the frontend pathname
-                    actualRoot = frontendPathname.slice(0, -backendPathname.length) + "/";
-                    // e.x. "/metabase/"
-                }
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
+    <script type="text/javascript">{{{bootstrapJS}}}</script>
+  </head>
 
-                if (actualRoot !== configuredRoot) {
-                    console.warn("Warning: the Metabase site URL basename \"" + configuredRoot + "\" does not match the actual basename \"" + actualRoot + "\".");
-                    console.warn("You probably want to update the Site URL setting to \"" + window.location.origin + actualRoot + "\"");
-                    document.getElementsByTagName("base")[0].href = actualRoot;
-                }
+  <body>
+    <div id="root"></div>
 
-                window.MetabaseRoot = actualRoot;
-            })();
-        </script>
-    </head>
+    <!-- Using the Web Font Loader lets us load the fonts asynchronously for faster page loads -- see https://github.com/typekit/webfontloader -->
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
+    <script type="text/javascript">{{{webFontConfigJS}}}</script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js" async></script>
 
-    <body>
-        <div id="root"></div>
+    <!-- If Google Auth is enabled load the Google Auth JS lib -->
+    {{#enableGoogleAuth}}
+      <script type="text/javascript" src="https://apis.google.com/js/api:client.js" async></script>
+    {{/enableGoogleAuth}}
 
-        <script type="text/javascript">
-            // Load scripts asyncronously after the page has finished loading
-            (function () {
-                function loadScript(src, onload) {
-                    var script = document.createElement('script');
-                    script.type  = "text/javascript";
-                    script.async = true;
-                    script.src   = src;
-                    if (onload) script.onload = onload;
-                    document.body.appendChild(script);
-                }
-                loadScript('https://ajax.googleapis.com/ajax/libs/webfont/1.4.7/webfont.js', function () {
-                    WebFont.load({ google: {
-                        families: ["Lato:300,400,700,900"] }
-                    });
-                });
-                var googleAuthClientID = window.MetabaseBootstrap.google_auth_client_id;
-                if (googleAuthClientID) {
-                    loadScript('https://apis.google.com/js/api:client.js');
-                }
-            })();
-        </script>
-
-        <script type="text/javascript">
-            (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-            (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-            m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-            })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-
-            // if we are not doing tracking then go ahead and disable GA now so we never even track the initial pageview
-            const tracking = window.MetabaseBootstrap.anon_tracking_enabled;
-            const ga_code = window.MetabaseBootstrap.ga_code;
-            if (!tracking) {
-                window['ga-disable-'+ga_code] = true;
-            }
-
-            ga('create', ga_code, 'auto');
-        </script>
-    </body>
+    <!-- Google Analytics -->
+    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
+    {{#enableAnonTracking}}
+      <script type="text/javascript">{{{googleAnalyticsJS}}}</script>
+    {{/enableAnonTracking}}
+  </body>
 </html>

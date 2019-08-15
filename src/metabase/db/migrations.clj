@@ -15,11 +15,12 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [database :refer [Database virtual-id]]
+             [database :refer [Database]]
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
@@ -226,7 +227,7 @@
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
                                   (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
-          :when (not= db-id virtual-id)]
+          :when (not= db-id mbql.s/saved-questions-virtual-database-id)]
     (if (and (seq cards)
              (db/exists? Database :id db-id))
       (db/update-where! Card {:id [:in (map :id cards)]}
@@ -336,9 +337,9 @@
     (doseq [group-id non-admin-group-ids]
       (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
-                                         Pulse     (str (trs "Migrated Pulses"))
-                                         Card      (str (trs "Migrated Questions"))}
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
             :when                       (db/exists? model :collection_id nil)
             :let                        [new-collection (db/insert! Collection
                                                           :name  new-collection-name

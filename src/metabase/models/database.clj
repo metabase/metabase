@@ -11,54 +11,47 @@
              [interface :as i]
              [permissions :as perms]
              [permissions-group :as perm-group]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
              [models :as models]]))
 
-;;; --------------------------------------------------- Constants ---------------------------------------------------
-
-;; TODO - should this be renamed `saved-cards-virtual-id`?
-(def ^Integer virtual-id
-  "The ID used to signify that a database is 'virtual' rather than physical.
-
-   A fake integer ID is used so as to minimize the number of changes that need to be made on the frontend -- by using
-   something that would otherwise be a legal ID, *nothing* need change there, and the frontend can query against this
-   'database' none the wiser. (This integer ID is negative which means it will never conflict with a *real* database
-   ID.)
-
-   This ID acts as a sort of flag. The relevant places in the middleware can check whether the DB we're querying is
-   this 'virtual' database and take the appropriate actions."
-  -1337)
-;; To the reader: yes, this seems sort of hacky, but one of the goals of the Nested Query Initiative™ was to minimize
-;; if not completely eliminate any changes to the frontend. After experimenting with several possible ways to do this
-;; implementation seemed simplest and best met the goal. Luckily this is the only place this "magic number" is defined
-;; and the entire frontend can remain blissfully unaware of its value.
-
-
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Database :metabase_database)
-
 
 (defn- schedule-tasks!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
     ;; this is done this way to avoid circular dependencies
-    (require 'metabase.task.sync-databases)
+    (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/schedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error scheduling tasks for DB")))))
+
+;; TODO - something like NSNotificationCenter in Objective-C would be really really useful here so things that want to
+;; implement behavior when an object is deleted can do it without having to put code here
 
 (defn- unschedule-tasks!
   "Unschedule any currently pending sync operation tasks for `database`."
   [database]
   (try
-    (require 'metabase.task.sync-databases)
+    (classloader/the-classloader)
+    (classloader/require 'metabase.task.sync-databases)
     ((resolve 'metabase.task.sync-databases/unschedule-tasks-for-db!) database)
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
+
+(defn- destroy-qp-thread-pool!
+  [database]
+  (try
+    (classloader/the-classloader)
+    (classloader/require 'metabase.query-processor.middleware.async-wait)
+    ((resolve 'metabase.query-processor.middleware.async-wait/destroy-thread-pool!) database)
+    (catch Throwable e
+      (log/error e (trs "Error destroying thread pool for DB.")))))
 
 (defn- post-insert [database]
   (u/prog1 database
@@ -74,6 +67,7 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
+  (destroy-qp-thread-pool! database)
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
   (db/delete! 'Table       :db_id       id)
@@ -173,9 +167,10 @@
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
-   (encode-map (cond
-                 (not (:is_superuser @*current-user*)) (dissoc db :details)
-                 (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
-                 (get-in db [:details :pass])          (assoc-in db [:details :pass] protected-password) ; MongoDB uses "pass" instead of password
-                 :else                                 db)
-               json-generator)))
+   (encode-map
+    (cond
+      (not (:is_superuser @*current-user*)) (dissoc db :details)
+      (get-in db [:details :password])      (assoc-in db [:details :password] protected-password)
+      (get-in db [:details :pass])          (assoc-in db [:details :pass] protected-password) ; MongoDB uses "pass" instead of password
+      :else                                 db)
+    json-generator)))

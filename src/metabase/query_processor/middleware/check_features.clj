@@ -12,14 +12,19 @@
   [feature]
   (when driver/*driver*
     (when-not (driver/supports? driver/*driver* feature)
-      (throw (Exception. (str (tru "{0} is not supported by this driver." (name feature))))))))
+      (throw (Exception. (tru "{0} is not supported by this driver." (name feature)))))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and
 ;; auto-generate this logic
 (defn- query->required-features [query]
   (mbql.u/match (:query query)
-    [:stddev _] :standard-deviation-aggregations
-    [:fk-> _ _] :foreign-keys))
+    :stddev
+    :standard-deviation-aggregations
+
+    ;; `:fk->` is normally replaced by `:joined-field` already but the middleware that does the replacement won't run
+    ;; if the driver doesn't support foreign keys, meaning the clauses can leak thru
+    #{:joined-field :fk->}
+    :foreign-keys))
 
 (defn- check-features* [{query-type :type, :as query}]
   (if-not (= query-type :query)

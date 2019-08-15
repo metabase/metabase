@@ -128,7 +128,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
+         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))

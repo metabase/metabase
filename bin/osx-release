@@ -59,7 +59,7 @@ sub bump_version {
 }
 
 sub clean {
-    system('xcodebuild', 'clean', '-project', $xcode_project) == 0 or die $!;
+    system('xcodebuild', '-UseNewBuildSystem=NO', 'clean', '-project', $xcode_project) == 0 or die $!;
     remove_tree(OSX_ARTIFACTS_DIR);
 }
 
@@ -74,6 +74,7 @@ sub build {
 
     # Build the project and generate Metabase.xcarchive
     system('xcodebuild',
+           '-UseNewBuildSystem=NO',
            '-project', $xcode_project,
            '-scheme', 'Metabase',
            '-configuration', 'Release',
@@ -82,6 +83,7 @@ sub build {
 
     # Ok, now create the Metabase.app artifact
     system('xcodebuild',
+           '-UseNewBuildSystem=NO',
            '-exportArchive',
            '-exportOptionsPlist', $export_options,
            '-archivePath', $xcarchive,

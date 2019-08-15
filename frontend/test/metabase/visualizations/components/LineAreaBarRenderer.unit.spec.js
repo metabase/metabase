@@ -13,7 +13,7 @@ import {
   getFormattedTooltips,
 } from "../__support__/visualizations";
 
-let formatTz = offset =>
+const formatTz = offset =>
   (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
 
 const BROWSER_TZ = formatTz(-new Date().getTimezoneOffset() / 60);
@@ -55,6 +55,17 @@ describe("LineAreaBarRenderer", () => {
     // ]);
   });
 
+  it("should display a warning for invalid dates", () => {
+    const onRender = jest.fn();
+    renderTimeseriesLine({
+      rowsOfSeries: [[["2019-W52", 1], ["2019-W53", 2], ["2019-W01", 3]]],
+      unit: "week",
+      onRender,
+    });
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
+  });
+
   ["Z", ...ALL_TZS].forEach(tz =>
     it(
       "should display hourly data (in " +
@@ -76,7 +87,7 @@ describe("LineAreaBarRenderer", () => {
 
         dispatchUIEvent(qs(".dot"), "mousemove");
 
-        let expected = rows.map(row =>
+        const expected = rows.map(row =>
           formatValue(row[0], {
             column: DateTimeColumn({ unit: "hour" }),
           }),
@@ -201,7 +212,7 @@ describe("LineAreaBarRenderer", () => {
 
   describe("goals", () => {
     it("should render a goal line", () => {
-      let rows = [["2016", 1], ["2017", 2]];
+      const rows = [["2016", 1], ["2017", 2]];
 
       renderTimeseriesLine({
         rowsOfSeries: [rows],
@@ -218,7 +229,7 @@ describe("LineAreaBarRenderer", () => {
     });
 
     it("should render a goal tooltip with the proper value", () => {
-      let rows = [["2016", 1], ["2017", 2]];
+      const rows = [["2016", 1], ["2017", 2]];
 
       const goalValue = 30;
       const onHoverChange = jest.fn();
@@ -239,6 +250,32 @@ describe("LineAreaBarRenderer", () => {
     });
   });
 
+  describe("histogram", () => {
+    it("should have one more tick than it has bars", () => {
+      // this is because each bar has a tick on either side
+      renderLineAreaBar(
+        element,
+        [
+          {
+            data: {
+              cols: [NumberColumn(), NumberColumn()],
+              rows: [[1, 1], [2, 2], [3, 1]],
+            },
+            card: {
+              display: "bar",
+              visualization_settings: {
+                "graph.x_axis.axis_enabled": true,
+                "graph.x_axis.scale": "histogram",
+              },
+            },
+          },
+        ],
+        {},
+      );
+      expect(qsa(".axis.x .tick").length).toBe(4);
+    });
+  });
+
   // querySelector shortcut
   const qs = selector => element.querySelector(selector);
 
@@ -249,6 +286,7 @@ describe("LineAreaBarRenderer", () => {
   const renderTimeseriesLine = ({
     rowsOfSeries,
     onHoverChange,
+    onRender,
     unit,
     settings,
   }) => {
@@ -271,6 +309,7 @@ describe("LineAreaBarRenderer", () => {
       })),
       {
         onHoverChange,
+        onRender,
       },
     );
   };

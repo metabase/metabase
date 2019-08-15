@@ -11,6 +11,7 @@ import {
   waitForRequestToComplete,
   waitForAllRequestsToComplete,
   cleanup,
+  eventually,
 } from "__support__/e2e_tests";
 
 import jwt from "jsonwebtoken";
@@ -96,7 +97,7 @@ describe("parameters", () => {
     await store.dispatch(fetchTableMetadata(1));
     const metadata = getMetadata(store.getState());
 
-    let unsavedQuestion = Question.create({
+    const unsavedQuestion = Question.create({
       databaseId: 1,
       metadata,
     })
@@ -224,7 +225,7 @@ describe("parameters", () => {
       app = mount(store.getAppContainer());
 
       await waitForRequestToComplete("GET", /^\/api\/card\/\d+/);
-      expect(app.find(".Header-title-name").text()).toEqual("Test Question");
+      expect(app.find("ViewHeading").text()).toEqual("Test Question");
 
       // wait for the query to load
       await waitForRequestToComplete("POST", /^\/api\/card\/\d+\/query/);
@@ -439,23 +440,25 @@ async function sharedParametersTests(getAppAndStore) {
   //   ]);
   // });
 
-  it("should have the correct values", () => {
-    const widgets = app.find(FieldValuesWidget);
-    const values = widgets.map(
-      widget =>
-        widget
-          .find("ul") // first ul is options
-          .at(0)
-          .find("li")
-          .map(li => li.text())
-          .slice(0, -1), // the last item is the input, remove it
-    );
-    expect(values).toEqual([
-      ["Hudson Borer - 1"], // remapped value
-      [],
-      [],
-      [],
-    ]);
+  it("should have the correct values", async () => {
+    await eventually(() => {
+      const widgets = app.find(FieldValuesWidget);
+      const values = widgets.map(
+        widget =>
+          widget
+            .find("ul") // first ul is options
+            .at(0)
+            .find("li")
+            .map(li => li.text())
+            .slice(0, -1), // the last item is the input, remove it
+      );
+      expect(values).toEqual([
+        ["Hudson Borer - 1"], // remapped value
+        [],
+        [],
+        [],
+      ]);
+    });
   });
 
   it("should have the correct placeholders", () => {

@@ -8,6 +8,7 @@
              [related :as related]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.mbql.normalize :as normalize]
             [metabase.models
              [interface :as mi]
              [metric :as metric :refer [Metric]]
@@ -69,13 +70,17 @@
   "Check whether current user has write permissions, then update Metric with values in `body`. Publishes appropriate
   event and returns updated/hydrated Metric."
   [id {:keys [revision_message archived], :as body}]
-  (let [existing (api/write-check Metric id)
-        [changes] (data/diff
-                   (u/select-keys-when body
+  (let [existing   (api/write-check Metric id)
+        clean-body (u/select-keys-when body
                      :present #{:description :caveats :how_is_this_calculated :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-                   existing)
-        archive? (:archived changes)]
+        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-body   (merge
+                     (dissoc clean-body :revision_message)
+                     (when new-def {:definition new-def}))
+        changes    (when-not (= new-body existing)
+                     new-body)
+        archive?   (:archived changes)]
     (when changes
       (db/update! Metric id changes))
     (u/prog1 (hydrated-metric id)

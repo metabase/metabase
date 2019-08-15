@@ -21,7 +21,10 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class DashboardEmbedWidget extends Component {
   render() {
     const {

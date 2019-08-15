@@ -11,10 +11,13 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.pulse.render :as render]
+            [metabase.pulse.render
+             [body :as render.body]
+             [style :as render.style]]
             [metabase.util
              [date :as du]
              [export :as export]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
@@ -23,7 +26,8 @@
             [toucan.db :as db])
   (:import [java.io File IOException]))
 
-(alter-meta! #'stencil.core/render-file assoc :style/indent 1)
+(when config/is-dev?
+  (alter-meta! #'stencil.core/render-file assoc :style/indent 1))
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
@@ -42,16 +46,16 @@
    :logoHeader true})
 
 (defn- abandonment-context []
-  {:heading      (str (trs "We’d love your feedback."))
-   :callToAction (str (trs "It looks like Metabase wasn’t quite a match for you.")
+  {:heading      (trs "We’d love your feedback.")
+   :callToAction (str (deferred-trs "It looks like Metabase wasn’t quite a match for you.")
                       " "
-                      (trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
-   :link         "https://www.metabase.com/feedback/inactive"})
+                      (deferred-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
+   :link         "https://metabase.com/feedback/inactive"})
 
 (defn- follow-up-context []
-  {:heading      (str (trs "We hope you''ve been enjoying Metabase."))
-   :callToAction (str (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?"))
-   :link         "https://www.metabase.com/feedback/active"})
+  {:heading      (trs "We hope you''ve been enjoying Metabase.")
+   :callToAction (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?")
+   :link         "https://metabase.com/feedback/active"})
 
 
 ;;; ### Public Interface
@@ -122,7 +126,7 @@
                         :passwordResetUrl password-reset-url
                         :logoHeader       true})]
     (email/send-message!
-      :subject      (str (trs "[Metabase] Password Reset Request"))
+      :subject      (trs "[Metabase] Password Reset Request")
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -161,7 +165,7 @@
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
-      :subject      (str (trs "[Metabase] Notification"))
+      :subject      (trs "[Metabase] Notification")
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -194,8 +198,8 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style (render/section-style))
-          :colorGrey4   render/color-gray-4
+          :sectionStyle (render.style/style (render.style/section-style))
+          :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
 
@@ -211,8 +215,8 @@
   (try
     (create-temp-file suffix)
     (catch IOException e
-      (let [ex-msg (str (tru "Unable to create temp file in `{0}` for email attachments "
-                             (System/getProperty "java.io.tmpdir")))]
+      (let [ex-msg (tru "Unable to create temp file in `{0}` for email attachments "
+                        (System/getProperty "java.io.tmpdir"))]
         (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
@@ -223,21 +227,36 @@
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
-(defn- result-attachments [results]
-  (remove nil?
-          (apply concat
-                 (for [{{card-name :name, :as card} :card :as result} results
-                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
-                       :when (seq rows)]
-                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
-                                              (create-temp-file-or-throw "csv"))]
-                      (export/export-to-csv-writer temp-file result)
-                      (create-result-attachment-map "csv" card-name temp-file))
+(defn- include-csv-attachment?
+  "Should this `card` and `results` include a CSV attachment?"
+  [card {:keys [cols rows] :as result-data}]
+  (or (:include_csv card)
+      (and (not (:include_xls card))
+           (= :table (render/detect-pulse-card-type card result-data))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement render.body/show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (>= (count cols) render.body/cols-limit)
+            (>= (count rows) render.body/rows-limit)))))
 
-                    (when-let [temp-file (and (:include_xls card)
-                                              (create-temp-file-or-throw "xlsx"))]
-                      (export/export-to-xlsx-file temp-file result)
-                      (create-result-attachment-map "xlsx" card-name temp-file))]))))
+(defn- result-attachments [results]
+  (remove
+   nil?
+   (apply
+    concat
+    (for [{{card-name :name, :as card} :card :as result} results
+          :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+          :when (seq rows)]
+      [(when-let [temp-file (and (include-csv-attachment? card result-data)
+                                 (create-temp-file-or-throw "csv"))]
+         (export/export-to-csv-writer temp-file result)
+         (create-result-attachment-map "csv" card-name temp-file))
+
+       (when-let [temp-file (and (:include_xls card)
+                                 (create-temp-file-or-throw "xlsx"))]
+         (export/export-to-xlsx-file temp-file result)
+         (create-result-attachment-map "xlsx" card-name temp-file))]))))
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
@@ -283,8 +302,8 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle (render/section-style)
-             :colorGrey4   render/color-gray-4
+             :sectionStyle (render.style/section-style)
+             :colorGrey4   render.style/color-gray-4
              :logoFooter   true}
             (random-quote-context)
             (when alert-condition-map

@@ -26,45 +26,34 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
+// check if we have access to localStorage to avoid handling "access denied"
+// exceptions
+export const HAS_LOCAL_STORAGE = (function() {
+  try {
+    window.localStorage; // This will trigger an exception if access is denied.
+    return true;
+  } catch (e) {
+    console.warn("localStorage not available:", e);
+    return false;
+  }
+})();
+
 export function isObscured(element, offset) {
   if (!document.elementFromPoint) {
     return false;
   }
+  const box = element.getBoundingClientRect();
   // default to the center of the element
   offset = offset || {
-    top: Math.round(element.offsetHeight / 2),
-    left: Math.round(element.offsetWidth / 2),
+    top: Math.round(box.height / 2),
+    left: Math.round(box.width / 2),
   };
-  let position = findPosition(element, true);
-  let elem = document.elementFromPoint(
-    position.left + offset.left,
-    position.top + offset.top,
-  );
+  const position = {
+    left: box.x + offset.left,
+    top: box.y + offset.top,
+  };
+  const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// get the position of an element on the page
-export function findPosition(element, excludeScroll = false) {
-  let offset = { top: 0, left: 0 };
-  let scroll = { top: 0, left: 0 };
-  let offsetParent = element;
-  while (offsetParent) {
-    // we need to check every element for scrollTop/scrollLeft
-    scroll.left += element.scrollLeft || 0;
-    scroll.top += element.scrollTop || 0;
-    // but only the original element and offsetParents for offsetTop/offsetLeft
-    if (offsetParent === element) {
-      offset.left += element.offsetLeft;
-      offset.top += element.offsetTop;
-      offsetParent = element.offsetParent;
-    }
-    element = element.parentNode;
-  }
-  if (excludeScroll) {
-    offset.left -= scroll.left;
-    offset.top -= scroll.top;
-  }
-  return offset;
 }
 
 // based on http://stackoverflow.com/a/38039019/113
@@ -144,7 +133,7 @@ export function setSelectionPosition(element, [start, end]) {
 }
 
 export function saveSelection(element) {
-  let range = getSelectionPosition(element);
+  const range = getSelectionPosition(element);
   return () => setSelectionPosition(element, range);
 }
 
@@ -157,12 +146,12 @@ export function setCaretPosition(element, position) {
 }
 
 export function saveCaretPosition(element) {
-  let position = getCaretPosition(element);
+  const position = getCaretPosition(element);
   return () => setCaretPosition(element, position);
 }
 
 function getTextNodeAtPosition(root, index) {
-  let treeWalker = document.createTreeWalker(
+  const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
     elem => {
@@ -173,7 +162,7 @@ function getTextNodeAtPosition(root, index) {
       return NodeFilter.FILTER_ACCEPT;
     },
   );
-  let c = treeWalker.nextNode();
+  const c = treeWalker.nextNode();
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -181,9 +170,9 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-let STYLE_SHEET = (function() {
+const STYLE_SHEET = (function() {
   // Create the <style> tag
-  let style = document.createElement("style");
+  const style = document.createElement("style");
 
   // WebKit hack :(
   style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
@@ -207,16 +196,16 @@ export function constrainToScreen(element, direction, padding) {
     return false;
   }
   if (direction === "bottom") {
-    let screenBottom = window.innerHeight + getScrollY();
-    let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+    const screenBottom = window.innerHeight + getScrollY();
+    const overflowY = element.getBoundingClientRect().bottom - screenBottom;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
       return true;
     }
   } else if (direction === "top") {
-    let screenTop = getScrollY();
-    let overflowY = screenTop - element.getBoundingClientRect().top;
+    const screenTop = getScrollY();
+    const overflowY = screenTop - element.getBoundingClientRect().top;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";

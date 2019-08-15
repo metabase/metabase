@@ -22,7 +22,8 @@
             [metabase.automagic-dashboards
              [filters :as filters]
              [populate :as populate]
-             [rules :as rules]]
+             [rules :as rules]
+             [visualization-macros :as visualization]]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
@@ -39,7 +40,7 @@
             [metabase.sync.analyze.classify :as classify]
             [metabase.util
              [date :as date]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -73,22 +74,22 @@
   (comp (some-fn :display_name :name) :source))
 
 (def ^:private op->name
-  {:sum       (tru "sum")
-   :avg       (tru "average")
-   :min       (tru "minumum")
-   :max       (tru "maximum")
-   :count     (tru "number")
-   :distinct  (tru "distinct count")
-   :stddev    (tru "standard deviation")
-   :cum-count (tru "cumulative count")
-   :cum-sum   (tru "cumulative sum")})
+  {:sum       (deferred-tru "sum")
+   :avg       (deferred-tru "average")
+   :min       (deferred-tru "minumum")
+   :max       (deferred-tru "maximum")
+   :count     (deferred-tru "number")
+   :distinct  (deferred-tru "distinct count")
+   :stddev    (deferred-tru "standard deviation")
+   :cum-count (deferred-tru "cumulative count")
+   :cum-sum   (deferred-tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
   (every-pred (partial mbql.u/is-clause? :metric)
               (complement mbql.u/ga-metric-or-segment?)))
 
 (def ^:private ^{:arglists '([metric])} custom-expression?
-  (partial mbql.u/is-clause? :named))
+  (partial mbql.u/is-clause? :aggregation-options))
 
 (def ^:private ^{:arglists '([metric])} adhoc-metric?
   (complement (some-fn saved-metric? custom-expression?)))
@@ -488,9 +489,9 @@
               {})))
 
 (defn- build-order-by
-  [dimensions metrics order-by]
-  (let [dimensions (set dimensions)]
-    (for [[identifier ordering] (map first order-by)]
+  [{:keys [dimensions metrics order_by]}]
+  (let [dimensions (into #{} (map ffirst) dimensions)]
+    (for [[identifier ordering] (map first order_by)]
       [(if (= ordering "ascending")
          :asc
          :desc)
@@ -605,9 +606,8 @@
 (defn- card-candidates
   "Generate all potential cards given a card definition and bindings for
    dimensions, metrics, and filters."
-  [context {:keys [metrics filters dimensions score limit order_by query] :as card}]
-  (let [order_by        (build-order-by dimensions metrics order_by)
-        metrics         (map (partial get (:metrics context)) metrics)
+  [context {:keys [metrics filters dimensions score limit query] :as card}]
+  (let [metrics         (map (partial get (:metrics context)) metrics)
         filters         (cond-> (map (partial get (:filters context)) filters)
                           (:query-filter context) (conj {:filter (:query-filter context)}))
         score           (if query
@@ -633,23 +633,29 @@
                         (every? (every-pred valid-breakout-dimension?
                                             (complement (comp cell-dimension? id-or-name)))))))
          (map (fn [bindings]
-                (let [query (if query
-                              (build-query context bindings query)
-                              (build-query context bindings
-                                           filters
-                                           metrics
-                                           dimensions
-                                           limit
-                                           order_by))]
+                (let [metrics (for [metric metrics]
+                                {:name   ((some-fn :name (comp metric-name :metric)) metric)
+                                 :metric (:metric metric)
+                                 :op     (-> metric :metric metric-op)})
+                      card    (visualization/expand-visualization
+                               card
+                               (map (comp bindings second) dimensions)
+                               metrics)
+                      query   (if query
+                                (build-query context bindings query)
+                                (build-query context bindings
+                                             filters
+                                             metrics
+                                             dimensions
+                                             limit
+                                             (build-order-by card)))]
                   (-> card
                       (instantiate-metadata context (->> metrics
                                                          (map :name)
                                                          (zipmap (:metrics card))
                                                          (merge bindings)))
                       (assoc :dataset_query query
-                             :metrics       (for [metric metrics]
-                                              {:name ((some-fn :name (comp metric-name :metric)) metric)
-                                               :op   (-> metric :metric metric-op)})
+                             :metrics       metrics
                              :dimensions    (map (comp :name bindings second) dimensions)
                              :score         score))))))))
 
@@ -821,7 +827,7 @@
       :entity
       related/related
       (update :fields (partial remove key-col?))
-      (->> (m/map-vals (comp (partial map ->related-entity) rules/ensure-seq)))))
+      (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
@@ -986,15 +992,15 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (str (trs "Applying heuristic {0} to {1}." (:rule rule) full-name)))
-      (log/infof (str (trs "Dimensions bindings:\n{0}"
-                           (->> context
-                                :dimensions
-                                (m/map-vals #(update % :matches (partial map :name)))
-                                u/pprint-to-str))))
-      (log/infof (str (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                           (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
-                           (-> context :filters u/pprint-to-str))))
+      (log/infof (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
+      (log/infof (trs "Dimensions bindings:\n{0}"
+                      (->> context
+                           :dimensions
+                           (m/map-vals #(update % :matches (partial map :name)))
+                           u/pprint-to-str)))
+      (log/infof (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                      (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                      (-> context :filters u/pprint-to-str)))
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)
@@ -1109,14 +1115,14 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  (tru "minute")
-                                :hour-of-day     (tru "hour")
-                                :day-of-week     (tru "day of week")
-                                :day-of-month    (tru "day of month")
-                                :day-of-year     (tru "day of year")
-                                :week-of-year    (tru "week")
-                                :month-of-year   (tru "month")
-                                :quarter-of-year (tru "quarter")}
+(def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
+                                :hour-of-day     (deferred-tru "hour")
+                                :day-of-week     (deferred-tru "day of week")
+                                :day-of-month    (deferred-tru "day of month")
+                                :day-of-year     (deferred-tru "day of year")
+                                :week-of-year    (deferred-tru "week")
+                                :month-of-year   (deferred-tru "month")
+                                :quarter-of-year (deferred-tru "quarter")}
                                qp.util/normalize-token))
 
 (defn- field-name

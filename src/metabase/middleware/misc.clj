@@ -6,9 +6,8 @@
              [public-settings :as public-settings]]
             [metabase.middleware.util :as middleware.u]
             [metabase.util.i18n :refer [trs]]
-            [puppetlabs.i18n.core :as puppet-i18n]
-            [ring.middleware.gzip :as ring.gzip])
-  (:import [java.io File InputStream]))
+            [puppetlabs.i18n.core :as puppet-i18n])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 (defn- add-content-type* [request response]
   (update-in
@@ -44,7 +43,10 @@
     (when-not (public-settings/site-url)
       (when-let [site-url (or origin host)]
         (log/info (trs "Setting Metabase site URL to {0}" site-url))
-        (public-settings/site-url site-url)))))
+        (try
+          (public-settings/site-url site-url)
+          (catch Throwable e
+            (log/warn e (trs "Failed to set site-url"))))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
@@ -70,31 +72,19 @@
         (handler request respond raise)))))
 
 
-;;; ------------------------------------------------------ GZIP ------------------------------------------------------
+;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
-(defn- wrap-gzip* [request {:keys [body status] :as resp}]
-  (if (and (= status 200)
-           (not (get-in resp [:headers "Content-Encoding"]))
-           (or
-            (and (string? body) (> (count body) 200))
-            (and (seq? body) @@#'ring.gzip/flushable-gzip?)
-            (instance? InputStream body)
-            (instance? File body)))
-    (let [accepts (get-in request [:headers "accept-encoding"] "")
-          match   (re-find #"(gzip|\*)(;q=((0|1)(.\d+)?))?" accepts)]
-      (if (and match (not (contains? #{"0" "0.0" "0.00" "0.000"}
-                                     (match 3))))
-        (ring.gzip/gzipped-response resp)
-        resp))
-    resp))
+(defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
+  (cond-> response
+    (instance? ManyToManyChannel body)
+    (assoc-in [:headers "X-Accel-Buffering"] "no")))
 
-(defn wrap-gzip
-  "Middleware that GZIPs response if client can handle it. This is basically the same as the version in
-  `ring.middleware.gzip`, but handles async requests as well."
-  ;; TODO - we should really just fork the dep in question and put these changes there, or PR
+(defn disable-streaming-buffering
+  "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and
+  the entire purpose is defeated. See https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache"
   [handler]
   (fn [request respond raise]
     (handler
      request
-     (comp respond (partial wrap-gzip* request))
+     (comp respond maybe-add-disable-buffering-header)
      raise)))

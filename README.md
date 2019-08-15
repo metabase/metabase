@@ -9,16 +9,16 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Gitter chat](https://badges.gitter.im/metabase/metabase.png)](https://gitter.im/metabase/metabase)
 
 # Features
-- 5 minute [setup](http://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
-- Let anyone on your team [ask questions](http://metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL
-- Rich beautiful [dashboards](http://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with auto refresh and fullscreen
+- 5 minute [setup](https://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
+- Let anyone on your team [ask questions](https://metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL
+- Rich beautiful [dashboards](https://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with auto refresh and fullscreen
 - SQL Mode for analysts and data pros
-- Create canonical [segments and metrics](http://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use
-- Send data to Slack or email on a schedule with [Pulses](http://metabase.com/docs/latest/users-guide/10-pulses.html)
-- View data in Slack anytime with [MetaBot](http://metabase.com/docs/latest/users-guide/11-metabot.html)
-- [Humanize data](http://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
+- Create canonical [segments and metrics](https://metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html) for your team to use
+- Send data to Slack or email on a schedule with [Pulses](https://metabase.com/docs/latest/users-guide/10-pulses.html)
+- View data in Slack anytime with [MetaBot](https://metabase.com/docs/latest/users-guide/11-metabot.html)
+- [Humanize data](https://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
 
-For more information check out [metabase.com](http://www.metabase.com)
+For more information check out [metabase.com](https://metabase.com/)
 
 ## Supported databases
 
@@ -35,12 +35,13 @@ For more information check out [metabase.com](http://www.metabase.com)
 - Vertica
 - Presto
 - Snowflake
+- SparkSQL
 
 Don't see your favorite database? File an issue to let us know.
 
 ## Installation
 
-Metabase can be run just about anywhere so checkout our [Installation Guides](http://www.metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
+Metabase can be run just about anywhere so checkout our [Installation Guides](https://metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
 
 ### Docker
 
@@ -68,7 +69,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.51-b03, mixed mode)
 
 you are good to go. Otherwise, download the Java Runtime Environment at http://java.com/
 
-Go to the [Metabase Download Page](http://www.metabase.com/start/) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
+Go to the [Metabase Download Page](https://metabase.com/start/) and download the current build. Place the downloaded jar into a newly created directory (as it will create some files when it is run), and run it on the command line:
 
 ```sh
 java -jar metabase.jar
@@ -112,7 +113,7 @@ Metabase also allows you to hit our Query API directly from Javascript to integr
 
 # Danger zone
 
-The button below will deploy the branch where this README.md lives onto Heroku. Metabase developers use it to deploy branches of Metabase to test our PRs, etc. We DO NOT recommend you using this for production. Instead, please use a [stable build](http://metabase.com/start).
+The button below will deploy the branch where this README.md lives onto Heroku. Metabase developers use it to deploy branches of Metabase to test our PRs, etc. We DO NOT recommend you using this for production. Instead, please use a [stable build](https://metabase.com/start).
 
 [![Deploy](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 

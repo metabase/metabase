@@ -14,7 +14,9 @@
              [common :as api]
              [table :as table-api]]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -29,7 +31,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -43,7 +45,7 @@
                               su/NonBlankString
                               #(u/ignore-exceptions (driver/the-driver %))
                               "Valid database engine")
-    (tru "value must be a valid database engine.")))
+    (deferred-tru "value must be a valid database engine.")))
 
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
@@ -127,7 +129,7 @@
   (when (public-settings/enable-nested-queries)
     (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
       {:name               "Saved Questions"
-       :id                 database/virtual-id
+       :id                 mbql.s/saved-questions-virtual-database-id
        :features           #{:basic-aggregations}
        :tables             virtual-tables
        :is_saved_questions true})))
@@ -190,7 +192,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -376,18 +378,20 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
-  {name         su/NonBlankString
-   engine       DBEngineString
-   details      su/Map
-   is_full_sync (s/maybe s/Bool)
-   is_on_demand (s/maybe s/Bool)
-   schedules    (s/maybe ExpandedSchedulesMap)}
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries]} :body}]
+  {name             su/NonBlankString
+   engine           DBEngineString
+   details          su/Map
+   is_full_sync     (s/maybe s/Bool)
+   is_on_demand     (s/maybe s/Bool)
+   schedules        (s/maybe ExpandedSchedulesMap)
+   auto_run_queries (s/maybe s/Bool)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
-        details-or-error (test-connection-details engine details)]
-    (if-not (false? (:valid details-or-error))
+        details-or-error (test-connection-details engine details)
+        valid?           (not= (:valid details-or-error) false)]
+    (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database
@@ -398,7 +402,9 @@
                                   :is_full_sync is-full-sync?
                                   :is_on_demand (boolean is_on_demand)}
                                  (when schedules
-                                   (schedule-map->cron-strings schedules)))))
+                                   (schedule-map->cron-strings schedules))
+                                 (when (some? auto_run_queries)
+                                   {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>))
       ;; failed to connect, return error
       {:status 400
@@ -429,14 +435,16 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules]} :body}]
+  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
+                   auto_run_queries]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
-   points_of_interest (s/maybe s/Str)}
+   points_of_interest (s/maybe s/Str)
+   auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
     (let [details    (if-not (= protected-password (:password details))
@@ -463,7 +471,8 @@
                              :is_on_demand       (boolean is_on_demand)
                              :description        description
                              :caveats            caveats
-                             :points_of_interest points_of_interest}
+                             :points_of_interest points_of_interest
+                             :auto_run_queries   auto_run_queries}
                             (when schedules
                               (schedule-map->cron-strings schedules)))))
           (let [db (Database id)]

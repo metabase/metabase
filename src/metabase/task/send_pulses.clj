@@ -16,14 +16,30 @@
              [pulse-channel :as pulse-channel]
              [setting :as setting]
              [task-history :as task-history]]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]]
+            [schema.core :as s]))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
 (defn- log-pulse-exception [pulse-id exception]
   (log/error exception (trs "Error sending Pulse {0}" pulse-id)))
 
-(defn- send-pulses!
+(def ^:private Hour
+  (s/constrained
+   s/Int
+   #(and (<= 0 %) (>= 23 %))
+   "valid hour"))
+
+(def ^:private Weekday
+  (s/pred pulse-channel/day-of-week? "valid day of week"))
+
+(def ^:private MonthDay
+  (s/enum :first :last :mid :other))
+
+(def ^:private MonthWeek
+  (s/enum :first :last :other))
+
+(s/defn ^:private send-pulses!
   "Send any `Pulses` which are scheduled to run in the current day/hour. We use the current time and determine the
   hour of the day and day of the week according to the defined reporting timezone, or UTC. We then find all `Pulses`
   that are scheduled to run and send them. The `on-error` function is called if an exception is thrown when sending
@@ -31,21 +47,17 @@
   `on-error` function makes it easier to test for when an error doesn't occur"
   ([hour weekday monthday monthweek]
    (send-pulses! hour weekday monthday monthweek log-pulse-exception))
-  ([hour weekday monthday monthweek on-error]
-   {:pre [(integer? hour)
-          (and (<= 0 hour) (>= 23 hour))
-          (pulse-channel/day-of-week? weekday)
-          (contains? #{:first :last :mid :other} monthday)
-          (contains? #{:first :last :other} monthweek)]}
+
+  ([hour :- Hour, weekday :- Weekday, monthday :- MonthDay, monthweek :- MonthWeek, on-error]
    (log/info (trs "Sending scheduled pulses..."))
-   (let [channels-by-pulse (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
-     (doseq [pulse-id (keys channels-by-pulse)]
+   (let [pulse-id->channels (group-by :pulse_id (pulse-channel/retrieve-scheduled-channels hour weekday monthday monthweek))]
+     (doseq [[pulse-id channels] pulse-id->channels]
        (try
          (task-history/with-task-history {:task (format "send-pulse %s" pulse-id)}
-           (log/debug (format "Starting Pulse Execution: %d" pulse-id))
+           (log/debug (trs "Starting Pulse Execution: {0}" pulse-id))
            (when-let [pulse (pulse/retrieve-notification pulse-id :archived false)]
-             (p/send-pulse! pulse :channel-ids (mapv :id (get channels-by-pulse pulse-id))))
-           (log/debug (format "Finished Pulse Execution: %d" pulse-id)))
+             (p/send-pulse! pulse :channel-ids (map :id channels)))
+           (log/debug (trs "Finished Pulse Execution: {0}" pulse-id)))
          (catch Throwable e
            (on-error pulse-id e)))))))
 
@@ -103,9 +115,11 @@
                    (cron/schedule
                     ;; run at the top of every hour
                     (cron/cron-schedule "0 0 * * * ? *")
-                    ;; If a trigger misfires (i.e., Quartz cannot run our job for one reason or another, such as all
-                    ;; worker threads being busy), attempt to fire the triggers again ASAP. This article does a good
-                    ;; job explaining what this means:
-                    ;; https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
-                    (cron/with-misfire-handling-instruction-ignore-misfires))))]
+                    ;; If send-pulses! misfires, don't try to re-send all the misfired Pulses. Retry only the most
+                    ;; recent misfire, discarding all others. This should hopefully cover cases where a misfire
+                    ;; happens while the system is still running; if the system goes down for an extended period of
+                    ;; time we don't want to re-send tons of (possibly duplicate) Pulses.
+                    ;;
+                    ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html
+                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
     (task/schedule-task! job trigger)))

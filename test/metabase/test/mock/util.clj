@@ -76,16 +76,16 @@
    for any other queries, including ones for determining FieldValues."
   [_ _]
   (fn [query]
-    {:data
-     {:rows
-      (cond
-        (is-table-row-count-query? query)
-        [[1000]]
+    {:status :completed
+     :data   {:rows
+              (cond
+                (is-table-row-count-query? query)
+                [[1000]]
 
-        (is-table-sample-query? query)
-        (let [fields-count (count (get-in query [:query :fields]))]
-          (for [i (range 500)]
-            (repeat fields-count i)))
+                (is-table-sample-query? query)
+                (let [fields-count (count (get-in query [:query :fields]))]
+                  (for [i (range 500)]
+                    (repeat fields-count i)))
 
-        :else
-        nil)}}))
+                :else
+                nil)}}))

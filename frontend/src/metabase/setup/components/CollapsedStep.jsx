@@ -20,7 +20,7 @@ export default class CollapsedStep extends Component {
   }
 
   render() {
-    let { isCompleted, stepCircleText, stepText } = this.props;
+    const { isCompleted, stepCircleText, stepText } = this.props;
 
     const classes = cx({
       SetupStep: true,

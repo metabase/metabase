@@ -16,8 +16,10 @@
       (throw (TimeoutException. "Timed out."))
 
       :else
-      (throw (ex-info "Waiting for channel to close, but got unexpected result"
-               {:result result})))))
+      (do
+        (println "Waiting for channel to close, but got unexpected result:" result)
+        (throw (ex-info "Waiting for channel to close, but got unexpected result"
+                 {:result result}))))))
 
 (defmacro with-open-channels
   "Like `with-open`, but closes core.async channels at the conclusion of `body`."
@@ -49,3 +51,16 @@
      ~(if (seq more)
         `(with-chans ~more ~@body)
         `(do ~@body))))
+
+(defn wait-for-result
+  "Wait up to `timeout-ms` (default 200) for a result from `chan`, or return a `::timed-out` message."
+  ([chan]
+   (wait-for-result chan 200))
+  ([chan timeout-ms]
+   (try
+     (let [[val port] (a/alts!! [chan (a/timeout timeout-ms)])]
+       (if (not= port chan)
+         ::timed-out
+         val))
+     (finally
+       (a/close! chan)))))

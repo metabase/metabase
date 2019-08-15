@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import Icon from "metabase/components/Icon.jsx";
 
@@ -10,7 +10,7 @@ import Expandable from "metabase/components/Expandable.jsx";
 
 // lib
 import { createCard } from "metabase/lib/card";
-import { createQuery } from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 import { inflect } from "metabase/lib/formatting";
 
@@ -57,8 +57,8 @@ export default class TablePane extends Component {
   }
 
   setQueryAllRows() {
-    let card = createCard();
-    card.dataset_query = createQuery(
+    const card = createCard();
+    card.dataset_query = Q_DEPRECATED.createQuery(
       "query",
       this.state.table.db_id,
       this.state.table.id,
@@ -69,13 +69,13 @@ export default class TablePane extends Component {
   render() {
     const { table, error } = this.state;
     if (table) {
-      let panes = {
+      const panes = {
         fields: table.fields.length,
         // "metrics": table.metrics.length,
         // "segments": table.segments.length,
         connections: this.state.tableForeignKeys.length,
       };
-      let tabs = Object.entries(panes).map(([name, count]) => (
+      const tabs = Object.entries(panes).map(([name, count]) => (
         <a
           key={name}
           className={cx("Button Button--small", {
@@ -89,9 +89,8 @@ export default class TablePane extends Component {
       ));
 
       let pane;
-      let description;
       const descriptionClasses = cx({ "text-medium": !table.description });
-      description = (
+      const description = (
         <p className={"text-spaced " + descriptionClasses}>
           {table.description || t`No description set.`}
         </p>
@@ -113,7 +112,7 @@ export default class TablePane extends Component {
                   <a
                     key={fk.id}
                     onClick={() => this.props.show("field", fk.origin)}
-                    className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                    className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
                   >
                     {fk.origin.table.display_name}
                     {fkCountsByTable[fk.origin.table.id] > 1 ? (
@@ -136,7 +135,7 @@ export default class TablePane extends Component {
                 <a
                   key={item.id}
                   onClick={() => this.props.show(itemType, item)}
-                  className="flex-full flex p1 text-bold text-brand no-decoration bg-medium-hover"
+                  className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
                 >
                   {item.name}
                 </a>
@@ -151,7 +150,7 @@ export default class TablePane extends Component {
           <div className="ml1">
             <div className="flex align-center">
               <Icon name="table2" className="text-medium pr1" size={16} />
-              <h3>{table.name}</h3>
+              <h3 className="text-wrap">{table.name}</h3>
             </div>
             {description}
             <div className="my2 Button-group Button-group--brand text-uppercase">

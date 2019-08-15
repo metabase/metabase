@@ -7,7 +7,9 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.druid.query-processor :as qp]
-            [metabase.util.ssh :as ssh]))
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [ssh :as ssh]]))
 
 (driver/register! :druid)
 
@@ -33,10 +35,11 @@
                                 (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
-      (throw (Exception. (format "Error [%d]: %s" status body))))
-    (try (json/parse-string body keyword)
-         (catch Throwable _
-           (throw (Exception. (str "Failed to parse body: " body)))))))
+      (throw (Exception. (tru "Error [{0}]: {1}" status body))))
+    (try
+      (json/parse-string body keyword)
+      (catch Throwable _
+        (throw (Exception. (tru "Failed to parse body: {0}" body)))))))
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))
@@ -66,7 +69,8 @@
                                    (:errorMessage body) "\n"
                                    "Error class:" (:errorClass body))))
                           (.getMessage e))]
-          (log/error (u/format-color 'red "Error running query:\n%s" message))
+          (log/error (u/format-color 'red (trs "Error running query:")
+                       "\n" message))
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw (Exception. message e)))))))
 
@@ -78,21 +82,22 @@
       ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
       ;; not interrupt aware)
       @query-fut
-      (catch InterruptedException interrupted-ex
+      (catch InterruptedException e
         ;; The future has been cancelled, if we ahve a query id, try to cancel the query
-        (if-not query-id
-          (log/warn interrupted-ex "Client closed connection, no queryId found, can't cancel query")
-          (ssh/with-ssh-tunnel [details-with-tunnel details]
-            (log/warnf "Client closed connection, cancelling Druid queryId '%s'" query-id)
-            (try
-              ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
-              ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
-              (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
-              (catch Exception cancel-ex
-                (log/warnf cancel-ex "Failed to cancel Druid query with queryId" query-id))
-              (finally
-                ;; Propogate the exception, will cause any other catch/finally clauses to fire
-                (throw interrupted-ex)))))))))
+        (try
+          (if-not query-id
+            (log/warn e (trs "Client closed connection, no queryId found, can't cancel query"))
+            (ssh/with-ssh-tunnel [details-with-tunnel details]
+              (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
+              (try
+                ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
+                ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
+                (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+                (catch Exception cancel-e
+                  (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id))))))
+          (finally
+            ;; Propogate the exception, will cause any other catch/finally clauses to fire
+            (throw e)))))))
 
 
 ;;; ### Sync

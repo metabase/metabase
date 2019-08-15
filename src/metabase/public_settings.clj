@@ -1,31 +1,34 @@
 (ns metabase.public-settings
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [types :as types]]
+             [types :as types]
+             [util :as u]]
             [metabase.driver.util :as driver.u]
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.metastore :as metastore]
             [metabase.util
-             [i18n :refer [available-locales-with-names set-locale tru]]
+             [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import [java.util TimeZone UUID]))
 
 (defsetting check-for-updates
-  (tru "Identify when new versions of Metabase are available.")
+  (deferred-tru "Identify when new versions of Metabase are available.")
   :type    :boolean
   :default true)
 
 (defsetting version-info
-  (tru "Information about available versions of Metabase.")
+  (deferred-tru "Information about available versions of Metabase.")
   :type    :json
   :default {})
 
 (defsetting site-name
-  (tru "The name used for this instance of Metabase.")
+  (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")
 
 (defsetting site-uuid
@@ -42,18 +45,34 @@
                      (setting/set-string! :site-uuid value)
                      value))))
 
+(defn- normalize-site-url [^String s]
+  (let [ ;; remove trailing slashes
+        s (str/replace s #"/$" "")
+        ;; add protocol if missing
+        s (if (str/starts-with? s "http")
+            s
+            (str "http://" s))]
+    ;; check that the URL is valid
+    (assert (u/url? s)
+      (tru "Invalid site URL: {0}" s))
+    s))
+
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
-  (tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  :getter (fn []
+            (try
+              (some-> (setting/get-string :site-url) normalize-site-url)
+              (catch AssertionError e
+                (log/error e (trs "site-url is invalid; returning nil for now. Will be reset on next request.")))))
   :setter (fn [new-value]
-            (setting/set-string! :site-url (when new-value
-                                             (cond->> (str/replace new-value #"/$" "")
-                                               (not (str/starts-with? new-value "http")) (str "http://"))))))
+            (setting/set-string! :site-url (some-> new-value normalize-site-url))))
 
 (defsetting site-locale
-  (str  (tru "The default language for this Metabase instance.")
-        (tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
+  (str  (deferred-tru "The default language for this Metabase instance.")
+        " "
+        (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type    :string
   :setter  (fn [new-value]
              (setting/set-string! :site-locale new-value)
@@ -61,35 +80,35 @@
   :default "en")
 
 (defsetting admin-email
-  (tru "The email address users should be referred to if they encounter a problem."))
+  (deferred-tru "The email address users should be referred to if they encounter a problem."))
 
 (defsetting anon-tracking-enabled
-  (tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
   :type   :boolean
   :default true)
 
 (defsetting map-tile-server-url
-  (tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
+  (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
 
 (defsetting enable-public-sharing
-  (tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
+  (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type    :boolean
   :default false)
 
 (defsetting enable-embedding
-  (tru "Allow admins to securely embed questions and dashboards within other applications?")
+  (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type    :boolean
   :default false)
 
 (defsetting enable-nested-queries
-  (tru "Allow using a saved question as the source for other queries?")
+  (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
   :default true)
 
 
 (defsetting enable-query-caching
-  (tru "Enabling caching will save the results of queries that take a long time to run.")
+  (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
   :type    :boolean
   :default false)
 
@@ -101,7 +120,7 @@
   (* 200 1024))
 
 (defsetting query-caching-max-kb
-  (tru "The maximum size of the cache, per saved question, in kilobytes:")
+  (deferred-tru "The maximum size of the cache, per saved question, in kilobytes:")
   ;; (This size is a measurement of the length of *uncompressed* serialized result *rows*. The actual size of
   ;; the results as stored will vary somewhat, since this measurement doesn't include metadata returned with the
   ;; results, and doesn't consider whether the results are compressed, as the `:db` backend does.)
@@ -114,43 +133,43 @@
                            global-max-caching-kb))
                (throw (IllegalArgumentException.
                        (str
-                        (tru "Failed setting `query-caching-max-kb` to {0}." new-value)
-                        (tru "Values greater than {1} are not allowed." global-max-caching-kb)))))
+                        (deferred-tru "Failed setting `query-caching-max-kb` to {0}." new-value)
+                        (deferred-tru "Values greater than {1} are not allowed." global-max-caching-kb)))))
              (setting/set-integer! :query-caching-max-kb new-value)))
 
 (defsetting query-caching-max-ttl
-  (tru "The absolute maximum time to keep any cached query results, in seconds.")
+  (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
   :type    :integer
   :default (* 60 60 24 100)) ; 100 days
 
 (defsetting query-caching-min-ttl
-  (tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
+  (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
   :type    :integer
   :default 60)
 
 (defsetting query-caching-ttl-ratio
-  (str (tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
-       (tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
+  (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
+       (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
 
 (defsetting breakout-bins-num
-  (tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
+  (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  (tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
+  (deferred-tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
   :type :double
   :default 10.0)
 
 (defsetting custom-formatting
-  (tru "Object keyed by type, containing formatting settings")
+  (deferred-tru "Object keyed by type, containing formatting settings")
   :type    :json
   :default {})
 
 (defsetting enable-xrays
-  (tru "Allow users to explore data using X-rays")
+  (deferred-tru "Allow users to explore data using X-rays")
   :type    :boolean
   :default true)
 
@@ -174,7 +193,7 @@
 
 (def ^:private short-timezone-name (memoize short-timezone-name*))
 
-
+;; TODO - it seems like it would be a nice performance win to cache this a little bit
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
    application."
@@ -183,7 +202,7 @@
    :anon_tracking_enabled (anon-tracking-enabled)
    :custom_geojson        (setting/get :custom-geojson)
    :custom_formatting     (setting/get :custom-formatting)
-   :email_configured      (do (require 'metabase.email)
+   :email_configured      (do (classloader/require 'metabase.email)
                               ((resolve 'metabase.email/email-configured?)))
    :embedding             (enable-embedding)
    :enable_query_caching  (enable-query-caching)
@@ -194,7 +213,7 @@
    :google_auth_client_id (setting/get :google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (do (require 'metabase.integrations.ldap)
+   :ldap_configured       (do (classloader/require 'metabase.integrations.ldap)
                               ((resolve 'metabase.integrations.ldap/ldap-configured?)))
    :available_locales     (available-locales-with-names)
    :map_tile_server_url   (map-tile-server-url)
@@ -204,7 +223,7 @@
    :public_sharing        (enable-public-sharing)
    :report_timezone       (setting/get :report-timezone)
    :setup_token           (do
-                            (require 'metabase.setup)
+                            (classloader/require 'metabase.setup)
                             ((resolve 'metabase.setup/token-value)))
    :site_name             (site-name)
    :site_url              (site-url)

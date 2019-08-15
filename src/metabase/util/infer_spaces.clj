@@ -3,7 +3,7 @@
    https://stackoverflow.com/questions/8870261/how-to-split-text-without-spaces-into-list-of-words/11642687#11642687."
   ;; TODO - The code in this namespace is very hard to understand. We should clean it up and make it readable.
   (:require [clojure.java.io :as io]
-            [clojure.string :as s])
+            [clojure.string :as str])
   (:import java.lang.Math
            java.util.Arrays))
 
@@ -11,7 +11,7 @@
 (def ^:const ^:private special-words ["checkins"])
 
 (defn- slurp-words-by-frequency []
-  (concat special-words (s/split-lines (slurp (io/resource "words-by-frequency.txt")))))
+  (concat special-words (str/split-lines (slurp (io/resource "words-by-inv-frequency.txt")))))
 
 ;; wordcost = dict((k, log((i+1)*log(len(words)))) for i,k in enumerate(words))
 (defn- make-cost-map
@@ -95,7 +95,7 @@
 (defn infer-spaces
   "Splits a string with no spaces into words using magic" ; what a great explanation. TODO - make this code readable
   [input]
-  (let [s (s/lower-case input)
+  (let [s (str/lower-case input)
         cost (build-cost-array s)]
     (loop [i (float (count s))
            out []]

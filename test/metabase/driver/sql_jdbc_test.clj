@@ -1,5 +1,5 @@
 (ns metabase.driver.sql-jdbc-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -9,19 +9,14 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.test.data :as data :refer :all]
+            [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util.date :as du]
-            [toucan.db :as db])
+            [metabase.util.date :as du])
   (:import java.sql.Time))
-
-(def ^:private users-table      (delay (Table :name "USERS")))
-(def ^:private venues-table     (delay (Table (id :venues))))
-(def ^:private users-name-field (delay (Field (id :users :name))))
 
 (defonce ^{:doc "Set of drivers descending from `:sql-jdbc`, for test purposes (i.e. `expect-with-drivers`)"}
   sql-jdbc-drivers
@@ -29,8 +24,7 @@
    (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
      (set
       (for [driver tx.env/test-drivers
-            :when  ((descendants driver/hierarchy (driver/the-driver :sql-jdbc))
-                    (driver/the-driver driver))]
+            :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
         (tx/the-driver-with-test-extensions driver))))))
 
 
@@ -38,7 +32,7 @@
 (expect
   {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
                   {:name table, :schema "PUBLIC", :description nil}))}
-  (driver/describe-database :h2 (db)))
+  (driver/describe-database :h2 (data/db)))
 
 ;; DESCRIBE-TABLE
 (expect
@@ -63,7 +57,7 @@
               :database-type "BIGINT"
               :base-type     :type/BigInteger
               :pk?           true}}}
-  (driver/describe-table :h2 (db) @venues-table))
+  (driver/describe-table :h2 (data/db) (Table (data/id :venues))))
 
 ;; DESCRIBE-TABLE-FKS
 (expect
@@ -71,7 +65,7 @@
      :dest-table       {:name   "CATEGORIES"
                         :schema "PUBLIC"}
      :dest-column-name "ID"}}
-  (driver/describe-table-fks :h2 (db) @venues-table))
+  (driver/describe-table-fks :h2 (data/db) (Table (data/id :venues))))
 
 ;;; TABLE-ROWS-SAMPLE
 (datasets/expect-with-drivers @sql-jdbc-drivers
@@ -95,8 +89,8 @@
    {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
    {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
   (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
-                                                        (db/select-one 'Database :id (id))
-                                                        (db/select-one 'Table :id (id :venues)))))]
+                                                        (data/db)
+                                                        (Table (data/id :venues)))))]
     ;; different DBs use different precisions for these
     (-> (dissoc row :latitude :longitude)
         (update :price int)
@@ -105,25 +99,29 @@
 
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
-(expect
-  #"com.jcraft.jsch.JSchException:"
-  (try (let [engine  :postgres
-             details {:ssl            false
-                      :password       "changeme"
-                      :tunnel-host    "localhost" ; this test works if sshd is running or not
-                      :tunnel-pass    "BOGUS-BOGUS-BOGUS"
-                      :port           5432
-                      :dbname         "test"
-                      :host           "localhost"
-                      :tunnel-enabled true
-                      :tunnel-port    22
-                      :engine         :postgres
-                      :user           "postgres"
-                      :tunnel-user    "example"}]
-         (tu.log/suppress-output
-           (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-       (catch Exception e
-         (.getMessage e))))
+(datasets/expect-with-driver :postgres
+  com.jcraft.jsch.JSchException
+  (try
+    ;; this test works if sshd is running or not
+    (let [details {:dbname         "test"
+                   :engine         :postgres
+                   :host           "localhost"
+                   :password       "changeme"
+                   :port           5432
+                   :ssl            false
+                   :tunnel-enabled true
+                   :tunnel-host    "localhost" ; this test works if sshd is running or not
+                   :tunnel-pass    "BOGUS-BOGUS-BOGUS"
+                   :tunnel-port    22
+                   :tunnel-user    "example"
+                   :user           "postgres"}]
+      (tu.log/suppress-output
+        (driver.u/can-connect-with-details? :postgres details :throw-exceptions)))
+    (catch Throwable e
+      (loop [^Throwable e e]
+        (or (when (instance? com.jcraft.jsch.JSchException e)
+              e)
+            (some-> (.getCause e) recur))))))
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
@@ -180,8 +178,7 @@
 (defmacro ^:private process-spliced-count-query [table filter-clause]
   `(process-spliced-count-query*
     {:source-table (data/id ~table)
-     :filter       (data/$ids [~table {:wrap-field-ids? true}]
-                     ~filter-clause)}))
+     :filter       (data/$ids ~table ~filter-clause)}))
 
 ;; test splicing a string -- is resulting query correct?
 (datasets/expect-with-drivers @sql-jdbc-drivers

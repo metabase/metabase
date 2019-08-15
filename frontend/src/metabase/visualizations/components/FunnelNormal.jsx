@@ -133,7 +133,7 @@ export default class FunnelNormal extends Component {
     // Remove initial setup
     infos = infos.slice(1);
 
-    let initial = infos[0];
+    const initial = infos[0];
 
     const isClickable = visualizationIsClickable(infos[0].clicked);
 

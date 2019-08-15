@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
@@ -51,20 +51,22 @@
 ;; diff-dashboards-str
 (expect
   "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        []}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        []}
     {:name         "Diff Test Changed"
      :description  "foobar"
      :cards        []}))
 
 (expect
   "added a card."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        []}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        []}
     {:name         "Diff Test"
      :description  nil
      :cards        [{:sizeX   2
@@ -77,23 +79,24 @@
 
 (expect
   "rearranged the cards, modified the series on card 1 and added some series to card 2."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        [{:sizeX   2
-                     :sizeY   2
-                     :row     0
-                     :col     0
-                     :id      1
-                     :card_id 1
-                     :series  [5 6]}
-                    {:sizeX   2
-                     :sizeY   2
-                     :row     0
-                     :col     0
-                     :id      2
-                     :card_id 2
-                     :series  []}]}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        [{:sizeX   2
+                    :sizeY   2
+                    :row     0
+                    :col     0
+                    :id      1
+                    :card_id 1
+                    :series  [5 6]}
+                   {:sizeX   2
+                    :sizeY   2
+                    :row     0
+                    :col     0
+                    :id      2
+                    :card_id 2
+                    :series  []}]}
     {:name         "Diff Test"
      :description  nil
      :cards        [{:sizeX   2
@@ -157,7 +160,7 @@
       ;; capture our updated dashboard state
       (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
         ;; now do the reversion
-        (#'dashboard/revert-dashboard! dashboard-id (users/user->id :crowberto) serialized-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         ;; final output is original-state, updated-state, reverted-state
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2

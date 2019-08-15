@@ -1,6 +1,6 @@
 /* @flow */
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { PARAMETER_SECTIONS } from "metabase/meta/Dashboard";
 
 import type { Parameter, ParameterOption } from "metabase/meta/types/Parameter";
@@ -31,7 +31,7 @@ export default class ParametersPopover extends Component {
         <ParameterOptionsSectionsPane
           sections={PARAMETER_SECTIONS}
           onSelectSection={selectedSection => {
-            let parameterSection = _.findWhere(PARAMETER_SECTIONS, {
+            const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
               id: selectedSection.id,
             });
             if (parameterSection && parameterSection.options.length === 1) {
@@ -44,7 +44,7 @@ export default class ParametersPopover extends Component {
         />
       );
     } else {
-      let parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
+      const parameterSection = _.findWhere(PARAMETER_SECTIONS, { id: section });
       return (
         <ParameterOptionsPane
           options={parameterSection && parameterSection.options}

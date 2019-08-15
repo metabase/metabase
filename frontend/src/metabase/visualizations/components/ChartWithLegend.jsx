@@ -11,10 +11,13 @@ import cx from "classnames";
 const GRID_ASPECT_RATIO = 4 / 3;
 const PADDING = 14;
 
-@ExplicitSize()
+const DEFAULT_GRID_SIZE = 100;
+
+@ExplicitSize({ wrapped: true })
 export default class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
+    style: {},
   };
 
   render() {
@@ -25,6 +28,7 @@ export default class ChartWithLegend extends Component {
       hovered,
       onHoverChange,
       className,
+      style,
       gridSize,
       aspectRatio,
       height,
@@ -36,12 +40,19 @@ export default class ChartWithLegend extends Component {
     width -= PADDING * 2;
     height -= PADDING;
 
-    let chartWidth,
-      chartHeight,
-      flexChart = false;
-    let type, LegendComponent;
-    let isHorizontal =
-      gridSize && gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
+    if (!gridSize) {
+      gridSize = {
+        width: width / DEFAULT_GRID_SIZE,
+        height: height / DEFAULT_GRID_SIZE,
+      };
+    }
+
+    let chartWidth;
+    let chartHeight;
+    let flexChart = false;
+    let type;
+    let LegendComponent;
+    const isHorizontal = gridSize.width > gridSize.height / GRID_ASPECT_RATIO;
     if (showLegend === false) {
       type = "small";
     } else if (
@@ -52,11 +63,11 @@ export default class ChartWithLegend extends Component {
       type = "horizontal";
       LegendComponent = LegendVertical;
       if (gridSize && gridSize.width < 6) {
-        legendTitles = legendTitles.map(
-          title => (Array.isArray(title) ? title.slice(0, 1) : title),
+        legendTitles = legendTitles.map(title =>
+          Array.isArray(title) ? title.slice(0, 1) : title,
         );
       }
-      let desiredWidth = height * aspectRatio;
+      const desiredWidth = height * aspectRatio;
       if (desiredWidth > width * (2 / 3)) {
         flexChart = true;
       } else {
@@ -69,10 +80,10 @@ export default class ChartWithLegend extends Component {
     ) {
       type = "vertical";
       LegendComponent = LegendHorizontal;
-      legendTitles = legendTitles.map(
-        title => (Array.isArray(title) ? title[0] : title),
+      legendTitles = legendTitles.map(title =>
+        Array.isArray(title) ? title[0] : title,
       );
-      let desiredHeight = width * (1 / aspectRatio);
+      const desiredHeight = width * (1 / aspectRatio);
       if (desiredHeight > height * (3 / 4)) {
         // chartHeight = height * (3 / 4);
         flexChart = true;
@@ -94,6 +105,7 @@ export default class ChartWithLegend extends Component {
           flexChart && styles.flexChart,
         )}
         style={{
+          ...style,
           paddingBottom: PADDING,
           paddingLeft: PADDING,
           paddingRight: PADDING,

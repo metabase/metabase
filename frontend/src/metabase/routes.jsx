@@ -6,7 +6,7 @@ import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
@@ -84,7 +84,7 @@ import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
-import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -233,9 +233,11 @@ export const getRoutes = store => (
               component={NewQuestionMetricSearch}
             />
           </Route>
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":cardId" component={QueryBuilder} />
+          <Route path=":cardId/notebook" component={QueryBuilder} />
+          <Route path=":cardId/entity" component={EntityPage} />
         </Route>
-        <Route path="/question/:cardId" component={QueryBuilder} />
-        <Route path="/question/:cardId/entity" component={EntityPage} />
 
         <Route path="/ready" component={PostSetupApp} />
 
@@ -339,7 +341,7 @@ export const getRoutes = store => (
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
         // $FlowFixMe: flow doesn't know about require.ensure
-        require.ensure([], require => {
+        require.ensure([], function(require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

@@ -73,11 +73,11 @@ export default class DashboardGrid extends Component {
   }
 
   onLayoutChange(layout) {
-    let changes = layout.filter(
+    const changes = layout.filter(
       newLayout =>
         !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
     );
-    for (let change of changes) {
+    for (const change of changes) {
       this.props.setDashCardAttributes({
         id: change.dashcard.id,
         attributes: {
@@ -116,9 +116,9 @@ export default class DashboardGrid extends Component {
   }
 
   getLayoutForDashCard(dashcard) {
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
-    let initialSize = DEFAULT_CARD_SIZE;
-    let minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const initialSize = DEFAULT_CARD_SIZE;
+    const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
@@ -136,7 +136,7 @@ export default class DashboardGrid extends Component {
 
   renderRemoveModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.removeModalDashCard != null;
+    const isOpen = this.state.removeModalDashCard != null;
     return (
       <Modal isOpen={isOpen}>
         {isOpen && (
@@ -153,7 +153,7 @@ export default class DashboardGrid extends Component {
 
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.addSeriesModalDashCard != null;
+    const isOpen = this.state.addSeriesModalDashCard != null;
     return (
       <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
         {isOpen && (

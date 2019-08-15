@@ -1465,12 +1465,14 @@ databaseChangeLog:
       id: 10
       author: cammsaul
       validCheckSum:
-        - 7:97fec69516d0dfe424ea7365f51bb87e
         - 7:3b90e2fe0ac8e617a1f30ef95d39319b
-        - 8:431360d062cb82d8b27960b3a0abb98c
-        - 8:9f03a236be31f54e8e5c894fe5fc7f00
+        - 7:97fec69516d0dfe424ea7365f51bb87e
         - 8:2e03a495932b4a9aebb9d58a6ad87ca9
+        - 8:431360d062cb82d8b27960b3a0abb98c
+        - 8:5297214d1788d964675d8c6336ac9b6d
         - 8:532075ff1717d4a16bb9f27c606db46b
+        - 8:96e54d9100db3f9cdcc00eaeccc200a3
+        - 8:9f03a236be31f54e8e5c894fe5fc7f00
       changes:
         - createTable:
             tableName: revision
@@ -5260,3 +5262,32 @@ databaseChangeLog:
                 WHERE dbcl.id = '84'
                   AND metric.updated_at < dbcl.dateexecuted
               )
+
+# Very helpful for performance reasons. See #9519
+  - changeSet:
+      id: 101
+      author: camsaul
+      comment: 'Added 0.32.0'
+      changes:
+        - createIndex:
+            indexName: idx_field_parent_id
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: parent_id
+
+# A per-Database setting for the new Query Builder 3.0.
+  - changeSet:
+      id: 103
+      author: camsaul
+      comment: 'Added 0.32.10'
+      changes:
+        - addColumn:
+            tableName: metabase_database
+            columns:
+              name: auto_run_queries
+              remarks: 'Whether to automatically run queries when doing simple filtering and summarizing in the Query Builder.'
+              type: boolean
+              constraints:
+                nullable: false
+              defaultValueBoolean: true

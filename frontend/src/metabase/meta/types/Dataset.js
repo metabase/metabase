@@ -3,7 +3,7 @@
 import type { ISO8601Time } from ".";
 import type { FieldId } from "./Field";
 import type { DatasetQuery } from "./Card";
-import type { DatetimeUnit, FieldLiteral } from "./Query";
+import type { DatetimeUnit, FieldLiteral, Field } from "./Query";
 
 export type ColumnName = string;
 
@@ -26,6 +26,7 @@ export type Column = {
   fk_field_id?: FieldId,
   expression_name?: any,
   settings?: ColumnSettings,
+  field_ref?: Field,
 };
 
 export type Value = string | number | ISO8601Time | boolean | null | {};
@@ -33,7 +34,6 @@ export type Row = Value[];
 
 export type DatasetData = {
   cols: Column[],
-  columns: ColumnName[],
   rows: Row[],
   rows_truncated?: number,
 };

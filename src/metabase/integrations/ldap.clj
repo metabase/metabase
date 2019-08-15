@@ -1,5 +1,6 @@
 (ns metabase.integrations.ldap
-  (:require [clj-ldap.client :as ldap]
+  (:require [cheshire.core :as json]
+            [clj-ldap.client :as ldap]
             [clojure
              [set :as set]
              [string :as str]]
@@ -8,27 +9,27 @@
              [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [deferred-tru tru]]
             [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk LDAPConnectionPool LDAPException]))
+  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool LDAPException]))
 
 (def ^:private filter-placeholder
   "{login}")
 
 (defsetting ldap-enabled
-  (tru "Enable LDAP authentication.")
+  (deferred-tru "Enable LDAP authentication.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-host
-  (tru "Server hostname."))
+  (deferred-tru "Server hostname."))
 
 (defsetting ldap-port
-  (tru "Server port, usually 389 or 636 if SSL is used.")
+  (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
   :default "389")
 
 (defsetting ldap-security
-  (tru "Use SSL, TLS or plain text.")
+  (deferred-tru "Use SSL, TLS or plain text.")
   :default "none"
   :setter  (fn [new-value]
              (when-not (nil? new-value)
@@ -36,44 +37,51 @@
              (setting/set-string! :ldap-security new-value)))
 
 (defsetting ldap-bind-dn
-  (tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
+  (deferred-tru "The Distinguished Name to bind as (if any), this user will be used to lookup information about other users."))
 
 (defsetting ldap-password
-  (tru "The password to bind with for the lookup user.")
+  (deferred-tru "The password to bind with for the lookup user.")
   :sensitive? true)
 
 (defsetting ldap-user-base
-  (tru "Search base for users. (Will be searched recursively)"))
+  (deferred-tru "Search base for users. (Will be searched recursively)"))
 
 (defsetting ldap-user-filter
-  (tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
+  (deferred-tru "User lookup filter, the placeholder '{login}' will be replaced by the user supplied login.")
   :default "(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))")
 
 (defsetting ldap-attribute-email
-  (tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
+  (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
   :default "mail")
 
 (defsetting ldap-attribute-firstname
-  (tru "Attribute to use for the user''s first name. (usually ''givenName'')")
+  (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
   :default "givenName")
 
 (defsetting ldap-attribute-lastname
-  (tru "Attribute to use for the user''s last name. (usually ''sn'')")
+  (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
   :default "sn")
 
 (defsetting ldap-group-sync
-  (tru "Enable group membership synchronization with LDAP.")
+  (deferred-tru "Enable group membership synchronization with LDAP.")
   :type    :boolean
   :default false)
 
 (defsetting ldap-group-base
-  (tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
+  (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
-  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP groups and values are lists of MB groups IDs
-  (tru "JSON containing LDAP to Metabase group mappings.")
+  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of MB groups IDs
+  (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
-  :default {})
+  :default {}
+  :getter  (fn []
+             (json/parse-string (setting/get-string :ldap-group-mappings) #(DN. (str %))))
+  :setter  (fn [new-value]
+             (doseq [k (keys new-value)]
+               (when-not (DN/isValidDN (name k))
+                 (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
+             (setting/set-json! :ldap-group-mappings new-value)))
 
 (defn ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
@@ -96,11 +104,6 @@
                           :password  (ldap-password)
                           :security  (ldap-security)}))
 
-(defn- escape-value
-  "Escapes a value for use in an LDAP filter expression."
-  [value]
-  (str/replace value #"(?:^\s|\s$|[,\\\#\+<>;\"=\*\(\)\\0])" (comp (partial format "\\%02X") int first)))
-
 (defn- get-connection
   "Connects to LDAP with the currently set settings and returns the connection."
   ^LDAPConnectionPool []
@@ -116,23 +119,20 @@
   "Will translate a set of DNs to a set of MB group IDs using the configured mappings."
   [ldap-groups]
   (-> (ldap-group-mappings)
-      (select-keys (map keyword ldap-groups))
+      (select-keys (map #(DN. (str %)) ldap-groups))
       vals
       flatten
       set))
 
 (defn- get-user-groups
   "Retrieve groups for a supplied DN."
-  ([dn]
+  ([^String dn]
     (with-connection get-user-groups dn))
-  ([conn dn]
+  ([conn ^String dn]
     (when (ldap-group-base)
-      (let [results (ldap/search conn (ldap-group-base) {:scope      :sub
-                                                         :filter     (str "member=" (escape-value dn))
-                                                         :attributes [:dn :distinguishedName]})]
-        (filter some?
-          (for [result results]
-            (or (:dn result) (:distinguishedName result))))))))
+      (let [results (ldap/search conn (ldap-group-base) {:scope  :sub
+                                                         :filter (Filter/createEqualityFilter "member" dn)})]
+        (map :dn results)))))
 
 (def ^:private user-base-error  {:status :ERROR, :message "User search base does not exist or is unreadable"})
 (def ^:private group-base-error {:status :ERROR, :message "Group search base does not exist or is unreadable"})
@@ -171,22 +171,22 @@
 
 (defn find-user
   "Gets user information for the supplied username."
-  ([username]
+  ([^String username]
     (with-connection find-user username))
-  ([conn username]
+  ([conn ^String username]
     (let [fname-attr (keyword (ldap-attribute-firstname))
           lname-attr (keyword (ldap-attribute-lastname))
           email-attr (keyword (ldap-attribute-email))]
       (when-let [[result] (ldap/search conn (ldap-user-base) {:scope      :sub
-                                                              :filter     (str/replace (ldap-user-filter) filter-placeholder (escape-value username))
-                                                              :attributes [:dn :distinguishedName fname-attr lname-attr email-attr :memberOf]
+                                                              :filter     (str/replace (ldap-user-filter) filter-placeholder (Filter/encodeValue username))
+                                                              :attributes [fname-attr lname-attr email-attr :memberOf]
                                                               :size-limit 1})]
-        (let [dn    (or (:dn result) (:distinguishedName result))
+        (let [dn    (:dn result)
               fname (get result fname-attr)
               lname (get result lname-attr)
               email (get result email-attr)]
           ;; Make sure we got everything as these are all required for new accounts
-          (when-not (or (empty? dn) (empty? fname) (empty? lname) (empty? email))
+          (when-not (some empty? [fname lname email])
             ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
             ;; Otherwise we have to make the inverse query to get them
             (let [groups (when (ldap-group-sync)

@@ -8,7 +8,7 @@
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [deferred-trs]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
@@ -60,19 +60,19 @@
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID data-timezone))
                          " "
-                         (trs "Configure a report timezone to ensure proper date and time conversions."))))
+                         (deferred-trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone)))))))))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID data-timezone)))))))))
 
 (defn call-with-effective-timezone
   "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
@@ -447,9 +447,10 @@
 (defn str->date-time
   "Like clj-time.format/parse but uses an ordered list of parsers to be faster. Returns the parsed date, or `nil` if it
   was unable to be parsed."
-  (^org.joda.time.DateTime [^String date-str]
+  (^DateTime [^String date-str]
    (str->date-time date-str nil))
-  ([^String date-str ^TimeZone tz]
+
+  (^DateTime [^String date-str, ^TimeZone tz]
    (str->date-time-with-formatters ordered-date-parsers date-str tz)))
 
 (def ^:private ordered-time-parsers

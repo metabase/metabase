@@ -23,7 +23,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-driver]]
+             [datasets :as datasets]
              [interface :as tx]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -62,19 +62,17 @@
      :user   "camsaul"}))
 
 ;; Verify that we identify JSON columns and mark metadata properly during sync
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   :type/SerializedJSON
-  (data/with-temp-db
-    [_
-     (tx/create-database-definition "Postgres with a JSON Field"
-       ["venues"
-        [{:field-name "address", :base-type {:native "json"}}]
-        [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])]
+  (data/dataset (tx/dataset-definition "Postgres with a JSON Field"
+                  ["venues"
+                   [{:field-name "address", :base-type {:native "json"}}]
+                   [[(hsql/raw "to_json('{\"street\": \"431 Natoma\", \"city\": \"San Francisco\", \"state\": \"CA\", \"zip\": 94103}'::text)")]]])
     (db/select-one-field :special_type Field, :id (data/id :venues :address))))
 
 
 ;;; # UUID Support
-(tx/def-database-definition ^:private with-uuid
+(tx/defdataset ^:private with-uuid
   [["users"
     [{:field-name "user_id", :base-type :type/UUID}]
     [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]
@@ -84,7 +82,7 @@
      [#uuid "84ed434e-80b4-41cf-9c88-e334427104ae"]]]])
 
 ;; Check that we can load a Postgres Database with a :type/UUID
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [{:name "id",      :base_type :type/Integer}
    {:name "user_id", :base_type :type/UUID}]
   (->> (data/dataset metabase.driver.postgres-test/with-uuid
@@ -95,21 +93,21 @@
 
 
 ;; Check that we can filter by a UUID Field
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"]}))))
 
 ;; check that a nil value for a UUID field doesn't barf (#2152)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   []
   (rows (data/dataset metabase.driver.postgres-test/with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id nil]}))))
 
 ;; Check that we can filter by a UUID for SQL Field filters (#7955)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
   (data/dataset metabase.driver.postgres-test/with-uuid
     (rows (qp/process-query {:database   (data/id)
@@ -125,14 +123,14 @@
 
 
 ;; Make sure that Tables / Fields with dots in their names get escaped properly
-(tx/def-database-definition ^:private dots-in-names
+(tx/defdataset ^:private dots-in-names
   [["objects.stuff"
     [{:field-name "dotted.name", :base-type :type/Text}]
     [["toucan_cage"]
      ["four_loko"]
      ["ouija_board"]]]])
 
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   {:columns ["id" "dotted.name"]
    :rows    [[1 "toucan_cage"]
              [2 "four_loko"]
@@ -143,7 +141,7 @@
 
 
 ;; Make sure that duplicate column names (e.g. caused by using a FK) still return both columns
-(tx/def-database-definition ^:private duplicate-names
+(tx/defdataset ^:private duplicate-names
   [["birds"
     [{:field-name "name", :base-type :type/Text}]
     [["Rasta"]
@@ -153,7 +151,7 @@
      {:field-name "bird_id", :base-type :type/Integer, :fk :birds}]
     [["Cam" 1]]]])
 
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   {:columns ["name" "name_2"]
    :rows    [["Cam" "Rasta"]]}
   (-> (data/dataset metabase.driver.postgres-test/duplicate-names
@@ -163,7 +161,7 @@
 
 
 ;;; Check support for `inet` columns
-(tx/def-database-definition ^:private ip-addresses
+(tx/defdataset ^:private ip-addresses
   [["addresses"
     [{:field-name "ip", :base-type {:native "inet"}}]
     [[(hsql/raw "'192.168.1.1'::inet")]
@@ -171,7 +169,7 @@
 
 ;; Filtering by inet columns should add the appropriate SQL cast, e.g. `cast('192.168.1.1' AS inet)` (otherwise this
 ;; wouldn't work)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [[1]]
   (rows (data/dataset metabase.driver.postgres-test/ip-addresses
           (data/run-mbql-query addresses
@@ -200,7 +198,7 @@
 
 ;; Check that we properly fetch materialized views.
 ;; As discussed in #2355 they don't come back from JDBC `DatabaseMetadata` so we have to fetch them manually.
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   {:tables #{(default-table-result "test_mview")}}
   (do
     (drop-if-exists-and-create-db! "materialized_views_test")
@@ -213,7 +211,7 @@
         (driver/describe-database :postgres database)))))
 
 ;; Check that we properly fetch foreign tables.
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   {:tables (set (map default-table-result ["foreign_table" "local_table"]))}
   (do
     (drop-if-exists-and-create-db! "fdw_test")
@@ -232,7 +230,7 @@
 
 ;; make sure that if a view is dropped and recreated that the original Table object is marked active rather than a new
 ;; one being created (#3331)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [{:name "angry_birds", :active true}]
   (let [details (tx/dbdef->connection-details :postgres :db {:database-name "dropped_views_test"})
         spec    (sql-jdbc.conn/connection-details->spec :postgres details)
@@ -270,18 +268,18 @@
                   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
 
 ;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   "US/Pacific"
   (get-timezone-with-report-timezone "US/Pacific"))
 
 ;; check that we can set it to something else: America/Chicago
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   "America/Chicago"
   (get-timezone-with-report-timezone "America/Chicago"))
 
 ;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This
 ;; should give us the same result as if we didn't try to set a timezone at all
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   (get-timezone-with-report-timezone nil)
   (get-timezone-with-report-timezone "Crunk Burger"))
 
@@ -299,12 +297,12 @@
      :dbname             "cool"
      :additional-options "prepareThreshold=0"}))
 
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   "UTC"
   (tu/db-timezone-id))
 
 ;; Make sure we're able to fingerprint TIME fields (#5911)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1
                                                                                     :nil% 0.0}
                                                                            :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
@@ -366,14 +364,14 @@
     (f database)))
 
 ;; check that we can actually fetch the enum types from a DB
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   #{(keyword "bird type") :bird_status}
   (do-with-enums-db
     (fn [db]
       (#'postgres/enum-types :postgres db))))
 
 ;; check that describe-table properly describes the database & base types of the enum fields
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
                     {:name   "birds"
                      :fields #{{:name          "name",
                                 :database-type "varchar"
@@ -390,7 +388,7 @@
                        (driver/describe-table :postgres db {:name "birds"}))))
 
 ;; check that when syncing the DB the enum types get recorded appropriately
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   #{{:name "name",   :database_type "varchar",     :base_type :type/Text}
     {:name "type",   :database_type "bird type",   :base_type :type/PostgresEnum}
     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
@@ -402,12 +400,12 @@
 
 
 ;; check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`
-(expect-with-driver :postgres
-                    {:name :cast, :args ["toucan" (keyword "bird type")]}
-                    (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))
+(datasets/expect-with-driver :postgres
+  {:name :cast, :args ["toucan" (keyword "bird type")]}
+  (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))
 
 ;; End-to-end check: make sure everything works as expected when we run an actual query
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   {:rows        [["Rasta" "good bird" "toucan"]]
    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
                               " \"public\".\"birds\".\"status\" AS \"status\","
@@ -430,7 +428,7 @@
             (select-keys [:rows :native_form]))))))
 
 ;; make sure schema/table/field names with hyphens in them work correctly (#8766)
-(expect-with-driver :postgres
+(datasets/expect-with-driver :postgres
   [["Bird Hat"]]
   (metabase.driver/with-driver :postgres
     [{:name "angry_birds", :active true}]
@@ -453,3 +451,14 @@
                  :type     :query
                  :query    {:source-table (db/select-one-id Table :name "presents-and-gifts")}})
               rows))))))
+
+;; If the DB throws an exception, is it properly returned by the query processor? Is it status :failed? (#9942)
+(datasets/expect-with-driver :postgres
+  {:status :failed
+   :class  org.postgresql.util.PSQLException
+   :error  "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"}
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :native
+         :native   {:query "SELECT adsasdasd;"}})
+      (select-keys [:status :class :error])))

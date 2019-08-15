@@ -5,12 +5,13 @@ import { mount } from "enzyme";
 
 import reducers from "metabase/reducers-main";
 import { getStore } from "metabase/store";
-import { delay } from "metabase/lib/promise";
 
 // misc export aliases
 export { delay } from "metabase/lib/promise";
 
 import { MockResponse, MockRequest } from "xhr-mock";
+
+import { enhanceEnzymeWrapper } from "__support__/enzyme_utils";
 
 // helper for JSON responses, also defaults to 200 status code
 MockResponse.prototype.json = function(object) {
@@ -60,70 +61,4 @@ export function mountWithStore(element) {
   store.subscribe(() => wrapper.update());
 
   return { wrapper, store };
-}
-
-const TIMEOUT = 1000;
-
-async function eventually(fn, timeout = TIMEOUT) {
-  const start = Date.now();
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    try {
-      return fn();
-    } catch (e) {
-      if (Date.now() - start > timeout) {
-        throw e;
-      } else {
-        await delay(100);
-      }
-    }
-  }
-}
-
-function enhanceEnzymeWrapper(wrapper) {
-  // add a "async" namespace that wraps functions in `eventually`
-  wrapper.async = {
-    find: selector =>
-      eventually(() => {
-        const node = wrapper.find(selector);
-        if (node.exists()) {
-          return node;
-        } else {
-          throw new Error("Not found: " + selector);
-        }
-      }),
-  };
-  return wrapper;
-}
-
-export async function getFormValues(wrapper) {
-  const values = {};
-  const inputs = await wrapper.async.find("input");
-  for (const input of inputs) {
-    values[input.props.name] = input.props.value;
-  }
-  return values;
-}
-
-export async function fillFormValues(wrapper, values) {
-  const inputs = await wrapper.async.find("input");
-  for (const input of inputs) {
-    const name = input.props.name;
-    if (name in values) {
-      input.props.onChange(values[name]);
-    }
-  }
-}
-
-export function submitForm(wrapper) {
-  wrapper
-    .find("form")
-    .first()
-    .props()
-    .onSubmit();
-}
-
-export async function fillAndSubmitForm(wrapper, values) {
-  await fillFormValues(wrapper, values);
-  submitForm(wrapper);
 }

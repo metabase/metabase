@@ -14,7 +14,9 @@ const ItemLink = props => (
     bg={
       props.hovered
         ? colors["brand"]
-        : props.highlighted ? colors["bg-light"] : colors["bg-medium"]
+        : props.highlighted
+        ? colors["bg-light"]
+        : colors["bg-medium"]
     }
     color={props.hovered ? "white" : colors["text-medium"]}
     className="block rounded relative text-brand-hover"
@@ -23,10 +25,14 @@ const ItemLink = props => (
       borderSize: 1,
       borderColor: props.hovered
         ? colors["brand"]
-        : props.highlighted ? colors["bg-medium"] : "transparent",
+        : props.highlighted
+        ? colors["bg-medium"]
+        : "transparent",
       borderStyle: props.hovered
         ? "solid"
-        : props.highlighted ? "dotted" : "solid",
+        : props.highlighted
+        ? "dotted"
+        : "solid",
     }}
     hover={{ color: colors["brand"] }}
   >

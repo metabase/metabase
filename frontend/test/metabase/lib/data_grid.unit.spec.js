@@ -16,7 +16,7 @@ function makeData(rows) {
 describe("data_grid", () => {
   describe("pivot", () => {
     it("should pivot values correctly", () => {
-      let data = makeData([
+      const data = makeData([
         ["a", "x", 1],
         ["a", "y", 2],
         ["a", "z", 3],
@@ -24,7 +24,7 @@ describe("data_grid", () => {
         ["b", "y", 5],
         ["b", "z", 6],
       ]);
-      let pivotedData = pivot(data, 0, 1, 2);
+      const pivotedData = pivot(data, 0, 1, 2);
       expect(pivotedData.cols.map(col => col.display_name)).toEqual([
         "Dimension 1",
         "x",
@@ -36,8 +36,29 @@ describe("data_grid", () => {
         ["b", 4, 5, 6],
       ]);
     });
+    it("should pivot non-numeric values correctly", () => {
+      const data = makeData([
+        ["a", "x", "q"],
+        ["a", "y", "w"],
+        ["a", "z", "e"],
+        ["b", "x", "r"],
+        ["b", "y", "t"],
+        ["b", "z", "y"],
+      ]);
+      const pivotedData = pivot(data, 0, 1, 2);
+      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+        "Dimension 1",
+        "x",
+        "y",
+        "z",
+      ]);
+      expect(pivotedData.rows.map(row => [...row])).toEqual([
+        ["a", "q", "w", "e"],
+        ["b", "r", "t", "y"],
+      ]);
+    });
     it("should pivot values correctly with columns flipped", () => {
-      let data = makeData([
+      const data = makeData([
         ["a", "x", 1],
         ["a", "y", 2],
         ["a", "z", 3],
@@ -45,7 +66,7 @@ describe("data_grid", () => {
         ["b", "y", 5],
         ["b", "z", 6],
       ]);
-      let pivotedData = pivot(data, 1, 0, 2);
+      const pivotedData = pivot(data, 1, 0, 2);
       expect(pivotedData.cols.map(col => col.display_name)).toEqual([
         "Dimension 2",
         "a",
@@ -59,8 +80,8 @@ describe("data_grid", () => {
     });
 
     it("should not return null column names from null values", () => {
-      let data = makeData([[null, null, 1]]);
-      let pivotedData = pivot(data, 0, 1, 2);
+      const data = makeData([[null, null, 1]]);
+      const pivotedData = pivot(data, 0, 1, 2);
       console.log("pivotedData", pivotedData);
       expect(pivotedData.rows.length).toEqual(1);
       expect(pivotedData.cols.length).toEqual(2);
@@ -71,14 +92,14 @@ describe("data_grid", () => {
     });
 
     it("should infer sort order of sparse data correctly", () => {
-      let data = makeData([
+      const data = makeData([
         ["a", "x", 1],
         ["a", "z", 3],
         ["b", "x", 4],
         ["b", "y", 5],
         ["b", "z", 6],
       ]);
-      let pivotedData = pivot(data, 0, 1, 2);
+      const pivotedData = pivot(data, 0, 1, 2);
       expect(pivotedData.cols.map(col => col.display_name)).toEqual([
         "Dimension 1",
         "x",

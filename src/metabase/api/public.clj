@@ -6,7 +6,6 @@
             [medley.core :as m]
             [metabase
              [db :as mdb]
-             [query-processor :as qp]
              [util :as u]]
             [metabase.api
              [card :as card-api]
@@ -72,7 +71,7 @@
     (ex-info "An error occurred while running the query." {:status-code 400})
     (u/select-nested-keys
      results
-     [[:data :columns :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
+     [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
@@ -80,9 +79,11 @@
   {:style/indent 2}
   [card-id parameters & options]
   ;; run this query with full superuser perms
-  (let [in-chan  (binding [api/*current-user-permissions-set*     (atom #{"/"})
-                           qp/*allow-queries-with-no-executor-id* true]
-                   (apply card-api/run-query-for-card-async card-id, :parameters parameters, :context :public-question, options))
+  (let [in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                   (apply card-api/run-query-for-card-async card-id
+                          :parameters parameters
+                          :context    :public-question
+                          options))
         out-chan (a/chan 1 (map transform-results))]
     (async.u/single-value-pipe in-chan out-chan)
     out-chan))
@@ -215,7 +216,7 @@
                    (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
                    ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
                    ;; trying to inject new params
-                   (throw (Exception. (str (tru "Invalid param: {0}" slug)))))]]
+                   (throw (Exception. (tru "Invalid param: {0}" slug))))]]
         (merge query-param dashboard-param)))))
 
 (defn- check-card-is-in-dashboard

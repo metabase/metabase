@@ -13,22 +13,20 @@
              [common :as driver.common]
              [sql-jdbc :as sql-jdbc]]
             [metabase.driver.sql-jdbc
+             [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]
-            [toucan.db :as db])
+             [i18n :refer [tru]]])
   (:import java.sql.Time
            java.util.Date
+           metabase.util.honeysql_extensions.Identifier
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent :sql-jdbc)
@@ -39,22 +37,26 @@
                account)]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
-    (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
-            :subprotocol                                "snowflake"
-            :subname                                    (str "//" host ".snowflakecomputing.com/")
-            :client_metadata_request_use_connection_ctx true
-            :ssl                                        true
-            ;; other SESSION parameters
-            ;; use the same week start we use for all the other drivers
-            :week_start                                 7
-            ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
-            ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-            :timezone                                   "UTC"}
-           (-> opts
-               ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
-               ;; `db`. If we run across `dbname`, correct our behavior
-               (set/rename-keys {:dbname :db})
-               (dissoc :host :port :timezone)))))
+    (-> (merge {:classname                                  "net.snowflake.client.jdbc.SnowflakeDriver"
+                :subprotocol                                "snowflake"
+                :subname                                    (str "//" host ".snowflakecomputing.com/")
+                :client_metadata_request_use_connection_ctx true
+                :ssl                                        true
+                ;; keep open connections open indefinitely instead of closing them. See #9674 and
+                ;; https://docs.snowflake.net/manuals/sql-reference/parameters.html#client-session-keep-alive
+                :client_session_keep_alive                  true
+                ;; other SESSION parameters
+                ;; use the same week start we use for all the other drivers
+                :week_start                                 7
+                ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
+                ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
+                :timezone                                   "UTC"}
+               (-> opts
+                   ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
+                   ;; `db`. If we run across `dbname`, correct our behavior
+                   (set/rename-keys {:dbname :db})
+                   (dissoc :host :port :timezone)))
+        (sql-jdbc.common/handle-additional-options opts))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake [_ base-type]
   ({:NUMBER                     :type/Number
@@ -95,11 +97,14 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
 
-(defmethod driver/date-interval :snowflake [_ unit amount]
+(defmethod sql.qp/current-datetime-fn :snowflake [_]
+  :%current_timestamp)
+
+(defmethod driver/date-add :snowflake [_ dt amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    :%current_timestamp))
+    (hx/->timestamp dt)))
 
 (defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
@@ -129,25 +134,52 @@
   [{details :details}]
   (or (:db details)
       (:dbname details)
-      (throw (Exception. (str (tru "Invalid Snowflake connection details: missing DB name."))))))
+      (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name.")))))
 
 (defn- query-db-name []
-  (or (-> (qp.store/database) db-name)
-      (throw (Exception. "Missing DB name"))))
+  ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements
+  ;; it won't be, *but* they should already be qualified by database name anyway
+  (when (qp.store/initialized?)
+    (db-name (qp.store/database))))
 
-(defmethod sql.qp/->honeysql [:snowflake (class Field)]
-  [driver field]
-  (let [table            (qp.store/table (:table_id field))
-        db-name          (when-not (:alias? table)
-                           (query-db-name))
-        field-identifier (keyword
-                          (hx/qualify-and-escape-dots db-name (:schema table) (:name table) (:name field)))]
-    (sql.qp/cast-unix-timestamp-field-if-needed driver field field-identifier)))
+;; unless we're currently using a table alias, we need to prepend Table and Field identifiers with the DB name for the
+;; query
+(defn- should-qualify-identifier?
+  "Should we qualify an Identifier with the dataset name?
 
-(defmethod sql.qp/->honeysql [:snowflake (class Table)]
-  [_ table]
-  (let [{table-name :name, schema :schema} table]
-    (hx/qualify-and-escape-dots (query-db-name) schema table-name)))
+  Table & Field identifiers (usually) need to be qualified with the current database name; this needs to be part of the
+  table e.g.
+
+    \"table\".\"field\" -> \"database\".\"table\".\"field\""
+  [{:keys [identifier-type components]}]
+  (cond
+    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
+    sql.qp/*table-alias*
+    false
+
+    ;;; `query-db-name` is not currently set, e.g. because we're generating DDL statements for tests
+    (empty? (query-db-name))
+    false
+
+    ;; already qualified
+    (= (first components) (query-db-name))
+    false
+
+    ;; otherwise always qualify Table identifiers
+    (= identifier-type :table)
+    true
+
+    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
+    ;; DDL statements)
+    (and (= identifier-type :field)
+         (>= (count components) 2))
+    true))
+
+(defmethod sql.qp/->honeysql [:snowflake Identifier]
+  [_ {:keys [identifier-type], :as identifier}]
+  (cond-> identifier
+    (should-qualify-identifier? identifier)
+    (update :components (partial cons (query-db-name)))))
 
 (defmethod sql.qp/->honeysql [:snowflake :time]
   [driver [_ value unit]]
@@ -158,14 +190,14 @@
   ;; currently only used for SQL params so it's not a huge deal at this point
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (qp.store/store-table! (db/select-one [Table :id :name :schema], :id (u/get-id table-id)))
+  (qp.store/fetch-and-store-tables! [(u/get-id table-id)])
   (sql.qp/->honeysql driver field))
 
 
 (defmethod driver/table-rows-seq :snowflake [driver database table]
   (sql-jdbc/query driver database {:select [:*]
                                    :from   [(qp.store/with-store
-                                              (qp.store/store-database! database)
+                                              (qp.store/fetch-and-store-database! (u/get-id database))
                                               (sql.qp/->honeysql driver table))]}))
 
 (defmethod driver/describe-database :snowflake [driver database]

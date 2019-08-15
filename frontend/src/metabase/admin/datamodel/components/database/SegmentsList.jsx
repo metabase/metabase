@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 import SegmentItem from "./SegmentItem.jsx";
 
 export default class SegmentsList extends Component {
@@ -11,12 +11,8 @@ export default class SegmentsList extends Component {
   };
 
   render() {
-    let { tableMetadata } = this.props;
-
-    tableMetadata.segments = tableMetadata.segments || [];
-    tableMetadata.segments = tableMetadata.segments.filter(
-      sgmt => sgmt.archived === false,
-    );
+    const { onRetire, tableMetadata } = this.props;
+    const { segments = [] } = tableMetadata;
 
     return (
       <div id="SegmentsList" className="my3">
@@ -39,17 +35,17 @@ export default class SegmentsList extends Component {
             </tr>
           </thead>
           <tbody>
-            {tableMetadata.segments.map(segment => (
+            {segments.map(segment => (
               <SegmentItem
                 key={segment.id}
+                onRetire={onRetire}
                 segment={segment}
                 tableMetadata={tableMetadata}
-                onRetire={this.props.onRetire}
               />
             ))}
           </tbody>
         </table>
-        {tableMetadata.segments.length === 0 && (
+        {segments.length === 0 && (
           <div className="flex layout-centered m4 text-medium">
             {t`Create segments to add them to the Filter dropdown in the query builder`}
           </div>

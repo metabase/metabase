@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -29,12 +29,12 @@ export default class UpdateUserDetails extends Component {
   }
 
   validateForm() {
-    let { valid } = this.state;
+    const { valid } = this.state;
     let isValid = true;
 
     // required: first_name, last_name, email
-    for (let fieldName in this.refs) {
-      let node = ReactDOM.findDOMNode(this.refs[fieldName]);
+    for (const fieldName in this.refs) {
+      const node = ReactDOM.findDOMNode(this.refs[fieldName]);
       if (node.required && MetabaseUtils.isEmpty(node.value)) {
         isValid = false;
       }
@@ -58,7 +58,7 @@ export default class UpdateUserDetails extends Component {
       formError: null,
     });
 
-    let formErrors = { data: { errors: {} } };
+    const formErrors = { data: { errors: {} } };
 
     // validate email address
     if (
@@ -74,7 +74,7 @@ export default class UpdateUserDetails extends Component {
       return;
     }
 
-    let user = this.props.user ? _.clone(this.props.user) : {};
+    const user = this.props.user ? _.clone(this.props.user) : {};
 
     user.first_name = ReactDOM.findDOMNode(this.refs.firstName).value;
     user.last_name = ReactDOM.findDOMNode(this.refs.lastName).value;

@@ -1,30 +1,30 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [email-test :as et]
-             [http-client :refer :all]
+             [http-client :refer [client]]
              [public-settings :as public-settings]
              [util :as u]]
-            [metabase.api.session :as session-api :refer :all]
+            [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
-            [metabase.test
-             [data :refer :all]
-             [util :as tu]]
-            [metabase.test.data.users :refer :all]
-            [metabase.test.integrations.ldap :refer [expect-with-ldap-server]]
+            [metabase.test.data.users :as test-users]
+            [metabase.test.integrations.ldap :as ldap.test]
+            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.util.UUID))
 
 ;; ## POST /api/session
 ;; Test that we can login
 (expect
   ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-  (do (db/simple-delete! Session, :user_id (user->id :rasta))
-      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
+  (do
+    (db/simple-delete! Session, :user_id (test-users/user->id :rasta))
+    (tu/is-uuid-string? (:id (client :post 200 "session" (test-users/user->credentials :rasta))))))
 
 ;; Test for required params
 (expect {:errors {:username "value must be a non-blank string."}}
@@ -36,11 +36,11 @@
 ;; Test for inactive user (user shouldn't be able to login if :is_active = false)
 ;; Return same error as incorrect password to avoid leaking existence of user
 (expect {:errors {:password "did not match stored password"}}
-  (client :post 400 "session" (user->credentials :trashbird)))
+  (client :post 400 "session" (test-users/user->credentials :trashbird)))
 
 ;; Test for password checking
 (expect {:errors {:password "did not match stored password"}}
-  (client :post 400 "session" (-> (user->credentials :rasta)
+  (client :post 400 "session" (-> (test-users/user->credentials :rasta)
                                   (assoc :password "something else"))))
 
 ;; Test that people get blocked from attempting to login if they try too many times (Check that throttling works at
@@ -61,10 +61,16 @@
 ;; Test that we can logout
 (expect
   nil
-  (let [{session_id :id} ((user->client :rasta) :post 200 "session" (user->credentials :rasta))]
-    (assert session_id)
-    ((user->client :rasta) :delete 204 "session" :session_id session_id)
-    (Session session_id)))
+  (do
+    ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
+    ;; Session
+    (test-users/clear-cached-session-tokens!)
+    (let [session-id (test-users/username->token :rasta)]
+      ;; Ok, calling the logout endpoint should delete the Session in the DB. Don't worry, `test-users` will log back
+      ;; in on the next API call
+      ((test-users/user->client :rasta) :delete 204 "session")
+      ;; check whether it's still there -- should be GONE
+      (Session session-id))))
 
 
 ;; ## POST /api/session/forgot_password
@@ -72,13 +78,14 @@
 (expect
   (et/with-fake-inbox
     (let [reset-fields-set? (fn []
-                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered], :id (user->id :rasta))]
+                              (let [{:keys [reset_token reset_triggered]} (db/select-one [User :reset_token :reset_triggered]
+                                                                            :id (test-users/user->id :rasta))]
                                 (boolean (and reset_token reset_triggered))))]
       ;; make sure user is starting with no values
-      (db/update! User (user->id :rasta), :reset_token nil, :reset_triggered nil)
+      (db/update! User (test-users/user->id :rasta), :reset_token nil, :reset_triggered nil)
       (assert (not (reset-fields-set?)))
       ;; issue reset request (token & timestamp should be saved)
-      ((user->client :rasta) :post 200 "session/forgot_password" {:email (:username (user->credentials :rasta))})
+      ((test-users/user->client :rasta) :post 200 "session/forgot_password" {:email (:username (test-users/user->credentials :rasta))})
       ;; TODO - how can we test email sent here?
       (reset-fields-set?))))
 
@@ -101,7 +108,7 @@
     (let [password {:old "password"
                     :new "whateverUP12!!"}]
       (tt/with-temp User [{:keys [email id]} {:password (:old password), :reset_triggered (System/currentTimeMillis)}]
-        (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+        (let [token (u/prog1 (str id "_" (UUID/randomUUID))
                       (db/update! User id, :reset_token <>))
               creds {:old {:password (:old password)
                            :username email}
@@ -127,7 +134,7 @@
    :session_id true}
   (et/with-fake-inbox
     (tt/with-temp User [{:keys [id]} {:reset_triggered (System/currentTimeMillis)}]
-      (let [token (u/prog1 (str id "_" (java.util.UUID/randomUUID))
+      (let [token (u/prog1 (str id "_" (UUID/randomUUID))
                     (db/update! User id, :reset_token <>))]
         (-> (client :post 200 "session/reset_password" {:token    token
                                                         :password "whateverUP12!!"})
@@ -155,8 +162,8 @@
 ;; Test that an expired token doesn't work
 (expect
   {:errors {:password "Invalid reset token"}}
-  (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
+  (let [token (str (test-users/user->id :rasta) "_" (UUID/randomUUID))]
+    (db/update! User (test-users/user->id :rasta), :reset_token token, :reset_triggered 0)
     (client :post 400 "session/reset_password" {:token    token
                                                 :password "whateverUP12!!"})))
 
@@ -166,8 +173,8 @@
 ;; Check that a valid, unexpired token returns true
 (expect
   {:valid true}
-  (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
+  (let [token (str (test-users/user->id :rasta) "_" (UUID/randomUUID))]
+    (db/update! User (test-users/user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 ;; Check than an made-up token returns false
@@ -178,15 +185,15 @@
 ;; Check that an expired but valid token returns false
 (expect
   {:valid false}
-  (let [token (str (user->id :rasta) "_" (java.util.UUID/randomUUID))]
-    (db/update! User (user->id :rasta), :reset_token token, :reset_triggered 0)
+  (let [token (str (test-users/user->id :rasta) "_" (UUID/randomUUID))]
+    (db/update! User (test-users/user->id :rasta), :reset_token token, :reset_triggered 0)
     (client :get 200 "session/password_reset_token_valid", :token token)))
 
 
 ;; GET /session/properties
 (expect
   (keys (public-settings/public-settings))
-  (keys ((user->client :rasta) :get 200 "session/properties")))
+  (keys ((test-users/user->client :rasta) :get 200 "session/properties")))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
@@ -234,18 +241,15 @@
                    [:first_name :last_name :email]))))
 
 
-;;; tests for google-auth-fetch-or-create-user!
-
-(defn- is-session? [session]
-  (u/ignore-exceptions
-    (tu/is-uuid-string? (:id session))))
+;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
 ;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from
 ;; their account should return a Session
 (expect
+  UUID
   (tt/with-temp User [user {:email "cam@sf-toucannery.com"}]
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-      (is-session? (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saül" "cam@sf-toucannery.com")))))
+      (#'session-api/google-auth-fetch-or-create-user! "Cam" "Saul" "cam@sf-toucannery.com"))))
 
 ;; test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an
 ;; exception
@@ -258,45 +262,49 @@
 ;; test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets
 ;; created
 (expect
+  UUID
   (et/with-fake-inbox
     (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
                                        admin-email                             "rasta@toucans.com"]
-      (u/prog1 (is-session? (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com"))
-        (db/delete! User :email "rasta@sf-toucannery.com"))))) ; clean up after ourselves
+      (try
+        (#'session-api/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
+        (finally
+          (db/delete! User :email "rasta@sf-toucannery.com")))))) ; clean up after ourselves
 
 
 ;;; ------------------------------------------- TESTS FOR LDAP AUTH STUFF --------------------------------------------
 
 ;; Test that we can login with LDAP
-(expect-with-ldap-server
-  true
+(expect
   ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-  (do (db/simple-delete! Session, :user_id (user->id :rasta))
-      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :rasta))))))
+  (ldap.test/with-ldap-server
+    (db/simple-delete! Session, :user_id (test-users/user->id :rasta))
+    (tu/is-uuid-string? (:id (client :post 200 "session" (test-users/user->credentials :rasta))))))
 
 ;; Test that login will fallback to local for users not in LDAP
-(expect-with-ldap-server
-  true
+(expect
   ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-  (do (db/simple-delete! Session, :user_id (user->id :crowberto))
-      (tu/is-uuid-string? (:id (client :post 200 "session" (user->credentials :crowberto))))))
+  (ldap.test/with-ldap-server
+    (db/simple-delete! Session, :user_id (test-users/user->id :crowberto))
+    (tu/is-uuid-string? (:id (client :post 200 "session" (test-users/user->credentials :crowberto))))))
 
 ;; Test that login will NOT fallback for users in LDAP but with an invalid password
-(expect-with-ldap-server
+(expect
   {:errors {:password "did not match stored password"}}
-  (client :post 400 "session" (user->credentials :lucky))) ; NOTE: there's a different password in LDAP for Lucky
+  (ldap.test/with-ldap-server
+    (client :post 400 "session" (test-users/user->credentials :lucky)))) ; NOTE: there's a different password in LDAP for Lucky
 
 ;; Test that login will fallback to local for broken LDAP settings
-(expect-with-ldap-server
-  true
-  (tu/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-    ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-    (do (db/simple-delete! Session, :user_id (user->id :rasta))
-        (tu/is-uuid-string? (:id (tu.log/suppress-output
-                                   (client :post 200 "session" (user->credentials :rasta))))))))
+(expect
+  (ldap.test/with-ldap-server
+    (tu/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
+      ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
+      (do (db/simple-delete! Session, :user_id (test-users/user->id :rasta))
+          (tu/is-uuid-string? (:id (tu.log/suppress-output
+                                     (client :post 200 "session" (test-users/user->credentials :rasta)))))))))
 
 ;; Test that we can login with LDAP with new user
-(expect-with-ldap-server
-  true
-  (u/prog1 (tu/is-uuid-string? (:id (client :post 200 "session" {:username "sbrown20", :password "1234"})))
-    (db/delete! User :email "sally.brown@metabase.com"))) ; clean up
+(expect
+  (ldap.test/with-ldap-server
+    (u/prog1 (tu/is-uuid-string? (:id (client :post 200 "session" {:username "sbrown20", :password "1234"})))
+      (db/delete! User :email "sally.brown@metabase.com")))) ; clean up

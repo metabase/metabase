@@ -16,7 +16,7 @@ type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
 };
 
-@ExplicitSize()
+@ExplicitSize({ wrapped: true })
 export default class CardRenderer extends Component {
   props: Props;
 
@@ -31,10 +31,10 @@ export default class CardRenderer extends Component {
 
   shouldComponentUpdate(nextProps: Props) {
     // a chart only needs re-rendering when the result itself changes OR the chart type is different
-    let sameSize =
+    const sameSize =
       this.props.width === nextProps.width &&
       this.props.height === nextProps.height;
-    let sameSeries = isSameSeries(this.props.series, nextProps.series);
+    const sameSeries = isSameSeries(this.props.series, nextProps.series);
     return !(sameSize && sameSeries);
   }
 
@@ -63,7 +63,7 @@ export default class CardRenderer extends Component {
       return;
     }
 
-    let parent = ReactDOM.findDOMNode(this);
+    const parent = ReactDOM.findDOMNode(this);
 
     // deregister previous chart:
     this._deregisterChart();
@@ -87,6 +87,6 @@ export default class CardRenderer extends Component {
   }
 
   render() {
-    return <div className={this.props.className} />;
+    return <div className={this.props.className} style={this.props.style} />;
   }
 }

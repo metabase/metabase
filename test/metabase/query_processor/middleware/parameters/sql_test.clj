@@ -1,13 +1,12 @@
 (ns metabase.query-processor.middleware.parameters.sql-test
   "Tests for parameters in native SQL queries, which are of the `{{param}}` form."
   (:require [clj-time.core :as t]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qpt :refer [first-row format-rows-by]]]
+             [query-processor-test :as qp.test]]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor.middleware.parameters.sql :as sql]
             [metabase.test
              [data :as data]
@@ -23,6 +22,7 @@
 (defn- parse-template
   ([sql]
    (parse-template sql {}))
+
   ([sql param-key->value]
    (driver/with-driver :h2
      (#'sql/parse-template sql param-key->value))))
@@ -365,13 +365,14 @@
                                 :timezone "UTC"
                                 :name     "mock_db"
                                 :id       1}
-    ~@body))
+     ~@body))
 
 (defn- expand* [query]
-  (with-h2-db-timezone
-    (-> (sql/expand (assoc (normalize/normalize query) :driver :h2))
-        :native
-        (select-keys [:query :params :template-tags]))))
+  (-> (with-h2-db-timezone
+        (driver/with-driver :h2
+          (sql/expand (normalize/normalize query))))
+      :native
+      (select-keys [:query :params :template-tags])))
 
 ;; unspecified optional param
 (expect
@@ -572,17 +573,17 @@
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 (def ^:private sql-parameters-engines
-  (delay (disj (qpt/non-timeseries-drivers-with-feature :native-parameters) :redshift)))
+  (delay (disj (qp.test/non-timeseries-drivers-with-feature :native-parameters) :redshift)))
 
 (defn- process-native {:style/indent 0} [& kvs]
-  (du/with-effective-timezone (Database (data/id))
+  (du/with-effective-timezone (data/db)
     (qp/process-query
       (apply assoc {:database (data/id), :type :native, :settings {:report-timezone "UTC"}} kvs))))
 
 (datasets/expect-with-drivers @sql-parameters-engines
   [29]
-  (first-row
-    (format-rows-by [int]
+  (qp.test/first-row
+    (qp.test/format-rows-by [int]
       (process-native
         :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                      :template-tags {"checkin_date" {:name         "checkin_date"
@@ -596,8 +597,8 @@
 ;; no parameter -- should give us a query with "WHERE 1 = 1"
 (datasets/expect-with-drivers @sql-parameters-engines
   [1000]
-  (first-row
-    (format-rows-by [int]
+  (qp.test/first-row
+    (qp.test/format-rows-by [int]
       (process-native
         :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                      :template-tags {"checkin_date" {:name         "checkin_date"
@@ -610,8 +611,8 @@
 ;; handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
 (datasets/expect-with-drivers @sql-parameters-engines
   [0]
-  (first-row
-    (format-rows-by [int]
+  (qp.test/first-row
+    (qp.test/format-rows-by [int]
       (process-native
         :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                      :template-tags {"checkin_date" {:name         "checkin_date"
@@ -624,8 +625,8 @@
 ;; test that multiple filters applied to the same variable combine into `AND` clauses (#3539)
 (datasets/expect-with-drivers @sql-parameters-engines
   [4]
-  (first-row
-    (format-rows-by [int]
+  (qp.test/first-row
+    (qp.test/format-rows-by [int]
       (process-native
         :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                      :template-tags {"checkin_date" {:name         "checkin_date"
@@ -648,13 +649,13 @@
      (= :snowflake driver/*driver*)
      "2018-04-16T17:00:00.000-07:00"
 
-     (qpt/supports-report-timezone? driver/*driver*)
+     (qp.test/supports-report-timezone? driver/*driver*)
      "2018-04-18T00:00:00.000-07:00"
 
      :else
      "2018-04-18T00:00:00.000Z")]
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (first-row
+    (qp.test/first-row
       (process-native
         :native     {:query         (case driver/*driver*
                                       :bigquery
@@ -731,7 +732,7 @@
                                               :display-name "X"
                                               :type         :text
                                               :required     true
-                                              :default      "%Toucan%"}}},
+                                              :default      "%Toucan%"}}}
             :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]}))
 
 (expect
@@ -778,13 +779,14 @@
    :param {:type   :date/all-options
            :target [:dimension [:template-tag "checkin_date"]]
            :value  "past5days"}}
-  (#'sql/dimension-value-for-tag {:name         "checkin_date"
-                                  :display-name "Checkin Date"
-                                  :type         :dimension
-                                  :dimension    [:field-id (data/id :checkins :date)]
-                                  :default      "past5days"
-                                  :widget-type  :date/all-options}
-                                 nil))
+  (#'sql/dimension-value-for-tag
+   {:name         "checkin_date"
+    :display-name "Checkin Date"
+    :type         :dimension
+    :dimension    [:field-id (data/id :checkins :date)]
+    :default      "past5days"
+    :widget-type  :date/all-options}
+   nil))
 
 ;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
 ;; `:widget-type` key. Check that it works correctly with relative dates...

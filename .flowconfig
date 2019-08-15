@@ -13,6 +13,8 @@
 .*/node_modules/update-notifier/.*
 .*/node_modules/boxen/.*
 .*/node_modules/libnpx/.*
+.*/node_modules/@babel/standalone/.*
+.*/node_modules/@testing-library/jest-dom/.*
 
 [include]
 .*/frontend/.*

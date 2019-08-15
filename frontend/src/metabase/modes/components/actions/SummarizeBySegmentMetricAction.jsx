@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationPopover from "metabase/query_builder/components/AggregationPopover";
 
@@ -35,14 +35,15 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
         <AggregationPopover
           query={query}
           availableAggregations={getAggregationOptionsForSummarize(query)}
-          onCommitAggregation={aggregation => {
+          onChangeAggregation={aggregation => {
             onChangeCardAndRun({
               nextCard: question.summarize(aggregation).card(),
             });
             onClose && onClose();
           }}
           onClose={onClose}
-          showOnlyProvidedAggregations
+          showMetrics={false}
+          showCustom={false}
         />
       ),
     },
