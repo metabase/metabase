@@ -114,6 +114,16 @@
         response   {:id session-id}]
     (mw.session/set-session-cookie request response session-id)))
 
+(defn- do-http-400-on-error [f]
+  (try
+    (f)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (ex-info (ex-message e)
+                      (assoc (ex-data e) :status-code 400))))))
+
+(defmacro http-400-on-error [& body]
+  `(do-http-400-on-error (fn [] ~@body)))
+
 (api/defendpoint POST "/"
   "Login."
   [:as {{:keys [username password]} :body, :as request}]
@@ -122,13 +132,10 @@
   (let [request-source (source-address request)]
     (if throttling-disabled?
       (do-login username password request)
-      (try
+      (http-400-on-error
         (throttle/with-throttling (login-throttlers :ip-address) request-source
           (throttle/with-throttling (login-throttlers :username) username
-            (do-login username password request)))
-        (catch clojure.lang.ExceptionInfo e
-          (throw (ex-info (ex-message e)
-                          (assoc (ex-data e) :status-code 400))))))))
+            (do-login username password request)))))))
 
 
 (api/defendpoint DELETE "/"
