@@ -69,3 +69,18 @@ export function parseTime(value) {
     return moment.utc(value);
   }
 }
+
+// changeOffset takes a datetime and moves it between UTC offsets without
+// changing the date or time.
+//
+// This function is only useful if `d` is missing timezone info (e.g. a
+// javascript Date object). If you have a moment object to begin with, you can
+// just call `.utcOffset(newOffset, true)` directly
+//
+// changeOffset(new Date("2019-08-01T00:00:00-02:00"), -2, 2).format()
+// => "2019-08-01T00:00:00+02:00"
+export function changeOffset(d, oldOffset, newOffset) {
+  return moment(d)
+    .utcOffset(oldOffset, false)
+    .utcOffset(newOffset, true);
+}

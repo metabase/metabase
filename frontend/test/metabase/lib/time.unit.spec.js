@@ -1,4 +1,4 @@
-import { parseTime, parseTimestamp } from "metabase/lib/time";
+import { changeOffset, parseTime, parseTimestamp } from "metabase/lib/time";
 import moment from "moment";
 
 describe("time", () => {
@@ -55,6 +55,24 @@ describe("time", () => {
 
       expect(moment.isMoment(result)).toBe(true);
       expect(result.format("h:mm A")).toBe("1:02 AM");
+    });
+  });
+
+  describe("changeOffset", () => {
+    it("should no op for equal offsets", () => {
+      const d = new Date("2019-01-23T12:34:56+10:00");
+
+      const converted = changeOffset(d, 10, 10);
+
+      expect(converted.format()).toBe("2019-01-23T12:34:56+10:00");
+    });
+
+    it("should update only the offset", () => {
+      const d = new Date("2019-01-23T12:34:56-06:00");
+
+      const converted = changeOffset(d, -6, 6);
+
+      expect(converted.format()).toBe("2019-01-23T12:34:56+06:00");
     });
   });
 });
