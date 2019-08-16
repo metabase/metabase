@@ -139,35 +139,13 @@ export function applyChartTimeseriesXAxis(
       }
     }
 
-    chart.xAxis().tickFormat(rawTimestamp => {
-      // `rawTimestamp` is a plain Date object which discards the timezone. If
-      // we're going to display a time, we need to add it back in so it's
-      // formatted correctly.
-      //
-      // An example:
-      // If we're passed "2019-08-15T03:00:00+03:00", but the data offset is -3
-      // then we need to update the UTC offset to get the time in the reporting
-      // timezone. The timestamp is referring to the right "instant" but has the
-      // wrong offset. We want "2019-08-14T21:00:00-03:00" instead.
-      //
-      // However, if there's no time in our display then we don't want to change
-      // the offset. Ticks that dont have time were already snapped to
-      // date/week/etc boundaries by d3. Updating the offset can push them into
-      // another day/week/etc and cause an off-by-one error.
-
-      const timestamp = moment(rawTimestamp);
-      const columnSettings = chart.settings.column(dimensionColumn);
-      const { column: { unit } = {} } = columnSettings;
-      if (hasHour(unit)) {
-        timestamp.utcOffset(dataOffset);
-      }
-
-      return formatValue(timestamp.format(), {
-        ...columnSettings,
+    chart.xAxis().tickFormat(timestamp =>
+      formatValue(timestamp, {
+        ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      });
-    });
+      }),
+    );
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
     tickInterval = computeTimeseriesTicksInterval(
