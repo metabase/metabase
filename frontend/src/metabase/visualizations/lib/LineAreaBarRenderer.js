@@ -103,6 +103,8 @@ function getDatas({ settings, series }, warn) {
           ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
           : isDimensionNumeric(series)
           ? row[0]
+          : row[0] === null
+          ? "(empty)"
           : String(row[0]),
         ...row.slice(1),
       ];
