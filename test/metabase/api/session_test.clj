@@ -58,31 +58,65 @@
      ;; Trying to login immediately again should still return throttling error
      (login)]))
 
-(defn- xfwd-request [username]
+(defn- send-login-request [username & [{:or {} :as headers}]]
   (try
     (http/post (http-client/build-url "session" {})
                {:form-params {"username" username,
                               "password" "incorrect-password"}
                 :content-type :json
-                :headers {"x-forwarded-for" "10.1.2.3"}})
+                :headers headers})
     (catch clojure.lang.ExceptionInfo e
       (:object (ex-data e)))))
+
+(defn- cleaned-throttlers []
+  (-> (var-get #'metabase.api.session/login-throttlers)
+      (assoc-in [:username :attempts]   (atom '()))
+      (assoc-in [:ip-address :attempts] (atom '()))))
 
 (expect
   ["Too many attempts! You must wait 15 seconds before trying again."
    "Too many attempts! You must wait 42 seconds before trying again."]
-  (with-redefs [metabase.api.session/request-source-header "x-forwarded-for"]
+  (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
+                metabase.api.session/request-source-header "x-forwarded-for"]
     (do
       (dotimes [n 50]
-        (let [response    (xfwd-request (format "user-%d" n))
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
-      [(-> (xfwd-request "last-user")
+      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
             (get "errors")
             (get "username"))
-       (-> (xfwd-request "last-user")
+       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get "errors")
+            (get "username"))])))
+
+;; The same as above, but ensure that throttling is done on a per request source basis.
+(expect
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 42 seconds before trying again."]
+  (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
+                metabase.api.session/request-source-header "x-forwarded-for"]
+    (do
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get "errors")
+            (get "username"))
+       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
             (get "errors")
