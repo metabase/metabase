@@ -78,12 +78,6 @@
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
 (def ^:private request-source-header (config/config-kw :mb-session-throttle-source-header))
 
-(defn- throttle-check
-  "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
-  [throttler throttle-key]
-  (when-not throttling-disabled?
-    (throttle/check throttler throttle-key)))
-
 (s/defn ^:private login :- UUID
   "Attempt to login with different avaialable methods with `username` and `password`, returning new Session ID or
   throwing an Exception if login could not be completed."
@@ -158,17 +152,19 @@
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
-  [:as {:keys [server-name] {:keys [email]} :body, remote-address :remote-addr}]
+  [:as {:keys [server-name] {:keys [email]} :body, :as request}]
   {email su/Email}
-  (throttle-check (forgot-password-throttlers :ip-address) remote-address)
-  (throttle-check (forgot-password-throttlers :email)      email)
   ;; Don't leak whether the account doesn't exist, just pretend everything is ok
-  (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
-                                                        :email email, :is_active true)]
-    (let [reset-token        (user/set-password-reset-token! user-id)
-          password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
-      (email/send-password-reset-email! email google-auth? server-name password-reset-url)
-      (log/info password-reset-url))))
+  (let [request-source (source-address request)]
+    (http-400-on-error
+      (throttle/with-throttling (forgot-password-throttlers :ip-address) request-source
+        (throttle/with-throttling (forgot-password-throttlers :email) email
+          (when-let [{user-id :id, google-auth? :google_auth} (db/select-one [User :id :google_auth]
+                                                                             :email email, :is_active true)]
+            (let [reset-token        (user/set-password-reset-token! user-id)
+                  password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
+              (email/send-password-reset-email! email google-auth? server-name password-reset-url)
+              (log/info password-reset-url))))))))
 
 
 (def ^:private ^:const reset-token-ttl-ms
@@ -283,15 +279,16 @@
 
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."
-  [:as {{:keys [token]} :body, remote-address :remote-addr, :as request}]
+  [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
-  (throttle-check (login-throttlers :ip-address) remote-address)
   ;; Verify the token is valid with Google
-  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-    (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-    (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
-          response   {:id session-id}]
-      (mw.session/set-session-cookie request response session-id))))
+  (http-400-on-error
+    (throttle/with-throttling (login-throttlers :ip-address) (source-address request)
+      (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
+        (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
+        (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
+              response   {:id session-id}]
+          (mw.session/set-session-cookie request response session-id))))))
 
 
 (api/define-routes)
