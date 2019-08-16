@@ -1,6 +1,8 @@
+import d3 from "d3";
 import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
+  rangeFnForOffsetCreator,
 } from "metabase/visualizations/lib/timeseries";
 
 import { TYPE } from "metabase/lib/types";
@@ -142,6 +144,46 @@ describe("visualization.lib.timeseries", () => {
         );
         expect(interval).toBe(expectedInterval);
         expect(count).toBe(expectedCount);
+      });
+    });
+  });
+
+  describe("rangeFnForOffsetCreator", () => {
+    [
+      [-12, "-12:00"],
+      [-1, "-01:00"],
+      [0, "Z"],
+      [1, "+01:00"],
+      [12, "+12:00"],
+    ].forEach(([offsetInt, offsetString]) => {
+      it(`should create an hourly range in ${offsetString}`, () => {
+        const getRangeFnForOffset = rangeFnForOffsetCreator(d3.time.hours);
+        const rangeFn = getRangeFnForOffset(offsetInt);
+        const start = new Date("2019-01-01T00:00:00.000" + offsetString);
+        const stop = new Date("2019-01-02T00:00:00.000" + offsetString);
+
+        const ticks = rangeFn(start, stop, 1).map(d => d.format());
+
+        expect(ticks.length).toBe(24);
+        expect(ticks[0]).toBe("2019-01-01T00:00:00" + offsetString);
+        expect(ticks[ticks.length - 1]).toBe(
+          "2019-01-01T23:00:00" + offsetString,
+        );
+      });
+
+      it(`should create a daily range in ${offsetString}`, () => {
+        const getRangeFnForOffset = rangeFnForOffsetCreator(d3.time.days);
+        const rangeFn = getRangeFnForOffset(offsetInt);
+        const start = new Date("2019-01-01T00:00:00.000" + offsetString);
+        const stop = new Date("2019-01-10T00:00:00.000" + offsetString);
+
+        const ticks = rangeFn(start, stop, 1).map(d => d.format());
+
+        expect(ticks.length).toBe(9);
+        expect(ticks[0]).toBe("2019-01-01T00:00:00" + offsetString);
+        expect(ticks[ticks.length - 1]).toBe(
+          "2019-01-09T00:00:00" + offsetString,
+        );
       });
     });
   });
