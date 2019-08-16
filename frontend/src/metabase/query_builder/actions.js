@@ -767,7 +767,16 @@ export const updateQuestion = (
         newQuestion.query().dependentTableIds(),
       )
     ) {
-      dispatch(loadMetadataForCard(newQuestion.card()));
+      await dispatch(loadMetadataForCard(newQuestion.card()));
+    }
+
+    // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
+    const question = getQuestion(getState());
+    const questionWithDefaultQuery = question.setDefaultQuery();
+    if (!questionWithDefaultQuery.isEqual(question)) {
+      await dispatch.action(UPDATE_QUESTION, {
+        card: questionWithDefaultQuery.setDefaultDisplay().card(),
+      });
     }
 
     // run updated query

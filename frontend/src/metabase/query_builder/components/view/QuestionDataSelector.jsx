@@ -12,7 +12,10 @@ function QuestionDataSelector({ query, databases, triggerElement }) {
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
-        query.setTableId(tableId).update(null, { run: true })
+        query
+          .setTableId(tableId)
+          .setDefaultQuery()
+          .update(null, { run: true })
       }
       triggerElement={triggerElement}
       isOpen

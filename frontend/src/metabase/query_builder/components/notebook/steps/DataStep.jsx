@@ -15,7 +15,10 @@ function DataStep({ color, query, databases, updateQuery }) {
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
         setSourceTableFn={tableId =>
-          query.setTableId(tableId).update(updateQuery)
+          query
+            .setTableId(tableId)
+            .setDefaultQuery()
+            .update(updateQuery)
         }
         isInitiallyOpen={!query.tableId()}
         triggerElement={
