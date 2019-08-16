@@ -99,7 +99,7 @@
 
 (defn- source-address
   [request]
-  "The `:mb-session-throttle-source-header` header's value, or the `(:remote-addr request)` if not set."
+  "The `public-settings/source-address-header` header's value, or the `(:remote-addr request)` if not set."
   (if-let [source-address-header (public-settings/source-address-header)]
     (if-let [header-value ((:headers request) source-address-header)]
       header-value
