@@ -21,7 +21,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [monger
              [collection :as mc]
@@ -90,7 +90,7 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green (str "\n" (tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
+    (log/debug (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
                  (->> form
                       ;; strip namespace qualifiers from Monger form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
@@ -428,7 +428,7 @@
 
     :else
     (throw
-     (ex-info (str (tru "Don't know how to handle aggregation {0}" ag))
+     (ex-info (tru "Don't know how to handle aggregation {0}" ag)
        {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
@@ -736,7 +736,7 @@
           actual-cols     (set (keys (first results)))
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
-        (throw (Exception. (str (tru "Unexpected columns in results: {0}" (sort not-in-expected)))))))))
+        (throw (Exception. (tru "Unexpected columns in results: {0}" (sort not-in-expected))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."

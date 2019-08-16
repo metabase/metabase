@@ -14,7 +14,7 @@
   (:refer-clojure :exclude [require])
   (:require [clojure.tools.logging :as log]
             [dynapath.util :as dynapath]
-            [metabase.util.i18n :refer [trs]])
+            [metabase.util.i18n :refer [deferred-trs]])
   (:import [clojure.lang DynamicClassLoader RT]
            java.net.URL))
 
@@ -32,7 +32,7 @@
    (or
     (when-let [base-loader (RT/baseLoader)]
       (when (instance? DynamicClassLoader base-loader)
-        (log/debug (trs "Using Clojure base loader as shared context classloader: {0}" base-loader))
+        (log/debug (deferred-trs "Using Clojure base loader as shared context classloader: {0}" base-loader))
         base-loader))
     ;; Otherwise if we need to create our own go ahead and do it
     ;;
@@ -42,7 +42,7 @@
     ;; context classloaders by giving them this one. No other places in the codebase should be modifying classloaders
     ;; anyway.
     (let [new-classloader (DynamicClassLoader. (.getContextClassLoader (Thread/currentThread)))]
-      (log/debug (trs "Using NEWLY CREATED classloader as shared context classloader: {0}" new-classloader))
+      (log/debug (deferred-trs "Using NEWLY CREATED classloader as shared context classloader: {0}" new-classloader))
       new-classloader))))
 
 
@@ -81,7 +81,8 @@
        current-thread-context-classloader))
    ;; otherwise set the current thread's context classloader to the shared context classloader
    (let [shared-classloader @shared-context-classloader]
-     (log/debug (trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
+     (log/debug
+       (deferred-trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
      (.setContextClassLoader (Thread/currentThread) shared-classloader)
      shared-classloader)))
 
@@ -134,4 +135,4 @@
     ;; `add-classpath-url` will return non-truthy if it couldn't add the URL, e.g. because the classloader wasn't one
     ;; that allowed it
     (assert (dynapath/add-classpath-url (the-top-level-classloader) url))
-    (log/info (trs "Added URL {0} to classpath" url))))
+    (log/info (deferred-trs "Added URL {0} to classpath" url))))

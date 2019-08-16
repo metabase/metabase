@@ -16,7 +16,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]])
+             [i18n :refer [deferred-tru tru]]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -31,7 +31,7 @@
 (defmethod driver/connection-properties :h2 [_]
   [{:name         "db"
     :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (tru "Users/camsaul/bird_sightings/toucans"))
+    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
 (defn- connection-string->file+options
@@ -64,7 +64,7 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
-            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
+            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
 
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))

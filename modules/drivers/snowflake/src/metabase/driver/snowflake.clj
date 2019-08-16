@@ -134,7 +134,7 @@
   [{details :details}]
   (or (:db details)
       (:dbname details)
-      (throw (Exception. (str (tru "Invalid Snowflake connection details: missing DB name."))))))
+      (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name.")))))
 
 (defn- query-db-name []
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements

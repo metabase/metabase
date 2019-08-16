@@ -1,4 +1,4 @@
-(ns metabase.plugins.files
+(ns metabase.util.files
   "Low-level file-related functions for implementing Metabase plugin functionality. These use the `java.nio.file`
   library rather than the usual `java.io` stuff because it abstracts better across different filesystems (such as
   files in a normal directory vs files inside a JAR.)
@@ -105,7 +105,7 @@
   [^String resource, f]
   (let [url (io/resource resource)]
     (when-not url
-      (throw (FileNotFoundException. (str (trs "Resource does not exist.")))))
+      (throw (FileNotFoundException. (trs "Resource does not exist."))))
     (if (url-inside-jar? url)
       (with-open [fs (jar-file-system-from-url url)]
         (f (get-path-in-filesystem fs "/" resource)))

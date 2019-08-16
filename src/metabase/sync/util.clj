@@ -263,19 +263,19 @@
 (extend-protocol INameForLogging
   i/DatabaseInstance
   (name-for-logging [{database-name :name, id :id, engine :engine,}]
-    (str (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name)))
+    (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))
 
   i/TableInstance
   (name-for-logging [{schema :schema, id :id, table-name :name}]
-    (str (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name))))
+    (trs "Table {0} ''{1}''" (or id "") (str (when (seq schema) (str schema ".")) table-name)))
 
   i/FieldInstance
   (name-for-logging [{field-name :name, id :id}]
-    (str (trs "Field {0} ''{1}''" (or id "") field-name)))
+    (trs "Field {0} ''{1}''" (or id "") field-name))
 
   i/ResultColumnMetadataInstance
   (name-for-logging [{field-name :name}]
-    (str (trs "Field ''{0}''" field-name))))
+    (trs "Field ''{0}''" field-name)))
 
 (defn calculate-hash
   "Calculate a cryptographic hash on `clj-data` and return that hash as a string"
@@ -350,9 +350,9 @@
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as step} :- StepDefinition]
   (let [start-time (time/now)
-        results    (with-start-and-finish-debug-logging (str (trs "step ''{0}'' for {1}"
-                                                                  step-name
-                                                                  (name-for-logging database)))
+        results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
+                                                             step-name
+                                                             (name-for-logging database))
                      #(sync-fn database))
         end-time   (time/now)]
     [step-name (assoc results
@@ -373,10 +373,10 @@
                "# %s\n"
                "# %s\n"
                "# %s\n")
-          (map str [(trs "Completed {0} on {1}" operation (:name database))
-                    (trs "Start: {0}" (datetime->str start-time))
-                    (trs "End: {0}" (datetime->str end-time))
-                    (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))
+          [(trs "Completed {0} on {1}" operation (:name database))
+           (trs "Start: {0}" (datetime->str start-time))
+           (trs "End: {0}" (datetime->str end-time))
+           (trs "Duration: {0}" (calculate-duration-str start-time end-time))])
    (apply str (for [[step-name {:keys [start-time end-time log-summary-fn] :as step-info}] steps]
                 (apply format (str "# ---------------------------------------------------------------\n"
                                    "# %s\n"
@@ -385,10 +385,10 @@
                                    "# %s\n"
                                    (when log-summary-fn
                                        (format "# %s\n" (log-summary-fn step-info))))
-                       (map str [(trs "Completed step ''{0}''" step-name)
-                                 (trs "Start: {0}" (datetime->str start-time))
-                                 (trs "End: {0}" (datetime->str end-time))
-                                 (trs "Duration: {0}" (calculate-duration-str start-time end-time))]))))
+                       [(trs "Completed step ''{0}''" step-name)
+                        (trs "Start: {0}" (datetime->str start-time))
+                        (trs "End: {0}" (datetime->str end-time))
+                        (trs "Duration: {0}" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
 (s/defn ^:private  log-sync-summary

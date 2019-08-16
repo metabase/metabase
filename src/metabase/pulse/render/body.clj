@@ -148,7 +148,7 @@
                  (< rows-limit (count rows))))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
-     (str (trs "More results have been included as a file attachment"))]))
+     (trs "More results have been included as a file attachment")]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -257,7 +257,7 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (str (trs "No results"))]]}))
+       (trs "No results")]]}))
 
 
 (s/defmethod render :attached :- common/RenderedPulseCard
@@ -274,7 +274,7 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (str (trs "This question has been included as a file attachment"))]]}))
+       (trs "This question has been included as a file attachment")]]}))
 
 
 (s/defmethod render :unknown :- common/RenderedPulseCard
@@ -287,9 +287,9 @@
                   (style/font-style)
                   {:color       style/color-gold
                    :font-weight 700})}
-    (str (trs "We were unable to display this Pulse."))
+    (trs "We were unable to display this Pulse.")
     [:br]
-    (str (trs "Please view this card in Metabase."))]})
+    (trs "Please view this card in Metabase.")]})
 
 
 (s/defmethod render :error :- common/RenderedPulseCard
@@ -303,4 +303,4 @@
                   {:color       style/color-error
                    :font-weight 700
                    :padding     :16px})}
-    (str (trs "An error occurred while displaying this card."))]})
+    (trs "An error occurred while displaying this card.")]})

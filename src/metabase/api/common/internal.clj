@@ -254,7 +254,7 @@
   [response]
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
   (when (m/boolean? response)
-    (throw (Exception. (str (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
+    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!"))))
   (if (and (map? response)
            (contains? response :status)
            (contains? response :body))

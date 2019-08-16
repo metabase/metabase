@@ -1,5 +1,7 @@
 import React from "react";
 
+import { HAS_LOCAL_STORAGE } from "metabase/lib/dom";
+
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 //
@@ -52,6 +54,6 @@ export function enableTranslatedStringReplacement() {
   };
 }
 
-if (window.localStorage && window.localStorage["metabase-i18n-debug"]) {
+if (HAS_LOCAL_STORAGE && window.localStorage["metabase-i18n-debug"]) {
   enableTranslatedStringReplacement();
 }
