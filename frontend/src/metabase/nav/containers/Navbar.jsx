@@ -18,7 +18,6 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
@@ -361,18 +360,14 @@ export default class Navbar extends Component {
             ]}
           />
           {hasNativeWrite && (
-            // TODO: Make a proper button component
             <IconWrapper className="relative hide sm-show mr1 overflow-hidden">
-              <Tooltip tooltip={t`Write SQL`}>
-                <Link
-                  to={this.props.plainNativeQuery.question().getUrl()}
-                  data-metabase-event={`NavBar;SQL`}
-                >
-                  <IconWrapper>
-                    <Icon size={19} name="sql" />
-                  </IconWrapper>
-                </Link>
-              </Tooltip>
+              <Link
+                to={this.props.plainNativeQuery.question().getUrl()}
+                className="flex align-center"
+                data-metabase-event={`NavBar;SQL`}
+              >
+                <Icon size={18} p={"11px"} name="sql" tooltip={t`Write SQL`} />
+              </Link>
             </IconWrapper>
           )}
           <ProfileLink {...this.props} />
