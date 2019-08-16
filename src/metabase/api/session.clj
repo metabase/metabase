@@ -76,7 +76,6 @@
       (create-session! user))))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
-(def ^:private request-source-header (config/config-kw :mb-session-throttle-source-header))
 
 (defn- throttle-check
   "Pass through to `throttle/check` but will not check if `throttling-disabled?` is true"
@@ -101,8 +100,8 @@
 (defn- source-address
   [request]
   "The `:mb-session-throttle-source-header` header's value, or the `(:remote-addr request)` if not set."
-  (if request-source-header
-    (if-let [header-value ((:headers request) request-source-header)]
+  (if-let [source-address-header (public-settings/source-address-header)]
+    (if-let [header-value ((:headers request) source-address-header)]
       header-value
       (:remote-addr request))
     (:remote-addr request)))

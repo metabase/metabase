@@ -12,6 +12,7 @@
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
+            [metabase.public-settings :as public-settings]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.test.util :as tu]
@@ -77,7 +78,7 @@
   ["Too many attempts! You must wait 15 seconds before trying again."
    "Too many attempts! You must wait 42 seconds before trying again."]
   (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
-                metabase.api.session/request-source-header "x-forwarded-for"]
+                public-settings/source-address-header (constantly "x-forwarded-for")]
     (do
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
@@ -100,7 +101,7 @@
   ["Too many attempts! You must wait 15 seconds before trying again."
    "Too many attempts! You must wait 42 seconds before trying again."]
   (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
-                metabase.api.session/request-source-header "x-forwarded-for"]
+                public-settings/source-address-header (constantly "x-forwarded-for")]
     (do
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
