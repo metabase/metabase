@@ -173,6 +173,9 @@
   :type    :boolean
   :default true)
 
+(defsetting source-address-header
+  (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address."))
+
 (defn remove-public-uuid-if-public-sharing-is-disabled
   "If public sharing is *disabled* and OBJECT has a `:public_uuid`, remove it so people don't try to use it (since it
    won't work). Intended for use as part of a `post-select` implementation for Cards and Dashboards."
