@@ -119,11 +119,11 @@
   [:as {{:keys [username password]} :body, :as request}]
   {username su/NonBlankString
    password su/NonBlankString}
-  (let [request-address (source-address request)]
+  (let [request-source (source-address request)]
     (if throttling-disabled?
       (do-login username password request)
       (try
-        (throttle/with-throttling (login-throttlers :ip-address) request-address
+        (throttle/with-throttling (login-throttlers :ip-address) request-source
           (throttle/with-throttling (login-throttlers :username) username
             (do-login username password request)))
         (catch clojure.lang.ExceptionInfo e
