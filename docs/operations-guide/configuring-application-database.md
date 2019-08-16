@@ -11,8 +11,7 @@ data needed to run the application. The default settings use an embedded H2 data
 *  You cannot change the application database while the application is running. Connection configuration information is
    read only once when the application starts up and will remain constant throughout the running of the application.
 *  Metabase provides limited support for migrating from H2 to Postgres or MySQL if you decide to upgrade to a more
-   production-ready database. See [Migrating from H2 to MySQL or
-   Postgres](#migrating-from-using-the-h2-database-to-mysql-or-postgres) for more details.
+   production-ready database. See [Migrating from H2 to MySQL or Postgres](migrating-from-h2.md) for more details.
 
 
 #### [H2](http://www.h2database.com/) (default)

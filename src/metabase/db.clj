@@ -107,7 +107,8 @@
            " "
            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
            " "
-           (trs "See https://metabase.com/docs/latest/operations-guide/start.html#migrating-from-using-the-h2-database-to-mysql-or-postgres for more information.")))))
+           (trs "For more information, see")
+           "https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
    (or @connection-string-details
        (case (db-type)
          :h2       {:type     :h2 ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
