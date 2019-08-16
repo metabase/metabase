@@ -22,7 +22,7 @@ This kind of alert is useful when you're doing things like tracking daily active
 
 To start, you'll need a line, area, or bar chart displaying a number over time. (If you need help with that, check out the page on [asking questions](04-asking-questions.md).)
 
-Now we need to set up a goal line. To do that, open up the visualization settings by clicking the button in the bottom-left. Then click on the Display tab, and turn on the "Show goal" setting. Choose a value for your goal and click Done.
+Now we need to set up a goal line. To do that, open up the visualization settings by clicking the Settings button in the bottom-left. Then click on the Display tab, and turn on the "Show goal" setting. Choose a value for your goal and click Done.
 
 Save your question, then click on the bell icon in the bottom-right of the screen.
 
