@@ -93,9 +93,10 @@
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event! :user-create {:user_id (u/get-id new-user)})
     (events/publish-event! :user-login {:user_id (u/get-id new-user), :session_id (str session-id), :first_login true})
-    (mw.session/set-session-cookie request {:id (str session-id)} session-id)
+    ; set `source-address-header` to "X-Forwarded-For" if such a header is present
     (when (-> request :headers (get "x-forwarded-for"))
-      (public-settings/source-address-header "X-Forwarded-For"))))
+      (public-settings/source-address-header "X-Forwarded-For"))
+    (mw.session/set-session-cookie request {:id (str session-id)} session-id)))
 
 
 (api/defendpoint POST "/validate"
