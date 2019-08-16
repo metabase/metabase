@@ -167,6 +167,25 @@
 (expect nil
   (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
 
+;; Test that email based throttling kicks in after the login failure threshold (10) has been reached
+(defn- send-password-reset [& [expected-status & more]]
+  (client :post (or expected-status 200) "session/forgot_password" {:email "not-found@metabase.com"}))
+
+(expect
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 15 seconds before trying again."] ; `throttling/check` gives 15 in stead of 42
+  (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
+                                                                           [:email :ip-address])]
+    (do
+      (dotimes [n 10]
+        (send-password-reset))
+      [(-> (send-password-reset 400)
+           :errors
+           :email)
+       (-> (send-password-reset 400)
+           :errors
+           :email)])))
+
 
 ;; POST /api/session/reset_password
 ;; Test that we can reset password from token (AND after token is used it gets removed)
