@@ -98,8 +98,8 @@
           :errors      {:password password-fail-snippet}}))))
 
 (defn- source-address
-  [request]
   "The `public-settings/source-address-header` header's value, or the `(:remote-addr request)` if not set."
+  [request]
   (if-let [source-address-header (public-settings/source-address-header)]
     (if-let [header-value ((:headers request) source-address-header)]
       header-value
@@ -120,7 +120,9 @@
       (throw (ex-info (ex-message e)
                       (assoc (ex-data e) :status-code 400))))))
 
-(defmacro http-400-on-error [& body]
+(defmacro http-400-on-error
+  "Add `{:status-code 400}` to exception data thrown by `body`."
+  [& body]
   `(do-http-400-on-error (fn [] ~@body)))
 
 (api/defendpoint POST "/"

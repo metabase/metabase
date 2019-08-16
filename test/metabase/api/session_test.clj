@@ -5,14 +5,13 @@
             [expectations :refer [expect]]
             [metabase
              [email-test :as et]
-             [http-client :refer [client] :as http-client]
+             [http-client :as http-client :refer [client]]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
-            [metabase.public-settings :as public-settings]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.test.util :as tu]
