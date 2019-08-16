@@ -281,18 +281,23 @@
                                                      :email      email}))]
     (create-session! user)))
 
+(defn- do-google-auth [{{:keys [token]} :body, :as request}]
+  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
+    (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
+    (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
+          response   {:id session-id}]
+      (mw.session/set-session-cookie request response session-id))))
+
 (api/defendpoint POST "/google_auth"
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
   ;; Verify the token is valid with Google
-  (http-400-on-error
-    (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
-      (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
-        (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
-        (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
-              response   {:id session-id}]
-          (mw.session/set-session-cookie request response session-id))))))
+  (if throttling-disabled?
+    (do-google-auth token)
+    (http-400-on-error
+      (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
+        (do-google-auth request)))))
 
 
 (api/define-routes)
