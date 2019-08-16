@@ -231,7 +231,7 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
+                  (throw (ex-info (tru "Error preprocessing query") results)))))))]
     (receive-native-query (build-pipeline deliver-native-query))))
 
 (def ^:private ^:dynamic *preprocessing-level* 0)
@@ -259,7 +259,7 @@
   it."
   [{query-type :type, :as query}]
   (when-not (= query-type :query)
-    (throw (Exception. (str (tru "Can only determine expected columns for MBQL queries.")))))
+    (throw (Exception. (tru "Can only determine expected columns for MBQL queries."))))
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)
           results      ((annotate/add-column-info (constantly nil)) preprocessed)]
@@ -276,7 +276,7 @@
   (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
-        (throw (ex-info (str (tru "No native form returned."))
+        (throw (ex-info (tru "No native form returned.")
                  (or results {}))))))
 
 (defn query->native-with-spliced-params

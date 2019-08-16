@@ -63,6 +63,10 @@ import { MetabaseApi } from "metabase/services";
 
 function autocompleteResults(card, prefix) {
   const databaseId = card && card.dataset_query && card.dataset_query.database;
+  if (!databaseId) {
+    return [];
+  }
+
   const apiCall = MetabaseApi.db_autocomplete_suggestions({
     dbId: databaseId,
     prefix: prefix,

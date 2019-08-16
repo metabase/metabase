@@ -5,10 +5,11 @@
             [environ.core :as env]
             [metabase.plugins
              [classloader :as classloader]
-             [files :as files]
              [initialize :as initialize]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [files :as files]
+             [i18n :refer [trs]]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
 
@@ -25,7 +26,7 @@
        (u/prog1 (files/get-path filename)
          (files/create-dir-if-not-exists! <>)
          (assert (Files/isWritable <>)
-           (str (trs "Metabase does not have permissions to write to plugins directory {0}" filename))))
+           (trs "Metabase does not have permissions to write to plugins directory {0}" filename)))
        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
        (catch Throwable e
@@ -40,7 +41,7 @@
          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
          (u/prog1 (files/get-path (System/getProperty "java.io.tmpdir"))
            (assert (Files/isWritable <>)
-             (str (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))))))))
+             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))))))))
 
 ;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
 ;; in cases where we have to fall back to the system temporary directory

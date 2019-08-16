@@ -21,7 +21,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
@@ -606,7 +606,7 @@
     (catch Throwable e
       (try
         (log/error (u/format-color 'red
-                       (str (tru "Invalid HoneySQL form:")
+                       (str (deferred-tru "Invalid HoneySQL form:")
                             "\n"
                             (u/pprint-to-str honeysql-form))))
         (finally

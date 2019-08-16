@@ -182,7 +182,7 @@ export default class NotebookStep extends React.Component {
                   }
                   icon="play"
                   title={t`Preview`}
-                  color={colors["text-medium"]}
+                  color={colors["text-light"]}
                   onClick={() => this.setState({ showPreview: true })}
                 />
               </Box>

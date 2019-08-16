@@ -19,7 +19,7 @@
                                    :after  :json
                                    :remark :clob})
           :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. (str (tru "You cannot update a CollectionRevision!")))))}))
+          :pre-update (fn [& _] (throw (Exception. (tru "You cannot update a CollectionRevision!"))))}))
 
 
 (defn latest-id
