@@ -18,6 +18,7 @@ import colors, { darken } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
+import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
@@ -72,7 +73,7 @@ const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   max-width: 50em;
   align-items: center;
   color: white;
@@ -84,6 +85,7 @@ const SearchWrapper = Flex.extend`
 
 const SearchInput = styled.input`
   ${space} background-color: transparent;
+  width: 100%;
   border: none;
   color: white;
   font-size: 1em;
@@ -359,16 +361,19 @@ export default class Navbar extends Component {
             ]}
           />
           {hasNativeWrite && (
-            <Link
-              to={this.props.plainNativeQuery.question().getUrl()}
-              mx={1}
-              className="hide sm-show flex-no-shrink"
-              data-metabase-event={`NavBar;SQL`}
-            >
-              <IconWrapper>
-                <Icon size={19} name="sql" tooltip={t`Write SQL`} />
-              </IconWrapper>
-            </Link>
+            // TODO: Make a proper button component
+            <IconWrapper className="relative hide sm-show mr1 overflow-hidden">
+              <Tooltip tooltip={t`Write SQL`}>
+                <Link
+                  to={this.props.plainNativeQuery.question().getUrl()}
+                  data-metabase-event={`NavBar;SQL`}
+                >
+                  <IconWrapper>
+                    <Icon size={19} name="sql" />
+                  </IconWrapper>
+                </Link>
+              </Tooltip>
+            </IconWrapper>
           )}
           <ProfileLink {...this.props} />
         </Flex>
