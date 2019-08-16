@@ -132,9 +132,9 @@
     (if throttling-disabled?
       (do-login username password request)
       (http-400-on-error
-        (throttle/with-throttling (login-throttlers :ip-address) request-source
-          (throttle/with-throttling (login-throttlers :username) username
-            (do-login username password request)))))))
+        (throttle/with-throttling [(login-throttlers :ip-address) request-source
+                                   (login-throttlers :username)   username]
+          (do-login username password request))))))
 
 
 (api/defendpoint DELETE "/"
@@ -287,7 +287,7 @@
   {token su/NonBlankString}
   ;; Verify the token is valid with Google
   (http-400-on-error
-    (throttle/with-throttling (login-throttlers :ip-address) (source-address request)
+    (throttle/with-throttling [(login-throttlers :ip-address) (source-address request)]
       (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
         (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
         (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
