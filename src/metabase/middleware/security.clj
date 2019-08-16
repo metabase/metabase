@@ -1,12 +1,39 @@
 (ns metabase.middleware.security
   "Ring middleware for adding security-related headers to API responses."
-  (:require [clojure.string :as str]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [metabase.config :as config]
             [metabase.middleware.util :as middleware.u]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]]))
+             [i18n :as ui18n :refer [deferred-tru]]]
+            [ring.util.codec :refer [base64-encode]])
+  (:import java.security.MessageDigest))
+
+(defn- file-hash [resource-filename]
+  (base64-encode
+    (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
+               (.update (.getBytes (slurp (io/resource resource-filename))))))))
+
+(def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/inline_js/index_bootstrap.js"))
+(def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/inline_js/index_ganalytics.js"))
+(def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/inline_js/index_webfontconfig.js"))
+(def ^:private ^:const init-js-hash (file-hash "frontend_client/inline_js/init.js"))
+
+(defonce ^:private ^:const inline-js-hashes
+  (let [file-hash (fn [resource-filename]
+                    (base64-encode
+                     (.digest (doto (java.security.MessageDigest/getInstance "SHA-256")
+                                (.update (.getBytes (slurp (io/resource resource-filename))))))))]
+    (mapv file-hash [;; inline script in index.html that sets `MetabaseBootstrap` and the like
+                     "frontend_client/inline_js/index_bootstrap.js"
+                     ;; inline script in index.html that loads Google Analytics
+                     "frontend_client/inline_js/index_ganalytics.js"
+                     ;; Web Font Loader font configuration (WebFontConfig) in index.html
+                     "frontend_client/inline_js/index_webfontconfig.js"
+                     ;; inline script in init.html
+                     "frontend_client/inline_js/init.js"])))
 
 (defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."
@@ -30,22 +57,18 @@
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
-                  :script-src   ["'self'"
-                                 "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
-                                 "https://maps.google.com"
-                                 "https://apis.google.com"
-                                 "https://www.google-analytics.com" ; Safari requires the protocol
-                                 "https://*.googleapis.com"
-                                 "*.gstatic.com"
-                                 ;; for webpack hot reloading
-                                 (when config/is-dev?
-                                   "localhost:8080")
-                                 ;; inline script in index.html that sets `MetabaseBootstrap` and the like
-                                 "'sha256-xlgrBEvjf72cXGba6bCV/PwIVp1DcbdhY74VIXN8fA4='"
-                                 ;; Web Font Loader font configuration (WebFontConfig) in index.html
-                                 "'sha256-6xC9z5Dcryu9jbxUZkBJ5yUmSofhJjt7Mbnp/ijPkFs='"
-                                 ;; inline script in index.html that loads Google Analytics
-                                 "'sha256-uKEj/Qp9AmQA2Xv83bZX9mNVV2VWZteZjIsVNVzLkA0='"]
+                  :script-src   (concat
+                                  ["'self'"
+                                   "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
+                                   "https://maps.google.com"
+                                   "https://apis.google.com"
+                                   "https://www.google-analytics.com" ; Safari requires the protocol
+                                   "https://*.googleapis.com"
+                                   "*.gstatic.com"
+                                   ;; for webpack hot reloading
+                                   (when config/is-dev?
+                                     "localhost:8080")]
+                                  (map (partial format "'sha256-%s'") inline-js-hashes))
                   :child-src    ["'self'"
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
@@ -68,9 +91,9 @@
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defsetting ssl-certificate-public-key
-  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
-       (tru "Specify this to enable HTTP Public Key Pinning.")
-       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
+  (str (deferred-tru "Base-64 encoded public key for this site's SSL certificate.")
+       (deferred-tru "Specify this to enable HTTP Public Key Pinning.")
+       (deferred-tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn security-headers

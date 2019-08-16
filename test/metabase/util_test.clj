@@ -1,6 +1,7 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require [expectations :refer [expect]]
+            [flatland.ordered.map :refer [ordered-map]]
             [metabase.util :as u]))
 
 ;;; `host-up?` and `host-port-up?`
@@ -36,8 +37,40 @@
 (expect false (u/url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 
+;;; `qualified-name`
+(expect
+  "keyword"
+  (u/qualified-name :keyword))
+
+(expect
+  "namespace/keyword"
+  (u/qualified-name :namespace/keyword))
+
+;; `qualified-name` should return strings as-is
+(expect
+  "some string"
+  (u/qualified-name "some string"))
+
+;; `qualified-name` should work on anything that implements `clojure.lang.Named`
+(expect
+  "namespace/name"
+  (u/qualified-name (reify clojure.lang.Named
+                      (getName [_] "name")
+                      (getNamespace [_] "namespace"))))
+
+;; `qualified-name` shouldn't throw an NPE (unlike `name`)
+(expect
+  nil
+  (u/qualified-name nil))
+
+;; we shouldn't ignore non-nil values -- `u/qualified-name` should throw an Exception if `name` would
+(expect
+  ClassCastException
+  (u/qualified-name false))
+
 ;;; `rpartial`
-(expect 3
+(expect
+  3
   ((u/rpartial - 5) 8))
 
 (expect -7
@@ -234,3 +267,26 @@
 (expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :c 1})))
 (expect false  (boolean ((u/xor-pred :a :b :c) {:b 1, :c 1})))
 (expect false  (boolean ((u/xor-pred :a :b :c) {:a 1, :b 1, :c 1})))
+
+
+(expect nil   (u/one-or-many nil))
+(expect [nil] (u/one-or-many [nil]))
+(expect [42]  (u/one-or-many 42))
+(expect [42]  (u/one-or-many [42]))
+
+
+(expect
+  (ordered-map :a [] :b [] :c [:a] :d [:a :b :c] :e [:d])
+  (u/topological-sort identity {:b []
+                                :c [:a]
+                                :e [:d]
+                                :d [:a :b :c]
+                                :a []}))
+
+(expect
+  nil
+  (u/topological-sort identity {}))
+
+(expect
+  nil
+  (u/topological-sort identity nil))

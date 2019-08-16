@@ -7,25 +7,23 @@
              [schema :as su]]
             [schema.core :as s]))
 
-(def ^:private ^{:arglists '([x])} positive-int? (every-pred integer? pos?))
-
 (defn- check-all-source-table-ids-are-valid
   "Sanity check: Any non-positive-integer value of `:source-table` should have been resolved by now. The
   `resolve-card-id-source-tables` middleware should have already taken care of it."
   [query]
   (mbql.u/match-one query
-    (m :guard (every-pred map? :source-table (comp (complement positive-int?) :source-table)))
+    (m :guard (every-pred map? :source-table #(string? (:source-table %))))
     (throw
-     (ex-info
-         (str (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m)))
-       {:form m}))))
+      (ex-info
+        (tru "Invalid :source-table ''{0}'': should be resolved to a Table ID by now." (:source-table m))
+        {:form m}))))
 
 (s/defn ^:private query->source-table-ids :- (s/maybe (su/non-empty #{su/IntGreaterThanZero}))
   "Fetch a set of all `:source-table` IDs anywhere in `query`."
   [query]
   (some->
    (mbql.u/match query
-     (m :guard (every-pred map? (comp positive-int? :source-table)))
+     (m :guard (every-pred map? :source-table #(integer? (:source-table %))))
      ;; Recursively look in the rest of `m` for any other source tables
      (cons
       (:source-table m)

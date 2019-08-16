@@ -103,7 +103,7 @@
   (let [output-stream (ByteArrayOutputStream.)]
     (try
       (when-not (ImageIO/write tile "png" output-stream) ; returns `true` if successful -- see JavaDoc
-        (throw (Exception. (str (tru "No appropriate image writer found!")))))
+        (throw (Exception. (tru "No appropriate image writer found!"))))
       (.flush output-stream)
       (.toByteArray output-stream)
       (catch Throwable e
@@ -153,7 +153,7 @@
         ;; make sure query completed successfully, or API endpoint should return 400
         _
         (when-not (= status :completed)
-          (throw (ex-info (str (tru "Query failed"))
+          (throw (ex-info (tru "Query failed")
                    ;; `result` might be a `core.async` channel or something we're not expecting
                    (assoc (when (map? result) result) :status-code 400))))
 

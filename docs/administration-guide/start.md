@@ -9,6 +9,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Configuring settings](08-configuration-settings.md)
 * [Setting formatting defaults for dates and numbers](19-formatting-settings.md)
 * [Caching query results](14-caching.md)
+* [Customizing your map settings](20-custom-maps.md)
 
 **Curating your data:**
 * [Editing your database metadata](03-metadata-editing.md)

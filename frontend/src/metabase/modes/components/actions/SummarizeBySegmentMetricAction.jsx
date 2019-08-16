@@ -35,14 +35,15 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
         <AggregationPopover
           query={query}
           availableAggregations={getAggregationOptionsForSummarize(query)}
-          onCommitAggregation={aggregation => {
+          onChangeAggregation={aggregation => {
             onChangeCardAndRun({
               nextCard: question.summarize(aggregation).card(),
             });
             onClose && onClose();
           }}
           onClose={onClose}
-          showOnlyProvidedAggregations
+          showMetrics={false}
+          showCustom={false}
         />
       ),
     },

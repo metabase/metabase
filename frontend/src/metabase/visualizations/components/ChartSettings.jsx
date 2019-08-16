@@ -136,7 +136,7 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const { question, addField, children } = this.props;
+    const { question, addField, noPreview, children } = this.props;
     const { currentWidget } = this.state;
 
     const settings = this._getSettings();
@@ -199,7 +199,7 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        underlined
+        bubble
       />
     );
 
@@ -227,46 +227,50 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
+      <div>
         {sectionNames.length > 1 && (
-          <div className="border-bottom flex flex-no-shrink pl4">
-            {sectionPicker}
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
+        )}
+        {noPreview ? (
+          <div className="full-height relative scroll-y scroll-show py4">
+            {widgetList}
+          </div>
+        ) : (
+          <div className="full-height relative">
+            <div className="Grid spread">
+              <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+                {widgetList}
+              </div>
+              <div className="Grid-cell flex flex-column pt2">
+                <div className="mx4 flex flex-column">
+                  <Warnings
+                    className="mx2 align-self-end text-gold"
+                    warnings={this.state.warnings}
+                    size={20}
+                  />
+                </div>
+                <div className="mx4 flex-full relative">
+                  <Visualization
+                    className="spread"
+                    rawSeries={rawSeries}
+                    showTitle
+                    isEditing
+                    isDashboard
+                    isSettings
+                    showWarnings
+                    onUpdateVisualizationSettings={this.handleChangeSettings}
+                    onUpdateWarnings={warnings => this.setState({ warnings })}
+                  />
+                </div>
+                <ChartSettingsFooter
+                  onDone={this.handleDone}
+                  onCancel={this.handleCancel}
+                  onReset={onReset}
+                />
+              </div>
+            </div>
           </div>
         )}
-        <div className="full-height relative">
-          <div className="Grid spread">
-            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-              {widgetList}
-            </div>
-            <div className="Grid-cell flex flex-column pt2">
-              <div className="mx4 flex flex-column">
-                <Warnings
-                  className="mx2 align-self-end text-gold"
-                  warnings={this.state.warnings}
-                  size={20}
-                />
-              </div>
-              <div className="mx4 flex-full relative">
-                <Visualization
-                  className="spread"
-                  rawSeries={rawSeries}
-                  showTitle
-                  isEditing
-                  isDashboard
-                  isSettings
-                  showWarnings
-                  onUpdateVisualizationSettings={this.handleChangeSettings}
-                  onUpdateWarnings={warnings => this.setState({ warnings })}
-                />
-              </div>
-              <ChartSettingsFooter
-                onDone={this.handleDone}
-                onCancel={this.handleCancel}
-                onReset={onReset}
-              />
-            </div>
-          </div>
-        </div>
       </div>
     );
   }

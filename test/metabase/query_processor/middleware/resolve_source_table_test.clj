@@ -14,6 +14,8 @@
   ((resolve-source-table/resolve-source-tables identity) query))
 
 (defn- do-with-store-contents [f]
+  ;; force creation of test data DB so things don't get left in the cache before running tests below
+  (data/id)
   (qp.store/with-store
     (qp.store/fetch-and-store-database! (data/id))
     (f)

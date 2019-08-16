@@ -155,7 +155,7 @@
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
   (when (and (:required tag) (not (:default tag)))
-    (throw (Exception. (str (tru "''{0}'' is a required param." (:display-name tag))))))
+    (throw (Exception. (tru "''{0}'' is a required param." (:display-name tag)))))
   (when-let [default (:default tag)]
     {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
@@ -172,8 +172,8 @@
   (when-let [dimension (:dimension tag)]
     (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id :base_type],
                                   :id (dimension->field-id dimension))
-                                (throw (Exception. (str (tru "Can't find field with ID: {0}"
-                                                             (dimension->field-id dimension))))))
+                                (throw (Exception. (tru "Can't find field with ID: {0}"
+                                                        (dimension->field-id dimension)))))
                      :param (or
                              ;; look in the sequence of params we were passed to see if there's anything that matches
                              (param-with-target params [:dimension [:template-tag (:name tag)]])
@@ -194,7 +194,7 @@
   [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (str (tru "''{0}'' is a required param." display-name)))))))
+        (throw (Exception. (tru "''{0}'' is a required param." display-name))))))
 
 
 ;;; Parsing Values
@@ -282,7 +282,7 @@
                                         (NoValue.))))
 
 (s/defn ^:private query->params-map :- ParamValues
-  "Extract parameters info from QUERY. Return a map of parameter name -> value.
+  "Extract parameters info from `query`. Return a map of parameter name -> value.
 
      (query->params-map some-query)
       ->
@@ -493,8 +493,8 @@
         [prefix & segmented-strings] (str/split s begin-pattern)]
     (when-let [^String msg (and (seq segmented-strings)
                                 (not-every? #(str/index-of % delimited-end) segmented-strings)
-                                (str (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
-                                          delimited-begin delimited-end s)))]
+                                (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
+                                     delimited-begin delimited-end s))]
       (throw (IllegalArgumentException. msg)))
     {:prefix            prefix
      :delimited-strings (for [segmented-string segmented-strings
@@ -571,12 +571,22 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn ^:private expand-query-params
-  [{sql :query, :as native}, param-key->value :- ParamValues]
-  (merge native (parse-template sql param-key->value)))
+  [{sql :query, :as native} :- {:query s/Str, s/Keyword s/Any}, param-key->value :- ParamValues]
+  (-> native
+      (merge (parse-template sql param-key->value))
+      (dissoc :template-tags)))
 
-(defn expand
+(s/defn expand
   "Expand parameters inside a *SQL* `query`."
-  [query]
-  (if (driver/supports? driver/*driver* :native-parameters)
-    (update query :native expand-query-params (query->params-map query))
-    query))
+  ([query :- {:native su/Map, s/Keyword s/Any}]
+   (if (driver/supports? driver/*driver* :native-parameters)
+     (update query :native expand-query-params (query->params-map query))
+     query))
+
+  ;; HACK - all this code is written expecting `:parameters` to be a top-level key; to support parameters in source
+  ;; queries (especially for GTAPs) we need `:parameters` to be in the same level as the query they affect; so move
+  ;; passed parameters to the top-level until we get a chance to fix this.
+  ([query parameters]
+   (-> (assoc query :parameters parameters)
+       expand
+       (dissoc query :parameters))))

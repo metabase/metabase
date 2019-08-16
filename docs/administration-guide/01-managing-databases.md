@@ -1,6 +1,6 @@
 ## Managing databases
 
-If you already connected your database during the installation, you’ve probably a covered a lot of this territory. But if you need to add another database or manage the settings of one you've already have connected, just click the settings icon in the top right of Metabase and select **Admin**.
+If you already connected your database during the installation, you’ve probably covered a lot of this territory. But if you need to add another database or manage the settings of one you already have connected, just click the settings icon in the top right of Metabase and select **Admin**.
 
 ![profiledropdown](images/ProfileDropdown.png)
 

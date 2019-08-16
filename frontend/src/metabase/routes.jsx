@@ -48,10 +48,7 @@ import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
 import EntityPage from "metabase/components/EntityPage.jsx";
 // new question
-import {
-  NewQuestionStart,
-  NewQuestionMetricSearch,
-} from "metabase/new_query/router_wrappers";
+import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
@@ -84,7 +81,7 @@ import getAdminRoutes from "metabase/admin/routes";
 
 import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
 import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
-import { DashboardHistoryModal } from "metabase/dashboard/components/DashboardHistoryModal";
+import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
@@ -225,17 +222,16 @@ export const getRoutes = store => (
         <Route path="/question">
           <IndexRoute component={QueryBuilder} />
           {/* NEW QUESTION FLOW */}
-          <Route path="new" title={t`New Question`}>
-            <IndexRoute component={NewQuestionStart} />
-            <Route
-              path="metric"
-              title={t`Metrics`}
-              component={NewQuestionMetricSearch}
-            />
-          </Route>
+          <Route
+            path="new"
+            title={t`New Question`}
+            component={NewQueryOptions}
+          />
+          <Route path="notebook" component={QueryBuilder} />
+          <Route path=":cardId" component={QueryBuilder} />
+          <Route path=":cardId/notebook" component={QueryBuilder} />
+          <Route path=":cardId/entity" component={EntityPage} />
         </Route>
-        <Route path="/question/:cardId" component={QueryBuilder} />
-        <Route path="/question/:cardId/entity" component={EntityPage} />
 
         <Route path="/ready" component={PostSetupApp} />
 
@@ -339,7 +335,7 @@ export const getRoutes = store => (
       path="/_internal"
       getChildRoutes={(partialNextState, callback) =>
         // $FlowFixMe: flow doesn't know about require.ensure
-        require.ensure([], require => {
+        require.ensure([], function(require) {
           callback(null, [require("metabase/internal/routes").default]);
         })
       }

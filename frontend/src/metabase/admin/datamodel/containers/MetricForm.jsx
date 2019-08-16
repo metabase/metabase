@@ -11,7 +11,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import { reduxForm } from "redux-form";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import cx from "classnames";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -43,7 +43,7 @@ import Table from "metabase-lib/lib/metadata/Table";
         }
       }
       const aggregations =
-        values.definition && Query.getAggregations(values.definition);
+        values.definition && Q_DEPRECATED.getAggregations(values.definition);
       if (!aggregations || aggregations.length === 0) {
         errors.definition = t`Aggregation is required`;
       }

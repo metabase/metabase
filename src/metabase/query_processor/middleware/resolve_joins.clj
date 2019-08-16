@@ -63,7 +63,7 @@
 
 (defn- source-metadata->fields [{:keys [alias], :as join} source-metadata]
   (when-not (seq source-metadata)
-    (throw (ex-info (str (tru "Cannot use :fields :all in join against source query unless it has :source-metadata."))
+    (throw (ex-info (tru "Cannot use :fields :all in join against source query unless it has :source-metadata.")
              {:join join})))
   (for [{field-name :name, base-type :base_type} source-metadata]
     [:joined-field alias [:field-literal field-name base-type]]))
@@ -136,8 +136,8 @@
       (when-not (aliases alias)
         (throw
          (IllegalArgumentException.
-          (str (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-                    alias aliases))))))))
+           (tru "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
+                alias aliases)))))))
 
 (s/defn ^:private resolve-joins-in-mbql-query :- ResolvedMBQLQuery
   [{:keys [joins], :as query} :- mbql.s/MBQLQuery]

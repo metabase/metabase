@@ -3,6 +3,7 @@
 import SortAction from "./SortAction";
 import ObjectDetailDrill from "./ObjectDetailDrill";
 import QuickFilterDrill from "./QuickFilterDrill";
+import ColumnFilterDrill from "./ColumnFilterDrill";
 import UnderlyingRecordsDrill from "./UnderlyingRecordsDrill";
 import AutomaticDashboardDrill from "./AutomaticDashboardDrill";
 import CompareToRestDrill from "./CompareToRestDrill";
@@ -14,6 +15,7 @@ export const DEFAULT_DRILLS = [
   SortAction,
   ObjectDetailDrill,
   QuickFilterDrill,
+  ColumnFilterDrill,
   UnderlyingRecordsDrill,
   AutomaticDashboardDrill,
   CompareToRestDrill,

@@ -29,7 +29,8 @@
              [datasets :as datasets]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util.date :as du])
+            [metabase.util.date :as du]
+            [potemkin.types :as p.types])
   (:import [org.joda.time DateTime DateTimeZone]))
 
 (defn- ->long-if-number [x]
@@ -768,7 +769,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (qp.test/expect-with-non-timeseries-dbs
-  [[2015 200]]
+  [[(cond
+      (= :sqlite driver/*driver*)
+      "2015-01-01"
+
+      (supports-report-timezone? driver/*driver*)
+      "2015-01-01T00:00:00.000-08:00"
+      :else
+      "2015-01-01T00:00:00.000Z")
+    200]]
   (sad-toucan-incidents-with-bucketing :year pacific-tz))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -778,7 +787,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; RELATIVE DATES
-(deftype ^:private TimestampDatasetDef [intervalSeconds])
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds])
 
 (defmethod tx/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]

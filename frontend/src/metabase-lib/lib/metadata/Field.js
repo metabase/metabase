@@ -6,8 +6,9 @@ import Table from "./Table";
 import _ from "underscore";
 import moment from "moment";
 
-import { FieldIDDimension } from "../Dimension";
+import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
 
+import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
@@ -18,15 +19,17 @@ import {
   isString,
   isSummable,
   isCategory,
+  isState,
+  isCountry,
+  isCoordinate,
   isLocation,
   isDimension,
   isMetric,
   isPK,
   isFK,
   isEntityName,
-  isCoordinate,
   getIconForField,
-  getFieldType,
+  getOperators,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
@@ -35,21 +38,43 @@ import type { FieldValues } from "metabase/meta/types/Field";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
+  name: string;
+  display_name: string;
   description: string;
 
   table: Table;
   name_field: ?Field;
 
-  displayName({ includeSchema, includeTable } = {}) {
-    return (
-      (includeTable && this.table
-        ? this.table.displayName({ includeSchema }) + " → "
-        : "") + this.display_name
-    );
+  parent() {
+    return this.metadata ? this.metadata.fields[this.parent_id] : null;
   }
 
-  fieldType() {
-    return getFieldType(this);
+  path() {
+    const path = [];
+    let field = this;
+    do {
+      path.unshift(field);
+    } while ((field = field.parent()));
+    return path;
+  }
+
+  displayName({ includeSchema, includeTable, includePath = true } = {}) {
+    let displayName = "";
+    if (includeTable && this.table) {
+      displayName += this.table.displayName({ includeSchema }) + " → ";
+    }
+    if (includePath) {
+      displayName += this.path()
+        .map(formatField)
+        .join(": ");
+    } else {
+      displayName += formatField(this);
+    }
+    return displayName;
+  }
+
+  targetDisplayName() {
+    return stripId(this.display_name);
   }
 
   isDate() {
@@ -70,6 +95,15 @@ export default class Field extends Base {
   isString() {
     return isString(this);
   }
+  isState() {
+    return isState(this);
+  }
+  isCountry() {
+    return isCountry(this);
+  }
+  isCoordinate() {
+    return isCoordinate(this);
+  }
   isLocation() {
     return isLocation(this);
   }
@@ -81,14 +115,6 @@ export default class Field extends Base {
   }
   isMetric() {
     return isMetric(this);
-  }
-
-  isCompatibleWith(field: Field) {
-    return (
-      this.isDate() === field.isDate() ||
-      this.isNumeric() === field.isNumeric() ||
-      this.id === field.id
-    );
   }
 
   /**
@@ -111,8 +137,12 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
-  isCoordinate() {
-    return isCoordinate(this);
+  isCompatibleWith(field: Field) {
+    return (
+      this.isDate() === field.isDate() ||
+      this.isNumeric() === field.isNumeric() ||
+      this.id === field.id
+    );
   }
 
   fieldValues(): FieldValues {
@@ -124,13 +154,32 @@ export default class Field extends Base {
   }
 
   dimension() {
-    return new FieldIDDimension(null, [this.id], this.metadata);
+    if (Array.isArray(this.id) && this.id[0] === "field-literal") {
+      return new FieldLiteralDimension(
+        null,
+        this.id.slice(1),
+        this.metadata,
+        this.query,
+      );
+    }
+    return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
-  operator(op) {
+  sourceField() {
+    const d = this.dimension().sourceDimension();
+    return d && d.field();
+  }
+
+  operator(operatorName) {
     if (this.operators_lookup) {
-      return this.operators_lookup[op];
+      return this.operators_lookup[operatorName];
+    } else {
+      return this.operatorOptions().find(o => o.name === operatorName);
     }
+  }
+
+  operatorOptions() {
+    return this.operators || getOperators(this, this.table);
   }
 
   aggregations() {

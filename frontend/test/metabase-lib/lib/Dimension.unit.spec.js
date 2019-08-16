@@ -1,5 +1,3 @@
-import ReactTestUtils from "react-dom/test-utils";
-
 import Dimension from "metabase-lib/lib/Dimension";
 import {
   metadata,
@@ -22,7 +20,7 @@ describe("Dimension", () => {
         "field-id",
         ORDERS_PRODUCT_FK_FIELD_ID,
       ]);
-      expect(dimension.render()).toEqual(["Product"]);
+      expect(dimension.render()).toEqual("Product ID");
     });
     it("should parse field-id", () => {
       const dimension = Dimension.parseMBQL(
@@ -33,7 +31,7 @@ describe("Dimension", () => {
         "field-id",
         ORDERS_PRODUCT_FK_FIELD_ID,
       ]);
-      expect(dimension.render()).toEqual(["Product"]);
+      expect(dimension.render()).toEqual("Product ID");
     });
     it("should parse fk-> with bare field IDs", () => {
       const dimension = Dimension.parseMBQL(
@@ -60,10 +58,7 @@ describe("Dimension", () => {
         ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
         ["field-id", PRODUCT_CATEGORY_FIELD_ID],
       ]);
-      const rendered = dimension.render();
-      expect(ReactTestUtils.isElement(rendered[1])).toBe(true); // Icon
-      rendered[1] = null;
-      expect(rendered).toEqual(["Product", null, "Category"]);
+      expect(dimension.render()).toEqual("Product → Category");
     });
 
     it("should parse datetime-field", () => {
@@ -76,7 +71,7 @@ describe("Dimension", () => {
         ["field-id", PRODUCT_CREATED_AT_FIELD_ID],
         "hour",
       ]);
-      expect(dimension.render()).toEqual(["Created At", ": ", "Hour"]);
+      expect(dimension.render()).toEqual("Created At: Hour");
     });
 
     it("should parse datetime-field with fk->", () => {
@@ -98,10 +93,7 @@ describe("Dimension", () => {
 
         "hour",
       ]);
-      const rendered = dimension.render();
-      expect(ReactTestUtils.isElement(rendered[1])).toBe(true); // Icon
-      rendered[1] = null;
-      expect(rendered).toEqual(["Product", null, "Created At", ": ", "Hour"]);
+      expect(dimension.render()).toEqual("Product → Created At: Hour");
     });
 
     describe("STATIC METHODS", () => {
@@ -435,6 +427,43 @@ describe("Dimension", () => {
         describe("displayName()", () => {
           it("returns the expression name", () => {
             expect(dimension.displayName()).toEqual("Hello World");
+          });
+        });
+      });
+    });
+
+    describe("JoinedDimension", () => {
+      let dimension = null;
+      beforeAll(() => {
+        dimension = Dimension.parseMBQL(
+          ["joined-field", "join1", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          metadata,
+        );
+      });
+
+      describe("INSTANCE METHODS", () => {
+        describe("mbql()", () => {
+          it('returns a "joined-field" clause', () => {
+            expect(dimension.mbql()).toEqual([
+              "joined-field",
+              "join1",
+              ["field-id", ORDERS_TOTAL_FIELD_ID],
+            ]);
+          });
+        });
+        describe("displayName()", () => {
+          it("returns the field name", () => {
+            expect(dimension.displayName()).toEqual("Total");
+          });
+        });
+        describe("subDisplayName()", () => {
+          it("returns 'Default' for numeric fields", () => {
+            expect(dimension.subDisplayName()).toEqual("Default");
+          });
+        });
+        describe("subTriggerDisplayName()", () => {
+          it("returns 'Unbinned' if the dimension is a binnable number", () => {
+            expect(dimension.subTriggerDisplayName()).toBe("Unbinned");
           });
         });
       });

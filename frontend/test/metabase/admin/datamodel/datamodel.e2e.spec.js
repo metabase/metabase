@@ -22,7 +22,6 @@ import ColumnarSelector from "metabase/components/ColumnarSelector";
 import SegmentsList from "metabase/admin/datamodel/components/database/SegmentsList";
 import OperatorSelector from "metabase/query_builder/components/filters/OperatorSelector";
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
-import FieldList from "metabase/query_builder/components/FieldList";
 import SegmentItem from "metabase/admin/datamodel/components/database/SegmentItem";
 import MetricsList from "metabase/admin/datamodel/components/database/MetricsList";
 import MetricItem from "metabase/admin/datamodel/components/database/MetricItem";
@@ -129,7 +128,7 @@ describe("admin/datamodel", () => {
       click(app.find(".GuiBuilder-filtered-by a").first());
 
       const filterPopover = app.find(FilterPopover);
-      click(filterPopover.find(FieldList).find('h4[children="Email"]'));
+      click(filterPopover.find('[children="Email"]'));
 
       // click to expand options
       const operatorSelector = filterPopover.find(OperatorSelector);
@@ -137,10 +136,8 @@ describe("admin/datamodel", () => {
       // click "Is Not"
       clickButton(operatorSelector.find('[children="Is not"]'));
 
-      const addFilterButton = filterPopover.find(".Button.disabled");
-
       setInputValue(filterPopover.find("input"), "gmail");
-      await clickButton(addFilterButton);
+      await clickButton(filterPopover.find('[children="Add filter"]'));
 
       await store.waitForActions([UPDATE_PREVIEW_SUMMARY]);
 
@@ -187,9 +184,9 @@ describe("admin/datamodel", () => {
         UPDATE_PREVIEW_SUMMARY,
       ]);
 
-      click(app.find("#Query-section-aggregation"));
+      click(app.find("AggregationWidget"));
       click(
-        app.find("#AggregationPopover").find('h4[children="Count of rows"]'),
+        app.find("AggregationPopover").find('h4[children="Count of rows"]'),
       );
 
       setInputValue(app.find("input[name='name']"), "User count");

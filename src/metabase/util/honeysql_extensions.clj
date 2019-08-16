@@ -7,7 +7,8 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.util.pretty :refer [PrettyPrintable]]
+            [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
@@ -70,8 +71,7 @@
    :field          ; is `my_field`
    :field-alias))  ; is `f`
 
-(defrecord Identifier [identifier-type components]
-  :load-ns true
+(p.types/defrecord+ Identifier [identifier-type components]
   ToSql
   (to-sql [_]
     (binding [hformat/*allow-dashed-names?* true]
@@ -105,11 +105,10 @@
                      (:components component)
                      [component])
          :when     (some? component)]
-     (u/keyword->qualified-name component))))
+     (u/qualified-name component))))
 
 ;; Single-quoted string literal
-(defrecord Literal [literal]
-  :load-ns true
+(p.types/defrecord+ Literal [literal]
   ToSql
   (to-sql [_]
     (as-> literal <>
@@ -131,7 +130,7 @@
   this won't handle wacky cases like three single quotes in a row. Don't use `literal` for things that might be wacky.
   Only use it for things that are hardcoded."
   [s]
-  (Literal. (u/keyword->qualified-name s)))
+  (Literal. (u/qualified-name s)))
 
 
 (def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (partial hsql/call :+))

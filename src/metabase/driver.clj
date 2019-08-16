@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -36,7 +36,7 @@
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
 (defsetting report-timezone
-  (tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
     (setting/set-string! :report-timezone new-value)
@@ -122,7 +122,7 @@
       (try
         (apply classloader/require expected-ns require-options)
         (catch Throwable _
-          (throw (Exception. (str (tru "Could not find {0} driver." driver)))))))))
+          (throw (Exception. (tru "Could not find {0} driver." driver))))))))
 
 (defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -142,7 +142,7 @@
           (require-driver-ns driver :reload)
           ;; if *still* not registered, throw an Exception
           (when-not (registered? driver)
-            (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
+            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
 (s/defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -170,10 +170,12 @@
 (defn- check-abstractness-hasnt-changed
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
-  (let [old-abstract? (abstract? driver)]
-    (when (and (registered? driver) (not= (boolean old-abstract?) (boolean new-abstract?)))
-      (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                   driver old-abstract? new-abstract?)))))))
+  (when (registered? driver)
+    (let [old-abstract? (boolean (abstract? driver))
+          new-abstract? (boolean new-abstract?)]
+      (when (not= old-abstract? new-abstract?)
+        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
+                                driver old-abstract? new-abstract?)))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
@@ -206,31 +208,39 @@
   Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
   create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
   `::concrete`."
+  {:style/indent 1}
   [driver & {:keys [parent abstract?]}]
   {:pre [(keyword? driver)]}
   ;; no-op during compilation.
   (when-not *compile-files*
-    ;; validate that the registration isn't stomping on things
-    (check-abstractness-hasnt-changed driver abstract?)
-    ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
-    (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-      (derive! ::driver)
-      (when-not abstract?
-        (derive! ::concrete))
-      (doseq [parent (u/one-or-many parent)
-              :when  parent]
-        (load-driver-namespace-if-needed! parent)
-        (derive! parent)))
-    ;; ok, log our great success
-    (log/info
-     (u/format-color 'blue
-         (if (metabase.driver/abstract? driver)
-           (trs "Registered abstract driver {0}" driver)
-           (trs "Registered driver {0}" driver)))
-     (if (seq (filter some? (u/one-or-many parent)))
-       (trs "(parents: {0})" parent)
-       "")
-     (u/emoji "🚚"))))
+    (let [parents (filter some? (u/one-or-many parent))]
+      ;; load parents as needed; if this is an abstract driver make sure parents aren't concrete
+      (doseq [parent parents]
+        (load-driver-namespace-if-needed! parent))
+      (when abstract?
+        (doseq [parent parents
+                :when  (concrete? parent)]
+          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
+                   {:driver driver, :parent parent}))))
+      ;; validate that the registration isn't stomping on things
+      (check-abstractness-hasnt-changed driver abstract?)
+      ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
+      (let [derive! (partial alter-var-root #'hierarchy derive driver)]
+        (derive! ::driver)
+        (when-not abstract?
+          (derive! ::concrete))
+        (doseq [parent parents]
+          (derive! parent)))
+      ;; ok, log our great success
+      (log/info
+       (u/format-color 'blue
+           (if (metabase.driver/abstract? driver)
+             (trs "Registered abstract driver {0}" driver)
+             (trs "Registered driver {0}" driver)))
+       (if (seq parents)
+         (trs "(parents: {0})" (vec parents))
+         "")
+       (u/emoji "🚚")))))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's
@@ -534,7 +544,7 @@
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
-      (throw (Exception. (str (tru "Invalid driver feature: {0}" feature)))))
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
@@ -571,9 +581,12 @@
   custom-field-name)
 
 
-(defmulti ^String humanize-connection-error-message
-  "Return a humanized (user-facing) version of an connection error message string. Generic error messages are provided
-  in `metabase.driver.common/connection-error-messages`; return one of these whenever possible."
+(defmulti humanize-connection-error-message
+  "Return a humanized (user-facing) version of an connection error message.
+  Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
+  whenever possible.
+  Error messages can be strings, or localized strings, as returned by `metabase.util.i18n/trs` and
+  `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

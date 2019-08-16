@@ -273,7 +273,7 @@
         columns                (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
     (merge
-     {:columns (map (comp u/keyword->qualified-name :name) columns)
+     {:columns (map (comp u/qualified-name :name) columns)
       :rows    rows}
      ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
      ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want
@@ -341,7 +341,7 @@
 (defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:presto :quarter]         [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
 (defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
-(defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :year expr))
+(defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))

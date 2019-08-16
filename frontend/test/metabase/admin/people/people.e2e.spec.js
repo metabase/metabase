@@ -76,7 +76,7 @@ describe("admin/people", () => {
 
       const userCreatedModal = app.find(ModalContent);
 
-      click(userCreatedModal.find('a[children="Show"]'));
+      click(userCreatedModal.find('[children="Show"]'));
       const password = userCreatedModal.find("input").prop("value");
 
       // "Done" button

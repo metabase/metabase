@@ -10,17 +10,21 @@
                             (put 'defsetting 'clojure-doc-string-elt 2)
                             (put 'setting/defsetting 'clojure-doc-string-elt 2)
                             (put 's/defn 'clojure-doc-string-elt 2)
+                            (put 'p.types/defprotocol+ 'clojure-doc-string-elt 2)
 
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
                               (assert 1)
-                              (assoc 1)
                               (ex-info 1)
                               (expect 0)
                               (match 1)
                               (merge-with 1)
-                              (with-redefs-fn 1))))
+                              (with-redefs-fn 1)
+                              (p.types/defprotocol+ '(1 (:defn)))
+                              (p.types/def-abstract-type '(1 (:defn)))
+                              (p.types/deftype+ '(2 nil nil (:defn)))
+                              (p.types/defrecord+ '(2 nil nil (:defn))))))
                   ;; if you're using clj-refactor (highly recommended!), prefer prefix notation when cleaning the ns form
                   (cljr-favor-prefix-notation . t)
                   ;; prefer keeping source width about ~118, GitHub seems to cut off stuff at either 119 or 120 and

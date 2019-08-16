@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
+             [db :as mdb]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -67,7 +68,7 @@
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
           (when special-type
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
+            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
 (def ^:private create-database-timeout
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
@@ -103,6 +104,7 @@
 
 
 (defmethod get-or-create-database! :default [driver dbdef]
+  (mdb/setup-db!) ; if not already setup
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)

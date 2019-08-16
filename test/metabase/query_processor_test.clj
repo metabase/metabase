@@ -2,16 +2,16 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -168,12 +168,10 @@
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
-  (let [source-col              (col source-table-kw source-field-kw)
-        dest-col                (col dest-table-kw dest-field-kw)
-        dest-table-display-name (db/select-one-field :display_name Table :id (data/id dest-table-kw))
-        dest-table-name         (db/select-one-field :name Table :id (data/id dest-table-kw))]
+  (let [source-col (col source-table-kw source-field-kw)
+        dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
-        (update :display_name (partial format "%s → %s" (or dest-table-display-name dest-table-name)))
+        (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
                :fk_field_id (:id source-col)))))
 
@@ -211,14 +209,40 @@
       (m/dissoc-in [:data :results_metadata])
       (m/dissoc-in [:data :insights])))
 
-(defn- default-format-rows-by-fns [table-kw]
-  (case table-kw
-    :categories [int identity]
-    :checkins   [int identity int int]
-    :users      [int identity identity]
-    :venues     [int identity int 4.0 4.0 int]
-    (throw
-     (IllegalArgumentException. (format "Sorry, we don't have default format-rows-by fns for Table %s." table-kw)))))
+(defmulti format-rows-fns
+  "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
+  rows with `format-rows-by` or `formatted-rows`. The first arg to these macros is converted to a sequence of
+  functions by calling this function.
+
+  Sequential args are assumed to already be a sequence of functions and are returned as-is. Keywords can be thought of
+  as aliases and map to a pre-defined sequence of functions. The usual test data tables have predefined fn sequences;
+  you can add addition ones for use locally by adding more implementations for this method.
+
+    (format-rows-fns [int identity]) ;-> [int identity]
+    (format-rows-fns :venues)        ;-> [int identity int 4.0 4.0 int]"
+  {:arglists '([keyword-or-fns-seq])}
+  (fn [x]
+    (if (keyword? x) x (class x))))
+
+(defmethod format-rows-fns clojure.lang.Sequential
+  [this]
+  this)
+
+(defmethod format-rows-fns :categories
+  [_]
+  [int identity])
+
+(defmethod format-rows-fns :checkins
+  [_]
+  [int identity int int])
+
+(defmethod format-rows-fns :users
+  [_]
+  [int identity identity])
+
+(defmethod format-rows-fns :venues
+  [_]
+  [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn
   "Handle a value formatting function passed to `format-rows-by`."
@@ -254,11 +278,7 @@
      (println "Error running query:" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
-   (let [format-fns (map
-                     format-rows-fn
-                     (if (keyword? format-fns)
-                       (default-format-rows-by-fns format-fns)
-                       format-fns))]
+   (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
      (-> response
          ((fn format-rows [rows]
             (cond

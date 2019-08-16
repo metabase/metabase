@@ -36,6 +36,27 @@ describe("data_grid", () => {
         ["b", 4, 5, 6],
       ]);
     });
+    it("should pivot non-numeric values correctly", () => {
+      const data = makeData([
+        ["a", "x", "q"],
+        ["a", "y", "w"],
+        ["a", "z", "e"],
+        ["b", "x", "r"],
+        ["b", "y", "t"],
+        ["b", "z", "y"],
+      ]);
+      const pivotedData = pivot(data, 0, 1, 2);
+      expect(pivotedData.cols.map(col => col.display_name)).toEqual([
+        "Dimension 1",
+        "x",
+        "y",
+        "z",
+      ]);
+      expect(pivotedData.rows.map(row => [...row])).toEqual([
+        ["a", "q", "w", "e"],
+        ["b", "r", "t", "y"],
+      ]);
+    });
     it("should pivot values correctly with columns flipped", () => {
       const data = makeData([
         ["a", "x", 1],

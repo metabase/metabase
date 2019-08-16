@@ -8,13 +8,10 @@ import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
-import {
-  getColumnCardinality,
-  columnsAreValid,
-} from "metabase/visualizations/lib/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import {
   isMetric,
   isDimension,
@@ -40,12 +37,12 @@ import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { Series } from "metabase/meta/types/Visualization";
 import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
-  card: Card,
-  data: DatasetData,
+  series: Series,
   settings: VisualizationSettings,
   isDashboard: boolean,
 };
@@ -67,6 +64,10 @@ export default class Table extends Component {
     return true;
   }
 
+  static isLiveResizable(series) {
+    return false;
+  }
+
   static checkRenderable([
     {
       data: { cols, rows },
@@ -85,7 +86,7 @@ export default class Table extends Component {
       getDefault: ([{ card, data }]) =>
         data &&
         data.cols.length === 3 &&
-        Query.isStructured(card.dataset_query) &&
+        Q_DEPRECATED.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
     },
@@ -124,16 +125,13 @@ export default class Table extends Component {
       section: t`Columns`,
       title: t`Cell column`,
       widget: "field",
-      getDefault: (
-        [
-          {
-            data: { cols, rows },
-          },
-        ],
-        settings,
-      ) => {
-        const col = cols.filter(isMetric)[0];
-        return col && col.name;
+      getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
+        // We try to show numeric values in pivot cells, but if none are
+        // available, we fall back to the last column in the unpivoted table
+        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
+        const lastCol = nonPivotCols[nonPivotCols.length - 1];
+        const { name } = nonPivotCols.find(isMetric) || lastCol;
+        return name;
       },
       getProps: (
         [
@@ -143,7 +141,7 @@ export default class Table extends Component {
         ],
         settings,
       ) => ({
-        options: cols.filter(isMetric).map(getOptionFromColumn),
+        options: cols.map(getOptionFromColumn),
       }),
       getHidden: (
         [
@@ -152,20 +150,24 @@ export default class Table extends Component {
           },
         ],
         settings,
-      ) => !settings["table.pivot"] || cols.filter(isMetric).length < 2,
+      ) => !settings["table.pivot"],
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
+    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+    //   { name: "COLUMN_NAME", enabled: true }
+    //   { fieldRef: ["fk->", 1, 2], enabled: true }
+    //   { fieldRef: ["fk->", ["field-id", 1], ["field-id", 2]], enabled: true }
     "table.columns": {
       section: t`Columns`,
       title: t`Visible columns`,
       widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
-        card.visualization_settings["table.columns"] &&
-        columnsAreValid(
-          card.visualization_settings["table.columns"].map(x => x.name),
-          data,
+        _.all(
+          card.visualization_settings["table.columns"],
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
       getDefault: ([
         {
@@ -297,9 +299,8 @@ export default class Table extends Component {
   }
 
   componentWillReceiveProps(newProps: Props) {
-    // TODO: remove use of deprecated "card" and "data" props
     if (
-      newProps.data !== this.props.data ||
+      newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
     ) {
       this._updateData(newProps);
@@ -307,10 +308,10 @@ export default class Table extends Component {
   }
 
   _updateData({
-    data,
+    series: [{ data }],
     settings,
   }: {
-    data: DatasetData,
+    series: Series,
     settings: VisualizationSettings,
   }) {
     if (settings["table.pivot"]) {
@@ -374,7 +375,11 @@ export default class Table extends Component {
   };
 
   render() {
-    const { card, isDashboard, settings } = this.props;
+    const {
+      series: [{ card }],
+      isDashboard,
+      settings,
+    } = this.props;
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];

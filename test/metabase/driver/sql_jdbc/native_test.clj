@@ -21,7 +21,7 @@
                               :base_type    :type/Integer
                               :source       :native
                               :field_ref    [:field-literal "ID" :type/Integer]}]
-               :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
+               :native_form {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}}}
   (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (data/id)})
@@ -49,7 +49,7 @@
                               :source       :native
                               :base_type    :type/Integer
                               :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}]
-               :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2", :params []}}}
+               :native_form {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}}}
   (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                          :type     :native
                          :database (data/id)})

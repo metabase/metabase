@@ -21,7 +21,7 @@ import type { Metadata } from "metabase/meta/types/Metadata";
 
 import moment from "moment";
 
-import Q from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
@@ -72,11 +72,11 @@ export function getParameterTargetFieldId(
         const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
-          return Q.getFieldTargetId(templateTag.dimension);
+          return Q_DEPRECATED.getFieldTargetId(templateTag.dimension);
         }
       }
     } else {
-      return Q.getFieldTargetId(dimension);
+      return Q_DEPRECATED.getFieldTargetId(dimension);
     }
   }
   return null;
@@ -211,7 +211,7 @@ export function parameterToMBQLFilter(
   if (parameter.type.indexOf("date/") === 0) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else {
-    const fieldId = Q.getFieldTargetId(fieldRef);
+    const fieldId = Q_DEPRECATED.getFieldTargetId(fieldRef);
     const field = metadata.fields[fieldId];
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {

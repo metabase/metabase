@@ -9,6 +9,9 @@ import Schema from "./Schema";
 import _ from "underscore";
 
 import type { SchemaName } from "metabase/meta/types/Table";
+import type { DatabaseFeature } from "metabase/meta/types/Database";
+
+type VirtualDatabaseFeature = "join";
 
 /**
  * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
@@ -18,11 +21,17 @@ import type { SchemaName } from "metabase/meta/types/Table";
 export default class Database extends Base {
   // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
 
-  displayName: string;
+  name: string;
   description: ?string;
 
   tables: Table[];
   schemas: Schema[];
+
+  auto_run_queries: boolean;
+
+  displayName(): string {
+    return this.name;
+  }
 
   tablesInSchema(schemaName: ?SchemaName) {
     return this.tables.filter(table => table.schema === schemaName);
@@ -36,8 +45,35 @@ export default class Database extends Base {
     );
   }
 
+  hasFeature(feature: DatabaseFeature | VirtualDatabaseFeature): boolean {
+    const set = new Set(this.features);
+    if (feature === "join") {
+      return (
+        set.has("left-join") ||
+        set.has("right-join") ||
+        set.has("inner-join") ||
+        set.has("full-join")
+      );
+    } else {
+      return set.has(feature);
+    }
+  }
+
   newQuestion(): Question {
-    // $FlowFixMe
-    return new Question();
+    return Question.create({ databaseId: this.id, metadata: this.metadata });
+  }
+
+  /** Returns a database containing only the saved questions from the same database, if any */
+  savedQuestionsDatabase(): ?Database {
+    const database = this.metadata
+      .databasesList()
+      .find(db => db.is_saved_questions);
+    if (database) {
+      const tables = database.tables.filter(t => t.db_id === this.id);
+      if (tables.length > 0) {
+        return new Database({ ...database, tables });
+      }
+    }
+    return null;
   }
 }

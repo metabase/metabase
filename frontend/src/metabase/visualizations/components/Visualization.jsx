@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import React, { Component, Element } from "react";
+import React from "react";
 
 import ExplicitSize from "metabase/components/ExplicitSize.jsx";
 import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
@@ -49,18 +49,20 @@ import type {
   OnChangeCardAndRun,
 } from "metabase/meta/types/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import { memoize } from "metabase-lib/lib/utils";
 
 type Props = {
   rawSeries: RawSeries,
 
   className: string,
+  style: { [key: string]: any },
 
   showTitle: boolean,
   isDashboard: boolean,
   isEditing: boolean,
   isSettings: boolean,
 
-  actionButtons: Element<any>,
+  actionButtons: React.Element<any>,
 
   // errors
   error: string,
@@ -83,11 +85,12 @@ type Props = {
   dispatch: Function,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
-  replacementContent: Element<any>,
+  replacementContent: React.Element<any>,
 
   // misc
   onUpdateWarnings: (string[]) => void,
   onOpenChartSettings: ({ section?: ?string, widget?: ?any }) => void,
+  onUpdateVisualizationSettings: (settings: { [key: string]: any }) => void,
 
   // number of grid cells wide and tall
   gridSize?: { width: number, height: number },
@@ -99,10 +102,11 @@ type Props = {
 
 type State = {
   series: ?Series,
-  CardVisualization: ?(Component<void, VisualizationSettings, void> & {
+  visualization: ?(React.Component<void, VisualizationSettings, void> & {
     checkRenderable: (any, any) => void,
     noHeader: boolean,
   }),
+  computedSettings: VisualizationSettings,
 
   hovered: ?HoverObject,
   clicked: ?ClickObject,
@@ -113,8 +117,8 @@ type State = {
 };
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize("CardVisualization")
-export default class Visualization extends Component {
+@ExplicitSize({ selector: ".CardVisualization" })
+export default class Visualization extends React.PureComponent {
   state: State;
   props: Props;
 
@@ -130,18 +134,17 @@ export default class Visualization extends Component {
       warnings: [],
       yAxisSplit: null,
       series: null,
-      CardVisualization: null,
+      visualization: null,
+      computedSettings: {},
     };
   }
 
   static defaultProps = {
-    className: "full-height",
     showTitle: false,
     isDashboard: false,
     isEditing: false,
     isSettings: false,
-    onUpdateVisualizationSettings: (...args) =>
-      console.warn("onUpdateVisualizationSettings", args),
+    onUpdateVisualizationSettings: () => {},
   };
 
   componentWillMount() {
@@ -176,11 +179,15 @@ export default class Visualization extends Component {
     });
   }
 
+  // NOTE: this is a PureComponent
+  // shouldComponentUpdate(nextProps, nextState) {
+  // }
+
   // $FlowFixMe
   getWarnings(props = this.props, state = this.state) {
     let warnings = state.warnings || [];
     // don't warn about truncated data for table since we show a warning in the row count
-    if (state.series[0].card.display !== "table") {
+    if (state.series && state.series[0].card.display !== "table") {
       warnings = warnings.concat(
         props.rawSeries
           .filter(s => s.data && s.data.rows_truncated != null)
@@ -200,13 +207,23 @@ export default class Visualization extends Component {
   }
 
   transform(newProps) {
+    const transformed = newProps.rawSeries
+      ? getVisualizationTransformed(extractRemappings(newProps.rawSeries))
+      : null;
+    const series = transformed && transformed.series;
+    const visualization = transformed && transformed.visualization;
+    const computedSettings = series
+      ? getComputedSettingsForSeries(series)
+      : null;
     this.setState({
       hovered: null,
       clicked: null,
       error: null,
       warnings: [],
       yAxisSplit: null,
-      ...getVisualizationTransformed(extractRemappings(newProps.rawSeries)),
+      series: series,
+      visualization: visualization,
+      computedSettings: computedSettings,
     });
   }
 
@@ -237,6 +254,11 @@ export default class Visualization extends Component {
     }
   };
 
+  @memoize
+  _getQuestionForCardCached(metadata, card) {
+    return metadata && card && new Question(metadata, card);
+  }
+
   getClickActions(clicked: ?ClickObject) {
     if (!clicked) {
       return [];
@@ -245,8 +267,8 @@ export default class Visualization extends Component {
     const { rawSeries, metadata } = this.props;
     const seriesIndex = clicked.seriesIndex || 0;
     const card = rawSeries[seriesIndex].card;
-    const question = new Question(metadata, card);
-    const mode = question.mode();
+    const question = this._getQuestionForCardCached(metadata, card);
+    const mode = question && question.mode();
     return mode ? mode.actionsForClick(clicked, {}) : [];
   }
 
@@ -333,13 +355,17 @@ export default class Visualization extends Component {
       isSlow,
       expectedDuration,
       replacementContent,
+      onOpenChartSettings,
     } = this.props;
-    const { series, CardVisualization } = this.state;
+    const { visualization } = this.state;
     const small = width < 330;
 
-    let { hovered, clicked } = this.state;
+    // these may be overridden below
+    let { series, hovered, clicked } = this.state;
+    let { style } = this.props;
 
     const clickActions = this.getClickActions(clicked);
+    // disable hover when click action is active
     if (clickActions.length > 0) {
       hovered = null;
     }
@@ -354,25 +380,33 @@ export default class Visualization extends Component {
       )
     );
     let noResults = false;
+    let isPlaceholder = false;
 
     // don't try to load settings unless data is loaded
     let settings = this.props.settings || {};
 
     if (!loading && !error) {
-      settings = this.props.settings || getComputedSettingsForSeries(series);
-      if (!CardVisualization) {
+      settings = this.props.settings || this.state.computedSettings;
+      if (!visualization) {
         error = t`Could not find visualization`;
       } else {
         try {
-          if (CardVisualization.checkRenderable) {
-            CardVisualization.checkRenderable(series, settings);
+          if (visualization.checkRenderable) {
+            visualization.checkRenderable(series, settings);
           }
         } catch (e) {
           error = e.message || t`Could not display this chart with this data.`;
           if (
             e instanceof ChartSettingsError &&
-            this.props.onOpenChartSettings
+            visualization.placeholderSeries &&
+            !isDashboard
           ) {
+            // hide the error and replace series with the placeholder series
+            error = null;
+            series = visualization.placeholderSeries;
+            settings = getComputedSettingsForSeries(series);
+            isPlaceholder = true;
+          } else if (e instanceof ChartSettingsError && onOpenChartSettings) {
             error = (
               <div>
                 <div>{error}</div>
@@ -424,14 +458,26 @@ export default class Visualization extends Component {
       };
     }
 
+    if (isPlaceholder) {
+      hovered = null;
+      style = {
+        ...style,
+        opacity: 0.2,
+        filter: "grayscale()",
+        pointerEvents: "none",
+      };
+    }
+
+    const CardVisualization = visualization;
+
     return (
-      <div className={cx(className, "flex flex-column full-height")}>
+      <div className={cx(className, "flex flex-column")} style={style}>
         {(showTitle &&
           (settings["card.title"] || extra) &&
           (loading ||
             error ||
             noResults ||
-            !(CardVisualization && CardVisualization.noHeader))) ||
+            !(visualization && visualization.noHeader))) ||
         replacementContent ? (
           <div className="p1 flex-no-shrink">
             <LegendHeader
@@ -512,7 +558,7 @@ export default class Visualization extends Component {
           <CardVisualization
             {...this.props}
             // NOTE: CardVisualization class used to target ExplicitSize HOC
-            className="CardVisualization flex-full"
+            className="CardVisualization flex-full flex-basis-none"
             series={series}
             settings={settings}
             // $FlowFixMe

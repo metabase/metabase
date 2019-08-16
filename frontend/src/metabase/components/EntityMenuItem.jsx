@@ -104,6 +104,8 @@ const EntityMenuItem = ({
       </ActionMenuItem>
     );
   }
+
+  return null;
 };
 
 export default EntityMenuItem;

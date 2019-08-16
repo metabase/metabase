@@ -34,7 +34,7 @@
     (try
       ;; out-chan might already be closed if query was canceled. NBD if that's the case
       (a/>!! out-chan (if (nil? result)
-                        (Exception. (str (trs "Unexpectedly got `nil` Query Processor response.")))
+                        (Exception. (trs "Unexpectedly got `nil` Query Processor response."))
                         result))
       (finally
         (a/close! out-chan)))))
@@ -46,7 +46,7 @@
         (log/debug (trs "Got InterruptedException. Canceling query."))
         (a/close! out-chan))
       (do
-        (log/warn e (trs "Unhandled exception, exepected `catch-exceptions` middleware to handle it."))
+        (log/warn e (trs "Unhandled exception, expected `catch-exceptions` middleware to handle it."))
         (respond e)))))
 
 (def ^:private in-flight* (atom 0))
@@ -86,7 +86,7 @@
       (not= port out-chan)
       (do
         (a/close! out-chan)
-        (throw (TimeoutException. (str (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms))))))
+        (throw (TimeoutException. (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms)))))
 
       :else
       result)))

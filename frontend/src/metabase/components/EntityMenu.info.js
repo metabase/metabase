@@ -22,7 +22,7 @@ export const examples = {
         items={[
           {
             title: t`Edit this question`,
-            icon: "editdocument",
+            icon: "edit_document",
             action: () => alert(t`Action type`),
           },
           { title: t`View revision history`, icon: "history", link: "/derp" },
@@ -43,7 +43,7 @@ export const examples = {
         items={[
           {
             title: t`Add to dashboard`,
-            icon: "addtodash",
+            icon: "add_to_dash",
             action: () => alert(t`Action type`),
           },
           { title: t`Download results`, icon: "download", link: "/download" },
@@ -78,7 +78,7 @@ export const examples = {
         items={[
           {
             title: t`Edit this question`,
-            icon: "editdocument",
+            icon: "edit_document",
             action: () => alert(t`Action type`),
           },
           { title: t`View revision history`, icon: "history", link: "/derp" },
@@ -95,7 +95,7 @@ export const examples = {
         items={[
           {
             title: t`Add to dashboard`,
-            icon: "addtodash",
+            icon: "add_to_dash",
             action: () => alert(t`Action type`),
           },
           { title: t`Download results`, icon: "download", link: "/download" },

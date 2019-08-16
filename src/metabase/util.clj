@@ -3,6 +3,7 @@
   (:require [clojure
              [data :as data]
              [pprint :refer [pprint]]
+             [set :as set]
              [string :as str]
              [walk :as walk]]
             [clojure.java.classpath :as classpath]
@@ -10,10 +11,12 @@
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
             [colorize.core :as colorize]
+            [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.codec :as codec])
+            [ring.util.codec :as codec]
+            [weavejester.dependency :as dep])
   (:import [java.io BufferedReader Reader]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
@@ -319,7 +322,7 @@
     (when (= result ::timeout)
       (when (instance? java.util.concurrent.Future reff)
         (future-cancel reff))
-      (throw (TimeoutException. (str (tru "Timed out after {0} milliseconds." timeout-ms)))))
+      (throw (TimeoutException. (tru "Timed out after {0} milliseconds." timeout-ms))))
     result))
 
 (defn do-with-timeout
@@ -448,13 +451,17 @@
   [f coll]
   (into {} (map (juxt f identity)) coll))
 
-(defn keyword->qualified-name
-  "Return keyword K as a string, including its namespace, if any (unlike `name`).
+(defn qualified-name
+  "Return `k` as a string, qualified by its namespace, if any (unlike `name`). Handles `nil` values gracefully as well
+  (also unlike `name`).
 
-     (keyword->qualified-name :type/FK) ->  \"type/FK\""
+     (u/qualified-name :type/FK) -> \"type/FK\""
   [k]
-  (when k
-    (str/replace (str k) #"^:" "")))
+  (when (some? k)
+    (if-let [namespac (when (instance? clojure.lang.Named k)
+                        (namespace k))]
+      (str namespac "/" (name k))
+      (name k))))
 
 (defn id
   "If passed an integer ID, returns it. If passed a map containing an `:id` key, returns the value if it is an integer.
@@ -479,7 +486,7 @@
   ;; TODO - lots of functions can be rewritten to use this, which would make them more flexible
   ^Integer [object-or-id]
   (or (id object-or-id)
-      (throw (Exception. (str (tru "Not something with an ID: {0}" object-or-id))))))
+      (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
@@ -498,6 +505,18 @@
   "A regular expression for matching canonical string representations of UUIDs."
   #"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}")
 
+(defn one-or-many
+  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
+  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
+  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
+  your convenience.
+
+    (u/one-or-many 1)     ; -> [1]
+    (u/one-or-many [1 2]) ; -> [1 2]"
+  [arg]
+  (if ((some-fn sequential? set? nil?) arg)
+    arg
+    [arg]))
 
 (defn select-nested-keys
   "Like `select-keys`, but can also handle nested keypaths:
@@ -511,7 +530,7 @@
   [m keyseq]
   ;; TODO - use (empty m) once supported by model instances
   (into {} (for [k     keyseq
-                 :let  [[k & nested-keys] (if (sequential? k) k [k])
+                 :let  [[k & nested-keys] (one-or-many k)
                         v                 (get m k)]
                  :when (contains? m k)]
              {k (if-not (seq nested-keys)
@@ -639,19 +658,6 @@
   [m]
   (recursive-map-keys snake-key m))
 
-(defn one-or-many
-  "Wraps a single element in a sequence; returns sequences as-is. In lots of situations we'd like to accept either a
-  single value or a collection of values as an argument to a function, and then loop over them; rather than repeat
-  logic to check whether something is a collection and wrap if not everywhere, this utility function is provided for
-  your convenience.
-
-    (u/one-or-many 1)     ; -> [1]
-    (u/one-or-many [1 2]) ; -> [1 2]"
-  [arg]
-  (if ((some-fn sequential? set?) arg)
-    arg
-    [arg]))
-
 (def ^:private do-with-us-locale-lock (Object.))
 
 (defn do-with-us-locale
@@ -719,3 +725,49 @@
   (fn [& args]
     (apply xor (for [pred preds]
                  (apply pred args)))))
+
+(defn topological-sort
+  "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
+   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   (a graph), only sorted.
+
+   Say you have a graph shaped like:
+
+     a     b
+     | \\  |
+     c  |  |
+     \\ | /
+        d
+        |
+        e
+
+   (u/topological-sort identity {:b []
+                                 :c [:a]
+                                 :e [:d]
+                                 :d [:a :b :c]
+                                 :a []})
+
+   => (ordered-map :a [] :b [] :c [:a] :d [:a :b :c] :e [:d])
+
+   If the graph has cycles, throws an exception.
+
+   https://en.wikipedia.org/wiki/Topological_sorting"
+  ([g] (topological-sort identity g))
+  ([edges-fn g]
+   (transduce (map (juxt key (comp edges-fn val)))
+              (fn
+                ([] (dep/graph))
+                ([acc [vertex edges]]
+                 (reduce (fn [acc edge]
+                           (dep/depend acc vertex edge))
+                         acc
+                         edges))
+                ([acc]
+                 (let [sorted      (filter g (dep/topo-sort acc))
+                       independent (set/difference (set (keys g)) (set sorted))]
+                   (not-empty
+                    (into (ordered-map)
+                          (map (fn [vertex]
+                                 [vertex (g vertex)]))
+                          (concat independent sorted))))))
+              g)))

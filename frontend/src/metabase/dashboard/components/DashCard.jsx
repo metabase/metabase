@@ -218,11 +218,11 @@ const DashCardActionButtons = ({
     className="DashCard-actions flex align-center"
     style={{ lineHeight: 1 }}
   >
-    {getVisualizationRaw(series).CardVisualization.supportsSeries && (
+    {getVisualizationRaw(series).visualization.supportsSeries && (
       <AddSeriesButton series={series} onAddSeries={onAddSeries} />
     )}
     {onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).CardVisualization.disableSettingsConfig && (
+      !getVisualizationRaw(series).visualization.disableSettingsConfig && (
         <ChartSettingsButton
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}

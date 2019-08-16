@@ -310,7 +310,7 @@ export class AdminPinMessage extends React.Component {
           <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
           <Box ml={1}>
             <h3>{t`Your team's most important dashboards go here`}</h3>
-            <p className="m0 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
+            <p className="m0 mt1 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
           </Box>
           <Icon
             className="hover-child text-brand-hover cursor-pointer bg-medium"

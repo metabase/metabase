@@ -2,12 +2,15 @@
 
 exports[`Button should render "" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
 >
   <div
     className="flex layout-centered"
+    style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -16,12 +19,15 @@ exports[`Button should render "" correctly 1`] = `
 
 exports[`Button should render "primary" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH Button--primary"
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink Button--primary"
 >
   <div
     className="flex layout-centered"
+    style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -30,17 +36,16 @@ exports[`Button should render "primary" correctly 1`] = `
 
 exports[`Button should render "with an icon" correctly 1`] = `
 <button
-  className="Button sc-bdVaJa bDWFJH "
+  className="Button sc-bdVaJa bDWFJH flex-no-shrink "
 >
   <div
     className="flex layout-centered"
+    style={null}
   >
     <svg
-      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
+      className="Icon Icon-star Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={14}
-      name="star"
-      size={14}
       viewBox="0 0 32 32"
       width={14}
     >
@@ -48,11 +53,145 @@ exports[`Button should render "with an icon" correctly 1`] = `
         d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
       />
     </svg>
-    <div>
+    <div
+      className="ml1"
+    >
       Clickity click
     </div>
   </div>
 </button>
+`;
+
+exports[`ButtonBar should render "default" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="mr-auto sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Button
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="ml-auto sc-htpNat cISmVk"
+  />
+</div>
+`;
+
+exports[`ButtonBar should render "left and right" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="mr-auto sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Left
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="ml-auto sc-htpNat cISmVk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Right
+        </div>
+      </div>
+    </button>
+  </div>
+</div>
+`;
+
+exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
+<div
+  className="sc-htpNat jncdfk"
+>
+  <div
+    className="flex-full flex-basis-none sc-htpNat cZLspC"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Left
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="sc-htpNat jncdfk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Center
+        </div>
+      </div>
+    </button>
+  </div>
+  <div
+    className="flex-full flex-basis-none sc-htpNat cISmVk"
+  >
+    <button
+      className="Button sc-bdVaJa bDWFJH flex-no-shrink "
+    >
+      <div
+        className="flex layout-centered"
+        style={null}
+      >
+        <div
+          className=""
+        >
+          Right
+        </div>
+      </div>
+    </button>
+  </div>
+</div>
 `;
 
 exports[`Card should render "dark" correctly 1`] = `
@@ -93,210 +232,176 @@ exports[`Card should render "normal" correctly 1`] = `
 
 exports[`CheckBox should render "Default - Off" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
->
-  <div
-    className="flex align-center justify-center rounded"
-    style={
-      Object {
-        "backgroundColor": "white",
-        "border": "2px solid #C7CFD4",
-        "height": 16,
-        "width": 16,
-      }
+  style={
+    Object {
+      "backgroundColor": "white",
+      "border": "2px solid #C7CFD4",
+      "height": 16,
+      "width": 16,
     }
-  />
-</div>
+  }
+/>
 `;
 
 exports[`CheckBox should render "Green" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
+  style={
+    Object {
+      "backgroundColor": "#88BF4D",
+      "border": "2px solid #88BF4D",
+      "height": 16,
+      "width": 16,
+    }
+  }
 >
-  <div
-    className="flex align-center justify-center rounded"
+  <svg
+    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    fill="currentcolor"
+    height={12}
     style={
       Object {
-        "backgroundColor": "#9CC177",
-        "border": "2px solid #9CC177",
-        "height": 16,
-        "width": 16,
+        "color": "white",
       }
     }
+    viewBox="0 0 32 32"
+    width={12}
   >
-    <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      name="check"
-      size={12}
-      style={
-        Object {
-          "color": "white",
-        }
-      }
-      viewBox="0 0 32 32"
-      width={12}
-    >
-      <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-      />
-    </svg>
-  </div>
+    <path
+      d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+    />
+  </svg>
 </div>
 `;
 
 exports[`CheckBox should render "On - Default blue" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
+  style={
+    Object {
+      "backgroundColor": "#509EE3",
+      "border": "2px solid #509EE3",
+      "height": 16,
+      "width": 16,
+    }
+  }
 >
-  <div
-    className="flex align-center justify-center rounded"
+  <svg
+    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    fill="currentcolor"
+    height={12}
     style={
       Object {
-        "backgroundColor": "#509EE3",
-        "border": "2px solid #509EE3",
-        "height": 16,
-        "width": 16,
+        "color": "white",
       }
     }
+    viewBox="0 0 32 32"
+    width={12}
   >
-    <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      name="check"
-      size={12}
-      style={
-        Object {
-          "color": "white",
-        }
-      }
-      viewBox="0 0 32 32"
-      width={12}
-    >
-      <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-      />
-    </svg>
-  </div>
+    <path
+      d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+    />
+  </svg>
 </div>
 `;
 
 exports[`CheckBox should render "Purple" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
+  style={
+    Object {
+      "backgroundColor": "#A989C5",
+      "border": "2px solid #A989C5",
+      "height": 16,
+      "width": 16,
+    }
+  }
 >
-  <div
-    className="flex align-center justify-center rounded"
+  <svg
+    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    fill="currentcolor"
+    height={12}
     style={
       Object {
-        "backgroundColor": "#A989C5",
-        "border": "2px solid #A989C5",
-        "height": 16,
-        "width": 16,
+        "color": "white",
       }
     }
+    viewBox="0 0 32 32"
+    width={12}
   >
-    <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      name="check"
-      size={12}
-      style={
-        Object {
-          "color": "white",
-        }
-      }
-      viewBox="0 0 32 32"
-      width={12}
-    >
-      <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-      />
-    </svg>
-  </div>
+    <path
+      d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+    />
+  </svg>
 </div>
 `;
 
 exports[`CheckBox should render "Red" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
+  style={
+    Object {
+      "backgroundColor": "#EF8C8C",
+      "border": "2px solid #EF8C8C",
+      "height": 16,
+      "width": 16,
+    }
+  }
 >
-  <div
-    className="flex align-center justify-center rounded"
+  <svg
+    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    fill="currentcolor"
+    height={12}
     style={
       Object {
-        "backgroundColor": "#EF8C8C",
-        "border": "2px solid #EF8C8C",
-        "height": 16,
-        "width": 16,
+        "color": "white",
       }
     }
+    viewBox="0 0 32 32"
+    width={12}
   >
-    <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      name="check"
-      size={12}
-      style={
-        Object {
-          "color": "white",
-        }
-      }
-      viewBox="0 0 32 32"
-      width={12}
-    >
-      <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-      />
-    </svg>
-  </div>
+    <path
+      d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+    />
+  </svg>
 </div>
 `;
 
 exports[`CheckBox should render "Yellow" correctly 1`] = `
 <div
-  className="cursor-pointer"
+  className="flex align-center justify-center rounded cursor-pointer"
   onClick={[Function]}
+  style={
+    Object {
+      "backgroundColor": "#F9D45C",
+      "border": "2px solid #F9D45C",
+      "height": 16,
+      "width": 16,
+    }
+  }
 >
-  <div
-    className="flex align-center justify-center rounded"
+  <svg
+    className="Icon Icon-check Icon-cxuQhR kTAgZA"
+    fill="currentcolor"
+    height={12}
     style={
       Object {
-        "backgroundColor": "#F9D45C",
-        "border": "2px solid #F9D45C",
-        "height": 16,
-        "width": 16,
+        "color": "white",
       }
     }
+    viewBox="0 0 32 32"
+    width={12}
   >
-    <svg
-      className="Icon Icon-check Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      name="check"
-      size={12}
-      style={
-        Object {
-          "color": "white",
-        }
-      }
-      viewBox="0 0 32 32"
-      width={12}
-    >
-      <path
-        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-      />
-    </svg>
-  </div>
+    <path
+      d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+    />
+  </svg>
 </div>
 `;
 
@@ -311,19 +416,18 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-pencil Icon-cxuQhR pXSiy"
           fill="currentcolor"
-          height={16}
-          name="pencil"
+          height={18}
           viewBox="0 0 32 32"
-          width={16}
+          width={18}
         >
           <path
-            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
           />
         </svg>
       </div>
@@ -346,16 +450,15 @@ exports[`EntityMenu should render "More menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-burger Icon-cxuQhR pXSiy"
           fill="currentcolor"
-          height={16}
-          name="burger"
+          height={18}
           viewBox="0 0 32 32"
-          width={16}
+          width={18}
         >
           <path
             d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
@@ -381,19 +484,18 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-pencil Icon-cxuQhR pXSiy"
           fill="currentcolor"
-          height={16}
-          name="pencil"
+          height={18}
           viewBox="0 0 32 32"
-          width={16}
+          width={18}
         >
           <path
-            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
           />
         </svg>
       </div>
@@ -405,17 +507,16 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-share Icon-cxuQhR pXSiy"
           fill="currentcolor"
           fillRule="evenodd"
-          height={20}
-          name="share"
+          height={18}
           viewBox="0 0 32 41"
-          width={16}
+          width={18}
         >
           <path
             d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
@@ -430,16 +531,15 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-burger Icon-cxuQhR pXSiy"
           fill="currentcolor"
-          height={16}
-          name="burger"
+          height={18}
           viewBox="0 0 32 32"
-          width={16}
+          width={18}
         >
           <path
             d="M2.5 3.6h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 1 1 0-5zm0 9.931h27a2.5 2.5 0 1 1 0 5h-27a2.5 2.5 0 0 1 0-5z"
@@ -465,17 +565,16 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       className="relative"
     >
       <div
-        className="Icon__IconWrapper-ksWXhn dnCxaL"
+        className="Icon__IconWrapper-ksWXhn fdItMk"
         onClick={[Function]}
       >
         <svg
           className="Icon Icon-share Icon-cxuQhR pXSiy"
           fill="currentcolor"
           fillRule="evenodd"
-          height={20}
-          name="share"
+          height={18}
           viewBox="0 0 32 41"
-          width={16}
+          width={18}
         >
           <path
             d="M13.714 8.96H9.143L16 0l6.857 8.96h-4.571v19.16h-4.572V8.96zM4.571 32.52a4 4 0 0 0 4 4H23.43a4 4 0 0 0 4-4V20.36a4 4 0 0 0-4-4h-.572v-4.48H28a4 4 0 0 1 4 4V37a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V15.88a4 4 0 0 1 4-4h5.143v4.48H8.57a4 4 0 0 0-4 4v12.16z"
@@ -485,6 +584,84 @@ exports[`EntityMenu should render "Share menu" correctly 1`] = `
       <span
         className="hide"
       />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ModalContent should render "default" correctly 1`] = `
+<div
+  className="rounded bordered"
+>
+  <div
+    className="ModalContent NewForm flex-full flex flex-column relative"
+    id={undefined}
+  >
+    <svg
+      className="Icon Icon-close text-light text-medium-hover cursor-pointer absolute z2 m2 p2 top right Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={16}
+      onClick={[Function]}
+      viewBox="0 0 32 32"
+      width={16}
+    >
+      <path
+        d="M4 8 L8 4 L16 12 L24 4 L28 8 L20 16 L28 24 L24 28 L16 20 L8 28 L4 24 L12 16 z "
+      />
+    </svg>
+    <div
+      className="ModalHeader flex-no-shrink px4 py4 full"
+    >
+      <h2
+        className="text-bold mr4"
+      >
+        Do something crazy?
+      </h2>
+    </div>
+    <div
+      className="ModalBody px4"
+    >
+      <div
+        className="flex-full ml-auto mr-auto flex flex-column"
+        style={
+          Object {
+            "maxWidth": undefined,
+          }
+        }
+      >
+        Are you sure?
+      </div>
+    </div>
+    <div
+      className="ModalFooter flex flex-no-shrink px4 py3"
+    >
+      <div
+        className="ml-auto flex align-center"
+        style={
+          Object {
+            "maxWidth": undefined,
+          }
+        }
+      >
+        <span
+          className="ml2"
+        >
+          <button
+            className="Button sc-bdVaJa bDWFJH flex-no-shrink Button--danger"
+          >
+            <div
+              className="flex layout-centered"
+              style={null}
+            >
+              <div
+                className=""
+              >
+                Ok
+              </div>
+            </div>
+          </button>
+        </span>
+      </div>
     </div>
   </div>
 </div>
@@ -543,19 +720,64 @@ exports[`ProgressBar should render "Default" correctly 1`] = `
 </div>
 `;
 
-exports[`Radio should render "default" correctly 1`] = `
+exports[`Radio should render "bubble" correctly 1`] = `
 <ul
-  className="flex text-bold h3"
+  className="Radio__BubbleList-ghIvdM ejKqoS Radio__BaseList-iXttyI emDsVO"
 >
   <li
-    className="flex align-center cursor-pointer text-brand-hover mr3 pt1"
+    aria-selected={true}
+    className="Radio__BubbleItem-cPPKrR izYaHB Radio__BaseItem-gLcmFf bMiqJE"
+    mb={null}
+    mr={1}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={true}
+  >
+    <input
+      checked={true}
+      className="Form-radio"
+      id="radio-5-0"
+      name="radio-5"
+      type="radio"
+      value={0}
+    />
+    <span>
+      Gadget
+    </span>
+  </li>
+  <li
+    aria-selected={false}
+    className="Radio__BubbleItem-cPPKrR iOSyOa Radio__BaseItem-gLcmFf etzrCv"
+    mb={null}
+    mr={null}
+    onClick={[Function]}
+    selected={false}
+  >
+    <input
+      checked={false}
+      className="Form-radio"
+      id="radio-5-1"
+      name="radio-5"
+      type="radio"
+      value={1}
+    />
+    <span>
+      Gizmo
+    </span>
+  </li>
+</ul>
+`;
+
+exports[`Radio should render "default" correctly 1`] = `
+<ul
+  className="Radio__NormalList-iITwyU h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
+>
+  <li
+    aria-selected={true}
+    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
+    mb={null}
+    mr={3}
+    onClick={[Function]}
+    selected={true}
   >
     <input
       checked={true}
@@ -565,21 +787,17 @@ exports[`Radio should render "default" correctly 1`] = `
       type="radio"
       value={0}
     />
-    <span
-      className="text-brand"
-    >
+    <span>
       Gadget
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer text-brand-hover pt1"
+    aria-selected={false}
+    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf knlEpD"
+    mb={null}
+    mr={null}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={false}
   >
     <input
       checked={false}
@@ -589,9 +807,7 @@ exports[`Radio should render "default" correctly 1`] = `
       type="radio"
       value={1}
     />
-    <span
-      className=""
-    >
+    <span>
       Gizmo
     </span>
   </li>
@@ -600,17 +816,15 @@ exports[`Radio should render "default" correctly 1`] = `
 
 exports[`Radio should render "show buttons" correctly 1`] = `
 <ul
-  className="flex"
+  className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI emDsVO"
 >
   <li
-    className="flex align-center cursor-pointer mr3 pt1"
+    aria-selected={true}
+    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf emtUXB"
+    mb={null}
+    mr={3}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={true}
   >
     <input
       checked={true}
@@ -623,21 +837,17 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     <label
       htmlFor="radio-3-0"
     />
-    <span
-      className="text-brand"
-    >
+    <span>
       Gadget
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer pt1"
+    aria-selected={false}
+    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
+    mb={null}
+    mr={null}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={false}
   >
     <input
       checked={false}
@@ -650,9 +860,7 @@ exports[`Radio should render "show buttons" correctly 1`] = `
     <label
       htmlFor="radio-3-1"
     />
-    <span
-      className=""
-    >
+    <span>
       Gizmo
     </span>
   </li>
@@ -661,17 +869,15 @@ exports[`Radio should render "show buttons" correctly 1`] = `
 
 exports[`Radio should render "underlined" correctly 1`] = `
 <ul
-  className="flex text-bold h3"
+  className="Radio__UnderlinedList-bIlLBB ipqCjB Radio__NormalList-iITwyU Radio__UnderlinedList-bIlLBB ipqCjB h3 text-bold hjXhKK Radio__BaseList-iXttyI emDsVO"
 >
   <li
-    className="flex align-center cursor-pointer text-brand-hover mr3 py2"
+    aria-selected={true}
+    className="Radio__UnderlinedItem-fiPrcQ QyBRA Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf jhOuoa"
+    mb={null}
+    mr={3}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": "3px solid transparent",
-        "borderColor": "#509EE3",
-      }
-    }
+    selected={true}
   >
     <input
       checked={true}
@@ -681,21 +887,17 @@ exports[`Radio should render "underlined" correctly 1`] = `
       type="radio"
       value={0}
     />
-    <span
-      className="text-brand"
-    >
+    <span>
       Gadget
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer text-brand-hover py2"
+    aria-selected={false}
+    className="Radio__UnderlinedItem-fiPrcQ javWeu Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf iCgizd"
+    mb={null}
+    mr={null}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": "3px solid transparent",
-        "borderColor": "transparent",
-      }
-    }
+    selected={false}
   >
     <input
       checked={false}
@@ -705,9 +907,7 @@ exports[`Radio should render "underlined" correctly 1`] = `
       type="radio"
       value={1}
     />
-    <span
-      className=""
-    >
+    <span>
       Gizmo
     </span>
   </li>
@@ -716,17 +916,15 @@ exports[`Radio should render "underlined" correctly 1`] = `
 
 exports[`Radio should render "vertical" correctly 1`] = `
 <ul
-  className="flex flex-column"
+  className="Radio__NormalList-iITwyU hjXhKK Radio__BaseList-iXttyI fKwfUD"
 >
   <li
-    className="flex align-center cursor-pointer mr3 pt1"
+    aria-selected={true}
+    className="Radio__NormalItem-eYOkBF kqfiEw Radio__BaseItem-gLcmFf krIKqz"
+    mb={1}
+    mr={null}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={true}
   >
     <input
       checked={true}
@@ -739,21 +937,17 @@ exports[`Radio should render "vertical" correctly 1`] = `
     <label
       htmlFor="radio-4-0"
     />
-    <span
-      className="text-brand"
-    >
+    <span>
       Gadget
     </span>
   </li>
   <li
-    className="flex align-center cursor-pointer pt1"
+    aria-selected={false}
+    className="Radio__NormalItem-eYOkBF jhPiDY Radio__BaseItem-gLcmFf lbJAbw"
+    mb={null}
+    mr={null}
     onClick={[Function]}
-    style={
-      Object {
-        "borderBottom": undefined,
-        "borderColor": "transparent",
-      }
-    }
+    selected={false}
   >
     <input
       checked={false}
@@ -766,9 +960,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
     <label
       htmlFor="radio-4-1"
     />
-    <span
-      className=""
-    >
+    <span>
       Gizmo
     </span>
   </li>
@@ -793,8 +985,6 @@ exports[`Select should render "Default" correctly 1`] = `
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={12}
-      name="chevrondown"
-      size={12}
       viewBox="0 0 32 32"
       width={12}
     >
@@ -827,8 +1017,6 @@ exports[`Select should render "With search" correctly 1`] = `
       className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={12}
-      name="chevrondown"
-      size={12}
       viewBox="0 0 32 32"
       width={12}
     >
@@ -846,188 +1034,151 @@ exports[`Select should render "With search" correctly 1`] = `
 exports[`StackedCheckBox should render "Checked with color" correctly 1`] = `
 <div
   className="relative"
+  style={
+    Object {
+      "transform": "scale(1)",
+    }
+  }
 >
-  <span
-    className="absolute"
+  <div
+    className="flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
     style={
       Object {
-        "left": 4,
-        "top": -4,
-        "zIndex": -1,
+        "backgroundColor": "#A989C5",
+        "border": "2px solid #A989C5",
+        "height": 16,
+        "width": 16,
       }
     }
   >
-    <div
-      className="cursor-pointer"
-      onClick={[Function]}
-    >
-      <div
-        className="flex align-center justify-center rounded"
-        style={
-          Object {
-            "backgroundColor": "#A989C5",
-            "border": "2px solid #A989C5",
-            "height": 16,
-            "width": 16,
-          }
-        }
-      />
-    </div>
-  </span>
-  <div
-    className="cursor-pointer"
-    onClick={[Function]}
-  >
-    <div
-      className="flex align-center justify-center rounded"
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
       style={
         Object {
-          "backgroundColor": "#A989C5",
-          "border": "2px solid #A989C5",
-          "height": 16,
-          "width": 16,
+          "color": "white",
         }
       }
+      viewBox="0 0 32 32"
+      width={12}
     >
-      <svg
-        className="Icon Icon-check Icon-cxuQhR kTAgZA"
-        fill="currentcolor"
-        height={12}
-        name="check"
-        size={12}
-        style={
-          Object {
-            "color": "white",
-          }
-        }
-        viewBox="0 0 32 32"
-        width={12}
-      >
-        <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-        />
-      </svg>
-    </div>
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
   </div>
+  <div
+    className="absolute flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
+    style={
+      Object {
+        "backgroundColor": "#A989C5",
+        "border": "2px solid #A989C5",
+        "height": 16,
+        "left": 4,
+        "top": -4,
+        "width": 16,
+        "zIndex": -1,
+      }
+    }
+  />
 </div>
 `;
 
 exports[`StackedCheckBox should render "Checked" correctly 1`] = `
 <div
   className="relative"
+  style={
+    Object {
+      "transform": "scale(1)",
+    }
+  }
 >
-  <span
-    className="absolute"
+  <div
+    className="flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
     style={
       Object {
-        "left": 4,
-        "top": -4,
-        "zIndex": -1,
+        "backgroundColor": "#509EE3",
+        "border": "2px solid #509EE3",
+        "height": 16,
+        "width": 16,
       }
     }
   >
-    <div
-      className="cursor-pointer"
-      onClick={[Function]}
-    >
-      <div
-        className="flex align-center justify-center rounded"
-        style={
-          Object {
-            "backgroundColor": "#509EE3",
-            "border": "2px solid #509EE3",
-            "height": 16,
-            "width": 16,
-          }
-        }
-      />
-    </div>
-  </span>
-  <div
-    className="cursor-pointer"
-    onClick={[Function]}
-  >
-    <div
-      className="flex align-center justify-center rounded"
+    <svg
+      className="Icon Icon-check Icon-cxuQhR kTAgZA"
+      fill="currentcolor"
+      height={12}
       style={
         Object {
-          "backgroundColor": "#509EE3",
-          "border": "2px solid #509EE3",
-          "height": 16,
-          "width": 16,
+          "color": "white",
         }
       }
+      viewBox="0 0 32 32"
+      width={12}
     >
-      <svg
-        className="Icon Icon-check Icon-cxuQhR kTAgZA"
-        fill="currentcolor"
-        height={12}
-        name="check"
-        size={12}
-        style={
-          Object {
-            "color": "white",
-          }
-        }
-        viewBox="0 0 32 32"
-        width={12}
-      >
-        <path
-          d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
-        />
-      </svg>
-    </div>
+      <path
+        d="M1 14 L5 10 L13 18 L27 4 L31 8 L13 26 z "
+      />
+    </svg>
   </div>
+  <div
+    className="absolute flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
+    style={
+      Object {
+        "backgroundColor": "#509EE3",
+        "border": "2px solid #509EE3",
+        "height": 16,
+        "left": 4,
+        "top": -4,
+        "width": 16,
+        "zIndex": -1,
+      }
+    }
+  />
 </div>
 `;
 
 exports[`StackedCheckBox should render "Off - Default" correctly 1`] = `
 <div
   className="relative"
+  style={
+    Object {
+      "transform": "scale(1)",
+    }
+  }
 >
-  <span
-    className="absolute"
+  <div
+    className="flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
     style={
       Object {
+        "backgroundColor": "white",
+        "border": "2px solid #C7CFD4",
+        "height": 16,
+        "width": 16,
+      }
+    }
+  />
+  <div
+    className="absolute flex align-center justify-center rounded cursor-pointer"
+    onClick={[Function]}
+    style={
+      Object {
+        "backgroundColor": "white",
+        "border": "2px solid #C7CFD4",
+        "height": 16,
         "left": 4,
         "top": -4,
+        "width": 16,
         "zIndex": -1,
       }
     }
-  >
-    <div
-      className="cursor-pointer"
-      onClick={[Function]}
-    >
-      <div
-        className="flex align-center justify-center rounded"
-        style={
-          Object {
-            "backgroundColor": "white",
-            "border": "2px solid #C7CFD4",
-            "height": 16,
-            "width": 16,
-          }
-        }
-      />
-    </div>
-  </span>
-  <div
-    className="cursor-pointer"
-    onClick={[Function]}
-  >
-    <div
-      className="flex align-center justify-center rounded"
-      style={
-        Object {
-          "backgroundColor": "white",
-          "border": "2px solid #C7CFD4",
-          "height": 16,
-          "width": 16,
-        }
-      }
-    />
-  </div>
+  />
 </div>
 `;
 
@@ -1058,22 +1209,20 @@ exports[`Toggle should render "on" correctly 1`] = `
 exports[`TokenField should render "" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
+    className="pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y"
     onMouseDownCapture={[Function]}
     style={
       Object {
-        "inputBoxStyles": Object {
-          "maxHeight": 130,
-        },
+        "maxHeight": 130,
       }
     }
   >
     <li
-      className="flex-full mr1 py1 pl1 mt1 bg-white"
+      className="flex-full flex align-center mr1 mb1 p1"
     >
       <input
         autoFocus={false}
-        className="full h4 text-bold text-default no-focus borderless"
+        className="full no-focus borderless px1"
         onBlur={[Function]}
         onChange={[Function]}
         onFocus={[Function]}
@@ -1081,12 +1230,18 @@ exports[`TokenField should render "" correctly 1`] = `
         onPaste={[Function]}
         placeholder={undefined}
         size={10}
+        style={
+          Object {
+            "fontSize": 14,
+            "fontWeight": 700,
+          }
+        }
         value=""
       />
     </li>
   </ul>
   <ul
-    className="pl1 py1 scroll-y scroll-show border-bottom"
+    className="pl1 my1 scroll-y scroll-show border-bottom"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
     style={
@@ -1154,22 +1309,20 @@ exports[`TokenField should render "" correctly 1`] = `
 exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
 <div>
   <ul
-    className="border-bottom p1 pb2 flex flex-wrap bg-white scroll-x scroll-y"
+    className="pl1 pt1 pb0 pr0 flex flex-wrap bg-white scroll-x scroll-y"
     onMouseDownCapture={[Function]}
     style={
       Object {
-        "inputBoxStyles": Object {
-          "maxHeight": 130,
-        },
+        "maxHeight": 130,
       }
     }
   >
     <li
-      className="flex-full mr1 py1 pl1 mt1 bg-white"
+      className="flex-full flex align-center mr1 mb1 p1"
     >
       <input
         autoFocus={false}
-        className="full h4 text-bold text-default no-focus borderless"
+        className="full no-focus borderless px1"
         onBlur={[Function]}
         onChange={[Function]}
         onFocus={[Function]}
@@ -1177,12 +1330,18 @@ exports[`TokenField should render "updateOnInputChange" correctly 1`] = `
         onPaste={[Function]}
         placeholder={undefined}
         size={10}
+        style={
+          Object {
+            "fontSize": 14,
+            "fontWeight": 700,
+          }
+        }
         value=""
       />
     </li>
   </ul>
   <ul
-    className="pl1 py1 scroll-y scroll-show border-bottom"
+    className="pl1 my1 scroll-y scroll-show border-bottom"
     onMouseEnter={[Function]}
     onMouseLeave={[Function]}
     style={

@@ -26,45 +26,34 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
+// check if we have access to localStorage to avoid handling "access denied"
+// exceptions
+export const HAS_LOCAL_STORAGE = (function() {
+  try {
+    window.localStorage; // This will trigger an exception if access is denied.
+    return true;
+  } catch (e) {
+    console.warn("localStorage not available:", e);
+    return false;
+  }
+})();
+
 export function isObscured(element, offset) {
   if (!document.elementFromPoint) {
     return false;
   }
+  const box = element.getBoundingClientRect();
   // default to the center of the element
   offset = offset || {
-    top: Math.round(element.offsetHeight / 2),
-    left: Math.round(element.offsetWidth / 2),
+    top: Math.round(box.height / 2),
+    left: Math.round(box.width / 2),
   };
-  const position = findPosition(element, true);
-  const elem = document.elementFromPoint(
-    position.left + offset.left,
-    position.top + offset.top,
-  );
+  const position = {
+    left: box.x + offset.left,
+    top: box.y + offset.top,
+  };
+  const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// get the position of an element on the page
-export function findPosition(element, excludeScroll = false) {
-  const offset = { top: 0, left: 0 };
-  const scroll = { top: 0, left: 0 };
-  let offsetParent = element;
-  while (offsetParent) {
-    // we need to check every element for scrollTop/scrollLeft
-    scroll.left += element.scrollLeft || 0;
-    scroll.top += element.scrollTop || 0;
-    // but only the original element and offsetParents for offsetTop/offsetLeft
-    if (offsetParent === element) {
-      offset.left += element.offsetLeft;
-      offset.top += element.offsetTop;
-      offsetParent = element.offsetParent;
-    }
-    element = element.parentNode;
-  }
-  if (excludeScroll) {
-    offset.left -= scroll.left;
-    offset.top -= scroll.top;
-  }
-  return offset;
 }
 
 // based on http://stackoverflow.com/a/38039019/113

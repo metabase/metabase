@@ -36,6 +36,7 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+    defaultValue: PropTypes.any,
 
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
@@ -66,14 +67,15 @@ class BrowserSelect extends Component {
   };
 
   isSelected(otherValue) {
-    const { value, multiple } = this.props;
+    const { value, multiple, defaultValue } = this.props;
     if (multiple) {
       return _.any(value, v => v === otherValue);
     } else {
       return (
         value === otherValue ||
         ((value == null || value === "") &&
-          (otherValue == null || otherValue === ""))
+          (otherValue == null || otherValue === "")) ||
+        (value == null && otherValue === defaultValue)
       );
     }
   }
@@ -95,7 +97,7 @@ class BrowserSelect extends Component {
       multiple,
     } = this.props;
 
-    let children = this.props.children;
+    let children = _.flatten(this.props.children);
 
     let selectedNames = children
       .filter(child => this.isSelected(child.props.value))
