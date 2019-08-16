@@ -69,15 +69,17 @@
     (catch clojure.lang.ExceptionInfo e
       (:object (ex-data e)))))
 
-(defn- cleaned-throttlers []
-  (-> (var-get #'metabase.api.session/login-throttlers)
-      (assoc-in [:username :attempts]   (atom '()))
-      (assoc-in [:ip-address :attempts] (atom '()))))
+(defn- cleaned-throttlers [var-symbol ks]
+  (let [throttlers (var-get var-symbol)
+        clean-key  (fn [m k] (assoc-in m [k :attempts] (atom '())))]
+    (reduce clean-key throttlers ks)))
 
+;; Test that source based throttling kicks in after the login failure threshold (50) has been reached
 (expect
   ["Too many attempts! You must wait 15 seconds before trying again."
    "Too many attempts! You must wait 42 seconds before trying again."]
-  (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
+  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                          [:username :ip-address])
                 public-settings/source-address-header (constantly "x-forwarded-for")]
     (do
       (dotimes [n 50]
@@ -100,7 +102,8 @@
 (expect
   ["Too many attempts! You must wait 15 seconds before trying again."
    "Too many attempts! You must wait 42 seconds before trying again."]
-  (with-redefs [metabase.api.session/login-throttlers      (cleaned-throttlers)
+  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                          [:username :ip-address])
                 public-settings/source-address-header (constantly "x-forwarded-for")]
     (do
       (dotimes [n 50]
