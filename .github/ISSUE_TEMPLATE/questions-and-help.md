@@ -11,5 +11,5 @@ For help with installation and setup, information on how specific features work,
 
 https://discourse.metabase.com
 
-This issue tracker is intended to collect bug reports and feature requests.
+The Github issue tracker is intended to collect bug reports and feature requests.
 Any issues open for help requests will be closed to keep from clogging up the issue tracker.
