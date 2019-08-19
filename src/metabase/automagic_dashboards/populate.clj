@@ -232,6 +232,13 @@
 
 (defn- shown-cards
   "Pick up to `max-cards` with the highest `:score`.
+
+   `max-cards` can be on of either:
+    * `:all` -- show all cards, it this case `shown-cards` only orders them
+    * `:summary` -- show only the summary section (or a very small number of cards,
+       see `metabase.automagic-dashboards.adaptive-dashboard-size/max-cards-for-dashboard`)
+    * a number -- number of cards to show
+
    Keep groups together if possible by pulling all the cards within together and
    using the same (highest) score for all.
    Among cards with the same score those beloning to the largest group are
@@ -239,9 +246,11 @@
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
   [max-cards cards]
-  (->> cards
-       (sort-by :score >)
-       (take max-cards)
+  (println max-cards)
+  (->> (cond->> (sort-by :score > cards)
+         (= max-cards :all)     identity
+         (= max-cards :summary) (filter (comp #{"Summary" "Overview"} :group))
+         (number? max-cards)    (take max-cards))
        (group-by (some-fn :group hash))
        (map (fn [[_ group]]
               {:cards    (sort-by :position group)
@@ -254,17 +263,13 @@
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards refinements]} n]
-   (let [n             (cond
-                         (= n :all)   (count cards)
-                         (keyword? n) (Integer/parseInt (name n))
-                         :else        n)
-         dashboard     {:name           title
+  ([{:keys [title transient_title description groups filters cards refinements]} max-cards]
+   (let [dashboard     {:name           title
                         :transient_name (or transient_title title)
                         :description    description
                         :creator_id     api/*current-user-id*
                         :parameters     []}
-         cards         (shown-cards n cards)
+         cards         (shown-cards max-cards cards)
          [dashboard _] (->> cards
                             (partition-by :group)
                             (reduce (fn [[dashboard grid] cards]
@@ -273,7 +278,7 @@
                                     [dashboard
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
-                                     (make-grid grid-width (* n grid-width))]))]
+                                     (make-grid grid-width (* (count cards) grid-width))]))]
      (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
                     (count cards)
                     title

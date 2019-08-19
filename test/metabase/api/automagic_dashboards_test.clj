@@ -1,6 +1,8 @@
 (ns metabase.api.automagic-dashboards-test
   (:require [expectations :refer :all]
-            [metabase.automagic-dashboards.core :as magic]
+            [metabase.automagic-dashboards
+             [adaptive-dashboard-size :as adaptive-size]
+             [core :as magic]]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -166,6 +168,36 @@
                (->> [:= [:field-id (data/id :venues :price)] 15]
                     (#'magic/encode-base64-json))
                segment-id])))
+
+
+;;; ------------------- Show parameter -------------------
+
+(defn- resulting-number-of-cards
+  [template args]
+  (test-users/with-test-user :rasta
+    (with-dashboard-cleanup
+      (->> (apply format (str "automagic-dashboards/" template) args)
+           ((test-users/user->client :rasta) :get 200)
+           :ordered_cards
+           (filter :card)
+           count))))
+
+(expect
+  13
+  (resulting-number-of-cards "table/%s" [(data/id :checkins)]))
+
+(expect
+  1
+  (with-redefs [adaptive-size/max-cards 1]
+    (resulting-number-of-cards "table/%s" [(data/id :checkins)])))
+
+(expect
+  13
+  (resulting-number-of-cards "table/%s?show=all" [(data/id :checkins)]))
+
+(expect
+  4
+  (resulting-number-of-cards "table/%s?show=summary" [(data/id :checkins)]))
 
 
 ;;; ------------------- Transforms -------------------

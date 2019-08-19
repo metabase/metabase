@@ -28,7 +28,7 @@
             [schema.core :as s]))
 
 (def ^:private Show
-  (su/with-api-error-message (s/maybe (s/enum "all"))
+  (su/with-api-error-message (s/maybe (s/enum "all" "summary"))
     (deferred-tru "invalid show value")))
 
 (def ^:private Prefix

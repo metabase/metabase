@@ -20,6 +20,7 @@
              [related :as related]
              [util :as u]]
             [metabase.automagic-dashboards
+             [adaptive-dashboard-size :as adaptive-size]
              [filters :as filters]
              [populate :as populate]
              [rules :as rules]
@@ -802,12 +803,12 @@
               (-> rule :cards nil?))
       [(assoc dashboard
          :filters filters
-         :cards   cards)
+         :cards   cards
+         :root    root)
        rule
        context])))
 
 (def ^:private ^:const ^Long max-related 8)
-(def ^:private ^:const ^Long max-cards 15)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"
@@ -991,7 +992,7 @@
                                            ;; so `first` realises one element at a time
                                            ;; (no chunking).
                                            first))]
-    (let [show (or show max-cards)]
+    (let [show (or show (adaptive-size/max-cards-for-dashboard dashboard))]
       (log/infof (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
       (log/infof (trs "Dimensions bindings:\n{0}"
                       (->> context
@@ -1004,8 +1005,9 @@
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)
-                 :more              (when (and (not= show :all)
-                                               (-> dashboard :cards count (> show)))
+                 :more              (when (or (= :summary show)
+                                              (and (not= :all show)
+                                                   (-> dashboard :cards count (> show))))
                                       (format "%s#show=all" (:url root)))
                  :transient_filters (:query-filter context)
                  :param_fields      (->> context :query-filter (filter-referenced-fields root)))))

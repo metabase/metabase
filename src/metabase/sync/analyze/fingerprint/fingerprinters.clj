@@ -172,7 +172,7 @@
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
-(defn- histogram
+(defn histogram
   "Transducer that summarizes numerical data with a histogram."
   ([] (hist/create))
   ([^Histogram histogram] histogram)
