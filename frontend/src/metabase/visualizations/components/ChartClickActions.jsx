@@ -176,15 +176,15 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-medium">
+          <div className="text-bold">
             {sections.map(([key, actions]) => (
               <div
                 key={key}
-                className="border-row-divider p1 mr1 flex align-center text-default-hover"
+                className="border-row-divider p1 mr1 flex align-center"
               >
                 <Icon
                   name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="p1 mr1"
+                  className="p1 mr1 text-medium"
                   size={16}
                 />
                 {actions.map((action, index) => (
@@ -213,7 +213,7 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx("text-brand-hover cursor-pointer no-decoration p1 mr1");
+  const className = "text-brand-hover cursor-pointer no-decoration p1 mr1";
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
