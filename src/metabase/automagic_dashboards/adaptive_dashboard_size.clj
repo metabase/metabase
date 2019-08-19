@@ -31,6 +31,8 @@
   (some-> db-id running-time-90th-percentile (> long-running-90th-percentile-threshold)))
 
 (defn max-cards-for-dashboard
+  "What is the maximum number of cards to to show for the given dashboard? Returns either a number,
+   or `:summary` (show just the summary section of an x-ray)."
   [{{:keys [database]} :root groups :groups}]
   (let [summary (if (some (partial contains? groups) ["Summary" "Overview"])
                   :summary
