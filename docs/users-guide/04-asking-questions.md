@@ -69,9 +69,9 @@ The first dropdown menu in the question builder is where you’ll choose the dat
 
 ##### Using saved questions as source data
 
-If you've [saved some questions](06-sharing-answers.html), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
+If you've [saved some questions](06-sharing-answers.md), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
 
-You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
+You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.md) to view that question. You can even use questions that were saved as a chart rather than a table.
 
 **Note:** there are some kinds of saved questions that can't be used as source data:
 - Druid questions
