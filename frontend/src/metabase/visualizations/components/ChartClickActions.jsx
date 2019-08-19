@@ -2,7 +2,6 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
