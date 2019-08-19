@@ -246,7 +246,6 @@
    (consider a group of 4 cards which starts as 7/9; in that case only 2 cards
    from the group will be picked)."
   [max-cards cards]
-  (println max-cards)
   (->> (cond->> (sort-by :score > cards)
          (= max-cards :all)     identity
          (= max-cards :summary) (filter (comp #{"Summary" "Overview"} :group))
