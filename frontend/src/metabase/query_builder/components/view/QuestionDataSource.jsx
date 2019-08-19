@@ -8,15 +8,26 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import cx from "classnames";
 
-const QuestionDataSource = ({
-  question,
-  query = question.query(),
-  subHead,
-  noLink,
-  ...props
-}) => {
+const QuestionDataSource = ({ question, subHead, noLink, ...props }) => {
+  const parts = getDataSourceParts({ question, subHead, noLink });
+  return subHead ? (
+    <SubHeadBreadcrumbs parts={parts} {...props} />
+  ) : (
+    <HeadBreadcrumbs parts={parts} {...props} />
+  );
+};
+
+QuestionDataSource.shouldRender = ({ question }) =>
+  getDataSourceParts({ question }).length > 0;
+
+function getDataSourceParts({ question, noLink, subHead }) {
+  if (!question) {
+    return [];
+  }
+
   const parts = [];
 
+  let query = question.query();
   if (query instanceof StructuredQuery) {
     query = query.rootQuery();
   }
@@ -67,12 +78,8 @@ const QuestionDataSource = ({
     });
   }
 
-  return subHead ? (
-    <SubHeadBreadcrumbs parts={parts} {...props} />
-  ) : (
-    <HeadBreadcrumbs parts={parts} {...props} />
-  );
-};
+  return parts.filter(({ name, icon }) => name || icon);
+}
 
 export default QuestionDataSource;
 

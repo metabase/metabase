@@ -98,11 +98,12 @@ export function QuestionFilterWidget({
 QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
+  question.query().isEditable() &&
   question.query().topLevelFilters().length > 0 &&
   !question.isObjectDetail();
 
 QuestionFilterWidget.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().table() &&
+  question.query().isEditable() &&
   !question.isObjectDetail();

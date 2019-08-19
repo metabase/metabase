@@ -113,7 +113,12 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
-    if (isStructured && queryBuilderMode === "view" && !query.table()) {
+    const isNewQuestion =
+      query instanceof StructuredQuery &&
+      !query.sourceTableId() &&
+      !query.sourceQuery();
+
+    if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <div className={fitClassNames}>
           <div className="p4 mx2">
@@ -168,8 +173,6 @@ export default class View extends React.Component {
           onClose={() => this.props.toggleDataReference()}
         />
       ) : null;
-
-    const isNewQuestion = query instanceof StructuredQuery && !query.table();
 
     const isSidebarOpen = leftSideBar || rightSideBar;
 
