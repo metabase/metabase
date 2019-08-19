@@ -8,6 +8,7 @@ import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 import { getDatabasesList } from "metabase/query_builder/selectors";
 
 function DataStep({ color, query, databases, updateQuery }) {
+  const table = query.table();
   return (
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
@@ -28,12 +29,12 @@ function DataStep({ color, query, databases, updateQuery }) {
             </NotebookCellItem>
           ) : (
             <NotebookCellItem color={color} icon="table2">
-              {query.table().displayName()}
+              {table && table.displayName()}
             </NotebookCellItem>
           )
         }
       />
-      {query.table() && query.isRaw() && (
+      {table && query.isRaw() && (
         <DataFieldsPicker
           className="ml-auto mb1 text-bold"
           query={query}
