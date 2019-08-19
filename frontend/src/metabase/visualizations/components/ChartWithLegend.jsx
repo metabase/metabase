@@ -95,6 +95,16 @@ export default class ChartWithLegend extends Component {
       type = "small";
     }
 
+    const legend = LegendComponent ? (
+      <LegendComponent
+        className={styles.Legend}
+        titles={legendTitles}
+        colors={legendColors}
+        hovered={hovered}
+        onHoverChange={onHoverChange}
+      />
+    ) : null;
+
     return (
       <div
         className={cx(
@@ -111,17 +121,7 @@ export default class ChartWithLegend extends Component {
           paddingRight: PADDING,
         }}
       >
-        {LegendComponent ? (
-          <div className={cx(styles.LegendWrapper)}>
-            <LegendComponent
-              className={styles.Legend}
-              titles={legendTitles}
-              colors={legendColors}
-              hovered={hovered}
-              onHoverChange={onHoverChange}
-            />
-          </div>
-        ) : null}
+        {legend && <div className={cx(styles.LegendWrapper)}>{legend}</div>}
         <div
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}
@@ -129,7 +129,7 @@ export default class ChartWithLegend extends Component {
           {children}
         </div>
         {/* spacer div to balance legend */}
-        {LegendComponent && <div className={cx(styles.LegendSpacer)} />}
+        {legend && <div className={cx(styles.LegendSpacer)}>{legend}</div>}
       </div>
     );
   }
