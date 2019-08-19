@@ -1,32 +1,47 @@
 (ns metabase.automagic-dashboards.adaptive-dashboard-size-test
   (:require [expectations :refer :all]
             [metabase.automagic-dashboards.adaptive-dashboard-size :as adaptive-size]
-            [metabase.models.database :refer [Database]]
-            [metabase.test.data :as data]
-            [toucan.db :as db]))
+            [metabase.models
+             [database :refer [Database]]
+             [query-execution :refer [QueryExecution]]]
+            [toucan.util.test :as tt]))
 
-(def ^:private dummy-dashboard
-  (delay {:root   {:database (data/id)}
-          :groups {"Summary" {:title "Summary"}}}))
+(defmacro ^:private with-dummy-dashboard-and-execution-envionment
+  [dashboard options & body]
+  (let [{:keys [running_time auto_run_queries]} (merge {:auto_run_queries true
+                                                        :running_time     100}
+                                                       options)]
+    `(tt/with-temp* [Database       [{db-id# :id} {:auto_run_queries ~auto_run_queries}]
+                     QueryExecution [{} {:running_time ~running_time
+                                         :database_id  db-id#
+                                         :context      :ad-hoc
+                                         :hash         (hash nil)
+                                         :started_at   #inst "2019"
+                                         :result_rows  100
+                                         :native       false}]]
+       (let [~dashboard {:root   {:database db-id#}
+                         :groups {"Summary" {:title "Summary"}}}]
+         ~@body))))
 
 (expect
-  #'adaptive-size/max-cards
-  (adaptive-size/max-cards-for-dashboard @dummy-dashboard))
+  (var-get #'adaptive-size/max-cards)
+  (with-dummy-dashboard-and-execution-envionment dashboard {}
+    (adaptive-size/max-cards-for-dashboard dashboard)))
 
 (expect
   :summary
-  (with-redefs [adaptive-size/long-running-90th-percentile-threshold 0]
-    (adaptive-size/max-cards-for-dashboard @dummy-dashboard)))
+  (with-dummy-dashboard-and-execution-envionment dashboard
+    {:running_time (* (var-get #'adaptive-size/long-running-90th-percentile-threshold) 2)}
+    (adaptive-size/max-cards-for-dashboard dashboard)))
 
 (expect
-  #'adaptive-size/max-cards-if-no-summary
-  (with-redefs [adaptive-size/long-running-90th-percentile-threshold 0]
-    (adaptive-size/max-cards-for-dashboard (dissoc @dummy-dashboard :groups))))
+  (var-get #'adaptive-size/max-cards-if-no-summary)
+  (with-dummy-dashboard-and-execution-envionment dashboard
+    {:running_time (* (var-get #'adaptive-size/long-running-90th-percentile-threshold) 2)}
+    (adaptive-size/max-cards-for-dashboard (dissoc dashboard :groups))))
 
 (expect
   :summary
-  (do
-    (db/update! Database (data/id) {:auto_run_queries false})
-    (let [result (adaptive-size/max-cards-for-dashboard @dummy-dashboard)]
-      (db/update! Database (data/id) {:auto_run_queries true})
-      result)))
+  (with-dummy-dashboard-and-execution-envionment dashboard
+    {:auto_run_queries false}
+    (adaptive-size/max-cards-for-dashboard dashboard)))
