@@ -12516,7 +12516,7 @@ msgstr[1] "Einträge"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:346
 msgid "Browse Data"
-msgstr ""
+msgstr "Daten anzeigen"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:376
 msgid "Write SQL"
@@ -12834,7 +12834,7 @@ msgstr ""
 
 #: src/metabase/driver.clj
 msgid "Could not find {0} driver."
-msgstr ""
+msgstr "Konnte {0} Treiber nicht finden."
 
 #: src/metabase/driver.clj
 msgid "Abstract drivers cannot derive from concrete parent drivers."
@@ -13178,7 +13178,7 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:97
 msgid "Change join type"
-msgstr ""
+msgstr "Ändere join Typ"
 
 #: src/metabase/driver/sql/util.clj
 msgid "Don't know how to alias {0}, expected an Identifier."
@@ -13186,7 +13186,7 @@ msgstr ""
 
 #: src/metabase/integrations/common.clj
 msgid "Error adding User {0} to Group {1}"
-msgstr ""
+msgstr "Fehler beim Hinzufügen von Benutzer {0} zu Gruppe {1}"
 
 #. now rehumanize all the Tables and Fields using the new strategy.
 #. TODO: Should we do this in a background thread because it is potentially slow?

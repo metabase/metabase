@@ -616,7 +616,7 @@ msgstr "Brak opisu dla pola"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:388
 msgid "Original value"
-msgstr "Wartość oruginalna"
+msgstr "Wartość oryginalna"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:389
 msgid "Mapped value"

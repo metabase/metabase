@@ -11746,7 +11746,7 @@ msgstr "Kunne ikke initialisere plugin {0}"
 
 #: src/metabase/plugins.clj
 msgid "Loading plugins in {0}..."
-msgstr ""
+msgstr "Laster inn plugins fra {0}..."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using Clojure base loader as shared context classloader: {0}"
@@ -11766,7 +11766,7 @@ msgstr ""
 
 #: src/metabase/plugins/classloader.clj
 msgid "Added URL {0} to classpath"
-msgstr ""
+msgstr "Legg inn nettlink {0} til klassebane"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin {0} declares a dependency that Metabase does not understand: {1}"
@@ -11782,11 +11782,11 @@ msgstr ""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Class not found: {0}"
-msgstr ""
+msgstr "Klasse ikke funnet: {0}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugin ''{0}'' depends on plugin ''{1}''"
-msgstr ""
+msgstr "Plugin \"{0}\" har krav i plugin \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
@@ -11806,7 +11806,7 @@ msgstr "Ressursen eksisterer ikke."
 
 #: src/metabase/plugins/init_steps.clj
 msgid "Loading plugin namespace {0}..."
-msgstr ""
+msgstr "Laster inn plugin navneklasse {0}..."
 
 #: src/metabase/plugins/initialize.clj
 msgid "Dependencies satisfied; these plugins will now be loaded: {0}"

@@ -12481,31 +12481,32 @@ msgstr "`question` personalizzata"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:157
 msgid "Use the advanced notebook editor to join data, create custom columns, do math, and more."
-msgstr ""
+msgstr "Usa l'editor avanzato per notebook per unire i dati, creare colonne personalizzate, fare matematica e altro."
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:23
+#, fuzzy
 msgid "Basic Metrics"
-msgstr ""
+msgstr "Metriche basilari"
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:319
 msgid "Custom…"
-msgstr ""
+msgstr "Personalizzato... "
 
 #: frontend/src/metabase/query_builder/components/DimensionList.jsx:147
 msgid "Add grouping"
-msgstr ""
+msgstr "Aggiungi raggruppamento"
 
 #: frontend/src/metabase/query_builder/components/LimitPopover.jsx:14
 msgid "Pick a limit"
-msgstr ""
+msgstr "Scegli un limite"
 
 #: frontend/src/metabase/query_builder/components/LimitPopover.jsx:38
 msgid "Show maximum"
-msgstr ""
+msgstr "Mostra massimo"
 
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:47
 msgid "Get Preview"
-msgstr ""
+msgstr "Anteprima"
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
 msgid "Back to previous results"
@@ -12513,19 +12514,19 @@ msgstr "Torna ai risultati precedenti"
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:21
 msgid "Sample values"
-msgstr ""
+msgstr "Valori di esempio"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:10
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started."
-msgstr ""
+msgstr "Naviga il contenuto dei tuoi database, tabelle e colonna. Scegli un database per iniziare. "
 
 #: frontend/src/metabase/query_builder/components/notebook/Notebook.jsx:40
 msgid "Visualize"
-msgstr ""
+msgstr "Visualizza"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:34
 msgid "Join data"
-msgstr ""
+msgstr "Dati in join"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:41
 msgid "Custom column"
@@ -12534,11 +12535,11 @@ msgstr "Colonna personalizzata"
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:54
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:61
 msgid "Summarize"
-msgstr ""
+msgstr "Riassume"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:61
 msgid "Aggregate"
-msgstr ""
+msgstr "Aggregazione"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:68
 msgid "Breakout"
@@ -12546,20 +12547,20 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:18
 msgid "Pick the metric you want to see"
-msgstr ""
+msgstr "Scegli la metrica che vuoi vedere"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/BreakoutStep.jsx:18
 #: frontend/src/metabase/query_builder/components/view/sidebars/BreakoutSidebar.jsx:12
 msgid "Pick a column to group by"
-msgstr ""
+msgstr "Scegli la colonna da raggruppare "
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/DataStep.jsx:24
 msgid "Pick your starting data"
-msgstr ""
+msgstr "Scegli una data d'inizio"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:43
 msgid "Select None"
-msgstr ""
+msgstr "Seleziona nula"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:43
 msgid "Select All"
@@ -12567,19 +12568,19 @@ msgstr "Seleziona tutto"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:148
 msgid "Pick a table..."
-msgstr ""
+msgstr "Sceglie una tabela"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/LimitStep.jsx:23
 msgid "Enter a limit"
-msgstr ""
+msgstr "Inserisci un limite"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:159
 msgid "Brackets around a {0} create an optional clause in the template. If \"variable\" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored."
-msgstr ""
+msgstr "Le parentesi attorno a {0} creano una clausola facoltativa nel modello.  Se è impostata \"variabile\", l'intera clausola viene inserita nel modello.  In caso contrario, l'intera clausola viene ignorata."
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorHelp.jsx:176
 msgid "When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel."
-msgstr ""
+msgstr "Quando si utilizza un Field Filter, il nome della colonna non deve essere incluso in SQL.  Invece, la variabile dovrebbe essere mappata su un campo nel pannello laterale."
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:16
 msgid "View the native query"
@@ -12587,23 +12588,23 @@ msgstr "Vedi la query originale"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:17
 msgid "Native query for this question"
-msgstr ""
+msgstr "Query nativa per questa domanda"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:18
 msgid "Convert this question to a native query"
-msgstr ""
+msgstr "Converti questa domanda a una query nativa"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:22
 msgid "SQL for this question"
-msgstr ""
+msgstr "SQL per questa domanda"
 
 #: frontend/src/metabase/query_builder/components/view/NativeQueryButton.jsx:23
 msgid "Convert this question to SQL"
-msgstr ""
+msgstr "Converti questi domande a SQL"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionAlertWidget.jsx:53
 msgid "Get alerts"
-msgstr ""
+msgstr "Ricevi alerti"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:31
 msgid "{0} breakout"
@@ -12621,7 +12622,7 @@ msgstr "Mostra i filtri"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionLineage.jsx:10
 msgid "Started from"
-msgstr ""
+msgstr "Iniziato da"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:21
 msgid "{0} row"
@@ -12639,15 +12640,15 @@ msgstr "Mostra {0}"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:35
 msgid "Showing first {0}"
-msgstr ""
+msgstr "Mostra prima {0}"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:36
 msgid "Showing {0}"
-msgstr ""
+msgstr "Mostra {0}"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:34
 msgid "Summarized"
-msgstr ""
+msgstr "Riassunto"
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:216
 msgid "Hide editor"
@@ -12659,135 +12660,135 @@ msgstr "Mostra l'editor"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/AggregationSidebar.jsx:14
 msgid "Pick the metric you'd like to see"
-msgstr ""
+msgstr "Seleziona la metrica che vorresti vedere"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartSettingsSidebar.jsx:21
 msgid "{0} options"
-msgstr ""
+msgstr "{0} opzionj"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:44
 msgid "Choose a visualization"
-msgstr ""
+msgstr "Selezione una visualizzazione"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:38
 msgid "Filter by"
-msgstr ""
+msgstr "Filtrato da"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar.jsx:57
 msgid "Summarize by"
-msgstr ""
+msgstr "Somma per"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar.jsx:83
 msgid "Group by"
-msgstr ""
+msgstr "Raggruppato da"
 
 #: frontend/src/metabase/query_builder/components/view/sidebars/SummarizeSidebar.jsx:167
 msgid "Add a metric"
-msgstr ""
+msgstr "Aggiungi una metrica"
 
 #: frontend/src/metabase/user/components/UserSettings.jsx:57
 msgid "Profile"
-msgstr ""
+msgstr "Profilo"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:548
 msgid "This is usually pretty fast but seems to be taking a while right now."
-msgstr ""
+msgstr "Questo di solito è piuttosto veloce ma sembra richiedere del tempo proprio ora."
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Combo"
-msgstr ""
+msgstr "Combo"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:13
 msgid "Row"
-msgstr ""
+msgstr "Riga"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:22
 msgid "Trend"
-msgstr ""
+msgstr "Tendenza "
 
 #: frontend/src/metabase-lib/lib/DimensionOptions.js:129
 msgid "Boolean"
-msgstr ""
+msgstr "Booleano"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:59
 msgid "Unknown Segment"
-msgstr ""
+msgstr "Segmento sconosciuto"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:68
 msgid "Unknown Filter"
-msgstr ""
+msgstr "Filtro sconosciuto "
 
 #: frontend/src/metabase-lib/lib/queries/structured/Join.js:22
 msgid "Left outer join"
-msgstr ""
+msgstr "Left outer join"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Join.js:23
 msgid "Right outer join"
-msgstr ""
+msgstr "Right outer join"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Join.js:24
 msgid "Inner join"
-msgstr ""
+msgstr "Inner join"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Join.js:25
 msgid "Full outer join"
-msgstr ""
+msgstr "Full outer join"
 
 #: src/metabase/api/card.clj
 msgid "Card results metadata passed in to API is MISSING. Running query to fetch correct metadata."
-msgstr ""
+msgstr "I metadati dei risultati delle carte trasmessi all'API sono MANCANTI.  Esecuzione della query per recuperare i metadati corretti."
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fall back to local authentication"
-msgstr ""
+msgstr "Problema di connessione al server LDAP, si ritorna all'autenticazione locale"
 
 #: src/metabase/api/setup.clj
 msgid "Cannot create Database: cannot find driver {0}."
-msgstr ""
+msgstr "Impossibile creare il Database: impossibile trovare il driver {0}."
 
 #: src/metabase/api/tiles.clj
 msgid "Query failed"
-msgstr ""
+msgstr "Query fallita"
 
 #: src/metabase/async/util.clj
 msgid "Warning: {0} returned `nil`"
-msgstr ""
+msgstr "Attenzione: {0} ha restituito `nil`"
 
 #: src/metabase/async/util.clj
 msgid "Unexpected error writing result to output channel: already closed"
-msgstr ""
+msgstr "Errore imprevisto durante la scrittura del risultato sul canale di output: già chiuso"
 
 #: src/metabase/async/util.clj
 msgid "Unexpected error writing exception to output channel: already closed"
-msgstr ""
+msgstr "Errore imprevisto durante la scrittura dell' eccezione sull' output: già chiuso"
 
 #: src/metabase/async/util.clj
 msgid "Request canceled, canceling future."
-msgstr ""
+msgstr "Richiesta annullata, annullamento futuro."
 
 #: src/metabase/cmd/load_from_h2.clj
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
-msgstr ""
+msgstr "2 "
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
-msgstr ""
+msgstr "ATTENZIONE: L'uso di Metabase con un database di applicazioni H2 non è raccomandato per gli ambienti di produzione."
 
 #: src/metabase/db.clj
 msgid "Application database setup"
-msgstr ""
+msgstr "Impostazione database dell'applicazione"
 
 #: src/metabase/driver.clj
 msgid "Could not find {0} driver."
-msgstr ""
+msgstr "Impossibile trovare il driver {0}."
 
 #: src/metabase/driver.clj
 msgid "Abstract drivers cannot derive from concrete parent drivers."
-msgstr ""
+msgstr "I driver astratti non possono derivare da driver genitori concreti"
 
 #: src/metabase/driver/mysql.clj
 msgid "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."
-msgstr ""
+msgstr "Potrebbe essere necessario aggiungere \"trustServerCertificate = true\" alle opzioni di connessione aggiuntive per connettersi con SSL."
 
 #: src/metabase/driver/sql/util.clj
 msgid "Don't know how to alias {0}, expected an Identifer."
@@ -12795,19 +12796,19 @@ msgstr ""
 
 #: src/metabase/driver/sql_jdbc/execute.clj
 msgid "Client closed connection, canceling query"
-msgstr ""
+msgstr "Il client ha chiuso la connesione. Annullamento query"
 
 #: src/metabase/integrations/ldap.clj
 msgid "{0} is not a valid DN."
-msgstr ""
+msgstr "{0} non è un valido DN."
 
 #: src/metabase/middleware/log.clj
 msgid "Error logging API request"
-msgstr ""
+msgstr "Errore durante la registrazione della richiesta API"
 
 #: src/metabase/middleware/misc.clj
 msgid "Failed to set site-url"
-msgstr ""
+msgstr "Impostazione del site-url fallita"
 
 #: src/metabase/models/database.clj
 msgid "Error destroying thread pool for DB."
@@ -12833,7 +12834,7 @@ msgstr ""
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."
-msgstr ""
+msgstr "spark-deps.jar non è più necessario da Metabase 0.32.0+. Puoi cancellarlo dalla cartella dei plugins."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using NEWLY CREATED classloader as shared context classloader: {0}"
@@ -12841,51 +12842,51 @@ msgstr ""
 
 #: src/metabase/plugins/files.clj
 msgid "Failed to copy file"
-msgstr ""
+msgstr "Impossibile copiare il file"
 
 #: src/metabase/public_settings.clj
 msgid "Invalid site URL: {0}"
-msgstr ""
+msgstr "Url non valido: {0}"
 
 #: src/metabase/public_settings.clj
 msgid "site-url is invalid; returning nil for now. Will be reset on next request."
-msgstr ""
+msgstr "site-url non è valido;  restituendo zero per ora.  Sarà ripristinato alla prossima richiesta."
 
 #: src/metabase/pulse/render/body.clj
 msgid "More results have been included as a file attachment"
-msgstr ""
+msgstr "Altri risultati sono stati inclusi come file allegati"
 
 #: src/metabase/pulse/render/body.clj
 msgid "This question has been included as a file attachment"
-msgstr ""
+msgstr "Questa domanda è stata inclusa come allegato"
 
 #: src/metabase/pulse/render/body.clj
 msgid "We were unable to display this Pulse."
-msgstr ""
+msgstr "Non è stato possibile visualizzare questo Pulse. "
 
 #: src/metabase/pulse/render/body.clj
 msgid "Please view this card in Metabase."
-msgstr ""
+msgstr "Si prega di visualizzare questa scheda in Metabase."
 
 #: src/metabase/pulse/render/body.clj
 msgid "An error occurred while displaying this card."
-msgstr ""
+msgstr "Si è verificato un errore durante la visualizzazione di questa scheda."
 
 #: src/metabase/query_processor.clj
 msgid "Can only determine expected columns for MBQL queries."
-msgstr ""
+msgstr "Si possono solo determinare le colonne richieste per le interrogazioni MBQL"
 
 #: src/metabase/query_processor.clj
 msgid "No columns returned."
-msgstr ""
+msgstr "Non ci sono colonne disponibili"
 
 #: src/metabase/query_processor/middleware/add_implicit_clauses.clj
 msgid "Warining: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."
-msgstr ""
+msgstr "Attenzione: non è possibile determinare i campi per una \"query-source\" esplicita a meno che non si includano anche \"metadati\" di origine."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Cannot resolve {0}: Field does not exist, or its Table belongs to a different Database."
-msgstr ""
+msgstr "Impossibile risolvere {0}: il campo non esiste o la sua tabella appartiene a un database diverso."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Cannot resolve :field-literal inside :fk-> unless inside join with explicit :alias."
@@ -12897,7 +12898,7 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "No matching info found."
-msgstr ""
+msgstr "Nessuna informazione di corrispondenza trovata"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Could not resolve {0}"
@@ -12937,19 +12938,19 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Sum of {0}"
-msgstr ""
+msgstr "Somma di {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "SD of {0}"
-msgstr ""
+msgstr "Devizione standard di {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Min of {0}"
-msgstr ""
+msgstr "Minimo di {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Max of {0}"
-msgstr ""
+msgstr "Massimo di {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -12982,7 +12983,7 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Query timed out after %s"
-msgstr ""
+msgstr "Time out query dopo %s"
 
 #: src/metabase/query_processor/middleware/async_wait.clj
 msgid "Creating new query thread pool for Database {0}"
@@ -12994,7 +12995,7 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/async_wait.clj
 msgid "Request canceled, canceling pending query"
-msgstr ""
+msgstr "RIchiesta annullata, annullamento della query in sospeso"
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: query is missing source-metadata"
@@ -13014,7 +13015,7 @@ msgstr ""
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Unknown error"
-msgstr ""
+msgstr "Errore sconosciuto"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Unexpected nil response from query processor."
@@ -13070,15 +13071,16 @@ msgstr ""
 
 #: src/metabase/sample_data.clj
 msgid "Loading sample dataset..."
-msgstr ""
+msgstr "Caricamento database di esempio..."
 
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
-msgstr ""
+msgstr "Caricamento del database di esempio fallito\n"
+""
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
-msgstr ""
+msgstr "Trovate nuove tabelle:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Marking tables as inactive:"
@@ -13086,23 +13088,23 @@ msgstr ""
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Updating description for tables:"
-msgstr ""
+msgstr "Aggiornamento descrizioni tabelle:"
 
 #: src/metabase/task.clj
 msgid "Rescheduling job {0}"
-msgstr ""
+msgstr "Riprogrammando lavoro {0}"
 
 #: src/metabase/task.clj
 msgid "Error rescheduling job"
-msgstr ""
+msgstr "Errore riprogrammazione lavoro"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Starting Pulse Execution: {0}"
-msgstr ""
+msgstr "Avvio Esecuzione Pulse: {0}"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Finished Pulse Execution: {0}"
-msgstr ""
+msgstr "Esecuzione Pulse Terminata: {0}"
 
 #: src/metabase/task/sync_databases.clj
 msgid "Failed to schedule tasks for Database {0}"
@@ -13124,7 +13126,7 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:97
 msgid "Change join type"
-msgstr ""
+msgstr "Cambia tipo di join"
 
 #: src/metabase/driver/sql/util.clj
 msgid "Don't know how to alias {0}, expected an Identifier."
@@ -13132,7 +13134,7 @@ msgstr ""
 
 #: src/metabase/integrations/common.clj
 msgid "Error adding User {0} to Group {1}"
-msgstr ""
+msgstr "Errore nell' aggiungere l' Utente {0} al Gruppo {1}"
 
 #. now rehumanize all the Tables and Fields using the new strategy.
 #. TODO: Should we do this in a background thread because it is potentially slow?
