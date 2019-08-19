@@ -212,8 +212,10 @@
 
 ;; Table has an `:active` flag, but no `:archived` flag; never return inactive Tables
 (defmethod archived-where-clause (class Table)
-  [model _]
-  [:= (hsql/qualify (model->alias model) :active) true])
+  [model archived?]
+  (if archived?
+    [:= 1 0]  ; No tables should appear in archive searches
+    [:= (hsql/qualify (model->alias model) :active) true]))
 
 (s/defn ^:private base-where-clause-for-model :- [(s/one (s/enum :and :=) "type") s/Any]
   [model :- SearchableModel, {:keys [search-string archived?]} :- SearchContext]
