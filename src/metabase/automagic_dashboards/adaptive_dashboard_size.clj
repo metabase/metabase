@@ -13,6 +13,8 @@
   "If 10% of queries take longer than this to run, consider the DB to be slow. Unit is ms."
   5000)
 
+(def running-time-cache-ttl (* 60 60 24 7 1000)) ; 1 week
+
 (def ^:private ^Long max-cards 15)
 (def ^:private ^Long max-cards-if-no-summary 3)
 
@@ -23,11 +25,11 @@
                          (fn [h]
                            ((hist/percentiles h 0.9) 0.9)))
                         (db/select-field :running_time QueryExecution :database_id %))
-            :ttl/threshold (* (public-settings/query-caching-max-ttl) 1000)))
+            :ttl/threshold running-time-cache-ttl))
 
 (defn- slow-db?
   [db-id]
-  (> (running-time-90th-percentile db-id) long-running-90th-percentile-threshold))
+  (some-> db-id running-time-90th-percentile (> long-running-90th-percentile-threshold)))
 
 (defn max-cards-for-dashboard
   [{{:keys [database]} :root groups :groups}]

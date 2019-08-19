@@ -1,4 +1,4 @@
-(ns metabase.automagic-dashboards.adaptive-dashboard-size
+(ns metabase.automagic-dashboards.adaptive-dashboard-size-test
   (:require [expectations :refer :all]
             [metabase.automagic-dashboards.adaptive-dashboard-size :as adaptive-size]
             [metabase.models.database :refer [Database]]
@@ -28,5 +28,5 @@
   (do
     (db/update! Database (data/id) {:auto_run_queries false})
     (let [result (adaptive-size/max-cards-for-dashboard @dummy-dashboard)]
-      (db/update! Database (data/id) {:auto_run_queries false})
+      (db/update! Database (data/id) {:auto_run_queries true})
       result)))
