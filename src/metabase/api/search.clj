@@ -66,6 +66,7 @@
    :model               :text
    :id                  :integer
    :name                :text
+   :display_name        :text
    :description         :text
    :archived            :boolean
    ;; returned for Card, Dashboard, Pulse, and Collection
@@ -132,6 +133,7 @@
   [_]
   [:id
    :name
+   :display_name
    :description
    [:id :table_id]
    [:db_id :database_id]
@@ -308,7 +310,7 @@
         {:select (:select base-query)
          :from   [[(merge
                     base-query
-                    {:select [:id :schema :db_id :name :description
+                    {:select [:id :schema :db_id :name :description :display_name
                               [(hx/concat (hx/literal "/db/") :db_id (hx/literal "/")
                                           (hsql/call :case [:not= :schema nil] :schema :else (hx/literal "")) (hx/literal "/")
                                           :id (hx/literal "/"))

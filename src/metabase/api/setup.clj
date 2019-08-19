@@ -75,7 +75,7 @@
     ;; setup database (if needed)
     (when engine
       (when-not (driver/available? engine)
-        (throw (ex-info (str (tru "Cannot create Database: cannot find driver {0}." engine))
+        (throw (ex-info (tru "Cannot create Database: cannot find driver {0}." engine)
                  {:engine engine})))
       (let [db (db/insert! Database
                  (merge

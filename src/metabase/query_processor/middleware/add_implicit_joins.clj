@@ -82,8 +82,8 @@
       (doseq [dest-id dest-ids]
         (when-not (get dest->table dest-id)
           (throw
-           (ex-info (str (tru "Cannot resolve {0}: Field does not exist, or its Table belongs to a different Database."
-                              [:fk '_ dest-id]))
+            (ex-info (tru "Cannot resolve {0}: Field does not exist, or its Table belongs to a different Database."
+                          [:fk '_ dest-id])
              {:dest-id dest-id}))))
       ;; ok, we're good to go
       dest->table)))
@@ -93,9 +93,9 @@
         dest-id       (mbql.u/field-clause->id-or-literal dest-field)
         dest-table-id (dest-id->table-id dest-id)]
     (assert (and (integer? fk-id) (integer? dest-id))
-      (str (tru "Cannot resolve :field-literal inside :fk-> unless inside join with explicit :alias.")))
+      (tru "Cannot resolve :field-literal inside :fk-> unless inside join with explicit :alias."))
     (assert dest-table-id
-      (str (tru "Cannot find Table ID for {0}" dest-field)))
+      (tru "Cannot find Table ID for {0}" dest-field))
     {:fk-id fk-id, :dest-id dest-id, :dest-table-id dest-table-id}))
 
 (defn- matching-info* [infos dest-id->table-id fk-field dest-field]
@@ -108,7 +108,7 @@
           info))
       infos)
      (throw
-      (ex-info (str (tru "No matching info found."))
+      (ex-info (tru "No matching info found.")
         {:fk-id fk-id, :dest-id dest-id, :dest-table-id dest-table-id})))))
 
 (defn- matching-info-fn
@@ -125,7 +125,7 @@
         ;; add a bunch of info to any Exceptions that get thrown here, useful for debugging things that go wrong
         (catch Exception e
           (throw
-           (ex-info (str (tru "Could not resolve {0}" [:fk-> fk-field dest-field]))
+           (ex-info (tru "Could not resolve {0}" [:fk-> fk-field dest-field])
              {:clause                           [:fk-> fk-field dest-field]
               :resolved-info                    infos
               :resolved-dest-field-id->table-id dest-id->table-id}
@@ -183,7 +183,7 @@
   {:matching-info (matching-info-fn query)
    :current-alias nil
    :add-join!     (fn [join-info]
-                    (throw (ex-info (str (tru "Invalid fk-> clause: nowhere to add corresponding join."))
+                    (throw (ex-info (tru "Invalid fk-> clause: nowhere to add corresponding join.")
                              {:join-info join-info})))})
 
 (declare resolve-fk-clauses)
@@ -223,7 +223,7 @@
   (if (mbql.u/match-one (:query query) :fk->)
     (do
       (when-not (driver/supports? driver/*driver* :foreign-keys)
-        (throw (ex-info (str (tru "{0} driver does not support foreign keys." driver/*driver*))
+        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                  {:driver driver/*driver*})))
       (update query :query resolve-fk-clauses))
     query))

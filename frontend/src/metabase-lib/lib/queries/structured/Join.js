@@ -13,6 +13,7 @@ import type {
   JoinFields,
   JoinAlias,
   JoinCondition,
+  JoinedFieldReference,
   StructuredQuery as StructuredQueryObject,
   ConcreteField,
 } from "metabase/meta/types/Query";
@@ -114,6 +115,20 @@ export default class Join extends MBQLObjectClause {
   // FIELDS
   setFields(fields: JoinFields) {
     return this.set({ ...this, fields });
+  }
+
+  addField(field: JoinedFieldReference) {
+    if (Array.isArray(this.fields)) {
+      return this.setFields([...this.fields, field]);
+    } else if (this.fields === "none") {
+      return this.setFields([field]);
+    } else {
+      return this;
+    }
+  }
+
+  clearFields() {
+    return this.setFields("none");
   }
 
   // ALIAS

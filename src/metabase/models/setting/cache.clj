@@ -100,7 +100,7 @@
                           [:> :value last-known-update]]})
         (when <>
           (log/info (u/format-color 'red
-                        (str (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
+                        (trs "Settings have been changed on another instance, and will be reloaded here.")))))))))
 
 (def ^:private cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"

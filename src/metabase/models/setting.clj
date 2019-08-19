@@ -43,7 +43,7 @@
             [metabase.models.setting.cache :as cache]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -95,7 +95,7 @@
     (let [k (keyword setting-or-name)]
       (or (@registered-settings k)
           (throw (Exception.
-                  (str (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))))
+                  (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -156,7 +156,7 @@
       "true"  true
       "false" false
       (throw (Exception.
-              (str (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))))
+              (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn get-boolean
   "Get boolean value of (presumably `:boolean`) `setting-or-name`. This is the default getter for `:boolean` settings.
@@ -238,9 +238,9 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn (tru "Error inserting a new Setting:") "\n"
+         (log/warn (deferred-tru "Error inserting a new Setting:") "\n"
                    (.getMessage e) "\n"
-                   (tru "Assuming Setting already exists in DB and updating existing value."))
+                   (deferred-tru "Assuming Setting already exists in DB and updating existing value."))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -444,7 +444,7 @@
     ((set symbols) (first expression))))
 
 (defn- valid-trs-or-tru? [desc]
-  (is-expression? #{'trs 'tru `trs `tru} desc))
+  (is-expression? #{'deferred-trs 'deferred-tru `deferred-trs `deferred-tru} desc))
 
 (defn- valid-str-of-trs-or-tru? [maybe-str-expr]
   (when (is-expression? #{'str `str} maybe-str-expr)
@@ -462,15 +462,15 @@
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
     (throw (IllegalArgumentException.
-            (str (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
-                      (pr-str desc))))))
+             (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
+                  (pr-str desc)))))
   desc)
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
 
-     (defsetting mandrill-api-key \"API key for Mandrill.\")
+     (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
      (mandrill-api-key)           ; get the value
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value
@@ -585,7 +585,7 @@
      :env_name       (env-var-name setting)
      :description    (str description)
      :default        (if set-via-env-var?
-                       (str (tru "Using value of env var {0}" (str \$ (env-var-name setting))))
+                       (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
 (defn all

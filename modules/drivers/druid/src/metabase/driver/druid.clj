@@ -35,11 +35,11 @@
                                 (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
-      (throw (Exception. (str (tru "Error [{0}]: {1}" status body)))))
+      (throw (Exception. (tru "Error [{0}]: {1}" status body))))
     (try
       (json/parse-string body keyword)
       (catch Throwable _
-        (throw (Exception. (str (tru "Failed to parse body: {0}" body))))))))
+        (throw (Exception. (tru "Failed to parse body: {0}" body)))))))
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))

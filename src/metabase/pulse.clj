@@ -13,7 +13,7 @@
              [pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
             [schema.core :as s]
@@ -107,11 +107,11 @@
                                                             (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
-      (throw (Exception. (str (tru "Unable to compare results to goal for alert.")
+      (throw (Exception. (str (deferred-tru "Unable to compare results to goal for alert.")
                               " "
-                              (tru "Question ID is ''{0}'' with visualization settings ''{1}''"
-                                   (get-in results [:card :id])
-                                   (pr-str (get-in results [:card :visualization_settings])))))))
+                              (deferred-tru "Question ID is ''{0}'' with visualization settings ''{1}''"
+                                        (get-in results [:card :id])
+                                        (pr-str (get-in results [:card :visualization_settings])))))))
     (some (fn [row]
             (goal-comparison goal-val (comparison-col-rowfn row)))
           (get-in first-result [:result :data :rows]))))
@@ -140,7 +140,7 @@
     (goal-met? alert results)
 
     :else
-    (let [^String error-text (str (tru "Unrecognized alert with condition ''{0}''" alert_condition))]
+    (let [^String error-text (tru "Unrecognized alert with condition ''{0}''" alert_condition)]
       (throw (IllegalArgumentException. error-text)))))
 
 (defmethod should-send-notification? :pulse
@@ -197,7 +197,7 @@
 
 (defmethod notification :default
   [_ _ {:keys [channel_type] :as channel}]
-  (let [^String ex-msg (str (tru "Unrecognized channel type {0}" (pr-str channel_type)))]
+  (let [^String ex-msg (tru "Unrecognized channel type {0}" (pr-str channel_type))]
     (throw (UnsupportedOperationException. ex-msg))))
 
 (defn- pulse->notifications [{:keys [cards channels channel-ids], pulse-id :id, :as pulse}]

@@ -5,10 +5,8 @@ import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Button from "metabase/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import Tooltip from "metabase/components/Tooltip.jsx";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
@@ -17,6 +15,7 @@ import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
+import QuestionNotebookButton from "./QuestionNotebookButton";
 
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
@@ -126,9 +125,17 @@ export class ViewTitleHeader extends React.Component {
                 collectionId={question.collectionId()}
               />
 
-              <span className="mb1 mx2 text-light text-smaller">•</span>
+              {QuestionDataSource.shouldRender({ question }) && (
+                <span className="mb1 mx2 text-light text-smaller">•</span>
+              )}
 
-              <QuestionDataSource className="mb1" question={question} subHead />
+              {QuestionDataSource.shouldRender({ question }) && (
+                <QuestionDataSource
+                  className="mb1"
+                  question={question}
+                  subHead
+                />
+              )}
 
               {QuestionFilters.shouldRender(this.props) && (
                 <QuestionFilters
@@ -225,29 +232,19 @@ export class ViewTitleHeader extends React.Component {
               data-metabase-event={`View Mode; Open Summary Widget`}
             />
           )}
-          {question.isStructured() && (
-            <Tooltip
-              tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
-            >
-              <Button
-                borderless={!isShowingNotebook}
-                primary={isShowingNotebook}
-                data-metabase-event={
-                  isShowingNotebook
-                    ? `Notebook Mode;Go to View Mode`
-                    : `View Mode; Go to Notebook Mode`
-                }
-                medium
-                className={cx("hide sm-show", {
-                  "text-brand-hover": !isShowingNotebook,
-                })}
-                icon="notebook"
-                ml={2}
-                onClick={() =>
-                  setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
-                }
-              />
-            </Tooltip>
+          {QuestionNotebookButton.shouldRender({ question }) && (
+            <QuestionNotebookButton
+              className="hide sm-show"
+              ml={2}
+              question={question}
+              isShowingNotebook={isShowingNotebook}
+              setQueryBuilderMode={setQueryBuilderMode}
+              data-metabase-event={
+                isShowingNotebook
+                  ? `Notebook Mode;Go to View Mode`
+                  : `View Mode; Go to Notebook Mode`
+              }
+            />
           )}
           {NativeQueryButton.shouldRender(this.props) && (
             <Box
@@ -265,7 +262,7 @@ export class ViewTitleHeader extends React.Component {
           {isRunnable && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover hide", {
-                "sm-show": !isShowingNotebook,
+                "sm-show": !isShowingNotebook || isNative,
                 "text-white-hover": isResultDirty && isRunnable,
               })}
               medium

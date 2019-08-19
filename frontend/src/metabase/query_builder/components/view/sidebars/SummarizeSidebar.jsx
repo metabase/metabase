@@ -21,7 +21,7 @@ import Icon from "metabase/components/Icon";
 function updateAndRun(query) {
   query
     .question()
-    .setDisplayDefault()
+    .setDefaultDisplay()
     .update(null, { run: true });
 }
 

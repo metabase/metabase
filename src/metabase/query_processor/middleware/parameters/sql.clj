@@ -155,7 +155,7 @@
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
   (when (and (:required tag) (not (:default tag)))
-    (throw (Exception. (str (tru "''{0}'' is a required param." (:display-name tag))))))
+    (throw (Exception. (tru "''{0}'' is a required param." (:display-name tag)))))
   (when-let [default (:default tag)]
     {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
@@ -172,8 +172,8 @@
   (when-let [dimension (:dimension tag)]
     (map->Dimension {:field (or (db/select-one [Field :name :parent_id :table_id :base_type],
                                   :id (dimension->field-id dimension))
-                                (throw (Exception. (str (tru "Can't find field with ID: {0}"
-                                                             (dimension->field-id dimension))))))
+                                (throw (Exception. (tru "Can't find field with ID: {0}"
+                                                        (dimension->field-id dimension)))))
                      :param (or
                              ;; look in the sequence of params we were passed to see if there's anything that matches
                              (param-with-target params [:dimension [:template-tag (:name tag)]])
@@ -194,7 +194,7 @@
   [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (str (tru "''{0}'' is a required param." display-name)))))))
+        (throw (Exception. (tru "''{0}'' is a required param." display-name))))))
 
 
 ;;; Parsing Values
@@ -493,8 +493,8 @@
         [prefix & segmented-strings] (str/split s begin-pattern)]
     (when-let [^String msg (and (seq segmented-strings)
                                 (not-every? #(str/index-of % delimited-end) segmented-strings)
-                                (str (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
-                                          delimited-begin delimited-end s)))]
+                                (tru "Found ''{0}'' with no terminating ''{1}'' in query ''{2}''"
+                                     delimited-begin delimited-end s))]
       (throw (IllegalArgumentException. msg)))
     {:prefix            prefix
      :delimited-strings (for [segmented-string segmented-strings

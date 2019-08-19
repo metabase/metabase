@@ -31,7 +31,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -45,7 +45,7 @@
                               su/NonBlankString
                               #(u/ignore-exceptions (driver/the-driver %))
                               "Valid database engine")
-    (tru "value must be a valid database engine.")))
+    (deferred-tru "value must be a valid database engine.")))
 
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------

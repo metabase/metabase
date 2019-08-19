@@ -649,7 +649,7 @@
 
                       ;; we should never get here unless our code is B U S T E D
                       _
-                      (throw (ex-info (str (tru "Expected :aggregation-options, constant, or expression."))
+                      (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
                                {:type :bug, :input arg})))))}))
 
 
