@@ -111,6 +111,12 @@ Click on a record's ID number (or primary key) to see more information about a g
 
 ![Record details](./images/notebook/record-details.png)
 
+### Downloading Your Results
+
+You can download or export the results of a question by clicking on the Download arrow in the lower right of the screen. Results can be downloaded into .csv, .xlsx, or .json files. The maximum download size is 1 million rows.
+
+![Download Button](./images/download-button.png)
+
 ---
 
 ## Next: creating custom questions
