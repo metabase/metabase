@@ -4,7 +4,6 @@
             [metabase.models
              [database :refer [Database]]
              [query-execution :refer [QueryExecution]]]
-            [metabase.public-settings :as public-settings]
             [metabase.sync.analyze.fingerprint.fingerprinters :refer [histogram]]
             [redux.core :as redux]
             [toucan.db :as db]))
@@ -13,7 +12,7 @@
   "If 10% of queries take longer than this to run, consider the DB to be slow. Unit is ms."
   5000)
 
-(def running-time-cache-ttl (* 60 60 24 7 1000)) ; 1 week
+(def ^:private ^Long running-time-cache-ttl (* 60 60 24 7 1000)) ; 1 week in ms
 
 (def ^:private ^Long max-cards 15)
 (def ^:private ^Long max-cards-if-no-summary 3)
