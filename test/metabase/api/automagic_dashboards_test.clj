@@ -171,9 +171,9 @@
 ;;; ------------------- Transforms -------------------
 
 (expect
-  [[1 "Red Medicine" 3 4 -165.374 10.0646 1 4 3 2 1]
-   [2 "Stout Burgers & Beers" 2 11 -118.329 34.0996 2 11 2 1 1]
-   [3 "The Apple Pan" 2 11 -118.428 34.0406 2 11 2 1 1]]
+  [[3 4 -165.374 10.0646 1 "Red Medicine" 1 4 3 2 1]
+   [2 11 -118.329 34.0996 2 "Stout Burgers & Beers" 2 11 2 1 1]
+   [2 11 -118.428 34.0406 3 "The Apple Pan" 2 11 2 1 1]]
   (test-users/with-test-user :rasta
     (transforms.test/with-test-transform-specs
       (de.test/with-test-domain-entity-specs

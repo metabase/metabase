@@ -138,16 +138,14 @@
 
 (s/defn ^:private tableset->bindings :- Bindings
   [tableset :- Tableset]
-  (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity :as table} tableset]
+  (into {} (for [{{domain-entity-name :name dimensions :dimensions} :domain_entity fields :fields :as table} tableset]
              [domain-entity-name
-              {:dimensions (let [dimension? (set (vals dimensions))]
-                             (m/map-vals de/mbql-reference
-                                         (merge
-                                          ;; We need all the fields so we can do enrichmets
-                                          (into {} (for [field (:fields table)
-                                                         :when (not (dimension? field))]
-                                                     [(:name field) field]))
-                                          dimensions)))
+              ;; We need all the fields so we can do enrichmets
+              {:dimensions (->> fields
+                                (remove (some-fn (set (vals dimensions)) (comp dimensions :name)))
+                                (m/index-by :name)
+                                (merge dimensions)
+                                (m/map-vals de/mbql-reference))
                :entity     table}])))
 
 (s/defn ^:private apply-transform-to-tableset! :- Bindings
