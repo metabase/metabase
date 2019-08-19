@@ -11,7 +11,7 @@ export default function QuestionNotebookButton({
   question,
   isShowingNotebook,
   setQueryBuilderMode,
-  ...props,
+  ...props
 }) {
   return QuestionNotebookButton.shouldRender({ question }) ? (
     <Tooltip tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}>
