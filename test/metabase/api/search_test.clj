@@ -311,6 +311,19 @@
     (tt/with-temp Table [table {:name table-name}]
       (search-request :rasta :q table-name))))
 
+;; But *archived* tables should not appear in search results
+(let [table-name (tu/random-name)]
+  (expect
+    []
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :crowberto :q table-name :archived true))))
+
+(let [table-name (tu/random-name)]
+  (expect
+    []
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :rasta :q table-name :archived true))))
+
 ;; you should not be able to see a Table if the current user doesn't have permissions for that Table
 (expect
   []
