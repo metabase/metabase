@@ -99,12 +99,9 @@
 
 (defn- source-address
   "The `public-settings/source-address-header` header's value, or the `(:remote-addr request)` if not set."
-  [request]
-  (if-let [source-address-header (public-settings/source-address-header)]
-    (if-let [header-value ((:headers request) source-address-header)]
-      header-value
-      (:remote-addr request))
-    (:remote-addr request)))
+  [{:keys [headers remote-addr]}]
+  (or (some->> (public-settings/source-address-header) (get headers))
+      remote-addr))
 
 (defn- do-login
   "Logs user in and creates an appropriate Ring response containing the newly created session's ID."
