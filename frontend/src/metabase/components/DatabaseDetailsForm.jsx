@@ -436,7 +436,7 @@ export default class DatabaseDetailsForm extends Component {
     let {
       engine,
       engines,
-      formError,
+      formError = {},
       formSuccess,
       hiddenFields,
       submitButtonText,
@@ -467,6 +467,17 @@ export default class DatabaseDetailsForm extends Component {
     ];
 
     hiddenFields = hiddenFields || {};
+
+    if (formError.data) {
+      // If we have a field error but no matching field, use that field error as
+      // a fallback for formError.data.message
+      const { message, errors = {} } = formError.data;
+      const fieldNames = new Set(fields.map(field => field.name));
+      const [unusedFieldKey] = Object.keys(errors).filter(
+        name => !fieldNames.has(name),
+      );
+      formError.data.message = message || errors[unusedFieldKey];
+    }
 
     return (
       <form onSubmit={this.formSubmitted.bind(this)} noValidate>
