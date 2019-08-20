@@ -61,6 +61,7 @@ export class NewQueryOptions extends Component {
                 description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
                 width={180}
                 to={Urls.newQuestion()}
+                data-metabase-event={`New Question; Simple Question Start`}
               />
             </GridItem>
           )}
@@ -72,6 +73,7 @@ export class NewQueryOptions extends Component {
                 description={t`Use the advanced notebook editor to join data, create custom columns, do math, and more.`}
                 width={180}
                 to={Urls.newQuestion({ mode: "notebook" })}
+                data-metabase-event={`New Question; Custom Question Start`}
               />
             </GridItem>
           )}
@@ -83,6 +85,7 @@ export class NewQueryOptions extends Component {
                 description={t`For more complicated questions, you can write your own SQL or native query.`}
                 to={Urls.newQuestion({ type: "native" })}
                 width={180}
+                data-metabase-event={`New Question; Native Query Start`}
               />
             </GridItem>
           )}
