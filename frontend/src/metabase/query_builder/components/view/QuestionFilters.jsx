@@ -44,6 +44,11 @@ export default function QuestionFilters({
             icon="filter"
             className="mr1 mb1 cursor-pointer"
             onClick={expanded ? onCollapse : onExpand}
+            data-metabase-event={
+              expanded
+                ? `View Mode; Header Filters Collapse Click`
+                : `View Mode; Header Filters Expand Click`
+            }
           >
             {expanded ? null : filters.length}
           </FilterPill>

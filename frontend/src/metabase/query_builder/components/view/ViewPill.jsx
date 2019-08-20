@@ -17,6 +17,7 @@ export default function ViewPill({
 }) {
   return (
     <span
+      {...props}
       className={cx("rounded flex align-center text-bold", className, {
         "cursor-pointer": onClick,
       })}

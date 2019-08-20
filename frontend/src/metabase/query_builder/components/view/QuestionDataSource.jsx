@@ -83,8 +83,8 @@ function getDataSourceParts({ question, noLink, subHead }) {
 
 export default QuestionDataSource;
 
-const SubHeadBreadcrumbs = ({ parts, className }) => (
-  <span className={className}>
+const SubHeadBreadcrumbs = ({ parts, className, ...props }) => (
+  <span {...props} className={className}>
     <span className="flex align-center flex-wrap mbn1">
       {parts.map(({ name, icon, href }, index) => (
         <Badge key={index} className="mr2 mb1" icon={icon} to={href}>
@@ -95,8 +95,8 @@ const SubHeadBreadcrumbs = ({ parts, className }) => (
   </span>
 );
 
-const HeadBreadcrumbs = ({ parts }) => (
-  <span className="flex align-center flex-wrap">
+const HeadBreadcrumbs = ({ parts, ...props }) => (
+  <span {...props} className="flex align-center flex-wrap">
     {parts.map(({ name, icon, href }, index) => [
       <MaybeLink
         key={index}
