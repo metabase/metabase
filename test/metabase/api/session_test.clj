@@ -89,13 +89,11 @@
       [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
-            (get "errors")
-            (get "username"))
+            (get-in ["errors" "username"]))
        (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
-            (get "errors")
-            (get "username"))])))
+            (get-in ["errors" "username"]))])))
 
 ;; The same as above, but ensure that throttling is done on a per request source basis.
 (expect
@@ -117,13 +115,11 @@
       [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
-            (get "errors")
-            (get "username"))
+            (get-in ["errors" "username"]))
        (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
             :body
             json/parse-string
-            (get "errors")
-            (get "username"))])))
+            (get-in ["errors" "username"]))])))
 
 
 ;; ## DELETE /api/session
