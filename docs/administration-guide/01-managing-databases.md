@@ -77,7 +77,7 @@ Metabase maintains its own information about the various tables and fields in ea
 
 Syncing can be set to hourly, or daily at a specific time. Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
-If you'd like to sync your database manually at any time, click on it from the Databases list in the admin panel and click on the Sync button on the right side of the screen:
+If you'd like to sync your database manually at any time, click on it from the Databases list in the admin panel and click on the Sync database schema now button on the right side of the screen:
 
 ![Database Manual Sync](images/DatabaseManualSync.png)
 
