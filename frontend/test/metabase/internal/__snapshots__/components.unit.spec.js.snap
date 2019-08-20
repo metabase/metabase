@@ -8,7 +8,9 @@ exports[`Button should render "" correctly 1`] = `
     className="flex layout-centered"
     style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -23,7 +25,9 @@ exports[`Button should render "primary" correctly 1`] = `
     className="flex layout-centered"
     style={null}
   >
-    <div>
+    <div
+      className=""
+    >
       Clickity click
     </div>
   </div>
@@ -39,7 +43,7 @@ exports[`Button should render "with an icon" correctly 1`] = `
     style={null}
   >
     <svg
-      className="Icon Icon-star mr1 Icon-cxuQhR kTAgZA"
+      className="Icon Icon-star Icon-cxuQhR kTAgZA"
       fill="currentcolor"
       height={14}
       viewBox="0 0 32 32"
@@ -49,7 +53,9 @@ exports[`Button should render "with an icon" correctly 1`] = `
         d="M16 0 L21 11 L32 12 L23 19 L26 31 L16 25 L6 31 L9 19 L0 12 L11 11"
       />
     </svg>
-    <div>
+    <div
+      className="ml1"
+    >
       Clickity click
     </div>
   </div>
@@ -70,7 +76,9 @@ exports[`ButtonBar should render "default" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Button
         </div>
       </div>
@@ -96,7 +104,9 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Left
         </div>
       </div>
@@ -112,7 +122,9 @@ exports[`ButtonBar should render "left and right" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Right
         </div>
       </div>
@@ -135,7 +147,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Left
         </div>
       </div>
@@ -151,7 +165,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Center
         </div>
       </div>
@@ -167,7 +183,9 @@ exports[`ButtonBar should render "left, right, and center" correctly 1`] = `
         className="flex layout-centered"
         style={null}
       >
-        <div>
+        <div
+          className=""
+        >
           Right
         </div>
       </div>
@@ -409,7 +427,7 @@ exports[`EntityMenu should render "Edit menu" correctly 1`] = `
           width={18}
         >
           <path
-            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
           />
         </svg>
       </div>
@@ -477,7 +495,7 @@ exports[`EntityMenu should render "Multiple menus" correctly 1`] = `
           width={18}
         >
           <path
-            d="M11.603 29.428a2.114 2.114 0 0 1-.345.111l-8.58 2.381c-1.606.446-3.073-1.047-2.582-2.627l2.482-7.974c.06-.424.25-.834.575-1.164L22.279.633A2.12 2.12 0 0 1 25.257.59l6.103 5.872c.835.803.855 2.124.046 2.952l-18.983 19.41c-.21.256-.486.467-.82.604zm-6.424-2.562l4.605-1.015L21.04 14.185l-3.172-3.043-11.46 11.666-1.229 4.058zM20.733 8.2l3.07 2.942 3.07-3.145-3.07-2.942-3.07 3.145z"
+            d="M26.87 12.988L19.8 5.917l4.033-4.034a2 2 0 0 1 2.829 0l4.243 4.243a2 2 0 0 1 0 2.828l-4.034 4.034zm-1.414 1.414L10.65 29.21a3 3 0 0 1-1.468.807l-7.246 1.617a1 1 0 0 1-1.179-1.254l1.99-6.882a3 3 0 0 1 .761-1.288L18.385 7.331l7.071 7.071z"
           />
         </svg>
       </div>
@@ -635,7 +653,9 @@ exports[`ModalContent should render "default" correctly 1`] = `
               className="flex layout-centered"
               style={null}
             >
-              <div>
+              <div
+                className=""
+              >
                 Ok
               </div>
             </div>

@@ -223,7 +223,7 @@
              :src   (:image-src image-bundle)}]
       [:table
        [:tr
-        [:td {:style (style/style {:color         style/color-brand
+        [:td {:style (style/style {:color         (style/primary-color)
                                    :font-size     :24px
                                    :font-weight   700
                                    :padding-right :16px})}
@@ -233,7 +233,7 @@
                                    :font-weight 700})}
          (second values)]]
        [:tr
-        [:td {:style (style/style {:color         style/color-brand
+        [:td {:style (style/style {:color         (style/primary-color)
                                    :font-size     :16px
                                    :font-weight   700
                                    :padding-right :16px})}

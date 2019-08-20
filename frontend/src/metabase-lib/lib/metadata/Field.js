@@ -8,7 +8,7 @@ import moment from "moment";
 
 import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
 
-import { formatField } from "metabase/lib/formatting";
+import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
@@ -71,6 +71,10 @@ export default class Field extends Base {
       displayName += formatField(this);
     }
     return displayName;
+  }
+
+  targetDisplayName() {
+    return stripId(this.display_name);
   }
 
   isDate() {

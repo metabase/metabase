@@ -380,11 +380,12 @@
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
   ^String [nanoseconds]
-  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours 24]
+                                                 [:days 7] [:weeks Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
       (recur (/ n divisor) more)
-      (format "%.0f %s" (double n) (name unit)))))
+      (format "%.1f %s" (double n) (name unit)))))
 
 (defn format-microseconds
   "Format a time interval in microseconds into something more readable."

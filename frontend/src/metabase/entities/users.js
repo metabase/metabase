@@ -47,6 +47,7 @@ const BASE_FORM_FIELDS: FormFieldDefinition[] = [
   },
   {
     name: "email",
+    title: t`Email`,
     placeholder: "youlooknicetoday@email.com",
     validate: email => !email && t`Email is required`,
   },

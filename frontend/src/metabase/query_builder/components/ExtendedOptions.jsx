@@ -174,9 +174,9 @@ export class ExtendedOptionsPopover extends Component {
 
     return (
       <ExpressionWidget
+        query={query}
         name={name}
         expression={expression}
-        tableMetadata={query.table()}
         onChangeExpression={(newName, newExpression) =>
           this.setExpression(newName, newExpression, name)
         }

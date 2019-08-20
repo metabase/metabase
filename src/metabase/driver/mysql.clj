@@ -202,7 +202,7 @@
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week

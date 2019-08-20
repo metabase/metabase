@@ -27,6 +27,6 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 * [Sharing dashboards and questions with public links](12-public-links.md)
 * [Embedding Metabase in other Applications](13-embedding.md)
 
-First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/start.html#installing-and-running-metabase) will help you through the process.
+First things first, you'll need to install Metabase. If you haven’t done that yet, our [Installation Guide](../operations-guide/installing-metabase.md) will help you through the process.
 
 Already done with that? Then let’s start by going over how to [connect Metabase to your database](01-managing-databases.md).

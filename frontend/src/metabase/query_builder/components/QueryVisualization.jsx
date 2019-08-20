@@ -145,9 +145,9 @@ export default class QueryVisualization extends Component {
 }
 
 export const VisualizationEmptyState = ({ className }) => (
-  <div className={cx(className, "flex flex-column layout-centered text-light")}>
-    <h1>{t`If you give me some data I can show you something cool. Run a Query!`}</h1>
-  </div>
+  <div
+    className={cx(className, "flex flex-column layout-centered text-light")}
+  />
 );
 
 export const VisualizationRunningState = ({ className }) => (
@@ -182,6 +182,9 @@ export const VisualizationDirtyState = ({
     <RunButtonWithTooltip
       className="shadowed"
       circular
+      compact
+      py={2}
+      px={3}
       result={result}
       isRunnable={isRunnable}
       isRunning={isRunning}

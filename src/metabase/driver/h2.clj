@@ -139,7 +139,7 @@
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
 (defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

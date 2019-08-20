@@ -89,7 +89,7 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
-(s/defn ^:private card-id->source-query-and-metadata :- SourceQueryAndMetadata
+(s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
@@ -225,8 +225,8 @@
       copy-source-query-database-ids
       remove-unneeded-database-ids))
 
-
 (s/defn ^:private resolve-card-id-source-tables* :- FullyResolvedQuery
+  "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
     ;; for non-MBQL queries there's nothing to do since they have nested queries

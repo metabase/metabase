@@ -1,9 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [clj-time
-              [coerce :as t.coerce]
-              [core :as t]]
-            [kixi.stats
+  (:require [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.mbql.util :as mbql.u]
@@ -177,18 +174,12 @@
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
         x-position (:position datetime)
-        xfn        (if (or (-> datetime :base_type (isa? :type/DateTime))
-                           (field/unix-timestamp? datetime))
-                     #(some-> %
-                              (nth x-position)
-                              ;; at this point in the pipeline dates are still stings
-                              f/->date
-                              (.getTime)
-                              ms->day)
-                     ;; unit=year workaround. While the field is in this case marked as :type/Text,
-                     ;; at this stage in the pipeline the value is still an int, so we can use it
-                     ;; directly.
-                     #(some-> % (nth x-position) t/date-time t.coerce/to-long ms->day))]
+        xfn        #(some-> %
+                            (nth x-position)
+                            ;; at this point in the pipeline, dates are still stings
+                            f/->date
+                            (.getTime)
+                            ms->day)]
     (apply redux/juxt
            (for [number-col numbers]
              (redux/post-complete

@@ -74,7 +74,7 @@
          (h cell)])
       (when bar-width
         [:td {:style (style/style (bar-td-style) {:width :99%})}
-         [:div {:style (style/style {:background-color style/color-purple
+         [:div {:style (style/style {:background-color (style/primary-color)
                                      :max-height       :10px
                                      :height           :10px
                                      :border-radius    :2px

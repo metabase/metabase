@@ -534,11 +534,11 @@ export const loadMetadataForCard = createThunkAction(
       const query = new Question(getMetadata(getState()), card).query();
       if (query instanceof StructuredQuery) {
         try {
-          const sourceTable = query.sourceTable();
-          if (sourceTable) {
+          const rootTable = query.rootTable();
+          if (rootTable) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(sourceTable)),
-              dispatch(Tables.actions.fetchForeignKeys(sourceTable)),
+              dispatch(Tables.actions.fetchTableMetadata(rootTable)),
+              dispatch(Tables.actions.fetchForeignKeys(rootTable)),
             ]);
           }
           await Promise.all(
@@ -761,13 +761,26 @@ export const updateQuestion = (
       dispatch(setIsShowingTemplateTagsEditor(false));
     }
 
-    if (
-      !_.isEqual(
-        oldQuestion.query().dependentTableIds(),
-        newQuestion.query().dependentTableIds(),
-      )
-    ) {
-      dispatch(loadMetadataForCard(newQuestion.card()));
+    try {
+      if (
+        !_.isEqual(
+          oldQuestion.query().dependentTableIds(),
+          newQuestion.query().dependentTableIds(),
+        )
+      ) {
+        await dispatch(loadMetadataForCard(newQuestion.card()));
+      }
+
+      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
+      const question = getQuestion(getState());
+      const questionWithDefaultQuery = question.setDefaultQuery();
+      if (!questionWithDefaultQuery.isEqual(question)) {
+        await dispatch.action(UPDATE_QUESTION, {
+          card: questionWithDefaultQuery.setDefaultDisplay().card(),
+        });
+      }
+    } catch (e) {
+      // this will fail if user doesn't have data permissions but thats ok
     }
 
     // run updated query

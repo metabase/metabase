@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
+             [db :as mdb]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -103,6 +104,7 @@
 
 
 (defmethod get-or-create-database! :default [driver dbdef]
+  (mdb/setup-db!) ; if not already setup
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)

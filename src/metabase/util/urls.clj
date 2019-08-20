@@ -34,3 +34,13 @@
      (segment-url 10) -> \"http://localhost:3000/admin/datamodel/segment/10\""
   [^Integer id]
   (format "%s/admin/datamodel/segment/%d" (public-settings/site-url) id))
+
+(defn public-card-prefix
+  "URL prefix for a public Cards. Get the complete URL by adding the UUID to the end."
+  []
+  (str (public-settings/site-url) "/public/question/"))
+
+(defn public-dashboard-prefix
+  "URL prefix for a public Dashboards. Get the complete URL by adding the UUID to the end."
+  []
+  (str (public-settings/site-url) "/public/dashboard/"))

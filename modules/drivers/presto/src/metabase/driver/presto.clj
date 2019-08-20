@@ -341,7 +341,7 @@
 (defmethod sql.qp/date [:presto :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:presto :quarter]         [_ _ expr] (hsql/call :date_trunc (hx/literal :quarter) expr))
 (defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
-(defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :year expr))
+(defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))

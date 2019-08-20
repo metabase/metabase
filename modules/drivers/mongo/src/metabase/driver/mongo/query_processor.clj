@@ -218,7 +218,7 @@
                                                    {$mod [{$add [month 2]}
                                                           3]}]}
                                        3]})
-          :year            {$year column})))))
+          :year            (stringify "%Y"))))))
 
 
 (defmethod ->rvalue :datetime-field [this]
@@ -259,7 +259,7 @@
       :month-of-year   (extract :month)
       :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (extract :year))))
+      :year            (stringify "yyyy-01-01"))))
 
 
 ;; TODO - where's the part where we handle include-current?
