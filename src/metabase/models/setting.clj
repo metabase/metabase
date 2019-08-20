@@ -110,7 +110,7 @@
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
     (doseq [changed-setting (into (set (keys d1))
-                                  (set (keys d2)))]      
+                                  (set (keys d2)))]
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
