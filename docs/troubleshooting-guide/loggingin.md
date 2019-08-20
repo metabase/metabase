@@ -17,6 +17,10 @@ Also open up your server logs, and see if there are any errors related to authen
 #### How to fix this:
 Remove the old token from the Google Auth SSO tab in the Admin Panel and create a new one. If the root cause was an invalid auth token, this should fix the problem.
 
+### Forgotten Password
+
+If you're having trouble logging in due to a forgotten password, click the `I seem to have forgotten my password` button in the lower right of the log-in screen. If your Metabase administrator has already [configured your email settings](02-setting-up-email.md), you will be able to generate a Reset Password email. If email has not been configured, you will need to contact them to perform a password reset.
+
 
 
 ## Helpful tidbits
