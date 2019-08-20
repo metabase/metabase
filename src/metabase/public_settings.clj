@@ -73,11 +73,9 @@
   (str  (deferred-tru "The default language for this Metabase instance.")
         " "
         (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :type    :string
-  :setter  (fn [new-value]
-             (setting/set-string! :site-locale new-value)
-             (set-locale new-value))
-  :default "en")
+  :type      :string
+  :on-change (fn [_ new-value] (set-locale new-value))
+  :default   "en")
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem."))

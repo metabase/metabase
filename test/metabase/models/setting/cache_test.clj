@@ -2,7 +2,9 @@
   (:require [clojure.core.memoize :as memoize]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
-            [metabase.db :as mdb]
+            [metabase
+             [db :as mdb]
+             [public-settings :as public-settings]]
             [metabase.models
              [setting :refer [Setting]]
              [setting-test :as setting-test]]
@@ -122,3 +124,28 @@
     ;; detect a cache out-of-date situation and flush the cache as appropriate, giving us the updated value when we
     ;; call! :wow:
     (setting-test/toucan-name)))
+
+;; sets site locale setting
+(expect
+  "fr"
+  (let [original-locale (java.util.Locale/getDefault)
+        new-language    (do (clear-cache!)
+                            (public-settings/site-locale "en")
+                            (simulate-another-instance-updating-setting! :site-locale "fr")
+                            (flush-memoized-results-for-should-restore-cache!)
+                            (public-settings/site-locale))]
+    (java.util.Locale/setDefault original-locale)
+    new-language))
+
+;; sets java util locale
+(expect
+  "fr"
+  (let [original-locale (java.util.Locale/getDefault)
+        new-language    (do (clear-cache!)
+                            (public-settings/site-locale "en")
+                            (simulate-another-instance-updating-setting! :site-locale "fr")
+                            (flush-memoized-results-for-should-restore-cache!)
+                            (public-settings/site-locale)
+                            (.getLanguage (java.util.Locale/getDefault)))]
+    (java.util.Locale/setDefault original-locale)
+    new-language))
