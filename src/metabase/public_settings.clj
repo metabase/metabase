@@ -74,7 +74,7 @@
         " "
         (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type      :string
-  :on-change (fn [_ new-value] (set-locale new-value))
+  :on-change (fn [_ new-value] (when new-value (set-locale new-value)))
   :default   "en")
 
 (defsetting admin-email

@@ -107,10 +107,10 @@
 (defn- call-on-change
   "Cache watcher that applies `:on-change` callback for all settings that have changed."
   [_key _ref old new]
-  (let [rs @registered-settings]
-    (doseq [changed-setting (-> (data/diff old new)
-                                (second)
-                                (keys))]
+  (let [rs      @registered-settings
+        [d1 d2] (data/diff old new)]
+    (doseq [changed-setting (into (set (keys d1))
+                                  (set (keys d2)))]      
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
