@@ -18,7 +18,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](https://downloads.metabase.com/{{site.latest_version}}/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](https://downloads.metabase.com/{{ site.latest_version }}/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
