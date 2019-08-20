@@ -2,7 +2,8 @@
   "Tests for functions in `metabase.util`."
   (:require [expectations :refer [expect]]
             [flatland.ordered.map :refer [ordered-map]]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import java.util.Locale))
 
 ;;; `host-up?` and `host-port-up?`
 
@@ -290,3 +291,14 @@
 (expect
   nil
   (u/topological-sort identity nil))
+
+;; `lower-case-en`
+(expect
+  "id"
+  (let [original-locale (Locale/getDefault)]
+    (try
+      (Locale/setDefault (Locale/forLanguageTag "tr"))
+      ;; `(str/lower-case "ID")` returns "ıd" in the Turkish locale
+      (u/lower-case-en "ID")
+      (finally
+        (Locale/setDefault original-locale)))))
