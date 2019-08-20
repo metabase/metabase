@@ -1,9 +1,5 @@
 (ns dev
-  (:require [metabase.core] 
-            [metabase.server] 
-            [metabase.db] 
-            [metabase.handler] 
-            [metabase.plugins]))
+  (:require [metabase db handler plugins server]))
 
 (defn start!
   []
