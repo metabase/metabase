@@ -1,6 +1,5 @@
 (ns dev
-  (:require [metabase db handler plugins server]
-            [metabase.core :as mbc]))
+  (:require [metabase db handler plugins server]))
 
 (defn start!
   []
