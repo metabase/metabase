@@ -3,6 +3,7 @@
   (:require [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
@@ -375,8 +376,8 @@
 
 ;; make sure using a native query with default params as a source works
 (expect
-  {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = 'Widget' LIMIT 10) \"source\" LIMIT 1048576",
-   :params nil}
+  {:query  "SELECT \"source\".* FROM (SELECT * FROM PRODUCTS WHERE CATEGORY = ? LIMIT 10) \"source\" LIMIT 1048576",
+   :params ["Widget"]}
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
@@ -593,13 +594,12 @@
 ;; out what you were referring to and behave appropriately
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
   [[10]]
-  (qp.test/format-rows-by [int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:source-query {:source-table $$venues
-                        :fields       [$id $name $category_id $latitude $longitude $price]}
-         :aggregation  [[:count]]
-         :filter       [:= $category_id 50]}))))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query venues
+      {:source-query {:source-table $$venues
+                      :fields       [$id $name $category_id $latitude $longitude $price]}
+       :aggregation  [[:count]]
+       :filter       [:= $category_id 50]})))
 
 ;; make sure that if a nested query includes joins queries based on it still work correctly (#8972)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -610,40 +610,37 @@
    [37 "bigmista's barbecue"  5 34.118  -118.26  2]
    [38 "Zeke's Smokehouse"    5 34.2053 -118.226 2]
    [39 "Baby Blues BBQ"       5 34.0003 -118.465 2]]
-  (qp.test/format-rows-by :venues
-    (qp.test/rows
-      (qp/process-query
-        (data/mbql-query venues
-          {:source-query
-           {:source-table $$venues
-            :filter       [:= $venues.category_id->categories.name "BBQ"]
-            :order-by     [[:asc $id]]}})))))
+  (qp.test/formatted-rows :venues
+    (qp/process-query
+      (data/mbql-query venues
+        {:source-query
+         {:source-table $$venues
+          :filter       [:= $venues.category_id->categories.name "BBQ"]
+          :order-by     [[:asc $id]]}}))))
 
 ;; Make sure we parse datetime strings when compared against type/DateTime field literals (#9007)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [[395]
    [980]]
-  (qp.test/format-rows-by [int]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:source-query {:source-table $$checkins
-                        :order-by     [[:asc $id]]}
-         :fields       [$id]
-         :filter       [:= *date "2014-03-30"]}))))
+  (qp.test/formatted-rows [int]
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :order-by     [[:asc $id]]}
+       :fields       [$id]
+       :filter       [:= *date "2014-03-30"]})))
 
 ;; make sure filters in source queries are applied correctly!
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   [["Fred 62"     1]
    ["Frolic Room" 1]]
-  (qp.test/format-rows-by [str int]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:source-query {:source-table $$checkins
-                        :filter       [:> $date "2015-01-01"]}
-         :aggregation  [:count]
-         :order-by     [[:asc $venue_id->venues.name]]
-         :breakout     [$venue_id->venues.name]
-         :filter       [:starts-with $venue_id->venues.name "F"]}))))
+  (qp.test/formatted-rows [str int]
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :filter       [:> $date "2015-01-01"]}
+       :aggregation  [:count]
+       :order-by     [[:asc $venue_id->venues.name]]
+       :breakout     [$venue_id->venues.name]
+       :filter       [:starts-with $venue_id->venues.name "F"]})))
 
 ;; Do nested queries work with two of the same aggregation? (#9767)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
@@ -675,15 +672,14 @@
 ;; can you use nested queries that have expressions in them?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
   [[30] [20]]
-  (qp.test/format-rows-by [int int]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:source-query
-         {:source-table $$venues
-          :fields       [[:expression "price-times-ten"]]
-          :expressions  {"price-times-ten" [:* $price 10]}
-          :order-by     [[:asc $id]]
-          :limit        2}}))))
+  (qp.test/formatted-rows [int int]
+    (data/run-mbql-query venues
+      {:source-query
+       {:source-table $$venues
+        :fields       [[:expression "price-times-ten"]]
+        :expressions  {"price-times-ten" [:* $price 10]}
+        :order-by     [[:asc $id]]
+        :limit        2}})))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys :expressions)
   [[30] [20]]
@@ -693,7 +689,21 @@
                                                        :order-by     [[:asc $id]]
                                                        :limit        2})}]
 
-    (qp.test/format-rows-by [int int]
-      (qp.test/rows
-        (data/run-mbql-query nil
-          {:source-table (str "card__" card-id)})))))
+    (qp.test/formatted-rows [int int]
+      (data/run-mbql-query nil
+        {:source-table (str "card__" card-id)}))))
+
+;; If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)
+;; (Normally, it would break things, but the new `simplify` middleware eliminates the duplicate cast. It is not
+;; currently possible to cast a DateTime field to a year in MBQL, and then cast it a second time in an another query
+;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
+;; than timestamps
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
+  [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00.000Z")]]
+  (qp.test/rows
+    (data/run-mbql-query checkins
+      {:source-query {:source-table $$checkins
+                      :fields       [!year.date]
+                      :order-by     [[:asc !year.date]]
+                      :limit        1}
+       :fields       [!year.*date]})))

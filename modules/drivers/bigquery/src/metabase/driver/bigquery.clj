@@ -287,7 +287,7 @@
 (defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
 (defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
 (defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (extract :year      expr))
+(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:bigquery :seconds] [_ _ expr]
   (hsql/call :timestamp_seconds expr))
@@ -333,7 +333,7 @@
 
 (s/defn ^:private honeysql-form->sql :- s/Str
   [honeysql-form :- su/Map]
-  (let [[sql & args] (sql.qp/honeysql-form->sql+args :bigquery honeysql-form)]
+  (let [[sql & args] (sql.qp/format-honeysql :bigquery honeysql-form)]
     (when (seq args)
       (throw (Exception. (tru "BigQuery statements can''t be parameterized!"))))
     sql))

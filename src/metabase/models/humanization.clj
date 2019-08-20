@@ -106,7 +106,7 @@
       (setting/set-string! :humanization-strategy (some-> new-value name))
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
-      (log/info (trs "Chaning Table & Field names humanization strategy from ''{0}'' to ''{1}''" old-strategy new-strategy))
+      (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''" old-strategy new-strategy))
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy

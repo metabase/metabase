@@ -87,6 +87,8 @@ const STEP_UI = {
   },
 };
 
+const CONTENT_WIDTH = [11 / 12, 8 / 12];
+
 export default class NotebookStep extends React.Component {
   state = {
     showPreview: false,
@@ -145,7 +147,7 @@ export default class NotebookStep extends React.Component {
           {(title || onRemove) && (
             <Flex
               mb={1}
-              width={[8 / 12]}
+              width={CONTENT_WIDTH}
               className="text-bold"
               style={{ color }}
             >
@@ -163,7 +165,7 @@ export default class NotebookStep extends React.Component {
 
           {NotebookStepComponent && (
             <Flex align="center">
-              <Box width={[8 / 12]}>
+              <Box width={CONTENT_WIDTH}>
                 <NotebookStepComponent
                   color={color}
                   step={step}
@@ -174,8 +176,10 @@ export default class NotebookStep extends React.Component {
               </Box>
               <Box width={[1 / 12]}>
                 <ActionButton
-                  ml={2}
-                  className={!showPreviewButton ? "hidden disabled" : null}
+                  ml={[1, 2]}
+                  className={
+                    !showPreviewButton ? "hidden disabled" : "text-brand-hover"
+                  }
                   icon="play"
                   title={t`Preview`}
                   color={colors["text-light"]}

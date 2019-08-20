@@ -379,7 +379,7 @@
       :else                         identity)))
 
 (defn execute-query
-  "Execute a QUERY using the provided DO-QUERY function, and return the results in the usual format."
+  "Execute a `query` using the provided `do-query` function, and return the results in the usual format."
   [do-query query]
   (let [^GaData response (do-query query)
         columns          (map header->column (.getColumnHeaders response))

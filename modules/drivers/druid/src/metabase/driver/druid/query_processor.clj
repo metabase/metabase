@@ -761,7 +761,7 @@
                                  "  var date = new Date(timestamp);"
                                  "  return Math.floor((date.getMonth() + 3) / 3);"
                                  "}")
-    :year            (extract:timeFormat "yyyy")))
+    :year            (extract:timeFormat "yyyy-01-01")))
 
 (defn- unit->granularity
   [unit]
@@ -795,8 +795,7 @@
     :day-of-year
     :week-of-year
     :month-of-year
-    :quarter-of-year
-    :year})
+    :quarter-of-year})
 
 (defmethod ->dimension-rvalue nil
   [_]

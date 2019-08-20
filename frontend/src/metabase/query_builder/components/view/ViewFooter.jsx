@@ -17,6 +17,9 @@ import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
+import { QuestionFilterWidget } from "./QuestionFilters";
+import { QuestionSummarizeWidget } from "./QuestionSummaries";
+
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionLastUpdated from "./QuestionLastUpdated";
 
@@ -45,6 +48,14 @@ const ViewFooter = ({
   isPreviewing,
   isResultDirty,
   isVisualized,
+  queryBuilderMode,
+
+  isShowingFilterSidebar,
+  onAddFilter,
+  onCloseFilter,
+  isShowingSummarySidebar,
+  onEditSummary,
+  onCloseSummary,
 }) => {
   if (!result || isObjectDetail) {
     return null;
@@ -55,6 +66,29 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
+          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
+            <QuestionFilterWidget
+              className="sm-hide"
+              mr={1}
+              p={2}
+              isShowingFilterSidebar={isShowingFilterSidebar}
+              onAddFilter={onAddFilter}
+              onCloseFilter={onCloseFilter}
+            />
+          ),
+          QuestionSummarizeWidget.shouldRender({
+            question,
+            queryBuilderMode,
+          }) && (
+            <QuestionSummarizeWidget
+              className="sm-hide"
+              mr={1}
+              p={2}
+              isShowingSummarySidebar={isShowingSummarySidebar}
+              onEditSummary={onEditSummary}
+              onCloseSummary={onCloseSummary}
+            />
+          ),
           <VizTypeButton
             key="viz-type"
             question={question}
@@ -67,6 +101,7 @@ const ViewFooter = ({
           <VizSettingsButton
             key="viz-settings"
             ml={1}
+            mr={[3, 0]}
             active={isShowingChartSettingsSidebar}
             onClick={
               isShowingChartSettingsSidebar
@@ -79,6 +114,7 @@ const ViewFooter = ({
           isVisualized && (
             <VizTableToggle
               key="viz-table-toggle"
+              className="mx1"
               question={question}
               isShowingRawTable={isShowingRawTable}
               onShowTable={isShowingRawTable => {
@@ -150,14 +186,14 @@ const VizTypeButton = ({ question, result, ...props }) => {
   const icon = visualization && visualization.iconName;
 
   return (
-    <ViewButton medium icon={icon} {...props}>
+    <ViewButton medium p={[2, 1]} icon={icon} labelBreakpoint="sm" {...props}>
       {t`Visualization`}
     </ViewButton>
   );
 };
 
 const VizSettingsButton = ({ ...props }) => (
-  <ViewButton medium icon="gear" {...props}>
+  <ViewButton medium p={[2, 1]} icon="gear" labelBreakpoint="sm" {...props}>
     {t`Settings`}
   </ViewButton>
 );
@@ -190,10 +226,15 @@ ToggleIcon.defaultProps = {
   px: "8px",
 };
 
-const VizTableToggle = ({ question, isShowingRawTable, onShowTable }) => {
+const VizTableToggle = ({
+  className,
+  question,
+  isShowingRawTable,
+  onShowTable,
+}) => {
   const vizIcon = getIconForVisualizationType(question.display());
   return (
-    <Well onClick={() => onShowTable(!isShowingRawTable)}>
+    <Well className={className} onClick={() => onShowTable(!isShowingRawTable)}>
       <ToggleIcon active={isShowingRawTable}>
         <Icon name="table2" />
       </ToggleIcon>

@@ -33,10 +33,11 @@
 
 (def db-file
   "Path to our H2 DB file from env var or app config."
-  ;; see http://h2database.com/html/features.html for explanation of options
+  ;; see https://h2database.com/html/features.html for explanation of options
   (delay
    (if (config/config-bool :mb-db-in-memory)
      ;; In-memory (i.e. test) DB
+     ;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
      "mem:metabase;DB_CLOSE_DELAY=-1"
      ;; File-based DB
      (let [db-file-name (config/config-str :mb-db-file)

@@ -62,4 +62,18 @@ export default class Database extends Base {
   newQuestion(): Question {
     return Question.create({ databaseId: this.id, metadata: this.metadata });
   }
+
+  /** Returns a database containing only the saved questions from the same database, if any */
+  savedQuestionsDatabase(): ?Database {
+    const database = this.metadata
+      .databasesList()
+      .find(db => db.is_saved_questions);
+    if (database) {
+      const tables = database.tables.filter(t => t.db_id === this.id);
+      if (tables.length > 0) {
+        return new Database({ ...database, tables });
+      }
+    }
+    return null;
+  }
 }

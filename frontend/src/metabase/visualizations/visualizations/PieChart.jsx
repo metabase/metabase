@@ -30,6 +30,8 @@ import cx from "classnames";
 import d3 from "d3";
 import _ from "underscore";
 
+const MAX_PIE_SIZE = 550;
+
 const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
@@ -411,8 +413,12 @@ export default class PieChart extends Component {
             </div>
             <div className={styles.Title}>{title}</div>
           </div>
-          <div className={styles.Chart}>
-            <svg className={styles.Donut + " m1"} viewBox="0 0 100 100">
+          <div className={cx(styles.Chart, "layout-centered")}>
+            <svg
+              className={cx(styles.Donut, "m1")}
+              viewBox="0 0 100 100"
+              style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
+            >
               <g ref="group" transform={`translate(50,50)`}>
                 {pie(slices).map((slice, index) => (
                   <path

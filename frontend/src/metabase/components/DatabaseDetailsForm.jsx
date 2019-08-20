@@ -317,7 +317,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="px2">
               <h3>{t`Automatically run queries when doing simple filtering and summarizing`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`When this is on Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`}
+                {t`When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries.`}
               </div>
             </div>
           </div>

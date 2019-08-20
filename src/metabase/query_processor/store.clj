@@ -234,3 +234,52 @@
   [field-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:fields field-id])
       (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))
+
+
+;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------
+
+(s/defn store-miscellaneous-value!
+  "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
+  calls."
+  [ks v]
+  (swap! *store* assoc-in (cons :misc ks) v))
+
+(s/defn miscellaneous-value
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  ([ks]
+   (miscellaneous-value ks nil))
+
+  ([ks not-found]
+   (get-in @*store* (cons :misc ks) not-found)))
+
+(defn cached-fn
+  "Attempt to fetch a miscellaneous value from the cache using key sequence `ks`; if not found, runs `thunk` to get the
+  value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
+  during the duration of a QP execution.
+
+  See also `cached` macro."
+  {:style/indent 1}
+  [ks thunk]
+  (let [cached-value (miscellaneous-value ks ::not-found)]
+    (if-not (= cached-value ::not-found)
+      cached-value
+      (let [v (thunk)]
+        (store-miscellaneous-value! ks v)
+        v))))
+
+(defmacro cached
+  "Cache the value of `body` for key(s) for the duration of this QP execution. (Body is only evaluated the once per QP
+  run; subsequent calls return the cached result.)
+
+  Note that each use of `cached` generates its own unique first key for cache keyseq; thus while it is not possible to
+  share values between multiple `cached` forms, you do not need to worry about conflicts with other places using this
+  macro.
+
+    ;; cache lookups of Card.dataset_query
+    (qp.store/cached card-id
+      (db/select-one-field :dataset_query Card :id card-id))"
+  {:style/indent 1}
+  [k-or-ks & body]
+  ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
+  (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
+    `(cached-fn ~ks (fn [] ~@body))))

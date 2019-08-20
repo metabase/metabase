@@ -29,6 +29,7 @@ const BaseButton = ({
   iconSize,
   iconColor,
   iconVertical,
+  labelBreakpoint,
   color,
   children,
   ...props
@@ -36,8 +37,6 @@ const BaseButton = ({
   const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
-
-  const onlyIcon = !children;
 
   return (
     <button
@@ -49,20 +48,24 @@ const BaseButton = ({
         style={iconVertical ? { minWidth: 60 } : null}
       >
         {icon && (
-          <Icon
-            color={iconColor}
-            name={icon}
-            size={iconSize ? iconSize : 14}
-            className={!onlyIcon ? (iconVertical ? "mb1" : "mr1") : null}
-          />
+          <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}
-        <div>{children}</div>
+        {children && (
+          <div
+            className={cx({
+              [iconVertical ? "mt1" : "ml1"]: icon,
+              [iconVertical ? "mb1" : "mr1"]: iconRight,
+              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
+            })}
+          >
+            {children}
+          </div>
+        )}
         {iconRight && (
           <Icon
             color={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 14}
-            className={!onlyIcon ? (iconVertical ? "mt1" : "ml1") : null}
           />
         )}
       </div>

@@ -23,9 +23,9 @@
             [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
-             [pretty :as pretty]
              [schema :as su]]
             [potemkin.types :as p.types]
+            [pretty.core :as pretty]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword))
@@ -530,7 +530,7 @@
        tabledef))
    table-definitions))
 
-(s/defn ^:private fielddefs-for-table-with-name :- ValidFieldDefinition
+(s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
   [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))

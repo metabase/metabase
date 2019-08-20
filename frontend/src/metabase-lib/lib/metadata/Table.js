@@ -39,26 +39,13 @@ export default class Table extends Base {
   }
 
   newQuestion(): Question {
-    let question = Question.create({
-      databaseId: this.db_id,
+    return Question.create({
+      databaseId: this.db.id,
       tableId: this.id,
       metadata: this.metadata,
-    });
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (this.entity_type === "entity/GoogleAnalyticsTable") {
-      const dateField = _.findWhere(this.fields, { name: "ga:date" });
-      if (dateField) {
-        question = question
-          .query()
-          .addFilter(["time-interval", ["field-id", dateField.id], -365, "day"])
-          .addAggregation(["metric", "ga:users"])
-          .addAggregation(["metric", "ga:pageviews"])
-          .addBreakout(["datetime-field", ["field-id", dateField.id], "week"])
-          .question()
-          .setDisplay("line");
-      }
-    }
-    return question;
+    })
+      .setDefaultQuery()
+      .setDefaultDisplay();
   }
 
   dimensions(): Dimension[] {

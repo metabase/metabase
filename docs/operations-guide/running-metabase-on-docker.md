@@ -23,7 +23,10 @@ In its default configuration Metabase uses the local filesystem to run an H2 emb
 
 To persist your data outside of the container and make it available for use between container launches we can mount a local file path inside our container.
 
-    docker run -d -p 3000:3000 -v ~/metabase-data:/metabase-data -e "MB_DB_FILE=/metabase-data/metabase.db" --name metabase metabase/metabase
+    docker run -d -p 3000:3000 \
+    -v ~/metabase-data:/metabase-data \
+    -e "MB_DB_FILE=/metabase-data/metabase.db" \
+    --name metabase metabase/metabase
 
 Now when you launch your container we are telling Metabase to use the database file at `~/metabase-data/metabase.db` instead of its default location and we are mounting that folder from our local filesystem into the container.
 
@@ -142,3 +145,13 @@ On some hosts Metabase can fail to start with an error message like:
 
 If that happens, you'll need to set a JVM option to manually configure the maximum amount of memory the JVM uses for the heap. Refer
 to [these instructions](../troubleshooting-guide/running.md) for details on how to do that.
+
+### Adding external dependencies or plugins
+
+To add external dependency JAR files such as the Oracle or Vertica JDBC drivers or 3rd-party Metabase drivers, you will need to create a `plugins` directory in your host system and bind it so it is available to Metabase as the path `/plugins` using either `--mount` or `-v`/`--volume`. For example, if you have a directory named `/path/to/plugins` on your host system, you can make its contents available to Metabase using the `--mount` option as follows:
+
+      docker run -d -p 3000:3000 \
+      --mount type=bind,source=/path/to/plugins,destination=/plugins \
+      --name metabase metabase/metabase
+
+Note that Metabase will use this directory to extract plugins bundled with the default Metabase distribution (such as drivers for various databases such as SQLite), thus it must be readable and writable by Docker.
