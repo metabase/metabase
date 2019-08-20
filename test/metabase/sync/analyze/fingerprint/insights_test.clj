@@ -118,7 +118,8 @@
                    ["2018-12-02",1796,3311]
                    ["2018-12-03",1444,2525]])
 
-(expect
+;; disabled for now
+#_(expect
   [{:last-value     1444,
     :previous-value 1796,
     :last-change    -0.19599109131403117,
