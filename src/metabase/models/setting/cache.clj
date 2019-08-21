@@ -116,6 +116,7 @@
 (def ^:private restore-cache-if-needed-lock (Object.))
 
 (defn restore-cache!
+  "Populate cache with the latest hotness from the db"
   []
   (log/debug (trs "Refreshing Settings cache..."))
   (reset! cache* (db/select-field->field :key :value 'Setting)))
