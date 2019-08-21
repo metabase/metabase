@@ -110,14 +110,8 @@
 }
 
 .Form-field:hover .Form-input {
-  color: var(--color-text-light);
-  background: color(var(--color-bg-black) alpha(-98%));
-}
-
-/* ewww */
-.Form-field:hover .Form-input.ng-dirty {
-  color: var(--color-text-dark);
-  background-color: var(--color-bg-white);
+  border-color: var(--color-brand);
+  transition: border 300ms linear;
 }
 
 .Form-field:hover .Form-charm {
