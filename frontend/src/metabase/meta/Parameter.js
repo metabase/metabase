@@ -67,7 +67,11 @@ export function getParameterTargetFieldId(
 ): ?FieldId {
   if (target && target[0] === "dimension") {
     const dimension = target[1];
-    if (Array.isArray(dimension) && dimension[0] === "template-tag") {
+    if (
+      Array.isArray(dimension) &&
+      dimension[0] === "template-tag" &&
+      datasetQuery !== undefined
+    ) {
       if (datasetQuery.type === "native") {
         const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
