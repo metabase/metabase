@@ -93,6 +93,9 @@
     ;; notify that we've got a new user in the system AND that this user logged in
     (events/publish-event! :user-create {:user_id (u/get-id new-user)})
     (events/publish-event! :user-login {:user_id (u/get-id new-user), :session_id (str session-id), :first_login true})
+    ;; set `source-address-header` to "X-Forwarded-For" if such a header is present
+    (when (get-in request [:headers "x-forwarded-for"])
+      (public-settings/source-address-header "X-Forwarded-For"))
     (mw.session/set-session-cookie request {:id (str session-id)} session-id)))
 
 

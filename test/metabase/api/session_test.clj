@@ -1,9 +1,11 @@
 (ns metabase.api.session-test
   "Tests for /api/session"
-  (:require [expectations :refer [expect]]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
-             [http-client :refer [client]]
+             [http-client :as http-client :refer [client]]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.session :as session-api]
@@ -46,8 +48,8 @@
 ;; Test that people get blocked from attempting to login if they try too many times (Check that throttling works at
 ;; the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
 (expect
-    [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
-     {:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}]
+  [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
+   {:errors {:username "Too many attempts! You must wait 42 seconds before trying again."}}]
   (let [login #(client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})]
     ;; attempt to log in 10 times
     (dorun (repeatedly 10 login))
@@ -55,6 +57,69 @@
     [(login)
      ;; Trying to login immediately again should still return throttling error
      (login)]))
+
+(defn- send-login-request [username & [{:or {} :as headers}]]
+  (try
+    (http/post (http-client/build-url "session" {})
+               {:form-params {"username" username,
+                              "password" "incorrect-password"}
+                :content-type :json
+                :headers headers})
+    (catch clojure.lang.ExceptionInfo e
+      (:object (ex-data e)))))
+
+(defn- cleaned-throttlers [var-symbol ks]
+  (let [throttlers (var-get var-symbol)
+        clean-key  (fn [m k] (assoc-in m [k :attempts] (atom '())))]
+    (reduce clean-key throttlers ks)))
+
+;; Test that source based throttling kicks in after the login failure threshold (50) has been reached
+(expect
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 42 seconds before trying again."]
+  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                          [:username :ip-address])
+                public-settings/source-address-header (constantly "x-forwarded-for")]
+    (do
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get-in ["errors" "username"]))
+       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get-in ["errors" "username"]))])))
+
+;; The same as above, but ensure that throttling is done on a per request source basis.
+(expect
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 42 seconds before trying again."]
+  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                          [:username :ip-address])
+                public-settings/source-address-header (constantly "x-forwarded-for")]
+    (do
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "user-%d" n)
+                                              {"x-forwarded-for" "10.1.2.3"})
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      (dotimes [n 50]
+        (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
+              status-code (:status response)]
+          (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
+      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get-in ["errors" "username"]))
+       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+            :body
+            json/parse-string
+            (get-in ["errors" "username"]))])))
 
 
 ;; ## DELETE /api/session
@@ -96,6 +161,25 @@
 ;; Test that email not found also gives 200 as to not leak existence of user
 (expect nil
   (client :post 200 "session/forgot_password" {:email "not-found@metabase.com"}))
+
+;; Test that email based throttling kicks in after the login failure threshold (10) has been reached
+(defn- send-password-reset [& [expected-status & more]]
+  (client :post (or expected-status 200) "session/forgot_password" {:email "not-found@metabase.com"}))
+
+(expect
+  ["Too many attempts! You must wait 15 seconds before trying again."
+   "Too many attempts! You must wait 15 seconds before trying again."] ; `throttling/check` gives 15 in stead of 42
+  (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
+                                                                           [:email :ip-address])]
+    (do
+      (dotimes [n 10]
+        (send-password-reset))
+      [(-> (send-password-reset 400)
+           :errors
+           :email)
+       (-> (send-password-reset 400)
+           :errors
+           :email)])))
 
 
 ;; POST /api/session/reset_password
