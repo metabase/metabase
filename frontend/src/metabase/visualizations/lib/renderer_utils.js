@@ -94,6 +94,71 @@ export function reduceGroup(group, key, warnUnaggregated) {
   );
 }
 
+const parseXValue = _.memoize(
+  (xValue, { isNumeric, isTimeseries, isQuantitative, unit }, warn) =>
+    // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
+    isTimeseries && !isQuantitative
+      ? HACK_parseTimestamp(xValue, unit, warn)
+      : isNumeric
+      ? xValue
+      : String(xValue),
+  // create cache key:
+  (x, options) => [x, options],
+);
+
+function getParseOptions({ settings, data }) {
+  return {
+    isNumeric: dimensionIsNumeric(data),
+    isTimeseries: dimensionIsTimeseries(data),
+    isQuantitative: isQuantitative(settings),
+    unit: data.cols[0].unit,
+  };
+}
+
+export function getDatas({ settings, series }, warn) {
+  return series.map(({ data }) => {
+    const parseOptions = getParseOptions({ settings, data });
+    return data.rows.map(row => {
+      const [x, ...rest] = row;
+      const newRow = [parseXValue(x, parseOptions, warn), ...rest];
+      newRow._origin = row._origin;
+      return newRow;
+    });
+  });
+}
+
+export function getXValues({ settings, series }) {
+  // if _.raw isn't set then we already have the raw series
+  const { _raw: rawSeries = series } = series;
+  const warn = () => {}; // no op since warning in handled by getDatas
+  const uniqueValues = new Set();
+  let isAscending = true;
+  let isDescending = true;
+  for (const { data } of rawSeries) {
+    const parseOptions = getParseOptions({ settings, data });
+    let lastValue;
+    for (const [x] of data.rows) {
+      const value = parseXValue(x, parseOptions, warn);
+      if (lastValue !== undefined) {
+        isAscending = isAscending && lastValue <= value;
+        isDescending = isDescending && value <= lastValue;
+      }
+      lastValue = value;
+      uniqueValues.add(value);
+    }
+  }
+  let xValues = Array.from(uniqueValues);
+  if (isDescending) {
+    // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
+    // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
+    xValues = _.sortBy(xValues, x => x).reverse();
+  } else if (isAscending) {
+    // default line/area charts to ascending since otherwise lines could be wonky
+    xValues = _.sortBy(xValues, x => x);
+  }
+  return xValues;
+}
+
 // Crossfilter calls toString on each moment object, which calls format(), which is very slow.
 // Replace toString with a function that just returns the unparsed ISO input date, since that works
 // just as well and is much faster
@@ -143,8 +208,6 @@ export const getFirstNonEmptySeries = series =>
   _.find(series, s => !datasetContainsNoResults(s.data));
 export const isDimensionTimeseries = series =>
   dimensionIsTimeseries(getFirstNonEmptySeries(series).data);
-export const isDimensionNumeric = series =>
-  dimensionIsNumeric(getFirstNonEmptySeries(series).data);
 
 function hasRemappingAndValuesAreStrings({ cols }, i = 0) {
   const column = cols[i];
