@@ -476,7 +476,9 @@ export default class DatabaseDetailsForm extends Component {
       const [unusedFieldKey] = Object.keys(errors).filter(
         name => !fieldNames.has(name),
       );
-      formError.data.message = message || errors[unusedFieldKey];
+      if (unusedFieldKey && !message) {
+        formError.data.message = errors[unusedFieldKey];
+      }
     }
 
     return (
