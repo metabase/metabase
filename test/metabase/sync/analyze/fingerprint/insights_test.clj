@@ -84,6 +84,9 @@
 
 ;; Make sure we don't return nosense results like infinitiy coeficients
 ;; Fixes https://github.com/metabase/metabase/issues/9070
+
+;; Keep the size of this dataset below `i/validation-set-size` else result might depend on which
+;; data points are included in the sample, producing intermittent test failures
 (def ^:private ts [["2018-11-01",296,10875]
                    ["2018-11-02",257,11762]
                    ["2018-11-03",276,13101]
