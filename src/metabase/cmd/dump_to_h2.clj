@@ -120,7 +120,7 @@
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
-  statement, and a sequence of rows (as seqeunces)."
+  statement, and a sequence of rows (as sequences)."
   [objs]
   ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names
   ;;    of these before putting into the new DB
@@ -149,7 +149,7 @@
       (throw e))))
 
 (defn- insert-entity! [target-db-conn {table-name :table, entity-name :name} objs]
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) entity-name))
+  (print (u/format-color 'blue "Transferring %d instances of %s..." (count objs) entity-name))
   (flush)
   ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into
   ;; smaller chunks so connection stays alive
@@ -157,41 +157,46 @@
     (insert-chunk! target-db-conn table-name chunk))
   (println-ok))
 
-(defn- load-data! [target-db-conn ]
-  (jdbc/with-db-connection [db-conn (mdb/jdbc-details)]
-    (doseq [{table-name :table, :as e} entities
-            :let                       [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
-            :when                      (seq rows)]
-      (insert-entity! target-db-conn e rows))))
+(defn- load-data! [target-db-conn app-db-connection-string-or-nil]
+  (let [conn-map (mdb/parse-connection-string app-db-connection-string-or-nil)]
+    (println "Conn of source: " conn-map app-db-connection-string-or-nil)
+    (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
+                             (doseq [{table-name :table, :as e} entities
+                                     :let                       [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+                                     :when                      (seq rows)]
+                               (insert-entity! target-db-conn e rows)))))
 
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
 (defn dump-to-h2!
-  "Transfer data from existing database specified by env vars to the H2 DB string.
-  Intended as a tool for migrating from one instance to another using H2
-  as serialization target.
+  "Transfer data from existing database specified by connection string
+  to the H2 DB specified by env vars.  Intended as a tool for migrating
+  from one instance to another using H2 as serialization target.
 
   Defaults to using `@metabase.db/db-file` as the connection string."
-  [h2-connection-string-or-nil]
+  [app-db-connection-string-or-nil]
   (mdb/setup-db!)
 
-  (assert (#{:h2 :postgres :mysql} (mdb/db-type))
+  (assert (#{:h2} (mdb/db-type))
     (trs "Metabase can only transfer data from DB to H2 for migration."))
 
   (when (= :h2 (mdb/db-type))
     ;;TODO
     (trs "Don't need to migrate, just copy the H2 file"))
 
-  (jdbc/with-db-transaction [target-db-conn (h2-details h2-connection-string-or-nil)]
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+                            (println "Conn of target: " target-db-conn)
 
     (println-ok)
 
     (println (u/format-color 'blue "Loading data..."))
 
-    (load-data! target-db-conn)
+    (load-data! target-db-conn app-db-connection-string-or-nil)
 
     (println-ok)
 
     (jdbc/db-unset-rollback-only! target-db-conn))
   )
+
+;(dump-to-h2! "")

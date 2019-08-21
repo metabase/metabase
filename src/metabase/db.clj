@@ -54,7 +54,7 @@
 (def ^:private jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
 
-(defn- parse-connection-string
+(defn parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
   return a broken-out map."

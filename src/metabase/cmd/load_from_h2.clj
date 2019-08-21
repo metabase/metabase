@@ -120,7 +120,7 @@
 
 (defn- objects->colums+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
-  statement, and a sequence of rows (as seqeunces)."
+  statement, and a sequence of rows (as sequences)."
   [objs]
   ;; 1) `:sizeX` and `:sizeY` come out of H2 as `:sizex` and `:sizey` because of automatic lowercasing; fix the names
   ;;    of these before putting into the new DB
@@ -149,7 +149,7 @@
       (throw e))))
 
 (defn- insert-entity! [target-db-conn {table-name :table, entity-name :name} objs]
-  (print (u/format-color 'blue "Transfering %d instances of %s..." (count objs) entity-name))
+  (print (u/format-color 'blue "Transferring %d instances of %s..." (count objs) entity-name))
   (flush)
   ;; The connection closes prematurely on occasion when we're inserting thousands of rows at once. Break into
   ;; smaller chunks so connection stays alive

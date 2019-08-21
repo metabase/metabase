@@ -42,7 +42,7 @@
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command dump-to-h2
-  "Transfer data from existing database to the newly created H2 DB specified by env vars."
+  "Transfer data from existing database specified by env vars to the newly created H2 DB."
   ([]
    (dump-to-h2 nil))
   ([db-connection-string]
