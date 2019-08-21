@@ -182,19 +182,24 @@
            (filter :card)
            count))))
 
+;; Do nothing -- size below cutoff
 (expect
   13
   (resulting-number-of-cards "table/%s" [(data/id :checkins)]))
 
+;; Limit results
 (expect
   1
   (with-redefs [adaptive-size/max-cards 1]
     (resulting-number-of-cards "table/%s" [(data/id :checkins)])))
 
+;; show=all overwrides
 (expect
   13
-  (resulting-number-of-cards "table/%s?show=all" [(data/id :checkins)]))
+  (with-redefs [adaptive-size/max-cards 1]
+    (resulting-number-of-cards "table/%s?show=all" [(data/id :checkins)])))
 
+;; Explicitly just show a summary
 (expect
   4
   (resulting-number-of-cards "table/%s?show=summary" [(data/id :checkins)]))
