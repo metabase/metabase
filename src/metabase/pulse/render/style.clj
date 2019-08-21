@@ -12,7 +12,7 @@
   [& style-maps]
   (str/join " " (for [[k v] (into {} style-maps)
                       :let  [v (if (keyword? v) (name v) v)]
-                      :when (not= (str v) "")]
+                      :when (seq v)]
                   (str (name k) ": " v ";"))))
 
 (def ^:const color-brand
