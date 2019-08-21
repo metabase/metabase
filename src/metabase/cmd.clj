@@ -28,6 +28,10 @@
   [direction]
   (mdb/migrate! (keyword direction)))
 
+
+
+
+
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
   ([]
@@ -36,6 +40,18 @@
    (classloader/require 'metabase.cmd.load-from-h2)
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
+
+(defn ^:command dump-to-h2
+  "Transfer data from existing database to the newly created H2 DB specified by env vars."
+  ([]
+   (dump-to-h2 nil))
+  ([db-connection-string]
+   (classloader/require 'metabase.cmd.dump-to-h2)
+   (binding [mdb/*disable-data-migrations* true]
+     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string))))
+
+
+
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
