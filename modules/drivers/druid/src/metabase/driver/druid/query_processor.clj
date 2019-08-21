@@ -514,13 +514,23 @@
 
 (defn- ag:distinct
   [field output-name]
-  (if (isa? (:base-type field) :type/DruidHyperUnique)
+  (cond
+    (mbql.u/is-clause? #{:+} field)
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames (mapv ->rvalue (rest field))
+     :byRow      true
+     :round      true}
+    (isa? (:base-type field) :type/DruidHyperUnique)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
+    :else
     {:type       :cardinality
      :name       output-name
-     :fieldNames [(->rvalue field)]}))
+     :fieldNames [(->rvalue field)]
+     :byRow      true
+     :round      true}))
 
 (defn- ag:count
   ([output-name]
