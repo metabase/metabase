@@ -11,21 +11,23 @@ import DefaultMode from "../components/modes/DefaultMode";
 
 import type { QueryMode } from "metabase/meta/types/Visualization";
 
+import type Question from "metabase-lib/lib/Question";
+
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+
 export function getMode(question: ?Question): ?QueryMode {
   if (!question) {
     return null;
   }
 
-  if (question.isNative()) {
+  const query = question.query();
+
+  if (query instanceof NativeQuery) {
     return NativeMode;
   }
 
-  if (question.isStructured()) {
-    const query = question.query();
-    if (!query) {
-      return null;
-    }
-
+  if (query instanceof StructuredQuery) {
     const aggregations = query.aggregations();
     const breakouts = query.breakouts();
     const filters = query.filters();
