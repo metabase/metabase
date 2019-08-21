@@ -161,10 +161,10 @@
   (let [conn-map (mdb/parse-connection-string app-db-connection-string-or-nil)]
     (println "Conn of source: " conn-map app-db-connection-string-or-nil)
     (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
-                             (doseq [{table-name :table, :as e} entities
-                                     :let                       [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
-                                     :when                      (seq rows)]
-                               (insert-entity! target-db-conn e rows)))))
+      (doseq [{table-name :table, :as e} entities
+              :let                       [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+              :when                      (seq rows)]
+        (insert-entity! target-db-conn e rows)))))
 
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
@@ -175,17 +175,24 @@
   from one instance to another using H2 as serialization target.
 
   Defaults to using `@metabase.db/db-file` as the connection string."
-  [app-db-connection-string-or-nil]
+  [app-db-connection-string-or-nil
+   h2-connection-string-or-nil]
   (mdb/setup-db!)
 
   (assert (#{:h2} (mdb/db-type))
     (trs "Metabase can only transfer data from DB to H2 for migration."))
 
+  (assert app-db-connection-string-or-nil
+          (trs "Metaase can only dump to H2 if it has the source db connection string."))
+
   (when (= :h2 (mdb/db-type))
     ;;TODO
     (trs "Don't need to migrate, just copy the H2 file"))
 
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (if h2-connection-string-or-nil
+                                              (mdb/jdbc-details
+                                                (mdb/parse-connection-string h2-connection-string-or-nil))
+                                              (mdb/jdbc-details))]
                             (println "Conn of target: " target-db-conn)
 
     (println-ok)

@@ -11,6 +11,7 @@
              [dashboard :as dashboard]
              [database :as database]
              [dataset :as dataset]
+             [dump :as dump]
              [email :as email]
              [embed :as embed]
              [field :as field]
@@ -67,6 +68,7 @@
   (context "/dashboard"            [] (+auth dashboard/routes))
   (context "/database"             [] (+auth database/routes))
   (context "/dataset"              [] (+auth dataset/routes))
+  (context "/dump"                 [] (+auth dump/routes))
   (context "/email"                [] (+auth email/routes))
   (context "/embed"                [] (+message-only-exceptions embed/routes))
   (context "/field"                [] (+auth field/routes))

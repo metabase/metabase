@@ -44,11 +44,13 @@
 (defn ^:command dump-to-h2
   "Transfer data from existing database specified by env vars to the newly created H2 DB."
   ([]
-   (dump-to-h2 nil))
+   (dump-to-h2 nil nil))
   ([db-connection-string]
+   (dump-to-h2 db-connection-string nil))
+  ([db-connection-string h2-connection-string]
    (classloader/require 'metabase.cmd.dump-to-h2)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string))))
+     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string h2-connection-string))))
 
 
 
