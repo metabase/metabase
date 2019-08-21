@@ -50,9 +50,16 @@ export default class Breakout extends MBQLClause {
   }
 
   /**
-   * Returns the breakout's dimension
+   * Returns the breakout's Dimension
    */
   dimension(): Dimension {
     return this._query.parseFieldReference(this);
+  }
+
+  /**
+   * Returns the breakout's Field
+   */
+  field(): Field {
+    return this.dimension().field();
   }
 }
