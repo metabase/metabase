@@ -436,7 +436,7 @@ export default class DatabaseDetailsForm extends Component {
     let {
       engine,
       engines,
-      formError = {},
+      formError,
       formSuccess,
       hiddenFields,
       submitButtonText,
@@ -468,7 +468,7 @@ export default class DatabaseDetailsForm extends Component {
 
     hiddenFields = hiddenFields || {};
 
-    if (formError.data) {
+    if (formError && formError.data) {
       // If we have a field error but no matching field, use that field error as
       // a fallback for formError.data.message
       const { message, errors = {} } = formError.data;
