@@ -314,6 +314,17 @@
    :param nil}
   (into {} (#'sql/value-for-tag {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (data/id :checkins :date)]}
                                 nil)))
+;; dimension -- id requiring casting
+(expect
+  {:field {:name      "ID"
+           :parent_id nil
+           :table_id  (data/id :checkins)
+           :base_type :type/BigInteger}
+   :param {:type   :id
+           :target [:dimension [:template-tag "id"]]
+           :value  5}}
+  (into {} (#'sql/value-for-tag {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (data/id :checkins :id)]}
+                                [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))
 
 ;; dimension -- required but unspecified
 (expect Exception
