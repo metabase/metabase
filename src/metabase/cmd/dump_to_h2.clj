@@ -2,6 +2,8 @@
   "Commands for loading data from an H2 file into another database.
    Run this with `lein run load-from-h2` or `java -jar metabase.jar load-from-h2`.
 
+;;TODO make this be the doc for this command
+
    Test this as follows:
 
    ```
@@ -167,6 +169,12 @@
         (insert-entity! target-db-conn e rows)))))
 
 
+(defn- get-target-db-conn [h2-filename-or-nil]
+  (if h2-filename-or-nil
+    (mdb/jdbc-details
+      {:type :h2, :db (str h2-filename-or-nil ";IFEXISTS=TRUE")})
+    (mdb/jdbc-details)))
+
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
 (defn dump-to-h2!
@@ -176,11 +184,17 @@
 
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
-   h2-connection-string-or-nil]
-  (mdb/setup-db!)
+   h2-filename-or-nil]
+  (mdb/setup-db!*   (get-target-db-conn h2-filename-or-nil)
+                    true)
 
-  (assert (#{:h2} (mdb/db-type))
-    (trs "Metabase can only transfer data from DB to H2 for migration."))
+  (let [db-type (if h2-filename-or-nil
+                  :h2
+                  (mdb/db-type))]
+    (println "Set up db: " db-type)
+
+    (assert (#{:h2} db-type)
+            (trs "Metabase can only transfer data from DB to H2 for migration.")))
 
   (assert app-db-connection-string-or-nil
           (trs "Metaase can only dump to H2 if it has the source db connection string."))
@@ -189,10 +203,7 @@
     ;;TODO
     (trs "Don't need to migrate, just copy the H2 file"))
 
-  (jdbc/with-db-transaction [target-db-conn (if h2-connection-string-or-nil
-                                              (mdb/jdbc-details
-                                                (mdb/parse-connection-string h2-connection-string-or-nil))
-                                              (mdb/jdbc-details))]
+  (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
                             (println "Conn of target: " target-db-conn)
 
     (println-ok)

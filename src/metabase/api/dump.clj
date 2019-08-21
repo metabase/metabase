@@ -60,21 +60,19 @@
         (a/close! in-chan))))
   nil)
 
+;; curl -i -X POST -H "Content-Type: application/json" -d '{"db-conn-str": "test1", "h2-conn-str": "test2"}'  -H "X-Metabase-Session: 273cdf75-3e9a-42e7-a7fd-57421d69ec76" "localhost:3000/api/dump/to-h2"
 (api/defendpoint-async
-  POST ["/to-h2",  ]
+  POST ["/to-h2" ]
   "Execute a query and download the result data as a file in the specified format."
-  [:as {{:keys [db-conn-str h2-conn-str], :as body} :body} respond raise]
+  [{{:keys [db-conn-str h2-filename] :as body} :body} respond raise]
   {db-conn-str su/NonBlankString
-   h2-conn-str su/NonBlankString}
-  (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database mbql.s/saved-questions-virtual-database-id)
-      (api/read-check Database database))
-    (as-format-async respond raise
-      (let [db-conn-str "TODO"
-            h2-conn-str "TODO"]
-        (log/info (trs "Dumping to H2: " db-conn-str h2-conn-str))
-        (cmd/dump-to-h2 db-conn-str h2-conn-str))
-      )))
+   h2-filename su/NonBlankString}
+  (println "BODY: " db-conn-str h2-filename)
+  (as-format-async respond raise
+                   (let []
+                     (log/info (trs "Dumping to H2: " db-conn-str h2-filename))
+                     (cmd/dump-to-h2 db-conn-str h2-filename))
+                   ))
 
 
 
