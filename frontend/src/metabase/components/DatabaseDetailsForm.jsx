@@ -57,10 +57,10 @@ export default class DatabaseDetailsForm extends Component {
     engines: PropTypes.object.isRequired,
     formError: PropTypes.object,
     hiddenFields: PropTypes.object,
-    isNewDatabase: PropTypes.boolean,
+    isNewDatabase: PropTypes.bool,
     submitButtonText: PropTypes.string.isRequired,
     submitFn: PropTypes.func.isRequired,
-    submitting: PropTypes.boolean,
+    submitting: PropTypes.bool,
   };
 
   validateForm() {
@@ -196,7 +196,7 @@ export default class DatabaseDetailsForm extends Component {
   }
 
   renderField(field, fieldIndex) {
-    const { engine } = this.props;
+    const { engine, formError } = this.props;
     const { details } = this.state;
     window.ENGINE = engine;
 
@@ -415,8 +415,16 @@ export default class DatabaseDetailsForm extends Component {
       );
     } else {
       return (
-        <FormField key={field.name} fieldName={field.name}>
-          <FormLabel title={field["display-name"]} fieldName={field.name} />
+        <FormField
+          key={field.name}
+          fieldName={field.name}
+          formError={formError}
+        >
+          <FormLabel
+            title={field["display-name"]}
+            fieldName={field.name}
+            formError={formError}
+          />
           {this.renderFieldInput(field, fieldIndex)}
           <span className="Form-charm" />
         </FormField>
@@ -459,6 +467,19 @@ export default class DatabaseDetailsForm extends Component {
     ];
 
     hiddenFields = hiddenFields || {};
+
+    if (formError && formError.data) {
+      // If we have a field error but no matching field, use that field error as
+      // a fallback for formError.data.message
+      const { message, errors = {} } = formError.data;
+      const fieldNames = new Set(fields.map(field => field.name));
+      const [unusedFieldKey] = Object.keys(errors).filter(
+        name => !fieldNames.has(name),
+      );
+      if (unusedFieldKey && !message) {
+        formError.data.message = errors[unusedFieldKey];
+      }
+    }
 
     return (
       <form onSubmit={this.formSubmitted.bind(this)} noValidate>
