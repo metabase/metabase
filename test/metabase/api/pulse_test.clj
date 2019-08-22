@@ -22,7 +22,8 @@
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]
              [pulse-test :as pulse-test]
-             [table :refer [Table]]]
+             [table :refer [Table]]
+             [user :as user]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -382,6 +383,46 @@
                              :schedule_day  "mon"
                              :recipients    []
                              :details       {:channels "#general"}}]
+            :skip_if_empty false})
+          pulse-response
+          (update :channels remove-extra-channels-fields)))))
+
+;; Users can remove themselves as a pulse channel recipient regardless of pulse or pulse channel permissions
+(tt/expect-with-temp [Collection            [collection]
+                      Pulse                 [pulse {:collection_id (u/get-id collection)}]
+                      PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                      PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (user->id :rasta)}]
+                      PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (user->id :crowberto)}]
+                      Card                  [card]]
+  
+  (merge
+   pulse-defaults
+   {:name          "Updated Pulse"
+    :creator_id    (user->id :rasta)
+    :creator       (user-details (fetch-user :rasta))
+    :cards         [(assoc (pulse-card-details card)
+                           :collection_id true)]
+    :channels      [(merge pulse-channel-defaults
+                           {:channel_type  "email"
+                            :schedule_type "daily"
+                            :schedule_hour 12
+                            :recipients    [(select-keys (fetch-user :rasta)
+                                                         [:id :email :first_name :last_name :common_name])]})]
+    :collection_id true})
+  ;; Currently passing:
+  ;; you need write permission for the pulse collection and read permission for the card collection
+  ;; in order to change the card's settings
+  ;; To get it to fail:
+  ;; change or remove one of these permissions
+  (with-redefs [user/permissions-set (constantly #{(str "/collection/" (:id collection) "/")
+                                                   (str "/collection/" (inc (:id collection)) "/read/")})]
+    (card-api-test/with-cards-in-readable-collection [card]
+      (-> ((user->client :crowberto) :put 200 (format "pulse/%d" (u/get-id pulse))
+           {:name          "Updated Pulse"
+            :cards         [{:id          (u/get-id card)
+                             :include_csv false
+                             :include_xls false}]
+            :channels      [(assoc daily-email-channel :recipients [(fetch-user :rasta)])]
             :skip_if_empty false})
           pulse-response
           (update :channels remove-extra-channels-fields)))))
