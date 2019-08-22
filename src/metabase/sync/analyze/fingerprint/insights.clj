@@ -110,8 +110,9 @@
                              (stats/simple-linear-regression (comp (stats/somef x-link-fn) fx)
                                                              (comp (stats/somef y-link-fn) fy))
                              (fn [[offset slope]]
-                               {:model   (model offset slope)
-                                :formula (formula offset slope)})))
+                               (when (every? real-number? [offset slope])
+                                 {:model   (model offset slope)
+                                  :formula (formula offset slope)}))))
                           (apply redux/juxt))
      :validation-set ((keep (fn [row]
                               (let [x (fx row)
@@ -121,6 +122,7 @@
                       (reservoir-sample validation-set-size))})
    (fn [{:keys [validation-set fits]}]
      (some->> fits
+              (remove nil?)
               (map #(assoc % :mae (transduce identity
                                              (mae (comp (:model %) first) second)
                                              validation-set)))
