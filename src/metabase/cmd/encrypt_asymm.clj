@@ -43,7 +43,7 @@
     pair))
 
 
-(defn pub-key [ ^String public-key-path]
+(defn pub-key [^String public-key-path]
   (println "Loading existig pub key")
   (let [pub-byes (Files/readAllBytes (.toPath (File. public-key-path)))
         pub-spec (X509EncodedKeySpec. pub-byes)
@@ -51,7 +51,7 @@
         pub-key (.generatePublic pub-kf pub-spec)]
     pub-key))
 
-(defn private-key [^String private-key-path ]
+(defn private-key [^String private-key-path]
   (println "Loading existig private key")
   (let [priv-byes (Files/readAllBytes (.toPath (File. private-key-path)))
         priv-spec (PKCS8EncodedKeySpec. priv-byes)
@@ -77,7 +77,14 @@
       (.write o (.getBytes (if priv? "-----END PRIVATE KEY-----" "-----END PUBLIC KEY-----"))))
     (.flush o)))
 
-(defn ^KeyPair gen-keys [& [{:keys [private-key-path public-key-path]}]]
+(defn ^KeyPair gen-keys
+  [& [{:keys [private-key-path public-key-path
+              private-key-out-text-path private-key-out-bin-path
+              public-key-out-text-path public-key-out-bin-path]
+       :or   {private-key-out-text-path "./keys/mig_private_key.txt"
+              private-key-out-bin-path  "./keys/mig_private_key"
+              public-key-out-text-path  "./keys/mig_pub_key.txt"
+              public-key-out-bin-path   "./keys/mig_pub_key"}}]]
   (let [pair (if (and private-key-path public-key-path)
                (existing-pair private-key-path public-key-path)
                (new-pair))
@@ -85,8 +92,8 @@
         priv-bytes (-> pair .getPrivate .getEncoded)
         pub-encoded (-> (Base64/getMimeEncoder) (.encodeToString (-> pair .getPublic .getEncoded)))
         pub-bytes (-> pair .getPublic .getEncoded)]
-    (write-key "./keys/mig_pub_key.txt" pub-encoded true false)
-    (write-key "./keys/mig_pub_key" pub-bytes false false)
-    (write-key "./keys/mig_private_key.txt" priv-encoded true true)
-    (write-key "./keys/mig_private_key" priv-bytes false true)
+    (write-key public-key-out-text-path pub-encoded true false)
+    (write-key public-key-out-bin-path pub-bytes false false)
+    (write-key private-key-out-text-path priv-encoded true true)
+    (write-key private-key-out-bin-path priv-bytes false true)
     pair))
