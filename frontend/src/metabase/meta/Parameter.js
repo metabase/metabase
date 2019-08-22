@@ -70,7 +70,7 @@ export function getParameterTargetFieldId(
     if (
       Array.isArray(dimension) &&
       dimension[0] === "template-tag" &&
-      datasetQuery !== undefined
+      !!datasetQuery
     ) {
       if (datasetQuery.type === "native") {
         const templateTag =
