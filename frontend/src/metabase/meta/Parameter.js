@@ -63,7 +63,7 @@ export const getParametersBySlug = (
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
-  datasetQuery: DatasetQuery,
+  datasetQuery: ?DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
     const dimension = target[1];
