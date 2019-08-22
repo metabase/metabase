@@ -1,4 +1,4 @@
-(ns metabase.cmd.encrypt-asymm
+(ns metabase.crypto.encrypt-asymm
   (:import (java.util Base64)
            (java.security KeyPair KeyFactory KeyPairGenerator)
            (java.security.spec X509EncodedKeySpec PKCS8EncodedKeySpec)

@@ -52,7 +52,19 @@
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string h2-filename))))
 
+(defn ^:command secure-dump-and-upload
+  ([]
+   (classloader/require 'metabase.cmd.secure-dump)
+   (binding [mdb/*disable-data-migrations* true]
+     ((resolve 'metabase.cmd.secure-dump/up!)  ))
+   ))
 
+(defn ^:command secure-dump-download-and-load
+  ([]
+   (classloader/require 'metabase.cmd.secure-dump)
+   (binding [mdb/*disable-data-migrations* true]
+     ((resolve 'metabase.cmd.secure-dump/down!)  ))
+   ))
 
 
 (defn ^:command profile

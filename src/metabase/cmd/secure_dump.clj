@@ -1,16 +1,15 @@
-(ns metabase.cmd.encrypt-file
-  (:require [metabase.cmd.encrypt-asymm :as asymm]
-            [clojure.java.io :as io]
-            [metabase.cmd.encrypt-symm :as symm])
-  (:import (java.util.zip ZipEntry ZipOutputStream GZIPInputStream ZipInputStream)))
-
-;;TODO maybe rename this cmd to secure-dump or something since it encrypts, decrypts, zips, unzips, uploads, downloads, etc
+(ns metabase.cmd.secure-dump
+  (:require [clojure.java.io :as io]
+            [metabase.crypto.encrypt-asymm :as asymm]
+            [metabase.crypto.encrypt-symm :as symm]
+            [metabase.cmd.dump-to-h2 :as dump-to-h2])
+  (:import (java.util.zip ZipEntry ZipOutputStream ZipInputStream)))
 
 (defn- same-contents? [file1 file2]
   (= (slurp (io/file file1))
      (slurp (io/file file2))))
 
-(defn decrypt-file
+(defn- decrypt-file
   [{:keys [enc-dump-path outpath enc-secret-path key-spec]}]
   (assert (and enc-dump-path outpath) "Needs both source and target file to decrypt.")
   (try
@@ -27,7 +26,7 @@
     (catch Exception e
       (println "Error: " e))))
 
-(defn encrypt-file
+(defn- encrypt-file
   [{:keys [inpath enc-dump-path enc-secret-path key-spec]}]
   (assert (and inpath enc-dump-path) "Needs both source and target file to encrypt.")
   (try
@@ -66,7 +65,7 @@
      (.closeEntry zip#)))
 
 
-(defn zip-secure-dump
+(defn- zip-secure-dump
   [{:keys [enc-dump-path enc-secret-path zip-path]}]
   (println "Zipping " enc-dump-path enc-secret-path " --> " zip-path)
   (with-open [output (ZipOutputStream. (io/output-stream zip-path))
@@ -77,7 +76,7 @@
     (with-entry output "secret.enc"
                 (io/copy input-secret output))))
 
-(defn unzip-secure-dump [{:keys [zip-path dump-path secret-path]}]
+(defn- unzip-secure-dump [{:keys [zip-path dump-path secret-path]}]
   (println "Unzipping " zip-path " --> " dump-path secret-path)
   (let [stream (->
                  (io/input-stream zip-path)
@@ -92,7 +91,47 @@
           (recur (.getNextEntry stream)))))))
 
 
-(defn DEMO []
+(defn up! []
+  (let [curr-db-conn-str "TODO"
+        generated-h2-path "TODO"
+        enc-dump-path "TODO"
+        enc-secret-path "TODO"
+        aes-secret "TODO"
+        zip-path "TODO"
+        dumped (dump-to-h2/dump-to-h2! curr-db-conn-str generated-h2-path)
+        _ (encrypt-file {:inpath          generated-h2-path
+                         :enc-dump-path   enc-dump-path
+                         :enc-secret-path enc-secret-path
+                         :key-spec        {:secret-key       aes-secret
+                                           :pub-key-path     "./keys/mig_pub_key"
+                                           :private-key-path "./keys/mig_private_key"}})
+        _ (zip-secure-dump {:enc-dump-path   enc-dump-path
+                            :enc-secret-path enc-secret-path
+                            :zip-path        zip-path})
+        ;; TODO upload to S3
+        ]))
+
+(defn down! []
+  (let [enc-dump-path "TODO"
+        outpath "TODO"
+        enc-secret-path "TODO"
+        zip-path "TODO"
+        dec-dump "TODO"
+        ;; TODO download from S3
+
+        _ (unzip-secure-dump {:zip-path    zip-path
+                              :dump-path   enc-dump-path
+                              :secret-path enc-secret-path})
+        _ (decrypt-file {:enc-dump-path   enc-dump-path
+                         :outpath         dec-dump
+                         :enc-secret-path enc-secret-path
+                         :key-spec        {:pub-key-path     "./keys/mig_pub_key"
+                                           :private-key-path "./keys/mig_private_key"}})
+        ;; TODO load-from-h2! with dec-dump as arg
+        ]))
+
+
+(defn- DEMO []
   (let [enc-dump-path "./keys/dump__file.txt.aes.enc"
         enc-secret-path "./keys/dump_secret__file.txt.aes.enc"
         zip-path "./keys/dump.zip"]
@@ -118,3 +157,7 @@
                                      :private-key-path "./keys/mig_private_key"}})))
 
 (DEMO)
+
+
+;;TODO uploads, downloads, etc
+;;     then reorg cmds and wrap in dump/load
