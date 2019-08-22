@@ -6,7 +6,6 @@ import {
   createTestStore,
   waitForAllRequestsToComplete,
 } from "__support__/e2e";
-import { delay } from "__support__/utils";
 
 import Question from "metabase-lib/lib/Question";
 
