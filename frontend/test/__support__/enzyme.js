@@ -98,7 +98,7 @@ export const chooseSelectOption = optionWrapper => {
   parentSelect.simulate("change", { target: { value: optionValue } });
 };
 
-const TIMEOUT = 7500;
+const TIMEOUT = 15000;
 
 async function eventually(fn, timeout = TIMEOUT) {
   const start = Date.now();
@@ -160,6 +160,7 @@ addReactWrapperMethod("click", click);
 addReactWrapperMethod("clickButton", clickButton);
 addReactWrapperMethod("findByText", findByText);
 addReactWrapperMethod("findByIcon", findByIcon);
+addReactWrapperMethod("setInputValue", setInputValue);
 
 // creates the magic "async" namespace for `find` methods
 Object.defineProperty(ReactWrapper.prototype, "async", {
