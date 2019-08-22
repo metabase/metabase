@@ -211,6 +211,9 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
+          name: Install gettext
+          command: sudo apt-get install gettext
+      - run:
           name: Verify i18n .po files
           command: ./bin/i18n/build-translation-resources
           no_output_timeout: 2m
