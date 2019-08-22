@@ -10,8 +10,7 @@ Head to this page, accept the license agreement, and download `ojdbc8.jar`:
 
 ![Oracle JDBC Download](../images/oracle_jdbc_download.png)
 
-Before downloading this JAR you may need to sign up for a free account with Oracle. We have had success with the latest version at the time of this writing, 19.3 (even with older Oracle 12c databases), but any version *should* work. 
-
+Before downloading this JAR you may need to sign up for a free account with Oracle. We have had success with the latest version at the time of this writing, 19.3 (even with older Oracle 12c databases), but any version _should_ work.
 
 ### Adding the Oracle JDBC Driver JAR to the Metabase Plugins Directory
 
@@ -43,4 +42,4 @@ Finally, you can choose a custom plugins directory if the default doesn't suit y
 
 #### When running from Docker
 
-The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../operations-guide/running-metabase-on-docker.md#adding-external-dependencies-or-plugins) for more details.
+The process for adding plugins when running via Docker is similar, but you'll need to mount the `plugins` directory. Refer to instructions [here](../../operations-guide/running-metabase-on-docker.html#adding-external-dependencies-or-plugins) for more details.
