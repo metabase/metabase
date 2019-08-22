@@ -24,6 +24,9 @@
             [metabase
              [db :as mdb]
              [util :as u]]
+            [metabase.cmd
+             [encrypt-symm :as symm]
+             [encrypt-asymm :as asymm]]
             [metabase.db.migrations :refer [DataMigrations]]
             [metabase.models
              [activity :refer [Activity]]
@@ -59,7 +62,13 @@
              [view-log :refer [ViewLog]]]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
-  (:import java.sql.SQLException))
+  (:import java.sql.SQLException
+           (java.security KeyPairGenerator KeyPair KeyFactory)
+           (javax.crypto Cipher)
+           (java.util Base64)
+           (java.nio.file Files)
+           (java.io File FileOutputStream)
+           (java.security.spec PKCS8EncodedKeySpec X509EncodedKeySpec)))
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
@@ -129,11 +138,11 @@
   ;;
   ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
   (let [source-keys (keys (first objs))
-        dest-keys   (for [k source-keys]
-                      ((db/quote-fn) (name (case k
-                                             :sizex :sizeX
-                                             :sizey :sizeY
-                                             k))))]
+        dest-keys (for [k source-keys]
+                    ((db/quote-fn) (name (case k
+                                           :sizex :sizeX
+                                           :sizey :sizeY
+                                           k))))]
     {:cols dest-keys
      :vals (for [row objs]
              (map (comp u/jdbc-clob->str row) source-keys))}))
@@ -163,10 +172,10 @@
   (let [conn-map (mdb/parse-connection-string app-db-connection-string-or-nil)]
     (println "Conn of source: " conn-map app-db-connection-string-or-nil)
     (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
-      (doseq [{table-name :table, :as e} entities
-              :let                       [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
-              :when                      (seq rows)]
-        (insert-entity! target-db-conn e rows)))))
+                             (doseq [{table-name :table, :as e} entities
+                                     :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+                                     :when (seq rows)]
+                               (insert-entity! target-db-conn e rows)))))
 
 
 (defn- get-target-db-conn [h2-filename-or-nil]
@@ -185,8 +194,8 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
    h2-filename-or-nil]
-  (mdb/setup-db!*   (get-target-db-conn h2-filename-or-nil)
-                    true)
+  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil)
+                  true)
 
   (let [db-type (if h2-filename-or-nil
                   :h2
@@ -206,15 +215,15 @@
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
                             (println "Conn of target: " target-db-conn)
 
-    (println-ok)
+                            (println-ok)
 
-    (println (u/format-color 'blue "Loading data..."))
+                            (println (u/format-color 'blue "Loading data..."))
 
-    (load-data! target-db-conn app-db-connection-string-or-nil)
+                            (load-data! target-db-conn app-db-connection-string-or-nil)
 
-    (println-ok)
+                            (println-ok)
 
-    (jdbc/db-unset-rollback-only! target-db-conn))
+                            (jdbc/db-unset-rollback-only! target-db-conn))
   )
 
 ;(dump-to-h2! "")
