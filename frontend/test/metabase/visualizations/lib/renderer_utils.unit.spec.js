@@ -1,4 +1,9 @@
-import { getXValues } from "metabase/visualizations/lib/renderer_utils";
+import moment from "moment";
+
+import {
+  getXValues,
+  parseXValue,
+} from "metabase/visualizations/lib/renderer_utils";
 
 describe("getXValues", () => {
   function getXValuesForRows(listOfRows) {
@@ -77,5 +82,14 @@ describe("getXValues", () => {
       "2019-08-12T00:00:00Z",
       "2019-08-13T00:00:00Z",
     ]);
+  });
+});
+
+describe("parseXValue", () => {
+  it("should use options as part of the cache key", () => {
+    const value1 = parseXValue("2018-08-23", { isTimeseries: true });
+    const value2 = parseXValue("2018-08-23", { isTimeseries: false });
+    expect(moment.isMoment(value1)).toBe(true);
+    expect(moment.isMoment(value2)).toBe(false);
   });
 });

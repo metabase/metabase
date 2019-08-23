@@ -94,7 +94,7 @@ export function reduceGroup(group, key, warnUnaggregated) {
   );
 }
 
-const parseXValue = _.memoize(
+export const parseXValue = _.memoize(
   (xValue, { isNumeric, isTimeseries, isQuantitative, unit }, warn) =>
     // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
     isTimeseries && !isQuantitative
@@ -104,7 +104,7 @@ const parseXValue = _.memoize(
       : String(xValue),
   // create cache key from args
   // we need typeof so "2" and 2 don't have the same cache key
-  (x, options) => [typeof x, x, options],
+  (x, options) => [x, typeof x, ...Object.values(options)].join(),
 );
 
 function getParseOptions({ settings, data }) {
