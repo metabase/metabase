@@ -102,8 +102,9 @@ const parseXValue = _.memoize(
       : isNumeric
       ? xValue
       : String(xValue),
-  // create cache key:
-  (x, options) => [x, options],
+  // create cache key from args
+  // we need typeof so "2" and 2 don't have the same cache key
+  (x, options) => [typeof x, x, options],
 );
 
 function getParseOptions({ settings, data }) {
