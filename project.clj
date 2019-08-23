@@ -151,7 +151,7 @@
 
   :profiles
   {:dev
-   {:source-paths ["dev/src"]
+   {:source-paths ["dev/src" "local/src"]
     
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
