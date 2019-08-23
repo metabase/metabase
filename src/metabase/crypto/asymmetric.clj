@@ -81,10 +81,10 @@
   [& [{:keys [private-key-path public-key-path
               private-key-out-text-path private-key-out-bin-path
               public-key-out-text-path public-key-out-bin-path]
-       :or   {private-key-out-text-path "./keys/mig_private_key.txt"
-              private-key-out-bin-path  "./keys/mig_private_key"
-              public-key-out-text-path  "./keys/mig_pub_key.txt"
-              public-key-out-bin-path   "./keys/mig_pub_key"}}]]
+       :or   {private-key-out-text-path "./keys/private_key.txt"
+              private-key-out-bin-path  "./keys/private_key"
+              public-key-out-text-path  "./keys/pub_key.txt"
+              public-key-out-bin-path   "./keys/pub_key"}}]]
   (let [pair (if (and private-key-path public-key-path)
                (existing-pair private-key-path public-key-path)
                (new-pair))

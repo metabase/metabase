@@ -15,10 +15,7 @@
   (assert (and enc-dump-path outpath) "Needs both source and target file to decrypt.")
   (try
     (let [enc-secret-key (slurp (io/file enc-secret-path))
-          ;;TODO pub-key here just for verification purposes
-          pub-key (or (:pub-key-path key-spec))
           private-key (or (:private-key-path key-spec))
-          _ (println "sec enc: " enc-secret-key)
           secret-key (asymm/decrypt enc-secret-key (asymm/private-key private-key))
           enc-payload (slurp (io/file enc-dump-path))
           enc-payload-decrypted (symm/decrypt enc-payload secret-key)]
@@ -33,27 +30,18 @@
   (try
     (let [secret-key (or (:secret-key key-spec))
           pub-key (or (:pub-key-path key-spec))
-          ;;TODO private key here is only for validation, actual fn would not need it
-          private-key (or (:private-key-path key-spec))
           payload (slurp (io/file inpath))
           enc-payload (symm/encrypt payload secret-key)
           enc-payload-decrypted (symm/decrypt enc-payload secret-key)
           enc-secret (asymm/encrypt secret-key (asymm/pub-key pub-key))
-          dec-secret (asymm/decrypt enc-secret (asymm/private-key private-key))
           enc-out-path enc-dump-path
-          enc-secret-dec-path (str enc-dump-path ".secret.dec.debug")
           enc-out-dec-path (str enc-dump-path ".dec.debug")]
       (println "Writing encrypted content")
       (spit (io/file enc-out-path) enc-payload)
       (println "Writing encrypted secret")
       (spit (io/file enc-secret-path) enc-secret)
-      (println "Writing decrypted secret")
-      (spit (io/file enc-secret-dec-path) dec-secret)
       (println "Writing decrypted content")
-      (spit (io/file enc-out-dec-path) enc-payload-decrypted)
-      ;(assert (same-contents? inpath enc-out-dec-path) "Encrypted contents decrypted again have the same contents.")
-      ;(assert (= secret-key dec-secret) "Encrypted secret descrypted again should have same contents.")
-      )
+      (spit (io/file enc-out-dec-path) enc-payload-decrypted))
     (catch Exception e
       (println "Error: " e))))
 
@@ -88,8 +76,8 @@
         (let [entry-name (.getName entry)]
           (println "Unzipping " entry-name)
           (case entry-name
-            "dump.enc" (clojure.java.io/copy stream (clojure.java.io/file dump-path))
-            "secret.enc" (clojure.java.io/copy stream (clojure.java.io/file secret-path)))
+            "dump.enc" (io/copy stream (io/file dump-path))
+            "secret.enc" (io/copy stream (io/file secret-path)))
           (recur (.getNextEntry stream)))))))
 
 
@@ -107,8 +95,8 @@
                          :enc-dump-path   enc-dump-path
                          :enc-secret-path enc-secret-path
                          :key-spec        {:secret-key       aes-secret
-                                           :pub-key-path     "./keys/mig_pub_key"
-                                           :private-key-path "./keys/mig_private_key"}})
+                                           :pub-key-path     "./keys/pub_key"
+                                           :private-key-path "./keys/private_key"}})
         _ (zip-secure-dump {:enc-dump-path   enc-dump-path
                             :enc-secret-path enc-secret-path
                             :zip-path        zip-path})
@@ -130,8 +118,8 @@
         _ (decrypt-file {:enc-dump-path   enc-dump-path
                          :outpath         dec-dump
                          :enc-secret-path enc-secret-path
-                         :key-spec        {:pub-key-path     "./keys/mig_pub_key"
-                                           :private-key-path "./keys/mig_private_key"}})
+                         :key-spec        {:pub-key-path     "./keys/pub_key"
+                                           :private-key-path "./keys/private_key"}})
         ;; TODO load-from-h2! with dec-dump as arg
         ]))
 
@@ -145,8 +133,8 @@
                    :enc-dump-path   enc-dump-path
                    :enc-secret-path enc-secret-path
                    :key-spec        {:secret-key       "mysecretkey"
-                                     :pub-key-path     "./keys/mig_pub_key"
-                                     :private-key-path "./keys/mig_private_key"}})
+                                     :pub-key-path     "./keys/pub_key"
+                                     :private-key-path "./keys/private_key"}})
 
     (zip-secure-dump {:enc-dump-path   enc-dump-path
                       :enc-secret-path enc-secret-path
@@ -158,8 +146,8 @@
     (decrypt-file {:enc-dump-path   "./keys/dump__unzip.enc"
                    :outpath         "./keys/result_file.txt.aes.enc.dec"
                    :enc-secret-path "./keys/dump_secret__unzip.enc"
-                   :key-spec        {:pub-key-path     "./keys/mig_pub_key"
-                                     :private-key-path "./keys/mig_private_key"}})))
+                   :key-spec        {:pub-key-path     "./keys/pub_key"
+                                     :private-key-path "./keys/private_key"}})))
 
 (comment
 
