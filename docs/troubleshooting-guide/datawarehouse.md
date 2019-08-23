@@ -48,7 +48,7 @@ If your credentials are incorrect, you should see an error message letting you k
 If the database name or the user/password combination are incorrect, ask the person running your data warehouse for correct credentials.
 
 
-### Connection time out ("Your question took too long")
+### Connection time out: "Your question took too long"
 
 #### How to detect this
 If you see the error message, "Your question took too long," something in your setup timed out. Depending on the specifics of your deployment, this could be a timeout in:
