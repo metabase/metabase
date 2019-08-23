@@ -7,8 +7,10 @@
              [plugins :as pluguns]
              [server :as server]
              [util :as u]]
+            [metabase.api.common :as api-common]
             [metabase.models.interface :as mi]
-            [metabase.api.common :as api-common]))
+            [toucan.db :as db]))
+
 
 (defn init!
   []
