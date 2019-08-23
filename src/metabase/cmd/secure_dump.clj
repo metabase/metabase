@@ -1,8 +1,9 @@
 (ns metabase.cmd.secure-dump
   (:require [clojure.java.io :as io]
-            [metabase.crypto.encrypt-asymm :as asymm]
-            [metabase.crypto.encrypt-symm :as symm]
-            [metabase.cmd.dump-to-h2 :as dump-to-h2])
+            [metabase.crypto.asymmetric :as asymm]
+            [metabase.crypto.symmetric :as symm]
+            [metabase.cmd.dump-to-h2 :as dump-to-h2]
+            [metabase.s3 :as s3])
   (:import (java.util.zip ZipEntry ZipOutputStream ZipInputStream)))
 
 (defn- same-contents? [file1 file2]
@@ -50,8 +51,9 @@
       (spit (io/file enc-secret-dec-path) dec-secret)
       (println "Writing decrypted content")
       (spit (io/file enc-out-dec-path) enc-payload-decrypted)
-      (assert (same-contents? inpath enc-out-dec-path) "Encrypted contents decrypted again have the same contents.")
-      (assert (= secret-key dec-secret) "Encrypted secret descrypted again should have same contents."))
+      ;(assert (same-contents? inpath enc-out-dec-path) "Encrypted contents decrypted again have the same contents.")
+      ;(assert (= secret-key dec-secret) "Encrypted secret descrypted again should have same contents.")
+      )
     (catch Exception e
       (println "Error: " e))))
 
@@ -98,7 +100,9 @@
         enc-secret-path "TODO"
         aes-secret "TODO"
         zip-path "TODO"
-        dumped (dump-to-h2/dump-to-h2! curr-db-conn-str generated-h2-path)
+        s3-bucket "TODO"
+        s3-key "TODO"
+        _ (dump-to-h2/dump-to-h2! curr-db-conn-str generated-h2-path)
         _ (encrypt-file {:inpath          generated-h2-path
                          :enc-dump-path   enc-dump-path
                          :enc-secret-path enc-secret-path
@@ -108,17 +112,18 @@
         _ (zip-secure-dump {:enc-dump-path   enc-dump-path
                             :enc-secret-path enc-secret-path
                             :zip-path        zip-path})
-        ;; TODO upload to S3
+        _ (s3/upload zip-path s3-bucket s3-key)
+
         ]))
 
 (defn down! []
   (let [enc-dump-path "TODO"
-        outpath "TODO"
         enc-secret-path "TODO"
         zip-path "TODO"
         dec-dump "TODO"
-        ;; TODO download from S3
-
+        s3-bucket "TODO"
+        s3-key "TODO"
+        _ (s3/download zip-path s3-bucket s3-key)
         _ (unzip-secure-dump {:zip-path    zip-path
                               :dump-path   enc-dump-path
                               :secret-path enc-secret-path})
@@ -152,12 +157,12 @@
 
     (decrypt-file {:enc-dump-path   "./keys/dump__unzip.enc"
                    :outpath         "./keys/result_file.txt.aes.enc.dec"
-                   :enc-secret-path enc-secret-path
+                   :enc-secret-path "./keys/dump_secret__unzip.enc"
                    :key-spec        {:pub-key-path     "./keys/mig_pub_key"
                                      :private-key-path "./keys/mig_private_key"}})))
 
-(DEMO)
+(comment
 
+  (DEMO)
 
-;;TODO uploads, downloads, etc
-;;     then reorg cmds and wrap in dump/load
+  )

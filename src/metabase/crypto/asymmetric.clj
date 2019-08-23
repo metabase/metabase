@@ -1,4 +1,4 @@
-(ns metabase.crypto.encrypt-asymm
+(ns metabase.crypto.asymmetric
   (:import (java.util Base64)
            (java.security KeyPair KeyFactory KeyPairGenerator)
            (java.security.spec X509EncodedKeySpec PKCS8EncodedKeySpec)
@@ -44,7 +44,7 @@
 
 
 (defn pub-key [^String public-key-path]
-  (println "Loading existig pub key")
+  (println "Loading existing pub key")
   (let [pub-byes (Files/readAllBytes (.toPath (File. public-key-path)))
         pub-spec (X509EncodedKeySpec. pub-byes)
         pub-kf (KeyFactory/getInstance "RSA")
@@ -52,7 +52,7 @@
     pub-key))
 
 (defn private-key [^String private-key-path]
-  (println "Loading existig private key")
+  (println "Loading existing private key")
   (let [priv-byes (Files/readAllBytes (.toPath (File. private-key-path)))
         priv-spec (PKCS8EncodedKeySpec. priv-byes)
         priv-kf (KeyFactory/getInstance "RSA")
@@ -60,7 +60,7 @@
     priv-key))
 
 (defn existing-pair [^String private-key-path ^String public-key-path]
-  (println "Loading existig keypair")
+  (println "Loading existing keypair")
   (KeyPair. (pub-key public-key-path) (private-key private-key-path)))
 
 (defn write-key [^String path key-data txt? priv?]

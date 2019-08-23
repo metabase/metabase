@@ -24,9 +24,6 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.cmd
-             [encrypt-symm :as symm]
-             [encrypt-asymm :as asymm]]
             [metabase.db.migrations :refer [DataMigrations]]
             [metabase.models
              [activity :refer [Activity]]

@@ -1,4 +1,4 @@
-(ns metabase.crypto.encrypt-symm
+(ns metabase.crypto.symmetric
   (:import (javax.crypto Cipher KeyGenerator SecretKey)
            (javax.crypto.spec SecretKeySpec)
            (java.security SecureRandom KeyFactory KeyPair)
