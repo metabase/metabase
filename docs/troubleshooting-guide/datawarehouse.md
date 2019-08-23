@@ -103,7 +103,7 @@ Metabase fails to connect to your MySQL 8 server with the error message "Looks l
 You may still be able to successfully connect to the server using another MySQL client, such as the command-line client: `mysql -h 127.0.0.1 -u metabase -p`
 
 #### How to fix this
-Change the authentication plugin used by the Metabase user's to `mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';`
+Change the authentication plugin used by the Metabase user to `mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';`
 
 This is necessary because the MariaDB connector, used by Metabase to connect to MySQL servers, unfortunately does not support MySQL 8's default authentication plugin. From [StackOverflow](https://stackoverflow.com/a/54190598):
 
