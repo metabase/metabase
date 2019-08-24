@@ -594,7 +594,7 @@ exports[`ModalContent should render "default" correctly 1`] = `
   className="rounded bordered"
 >
   <div
-    className="ModalContent NewForm flex-full flex flex-column relative"
+    className="ModalContent flex-full flex flex-column relative"
     id={undefined}
   >
     <svg
