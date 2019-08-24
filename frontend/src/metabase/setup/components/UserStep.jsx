@@ -188,7 +188,7 @@ export default class UserStep extends Component {
                     formError={formError}
                   />
                   <input
-                    className="Form-input Form-offset"
+                    className="Form-input"
                     name="first_name"
                     defaultValue={userDetails ? userDetails.first_name : ""}
                     placeholder="Johnny"
@@ -196,7 +196,6 @@ export default class UserStep extends Component {
                     autoFocus={true}
                     onChange={this.onFirstNameChange}
                   />
-                  <span className="Form-charm" />
                 </Box>
                 <Box>
                   <FormLabel
@@ -205,14 +204,13 @@ export default class UserStep extends Component {
                     formError={formError}
                   />
                   <input
-                    className="Form-input Form-offset"
+                    className="Form-input"
                     name="last_name"
                     defaultValue={userDetails ? userDetails.last_name : ""}
                     placeholder="Appleseed"
                     required
                     onChange={this.onLastNameChange}
                   />
-                  <span className="Form-charm" />
                 </Box>
               </Flex>
             </FormField>
@@ -224,14 +222,13 @@ export default class UserStep extends Component {
                 formError={formError}
               />
               <input
-                className="Form-input Form-offset full"
+                className="Form-input full"
                 name="email"
                 defaultValue={userDetails ? userDetails.email : ""}
                 placeholder="youlooknicetoday@email.com"
                 required
                 onChange={this.onEmailChange}
               />
-              <span className="Form-charm" />
             </FormField>
 
             <FormField
@@ -245,14 +242,11 @@ export default class UserStep extends Component {
                 formError={formError}
                 message={passwordError}
               />
-              <span
-                style={{ fontWeight: "normal" }}
-                className="Form-label Form-offset"
-              >
+              <span style={{ fontWeight: "normal" }} className="Form-label">
                 {passwordComplexityDesc}
               </span>
               <input
-                className="Form-input Form-offset full"
+                className="Form-input full"
                 name="password"
                 type="password"
                 defaultValue={userDetails ? userDetails.password : ""}
@@ -261,7 +255,6 @@ export default class UserStep extends Component {
                 onChange={this.onPasswordChange}
                 onBlur={this.onPasswordBlur}
               />
-              <span className="Form-charm" />
             </FormField>
 
             <FormField fieldName="password_confirm" formError={formError}>
@@ -271,7 +264,7 @@ export default class UserStep extends Component {
                 formError={formError}
               />
               <input
-                className="Form-input Form-offset full"
+                className="Form-input full"
                 name="password_confirm"
                 type="password"
                 defaultValue={userDetails ? userDetails.password : ""}
@@ -279,7 +272,6 @@ export default class UserStep extends Component {
                 required
                 onChange={this.onPasswordConfirmChange}
               />
-              <span className="Form-charm" />
             </FormField>
 
             <FormField fieldName="site_name" formError={formError}>
@@ -289,7 +281,7 @@ export default class UserStep extends Component {
                 formError={formError}
               />
               <input
-                className="Form-input Form-offset full"
+                className="Form-input full"
                 name="site_name"
                 type="text"
                 defaultValue={userDetails ? userDetails.site_name : ""}
@@ -297,7 +289,6 @@ export default class UserStep extends Component {
                 required
                 onChange={this.onSiteNameChange}
               />
-              <span className="Form-charm" />
             </FormField>
 
             <div className="Form-actions">

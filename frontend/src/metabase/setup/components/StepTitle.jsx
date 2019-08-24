@@ -17,7 +17,7 @@ export default class StepTitle extends Component {
           <span className="SetupStep-number">{circleText}</span>
           <Icon name={"check"} className="SetupStep-check" size={16} />
         </span>
-        <h3 style={{ marginTop: 10 }} className="SetupStep-title Form-offset">
+        <h3 style={{ marginTop: 10 }} className="SetupStep-title">
           {title}
         </h3>
       </div>

@@ -134,9 +134,9 @@ export default class DatabaseEditApp extends Component {
         />
         <section className="Grid Grid--gutters Grid--2-of-3">
           <div className="Grid-cell">
-            <div className="Form-new bordered rounded shadowed pt0">
+            <div className="bordered rounded shadowed pt0">
               {showTabs && (
-                <div className="Form-offset border-bottom">
+                <div className="border-bottom">
                   <Radio
                     value={currentTab}
                     options={TABS}

@@ -1,13 +1,7 @@
 import React from "react";
 
-import cx from "classnames";
-
-const FormTextAreaWidget = ({ placeholder, field, offset }) => (
-  <textarea
-    className={cx("Form-input full", { "Form-offset": offset })}
-    placeholder={placeholder}
-    {...field}
-  />
+const FormTextAreaWidget = ({ placeholder, field }) => (
+  <textarea className="Form-input full" placeholder={placeholder} {...field} />
 );
 
 export default FormTextAreaWidget;

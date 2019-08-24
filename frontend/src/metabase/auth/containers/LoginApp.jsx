@@ -124,11 +124,11 @@ export default class LoginApp extends Component {
           </div>
           <div className="Login-content Grid-cell">
             <form
-              className="Form-new bg-white bordered rounded shadowed"
+              className="p4 bg-white bordered rounded shadowed"
               name="form"
               onSubmit={e => this.formSubmitted(e)}
             >
-              <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
+              <h2 className="Login-header mb2">{t`Sign in to Metabase`}</h2>
 
               {Settings.ssoEnabled() && (
                 <div className="mx4 mb4 py3 border-bottom relative">
@@ -164,7 +164,7 @@ export default class LoginApp extends Component {
                   formError={loginError}
                 />
                 <input
-                  className="Form-input Form-offset full py1"
+                  className="Form-input full"
                   name="username"
                   placeholder="youlooknicetoday@email.com"
                   type={
@@ -179,7 +179,6 @@ export default class LoginApp extends Component {
                   onChange={e => this.onChange("username", e.target.value)}
                   autoFocus
                 />
-                <span className="Form-charm" />
               </FormField>
 
               <FormField
@@ -193,17 +192,16 @@ export default class LoginApp extends Component {
                   formError={loginError}
                 />
                 <input
-                  className="Form-input Form-offset full py1"
+                  className="Form-input full"
                   name="password"
                   placeholder="Shh..."
                   type="password"
                   onChange={e => this.onChange("password", e.target.value)}
                 />
-                <span className="Form-charm" />
               </FormField>
 
               <div className="Form-field">
-                <div className="Form-offset flex align-center">
+                <div className="flex align-center">
                   <CheckBox
                     name="remember"
                     checked={this.state.rememberMe}
@@ -215,7 +213,7 @@ export default class LoginApp extends Component {
                 </div>
               </div>
 
-              <div className="Form-actions p4">
+              <div className="Form-actions">
                 <Button primary={this.state.valid} disabled={!this.state.valid}>
                   {t`Sign in`}
                 </Button>
