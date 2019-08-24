@@ -120,7 +120,7 @@
                          :enc-secret-path enc-secret-path
                          :key-spec        {:pub-key-path     "./keys/pub_key"
                                            :private-key-path "./keys/private_key"}})
-        ;; TODO load-from-h2! with dec-dump as arg
+        ;; TODO we wont load-from-h2!, will require a separate call
         ]))
 
 

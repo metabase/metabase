@@ -59,7 +59,7 @@
      ((resolve 'metabase.cmd.secure-dump/up!)  ))
    ))
 
-(defn ^:command secure-dump-download-and-load
+(defn ^:command secure-dump-download-and-unlock
   ([]
    (classloader/require 'metabase.cmd.secure-dump)
    (binding [mdb/*disable-data-migrations* true]

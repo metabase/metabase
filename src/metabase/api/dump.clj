@@ -63,17 +63,37 @@
 ;; curl -i -X POST -H "Content-Type: application/json" -d '{"db-conn-str": "test1", "h2-conn-str": "test2"}'  -H "X-Metabase-Session: 273cdf75-3e9a-42e7-a7fd-57421d69ec76" "localhost:3000/api/dump/to-h2"
 (api/defendpoint-async
   POST ["/to-h2" ]
-  "Execute a query and download the result data as a file in the specified format."
+  "Dump db to H2 file."
   [{{:keys [db-conn-str h2-filename] :as body} :body} respond raise]
   {db-conn-str su/NonBlankString
    h2-filename su/NonBlankString}
-  (println "BODY: " db-conn-str h2-filename)
   (as-format-async respond raise
                    (let []
                      (log/info (trs "Dumping to H2: " db-conn-str h2-filename))
-                     (cmd/dump-to-h2 db-conn-str h2-filename))
-                   ))
+                     (cmd/dump-to-h2 db-conn-str h2-filename))))
 
+(api/defendpoint-async
+  POST ["/to-h2-and-secure-upload" ]
+  "Dump db to H2 file, encrypt, compress, and upload to S3."
+  [{{:keys [db-conn-str s3-bucket s3-key] :as body} :body} respond raise]
+  {db-conn-str su/NonBlankString
+   s3-bucket su/NonBlankString
+   s3-key su/NonBlankString}
+  (as-format-async respond raise
+                   (let []
+                     (log/info (trs "Secure dump and upload: " db-conn-str s3-bucket s3-key))
+                     (cmd/secure-dump-and-upload   ))))
 
+(api/defendpoint-async
+  POST ["/download-h2-dump" ]
+  "Download, uncompress, and unencrypt secure dump from S3. Does not load the H2 db."
+  [{{:keys [s3-bucket s3-key h2-filename] :as body} :body} respond raise]
+  {h2-filename su/NonBlankString
+   s3-bucket su/NonBlankString
+   s3-key su/NonBlankString}
+  (as-format-async respond raise
+                   (let []
+                     (log/info (trs "Download secure dump: " h2-filename s3-bucket s3-key))
+                     (cmd/secure-dump-download-and-unlock))))
 
 (api/define-routes)

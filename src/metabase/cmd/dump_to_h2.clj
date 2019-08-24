@@ -59,13 +59,7 @@
              [view-log :refer [ViewLog]]]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
-  (:import java.sql.SQLException
-           (java.security KeyPairGenerator KeyPair KeyFactory)
-           (javax.crypto Cipher)
-           (java.util Base64)
-           (java.nio.file Files)
-           (java.io File FileOutputStream)
-           (java.security.spec PKCS8EncodedKeySpec X509EncodedKeySpec)))
+  (:import java.sql.SQLException))
 
 (defn- println-ok [] (println (color/green "[OK]")))
 
