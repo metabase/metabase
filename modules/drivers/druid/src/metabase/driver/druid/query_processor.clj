@@ -888,6 +888,9 @@
                             :distinct
                             :distinct___count
 
+                            [:aggregation-options _ (options :guard :name)]
+                            (:name options)
+
                             [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
 
