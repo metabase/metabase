@@ -46,3 +46,53 @@
   (query->native
    {:aggregation [[:* [:count $id] 10]]
     :breakout    [$venue_price]}))
+
+(datasets/expect-with-driver :druid
+  {:projections [:venue_category_name :user_name :__count_0]
+    :query       {:queryType        :groupBy
+                  :granularity      :all
+                  :dataSource       "checkins"
+                  :dimensions       ["venue_category_name", "user_name"]
+                  :context          {:timeout 60000, :queryId "<Query ID>"}
+                  :intervals        ["1900-01-01/2100-01-01"]
+                  :aggregations
+                  [{:type       :cardinality
+                    :name       "__count_0"
+                    :fieldNames ["venue_name"]}]
+                  :limitSpec    {:type    :default
+                                  :columns [
+                                            {:dimension "__count_0", :direction :descending} 
+                                            {:dimension "venue_category_name", :direction :ascending} 
+                                            {:dimension "user_name", :direction :ascending}]}}
+    :query-type  ::druid.qp/groupBy
+    :mbql?       true}
+  (query->native
+    {:aggregation [[:aggregation-options [:distinct [:field-id (data/id :checkins :venue_name)]] {:name "__count_0"}]]
+    :breakout    [$venue_category_name $user_name]
+    :order-by    [[:desc [:aggregation 0]] [:asc [:field-id (data/id :checkins :venue_category_name)]]]}))
+
+(datasets/expect-with-driver :druid
+  {:projections [:venue_category_name :user_name :__count_0]
+    :query       {:queryType        :groupBy
+                  :granularity      :all
+                  :dataSource       "checkins"
+                  :dimensions       ["venue_category_name", "user_name"]
+                  :context          {:timeout 60000, :queryId "<Query ID>"}
+                  :intervals        ["1900-01-01/2100-01-01"]
+                  :aggregations
+                  [{:type       :cardinality
+                    :name       "__count_0"
+                    :fieldNames ["venue_name"]}]
+                  :limitSpec    {:type    :default
+                                  :columns [
+                                            {:dimension "__count_0", :direction :descending} 
+                                            {:dimension "venue_category_name", :direction :ascending} 
+                                            {:dimension "user_name", :direction :ascending}]
+                                  :limit   5}}
+    :query-type  ::druid.qp/groupBy
+    :mbql?       true}
+  (query->native
+    {:aggregation [[:aggregation-options [:distinct [:field-id (data/id :checkins :venue_name)]] {:name "__count_0"}]]
+    :breakout    [$venue_category_name $user_name]
+    :order-by    [[:desc [:aggregation 0]] [:asc [:field-id (data/id :checkins :venue_category_name)]]]
+    :limit       5}))
