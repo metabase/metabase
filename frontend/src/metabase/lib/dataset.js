@@ -132,7 +132,11 @@ function fieldRefForColumn_LEGACY(
 export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
   // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
-  if (ref && ref[0] !== "field-literal" && ref[0] !== "aggregation") {
+  if (
+    Array.isArray(ref) &&
+    ref[0] !== "field-literal" &&
+    ref[0] !== "aggregation"
+  ) {
     return JSON.stringify(["ref", ref]);
   }
   return JSON.stringify(["name", column.name]);
