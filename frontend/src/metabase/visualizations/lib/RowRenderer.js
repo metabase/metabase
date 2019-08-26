@@ -26,16 +26,16 @@ export default function rowRenderer(
   // disable clicks
   chart.onClick = () => {};
 
-  const formatDimension = v =>
-    formatValue(v, { column: cols[0], type: "axis" });
-
   // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
   // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
   const rowsWithFormattedNull = series[0].data.rows.map(([first, ...rest]) => [
     first === null ? NULL_DISPLAY_VALUE : first,
     ...rest,
   ]);
-  const rows = rowsWithFormattedNull.map(([a, b]) => [formatDimension(a), b]);
+  const rows = rowsWithFormattedNull.map(([a, b]) => [
+    formatValue(a, { column: cols[0], type: "axis" }),
+    b,
+  ]);
   const formattedDimensionMap = new Map(
     rows.map(([formattedDimension], index) => [
       formattedDimension,
