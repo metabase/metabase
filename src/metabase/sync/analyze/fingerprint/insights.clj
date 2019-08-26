@@ -225,6 +225,7 @@
                                       (cond
                                         (#{:type/FK :type/PK} special_type)          :others
                                         (datetime-truncated-to-year? field)          :datetimes
+                                        (= unit :year)                               :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
                                         (field/unix-timestamp? field)                :datetimes
                                         (isa? base_type :type/Number)                :numbers
