@@ -16,6 +16,8 @@ import {
   colorShades,
 } from "./utils";
 
+import { NULL_DISPLAY_VALUE } from "./constants";
+
 import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
 
 import { computeNumericDataInverval } from "./numeric";
@@ -104,7 +106,7 @@ function getDatas({ settings, series }, warn) {
           : isDimensionNumeric(series)
           ? row[0]
           : row[0] === null
-          ? "(empty)"
+          ? NULL_DISPLAY_VALUE
           : String(row[0]),
         ...row.slice(1),
       ];
