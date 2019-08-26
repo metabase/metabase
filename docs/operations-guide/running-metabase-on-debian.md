@@ -15,7 +15,7 @@ The core assumption in this guide:
 
 ### Create an unprivileged user to run metabase and give him acces to app and logs
 
-For security we want to have metabase run by an unprivileged user. We will call the user simply metabase. Further we will already generate files we need later for logging and configuration of metabase and apply the correct security settings for our unprivileged user.
+For security reasons we want to have Metabase run as an unprivileged user. We will call the user simply `metabase`. Further we will create the files we will need later for logging and configuration of Metabase, and apply the correct security settings for our unprivileged user.
 
     $ sudo groupadd -r metabase
     $ sudo useradd -r -s /bin/false -g metabase metabase
@@ -79,9 +79,8 @@ Environment variables provide a good way to customize and configure your Metabas
 
 #### The Metabase config file
 
-Create your `/etc/default/metabase` environment config file and open it in your editor:
+Open your `/etc/default/metabase` environment config file in your editor:
 
-    $ sudo touch /etc/default/metabase
     $ sudo <your-editor> /etc/default/metabase
 
 In `/etc/default/metabase`, replace configurable items (they look like `<some-var-name>`) with values sensible for your system. Some Metabase configs have available options, some of which are shown below, separated by `|` symbols:
