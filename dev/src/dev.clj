@@ -9,7 +9,7 @@
              [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.models.interface :as mi]
-            [toucan.db :as db]))
+            [toucan.db :as tdb]))
 
 
 (defn init!
@@ -47,9 +47,3 @@
   [permissions & body]
   `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
-
-;; The linter will punch you in the face if you require a namespace without using anything from it, so here we pull a
-;; fast one on it. We want to require the namespaces so that they're within easy reach during REPL dev, without having
-;; to specify beforehand what exactly we want to use.
-(def appease-the-linter
-  [u/get-id mi/can-read?])
