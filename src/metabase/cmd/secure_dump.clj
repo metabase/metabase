@@ -4,7 +4,8 @@
             [metabase.crypto.symmetric :as symm]
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
             [metabase.s3 :as s3])
-  (:import (java.util.zip ZipEntry ZipOutputStream ZipInputStream)))
+  (:import (java.util.zip ZipEntry ZipOutputStream ZipInputStream)
+           (java.net URL)))
 
 (defn- same-contents? [file1 file2]
   (= (slurp (io/file file1))
@@ -82,14 +83,20 @@
 
 
 (defn up! []
-  (let [curr-db-conn-str "TODO"
+  (let [
+
+        ;;Expose:
+        s3-upload-url-str "TODO"
+
+
+        ;;Private:
+        zip-path "TODO"
+        curr-db-conn-str "TODO"
         generated-h2-path "TODO"
         enc-dump-path "TODO"
         enc-secret-path "TODO"
         aes-secret "TODO"
-        zip-path "TODO"
-        s3-bucket "TODO"
-        s3-key "TODO"
+        s3-upload-url (URL. s3-upload-url-str)
         _ (dump-to-h2/dump-to-h2! curr-db-conn-str generated-h2-path)
         _ (encrypt-file {:inpath          generated-h2-path
                          :enc-dump-path   enc-dump-path
@@ -100,17 +107,23 @@
         _ (zip-secure-dump {:enc-dump-path   enc-dump-path
                             :enc-secret-path enc-secret-path
                             :zip-path        zip-path})
-        _ (s3/upload zip-path s3-bucket s3-key)
+        _ (s3/upload-to-url s3-upload-url zip-path)
 
         ]))
 
 (defn down! []
-  (let [enc-dump-path "TODO"
-        enc-secret-path "TODO"
-        zip-path "TODO"
+  (let [
+        ;;Expose:
         dec-dump "TODO"
         s3-bucket "TODO"
         s3-key "TODO"
+
+        ;;Private:
+        enc-dump-path "TODO"
+        enc-secret-path "TODO"
+        zip-path "TODO"
+
+        ;;TODO S3 download require AWS tokens, so do this, refresh env without the tokens, then call H2 load
         _ (s3/download zip-path s3-bucket s3-key)
         _ (unzip-secure-dump {:zip-path    zip-path
                               :dump-path   enc-dump-path
@@ -120,7 +133,8 @@
                          :enc-secret-path enc-secret-path
                          :key-spec        {:pub-key-path     "./keys/pub_key"
                                            :private-key-path "./keys/private_key"}})
-        ;; TODO we wont load-from-h2!, will require a separate call
+        ;; TODO we wont load-from-h2!, will require a separate call using lein run
+
         ]))
 
 
