@@ -1009,7 +1009,7 @@
   [_ {limit :limit} updated-query]
   (if-not limit
     (-> updated-query
-      (assoc-in [:query :limitSpec :type]  :default))
+        (assoc-in [:query :limitSpec :type]  :default))
     (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))
