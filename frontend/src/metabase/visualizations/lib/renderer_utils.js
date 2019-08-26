@@ -94,14 +94,24 @@ export function reduceGroup(group, key, warnUnaggregated) {
   );
 }
 
-export const parseXValue = _.memoize(
-  (xValue, { isNumeric, isTimeseries, isQuantitative, unit }, warn) =>
-    // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-    isTimeseries && !isQuantitative
-      ? HACK_parseTimestamp(xValue, unit, warn)
-      : isNumeric
-      ? xValue
-      : String(xValue),
+export function parseXValue(xValue, options, warn) {
+  const { parsedValue, warning } = memoizedParseXValue(xValue, options);
+  if (warning !== undefined) {
+    warn(warning);
+  }
+  return parsedValue;
+}
+
+const memoizedParseXValue = _.memoize(
+  (xValue, { isNumeric, isTimeseries, isQuantitative, unit }) => {
+    // don't parse as timestamp if we're going to display as a quantitative
+    // scale, e.x. years and Unix timestamps
+    if (isTimeseries && !isQuantitative) {
+      return parseTimestampAndWarn(xValue, unit);
+    }
+    const parsedValue = isNumeric ? xValue : String(xValue);
+    return { parsedValue };
+  },
   // create cache key from args
   // we need typeof so "2" and 2 don't have the same cache key
   (x, options) => [x, typeof x, ...Object.values(options)].join(),
@@ -167,18 +177,16 @@ function moment_fast_toString() {
   return this._i;
 }
 
-export function HACK_parseTimestamp(value, unit, warn) {
+function parseTimestampAndWarn(value, unit) {
   if (value == null) {
-    warn(nullDimensionWarning());
-    return null;
+    return { parsedValue: null, warning: nullDimensionWarning() };
   }
   const m = parseTimestamp(value, unit);
   if (!m.isValid()) {
-    warn(invalidDateWarning(value));
-    return null;
+    return { parsedValue: null, warning: invalidDateWarning(value) };
   }
   m.toString = moment_fast_toString;
-  return m;
+  return { parsedValue: m };
 }
 
 /************************************************************ PROPERTIES ************************************************************/

@@ -92,4 +92,11 @@ describe("parseXValue", () => {
     expect(moment.isMoment(value1)).toBe(true);
     expect(moment.isMoment(value2)).toBe(false);
   });
+
+  it("should warn repeatedly (despite caching)", () => {
+    const warn = jest.fn();
+    parseXValue("2018-W60", { isTimeseries: true }, warn);
+    parseXValue("2018-W60", { isTimeseries: true }, warn);
+    expect(warn.mock.calls.length).toBe(2);
+  });
 });
