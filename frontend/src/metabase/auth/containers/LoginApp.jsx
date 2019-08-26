@@ -213,7 +213,7 @@ export default class LoginApp extends Component {
                 </div>
               </div>
 
-              <div className="Form-actions">
+              <div className="Form-actions flex align-center">
                 <Button primary={this.state.valid} disabled={!this.state.valid}>
                   {t`Sign in`}
                 </Button>
@@ -224,7 +224,7 @@ export default class LoginApp extends Component {
                       ? "?email=" + this.state.credentials.username
                       : "")
                   }
-                  className="Grid-cell py2 sm-py0 md-text-right text-centered flex-full link"
+                  className="sm-py0 py2 text-centered md-text-right link ml-auto"
                   onClick={e => {
                     window.OSX ? window.OSX.resetPassword() : null;
                   }}
