@@ -11,7 +11,6 @@ import {
 } from "__support__/sample_dataset_fixture";
 
 import Question from "metabase-lib/lib/Question";
-import Mode from "metabase-lib/lib/Mode";
 
 describe("Mode", () => {
   const rawDataQuestion = new Question(metadata, orders_raw_card);
@@ -29,7 +28,7 @@ describe("Mode", () => {
 
       it("returns `metric` mode with >= 1 aggregations", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
+          .aggregate(["count"])
           .question()
           .mode();
         expect(mode && mode.name()).toEqual("metric");
@@ -37,8 +36,8 @@ describe("Mode", () => {
 
       it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
-          .addBreakout([
+          .aggregate(["count"])
+          .breakout([
             "datetime-field",
             ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
             "day",
@@ -49,13 +48,13 @@ describe("Mode", () => {
       });
       it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
-          .addBreakout([
+          .aggregate(["count"])
+          .breakout([
             "datetime-field",
             ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
             "day",
           ])
-          .addBreakout([
+          .breakout([
             "fk->",
             ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
             ["field-id", PRODUCT_CATEGORY_FIELD_ID],
@@ -67,8 +66,8 @@ describe("Mode", () => {
 
       it("returns `geo` mode with >=1 aggregations and an address breakout", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
-          .addBreakout([
+          .aggregate(["count"])
+          .breakout([
             "fk->",
             ["field-id", ORDERS_USER_FK_FIELD_ID],
             ["field-id", PEOPLE_STATE_FIELD_ID],
@@ -80,13 +79,13 @@ describe("Mode", () => {
 
       it("returns `pivot` mode with >=1 aggregations and 1-2 category breakouts", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
-          .addBreakout([
+          .aggregate(["count"])
+          .breakout([
             "fk->",
             ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
             ["field-id", PRODUCT_CATEGORY_FIELD_ID],
           ])
-          .addBreakout([
+          .breakout([
             "fk->",
             ["field-id", ORDERS_USER_FK_FIELD_ID],
             ["field-id", PEOPLE_STATE_FIELD_ID],
@@ -98,18 +97,18 @@ describe("Mode", () => {
 
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
         const mode = rawDataQuery
-          .addAggregation(["count"])
-          .addBreakout([
+          .aggregate(["count"])
+          .breakout([
             "datetime-field",
             ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
             "day",
           ])
-          .addBreakout([
+          .breakout([
             "fk->",
             ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
             ["field-id", PRODUCT_CATEGORY_FIELD_ID],
           ])
-          .addBreakout([
+          .breakout([
             "fk->",
             ["field-id", ORDERS_USER_FK_FIELD_ID],
             ["field-id", PEOPLE_STATE_FIELD_ID],
@@ -170,8 +169,8 @@ describe("Mode", () => {
         metadata,
       })
         .query()
-        .addAggregation(["count"])
-        .addBreakout(["datetime-field", ["field-id", 1], "day"])
+        .aggregate(["count"])
+        .breakout(["datetime-field", ["field-id", 1], "day"])
         .question()
         .setDisplay("table")
         .mode();

@@ -500,6 +500,32 @@ export default class StructuredQuery extends AtomicQuery {
     return this.fields().length > 0;
   }
 
+  // ALIASES: allows
+
+  /**
+   * @returns alias for addAggregation
+   */
+  aggregate(aggregation: Aggregation): StructuredQuery {
+    return this.addAggregation(aggregation);
+  }
+
+  /**
+   * @returns alias for addBreakout
+   */
+  breakout(breakout: Breakout | Dimension): StructuredQuery {
+    if (breakout instanceof Dimension) {
+      breakout = breakout.mbql();
+    }
+    return this.addBreakout(breakout);
+  }
+
+  /**
+   * @returns alias for addFilter
+   */
+  filter(filter: Filter | FilterWrapper) {
+    return this.addFilter(filter);
+  }
+
   // JOINS
 
   /**
