@@ -439,3 +439,27 @@
         (u/pprint-to-str 'red results))
       {:cols (->> results :data :cols (map :name))
        :rows (-> results :data :rows)})))
+
+(datasets/expect-with-driver :druid
+  [["Bar" "Felipinho Asklepios" 8.015665809687173]
+    ["Bar" "Spiros Teofil" 8.015665809687173]
+    ["Japanese" "Felipinho Asklepios" 7.011990219885757]
+    ["Japanese" "Frans Hevel" 7.011990219885757]
+    ["Mexican" "Shad Ferdynand" 7.011990219885757]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:distinct [:field-id (data/id :checkins :venue_name)]] {:name "__count_0"}]]
+      :breakout    [$venue_category_name $user_name]
+      :order-by    [[:desc [:aggregation 0]] [:asc [:field-id (data/id :checkins :venue_category_name)]]]
+      :limit       5}))
+
+(datasets/expect-with-driver :druid
+  [["American" "Rüstem Hebel" 1.0002442201269182]
+  ["Artisan" "Broen Olujimi" 1.0002442201269182]
+  ["Artisan" "Conchúr Tihomir" 1.0002442201269182]
+  ["Artisan" "Dwight Gresham" 1.0002442201269182]
+  ["Artisan" "Plato Yeshua" 1.0002442201269182]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:distinct [:field-id (data/id :checkins :venue_name)]] {:name "__count_0"}]]
+      :breakout    [$venue_category_name $user_name]
+      :order-by    [[:asc [:aggregation 0]] [:asc [:field-id (data/id :checkins :venue_category_name)]]]
+      :limit       5}))
