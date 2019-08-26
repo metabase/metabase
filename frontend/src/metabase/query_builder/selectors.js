@@ -191,7 +191,7 @@ export const getMode = createSelector(
 
 export const getIsObjectDetail = createSelector(
   [getMode],
-  mode => mode && mode.name === "object",
+  mode => mode && mode.name() === "object",
 );
 
 export const getIsDirty = createSelector(

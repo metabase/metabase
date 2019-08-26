@@ -36,7 +36,12 @@ export function getMode(question: ?Question): ?QueryMode {
       const isPKFilter = filter => {
         if (filter.isFieldFilter()) {
           const field = filter.field();
-          if (field && field.isPK() && field.id === query.sourceTableId()) {
+          if (
+            field &&
+            field.isPK() &&
+            field.table &&
+            field.table.id === query.sourceTableId()
+          ) {
             return true;
           }
         }

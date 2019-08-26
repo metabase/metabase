@@ -2,6 +2,7 @@ import {
   metadata,
   DATABASE_ID,
   ORDERS_TABLE_ID,
+  ORDERS_PK_FIELD_ID,
   ORDERS_CREATED_DATE_FIELD_ID,
   ORDERS_PRODUCT_FK_FIELD_ID,
   ORDERS_USER_FK_FIELD_ID,
@@ -93,6 +94,14 @@ describe("Mode", () => {
           .question()
           .mode();
         expect(mode && mode.name()).toEqual("pivot");
+      });
+
+      it("returns `object` mode with pk filter", () => {
+        const mode = rawDataQuery
+          .filter(["=", ["field-id", ORDERS_PK_FIELD_ID], 42])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("object");
       });
 
       it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
