@@ -167,7 +167,10 @@ export default class UserStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep SetupStep--active rounded bg-white full relative">
+        <Box
+          p={4}
+          className="SetupStep SetupStep--active rounded bg-white full relative"
+        >
           <StepTitle title={stepText} circleText={"1"} />
           <form
             name="userForm"
@@ -181,14 +184,14 @@ export default class UserStep extends Component {
               formError={formError}
             >
               <Flex align="center">
-                <Box>
+                <Box w={1 / 2}>
                   <FormLabel
                     title={t`First name`}
                     fieldName="first_name"
                     formError={formError}
                   />
                   <input
-                    className="Form-input"
+                    className="Form-input full"
                     name="first_name"
                     defaultValue={userDetails ? userDetails.first_name : ""}
                     placeholder="Johnny"
@@ -197,14 +200,14 @@ export default class UserStep extends Component {
                     onChange={this.onFirstNameChange}
                   />
                 </Box>
-                <Box>
+                <Box w={1 / 2}>
                   <FormLabel
                     title={t`Last name`}
                     fieldName="last_name"
                     formError={formError}
                   />
                   <input
-                    className="Form-input"
+                    className="Form-input full"
                     name="last_name"
                     defaultValue={userDetails ? userDetails.last_name : ""}
                     placeholder="Appleseed"
@@ -301,7 +304,7 @@ export default class UserStep extends Component {
               <FormMessage />
             </div>
           </form>
-        </section>
+        </Box>
       );
     }
   }

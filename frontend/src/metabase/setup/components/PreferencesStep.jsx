@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
+import { Box } from "grid-styled";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle.jsx";
@@ -68,7 +69,10 @@ export default class PreferencesStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep bg-white rounded full relative SetupStep--active">
+        <Box
+          p={4}
+          className="SetupStep bg-white rounded full relative SetupStep--active"
+        >
           <StepTitle title={stepText} circleText={"3"} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
             <div className="Form-field">
@@ -111,7 +115,7 @@ export default class PreferencesStep extends Component {
               {/* FIXME: <mb-form-message form="usageForm"></mb-form-message>*/}
             </div>
           </form>
-        </section>
+        </Box>
       );
     }
   }

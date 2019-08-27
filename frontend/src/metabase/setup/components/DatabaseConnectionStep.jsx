@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { Box } from "grid-styled";
 import StepTitle from "./StepTitle.jsx";
 import CollapsedStep from "./CollapsedStep.jsx";
 
@@ -163,7 +164,10 @@ export default class DatabaseConnectionStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep bg-white rounded full relative SetupStep--active">
+        <Box
+          p={4}
+          className="SetupStep bg-white rounded full relative SetupStep--active"
+        >
           <StepTitle title={stepText} circleText={"2"} />
           <div className="mb4">
             <div style={{ maxWidth: 600 }} className="Form-field">
@@ -195,14 +199,14 @@ export default class DatabaseConnectionStep extends Component {
               />
             ) : null}
 
-            <div className="Form-field">
+            <div className="Form-field mt1">
               <a
                 className="link"
                 onClick={this.skipDatabase.bind(this)}
               >{t`I'll add my data later`}</a>
             </div>
           </div>
-        </section>
+        </Box>
       );
     }
   }
