@@ -53,19 +53,16 @@
      ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string h2-filename))))
 
 (defn ^:command secure-dump-and-upload
-  ([]
+  ([s3-upload-url-str curr-db-conn-str]
    (classloader/require 'metabase.cmd.secure-dump)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.secure-dump/up!)  ))
-   ))
+     ((resolve 'metabase.cmd.secure-dump/up!) s3-upload-url-str curr-db-conn-str))))
 
 (defn ^:command secure-dump-download-and-unlock
-  ([]
+  ([h2-dump-path s3-bucket s3-key secret-key]
    (classloader/require 'metabase.cmd.secure-dump)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.secure-dump/down!)  ))
-   ))
-
+     ((resolve 'metabase.cmd.secure-dump/down!) h2-dump-path s3-bucket s3-key secret-key))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."

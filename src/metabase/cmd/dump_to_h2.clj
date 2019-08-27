@@ -185,6 +185,7 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
    h2-filename-or-nil]
+  (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil)
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil)
                   true)
 
@@ -215,6 +216,7 @@
                             (println-ok)
 
                             (jdbc/db-unset-rollback-only! target-db-conn))
+  (println "Dump complete")
   )
 
 ;(dump-to-h2! "")

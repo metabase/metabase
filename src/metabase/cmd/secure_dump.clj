@@ -3,13 +3,17 @@
             [metabase.crypto.asymmetric :as asymm]
             [metabase.crypto.symmetric :as symm]
             [metabase.cmd.dump-to-h2 :as dump-to-h2]
-            [metabase.s3 :as s3])
+            [metabase.s3 :as s3]
+            [metabase.cmd.load-from-h2 :as load-from-h2])
   (:import (java.util.zip ZipEntry ZipOutputStream ZipInputStream)
            (java.net URL)))
 
 (defn- same-contents? [file1 file2]
   (= (slurp (io/file file1))
      (slurp (io/file file2))))
+
+(defn- decrypt-payload [enc-payload secret-key]
+  (symm/decrypt enc-payload secret-key))
 
 (defn- decrypt-file
   [{:keys [enc-dump-path outpath enc-secret-path key-spec]}]
@@ -33,16 +37,18 @@
           pub-key (or (:pub-key-path key-spec))
           payload (slurp (io/file inpath))
           enc-payload (symm/encrypt payload secret-key)
-          enc-payload-decrypted (symm/decrypt enc-payload secret-key)
           enc-secret (asymm/encrypt secret-key (asymm/pub-key pub-key))
           enc-out-path enc-dump-path
-          enc-out-dec-path (str enc-dump-path ".dec.debug")]
-      (println "Writing encrypted content")
-      (spit (io/file enc-out-path) enc-payload)
+          enc-out-dec-path (str enc-dump-path ".dec.debug")
+          _ (println "Writing encrypted content")
+          _ (spit (io/file enc-out-path) enc-payload)
+          enc-payload-decrypted (decrypt-payload (slurp (io/file enc-out-path)) secret-key)]
+
       (println "Writing encrypted secret")
       (spit (io/file enc-secret-path) enc-secret)
       (println "Writing decrypted content")
-      (spit (io/file enc-out-dec-path) enc-payload-decrypted))
+      (spit (io/file enc-out-dec-path) enc-payload-decrypted)
+      (assert (same-contents? inpath enc-out-dec-path)))
     (catch Exception e
       (println "Error: " e))))
 
@@ -81,89 +87,61 @@
             "secret.enc" (io/copy stream (io/file secret-path)))
           (recur (.getNextEntry stream)))))))
 
+(defn uri->file [uri file]
+  (println "Transfer: " uri " -> " file)
+  (io/make-parents file)
+  (with-open [in (io/input-stream uri)
+              out (io/output-stream file)]
+    (io/copy in out)))
 
-(defn up! []
+(defn up! [s3-upload-url-str curr-db-conn-str]
   (let [
 
-        ;;Expose:
-        s3-upload-url-str "TODO"
+        zip-path "./dumps_out/dump.zip"
 
-
-        ;;Private:
-        zip-path "TODO"
-        curr-db-conn-str "TODO"
-        generated-h2-path "TODO"
-        enc-dump-path "TODO"
-        enc-secret-path "TODO"
-        aes-secret "TODO"
+        ;;TODO we are relying on env vars for h2 dump location...
+        ;;TODO call with ../..h2.db, end up with ..h2.db.mv.db, load-from-h2 without .mv.db
+        generated-h2-path "./dumps_out/dump.h2.db.mv.db"
+        enc-dump-path "./dumps_out/dump.enc"
+        enc-secret-path "./dumps_out/dump.secret.enc"
+        aes-secret "TODO_generate"
         s3-upload-url (URL. s3-upload-url-str)
-        _ (dump-to-h2/dump-to-h2! curr-db-conn-str generated-h2-path)
+        ;;TODO touch h2 file before running this
+        _ (dump-to-h2/dump-to-h2! curr-db-conn-str nil)
         _ (encrypt-file {:inpath          generated-h2-path
                          :enc-dump-path   enc-dump-path
                          :enc-secret-path enc-secret-path
-                         :key-spec        {:secret-key       aes-secret
-                                           :pub-key-path     "./keys/pub_key"}})
+                         :key-spec        {:secret-key   aes-secret
+                                           :pub-key-path "./keys/pub_key"}})
         _ (zip-secure-dump {:enc-dump-path   enc-dump-path
                             :enc-secret-path enc-secret-path
                             :zip-path        zip-path})
         _ (s3/upload-to-url s3-upload-url zip-path)
 
-        ]))
+        ]
+    (println "Done " s3-upload-url-str)))
 
-(defn down! []
+(defn down! [h2-dump-path s3-bucket s3-key secret-key]
   (let [
-        ;;Expose:
-        dec-dump "TODO"
-        s3-bucket "TODO"
-        s3-key "TODO"
-        secret-key "TODO"
 
-        ;;Private:
-        enc-dump-path "TODO"
-        enc-secret-path "TODO"
-        zip-path "TODO"
+        enc-dump-path "./dumps_in/dumped.enc"
+        enc-secret-path "./dumps_in/dumped_secret.enc"
+        zip-path "./dumps_in/dumped.zip"
 
         ;;Item will have been made public so we can download this
-        _ (s3/download zip-path s3-bucket s3-key)
+        _ (uri->file (format "https://%s.s3.amazonaws.com/%s" s3-bucket s3-key) zip-path)
+
         _ (unzip-secure-dump {:zip-path    zip-path
                               :dump-path   enc-dump-path
                               :secret-path enc-secret-path})
 
         enc-payload (slurp (io/file enc-dump-path))
-        enc-payload-decrypted (symm/decrypt enc-payload secret-key)
-        _ (spit (io/file dec-dump) enc-payload-decrypted)
+        enc-payload-decrypted (decrypt-payload enc-payload secret-key)
+        _ (spit (io/file h2-dump-path) enc-payload-decrypted)
 
+        ;_ (println "Loading from H2 dump:")
+        ;_ (metabase.cmd.load-from-h2/load-from-h2! h2-dump-path)
         ;; TODO load-from-h2!, will require a separate call using lein run, or should we just run it?
 
-        ]))
-
-
-(defn- DEMO []
-  (let [enc-dump-path "./keys/dump__file.txt.aes.enc"
-        enc-secret-path "./keys/dump_secret__file.txt.aes.enc"
-        zip-path "./keys/dump.zip"]
-
-    (encrypt-file {:inpath          "./keys/file.txt"
-                   :enc-dump-path   enc-dump-path
-                   :enc-secret-path enc-secret-path
-                   :key-spec        {:secret-key       "mysecretkey"
-                                     :pub-key-path     "./keys/pub_key"}})
-
-    (zip-secure-dump {:enc-dump-path   enc-dump-path
-                      :enc-secret-path enc-secret-path
-                      :zip-path        zip-path})
-    (unzip-secure-dump {:zip-path    zip-path
-                        :dump-path   "./keys/dump__unzip.enc"
-                        :secret-path "./keys/dump_secret__unzip.enc"})
-
-    (decrypt-file {:enc-dump-path   "./keys/dump__unzip.enc"
-                   :outpath         "./keys/result_file.txt.aes.enc.dec"
-                   :enc-secret-path "./keys/dump_secret__unzip.enc"
-                   :key-spec        {:pub-key-path     "./keys/pub_key"
-                                     :private-key-path "./keys/private_key"}})))
-
-(comment
-
-  (DEMO)
-
-  )
+        ]
+    (println "Done " h2-dump-path s3-bucket s3-key secret-key)))

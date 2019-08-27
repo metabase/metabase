@@ -38,5 +38,8 @@
                    (.setRequestMethod "PUT"))
         the-data (file->bytes obj-path)]
     (.write (.getOutputStream conn) the-data)
+    (println "S3 upload: " (.getResponseCode conn))
+    (when-not (= 200 (.getResponseCode conn))
+      (throw (ex-info "Could not upload to S3" {:status (.getResponseCode conn)})))
     (.getResponseCode conn)))
 
