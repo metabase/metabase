@@ -319,7 +319,9 @@
   [_ {:keys [display_name full-name link table_id]}]
   (cond
     full-name full-name
-    link      (format "%s → %s" (->reference :string (Table table_id)) display_name)
+    link      (format "%s → %s"
+                      (-> link Field :display_name (str/replace #"(?i)\sid$" ""))
+                      display_name)
     :else     display_name))
 
 (defmethod ->reference [:string (type Table)]
