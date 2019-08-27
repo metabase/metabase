@@ -133,7 +133,7 @@ export default class DatabaseEditApp extends Component {
             [addingNewDatabase ? t`Add Database` : database.name],
           ]}
         />
-        <Flex>
+        <Flex pb={2}>
           <Box w={2 / 3}>
             <div className="pt0">
               {showTabs && (
