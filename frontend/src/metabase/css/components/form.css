@@ -6,6 +6,7 @@
 
 .Form-field {
   margin-bottom: 1.5em;
+  color: var(--color-text-medium);
 }
 
 .Form-field.Form--fieldError {
@@ -18,7 +19,7 @@
   font-size: 0.85em;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-medium);
+  color: inherit;
   margin-bottom: 0.5em;
 }
 
@@ -32,6 +33,10 @@
   padding: 0.75em;
   line-height: 1;
   outline: none;
+}
+
+.Form-field.Form--fieldError .Form-input {
+  border-color: var(--color-error);
 }
 
 .Form-message {
