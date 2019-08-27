@@ -30,7 +30,7 @@ describe("RowChart", () => {
     ]);
   });
 
-  it('should render null as "null"', () => {
+  it('should render null as "(empty)"', () => {
     renderChart(rowRenderer, element, [
       {
         card: { display: "row", visualization_settings: {} },
