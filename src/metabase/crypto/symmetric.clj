@@ -18,8 +18,8 @@
 (defn base64 [b]
   (Base64/encodeBase64String b))
 
-(defn debase64 [s]
-  (Base64/decodeBase64 (get-bytes s)))
+(defn debase64 [^bytes b]
+  (Base64/decodeBase64 b))
 
 (defn get-raw-key [seed]
   (let [keygen (KeyGenerator/getInstance "AES")
@@ -34,14 +34,23 @@
     (.init cipher mode key-spec)
     cipher))
 
-(defn encrypt [text key]
-  (println "Encrypt " (count text))
-  (let [bytes (get-bytes text)
-        cipher (get-cipher Cipher/ENCRYPT_MODE key)]
-    (base64 (.doFinal cipher bytes))))
+;(defn encrypt [text key]
+;  (println "Encrypt " (count text))
+;  (let [bytes (get-bytes text)
+;        cipher (get-cipher Cipher/ENCRYPT_MODE key)]
+;    (base64 (.doFinal cipher bytes))))
 
-(defn decrypt [text key]
-  (println "Decrypt " (count text))
+(defn encrypt-bytes-to-b64 [the-bytes key]
+  (let [cipher (get-cipher Cipher/ENCRYPT_MODE key)]
+    (base64 (.doFinal cipher the-bytes))))
+
+;(defn decrypt [text key]
+;  (println "Decrypt " (count text))
+;  (let [cipher (get-cipher Cipher/DECRYPT_MODE key)]
+;    (String. (.doFinal cipher (debase64 text)))))
+
+(defn decrypt-b64-bytes [^bytes b64 key]
+  (println "Decrypt " (count b64))
   (let [cipher (get-cipher Cipher/DECRYPT_MODE key)]
-    (String. (.doFinal cipher (debase64 text)))))
+    (.doFinal cipher (debase64 b64))))
 
