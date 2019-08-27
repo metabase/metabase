@@ -41,8 +41,7 @@
        :enc-dump-path   enc-dump-path
        :enc-secret-path enc-secret-path
        :key-spec        {:secret-key       secret-key
-                         :pub-key-path     public-key
-                         :private-key-path private-key}})
+                         :pub-key-path     public-key}})
     (symm/decrypt (slurp enc-dump-path) secret-key)))
 
 ;; After zipping, unzipping, and decrypting, the encrypted dump

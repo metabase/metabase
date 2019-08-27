@@ -102,8 +102,7 @@
                          :enc-dump-path   enc-dump-path
                          :enc-secret-path enc-secret-path
                          :key-spec        {:secret-key       aes-secret
-                                           :pub-key-path     "./keys/pub_key"
-                                           :private-key-path "./keys/private_key"}})
+                                           :pub-key-path     "./keys/pub_key"}})
         _ (zip-secure-dump {:enc-dump-path   enc-dump-path
                             :enc-secret-path enc-secret-path
                             :zip-path        zip-path})
@@ -117,23 +116,24 @@
         dec-dump "TODO"
         s3-bucket "TODO"
         s3-key "TODO"
+        secret-key "TODO"
 
         ;;Private:
         enc-dump-path "TODO"
         enc-secret-path "TODO"
         zip-path "TODO"
 
-        ;;TODO S3 download require AWS tokens, so do this, refresh env without the tokens, then call H2 load
+        ;;Item will have been made public so we can download this
         _ (s3/download zip-path s3-bucket s3-key)
         _ (unzip-secure-dump {:zip-path    zip-path
                               :dump-path   enc-dump-path
                               :secret-path enc-secret-path})
-        _ (decrypt-file {:enc-dump-path   enc-dump-path
-                         :outpath         dec-dump
-                         :enc-secret-path enc-secret-path
-                         :key-spec        {:pub-key-path     "./keys/pub_key"
-                                           :private-key-path "./keys/private_key"}})
-        ;; TODO we wont load-from-h2!, will require a separate call using lein run
+
+        enc-payload (slurp (io/file enc-dump-path))
+        enc-payload-decrypted (symm/decrypt enc-payload secret-key)
+        _ (spit (io/file dec-dump) enc-payload-decrypted)
+
+        ;; TODO load-from-h2!, will require a separate call using lein run, or should we just run it?
 
         ]))
 
@@ -147,8 +147,7 @@
                    :enc-dump-path   enc-dump-path
                    :enc-secret-path enc-secret-path
                    :key-spec        {:secret-key       "mysecretkey"
-                                     :pub-key-path     "./keys/pub_key"
-                                     :private-key-path "./keys/private_key"}})
+                                     :pub-key-path     "./keys/pub_key"}})
 
     (zip-secure-dump {:enc-dump-path   enc-dump-path
                       :enc-secret-path enc-secret-path
