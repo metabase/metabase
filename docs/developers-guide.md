@@ -269,9 +269,9 @@ or a specific test with
 
     lein test metabase.api.session-test
 
-By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `DRIVERS`:
+By default, the tests only run against the `h2` driver. You can specify which drivers to run tests against with the env var `ENGINES`:
 
-    DRIVERS=h2,postgres,mysql,mongo lein test
+    ENGINES=h2,postgres,mysql,mongo lein test
 
 Some drivers require additional environment variables when testing since they are impossible to run locally (such as Redshift and Bigquery). The tests will fail on launch and let you know what parameters to supply if needed.
 
