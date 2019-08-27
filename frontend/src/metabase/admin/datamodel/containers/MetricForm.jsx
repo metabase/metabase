@@ -17,6 +17,8 @@ import cx from "classnames";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
+const DEFAULT_QUERY = { aggregation: ["count"] };
+
 @reduxForm(
   {
     form: "metric",
@@ -53,16 +55,6 @@ import Table from "metabase-lib/lib/metadata/Table";
   (state, { metric }) => ({ initialValues: metric }),
 )
 export default class MetricForm extends Component {
-  updatePreviewSummary(datasetQuery) {
-    this.props.updatePreviewSummary({
-      ...datasetQuery,
-      query: {
-        aggregation: ["count"],
-        ...datasetQuery.query,
-      },
-    });
-  }
-
   renderActionButtons() {
     const {
       invalid,
@@ -93,6 +85,7 @@ export default class MetricForm extends Component {
       table,
       handleSubmit,
       previewSummary,
+      updatePreviewSummary,
     } = this.props;
 
     const isNewRecord = id.value === "";
@@ -139,8 +132,9 @@ export default class MetricForm extends Component {
                     ? ""
                     : t`Result: ` + formatValue(previewSummary)
                 }
-                updatePreviewSummary={this.updatePreviewSummary.bind(this)}
+                updatePreviewSummary={updatePreviewSummary}
                 {...definition}
+                value={definition.value || DEFAULT_QUERY}
               />
             )}
           </FormLabel>
