@@ -5,6 +5,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import { t } from "ttag";
+import { Box, Flex } from "grid-styled";
 
 import MetabaseSettings from "metabase/lib/settings";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
@@ -132,9 +133,9 @@ export default class DatabaseEditApp extends Component {
             [addingNewDatabase ? t`Add Database` : database.name],
           ]}
         />
-        <section className="Grid Grid--gutters Grid--2-of-3">
-          <div className="Grid-cell">
-            <div className="bordered rounded shadowed pt0">
+        <Flex>
+          <Box w={2 / 3}>
+            <div className="pt0">
               {showTabs && (
                 <div className="border-bottom">
                   <Radio
@@ -178,12 +179,12 @@ export default class DatabaseEditApp extends Component {
                 )}
               </LoadingAndErrorWrapper>
             </div>
-          </div>
+          </Box>
 
           {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <div className="Grid-cell Cell--1of3">
-              <div className="Actions bordered rounded shadowed">
+            <Box w={1 / 3} ml={[2, 3]}>
+              <div className="Actions bg-light rounded p3">
                 <div className="Actions-group">
                   <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
                   <ol>
@@ -253,9 +254,9 @@ export default class DatabaseEditApp extends Component {
                   </ol>
                 </div>
               </div>
-            </div>
+            </Box>
           )}
-        </section>
+        </Flex>
       </div>
     );
   }
