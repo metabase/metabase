@@ -235,9 +235,6 @@ export function setupTooltips(
           onHoverChange(hovered);
         })
         .on("mouseleave", function() {
-          if (!onHoverChange) {
-            return;
-          }
           onHoverChange(null);
         });
     }
