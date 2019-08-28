@@ -63,12 +63,12 @@ export const getParametersBySlug = (
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
-  datasetQuery: DatasetQuery,
+  datasetQuery: ?DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
     const dimension = target[1];
     if (Array.isArray(dimension) && dimension[0] === "template-tag") {
-      if (datasetQuery.type === "native") {
+      if (datasetQuery && datasetQuery.type === "native") {
         const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {

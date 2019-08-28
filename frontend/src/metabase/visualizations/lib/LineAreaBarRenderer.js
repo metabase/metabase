@@ -12,11 +12,8 @@ import {
   computeSplit,
   computeMaxDecimalsForValues,
   getFriendlyName,
-  getXValues,
   colorShades,
 } from "./utils";
-
-import { NULL_DISPLAY_VALUE } from "./constants";
 
 import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
 
@@ -38,7 +35,6 @@ import { NULL_DIMENSION_WARNING, unaggregatedDataWarning } from "./warnings";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 
 import {
-  HACK_parseTimestamp,
   forceSortedGroupsOfGroups,
   initChart, // TODO - probably better named something like `initChartParent`
   makeIndexMap,
@@ -50,9 +46,10 @@ import {
   isHistogramBar,
   isStacked,
   isNormalized,
+  getDatas,
   getFirstNonEmptySeries,
+  getXValues,
   isDimensionTimeseries,
-  isDimensionNumeric,
   isRemappedToString,
   isMultiCardSeries,
 } from "./renderer_utils";
@@ -96,27 +93,6 @@ function checkSeriesIsValid({ series, maxSeries }) {
   }
 }
 
-function getDatas({ settings, series }, warn) {
-  return series.map(s =>
-    s.data.rows.map(row => {
-      const newRow = [
-        // don't parse as timestamp if we're going to display as a quantitative scale, e.x. years and Unix timestamps
-        isDimensionTimeseries(series) && !isQuantitative(settings)
-          ? HACK_parseTimestamp(row[0], s.data.cols[0].unit, warn)
-          : isDimensionNumeric(series)
-          ? row[0]
-          : row[0] === null
-          ? NULL_DISPLAY_VALUE
-          : String(row[0]),
-        ...row.slice(1),
-      ];
-      // $FlowFixMe: _origin not typed
-      newRow._origin = row._origin;
-      return newRow;
-    }),
-  );
-}
-
 function getXInterval({ settings, series }, xValues) {
   if (isTimeseries(settings)) {
     // compute the interval
@@ -137,7 +113,7 @@ function getXInterval({ settings, series }, xValues) {
 }
 
 function getXAxisProps(props, datas) {
-  const rawXValues = getXValues(datas);
+  const rawXValues = getXValues(props);
   const isHistogram = isHistogramBar(props);
   const xInterval = getXInterval(props, rawXValues);
 
