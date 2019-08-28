@@ -22,8 +22,8 @@
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
-  {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
+  {:name                          s/Str
+   :display_name                  s/Str
    (s/optional-key :description)  (s/maybe su/NonBlankString)
    :base_type                     su/FieldTypeKeywordOrString
    (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
