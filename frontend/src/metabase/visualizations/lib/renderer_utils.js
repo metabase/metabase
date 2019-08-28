@@ -10,6 +10,7 @@ import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsTimeseries } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
+import { NULL_DISPLAY_VALUE } from "./constants";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -109,7 +110,11 @@ const memoizedParseXValue = _.memoize(
     if (isTimeseries && !isQuantitative) {
       return parseTimestampAndWarn(xValue, unit);
     }
-    const parsedValue = isNumeric ? xValue : String(xValue);
+    const parsedValue = isNumeric
+      ? xValue
+      : xValue === null
+      ? NULL_DISPLAY_VALUE
+      : String(xValue);
     return { parsedValue };
   },
   // create cache key from args
