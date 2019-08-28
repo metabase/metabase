@@ -35,12 +35,10 @@
       :last-value))
 
 (expect
-  false
-  (nil? (transduce identity
-    (insights
-      [{:base_type :type/DateTime :unit :year} {:base_type :type/Integer}])
-    [["2014" 100]
-     ["2015" 200]])))
+  (transduce identity
+             (insights [{:base_type :type/DateTime :unit :year}
+                        {:base_type :type/Integer}])
+             [["2014" 100] ["2015" 200]]))
 
 (defn- inst->day
   [inst]
