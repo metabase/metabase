@@ -199,12 +199,11 @@
 
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
 
-  (when (= :h2 (mdb/db-type))
-    ;;TODO
-    (trs "Don't need to migrate, just use the existing H2 file")
-    (System/exit 0))
-
-
+  (let [src-conn (mdb/parse-connection-string app-db-connection-string-or-nil)]
+    (when (= :h2 (:type src-conn))
+      ;;TODO
+      (println (trs "Don't need to migrate, just use the existing H2 file"))
+      (System/exit 0)))
 
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
     (println "Conn of target: " target-db-conn)
