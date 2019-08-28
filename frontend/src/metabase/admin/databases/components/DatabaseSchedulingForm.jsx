@@ -37,7 +37,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
         />
       )}
     </div>
-    <div className="ml1">
+    <div className="ml4 pl2">
       <div className={cx({ "text-brand": selected })}>
         <h3>{name}</h3>
       </div>
