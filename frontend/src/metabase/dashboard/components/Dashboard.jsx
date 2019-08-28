@@ -90,7 +90,7 @@ type Props = {
   editingParameter: ?Parameter,
 
   refreshPeriod: number,
-  setRefreshElapsedHook: Function,
+  refreshElapsed: number,
   isFullscreen: boolean,
   isNightMode: boolean,
   hideParameters: ?string,

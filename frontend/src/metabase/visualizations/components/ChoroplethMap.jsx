@@ -69,36 +69,6 @@ function loadGeoJson(geoJsonPath, callback) {
   }
 }
 
-export function getLegendTitles(groups, columnSettings) {
-  const formatMetric = (value, compact) =>
-    formatValue(value, { ...columnSettings, compact });
-
-  const compact = shouldUseCompactFormatting(groups, formatMetric);
-
-  return groups.map((group, index) => {
-    const min = formatMetric(group[0], compact);
-    const max = formatMetric(group[group.length - 1], compact);
-    return index === groups.length - 1
-      ? `${min} +` // the last value in the list
-      : min !== max
-      ? `${min} - ${max}` // typical case
-      : min; // special case to avoid zero-width ranges e.g. $88-$88
-  });
-}
-
-// if the average formatted length is greater than this, we switch to compact formatting
-const AVERAGE_LENGTH_CUTOFF = 5;
-function shouldUseCompactFormatting(groups, formatMetric) {
-  const minValues = groups.map(([x]) => x);
-  const maxValues = groups.slice(0, -1).map(group => group[group.length - 1]);
-  const allValues = minValues.concat(maxValues);
-  const formattedValues = allValues.map(value => formatMetric(value, false));
-  const averageLength =
-    formattedValues.reduce((sum, { length }) => sum + length, 0) /
-    formattedValues.length;
-  return averageLength > AVERAGE_LENGTH_CUTOFF;
-}
-
 export default class ChoroplethMap extends Component {
   static propTypes = {};
 
@@ -227,6 +197,9 @@ export default class ChoroplethMap extends Component {
 
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
+    const formatMetric = value =>
+      formatValue(value, settings.column(cols[metricIndex]));
+
     const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
     const getFeatureClickObject = (row, feature) => ({
@@ -280,7 +253,10 @@ export default class ChoroplethMap extends Component {
     const domain = Array.from(domainSet);
 
     const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
-    const heatMapColors = _heatMapColors.slice(-domain.length);
+    const heatMapColors =
+      domain.length < _heatMapColors.length
+        ? _heatMapColors.slice(_heatMapColors.length - domain.length)
+        : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
     const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
@@ -290,8 +266,14 @@ export default class ChoroplethMap extends Component {
       .domain(groupBoundaries)
       .range(heatMapColors);
 
-    const columnSettings = settings.column(cols[metricIndex]);
-    const legendTitles = getLegendTitles(groups, columnSettings);
+    const legendColors = heatMapColors;
+    const legendTitles = heatMapColors.map((color, index) => {
+      const min = groups[index][0];
+      const max = groups[index].slice(-1)[0];
+      return index === heatMapColors.length - 1
+        ? formatMetric(min) + " +"
+        : formatMetric(min) + " - " + formatMetric(max);
+    });
 
     const getColor = feature => {
       const value = getFeatureValue(feature);
@@ -313,7 +295,7 @@ export default class ChoroplethMap extends Component {
         className={className}
         aspectRatio={aspectRatio}
         legendTitles={legendTitles}
-        legendColors={heatMapColors}
+        legendColors={legendColors}
         gridSize={gridSize}
         hovered={hovered}
         onHoverChange={onHoverChange}

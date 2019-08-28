@@ -20,28 +20,8 @@ const OPTIONS = [
 ];
 
 export default class RefreshWidget extends Component {
-  state = { elapsed: null };
-
-  componentWillMount() {
-    const { setRefreshElapsedHook } = this.props;
-    if (setRefreshElapsedHook) {
-      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    const { setRefreshElapsedHook } = this.props;
-    if (
-      setRefreshElapsedHook &&
-      prevProps.setRefreshElapsedHook !== setRefreshElapsedHook
-    ) {
-      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
-    }
-  }
-
   render() {
-    const { period, onChangePeriod, className } = this.props;
-    const { elapsed } = this.state;
+    const { period, elapsed, onChangePeriod, className } = this.props;
     const remaining = period - elapsed;
     return (
       <PopoverWithTrigger

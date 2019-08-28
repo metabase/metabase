@@ -13,7 +13,7 @@ export const getDashboardActions = ({
   onNightModeChange,
   onFullscreenChange,
   refreshPeriod,
-  setRefreshElapsedHook,
+  refreshElapsed,
   onRefreshPeriodChange,
 }) => {
   const buttons = [];
@@ -25,7 +25,7 @@ export const getDashboardActions = ({
         data-metabase-event="Dashboard;Refresh Menu Open"
         className="text-brand-hover"
         period={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
+        elapsed={refreshElapsed}
         onChangePeriod={onRefreshPeriodChange}
       />,
     );

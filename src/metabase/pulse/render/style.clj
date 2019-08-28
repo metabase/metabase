@@ -11,8 +11,7 @@
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
   (str/join " " (for [[k v] (into {} style-maps)
-                      :let  [v (if (keyword? v) (name v) (str v))]
-                      :when (seq v)]
+                      :let  [v (if (keyword? v) (name v) v)]]
                   (str (name k) ": " v ";"))))
 
 (def ^:const color-brand
