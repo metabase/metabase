@@ -157,10 +157,10 @@
   (let [conn-map (mdb/parse-connection-string app-db-connection-string-or-nil)]
     (println "Conn of source: " conn-map app-db-connection-string-or-nil)
     (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
-                             (doseq [{table-name :table, :as e} entities
-                                     :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
-                                     :when (seq rows)]
-                               (insert-entity! target-db-conn e rows)))))
+      (doseq [{table-name :table, :as e} entities
+              :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+              :when (seq rows)]
+        (insert-entity! target-db-conn e rows)))))
 
 
 (defn- get-target-db-conn [h2-filename-or-nil]
@@ -207,17 +207,12 @@
 
 
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
-                            (println "Conn of target: " target-db-conn)
-
-                            (println-ok)
-
-                            (println (u/format-color 'blue "Loading data..."))
-
-                            (load-data! target-db-conn app-db-connection-string-or-nil)
-
-                            (println-ok)
-
-                            (jdbc/db-unset-rollback-only! target-db-conn))
+    (println "Conn of target: " target-db-conn)
+    (println-ok)
+    (println (u/format-color 'blue "Loading data..."))
+    (load-data! target-db-conn app-db-connection-string-or-nil)
+    (println-ok)
+    (jdbc/db-unset-rollback-only! target-db-conn))
   (println "Dump complete")
   )
 
