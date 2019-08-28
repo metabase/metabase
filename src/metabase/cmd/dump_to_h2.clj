@@ -1,22 +1,15 @@
 (ns metabase.cmd.dump-to-h2
-  "Commands for loading data from an H2 file into another database.
-   Run this with `lein run load-from-h2` or `java -jar metabase.jar load-from-h2`.
-
-;;TODO make this be the doc for this command
+  "Commands for dumping data to an H2 file from another database.
+   Run this with `lein run dump-to-h2` or `java -jar metabase.jar dump-to-h2`.
 
    Test this as follows:
+  ```MB_DB_TYPE=h2 MB_DB_FILE=dump.h2.db lein run dump-to-h2 \"postgres://postgres@localhost:5432/metabase\"```
+   Validate with:
+  ```MB_DB_TYPE=postgres MB_DB_HOST=localhost MB_DB_PORT=5432 MB_DB_USER=postgres MB_DB_DBNAME=metabase lein run load-from-h2 dump.h2.db```
 
-   ```
-   # Postgres
-   psql -c 'DROP DATABASE IF EXISTS metabase;'
-   psql -c 'CREATE DATABASE metabase;'
-   MB_DB_TYPE=postgres MB_DB_HOST=localhost MB_DB_PORT=5432 MB_DB_USER=camsaul MB_DB_DBNAME=metabase lein run load-from-h2
+   "
 
-   # MySQL
-   mysql -u root -e 'DROP DATABASE IF EXISTS metabase; CREATE DATABASE metabase;'
-   MB_DB_TYPE=mysql MB_DB_HOST=localhost MB_DB_PORT=3305 MB_DB_USER=root MB_DB_DBNAME=metabase lein run load-from-h2
-   ```"
-  (:require [clojure.java
+    (:require [clojure.java
              [io :as io]
              [jdbc :as jdbc]]
             [clojure.string :as str]
@@ -208,8 +201,7 @@
   (if-not (fs/exists? h2-filename-or-nil)
     (do (println "Creating file: " h2-filename-or-nil)
         (fs/create (io/file h2-filename-or-nil)))
-    (println "H2 target already exists: " h2-filename-or-nil)
-    )
+    (println "H2 target already exists: " h2-filename-or-nil))
 
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
                             (println "Conn of target: " target-db-conn)
