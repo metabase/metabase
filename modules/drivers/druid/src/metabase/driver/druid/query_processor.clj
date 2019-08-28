@@ -84,7 +84,8 @@
     :distinct___count
 
     (= ag-type :aggregation-options)
-    (recur (second ag))
+    (let [[_ wrapped-ag options] ag]
+      (or (:name options) (recur wrapped-ag)))
 
     ag-type
     ag-type
@@ -1010,7 +1011,8 @@
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} updated-query]
   (if-not limit
-    updated-query
+    (-> updated-query
+        (assoc-in [:query :limitSpec :type]  :default))
     (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))
