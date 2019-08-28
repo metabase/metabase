@@ -109,7 +109,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (add-file-prefix-if-needed h2-connection-string-or-nil)]
-    (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+    (mdb/jdbc-details {:type :h2, :db h2-filename})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
@@ -170,12 +170,6 @@
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
-(defn ensure-db-file-exists! [h2-filename-or-nil]
-  (if-not (fs/exists? h2-filename-or-nil)
-    (do (println "Creating file: " h2-filename-or-nil)
-        (fs/create (io/file h2-filename-or-nil)))
-    (println "H2 target already exists: " h2-filename-or-nil)))
-
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string
   to the H2 DB specified by env vars.  Intended as a tool for migrating
@@ -184,6 +178,13 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
    h2-filename-or-nil]
+
+  (doseq [filename [h2-filename-or-nil
+                    (str h2-filename-or-nil ".mv.db")]]
+    (println "Checking for existing file:" filename)
+    (when (.exists (io/file filename))
+      (println (trs "Output H2 database already exists!") filename)
+      (System/exit 1)))
 
   ;;TODO determine app-db-connection spec from (mdb/jdbc-details) or the like, don't require this command to take the conn str in
 
@@ -195,8 +196,6 @@
     (assert (#{:h2} db-type) (trs "Metabase can only transfer data from DB to H2 for migration.")))
 
   (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
-
-  (when h2-filename-or-nil (ensure-db-file-exists! h2-filename-or-nil))
 
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
 
