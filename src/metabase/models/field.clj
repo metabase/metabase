@@ -1,6 +1,7 @@
 (ns metabase.models.field
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
+            [medley.core :as m]
             [metabase.models
              [dimension :refer [Dimension]]
              [field-values :as fv :refer [FieldValues]]
@@ -119,7 +120,7 @@
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
     (perms-objects-set* table-id)))
 
-(defn- maybe-update-double [maybe-double-value]
+(defn- maybe-parse-special-numeric-values [maybe-double-value]
   (if (string? maybe-double-value)
     (u/ignore-exceptions (Double/parseDouble maybe-double-value))
     maybe-double-value))
@@ -128,14 +129,8 @@
   "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
-  (if (get-in fingerprint [:type :type/Number])
-    (update-in fingerprint [:type :type/Number]
-               (fn [num-map]
-                 (-> num-map
-                     (update :min maybe-update-double)
-                     (update :max maybe-update-double)
-                     (update :avg maybe-update-double))))
-    fingerprint))
+  (u/update-in-when fingerprint [:type :type/Number]
+                    (partial m/map-vals maybe-parse-special-double-values)))
 
 (models/add-type! :json-for-fingerprints
   :in  i/json-in
@@ -151,7 +146,7 @@
                                        :visibility_type  :keyword
                                        :description      :clob
                                        :has_field_values :keyword
-                                       :fingerprint      :json-for-fingerprints})
+                                       :fingerprint      :json-for-fingerprints
                                        :settings         :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
