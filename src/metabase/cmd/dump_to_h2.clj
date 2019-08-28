@@ -9,7 +9,7 @@
 
    "
 
-    (:require [clojure.java
+  (:require [clojure.java
              [io :as io]
              [jdbc :as jdbc]]
             [clojure.string :as str]
@@ -108,7 +108,7 @@
     (str "file:" (.getAbsolutePath (io/file connection-string-or-filename)))))
 
 (defn- h2-details [h2-connection-string-or-nil]
-  (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @metabase.db/db-file))]
+  (let [h2-filename (add-file-prefix-if-needed h2-connection-string-or-nil)]
     (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
@@ -165,11 +165,16 @@
 
 (defn- get-target-db-conn [h2-filename-or-nil]
   (if h2-filename-or-nil
-    (mdb/jdbc-details
-      {:type :h2, :db (str h2-filename-or-nil ";IFEXISTS=TRUE")})
+    (h2-details h2-filename-or-nil)
     (mdb/jdbc-details)))
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
+
+(defn ensure-db-file-exists! [h2-filename-or-nil]
+  (if-not (fs/exists? h2-filename-or-nil)
+    (do (println "Creating file: " h2-filename-or-nil)
+        (fs/create (io/file h2-filename-or-nil)))
+    (println "H2 target already exists: " h2-filename-or-nil)))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string
@@ -179,29 +184,28 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
    h2-filename-or-nil]
+
+  ;;TODO determine app-db-connection spec from (mdb/jdbc-details) or the like, don't require this command to take the conn str in
+
   (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil " or H2 from env.")
 
-  (let [db-type (if h2-filename-or-nil
-                  :h2
-                  (mdb/db-type))]
-    (println "Set up db: " db-type)
+  (let [db-type (if h2-filename-or-nil :h2 (mdb/db-type))]
+    (println "Target db type: " db-type)
 
     (assert (#{:h2} db-type) (trs "Metabase can only transfer data from DB to H2 for migration.")))
 
   (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
 
-  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil)
-                  true)
+  (ensure-db-file-exists! h2-filename-or-nil)
+
+  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
 
   (when (= :h2 (mdb/db-type))
     ;;TODO
     (trs "Don't need to migrate, just use the existing H2 file")
     (System/exit 0))
 
-  (if-not (fs/exists? h2-filename-or-nil)
-    (do (println "Creating file: " h2-filename-or-nil)
-        (fs/create (io/file h2-filename-or-nil)))
-    (println "H2 target already exists: " h2-filename-or-nil))
+
 
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
                             (println "Conn of target: " target-db-conn)
