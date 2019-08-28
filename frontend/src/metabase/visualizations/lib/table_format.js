@@ -86,7 +86,7 @@ export function makeCellBackgroundGetter(
     formatters = compileFormatters(formats, columnExtents);
     rowFormatters = compileRowFormatters(formats, columnExtents);
   } catch (e) {
-    console.error(e);
+    console.error('Unexpected error compiling column formatters: ', e);
   }
   if (Object.keys(formatters).length === 0 && rowFormatters.length === 0) {
     return () => null;
