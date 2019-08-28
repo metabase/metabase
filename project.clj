@@ -151,7 +151,9 @@
 
   :profiles
   {:dev
-   {:dependencies
+   {:source-paths ["dev/src" "local/src"]
+    
+    :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [expectations "2.1.10"]                                          ; unit tests
      [ring/ring-mock "0.3.2"]]
@@ -247,7 +249,7 @@
      [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths]
+     {:exclude-namespaces [:test-paths dev]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            :unused-namespaces
@@ -283,7 +285,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ["test"]
+     :source-paths          ^:replace ["src" "test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`
