@@ -196,7 +196,7 @@
 
   (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
 
-  (ensure-db-file-exists! h2-filename-or-nil)
+  (when h2-filename-or-nil (ensure-db-file-exists! h2-filename-or-nil))
 
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
 
