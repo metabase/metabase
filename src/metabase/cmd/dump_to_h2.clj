@@ -190,11 +190,6 @@
 
   (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil " or H2 from env.")
 
-  (let [db-type (if h2-filename-or-nil :h2 (mdb/db-type))]
-    (println "Target db type: " db-type)
-
-    (assert (#{:h2} db-type) (trs "Metabase can only transfer data from DB to H2 for migration.")))
-
   (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
 
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
