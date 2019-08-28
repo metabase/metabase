@@ -160,7 +160,9 @@ export default class MetricForm extends Component {
                           aggregation_options: (
                             table.aggregation_options || []
                           ).filter(a => a.short !== "rows"),
-                          // metrics: [],
+                          metrics: (table.metrics || []).filter(
+                            m => m.googleAnalyics,
+                          ),
                         },
                       ),
                     },

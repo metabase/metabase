@@ -12,7 +12,8 @@ export default class SegmentsList extends Component {
 
   render() {
     const { onRetire, tableMetadata } = this.props;
-    const { segments = [] } = tableMetadata;
+    const { segments: allSegments = [] } = tableMetadata;
+    const segments = allSegments.filter(s => !s.googleAnalyics);
 
     return (
       <div id="SegmentsList" className="my3">
