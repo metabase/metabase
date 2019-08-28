@@ -58,7 +58,8 @@
              [user :refer [User]]
              [view-log :refer [ViewLog]]]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [me.raynes.fs :as fs])
   (:import java.sql.SQLException))
 
 (defn- println-ok [] (println (color/green "[OK]")))
@@ -185,24 +186,30 @@
   Defaults to using `@metabase.db/db-file` as the connection string."
   [app-db-connection-string-or-nil
    h2-filename-or-nil]
-  (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil)
-  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil)
-                  true)
+  (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil " or H2 from env.")
 
   (let [db-type (if h2-filename-or-nil
                   :h2
                   (mdb/db-type))]
     (println "Set up db: " db-type)
 
-    (assert (#{:h2} db-type)
-            (trs "Metabase can only transfer data from DB to H2 for migration.")))
+    (assert (#{:h2} db-type) (trs "Metabase can only transfer data from DB to H2 for migration.")))
 
-  (assert app-db-connection-string-or-nil
-          (trs "Metaase can only dump to H2 if it has the source db connection string."))
+  (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
+
+  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil)
+                  true)
 
   (when (= :h2 (mdb/db-type))
     ;;TODO
-    (trs "Don't need to migrate, just copy the H2 file"))
+    (trs "Don't need to migrate, just use the existing H2 file")
+    (System/exit 0))
+
+  (if-not (fs/exists? h2-filename-or-nil)
+    (do (println "Creating file: " h2-filename-or-nil)
+        (fs/create (io/file h2-filename-or-nil)))
+    (println "H2 target already exists: " h2-filename-or-nil)
+    )
 
   (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
                             (println "Conn of target: " target-db-conn)

@@ -28,10 +28,6 @@
   [direction]
   (mdb/migrate! (keyword direction)))
 
-
-
-
-
 (defn ^:command load-from-h2
   "Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars."
   ([]
@@ -54,15 +50,15 @@
 
 (defn ^:command secure-dump-and-upload
   ([s3-upload-url-str curr-db-conn-str]
-   (classloader/require 'metabase.cmd.secure-dump)
+   (classloader/require 'metabase.cmd.dump-upload)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.secure-dump/up!) s3-upload-url-str curr-db-conn-str))))
+     ((resolve 'metabase.cmd.dump-upload/up!) s3-upload-url-str curr-db-conn-str))))
 
 (defn ^:command secure-dump-download-and-unlock
   ([h2-dump-path s3-bucket s3-key secret-key]
-   (classloader/require 'metabase.cmd.secure-dump)
+   (classloader/require 'metabase.cmd.dump-download)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.secure-dump/down!) h2-dump-path s3-bucket s3-key secret-key))))
+     ((resolve 'metabase.cmd.dump-download/down!) h2-dump-path s3-bucket s3-key secret-key))))
 
 (defn ^:command profile
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."

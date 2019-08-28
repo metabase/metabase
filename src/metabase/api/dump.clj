@@ -43,7 +43,7 @@
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (keys dump-targets)) ")")))
 
-(s/defn as-format-async
+(s/defn as-async
   "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
   core.async channel that can be used to fetch the results of the query."
   {:style/indent 3}
@@ -62,38 +62,37 @@
 
 ;; curl -i -X POST -H "Content-Type: application/json" -d '{"db-conn-str": "test1", "h2-conn-str": "test2"}'  -H "X-Metabase-Session: 273cdf75-3e9a-42e7-a7fd-57421d69ec76" "localhost:3000/api/dump/to-h2"
 (api/defendpoint-async
-  POST ["/to-h2" ]
+  POST ["/to-h2"]
   "Dump db to H2 file."
   [{{:keys [db-conn-str h2-filename] :as body} :body} respond raise]
   {db-conn-str su/NonBlankString
    h2-filename su/NonBlankString}
-  (as-format-async respond raise
-                   (let []
+  (as-async respond raise
+            (let []
                      (log/info (trs "Dumping to H2: " db-conn-str h2-filename))
                      (cmd/dump-to-h2 db-conn-str h2-filename))))
 
 (api/defendpoint-async
-  POST ["/to-h2-and-secure-upload" ]
-  "Dump db to H2 file, encrypt, compress, and upload to S3."
-  [{{:keys [db-conn-str s3-bucket s3-key] :as body} :body} respond raise]
-  {db-conn-str su/NonBlankString
-   s3-bucket su/NonBlankString
-   s3-key su/NonBlankString}
-  (as-format-async respond raise
-                   (let []
-                     (log/info (trs "Secure dump and upload: " db-conn-str s3-bucket s3-key))
-                     (cmd/secure-dump-and-upload   ))))
+  POST ["/secure-upload"]
+  "Encrypt, compress, and upload an H2 dump to S3. Does not perform an H2 dump."
+  [{{:keys [s3-upload-str] :as body} :body} respond raise]
+  {s3-upload-str su/NonBlankString}
+  (as-async respond raise
+            (let []
+                     (log/info (trs "Secure dump and upload: " s3-upload-str))
+                     (cmd/secure-dump-and-upload s3-upload-str nil))))
 
 (api/defendpoint-async
-  POST ["/download-h2-dump" ]
+  POST ["/download-and-unlock"]
   "Download, uncompress, and unencrypt secure dump from S3. Does not load the H2 db."
-  [{{:keys [s3-bucket s3-key h2-filename] :as body} :body} respond raise]
-  {h2-filename su/NonBlankString
-   s3-bucket su/NonBlankString
-   s3-key su/NonBlankString}
-  (as-format-async respond raise
-                   (let []
-                     (log/info (trs "Download secure dump: " h2-filename s3-bucket s3-key))
-                     (cmd/secure-dump-download-and-unlock))))
+  [{{:keys [h2-dump-path s3-bucket s3-key secret-key] :as body} :body} respond raise]
+  {h2-dump-path su/NonBlankString
+   s3-bucket    su/NonBlankString
+   s3-key       su/NonBlankString
+   secret-key   su/NonBlankString}
+  (as-async respond raise
+            (let []
+                     (log/info (trs "Download secure dump: " h2-dump-path s3-bucket s3-key (count secret-key)))
+                     (cmd/secure-dump-download-and-unlock h2-dump-path s3-bucket s3-key secret-key))))
 
 (api/define-routes)

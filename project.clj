@@ -48,6 +48,7 @@
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
    [amalloy/ring-gzip-middleware "0.1.4"]                             ; Ring middleware to GZIP responses if client can handle it
+   [amazonica "0.3.145"]                                              ; AWS SDK wrapper
    [aleph "0.4.6" :exclusions [org.clojure/tools.logging]]            ; Async HTTP library; WebSockets
    [bigml/histogram "4.1.3"]                                          ; Histogram data structure
    [buddy/buddy-core "1.5.0"                                          ; various cryptograhpic functions
@@ -62,6 +63,7 @@
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
+   [com.amazonaws/aws-java-sdk-s3 "1.11.618"]                         ; AWS S3 SDK
    [com.cemerick/friend "0.2.3"                                       ; auth library
     :exclusions [commons-codec
                  org.apache.httpcomponents/httpclient
@@ -97,6 +99,7 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
+   [me.raynes/fs "1.4.6"]                                   ; FS tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.3"]                                            ; MBQL language schema & util fns

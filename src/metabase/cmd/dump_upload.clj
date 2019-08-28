@@ -1,4 +1,4 @@
-(ns metabase.cmd.up
+(ns metabase.cmd.dump-upload
   (:require [metabase.cmd.dump-to-h2 :as dump-to-h2]
             [clojure.java.io :as io]
             [metabase.crypto.asymmetric :as asymm]
@@ -9,16 +9,12 @@
            (java.io ByteArrayOutputStream)))
 
 (defn- file->bytes ^bytes [file]
-  ;(println "f->b ")
-  ;(Thread/sleep 5000)
   (with-open [xin (io/input-stream file)
               xout (ByteArrayOutputStream.)]
     (io/copy xin xout)
     (.toByteArray xout)))
 
 (defn- same-contents? [file1 file2]
-  ;(println "Same? ")
-  ;(Thread/sleep 5000)
   (= (seq (file->bytes file1))
      (seq (file->bytes file2))))
 
@@ -92,16 +88,12 @@
         ]
 
     ;(dump-to-h2/dump-to-h2! curr-db-conn-str nil)
-    ;(Thread/sleep 15000)
+
     (encrypt-file {:inpath          generated-h2-path
                    :enc-dump-path   enc-dump-path
                    :enc-secret-path enc-secret-path
                    :key-spec        {:secret-key   aes-secret
                                      :pub-key-path "./keys/pub_key"}})
-
-    
-    ;;re-run cmd line and see when the orig .mv.db gets changed, it should NOT...
-
 
     (zip-secure-dump {:enc-dump-path   enc-dump-path
                       :enc-secret-path enc-secret-path

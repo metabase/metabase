@@ -1,4 +1,4 @@
-(ns metabase.cmd.down
+(ns metabase.cmd.dump-download
   (:require [metabase.crypto.symmetric :as symm]
             [clojure.java.io :as io])
   (:import (java.util.zip ZipInputStream)
