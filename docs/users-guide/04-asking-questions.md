@@ -61,7 +61,7 @@ Filtering your data lets you exclude information that you don’t want. You can 
 
 Broadly speaking, there are three types of columns, each with their own set of filtering options:
 
-1. **Numerics columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
+1. **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 2. With **text or category columns**, you can specify that you only want to include data where this column is or isn't a specific option, or you can exclude rows that don't have a value for this column.
 3. **Date** columns give you a calendar or input box so that you can select specific time ranges, or choose all days before or after a certain date.
 
