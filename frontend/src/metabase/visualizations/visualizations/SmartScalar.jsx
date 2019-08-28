@@ -98,7 +98,7 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const granularity = insight["unit"];
+    const granularity = formatBucketing(insight["unit"]).toLowerCase();
 
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];
