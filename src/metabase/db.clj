@@ -274,10 +274,10 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibase-table-name (if (#{:h2 :mysql} (db-type))
+  (let [liquibase-table-name (if (#{:h2 :mysql} (:type conn))
                                "DATABASECHANGELOG"
                                "databasechangelog")
-        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details conn)] ;; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
         statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
