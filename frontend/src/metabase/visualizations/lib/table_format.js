@@ -76,7 +76,7 @@ export function makeCellBackgroundGetter(
   cols: Column[],
   settings: Settings,
 ): BackgroundGetter {
-  const formats = settings["table.column_formatting"];
+  const formats = settings["table.column_formatting"] || [];
   const pivot = settings["table.pivot"];
   let formatters = {};
   let rowFormatters = [];
