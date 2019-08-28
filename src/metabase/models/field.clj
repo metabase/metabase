@@ -130,7 +130,7 @@
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
   (u/update-in-when fingerprint [:type :type/Number]
-                    (partial m/map-vals maybe-parse-special-double-values)))
+                    (partial m/map-vals maybe-parse-special-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
   :in  i/json-in
