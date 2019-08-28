@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Popover from "metabase/components/Popover.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import SearchBar from "./SearchBar.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
@@ -16,7 +16,7 @@ export default class SelectionModule extends Component {
     this._toggleOpen = this._toggleOpen.bind(this);
     this.onClose = this.onClose.bind(this);
     // a selection module can be told to be open on initialization but otherwise is closed
-    var isInitiallyOpen = props.isInitiallyOpen || false;
+    const isInitiallyOpen = props.isInitiallyOpen || false;
 
     this.state = {
       open: isInitiallyOpen,
@@ -83,8 +83,8 @@ export default class SelectionModule extends Component {
       return true;
     }
     // if an item that is normally in the expansion is selected then show the expansion
-    for (var i = 0; i < this.props.items.length; i++) {
-      var item = this.props.items[i];
+    for (let i = 0; i < this.props.items.length; i++) {
+      const item = this.props.items[i];
       if (this._itemIsSelected(item) && !this.props.expandFilter(item, i)) {
         return true;
       }
@@ -93,9 +93,9 @@ export default class SelectionModule extends Component {
   }
 
   _displayCustom(values) {
-    var custom = [];
+    const custom = [];
     this.props.children.forEach(function(element) {
-      var newElement = element;
+      const newElement = element;
       newElement.props.children = values[newElement.props.content];
       custom.push(element);
     });
@@ -104,20 +104,20 @@ export default class SelectionModule extends Component {
 
   _listItems(selection) {
     if (this.props.items) {
-      var sourceItems = this.props.items;
+      let sourceItems = this.props.items;
 
-      var isExpanded = this._isExpanded();
+      const isExpanded = this._isExpanded();
       if (!isExpanded) {
         sourceItems = sourceItems.filter(this.props.expandFilter);
       }
 
-      var items = sourceItems.map(function(item, index) {
-        var display = item ? item[this.props.display] || item : item;
-        var itemClassName = cx({
+      const items = sourceItems.map(function(item, index) {
+        const display = item ? item[this.props.display] || item : item;
+        const itemClassName = cx({
           SelectionItem: true,
           "SelectionItem--selected": selection === display,
         });
-        var description = null;
+        let description = null;
         if (
           this.props.descriptionKey &&
           item &&
@@ -169,7 +169,7 @@ export default class SelectionModule extends Component {
   }
 
   _select(item) {
-    var index = this.props.index;
+    const index = this.props.index;
     // send back the item with the specified action
     if (this.props.action) {
       if (index !== undefined) {
@@ -197,12 +197,12 @@ export default class SelectionModule extends Component {
 
   renderPopover(selection) {
     if (this.state.open) {
-      var itemListClasses = cx("SelectionItems", {
+      const itemListClasses = cx("SelectionItems", {
         "SelectionItems--open": this.state.open,
         "SelectionItems--expanded": this.state.expanded,
       });
 
-      var searchBar;
+      let searchBar;
       if (this._enableSearch()) {
         searchBar = <SearchBar onFilter={this._filterSelections} />;
       }
@@ -224,18 +224,18 @@ export default class SelectionModule extends Component {
   }
 
   render() {
-    var selection;
+    let selection;
     this.props.items.forEach(function(item) {
       if (this._itemIsSelected(item)) {
         selection = item[this.props.display];
       }
     }, this);
 
-    var placeholder = selection || this.props.placeholder,
-      remove,
-      removeable = !!this.props.remove;
+    const placeholder = selection || this.props.placeholder;
+    let remove;
+    const removeable = !!this.props.remove;
 
-    var moduleClasses = cx({
+    const moduleClasses = cx({
       SelectionModule: true,
       selected: selection,
       removeable: removeable,
@@ -244,7 +244,7 @@ export default class SelectionModule extends Component {
     if (this.props.remove) {
       remove = (
         <a
-          className="text-grey-2 no-decoration pr1 flex align-center"
+          className="text-light no-decoration pr1 flex align-center"
           onClick={this.props.remove.bind(null, this.props.index)}
         >
           <Icon name="close" size={14} />

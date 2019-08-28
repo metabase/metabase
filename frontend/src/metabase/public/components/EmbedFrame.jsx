@@ -94,7 +94,7 @@ export default class EmbedFrame extends Component {
 
     const footer = true;
 
-    const { bordered, titled, theme } = {
+    const { bordered, titled, theme, hide_parameters } = {
       ...DEFAULT_OPTIONS,
       ...parseHashOptions(location.hash),
     };
@@ -127,6 +127,7 @@ export default class EmbedFrame extends Component {
                     query={location.query}
                     setParameterValue={setParameterValue}
                     syncQueryString
+                    hideParameters={hide_parameters}
                     isQB
                   />
                 </div>
@@ -143,7 +144,7 @@ export default class EmbedFrame extends Component {
               <LogoBadge dark={theme} />
             )}
             {actionButtons && (
-              <div className="flex-align-right text-grey-3">
+              <div className="flex-align-right text-medium">
                 {actionButtons}
               </div>
             )}

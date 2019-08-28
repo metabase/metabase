@@ -1,28 +1,6 @@
 
 ## Specific Problems:
 
-
-### Metabase fails to start due to PermGen OutOfMemoryErrors
-
-On Java 7, Metabase may fail to launch with a message like
-
-    java.lang.OutOfMemoryError: PermGen space
-
-or one like
-
-    Exception: java.lang.OutOfMemoryError thrown from the UncaughtExceptionHandler
-
-If this happens, setting a few JVM options should fix your issue:
-
-    java -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m -jar metabase.jar
-
-You can also pass JVM arguments by setting the environment variable `JAVA_TOOL_OPTIONS`, e.g.
-
-    JAVA_TOOL_OPTIONS='-XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC -XX:MaxPermSize=256m'
-
-Alternatively, you can upgrade to Java 8 instead, which will fix the issue as well.
-
-
 ### Metabase fails to start due to Heap Space OutOfMemoryErrors
 
 Normally, the JVM can figure out how much RAM is available on the system and automatically set a sensible upper bound for heap memory usage. On certain shared hosting

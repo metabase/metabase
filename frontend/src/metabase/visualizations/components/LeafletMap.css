@@ -1,0 +1,4 @@
+/* hide leaflet-draw controls  */
+.leaflet-draw.leaflet-control {
+  display: none;
+}

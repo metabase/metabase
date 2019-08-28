@@ -2,6 +2,7 @@
   (:require [metabase
              [events :as events]
              [util :as u]]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -9,11 +10,12 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
+            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
 
-;;; ------------------------------------------------------------ Perms Checking ------------------------------------------------------------
+;;; ------------------------------------------------- Perms Checking -------------------------------------------------
 
 (def ^:private model->entity
   {"card"      Card
@@ -22,19 +24,35 @@
    "pulse"     Pulse
    "segment"   Segment})
 
-(defn- can-? [f {model :model, model-id :model_id, :as activity}]
+(defmulti can-?
+  "Implementation for `can-read?`/`can-write?` for items in the activity feed. Dispatches off of the activity `:topic`,
+  e.g. `:user-joined`. `perms-check-fn` is `can-read?` or `can-write?` and should be called as needed on models the
+  activity records."
+  {:arglists '([perms-check-fn activity])}
+  (fn [_ {:keys [topic]}]
+    topic))
+
+;; For now only admins can see when another user joined -- we don't want every user knowing about every other user. In
+;; the future we might want to change this and come up with some sort of system where we can determine which users get
+;; to see other users -- perhaps if they are in a group together other than 'All Users'
+(defmethod can-? :user-joined [_ _]
+  api/*is-superuser?*)
+
+;; For every other activity topic we'll look at the read/write perms for the object the activty is about (e.g. a Card
+;; or Dashboard). For all other activity feed items with no model everyone can read/write
+(defmethod can-? :default [perms-check-fn {model :model, model-id :model_id, :as activity}]
   (if-let [object (when-let [entity (model->entity model)]
                     (entity model-id))]
-    (f object)
+    (perms-check-fn object)
     true))
 
 
-;;; ------------------------------------------------------------ Entity & Lifecycle ------------------------------------------------------------
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
 (models/defmodel Activity :activity)
 
 (defn- pre-insert [activity]
-  (let [defaults {:timestamp (u/new-sql-timestamp)
+  (let [defaults {:timestamp (du/new-sql-timestamp)
                   :details   {}}]
     (merge defaults activity)))
 
@@ -46,17 +64,19 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?  (partial can-? i/can-read?)
+          ;; TODO - when do people *write* activities?
           :can-write? (partial can-? i/can-write?)}))
 
 
-;;; ------------------------------------------------------------ Etc. ------------------------------------------------------------
+;;; ------------------------------------------------------ Etc. ------------------------------------------------------
 
 
 ;; ## Persistence Functions
 
 ;; TODO - this is probably the exact wrong way to have written this functionality.
 ;; This could have been a multimethod or protocol, and various entity classes could implement it;
-;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to user error.
+;; Furthermore, we could have just used *current-user-id* to get the responsible user, instead of leaving it open to
+;; user error.
 
 (defn record-activity!
   "Inserts a new `Activity` entry.

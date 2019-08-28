@@ -2,7 +2,9 @@
 
 import React, { Component } from "react";
 
-import ParameterWidget from "./ParameterWidget.jsx";
+import StaticParameterWidget from "./ParameterWidget.jsx";
+import Icon from "metabase/components/Icon";
+import colors from "metabase/lib/colors";
 
 import querystring from "querystring";
 import cx from "classnames";
@@ -23,6 +25,7 @@ type Props = {
 
   isFullscreen?: boolean,
   isNightMode?: boolean,
+  hideParameters?: ?string, // comma separated list of slugs
   isEditing?: boolean,
   isQB?: boolean,
   vertical?: boolean,
@@ -36,6 +39,7 @@ type Props = {
     parameterId: ParameterId,
     defaultValue: string,
   ) => void,
+  setParameterIndex?: (parameterId: ParameterId, index: number) => void,
   removeParameter?: (parameterId: ParameterId) => void,
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
@@ -98,6 +102,19 @@ export default class Parameters extends Component {
     }
   }
 
+  handleSortEnd = ({
+    oldIndex,
+    newIndex,
+  }: {
+    oldIndex: number,
+    newIndex: number,
+  }) => {
+    const { parameters, setParameterIndex } = this.props;
+    if (setParameterIndex) {
+      setParameterIndex(parameters[oldIndex].id, newIndex);
+    }
+  };
+
   render() {
     const {
       className,
@@ -106,53 +123,109 @@ export default class Parameters extends Component {
       isEditing,
       isFullscreen,
       isNightMode,
+      hideParameters,
       isQB,
       setParameterName,
       setParameterValue,
       setParameterDefaultValue,
+      setParameterIndex,
       removeParameter,
       vertical,
       commitImmediately,
     } = this.props;
 
+    const hiddenParameters = new Set((hideParameters || "").split(","));
+
     const parameters = this._parametersWithValues();
 
+    let ParameterWidget;
+    let ParameterWidgetList;
+    if (isEditing) {
+      ParameterWidget = SortableParameterWidget;
+      ParameterWidgetList = SortableParameterWidgetList;
+    } else {
+      ParameterWidget = StaticParameterWidget;
+      ParameterWidgetList = StaticParameterWidgetList;
+    }
+
     return (
-      <div
+      <ParameterWidgetList
         className={cx(
           className,
           "flex align-end flex-wrap",
           vertical ? "flex-column" : "flex-row",
           { mt1: isQB },
         )}
+        axis="x"
+        distance={9}
+        onSortEnd={this.handleSortEnd}
       >
-        {parameters.map(parameter => (
-          <ParameterWidget
-            className={vertical ? "mb2" : null}
-            key={parameter.id}
-            isEditing={isEditing}
-            isFullscreen={isFullscreen}
-            isNightMode={isNightMode}
-            parameter={parameter}
-            parameters={parameters}
-            editingParameter={editingParameter}
-            setEditingParameter={setEditingParameter}
-            setName={
-              setParameterName && (name => setParameterName(parameter.id, name))
-            }
-            setValue={
-              setParameterValue &&
-              (value => setParameterValue(parameter.id, value))
-            }
-            setDefaultValue={
-              setParameterDefaultValue &&
-              (value => setParameterDefaultValue(parameter.id, value))
-            }
-            remove={removeParameter && (() => removeParameter(parameter.id))}
-            commitImmediately={commitImmediately}
-          />
-        ))}
-      </div>
+        {parameters
+          .filter(p => !hiddenParameters.has(p.slug))
+          .map((parameter, index) => (
+            <ParameterWidget
+              key={parameter.id}
+              className={cx("relative hover-parent hover--visibility", {
+                mb2: vertical,
+              })}
+              isEditing={isEditing}
+              isFullscreen={isFullscreen}
+              isNightMode={isNightMode}
+              parameter={parameter}
+              parameters={parameters}
+              editingParameter={editingParameter}
+              setEditingParameter={setEditingParameter}
+              index={index}
+              setName={
+                setParameterName &&
+                (name => setParameterName(parameter.id, name))
+              }
+              setValue={
+                setParameterValue &&
+                (value => setParameterValue(parameter.id, value))
+              }
+              setDefaultValue={
+                setParameterDefaultValue &&
+                (value => setParameterDefaultValue(parameter.id, value))
+              }
+              remove={removeParameter && (() => removeParameter(parameter.id))}
+              commitImmediately={commitImmediately}
+            >
+              {/* show drag handle if editing and setParameterIndex provided */}
+              {isEditing && setParameterIndex ? (
+                <SortableParameterHandle />
+              ) : null}
+            </ParameterWidget>
+          ))}
+      </ParameterWidgetList>
     );
   }
 }
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+} from "react-sortable-hoc";
+
+const StaticParameterWidgetList = ({ children, ...props }) => {
+  return <div {...props}>{children}</div>;
+};
+
+const SortableParameterHandle = SortableHandle(() => (
+  <div
+    className="absolute top bottom left flex layout-centered hover-child cursor-grab"
+    style={{
+      color: colors["border"],
+      // width should match the left padding of the ParameterWidget container class so that it's centered
+      width: "1em",
+      marginLeft: "1px",
+    }}
+  >
+    <Icon name="grabber2" size={12} />
+  </div>
+));
+
+const SortableParameterWidget = SortableElement(StaticParameterWidget);
+const SortableParameterWidgetList = SortableContainer(
+  StaticParameterWidgetList,
+);

@@ -1,15 +1,18 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
-import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
+import { t } from "ttag";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const TableSidebar = ({ database, table, style, className, showXray }) => (
+import MetabaseSettings from "metabase/lib/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
+
+const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div className={S.breadcrumbs}>
       <Breadcrumbs
@@ -44,11 +47,11 @@ const TableSidebar = ({ database, table, style, className, showXray }) => (
         icon="all"
         name={t`Questions about this table`}
       />
-      {showXray && (
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
-          key={`/xray/table/${table.id}/approximate`}
-          href={`/xray/table/${table.id}/approximate`}
-          icon="beaker"
+          key={`/auto/dashboard/table/${table.id}`}
+          href={`/auto/dashboard/table/${table.id}`}
+          icon="bolt"
           name={t`X-ray this table`}
         />
       )}
@@ -61,7 +64,6 @@ TableSidebar.propTypes = {
   table: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  showXray: PropTypes.bool,
 };
 
 export default pure(TableSidebar);

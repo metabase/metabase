@@ -13,6 +13,10 @@
             [metabase.api
              [common :as api]
              [table :as table-api]]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database protected-password]]
@@ -21,12 +25,13 @@
              [interface :as mi]
              [permissions :as perms]
              [table :refer [Table]]]
-            [metabase.query-processor.util :as qputil]
             [metabase.sync
+             [analyze :as analyze]
              [field-values :as sync-field-values]
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -36,8 +41,11 @@
 
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
-  (su/with-api-error-message (s/constrained su/NonBlankString driver/is-engine? "Valid database engine")
-    "value must be a valid database engine."))
+  (su/with-api-error-message (s/constrained
+                              su/NonBlankString
+                              #(u/ignore-exceptions (driver/the-driver %))
+                              "Valid database engine")
+    (deferred-tru "value must be a valid database engine.")))
 
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
@@ -50,22 +58,26 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(defn- add-native-perms-info
+(s/defn ^:private add-native-perms-info :- [{:native_permissions (s/enum :write :none), s/Keyword s/Any}]
   "For each database in DBS add a `:native_permissions` field describing the current user's permissions for running
-   native (e.g. SQL) queries. Will be one of `:write`, `:read`, or `:none`."
-  [dbs]
+  native (e.g. SQL) queries. Will be either `:write` or `:none`. `:write` means you can run ad-hoc native queries,
+  and save new Cards with native queries; `:none` means you can do neither.
+
+  For the curious: the use of `:write` and `:none` is mainly for legacy purposes, when we had data-access-based
+  permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
+  native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
+  Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
+  [dbs :- [su/Map]]
   (for [db dbs]
-    (let [user-has-perms? (fn [path-fn] (perms/set-has-full-permissions? @api/*current-user-permissions-set* (path-fn (u/get-id db))))]
-      (assoc db :native_permissions (cond
-                                      (user-has-perms? perms/native-readwrite-path) :write
-                                      (user-has-perms? perms/native-read-path)      :read
-                                      :else                                         :none)))))
+    (assoc db :native_permissions (if (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                        (perms/adhoc-native-query-path (u/get-id db)))
+                                    :write
+                                    :none))))
 
 (defn- card-database-supports-nested-queries? [{{database-id :database} :dataset_query, :as card}]
   (when database-id
-    (when-let [driver (driver/database-id->driver database-id)]
-      (and (driver/driver-supports? driver :nested-queries)
-           (mi/can-read? card)))))
+    (when-let [driver (driver.u/database->driver database-id)]
+      (driver/supports? driver :nested-queries))))
 
 (defn- card-has-ambiguous-columns?
   "We know a card has ambiguous columns if any of the columns that come back end in `_2` (etc.) because that's what
@@ -91,14 +103,7 @@
    use queries with those aggregations as source queries. This function determines whether CARD is using one
    of those queries so we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
-  (when (seq aggregations)
-    (some (fn [[ag-type]]
-            (contains? #{:cum-count :cum-sum} (qputil/normalize-token ag-type)))
-          ;; if we were passed in old-style [ag] instead of [[ag1], [ag2]] convert to new-style so we can iterate
-          ;; over list of aggregations
-          (if-not (sequential? (first aggregations))
-            [aggregations]
-            aggregations))))
+  (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
@@ -107,6 +112,7 @@
           :result_metadata [:not= nil] :archived false
           {:order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
+    (filter mi/can-read? <>)
     (remove card-uses-unnestable-aggregation? <>)
     (remove card-has-ambiguous-columns? <>)
     (hydrate <> :collection)))
@@ -123,7 +129,7 @@
   (when (public-settings/enable-nested-queries)
     (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
       {:name               "Saved Questions"
-       :id                 database/virtual-id
+       :id                 mbql.s/saved-questions-virtual-database-id
        :features           #{:basic-aggregations}
        :tables             virtual-tables
        :is_saved_questions true})))
@@ -136,13 +142,15 @@
     dbs))
 
 (defn- dbs-list [include-tables? include-cards?]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name]})))]
+  (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
       include-tables? add-tables
       include-cards?  add-virtual-tables-for-saved-cards)))
 
 (api/defendpoint GET "/"
-  "Fetch all `Databases`."
+  "Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
+  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
+  Tables in queries. Default for both is `false`."
   [include_tables include_cards]
   {include_tables (s/maybe su/BooleanString)
    include_cards  (s/maybe su/BooleanString)}
@@ -184,7 +192,7 @@
 ;; we'll create another endpoint to specifically match the ID of the 'virtual' database. The `defendpoint` macro
 ;; requires either strings or vectors for the route so we'll have to use a vector and create a regex to only
 ;; match the virtual ID (and nothing else).
-(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str database/virtual-id))]
+(api/defendpoint GET ["/:virtual-db/metadata" :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
@@ -193,7 +201,7 @@
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
-      (hydrate [:tables [:fields :target :has_field_values] :segments :metrics])
+      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -307,7 +315,7 @@
           details (assoc details :engine engine)]
       (try
         (cond
-          (driver/can-connect-with-details? engine details :rethrow-exceptions)
+          (driver.u/can-connect-with-details? engine details :throw-exceptions)
           nil
 
           (and host port (u/host-port-up? host port))
@@ -328,9 +336,9 @@
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
   "Does the given `engine` have an `:ssl` setting?"
-  [engine]
-  {:pre [(driver/is-engine? engine)]}
-  (let [driver-props (set (for [field (driver/details-fields (driver/engine->driver engine))]
+  [driver]
+  {:pre [(driver/available? driver)]}
+  (let [driver-props (set (for [field (driver/connection-properties driver)]
                             (:name field)))]
     (contains? driver-props "ssl")))
 
@@ -340,7 +348,7 @@
    the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
    will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
-  (let [details (if (supports-ssl? engine)
+  (let [details (if (supports-ssl? (keyword engine))
                   (assoc details :ssl true)
                   details)]
     ;; this loop tries connecting over ssl and non-ssl to establish a connection
@@ -370,18 +378,20 @@
 
 (api/defendpoint POST "/"
   "Add a new `Database`."
-  [:as {{:keys [name engine details is_full_sync is_on_demand schedules]} :body}]
-  {name         su/NonBlankString
-   engine       DBEngineString
-   details      su/Map
-   is_full_sync (s/maybe s/Bool)
-   is_on_demand (s/maybe s/Bool)
-   schedules    (s/maybe ExpandedSchedulesMap)}
+  [:as {{:keys [name engine details is_full_sync is_on_demand schedules auto_run_queries]} :body}]
+  {name             su/NonBlankString
+   engine           DBEngineString
+   details          su/Map
+   is_full_sync     (s/maybe s/Bool)
+   is_on_demand     (s/maybe s/Bool)
+   schedules        (s/maybe ExpandedSchedulesMap)
+   auto_run_queries (s/maybe s/Bool)}
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
-        details-or-error (test-connection-details engine details)]
-    (if-not (false? (:valid details-or-error))
+        details-or-error (test-connection-details engine details)
+        valid?           (not= (:valid details-or-error) false)]
+    (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
       (u/prog1 (api/check-500 (db/insert! Database
@@ -392,7 +402,9 @@
                                   :is_full_sync is-full-sync?
                                   :is_on_demand (boolean is_on_demand)}
                                  (when schedules
-                                   (schedule-map->cron-strings schedules)))))
+                                   (schedule-map->cron-strings schedules))
+                                 (when (some? auto_run_queries)
+                                   {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>))
       ;; failed to connect, return error
       {:status 400
@@ -423,14 +435,16 @@
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
-  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules]} :body}]
+  [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
+                   auto_run_queries]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    details            (s/maybe su/Map)
    schedules          (s/maybe ExpandedSchedulesMap)
    description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
    caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
-   points_of_interest (s/maybe s/Str)}
+   points_of_interest (s/maybe s/Str)
+   auto_run_queries   (s/maybe s/Bool)}
   (api/check-superuser)
   (api/let-404 [database (Database id)]
     (let [details    (if-not (= protected-password (:password details))
@@ -457,7 +471,8 @@
                              :is_on_demand       (boolean is_on_demand)
                              :description        description
                              :caveats            caveats
-                             :points_of_interest points_of_interest}
+                             :points_of_interest points_of_interest
+                             :auto_run_queries   auto_run_queries}
                             (when schedules
                               (schedule-map->cron-strings schedules)))))
           (let [db (Database id)]
@@ -502,7 +517,8 @@
   ;; just wrap this in a future so it happens async
   (api/let-404 [db (Database id)]
     (future
-      (sync-metadata/sync-db-metadata! db)))
+      (sync-metadata/sync-db-metadata! db)
+      (analyze/analyze-db! db)))
   {:status :ok})
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
@@ -540,6 +556,37 @@
   (api/check-superuser)
   (delete-all-field-values-for-database! id)
   {:status :ok})
+
+
+;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
+
+(defn- can-read-schema?
+  "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
+  at least some of its tables?)"
+  [database-id schema-name]
+  (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+    (perms/object-path database-id schema-name)))
+
+(api/defendpoint GET "/:id/schemas"
+  "Returns a list of all the schemas found for the database `id`"
+  [id]
+  (api/read-check Database id)
+  (->> (db/select-field :schema Table :db_id id)
+       (filter (partial can-read-schema? id))
+       sort))
+
+
+;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
+
+(api/defendpoint GET "/:id/schema/:schema"
+  "Returns a list of tables for the given database `id` and `schema`"
+  [id schema]
+  (api/read-check Database id)
+  (api/check-403 (can-read-schema? id schema))
+  (->> (db/select Table :db_id id, :schema schema, :active true, {:order-by [[:name :asc]]})
+       (filter mi/can-read?)
+       seq
+       api/check-404))
 
 
 (api/define-routes)

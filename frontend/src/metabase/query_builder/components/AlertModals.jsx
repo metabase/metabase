@@ -1,44 +1,53 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
+import _ from "underscore";
 
+// components
 import Button from "metabase/components/Button";
 import SchedulePicker from "metabase/components/SchedulePicker";
-import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import ModalContent from "metabase/components/ModalContent";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Radio from "metabase/components/Radio";
+import Icon from "metabase/components/Icon";
+import ChannelSetupModal from "metabase/components/ChannelSetupModal";
+import ButtonWithStatus from "metabase/components/ButtonWithStatus";
+import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
+import RetinaImage from "react-retina-image";
+
+import User from "metabase/entities/users";
+
+// actions
+import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
+import { apiUpdateQuestion } from "metabase/query_builder/actions";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
+
+// selectors
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import _ from "underscore";
-import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
-import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
 import {
-  formInputSelector,
+  getPulseFormInput,
   hasConfiguredAnyChannelSelector,
   hasConfiguredEmailChannelSelector,
   hasLoadedChannelInfoSelector,
-  userListSelector,
 } from "metabase/pulse/selectors";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import { inflect } from "metabase/lib/formatting";
+
+// lib
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
   ALERT_TYPE_TIMESERIES_GOAL,
   getDefaultAlert,
 } from "metabase-lib/lib/Alert";
-import type { AlertType } from "metabase-lib/lib/Alert";
-import Radio from "metabase/components/Radio";
-import RetinaImage from "react-retina-image";
-import Icon from "metabase/components/Icon";
 import MetabaseCookies from "metabase/lib/cookies";
-import cxs from "cxs";
-import ChannelSetupModal from "metabase/components/ChannelSetupModal";
-import ButtonWithStatus from "metabase/components/ButtonWithStatus";
-import { apiUpdateQuestion } from "metabase/query_builder/actions";
+import MetabaseAnalytics from "metabase/lib/analytics";
+
+// types
+import type { AlertType } from "metabase-lib/lib/Alert";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -48,9 +57,9 @@ const getScheduleFromChannel = channel =>
     "schedule_hour",
     "schedule_type",
   );
-const classes = cxs({
+const textStyle = {
   width: "162px",
-});
+};
 
 @connect(
   state => ({
@@ -117,6 +126,8 @@ export class CreateAlertModalContent extends Component {
     // OR should the modal visibility be part of QB redux state
     // (maybe check how other modals are implemented)
     onAlertCreated();
+
+    MetabaseAnalytics.trackEvent("Alert", "Create", alert.alert_condition);
   };
 
   proceedFromEducationalScreen = () => {
@@ -213,9 +224,10 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-01-raw-data.png" />
             <p
-              className={`${classes} ml2 text-left`}
+              className="ml2 text-left"
+              style={textStyle}
             >{jt`When a raw data question ${(
-              <strong>returns any results</strong>
+              <strong>{t`returns any results`}</strong>
             )}`}</p>
           </div>
           <div
@@ -224,9 +236,10 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-02-goal.png" />
             <p
-              className={`${classes} mr2 text-right`}
+              className="mr2 text-right"
+              style={textStyle}
             >{jt`When a line or bar ${(
-              <strong>crosses a goal line</strong>
+              <strong>{t`crosses a goal line`}</strong>
             )}`}</p>
           </div>
           <div
@@ -235,8 +248,11 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-03-progress.png" />
             <p
-              className={`${classes} ml2 text-left`}
-            >{jt`When a progress bar ${<strong>reaches its goal</strong>}`}</p>
+              className="ml2 text-left"
+              style={textStyle}
+            >{jt`When a progress bar ${(
+              <strong>{t`reaches its goal`}</strong>
+            )}`}</p>
           </div>
         </div>
         <Button
@@ -286,6 +302,12 @@ export class UpdateAlertModalContent extends Component {
 
     await updateAlert(modifiedAlert);
     onAlertUpdated();
+
+    MetabaseAnalytics.trackEvent(
+      "Alert",
+      "Update",
+      modifiedAlert.alert_condition,
+    );
   };
 
   onDeleteAlert = async () => {
@@ -346,23 +368,24 @@ export class DeleteAlertSection extends Component {
 
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
-    return this.props.alert.channels.map(
-      c =>
-        c.channel_type === "email" ? (
-          <span>{jt`This alert will no longer be emailed to ${(
-            <strong>
-              {c.recipients.length} {inflect("address", c.recipients.length)}
-            </strong>
-          )}.`}</span>
-        ) : c.channel_type === "slack" ? (
-          <span>{jt`Slack channel ${(
-            <strong>{c.details && c.details.channel}</strong>
-          )} will no longer get this alert.`}</span>
-        ) : (
-          <span>{jt`Channel ${(
-            <strong>{c.channel_type}</strong>
-          )} will no longer receive this alert.`}</span>
-        ),
+    return this.props.alert.channels.map(c =>
+      c.channel_type === "email" ? (
+        <span>{jt`This alert will no longer be emailed to ${(
+          <strong>
+            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+              c.recipients.length,
+            )}
+          </strong>
+        )}.`}</span>
+      ) : c.channel_type === "slack" ? (
+        <span>{jt`Slack channel ${(
+          <strong>{c.details && c.details.channel}</strong>
+        )} will no longer get this alert.`}</span>
+      ) : (
+        <span>{jt`Channel ${(
+          <strong>{c.channel_type}</strong>
+        )} will no longer receive this alert.`}</span>
+      ),
     );
   }
 
@@ -409,7 +432,10 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
+@connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,
@@ -536,7 +562,7 @@ export class AlertEditSchedule extends Component {
 
         <div className="bordered rounded mb2">
           {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-          <div className="p3 bg-grey-0">
+          <div className="p3 bg-light">
             <SchedulePicker
               schedule={schedule}
               scheduleOptions={["hourly", "daily", "weekly"]}
@@ -550,28 +576,28 @@ export class AlertEditSchedule extends Component {
   }
 }
 
+@User.loadList()
 @connect(
-  state => ({
+  (state, props) => ({
     user: getUser(state),
-    userList: userListSelector(state),
-    formInput: formInputSelector(state),
+    formInput: getPulseFormInput(state),
   }),
-  { fetchPulseFormInput, fetchUsers },
+  {
+    fetchPulseFormInput,
+  },
 )
 export class AlertEditChannels extends Component {
   props: {
     onChannelsChange: any => void,
     user: any,
-    userList: any[],
+    users: any[],
     // this stupidly named property contains different channel options, nothing else
     formInput: any,
-    fetchPulseFormInput: () => void,
-    fetchUsers: () => void,
+    fetchPulseFormInput: () => Promise<void>,
   };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    this.props.fetchUsers();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -589,7 +615,7 @@ export class AlertEditChannels extends Component {
   };
 
   render() {
-    const { alert, user, userList, formInput } = this.props;
+    const { alert, user, users, formInput } = this.props;
     return (
       <div className="mt4 pt2">
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
@@ -600,7 +626,7 @@ export class AlertEditChannels extends Component {
             pulseIsValid={true}
             formInput={formInput}
             user={user}
-            userList={userList}
+            users={users}
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
@@ -631,7 +657,7 @@ export class RawDataAlertTip extends Component {
 
     return (
       <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
+        <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
           <Icon name="lightbulb" size="20" />
         </div>
         {showMultiSeriesGoalAlert ? (
@@ -646,15 +672,15 @@ export class RawDataAlertTip extends Component {
 
 export const MultiSeriesAlertTip = () => (
   <div>{jt`${(
-    <strong>Heads up:</strong>
+    <strong>{t`Heads up`}:</strong>
   )} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has ${(
-    <em>results</em>
+    <em>{t`results`}</em>
   )}.`}</div>
 );
 export const NormalAlertTip = () => (
   <div>{jt`${(
-    <strong>Tip:</strong>
+    <strong>{t`Tip`}:</strong>
   )} This kind of alert is most useful when your saved question doesn’t ${(
-    <em>usually</em>
+    <em>{t`usually`}</em>
   )} return any results, but you want to know when it does.`}</div>
 );

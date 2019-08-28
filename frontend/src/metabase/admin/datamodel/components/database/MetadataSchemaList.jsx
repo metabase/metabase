@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 
 import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
-import { inflect } from "metabase/lib/formatting";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import { regexpEscape } from "metabase/lib/string";
 
 export default class MetadataSchemaList extends Component {
   constructor(props, context) {
@@ -23,7 +24,7 @@ export default class MetadataSchemaList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
@@ -32,7 +33,7 @@ export default class MetadataSchemaList extends Component {
     const { schemas, selectedSchema } = this.props;
     const { searchRegex } = this.state;
 
-    let filteredSchemas = searchRegex
+    const filteredSchemas = searchRegex
       ? schemas.filter(s => searchRegex.test(s.name))
       : schemas;
     return (
@@ -49,7 +50,9 @@ export default class MetadataSchemaList extends Component {
         </div>
         <ul className="AdminList-items">
           <li className="AdminList-section">
-            {filteredSchemas.length} {inflect("schema", filteredSchemas.length)}
+            {(n => ngettext(msgid`${n} schema`, `${n} schemas`, n))(
+              filteredSchemas.length,
+            )}
           </li>
           {filteredSchemas.map(schema => (
             <li key={schema.name}>

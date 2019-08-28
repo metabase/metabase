@@ -5,8 +5,9 @@ import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AdminLayout from "metabase/components/AdminLayout.jsx";
+import { NotFound } from "metabase/containers/ErrorPages";
 
 import SettingsSetting from "../components/SettingsSetting.jsx";
 import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
@@ -16,7 +17,6 @@ import SettingsSetupList from "../components/SettingsSetupList.jsx";
 import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
 import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
 import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
-import SettingsXrayForm from "../components/SettingsXrayForm.jsx";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 
@@ -46,7 +46,10 @@ const mapDispatchToProps = {
   ...settingsActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -59,6 +62,7 @@ export default class SettingsEditorApp extends Component {
     updateSlackSettings: PropTypes.func.isRequired,
     updateLdapSettings: PropTypes.func.isRequired,
     sendTestEmail: PropTypes.func.isRequired,
+    clearEmailSettings: PropTypes.func.isRequired,
   };
 
   componentWillMount() {
@@ -98,7 +102,7 @@ export default class SettingsEditorApp extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
-      let message =
+      const message =
         error && (error.message || (error.data && error.data.message));
       this.layout.setSaveError(message);
       MetabaseAnalytics.trackEvent(
@@ -122,21 +126,22 @@ export default class SettingsEditorApp extends Component {
     const { activeSection, settingValues } = this.props;
 
     if (!activeSection) {
-      return null;
+      return <NotFound />;
     }
 
-    if (activeSection.name === "Email") {
+    if (activeSection.slug === "email") {
       return (
         <SettingsEmailForm
           ref="emailForm"
           elements={activeSection.settings}
           updateEmailSettings={this.props.updateEmailSettings}
           sendTestEmail={this.props.sendTestEmail}
+          clearEmailSettings={this.props.clearEmailSettings}
         />
       );
-    } else if (activeSection.name === "Setup") {
+    } else if (activeSection.slug === "setup") {
       return <SettingsSetupList ref="settingsForm" />;
-    } else if (activeSection.name === "Slack") {
+    } else if (activeSection.slug === "slack") {
       return (
         <SettingsSlackForm
           ref="slackForm"
@@ -144,7 +149,7 @@ export default class SettingsEditorApp extends Component {
           updateSlackSettings={this.props.updateSlackSettings}
         />
       );
-    } else if (activeSection.name === "Updates") {
+    } else if (activeSection.slug === "updates") {
       return (
         <SettingsUpdatesForm
           settings={this.props.settings}
@@ -152,7 +157,7 @@ export default class SettingsEditorApp extends Component {
           updateSetting={this.updateSetting}
         />
       );
-    } else if (activeSection.name === "Authentication") {
+    } else if (activeSection.slug === "authentication") {
       // HACK - the presence of this param is a way for us to tell if
       // a user is looking at a sub section of the autentication section
       // since allowing for multi page settings more broadly would require
@@ -165,6 +170,7 @@ export default class SettingsEditorApp extends Component {
                 _.findWhere(this.props.sections, { slug: "ldap" }).settings
               }
               updateLdapSettings={this.props.updateLdapSettings}
+              settingValues={settingValues}
             />
           );
         } else if (this.props.params.authType === "google") {
@@ -182,21 +188,12 @@ export default class SettingsEditorApp extends Component {
       } else {
         return <SettingsAuthenticationOptions />;
       }
-    } else if (activeSection.name === "X-Rays") {
-      return (
-        <SettingsXrayForm
-          settings={this.props.settings}
-          elements={activeSection.settings}
-          updateSetting={this.updateSetting.bind(this)}
-        />
-      );
     } else {
       return (
         <ul>
           {activeSection.settings
-            .filter(
-              setting =>
-                setting.getHidden ? !setting.getHidden(settingValues) : true,
+            .filter(setting =>
+              setting.getHidden ? !setting.getHidden(settingValues) : true,
             )
             .map((setting, index) => (
               <SettingsSetting
@@ -231,13 +228,13 @@ export default class SettingsEditorApp extends Component {
         "justify-between",
         "no-decoration",
         {
-          selected: activeSection && section.name === activeSection.name, // this.state.currentSection === idx
+          selected: activeSection && section.slug === activeSection.slug, // this.state.currentSection === idx
         },
       );
 
       // if this is the Updates section && there is a new version then lets add a little indicator
       let newVersionIndicator;
-      if (section.name === "Updates" && newVersionAvailable) {
+      if (section.slug === "updates" && newVersionAvailable) {
         newVersionIndicator = (
           <span
             style={{ padding: "4px 8px 4px 8px" }}
@@ -249,7 +246,7 @@ export default class SettingsEditorApp extends Component {
       }
 
       return (
-        <li key={section.name}>
+        <li key={section.slug}>
           <Link to={"/admin/settings/" + section.slug} className={classes}>
             <span>{section.name}</span>
             {newVersionIndicator}

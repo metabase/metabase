@@ -1,13 +1,17 @@
 /* @flow */
 
+// TODO: merge with metabase/dashboard/containers/Dashboard.jsx
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { Box } from "grid-styled";
 
 import DashboardHeader from "../components/DashboardHeader.jsx";
 import DashboardGrid from "../components/DashboardGrid.jsx";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-
+import { t } from "ttag";
 import Parameters from "metabase/parameters/components/Parameters.jsx";
+import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
 
@@ -30,7 +34,7 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { Revision, RevisionId } from "metabase/meta/types/Revision";
+import type { Revision } from "metabase/meta/types/Revision";
 import type {
   Parameter,
   ParameterId,
@@ -62,18 +66,13 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttributes: ({ [attribute: string]: any }) => void,
   fetchDashboardCardData: (options: {
     reload: boolean,
     clear: boolean,
   }) => Promise<void>,
+  cancelFetchDashboardCardData: () => Promise<void>,
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
   setEditingDashboard: (isEditing: boolean) => void,
@@ -86,6 +85,7 @@ type Props = {
     parameterId: ParameterId,
     defaultValue: string,
   ) => void,
+  setParameterIndex: (parameterId: ParameterId, index: number) => void,
 
   editingParameter: ?Parameter,
 
@@ -93,6 +93,7 @@ type Props = {
   refreshElapsed: number,
   isFullscreen: boolean,
   isNightMode: boolean,
+  hideParameters: ?string,
 
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
@@ -117,6 +118,7 @@ type State = {
   error: ?ApiError,
 };
 
+// NOTE: move DashboardControls HoC to container
 @DashboardControls
 export default class Dashboard extends Component {
   props: Props;
@@ -137,8 +139,6 @@ export default class Dashboard extends Component {
     archiveDashboard: PropTypes.func.isRequired,
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,
@@ -153,6 +153,7 @@ export default class Dashboard extends Component {
     isEditable: true,
   };
 
+  // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
     this.loadDashboard(this.props.dashboardId);
   }
@@ -166,6 +167,10 @@ export default class Dashboard extends Component {
     ) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelFetchDashboardCardData();
   }
 
   async loadDashboard(dashboardId: DashboardId) {
@@ -221,8 +226,9 @@ export default class Dashboard extends Component {
       location,
       isFullscreen,
       isNightMode,
+      hideParameters,
     } = this.props;
-    let { error } = this.state;
+    const { error } = this.state;
     isNightMode = isNightMode && isFullscreen;
 
     let parametersWidget;
@@ -233,6 +239,7 @@ export default class Dashboard extends Component {
           isEditing={isEditing}
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
+          hideParameters={hideParameters}
           parameters={parameters.map(p => ({
             ...p,
             value: parameterValues[p.id],
@@ -241,6 +248,7 @@ export default class Dashboard extends Component {
           editingParameter={editingParameter}
           setEditingParameter={this.props.setEditingParameter}
           setParameterName={this.props.setParameterName}
+          setParameterIndex={this.props.setParameterIndex}
           setParameterDefaultValue={this.props.setParameterDefaultValue}
           removeParameter={this.props.removeParameter}
           setParameterValue={this.props.setParameterValue}
@@ -268,23 +276,22 @@ export default class Dashboard extends Component {
                 parametersWidget={parametersWidget}
               />
             </header>
-            {!isFullscreen &&
-              parametersWidget && (
-                <div className="wrapper flex flex-column align-start mt2 relative z2">
-                  {parametersWidget}
-                </div>
-              )}
+            {!isFullscreen && parametersWidget && (
+              <div className="wrapper flex flex-column align-start mt2 relative z2">
+                {parametersWidget}
+              </div>
+            )}
             <div className="wrapper">
               {dashboard.ordered_cards.length === 0 ? (
-                <div className="absolute z1 top bottom left right flex flex-column layout-centered">
-                  <span className="QuestionCircle">?</span>
-                  <div className="text-normal mt3 mb1">
-                    This dashboard is looking empty.
-                  </div>
-                  <div className="text-normal text-grey-2">
-                    Add a question to start making it useful!
-                  </div>
-                </div>
+                <Box mt={[2, 4]} color={isNightMode ? "white" : "inherit"}>
+                  <EmptyState
+                    illustrationElement={
+                      <span className="QuestionCircle">?</span>
+                    }
+                    title={t`This dashboard is looking empty.`}
+                    message={t`Add a question to start making it useful!`}
+                  />
+                </Box>
               ) : (
                 <DashboardGrid
                   {...this.props}

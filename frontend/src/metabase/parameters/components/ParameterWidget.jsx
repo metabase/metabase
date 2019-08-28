@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ParameterValueWidget from "./ParameterValueWidget.jsx";
 import Icon from "metabase/components/Icon.jsx";
 
@@ -15,6 +15,7 @@ import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 export default class ParameterWidget extends Component {
   state = {
     isEditingName: false,
+    editingNameValue: undefined,
     isFocused: false,
   };
 
@@ -65,6 +66,7 @@ export default class ParameterWidget extends Component {
       setValue,
       setDefaultValue,
       remove,
+      children,
     } = this.props;
 
     const isEditingDashboard = isEditing;
@@ -90,6 +92,7 @@ export default class ParameterWidget extends Component {
             parameter.name,
             isFullscreen,
           )}
+          {children}
         </FieldSet>
       );
     };
@@ -109,9 +112,15 @@ export default class ParameterWidget extends Component {
                 p => p.name === parameter.name && p.id !== parameter.id,
               ),
             })}
-            value={parameter.name}
-            onChange={e => setName(e.target.value)}
-            onBlur={() => this.setState({ isEditingName: false })}
+            value={this.state.editingNameValue}
+            onChange={e => this.setState({ editingNameValue: e.target.value })}
+            onBlur={() => {
+              setName(this.state.editingNameValue);
+              this.setState({
+                isEditingName: false,
+                editingNameValue: undefined,
+              });
+            }}
             onKeyUp={e => {
               if (e.keyCode === KEYCODE_ESCAPE || e.keyCode === KEYCODE_ENTER) {
                 e.target.blur();
@@ -119,6 +128,7 @@ export default class ParameterWidget extends Component {
             }}
             autoFocus
           />
+          {children}
         </FieldSet>
       );
     };
@@ -130,7 +140,12 @@ export default class ParameterWidget extends Component {
             name="pencil"
             size={12}
             className="text-brand cursor-pointer"
-            onClick={() => this.setState({ isEditingName: true })}
+            onClick={() => {
+              this.setState({
+                isEditingName: true,
+                editingNameValue: parameter.name,
+              });
+            }}
           />
         </span>
       );
@@ -153,6 +168,7 @@ export default class ParameterWidget extends Component {
             parameter.name,
             isFullscreen,
           )}
+          {children}
         </FieldSet>
       );
     };
@@ -177,6 +193,7 @@ export default class ParameterWidget extends Component {
               <span className="ml1">{t`Remove`}</span>
             </div>
           </div>
+          {children}
         </FieldSet>
       );
     };
@@ -189,7 +206,7 @@ export default class ParameterWidget extends Component {
       } else {
         return <span className="hide" />;
       }
-    } else if (!isEditingDashboard) {
+    } else if (!isEditingDashboard || !setEditingParameter) {
       return renderFieldInNormalMode();
     } else if (isEditingParameter) {
       if (this.state.isEditingName) {

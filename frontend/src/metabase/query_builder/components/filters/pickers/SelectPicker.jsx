@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CheckBox from "metabase/components/CheckBox.jsx";
 import ListSearchField from "metabase/components/ListSearchField.jsx";
 
@@ -89,12 +89,12 @@ export default class SelectPicker extends Component {
   }
 
   render() {
-    let { values, options, placeholder, multi } = this.props;
+    const { values, options, placeholder, multi } = this.props;
 
-    let checked = new Set(values);
+    const checked = new Set(values);
 
     let validOptions = [];
-    let regex = this.state.searchRegex;
+    const regex = this.state.searchRegex;
 
     if (regex) {
       for (const option of options) {

@@ -64,11 +64,12 @@ Common detailed types include:
 * Longitude
 * Entity Name
 * Number
+* Currency
 * State
 * URL
 * Zip Code
 
-This is also where you set mark special fields in a table:
+This is also where you set special fields in a table:
 
 * Entity Key — the field in this table that uniquely identifies each row. Could be a product ID, serial number, etc.
 * Entity Name — different from the entity key, this is the field whose heading represents what each row in the table *is*. For example, in a Users table, the User column might be the entity name.
@@ -91,8 +92,15 @@ Another option is custom remapping, which is currently only possible for numeric
 
 ![Remapping form](./images/remapping/custom-mapping.png)
 
+### Picking the filter UI for a field
+
+Metabase will automatically try to pick the best kind of filter interface for each field based on that field's type and the number of different values in it. Fields with only a few possible choices, like a `Gender` field, will display a dropdown list by default when filtering on them; fields with more than 100 possible selections will show a search box with autocomplete.
+
+If Metabase picked the wrong kind of filter UI for one of your fields, you can manually change it. You can choose from a drop down list, a search box, or just a plain input box:
+
+![Filter options](./images/filter-options.png)
 
 ---
 
-## Next: managing users
-Let’s learn how to add, remove, and edit users in the [managing users section](04-managing-users.md).
+## Next: creating segments and metrics
+Learn how to create canonical definitions of your commonly used [segments and metrics](07-segments-and-metrics.md).

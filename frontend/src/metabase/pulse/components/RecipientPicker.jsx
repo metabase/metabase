@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -54,7 +54,11 @@ export default class RecipientPicker extends Component {
     return (
       <TokenField
         value={recipients}
-        options={users.map(user => ({ label: user.common_name, value: user }))}
+        options={
+          users
+            ? users.map(user => ({ label: user.common_name, value: user }))
+            : []
+        }
         onChange={this.handleOnChange}
         placeholder={
           recipients.length === 0
@@ -84,6 +88,7 @@ export default class RecipientPicker extends Component {
             return { email: inputValue };
           }
         }}
+        updateOnInputBlur
       />
     );
   }

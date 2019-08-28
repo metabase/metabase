@@ -1,12 +1,14 @@
+/* eslint-disable no-color-literals */
+
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 
 import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { formatNumber } from "metabase/lib/formatting";
+import { formatValue } from "metabase/lib/formatting";
 
 import ChartWithLegend from "./ChartWithLegend.jsx";
 import LegacyChoropleth from "./LegacyChoropleth.jsx";
@@ -20,29 +22,40 @@ import {
 import d3 from "d3";
 import ss from "simple-statistics";
 import _ from "underscore";
+import Color from "color";
 
-// const HEAT_MAP_COLORS = [
-//     "#E1F2FF",
-//     "#67B9FF",
-//     "#2DA0FF",
-//     "#0A93FF",
-//     "#005FB8"
-// ];
-// const HEAT_MAP_ZERO_COLOR = '#CCC';
-
-const HEAT_MAP_COLORS = [
-  // "#E2F2FF",
-  "#C4E4FF",
-  // "#9ED2FF",
-  "#81C5FF",
-  // "#6BBAFF",
-  "#51AEFF",
-  // "#36A2FF",
-  "#1E96FF",
-  // "#0089FF",
-  "#0061B5",
-];
+// TODO COLOR
+const HEAT_MAP_COLORS = ["#C4E4FF", "#81C5FF", "#51AEFF", "#1E96FF", "#0061B5"];
 const HEAT_MAP_ZERO_COLOR = "#CCC";
+
+export function getColorplethColorScale(
+  color,
+  { lightness = 92, darken = 0.2, darkenLast = 0.3, saturate = 0.1 } = {},
+) {
+  const lightColor = Color(color)
+    .lightness(lightness)
+    .saturate(saturate);
+
+  const darkColor = Color(color)
+    .darken(darken)
+    .saturate(saturate);
+
+  const scale = d3.scale
+    .linear()
+    .domain([0, 1])
+    .range([lightColor.string(), darkColor.string()]);
+
+  const colors = d3.range(0, 1.25, 0.25).map(value => scale(value));
+
+  if (darkenLast) {
+    colors[colors.length - 1] = Color(color)
+      .darken(darkenLast)
+      .saturate(saturate)
+      .string();
+  }
+
+  return colors;
+}
 
 const geoJsonCache = new Map();
 function loadGeoJson(geoJsonPath, callback) {
@@ -61,11 +74,15 @@ export default class ChoroplethMap extends Component {
 
   static minSize = { width: 4, height: 4 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length > 1 && isString(cols[0]);
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     if (cols.length < 2) {
       throw new MinColumnsError(2, cols.length);
     }
@@ -130,14 +147,17 @@ export default class ChoroplethMap extends Component {
       onVisualizationClick,
       settings,
     } = this.props;
-    let { geoJson, minimalBounds } = this.state;
+    const { geoJson, minimalBounds } = this.state;
 
     // special case builtin maps to use legacy choropleth map
-    let projection;
+    let projection, projectionFrame;
+    // projectionFrame is the lng/lat of the top left and bottom right corners
     if (settings["map.region"] === "us_states") {
       projection = d3.geo.albersUsa();
+      projectionFrame = [[-135.0, 46.6], [-69.1, 21.7]];
     } else if (settings["map.region"] === "world_countries") {
       projection = d3.geo.mercator();
+      projectionFrame = [[-170, 78], [180, -60]];
     } else {
       projection = null;
     }
@@ -153,7 +173,11 @@ export default class ChoroplethMap extends Component {
       );
     }
 
-    const [{ data: { cols, rows } }] = series;
+    const [
+      {
+        data: { cols, rows },
+      },
+    ] = series;
     const dimensionIndex = _.findIndex(
       cols,
       col => col.name === settings["map.dimension"],
@@ -166,36 +190,25 @@ export default class ChoroplethMap extends Component {
     const getRowKey = row =>
       getCanonicalRowKey(row[dimensionIndex], settings["map.region"]);
     const getRowValue = row => row[metricIndex] || 0;
+
     const getFeatureName = feature => String(feature.properties[nameProperty]);
     const getFeatureKey = feature =>
       String(feature.properties[keyProperty]).toLowerCase();
+
     const getFeatureValue = feature => valuesMap[getFeatureKey(feature)];
 
-    const heatMapColors = HEAT_MAP_COLORS.slice(
-      0,
-      Math.min(HEAT_MAP_COLORS.length, rows.length),
-    );
+    const formatMetric = value =>
+      formatValue(value, settings.column(cols[metricIndex]));
 
-    const onHoverFeature = hover => {
-      onHoverChange &&
-        onHoverChange(
-          hover && {
-            index: heatMapColors.indexOf(getColor(hover.feature)),
-            event: hover.event,
-            data: {
-              key: getFeatureName(hover.feature),
-              value: getFeatureValue(hover.feature),
-            },
-          },
-        );
-    };
+    const rowByFeatureKey = new Map(rows.map(row => [getRowKey(row), row]));
 
-    const getFeatureClickObject = row => ({
+    const getFeatureClickObject = (row, feature) => ({
       value: row[metricIndex],
       column: cols[metricIndex],
       dimensions: [
         {
-          value: row[dimensionIndex],
+          value:
+            feature != null ? getFeatureName(feature) : row[dimensionIndex],
           column: cols[dimensionIndex],
         },
       ],
@@ -208,51 +221,69 @@ export default class ChoroplethMap extends Component {
     const onClickFeature =
       isClickable &&
       (click => {
-        const featureKey = getFeatureKey(click.feature);
-        const row = _.find(rows, row => getRowKey(row) === featureKey);
-        if (onVisualizationClick && row !== undefined) {
+        const row = rowByFeatureKey.get(getFeatureKey(click.feature));
+        if (row && onVisualizationClick) {
           onVisualizationClick({
             ...getFeatureClickObject(row),
             event: click.event,
           });
         }
       });
+    const onHoverFeature =
+      onHoverChange &&
+      (hover => {
+        const row = hover && rowByFeatureKey.get(getFeatureKey(hover.feature));
+        if (row && onHoverChange) {
+          onHoverChange({
+            ...getFeatureClickObject(row, hover.feature),
+            event: hover.event,
+          });
+        } else if (onHoverChange) {
+          onHoverChange(null);
+        }
+      });
 
     const valuesMap = {};
-    const domain = [];
     for (const row of rows) {
-      valuesMap[getRowKey(row)] =
-        (valuesMap[getRowKey(row)] || 0) + getRowValue(row);
-      domain.push(getRowValue(row));
+      const key = getRowKey(row);
+      const value = getRowValue(row);
+      valuesMap[key] = (valuesMap[key] || 0) + value;
     }
+    const domainSet = new Set(Object.values(valuesMap));
+    const domain = Array.from(domainSet);
+
+    const _heatMapColors = settings["map.colors"] || HEAT_MAP_COLORS;
+    const heatMapColors =
+      domain.length < _heatMapColors.length
+        ? _heatMapColors.slice(_heatMapColors.length - domain.length)
+        : _heatMapColors;
 
     const groups = ss.ckmeans(domain, heatMapColors.length);
+    const groupBoundaries = groups.slice(1).map(cluster => cluster[0]);
 
-    var colorScale = d3.scale
-      .quantile()
-      .domain(groups.map(cluster => cluster[0]))
+    const colorScale = d3.scale
+      .threshold()
+      .domain(groupBoundaries)
       .range(heatMapColors);
 
-    let legendColors = heatMapColors.slice();
-    let legendTitles = heatMapColors.map((color, index) => {
+    const legendColors = heatMapColors;
+    const legendTitles = heatMapColors.map((color, index) => {
       const min = groups[index][0];
       const max = groups[index].slice(-1)[0];
       return index === heatMapColors.length - 1
-        ? formatNumber(min) + " +"
-        : formatNumber(min) + " - " + formatNumber(max);
+        ? formatMetric(min) + " +"
+        : formatMetric(min) + " - " + formatMetric(max);
     });
 
     const getColor = feature => {
-      let value = getFeatureValue(feature);
+      const value = getFeatureValue(feature);
       return value == null ? HEAT_MAP_ZERO_COLOR : colorScale(value);
     };
 
     let aspectRatio;
     if (projection) {
-      let translate = projection.translate();
-      let width = translate[0] * 2;
-      let height = translate[1] * 2;
-      aspectRatio = width / height;
+      const [[minX, minY], [maxX, maxY]] = projectionFrame.map(projection);
+      aspectRatio = (maxX - minX) / (maxY - minY);
     } else {
       aspectRatio =
         (minimalBounds.getEast() - minimalBounds.getWest()) /
@@ -277,6 +308,7 @@ export default class ChoroplethMap extends Component {
             onHoverFeature={onHoverFeature}
             onClickFeature={onClickFeature}
             projection={projection}
+            projectionFrame={projectionFrame}
           />
         ) : (
           <LeafletChoropleth

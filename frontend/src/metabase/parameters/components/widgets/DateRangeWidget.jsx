@@ -1,24 +1,33 @@
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Calendar from "metabase/components/Calendar.jsx";
 import moment from "moment";
 
 const SEPARATOR = "~"; // URL-safe
 
+function parseDateRangeValue(value) {
+  const [start, end] = (value || "").split(SEPARATOR);
+  return { start, end };
+}
+function serializeDateRangeValue({ start, end }) {
+  return [start, end].join(SEPARATOR);
+}
+
 export default class DateRangeWidget extends Component {
   constructor(props, context) {
     super(props, context);
-    this.state = {
-      start: null,
-      end: null,
-    };
+    this.state = parseDateRangeValue(props.value);
   }
 
-  static propTypes = {};
+  static propTypes = {
+    value: PropTypes.string,
+    setValue: PropTypes.func.isRequired,
+  };
   static defaultProps = {};
 
   static format = value => {
-    const [start, end] = (value || "").split(SEPARATOR);
+    const { start, end } = parseDateRangeValue(value);
     return start && end
       ? moment(start).format("MMMM D, YYYY") +
           " - " +
@@ -26,13 +35,10 @@ export default class DateRangeWidget extends Component {
       : "";
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
-  }
-
   componentWillReceiveProps(nextProps) {
-    const [start, end] = (nextProps.value || "").split(SEPARATOR);
-    this.setState({ start, end });
+    if (nextProps.value !== this.props.value) {
+      this.setState(parseDateRangeValue(nextProps.value));
+    }
   }
 
   render() {
@@ -47,7 +53,7 @@ export default class DateRangeWidget extends Component {
             if (end == null) {
               this.setState({ start, end });
             } else {
-              this.props.setValue([start, end].join(SEPARATOR));
+              this.props.setValue(serializeDateRangeValue({ start, end }));
             }
           }}
         />

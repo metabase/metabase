@@ -1,5 +1,5 @@
 import React from "react";
-
+import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
@@ -21,9 +21,9 @@ export const getDashboardActions = ({
   if (!isEditing && !isEmpty) {
     buttons.push(
       <RefreshWidget
+        key="refresh"
         data-metabase-event="Dashboard;Refresh Menu Open"
         className="text-brand-hover"
-        key="refresh"
         period={refreshPeriod}
         elapsed={refreshElapsed}
         onChangePeriod={onRefreshPeriodChange}
@@ -33,11 +33,13 @@ export const getDashboardActions = ({
 
   if (!isEditing && isFullscreen) {
     buttons.push(
-      <Tooltip tooltip={isNightMode ? "Daytime mode" : "Nighttime mode"}>
+      <Tooltip
+        key="night"
+        tooltip={isNightMode ? t`Daytime mode` : t`Nighttime mode`}
+      >
         <span data-metabase-event={"Dashboard;Night Mode;" + !isNightMode}>
           <NightModeIcon
             className="text-brand-hover cursor-pointer"
-            key="night"
             isNightMode={isNightMode}
             onClick={() => onNightModeChange(!isNightMode)}
           />
@@ -49,13 +51,15 @@ export const getDashboardActions = ({
   if (!isEditing && !isEmpty) {
     // option click to enter fullscreen without making the browser go fullscreen
     buttons.push(
-      <Tooltip tooltip={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}>
+      <Tooltip
+        key="fullscreen"
+        tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}
+      >
         <span
           data-metabase-event={"Dashboard;Fullscreen Mode;" + !isFullscreen}
         >
           <FullscreenIcon
             className="text-brand-hover cursor-pointer"
-            key="fullscreen"
             isFullscreen={isFullscreen}
             onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
           />

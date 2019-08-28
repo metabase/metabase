@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
@@ -66,11 +66,12 @@ export const separateTablesBySchema = (
   createListItem,
 ) =>
   Object.values(tables)
-    .sort(
-      (table1, table2) =>
-        table1.schema > table2.schema
-          ? 1
-          : table1.schema === table2.schema ? 0 : -1,
+    .sort((table1, table2) =>
+      table1.schema > table2.schema
+        ? 1
+        : table1.schema === table2.schema
+        ? 0
+        : -1,
     )
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
@@ -84,7 +85,10 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

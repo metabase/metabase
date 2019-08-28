@@ -196,11 +196,15 @@ function computeTimeseriesDataInvervalIndex(xValues, unit) {
   if (unit && INTERVAL_INDEX_BY_UNIT[unit] != undefined) {
     return INTERVAL_INDEX_BY_UNIT[unit];
   }
+  // Always use 'day' when there's just one value.
+  if (xValues.length === 1) {
+    return TIMESERIES_INTERVALS.findIndex(ti => ti.interval === "day");
+  }
   // Keep track of the value seen for each level of granularity,
   // if any don't match then we know the data is *at least* that granular.
-  let values = [];
+  const values = [];
   let index = TIMESERIES_INTERVALS.length;
-  for (let xValue of xValues) {
+  for (const xValue of xValues) {
     // Only need to check more granular than the current interval
     for (let i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
       const interval = TIMESERIES_INTERVALS[i];
@@ -257,7 +261,9 @@ function timeseriesTicksInterval(
     },
   );
   // if we weren't able to find soemthing matching then we'll start from the beginning and try everything
-  if (initialIndex === -1) initialIndex = 0;
+  if (initialIndex === -1) {
+    initialIndex = 0;
+  }
 
   // now starting at the TIMESERIES_INTERVALS entry in question, calculate the expected tick count for that interval
   // based on the time range we are displaying. If the expected tick count is less than or equal to the target
@@ -265,8 +271,9 @@ function timeseriesTicksInterval(
   // example every 3 hours instead of every one hour. Continue until we find something with an interval large enough
   // to keep the total tick count under the max tick count
   for (const interval of _.rest(TIMESERIES_INTERVALS, initialIndex)) {
-    if (expectedTickCount(interval, timeRangeMilliseconds) <= maxTickCount)
+    if (expectedTickCount(interval, timeRangeMilliseconds) <= maxTickCount) {
       return interval;
+    }
   }
 
   // If we still failed to find an interval that will produce less ticks than the max then fall back to the largest

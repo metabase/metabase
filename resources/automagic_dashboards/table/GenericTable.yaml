@@ -1,0 +1,565 @@
+title: "A look at your [[this]]"
+transient_title: "Here''s a quick look at your [[this]]"
+description: An overview of your [[this]] and how it''s distributed across time, place, and categories.
+metrics:
+  - Count: ["count"]
+  - CountDistinctFKs: [distinct, [dimension, FK]]
+  - Sum: [sum, [dimension, GenericNumber]]
+  - Avg: [avg, [dimension, GenericNumber]]
+dimensions:
+  - Country:
+      field_type: GenericTable.Country
+      score: 100
+  - State:
+      field_type: GenericTable.State
+      score: 100
+  - GenericNumber:
+      field_type: GenericTable.Number
+      score: 80
+  - Source:
+      field_type: GenericTable.Source
+      score: 100
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      score: 75
+      max_cardinality: 10
+  - Singleton:
+      field_type: GenericTable.Category
+      max_cardinality: 1
+      score: 100
+  - Date:
+      field_type: GenericTable.Date
+      score: 50
+  - Time:
+      field_type: GenericTable.Time
+      score: 50
+  - Timestamp:
+      field_type: DateTime
+      score: 60
+  - JoinDate:
+      field_type: GenericTable.JoinDate
+      score: 50
+  - CreateDate:
+      field_type: CreationDate
+      score: 80
+  - JoinTime:
+      field_type: GenericTable.JoinTime
+      score: 50
+  - CreateTime:
+      field_type: CreationTime
+      score: 80
+  - JoinTimestamp:
+      field_type: GenericTable.JoinTimestamp
+      score: 50
+  - CreateTimestamp:
+      field_type: CreationTimestamp
+      score: 80
+  - FK: FK
+  - Long: GenericTable.Longitude
+  - Lat: GenericTable.Latitude
+# ignore
+  - Birthdate: Birthdate
+  - ZIP: ZipCode
+filters:
+  - Last30Days:
+      filter: ["time-interval", [dimension, CreateTimestamp], -30, day]
+      score: 100
+  - Last30Days:
+      filter: ["time-interval", [dimension, CreateDate], -30, day]
+      score: 99
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinTimestamp], -30, day]
+      score: 90
+  - Last30Days:
+      filter: ["time-interval", [dimension, JoinDate], -30, day]
+      score: 89
+  - Last30Days:
+      filter: ["time-interval", [dimension, Timestamp], -30, day]
+      score: 80
+  - Last30Days:
+      filter: ["time-interval", [dimension, Date], -30, day]
+      score: 79
+groups:
+- Overview:
+    title: Summary
+- Singletons:
+    title: These are the same for all your [[this.short-name]]
+- ByTime:
+    title: "These [[this.short-name]] across time"
+    comparison_title: How they compare across time
+- Geographical:
+    title: Where your [[this.short-name]] are
+    comparison_title: How they compare across location
+- General:
+    title: How these [[this.short-name]] are distributed
+    comparison_title: How they compare by distribution
+dashboard_filters:
+- Timestamp
+- Date
+- JoinDate
+- JoinTimestamp
+- CreateDate
+- CreateTimestamp
+- GenericCategoryMedium
+- Source
+- Country
+- State
+cards:
+# Overview
+  - Rowcount:
+      title: Total [[this.short-name]]
+      visualization: scalar
+      metrics: Count
+      score: 100
+      group: Overview
+  - RowcountLast30Days:
+      title: "[[this.short-name]] added in the last 30 days"
+      visualization: scalar
+      metrics: Count
+      score: 100
+      filters: Last30Days
+      group: Overview
+  - DistinctFKCounts:
+      title: Distinct [[FK]]
+      visualization: scalar
+      metrics: CountDistinctFKs
+      score: 100
+      group: Overview
+# General
+  - NumberDistribution:
+      title: "[[this.short-name]] by [[GenericNumber]]"
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      metrics: Count
+      visualization: bar
+      score: 90
+      group: General
+  - CountByCategoryMedium:
+      title: "[[this.short-name]] per [[GenericCategoryMedium]]"
+      dimensions: GenericCategoryMedium
+      metrics: Count
+      visualization: smart-row
+      score: 80
+      height: 8
+      group: General
+# Geographical
+  - CountByCountry:
+      title: "[[this.short-name]] per country"
+      metrics: Count
+      dimensions: Country
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+      group: Geographical
+      height: 6
+  - CountByState:
+      title: "[[this.short-name]] per state"
+      metrics: Count
+      dimensions: State
+      score: 90
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+      group: Geographical
+      height: 6
+  - CountByCoords:
+      title: "[[this.short-name]] by coordinates"
+      metrics: Count
+      dimensions:
+        - Long
+        - Lat
+      visualization: map
+      score: 80
+      group: Geographical
+      height: 6
+# By Time
+  - CountByJoinDate:
+      title: "[[this.short-name]] that have joined over time"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByJoinDate:
+      title: "[[this.short-name]] that have joined over time"
+      visualization: line
+      dimensions: JoinDate
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByCreateDate:
+      title: New [[this.short-name]] over time
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByCreateDate:
+      title: New [[this.short-name]] over time
+      visualization: line
+      dimensions: CreateDate
+      metrics: Count
+      score: 90
+      group: ByTime
+  - CountByTimestamp:
+      title: "[[this.short-name]] by [[Timestamp]]"
+      visualization: line
+      dimensions: Timestamp
+      metrics: Count
+      score: 20
+      group: ByTime
+  - CountByTimestamp:
+      title: "[[this.short-name]] by [[Timestamp]]"
+      visualization: line
+      dimensions: Date
+      metrics: Count
+      score: 20
+      group: ByTime
+  - NumberOverTime:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: Timestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 70
+      group: ByTime
+  - NumberOverTime:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: Date
+      metrics:
+        - Sum
+        - Avg
+      score: 70
+      group: ByTime
+  - NumberOverJoinDate:
+      title: "[[GenericNumber]] by join date"
+      visualization: line
+      dimensions: JoinTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 80
+      group: ByTime
+  - NumberOverJoinDate:
+      title: "[[GenericNumber]] by join date"
+      visualization: line
+      dimensions: JoinDate
+      metrics:
+        - Sum
+        - Avg
+      score: 80
+      group: ByTime
+  - NumberOverCreateDate:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: CreateTimestamp
+      metrics:
+        - Sum
+        - Avg
+      score: 90
+      group: ByTime
+  - NumberOverCreateDate:
+      title: "[[GenericNumber]] over time"
+      visualization: line
+      dimensions: CreateDate
+      metrics:
+        - Sum
+        - Avg
+      score: 90
+      group: ByTime
+  - DayOfWeekTimestamp:
+      title: "[[Timestamp]] by day of the week"
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - DayOfWeekTimestamp:
+      title: "[[Timestamp]] by day of the week"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - HourOfDayTimestamp:
+      title: "[[Timestamp]] by hour of the day"
+      visualization: bar
+      dimensions:
+      - Timestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - HourOfDayTimestamp:
+      title: "[[Timestamp]] by hour of the day"
+      visualization: bar
+      dimensions:
+      - Time:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - MonthOfYearTimestamp:
+      title: "[[Timestamp]] by month of the year"
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - MonthOfYearTimestamp:
+      title: "[[Timestamp]] by month of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - QuarterOfYearTimestamp:
+      title: "[[Timestamp]] by quarter of the year"
+      visualization: bar
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - QuarterOfYearTimestamp:
+      title: "[[Timestamp]] by quarter of the year"
+      visualization: bar
+      dimensions:
+        - Date:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[Timestamp]]"
+  - DayOfWeekCreateDate:
+      title: Weekdays when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[CreateTimestamp]] by day of the week"
+  - DayOfWeekCreateDate:
+      title: Weekdays when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: "[[CreateDate]] by day of the week"
+  - HourOfDayCreateDate:
+      title: Hours when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+      - CreateTimestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[CreateTimestamp]] by hour of the day"
+  - HourOfDayCreateDate:
+      title: Hours when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+      - CreateTime:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: "[[CreateTime]] by hour of the day"
+  - DayOfMonthCreateDate:
+      title: Days when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateTimestamp]] by day of the month"
+  - DayOfMonthCreateDate:
+      title: Days when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateDate]] by day of the month"
+  - MonthOfYearCreateDate:
+      title: Months when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateTimestamp]] by month of the year"
+  - MonthOfYearCreateDate:
+      title: Months when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateDate]] by month of the year"
+  - QuerterOfYearCreateDate:
+      title: Quarters when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateTimestamp]] by quarter of the year"
+  - QuerterOfYearCreateDate:
+      title: Quarters when [[this.short-name]] were added
+      visualization: bar
+      dimensions:
+        - CreateDate:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: "[[CreateDate]] by quarter of the year"
+  - DayOfWeekJoinDate:
+      title: Weekdays when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Join date by day of the week
+  - DayOfWeekJoinDate:
+      title: Weekdays when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: ByTime
+      x_label: Join date by day of the week
+  - HourOfDayJoinDate:
+      title: Hours when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+      - JoinTimestamp:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Join date by hour of the day
+  - HourOfDayJoinDate:
+      title: Hours when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+      - JoinTime:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: ByTime
+      x_label: Join date by hour of the day
+  - DayOfMonthJoinDate:
+      title: Days of the month when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by day of the month
+  - DayOfMonthJoinDate:
+      title: Days of the month when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: day-of-month
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by day of the month
+  - MonthOfYearJoinDate:
+      title: Months when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by month of the year
+  - MonthOfYearJoinDate:
+      title: Months when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by month of the year
+  - QuerterOfYearJoinDate:
+      title: Quarters when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinTimestamp:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by quarter of the year
+  - QuerterOfYearJoinDate:
+      title: Quarters when [[this.short-name]] joined
+      visualization: bar
+      dimensions:
+        - JoinDate:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: ByTime
+      x_label: Join date by quarter of the year
+# Special
+  - Singleton:
+      title: "[[Singleton]]"
+      visualization: scalar
+      metrics: Count
+      dimensions: Singleton
+      score: 30
+      height: 3
+      width: 3
+      group: Singletons

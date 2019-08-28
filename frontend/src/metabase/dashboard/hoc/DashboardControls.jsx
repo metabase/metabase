@@ -26,6 +26,7 @@ type State = {
   isNightMode: boolean,
   refreshPeriod: ?number,
   refreshElapsed: ?number,
+  hideParameters: ?string,
 };
 
 const TICK_PERIOD = 0.25; // seconds
@@ -34,9 +35,13 @@ const TICK_PERIOD = 0.25; // seconds
  * It should probably be in Redux?
  */
 export default (ComposedComponent: ReactClass<any>) =>
-  connect(null, { replace })(
+  connect(
+    null,
+    { replace },
+  )(
     class extends Component {
-      static displayName = "DashboardControls[" +
+      static displayName =
+        "DashboardControls[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 
@@ -47,6 +52,8 @@ export default (ComposedComponent: ReactClass<any>) =>
 
         refreshPeriod: null,
         refreshElapsed: null,
+
+        hideParameters: null,
       };
 
       _interval: ?number;
@@ -80,7 +87,7 @@ export default (ComposedComponent: ReactClass<any>) =>
       loadDashboardParams = () => {
         const { location } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         this.setRefreshPeriod(
           Number.isNaN(options.refresh) || options.refresh === 0
             ? null
@@ -88,12 +95,13 @@ export default (ComposedComponent: ReactClass<any>) =>
         );
         this.setNightMode(options.theme === "night" || options.night); // DEPRECATED: options.night
         this.setFullscreen(options.fullscreen);
+        this.setHideParameters(options.hide_parameters);
       };
 
       updateDashboardParams = () => {
         const { location, replace } = this.props;
 
-        let options = parseHashOptions(location.hash);
+        const options = parseHashOptions(location.hash);
         const setValue = (name, value) => {
           if (value) {
             options[name] = value;
@@ -150,22 +158,26 @@ export default (ComposedComponent: ReactClass<any>) =>
         this.setState({ isNightMode });
       };
 
-      setFullscreen = (isFullscreen, browserFullscreen = true) => {
+      setFullscreen = async (isFullscreen, browserFullscreen = true) => {
         isFullscreen = !!isFullscreen;
         if (isFullscreen !== this.state.isFullscreen) {
           if (screenfull.enabled && browserFullscreen) {
             if (isFullscreen) {
-              screenfull.request();
+              await screenfull.request();
             } else {
-              screenfull.exit();
+              await screenfull.exit();
             }
           }
           this.setState({ isFullscreen });
         }
       };
 
+      setHideParameters = parameters => {
+        this.setState({ hideParameters: parameters });
+      };
+
       _tickRefreshClock = async () => {
-        let refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
+        const refreshElapsed = (this.state.refreshElapsed || 0) + TICK_PERIOD;
         if (
           this.state.refreshPeriod &&
           refreshElapsed >= this.state.refreshPeriod

@@ -5,13 +5,12 @@ import "./Calendar.css";
 
 import cx from "classnames";
 import moment from "moment";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
 export default class Calendar extends Component {
   constructor(props) {
     super(props);
-
     this.state = {
       current: moment(props.initial || undefined),
     };
@@ -22,7 +21,6 @@ export default class Calendar extends Component {
     selectedEnd: PropTypes.object,
     onChange: PropTypes.func.isRequired,
     isRangePicker: PropTypes.bool,
-    isDual: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -31,15 +29,25 @@ export default class Calendar extends Component {
 
   componentWillReceiveProps(nextProps) {
     if (
-      !moment(nextProps.selected).isSame(this.props.selected, "day") ||
-      !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day")
+      // `selected` became null or not null
+      (nextProps.selected == null) !== (this.props.selected == null) ||
+      // `selectedEnd` became null or not null
+      (nextProps.selectedEnd == null) !== (this.props.selectedEnd == null) ||
+      // `selected` is not null and doesn't match previous `selected`
+      (nextProps.selected != null &&
+        !moment(nextProps.selected).isSame(this.props.selected, "day")) ||
+      // `selectedEnd` is not null and doesn't match previous `selectedEnd`
+      (nextProps.selectedEnd != null &&
+        !moment(nextProps.selectedEnd).isSame(this.props.selectedEnd, "day"))
     ) {
       let resetCurrent = false;
-      if (nextProps.selected && nextProps.selectedEnd) {
+      if (nextProps.selected != null && nextProps.selectedEnd != null) {
+        // reset if `current` isn't between `selected` and `selectedEnd` month
         resetCurrent =
           nextProps.selected.isAfter(this.state.current, "month") &&
           nextProps.selectedEnd.isBefore(this.state.current, "month");
-      } else if (nextProps.selected) {
+      } else if (nextProps.selected != null) {
+        // reset if `current` isn't in `selected` month
         resetCurrent =
           nextProps.selected.isAfter(this.state.current, "month") ||
           nextProps.selected.isBefore(this.state.current, "month");
@@ -51,7 +59,7 @@ export default class Calendar extends Component {
   }
 
   onClickDay = date => {
-    let { selected, selectedEnd, isRangePicker } = this.props;
+    const { selected, selectedEnd, isRangePicker } = this.props;
     if (!isRangePicker || !selected || selectedEnd) {
       this.props.onChange(date.format("YYYY-MM-DD"), null);
     } else if (!selectedEnd) {
@@ -119,13 +127,13 @@ export default class Calendar extends Component {
   }
 
   renderWeeks(current) {
-    var weeks = [],
-      done = false,
-      date = moment(current)
-        .startOf("month")
-        .day("Sunday"),
-      monthIndex = date.month(),
-      count = 0;
+    const weeks = [];
+    const date = moment(current)
+      .startOf("month")
+      .day("Sunday");
+    let done = false;
+    let monthIndex = date.month();
+    let count = 0;
 
     while (!done) {
       weeks.push(
@@ -162,16 +170,7 @@ export default class Calendar extends Component {
 
   render() {
     const { current } = this.state;
-    if (this.props.isDual) {
-      return (
-        <div className="Grid Grid--1of2 Grid--gutters">
-          {this.renderCalender(current, "left")}
-          {this.renderCalender(moment(current).add(1, "month"), "right")}
-        </div>
-      );
-    } else {
-      return this.renderCalender(current);
-    }
+    return this.renderCalender(current);
   }
 }
 
@@ -183,11 +182,11 @@ class Week extends Component {
   };
 
   render() {
-    let days = [];
+    const days = [];
     let { date, month, selected, selectedEnd } = this.props;
 
     for (let i = 0; i < 7; i++) {
-      let classes = cx("Calendar-day p1 cursor-pointer text-centered", {
+      const classes = cx("Calendar-day p1 cursor-pointer text-centered", {
         "Calendar-day--today": date.isSame(new Date(), "day"),
         "Calendar-day--this-month": date.month() === month.month(),
         "Calendar-day--selected": selected && date.isSame(selected, "day"),

@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import DatePicker, {
   DATE_OPERATORS,
   getOperator,
@@ -102,7 +102,9 @@ export default class DateAllOptionsWidget extends Component {
   static defaultProps = {};
 
   static format = (urlEncoded: ?string) => {
-    if (urlEncoded == null) return null;
+    if (urlEncoded == null) {
+      return null;
+    }
     const filter = dateParameterValueToMBQL(urlEncoded, noopRef);
 
     return filter ? getFilterTitle(filter) : null;
@@ -127,6 +129,7 @@ export default class DateAllOptionsWidget extends Component {
     return (
       <div style={{ minWidth: "300px" }}>
         <DatePicker
+          className="m2"
           filter={this.state.filter}
           onFilterChange={this.setFilter}
           hideEmptinessOperators

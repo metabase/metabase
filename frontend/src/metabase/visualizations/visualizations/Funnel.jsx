@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   MinRowsError,
   ChartSettingsError,
@@ -9,11 +9,12 @@ import {
 
 import { formatValue } from "metabase/lib/formatting";
 
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
-  getSettings,
   metricSetting,
   dimensionSetting,
-} from "metabase/visualizations/lib/settings";
+} from "metabase/visualizations/lib/settings/utils";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import FunnelNormal from "../components/FunnelNormal";
 import FunnelBar from "../components/FunnelBar";
@@ -39,12 +40,16 @@ export default class Funnel extends Component {
     height: 4,
   };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return cols.length === 2;
   }
 
   static checkRenderable(series, settings) {
-    const [{ data: { rows } }] = series;
+    const [
+      {
+        data: { rows },
+      },
+    ] = series;
     if (series.length > 1) {
       return;
     }
@@ -55,30 +60,62 @@ export default class Funnel extends Component {
     if (!settings["funnel.dimension"] || !settings["funnel.metric"]) {
       throw new ChartSettingsError(
         t`Which fields do you want to use?`,
-        t`Data`,
+        { section: t`Data` },
         t`Choose fields`,
       );
     }
   }
 
+  // NOTE: currently expects multi-series
+  static placeholderSeries = [
+    ["Homepage", 1000],
+    ["Product Page", 850],
+    ["Tiers Page", 700],
+    ["Trial Form", 200],
+    ["Trial Confirmation", 40],
+  ].map(row => ({
+    card: {
+      display: "funnel",
+      visualization_settings: {
+        "funnel.type": "funnel",
+        "funnel.dimension": "Total Sessions",
+      },
+      dataset_query: { type: "null" },
+    },
+    data: {
+      rows: [row],
+      cols: [
+        {
+          name: "Total Sessions",
+          base_type: "type/Text",
+        },
+        {
+          name: "Sessions",
+          base_type: "type/Integer",
+        },
+      ],
+    },
+  }));
+
   static settings = {
-    "funnel.dimension": {
-      section: "Data",
+    ...columnSettings({ hidden: true }),
+    ...dimensionSetting("funnel.dimension", {
+      section: t`Data`,
       title: t`Step`,
-      ...dimensionSetting("funnel.dimension"),
       dashboard: false,
       useRawSeries: true,
-    },
-    "funnel.metric": {
-      section: "Data",
+      showColumnSetting: true,
+    }),
+    ...metricSetting("funnel.metric", {
+      section: t`Data`,
       title: t`Measure`,
-      ...metricSetting("funnel.metric"),
       dashboard: false,
       useRawSeries: true,
-    },
+      showColumnSetting: true,
+    }),
     "funnel.type": {
       title: t`Funnel type`,
-      section: "Display",
+      section: t`Display`,
       widget: "select",
       props: {
         options: [
@@ -93,9 +130,14 @@ export default class Funnel extends Component {
   };
 
   static transformSeries(series) {
-    let [{ card, data: { rows, cols } }] = series;
+    const [
+      {
+        card,
+        data: { rows, cols },
+      },
+    ] = series;
 
-    const settings = getSettings(series);
+    const settings = getComputedSettingsForSeries(series);
 
     const dimensionIndex = _.findIndex(
       cols,
@@ -155,13 +197,15 @@ export default class Funnel extends Component {
               actionButtons={actionButtons}
             />
           )}
-          <LegendHeader
-            className="flex-no-shrink"
-            // $FlowFixMe
-            series={series._raw || series}
-            actionButtons={!hasTitle && actionButtons}
-            onChangeCardAndRun={onChangeCardAndRun}
-          />
+          {!hasTitle &&
+          actionButtons && ( // always show action buttons if we have them
+              <LegendHeader
+                className="flex-no-shrink"
+                series={series._raw || series}
+                actionButtons={actionButtons}
+                onChangeCardAndRun={onChangeCardAndRun}
+              />
+            )}
           <FunnelNormal {...this.props} className="flex-full" />
         </div>
       );

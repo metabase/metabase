@@ -26,6 +26,11 @@ import {
 
 import * as dashboardActions from "metabase/dashboard/dashboard";
 
+import {
+  setPublicDashboardEndpoints,
+  setEmbedDashboardEndpoints,
+} from "metabase/services";
+
 import type { Dashboard } from "metabase/meta/types/Dashboard";
 import type { Parameter } from "metabase/meta/types/Parameter";
 
@@ -70,12 +75,17 @@ type Props = {
     reload: boolean,
     clear: boolean,
   }) => Promise<void>,
+  cancelFetchDashboardCardData: () => Promise<void>,
   setParameterValue: (id: string, value: string) => void,
   setErrorPage: (error: { status: number }) => void,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @DashboardControls
+// NOTE: this should use DashboardData HoC
 export default class PublicDashboard extends Component {
   props: Props;
 
@@ -89,14 +99,26 @@ export default class PublicDashboard extends Component {
       location,
       params: { uuid, token },
     } = this.props;
+
+    if (uuid) {
+      setPublicDashboardEndpoints(uuid);
+    } else if (token) {
+      setEmbedDashboardEndpoints(token);
+    }
+
     initialize();
     try {
       // $FlowFixMe
       await fetchDashboard(uuid || token, location.query);
       await fetchDashboardCardData({ reload: false, clear: true });
     } catch (error) {
+      console.error(error);
       setErrorPage(error);
     }
+  }
+
+  componentWillUnmount() {
+    this.props.cancelFetchDashboardCardData();
   }
 
   componentWillReceiveProps(nextProps: Props) {

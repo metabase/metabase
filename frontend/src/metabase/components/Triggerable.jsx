@@ -11,7 +11,8 @@ import cx from "classnames";
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
 export default ComposedComponent =>
   class extends Component {
-    static displayName = "Triggerable[" +
+    static displayName =
+      "Triggerable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
@@ -87,7 +88,7 @@ export default ComposedComponent =>
     _startCheckObscured() {
       if (this._offscreenTimer == null) {
         this._offscreenTimer = setInterval(() => {
-          let trigger = ReactDOM.findDOMNode(this.refs.trigger);
+          const trigger = ReactDOM.findDOMNode(this.refs.trigger);
           if (isObscured(trigger)) {
             this.close();
           }
@@ -107,8 +108,11 @@ export default ComposedComponent =>
         triggerClasses,
         triggerStyle,
         triggerClassesOpen,
+        triggerClassesClose,
       } = this.props;
-      const { isOpen } = this.state;
+
+      const isOpen =
+        this.props.isOpen != null ? this.props.isOpen : this.state.isOpen;
 
       let { triggerElement } = this.props;
       if (triggerElement && triggerElement.type === Tooltip) {
@@ -118,13 +122,16 @@ export default ComposedComponent =>
         });
       }
 
-      // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
       let { children } = this.props;
-      if (
+      if (typeof children === "function" && isOpen) {
+        // if children is a render prop, pass onClose to it
+        children = children({ onClose: this.onClose });
+      } else if (
         React.Children.count(children) === 1 &&
         React.Children.only(children).props.onClose === undefined &&
         typeof React.Children.only(children).type !== "string"
       ) {
+        // if we have a single child which isn't an HTML element and doesn't have an onClose prop go ahead and inject it directly
         children = React.cloneElement(children, { onClose: this.onClose });
       }
 
@@ -139,6 +146,7 @@ export default ComposedComponent =>
           className={cx(
             triggerClasses,
             isOpen && triggerClassesOpen,
+            !isOpen && triggerClassesClose,
             "no-decoration",
             {
               "cursor-default": this.props.disabled,

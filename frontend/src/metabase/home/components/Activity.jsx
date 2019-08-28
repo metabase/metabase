@@ -2,7 +2,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
+
+import colors from "metabase/lib/colors";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 import ActivityItem from "./ActivityItem.jsx";
@@ -16,12 +18,12 @@ export default class Activity extends Component {
     this.state = { error: null, userColors: {} };
 
     this.colorClasses = [
-      "bg-brand",
-      "bg-purple",
-      "bg-error",
-      "bg-green",
-      "bg-gold",
-      "bg-grey-2",
+      colors["brand"],
+      colors["accent1"],
+      colors["accent2"],
+      colors["accent3"],
+      colors["accent4"],
+      colors["accent5"],
     ];
   }
 
@@ -41,18 +43,18 @@ export default class Activity extends Component {
 
   componentWillReceiveProps(nextProps) {
     // do a quick pass over the activity and make sure we've assigned colors to all users which have activity
-    let { activity, user } = nextProps;
-    let { userColors } = this.state;
+    const { activity, user } = nextProps;
+    const { userColors } = this.state;
 
     const colors = [1, 2, 3, 4, 5];
     const maxColorUsed = _.isEmpty(userColors)
       ? 0
       : _.max(_.values(userColors));
-    var currColor =
+    let currColor =
       maxColorUsed && maxColorUsed < colors.length ? maxColorUsed : 0;
 
     if (user && activity) {
-      for (var item of activity) {
+      for (const item of activity) {
         if (!(item.user_id in userColors)) {
           // assign the user a color
           if (item.user_id === user.id) {
@@ -89,7 +91,7 @@ export default class Activity extends Component {
     // this is a base to start with
     const description = {
       userName: this.userName(item.user, user),
-      summary: t`did some super awesome stuff thats hard to describe`,
+      summary: t`did some super awesome stuff that's hard to describe`,
       timeSince: item.timestamp.fromNow(),
     };
 
@@ -138,7 +140,7 @@ export default class Activity extends Component {
         } else {
           description.summary = (
             <span>
-              {t`deleted an alert about- `}
+              {t`deleted an alert about - `}
               <span className="text-dark">{item.details.name}</span>
             </span>
           );
@@ -225,13 +227,6 @@ export default class Activity extends Component {
         }
         break;
       case "database-sync":
-        // NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
-        //       capture the name/description/engine of a Database properly in the details and so it was
-        //       possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
-        const oldName =
-          item.database && "name" in item.database
-            ? item.database.name
-            : t`Unknown`;
         if (item.details.name) {
           description.summary = (
             <span>
@@ -243,7 +238,13 @@ export default class Activity extends Component {
           description.summary = (
             <span>
               {t`received the latest data from`}{" "}
-              <span className="text-dark">{oldName}</span>
+              <span className="text-dark">
+                {/* NOTE: this is a relic from the very early days of the activity feed when we accidentally didn't
+                 * capture the name/description/engine of a Database properly in the details and so it was
+                 * possible for a database to be deleted and we'd lose any way of knowing what it's name was :(
+                 */}
+                {(item.database && item.database.name) || t`Unknown`}
+              </span>
             </span>
           );
         }
@@ -345,7 +346,7 @@ export default class Activity extends Component {
         if (item.model_exists) {
           description.summary = (
             <span>
-              {t`added the filter `}
+              {t`added the filter`}{" "}
               <Link
                 to={Urls.tableRowsQuery(
                   item.database_id,
@@ -386,7 +387,7 @@ export default class Activity extends Component {
         if (item.model_exists) {
           description.summary = (
             <span>
-              {t`made changes to the filter `}
+              {t`made changes to the filter`}{" "}
               <Link
                 to={Urls.tableRowsQuery(
                   item.database_id,
@@ -504,7 +505,7 @@ export default class Activity extends Component {
   }
 
   initialsCssClasses(user) {
-    let { userColors } = this.state;
+    const { userColors } = this.state;
 
     if (user) {
       const userColorIndex = userColors[user.id];
@@ -515,8 +516,8 @@ export default class Activity extends Component {
   }
 
   render() {
-    let { activity, user } = this.props;
-    let { error } = this.state;
+    const { activity, user } = this.props;
+    const { error } = this.state;
 
     return (
       <LoadingAndErrorWrapper loading={!activity} error={error}>
@@ -529,7 +530,7 @@ export default class Activity extends Component {
                   <div className="text-normal mt3 mb1">
                     {t`Hmmm, looks like nothing has happened yet.`}
                   </div>
-                  <div className="text-normal text-grey-2">
+                  <div className="text-normal text-light">
                     {t`Save a question and get this baby going!`}
                   </div>
                 </div>

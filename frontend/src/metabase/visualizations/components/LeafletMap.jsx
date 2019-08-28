@@ -4,12 +4,14 @@ import ReactDOM from "react-dom";
 import MetabaseSettings from "metabase/lib/settings";
 
 import "leaflet/dist/leaflet.css";
+import "./LeafletMap.css";
+
 import L from "leaflet";
 import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateLatLonFilter } from "metabase/qb/lib/actions";
+import { updateLatLonFilter } from "metabase/modes/lib/actions";
 
 export default class LeafletMap extends Component {
   componentDidMount() {
@@ -102,6 +104,10 @@ export default class LeafletMap extends Component {
     }
   }
 
+  componentWillUnmount() {
+    this.map.remove();
+  }
+
   startFilter() {
     this._filter = new L.Draw.Rectangle(
       this.map,
@@ -118,7 +124,12 @@ export default class LeafletMap extends Component {
     const bounds = e.layer.getBounds();
 
     const {
-      series: [{ card, data: { cols } }],
+      series: [
+        {
+          card,
+          data: { cols },
+        },
+      ],
       settings,
       setCardAndRun,
     } = this.props;
@@ -143,7 +154,14 @@ export default class LeafletMap extends Component {
   }
 
   _getLatLonIndexes() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return {
       latitudeIndex: _.findIndex(
         cols,
@@ -157,7 +175,13 @@ export default class LeafletMap extends Component {
   }
 
   _getLatLonColumns() {
-    const { series: [{ data: { cols } }] } = this.props;
+    const {
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
     return {
       latitudeColumn: cols[latitudeIndex],
@@ -166,7 +190,14 @@ export default class LeafletMap extends Component {
   }
 
   _getMetricColumn() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
 }

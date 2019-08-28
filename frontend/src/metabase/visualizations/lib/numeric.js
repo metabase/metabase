@@ -13,7 +13,7 @@ export function precision(a) {
   if (!a) {
     return 0;
   }
-  var e = 1;
+  let e = 1;
   while (Math.round(a / e) !== a / e) {
     e /= 10;
   }
@@ -24,8 +24,10 @@ export function precision(a) {
 }
 
 export function decimalCount(a) {
-  if (!isFinite(a)) return 0;
-  var e = 1,
+  if (!isFinite(a)) {
+    return 0;
+  }
+  let e = 1,
     p = 0;
   while (Math.round(a * e) / e !== a) {
     e *= 10;
@@ -37,7 +39,7 @@ export function decimalCount(a) {
 export function computeNumericDataInverval(xValues) {
   let bestPrecision = Infinity;
   for (const value of xValues) {
-    let p = precision(value) || 1;
+    const p = precision(value) || 1;
     if (p < bestPrecision) {
       bestPrecision = p;
     }
@@ -47,12 +49,18 @@ export function computeNumericDataInverval(xValues) {
 
 // logTickFormat(chart.xAxis())
 export function logTickFormat(axis) {
-  let superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  let formatPower = d =>
+  const superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  const formatPower = d =>
     (d + "")
       .split("")
       .map(c => superscript[c])
       .join("");
-  let formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
+  const formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
   axis.tickFormat(formatTick);
 }
+
+export const getModuloScaleFactor = base =>
+  Math.max(1, Math.pow(10, Math.ceil(Math.log10(1 / base))));
+
+export const isMultipleOf = (value, base, scale = getModuloScaleFactor(base)) =>
+  (value * scale) % (base * scale) === 0;

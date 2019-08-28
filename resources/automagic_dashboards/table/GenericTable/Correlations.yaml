@@ -1,0 +1,19 @@
+title: "[[this]] comparisons and correlations"
+transient_title: "How some of the numbers in [[this]] relate to each other"
+description: If you''re into correlations, this is the x-ray for you.
+applies_to: GenericTable
+
+dimensions:
+  - Number1:
+      field_type: Number
+  - Number2:
+      field_type: Number
+cards:
+- Correlation:
+    title: How [[Number1]] is correlated with [[Number2]]
+    visualization: scatter
+    dimensions:
+      - Number1:
+          aggregation: default
+      - Number2:
+          aggregation: default

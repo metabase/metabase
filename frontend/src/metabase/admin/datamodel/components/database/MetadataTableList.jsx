@@ -1,13 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ProgressBar from "metabase/components/ProgressBar.jsx";
 import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
-import { inflect } from "metabase/lib/formatting";
+
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import { regexpEscape } from "metabase/lib/string";
 
 export default class MetadataTableList extends Component {
   constructor(props, context) {
@@ -31,36 +32,36 @@ export default class MetadataTableList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
 
   render() {
-    var queryableTablesHeader, hiddenTablesHeader;
-    var queryableTables = [];
-    var hiddenTables = [];
+    let queryableTablesHeader, hiddenTablesHeader;
+    const queryableTables = [];
+    const hiddenTables = [];
 
     if (this.props.tables) {
-      var tables = _.sortBy(this.props.tables, "display_name");
+      const tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
-        var row = (
+        const selected = this.props.tableId === table.id;
+        const row = (
           <li key={table.id}>
             <a
-              className={cx("AdminList-item flex align-center no-decoration", {
-                selected: this.props.tableId === table.id,
-              })}
+              className={cx(
+                "AdminList-item flex align-center no-decoration text-wrap",
+                {
+                  selected,
+                },
+              )}
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}
-              <ProgressBar
-                className="ProgressBar ProgressBar--mini flex-align-right"
-                percentage={table.metadataStrength}
-              />
             </a>
           </li>
         );
-        var regex = this.state.searchRegex;
+        const regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||
@@ -78,15 +79,19 @@ export default class MetadataTableList extends Component {
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
         <li className="AdminList-section">
-          {queryableTables.length} Queryable{" "}
-          {inflect("Table", queryableTables.length)}
+          {(n =>
+            ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
+            queryableTables.length,
+          )}
         </li>
       );
     }
     if (hiddenTables.length > 0) {
       hiddenTablesHeader = (
         <li className="AdminList-section">
-          {hiddenTables.length} Hidden {inflect("Table", hiddenTables.length)}
+          {(n => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
+            hiddenTables.length,
+          )}
         </li>
       );
     }
@@ -117,8 +122,9 @@ export default class MetadataTableList extends Component {
                 {t`Schemas`}
               </span>
             )}
-            {this.props.onBack &&
-              this.props.schema && <span className="mx1">-</span>}
+            {this.props.onBack && this.props.schema && (
+              <span className="mx1">-</span>
+            )}
             {this.props.schema && <span> {this.props.schema.name}</span>}
           </h4>
         )}

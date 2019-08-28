@@ -1,16 +1,30 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
-import CardPicker from "./CardPicker.jsx";
 import PulseCardPreview from "./PulseCardPreview.jsx";
+
+import QuestionSelect from "metabase/containers/QuestionSelect";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import colors from "metabase/lib/colors";
+
 const SOFT_LIMIT = 10;
 const HARD_LIMIT = 25;
+const TABLE_MAX_ROWS = 20;
+const TABLE_MAX_COLS = 10;
+
+function isAutoAttached(cardPreview) {
+  return (
+    cardPreview &&
+    cardPreview.pulse_card_type === "table" &&
+    (cardPreview.row_count > TABLE_MAX_ROWS ||
+      cardPreview.col_cound > TABLE_MAX_COLS)
+  );
+}
 
 export default class PulseEditCards extends Component {
   constructor(props) {
@@ -22,8 +36,6 @@ export default class PulseEditCards extends Component {
     pulse: PropTypes.object.isRequired,
     pulseId: PropTypes.number,
     cardPreviews: PropTypes.object.isRequired,
-    cards: PropTypes.object.isRequired,
-    cardList: PropTypes.array.isRequired,
     fetchPulseCardPreview: PropTypes.func.isRequired,
     setPulse: PropTypes.func.isRequired,
     attachmentsEnabled: PropTypes.bool,
@@ -31,7 +43,7 @@ export default class PulseEditCards extends Component {
   static defaultProps = {};
 
   setCard(index, card) {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     this.props.setPulse({
       ...pulse,
       cards: [
@@ -51,12 +63,12 @@ export default class PulseEditCards extends Component {
   };
 
   addCard(index, cardId) {
-    this.setCard(index, { id: cardId });
+    this.setCard(index, { id: cardId, include_csv: false, include_xls: false });
     this.trackPulseEvent("AddCard", index);
   }
 
   removeCard(index) {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     this.props.setPulse({
       ...pulse,
       cards: [...pulse.cards.slice(0, index), ...pulse.cards.slice(index + 1)],
@@ -67,11 +79,12 @@ export default class PulseEditCards extends Component {
 
   getNotices(card, cardPreview, index) {
     const showSoftLimitWarning = index === SOFT_LIMIT;
-    let notices = [];
+    const notices = [];
     const hasAttachment =
-      this.props.attachmentsEnabled &&
-      card &&
-      (card.include_csv || card.include_xls);
+      isAutoAttached(cardPreview) ||
+      (this.props.attachmentsEnabled &&
+        card &&
+        (card.include_csv || card.include_xls));
     if (hasAttachment) {
       notices.push({
         head: t`Attachment`,
@@ -85,6 +98,13 @@ export default class PulseEditCards extends Component {
       });
     }
     if (cardPreview) {
+      if (isAutoAttached(cardPreview)) {
+        notices.push({
+          type: "warning",
+          head: t`Heads up`,
+          body: t`We'll show the first 10 columns and 20 rows of this table in your Pulse. If you email this, we'll add a file attachment with all columns and up to 2,000 rows.`,
+        });
+      }
       if (cardPreview.pulse_card_type == null && !hasAttachment) {
         notices.push({
           type: "warning",
@@ -97,15 +117,15 @@ export default class PulseEditCards extends Component {
       notices.push({
         type: "warning",
         head: t`Looks like this pulse is getting big`,
-        body: t`We recommend keeping pulses small and focused to help keep them digestable and useful to the whole team.`,
+        body: t`We recommend keeping pulses small and focused to help keep them digestible and useful to the whole team.`,
       });
     }
     return notices;
   }
 
   renderCardNotices(card, index) {
-    let cardPreview = card && this.props.cardPreviews[card.id];
-    let notices = this.getNotices(card, cardPreview, index);
+    const cardPreview = card && this.props.cardPreviews[card.id];
+    const notices = this.getNotices(card, cardPreview, index);
     if (notices.length > 0) {
       return (
         <div className="absolute" style={{ width: 400, marginLeft: 420 }}>
@@ -128,9 +148,9 @@ export default class PulseEditCards extends Component {
   }
 
   render() {
-    let { pulse, cards, cardList, cardPreviews } = this.props;
+    const { pulse, cardPreviews } = this.props;
 
-    let pulseCards = pulse ? pulse.cards.slice() : [];
+    const pulseCards = pulse ? pulse.cards.slice() : [];
     if (pulseCards.length < HARD_LIMIT) {
       pulseCards.push(null);
     }
@@ -138,47 +158,50 @@ export default class PulseEditCards extends Component {
     return (
       <div className="py1">
         <h2>{t`Pick your data`}</h2>
-        <p className="mt1 h4 text-bold text-grey-3">
+        <p className="mt1 h4 text-bold text-medium">
           {t`Choose questions you'd like to send in this pulse`}.
         </p>
         <ol className="my3">
-          {cards &&
-            pulseCards.map((card, index) => (
-              <li key={index} className="my1">
-                {index === SOFT_LIMIT && (
-                  <div
-                    className="my4 ml3"
-                    style={{
-                      width: 375,
-                      borderTop: "1px dashed rgb(214,214,214)",
-                    }}
-                  />
-                )}
-                <div className="flex align-top">
-                  <div className="flex align-top" style={{ width: 400 }}>
-                    <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
-                    {card ? (
-                      <PulseCardPreview
-                        card={card}
-                        cardPreview={cardPreviews[card.id]}
-                        onChange={this.setCard.bind(this, index)}
-                        onRemove={this.removeCard.bind(this, index)}
-                        fetchPulseCardPreview={this.props.fetchPulseCardPreview}
-                        attachmentsEnabled={this.props.attachmentsEnabled}
-                        trackPulseEvent={this.trackPulseEvent}
-                      />
-                    ) : (
-                      <CardPicker
-                        cardList={cardList}
-                        onChange={this.addCard.bind(this, index)}
-                        attachmentsEnabled={this.props.attachmentsEnabled}
-                      />
-                    )}
-                  </div>
-                  {this.renderCardNotices(card, index)}
+          {pulseCards.map((card, index) => (
+            <li key={index} className="my1">
+              {index === SOFT_LIMIT && (
+                <div
+                  className="my4 ml3"
+                  style={{
+                    width: 375,
+                    borderTop: `1px dashed ${colors["border"]}`,
+                  }}
+                />
+              )}
+              <div className="flex align-top">
+                <div className="flex align-top" style={{ width: 400 }}>
+                  <span className="h3 text-bold mr1 mt2">{index + 1}.</span>
+                  {card ? (
+                    <PulseCardPreview
+                      card={card}
+                      cardPreview={cardPreviews[card.id]}
+                      onChange={this.setCard.bind(this, index)}
+                      onRemove={this.removeCard.bind(this, index)}
+                      fetchPulseCardPreview={this.props.fetchPulseCardPreview}
+                      attachmentsEnabled={
+                        this.props.attachmentsEnabled &&
+                        !isAutoAttached(cardPreviews[card.id])
+                      }
+                      trackPulseEvent={this.trackPulseEvent}
+                    />
+                  ) : (
+                    <QuestionSelect
+                      onChange={questionId => this.addCard(index, questionId)}
+                      className="flex-full"
+                      // TODO: reimplement CardPicker's warnings for unsuitable cards
+                      // attachmentsEnabled={this.props.attachmentsEnabled}
+                    />
+                  )}
                 </div>
-              </li>
-            ))}
+                {this.renderCardNotices(card, index)}
+              </div>
+            </li>
+          ))}
         </ol>
       </div>
     );

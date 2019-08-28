@@ -13,6 +13,9 @@ The **report timezone** sets the default time zone for displaying times. The tim
 
 *Setting the default timezone will not change the timezone of any data in your database*. If the underlying times in your database aren't assigned to a timezone, Metabase will use the report timezone as the default timezone.
 
+### Enable X-rays
+[X-rays](../users-guide/14-x-rays.md) are a great way to allow your users to quickly explore your data or interesting parts of charts, or to see a comparison of different things. But if you're dealing with data sources where allowing users to run x-rays on them would incur burdonsome performance or monetary costs, you can turn them off here.
+
 ### Anonymous Tracking
 This option turns determines whether or not you allow anonymous data about your usage of Metabase to be sent back to us to help us improve the product. *Your database’s data is never tracked or sent*.
 
@@ -23,5 +26,5 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ---
 
-## Next: Setting up Slack
-If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](09-setting-up-slack.md).
+## Next: setting formatting defaults for dates and numbers
+Easily customize how numbers, dates, times, and currencies should be displayed in Metabase with [formatting settings](19-formatting-settings.md).

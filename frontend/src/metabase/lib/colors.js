@@ -1,71 +1,262 @@
 // @flow
 
-type ColorName = string;
-type Color = string;
-type ColorFamily = { [name: ColorName]: Color };
+import d3 from "d3";
+import Color from "color";
+import { Harmonizer } from "color-harmony";
 
-export const normal = {
-  blue: "#509EE3",
-  green: "#9CC177",
-  purple: "#A989C5",
-  red: "#EF8C8C",
-  yellow: "#f9d45c",
-  orange: "#F1B556",
-  teal: "#A6E7F3",
-  indigo: "#7172AD",
-  gray: "#7B8797",
+import { deterministicAssign } from "./deterministic";
+
+export type ColorName = string;
+export type ColorString = string;
+export type ColorFamily = { [name: ColorName]: ColorString };
+
+// NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
+// NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
+/* eslint-disable no-color-literals */
+const colors = {
+  brand: "#509EE3",
+  accent1: "#88BF4D",
+  accent2: "#A989C5",
+  accent3: "#EF8C8C",
+  accent4: "#F9D45C",
+  accent5: "#F2A86F",
+  accent6: "#98D9D9",
+  accent7: "#7172AD",
+  "admin-navbar": "#7172AD",
+  white: "#FFFFFF",
+  black: "#2E353B",
+  success: "#84BB4C",
+  error: "#ED6E6E",
+  warning: "#F9CF48",
+  "text-dark": "#2E353B",
+  "text-medium": "#74838f",
+  "text-light": "#C7CFD4",
+  "text-white": "#FFFFFF",
+  "bg-black": "#2E353B",
+  "bg-dark": "#93A1AB",
+  "bg-medium": "#EDF2F5",
+  "bg-light": "#F9FBFC",
+  "bg-white": "#FFFFFF",
+  shadow: "rgba(0,0,0,0.08)",
+  border: "#F0F0F0",
+  /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
+  "saturated-blue": "#2D86D4",
+  "saturated-green": "#70A63A",
+  "saturated-purple": "#885AB1",
+  "saturated-red": "#ED6E6E",
+  "saturated-yellow": "#F9CF48",
+};
+/* eslint-enable no-color-literals */
+export default colors;
+
+export const aliases = {
+  summarize: "accent1",
+  filter: "accent7",
 };
 
-export const saturated = {
-  blue: "#2D86D4",
-  green: "#84BB4C",
-  purple: "#885AB1",
-  red: "#ED6E6E",
-  yellow: "#F9CF48",
-};
+export const harmony = [];
 
-export const desaturated = {
-  blue: "#72AFE5",
-  green: "#A8C987",
-  purple: "#B8A2CC",
-  red: "#EEA5A5",
-  yellow: "#F7D97B",
-};
+// DEPRECATED: we should remove these and use `colors` directly
+// compute satured/desaturated variants using "color" lib if absolutely required
+export const normal = {};
+export const saturated = {};
+export const desaturated = {};
 
-export const harmony = [
-  "#509ee3",
-  "#9cc177",
-  "#a989c5",
-  "#ef8c8c",
-  "#f9d45c",
-  "#F1B556",
-  "#A6E7F3",
-  "#7172AD",
-  "#7B8797",
-  "#6450e3",
-  "#55e350",
-  "#e35850",
-  "#77c183",
-  "#7d77c1",
-  "#c589b9",
-  "#bec589",
-  "#89c3c5",
-  "#c17777",
-  "#899bc5",
-  "#efce8c",
-  "#50e3ae",
-  "#be8cef",
-  "#8cefc6",
-  "#ef8cde",
-  "#b5f95c",
-  "#5cc2f9",
-  "#f95cd0",
-  "#c1a877",
-  "#f95c67",
-];
+// make sure to do the initial "sync"
+syncColors();
 
-export const getRandomColor = (family: ColorFamily): Color => {
+export function syncColors() {
+  syncHarmony();
+  syncDeprecatedColorFamilies();
+}
+
+export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
+
+function syncHarmony() {
+  const harmonizer = new Harmonizer();
+  const initialColors = [
+    colors["brand"],
+    colors["accent1"],
+    colors["accent2"],
+    colors["accent3"],
+    colors["accent4"],
+    colors["accent5"],
+    colors["accent6"],
+    colors["accent7"],
+  ];
+  harmony.splice(0, harmony.length);
+  // round 0 includes brand and all accents
+  harmony.push(...initialColors);
+  // rounds 1-4 generated harmony
+  // only harmonize brand and accents 1 through 4
+  const initialColorHarmonies = initialColors
+    .slice(0, 5)
+    .map(color => harmonizer.harmonize(color, "fiveToneD"));
+  for (let roundIndex = 1; roundIndex < 5; roundIndex++) {
+    for (
+      let colorIndex = 0;
+      colorIndex < initialColorHarmonies.length;
+      colorIndex++
+    ) {
+      harmony.push(initialColorHarmonies[colorIndex][roundIndex]);
+    }
+  }
+}
+
+// syncs deprecated color families for legacy code
+function syncDeprecatedColorFamilies() {
+  // normal + saturated + desaturated
+  normal.blue = saturated.blue = desaturated.blue = colors["brand"];
+  normal.green = saturated.green = desaturated.green = colors["accent1"];
+  normal.purple = saturated.purple = desaturated.purple = colors["accent2"];
+  normal.red = saturated.red = desaturated.red = colors["accent3"];
+  normal.yellow = saturated.yellow = desaturated.yellow = colors["accent4"];
+  normal.orange = colors["accent5"];
+  normal.teal = colors["accent6"];
+  normal.indigo = colors["accent7"];
+  normal.gray = colors["text-medium"];
+  normal.grey1 = colors["text-light"];
+  normal.grey2 = colors["text-medium"];
+  normal.grey3 = colors["text-dark"];
+  normal.text = colors["text-dark"];
+}
+
+export const getRandomColor = (family: ColorFamily): ColorString => {
   // $FlowFixMe: Object.values doesn't preserve the type :-/
-  const colors: Color[] = Object.values(family);
+  const colors: ColorString[] = Object.values(family);
   return colors[Math.floor(Math.random() * colors.length)];
 };
+
+type ColorScale = (input: number) => ColorString;
+
+export const getColorScale = (
+  extent: [number, number],
+  colors: string[],
+  quantile: boolean = false,
+): ColorScale => {
+  if (quantile) {
+    return d3.scale
+      .quantile()
+      .domain(extent)
+      .range(colors);
+  } else {
+    const [start, end] = extent;
+    return d3.scale
+      .linear()
+      .domain(
+        colors.length === 3
+          ? [start, start + (end - start) / 2, end]
+          : [start, end],
+      )
+      .range(colors);
+  }
+};
+
+// HACK: d3 may return rgb values with decimals but certain rendering engines
+// don't support that (e.x. Safari and CSSBox)
+export function roundColor(color: ColorString): ColorString {
+  return color.replace(
+    /rgba\((\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+(?:\.\d+)),\s*(\d+\.\d+)\)/,
+    (_, r, g, b, a) =>
+      `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`,
+  );
+}
+
+export function color(color: ColorString | ColorName): ColorString {
+  if (color in colors) {
+    return colors[color];
+  }
+  if (color in aliases) {
+    return colors[aliases[color]];
+  }
+  // TODO: validate this is a ColorString
+  return color;
+}
+export function alpha(c: ColorString | ColorName, a: number): ColorString {
+  return Color(color(c))
+    .alpha(a)
+    .string();
+}
+export function darken(
+  c: ColorString | ColorName,
+  f: number = 0.25,
+): ColorString {
+  return Color(color(c))
+    .darken(f)
+    .string();
+}
+export function lighten(
+  c: ColorString | ColorName,
+  f: number = 0.5,
+): ColorString {
+  return Color(color(c))
+    .lighten(f)
+    .string();
+}
+
+const PREFERRED_COLORS = {
+  [colors["success"]]: [
+    "success",
+    "succeeded",
+    "pass",
+    "valid",
+    "complete",
+    "completed",
+    "accepted",
+    "active",
+    "profit",
+  ],
+  [colors["error"]]: [
+    "fail",
+    "failed",
+    "failure",
+    "failures",
+    "invalid",
+    "rejected",
+    "inactive",
+    "loss",
+    "cost",
+    "deleted",
+    "pending",
+  ],
+  [colors["warning"]]: ["warn", "warning", "incomplete"],
+  [colors["brand"]]: ["count"],
+  [colors["accent1"]]: ["sum"],
+  [colors["accent2"]]: ["average"],
+};
+
+const PREFERRED_COLORS_MAP = new Map();
+for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
+  // $FlowFixMe
+  for (const key of keys) {
+    PREFERRED_COLORS_MAP.set(key, color);
+  }
+}
+
+type Key = string;
+
+function getPreferredColor(key: Key) {
+  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
+}
+
+// returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
+export function getColorsForValues(
+  keys: string[],
+  existingAssignments: ?{ [key: Key]: ColorString } = {},
+) {
+  const all = Object.values(harmony);
+  const primaryTier = all.slice(0, 8);
+  const secondaryTier = all.slice(8);
+  return deterministicAssign(
+    keys,
+    primaryTier,
+    existingAssignments,
+    getPreferredColor,
+    [secondaryTier],
+  );
+}
+
+// conviennce for a single color (only use for visualizations with a single color)
+export function getColorForValue(key: Key) {
+  return getColorsForValues([key])[key];
+}

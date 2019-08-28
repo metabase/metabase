@@ -5,16 +5,15 @@
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            metabase.types
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-
 (def DatabaseMetadataTable
   "Schema for the expected output of `describe-database` for a Table."
-  {:name   su/NonBlankString
-   :schema (s/maybe su/NonBlankString)})
+  {:name                         su/NonBlankString
+   :schema                       (s/maybe su/NonBlankString)
+   (s/optional-key :description) (s/maybe su/NonBlankString)})
 
 (def DatabaseMetadata
   "Schema for the expected output of `describe-database`."
@@ -24,9 +23,10 @@
 (def TableMetadataField
   "Schema for a given Field as provided in `describe-table`."
   {:name                           su/NonBlankString
-   :database-type                  su/NonBlankString
+   :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
    (s/optional-key :special-type)  (s/maybe su/FieldType)
+   (s/optional-key :field-comment) (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool
    (s/optional-key :nested-fields) #{(s/recursive #'TableMetadataField)}
    (s/optional-key :custom)        {s/Any s/Any}})
@@ -35,7 +35,8 @@
   "Schema for the expected output of `describe-table`."
   {:name   su/NonBlankString
    :schema (s/maybe su/NonBlankString)
-   :fields #{TableMetadataField}})
+   :fields #{TableMetadataField}
+   (s/optional-key :description)   (s/maybe su/NonBlankString)})
 
 (def FKMetadataEntry
   "Schema for an individual entry in `FKMetadata`."
@@ -59,9 +60,10 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(def DatabaseInstance "Schema for a valid instance of a Metabase Database." (class Database))
-(def TableInstance    "Schema for a valid instance of a Metabase Table."    (class Table))
-(def FieldInstance    "Schema for a valid instance of a Metabase Field."    (class Field))
+(def DatabaseInstance             "Schema for a valid instance of a Metabase Database." (class Database))
+(def TableInstance                "Schema for a valid instance of a Metabase Table."    (class Table))
+(def FieldInstance                "Schema for a valid instance of a Metabase Field."    (class Field))
+(def ResultColumnMetadataInstance "Schema for a valid instance of a Metabase Field."    (class {}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -87,32 +89,42 @@
   [[s/Any]])
 
 
-(def GlobalFingerprint
-  "Fingerprint values that Fields of all types should have."
-  {(s/optional-key :distinct-count) s/Int})
-
 (def Percent
   "Schema for something represting a percentage. A floating-point value between (inclusive) 0 and 1."
   (s/constrained s/Num #(<= 0 % 1) "Valid percentage between (inclusive) 0 and 1."))
 
+(def GlobalFingerprint
+  "Fingerprint values that Fields of all types should have."
+  {(s/optional-key :distinct-count) s/Int
+   (s/optional-key :nil%)           (s/maybe Percent)})
+
 (def NumberFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Number`."
-  {(s/optional-key :min) s/Num
-   (s/optional-key :max) s/Num
-   (s/optional-key :avg) s/Num})
+  {(s/optional-key :min) (s/maybe s/Num)
+   (s/optional-key :max) (s/maybe s/Num)
+   (s/optional-key :avg) (s/maybe s/Num)
+   (s/optional-key :q1)  (s/maybe s/Num)
+   (s/optional-key :q3)  (s/maybe s/Num)
+   (s/optional-key :sd)  (s/maybe s/Num)})
 
 (def TextFingerprint
   "Schema for fingerprint information for Fields deriving from `:type/Text`."
-  {(s/optional-key :percent-json)   Percent
-   (s/optional-key :percent-url)    Percent
-   (s/optional-key :percent-email)  Percent
-   (s/optional-key :average-length) (s/constrained Double #(>= % 0) "Valid number greater than or equal to zero")})
+  {(s/optional-key :percent-json)   (s/maybe Percent)
+   (s/optional-key :percent-url)    (s/maybe Percent)
+   (s/optional-key :percent-email)  (s/maybe Percent)
+   (s/optional-key :average-length) s/Num})
+
+(def DateTimeFingerprint
+  "Schema for fingerprint information for Fields deriving from `:type/DateTime`."
+  {(s/optional-key :earliest) (s/maybe s/Str)
+   (s/optional-key :latest)   (s/maybe s/Str)})
 
 (def TypeSpecificFingerprint
   "Schema for type-specific fingerprint information."
   (s/constrained
-   {(s/optional-key :type/Number) NumberFingerprint
-    (s/optional-key :type/Text)   TextFingerprint}
+   {(s/optional-key :type/Number)   NumberFingerprint
+    (s/optional-key :type/Text)     TextFingerprint
+    (s/optional-key :type/DateTime) DateTimeFingerprint}
    (fn [m]
      (= 1 (count (keys m))))
    "Type-specific fingerprint with exactly one key"))
@@ -151,7 +163,10 @@
 (def fingerprint-version->types-that-should-be-re-fingerprinted
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
-  {1 #{:type/*}})
+  {1 #{:type/*}
+   2 #{:type/Number}
+   3 #{:type/DateTime}
+   4 #{:type/*}})
 
 (def latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."

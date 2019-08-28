@@ -1,0 +1,178 @@
+title: A look at the [[this]]
+transient_title: Here''s a quick look at the [[this]]
+description: How it''s distributed across time and other categories.
+applies_to: GenericTable
+metrics:
+# Placeholder that will get overloaded by reference to the actual metric, so we can
+# refer to the metric in card definition.
+dimensions:
+  - Country:
+      field_type: GenericTable.Country
+  - State:
+      field_type: GenericTable.State
+  - GenericNumber:
+      field_type: GenericTable.Number
+  - GenericCategorySmall:
+      field_type: GenericTable.Category
+      max_cardinality: 5
+      score: 100
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      max_cardinality: 12
+      score: 90
+  - GenericCategoryLarge:
+      field_type: GenericTable.Category
+      score: 80
+  - Timestamp:
+      field_type: CreationTimestamp
+      score: 100
+  - Timestamp:
+      field_type: DateTime
+      score: 90
+  - LongLat:
+      field_type: GenericTable.Coordinate
+  - ZipCode:
+      field_type: GenericTable.ZipCode
+groups:
+  - Periodicity:
+      title: The [[this]] over time
+      comparison_title: How they compare across time
+  - Geographical:
+      title: The [[this]] by location
+      comparison_title: How they compare across location
+  - Categories:
+      title: How this metric is distributed across different categories
+      comparison_title: How they compare across different categories
+  - Numbers:
+      title: How this metric is distributed across different numbers
+      comparison_title: How they compare by across different numbers
+  - LargeCategoriesTop:
+      title: Top 5 per category
+  - LargeCategoriesBottom:
+      title: Bottom 5 per category
+dashboard_filters:
+  - Timestamp
+  - State
+  - Country
+  - GenericCategorySmall
+  - GenericCategoryMedium
+  - GenericCategoryLarge
+cards:
+  - ByTime:
+      group: Periodicity
+      title: Over time
+      visualization: line
+      metrics: this
+      dimensions: Timestamp
+      width: 18
+  - DayOfWeek:
+      group: Periodicity
+      title: "[[this]] per day of the week"
+      visualization: bar
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-week
+  - HourOfDay:
+      group: Periodicity
+      title: "[[this]] per hour of the day"
+      visualization: bar
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: hour-of-day
+  - DayOfMonth:
+      group: Periodicity
+      title: "[[this]] per day of the month"
+      visualization: bar
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: day-of-month
+  - MonthOfYear:
+      group: Periodicity
+      title: "[[this]] per month of the year"
+      visualization: bar
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: month-of-year
+  - QuerterOfYear:
+      group: Periodicity
+      title: "[[this]] per quarter of the year"
+      visualization: bar
+      metrics: this
+      dimensions:
+        - Timestamp:
+            aggregation: quarter-of-year
+  - ByCountry:
+      group: Geographical
+      title: "[[this]] per country"
+      metrics: this
+      dimensions: Country
+      visualization:
+        map:
+          map.type: region
+          map.region: world_countries
+  - ByState:
+      group: Geographical
+      title: "[[this]] per state"
+      metrics: this
+      dimensions: State
+      visualization:
+        map:
+          map.type: region
+          map.region: us_states
+  - ByNumber:
+      group: Numbers
+      title: "[[this]] by [[GenericNumber]]"
+      metrics: this
+      dimensions:
+        - GenericNumber:
+            aggregation: default
+      visualization: bar
+  - ByCategoryMedium:
+      group: Categories
+      title: "[[this]] per [[GenericCategoryMedium]]"
+      metrics: this
+      dimensions: GenericCategoryMedium
+      visualization: row
+      order_by:
+        this: descending
+      height: 8
+  - ByCategoryAndTime:
+      group: Categories
+      title: "[[this]] per [[GenericCategorySmall]] over time"
+      metrics: this
+      dimensions:
+        - Timestamp
+        - GenericCategorySmall
+      visualization:
+        area:
+          stackable.stack_type: stacked
+  - ByCategorySmall:
+      group: Categories
+      title: "[[this]] per [[GenericCategorySmall]]"
+      metrics: this
+      dimensions: GenericCategorySmall
+      visualization: row
+      order_by:
+        this: descending
+  - ByCategoryLargeTop:
+      group: LargeCategoriesTop
+      title: "[[this]] per [[GenericCategoryLarge]], top 5"
+      metrics: this
+      dimensions: GenericCategoryLarge
+      visualization: row
+      order_by:
+        this: descending
+      limit: 5
+  - ByCategoryLargeBottom:
+      group: LargeCategoriesBottom
+      title: "[[this]] per [[GenericCategoryLarge]], bottom 5"
+      metrics: this
+      dimensions: GenericCategoryLarge
+      visualization: row
+      limit: 5
+      order_by:
+        this: ascending

@@ -3,8 +3,12 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import { FieldIDDimension } from "../Dimension";
+import _ from "underscore";
+import moment from "moment";
 
+import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
+
+import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
@@ -15,31 +19,62 @@ import {
   isString,
   isSummable,
   isCategory,
+  isState,
+  isCountry,
+  isCoordinate,
+  isLocation,
   isDimension,
   isMetric,
   isPK,
   isFK,
   isEntityName,
-  isCoordinate,
   getIconForField,
-  getFieldType,
+  getOperators,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
-
-import _ from "underscore";
 
 /**
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 export default class Field extends Base {
-  displayName: string;
+  name: string;
+  display_name: string;
   description: string;
 
   table: Table;
+  name_field: ?Field;
 
-  fieldType() {
-    return getFieldType(this);
+  parent() {
+    return this.metadata ? this.metadata.fields[this.parent_id] : null;
+  }
+
+  path() {
+    const path = [];
+    let field = this;
+    do {
+      path.unshift(field);
+    } while ((field = field.parent()));
+    return path;
+  }
+
+  displayName({ includeSchema, includeTable, includePath = true } = {}) {
+    let displayName = "";
+    if (includeTable && this.table) {
+      displayName += this.table.displayName({ includeSchema }) + " → ";
+    }
+    if (includePath) {
+      displayName += this.path()
+        .map(formatField)
+        .join(": ");
+    } else {
+      displayName += formatField(this);
+    }
+    return displayName;
+  }
+
+  targetDisplayName() {
+    return stripId(this.display_name);
   }
 
   isDate() {
@@ -60,6 +95,18 @@ export default class Field extends Base {
   isString() {
     return isString(this);
   }
+  isState() {
+    return isState(this);
+  }
+  isCountry() {
+    return isCountry(this);
+  }
+  isCoordinate() {
+    return isCoordinate(this);
+  }
+  isLocation() {
+    return isLocation(this);
+  }
   isSummable() {
     return isSummable(this);
   }
@@ -68,14 +115,6 @@ export default class Field extends Base {
   }
   isMetric() {
     return isMetric(this);
-  }
-
-  isCompatibleWith(field: Field) {
-    return (
-      this.isDate() === field.isDate() ||
-      this.isNumeric() === field.isNumeric() ||
-      this.id === field.id
-    );
   }
 
   /**
@@ -98,8 +137,12 @@ export default class Field extends Base {
     return isEntityName(this);
   }
 
-  isCoordinate() {
-    return isCoordinate(this);
+  isCompatibleWith(field: Field) {
+    return (
+      this.isDate() === field.isDate() ||
+      this.isNumeric() === field.isNumeric() ||
+      this.id === field.id
+    );
   }
 
   fieldValues(): FieldValues {
@@ -111,30 +154,74 @@ export default class Field extends Base {
   }
 
   dimension() {
-    return new FieldIDDimension(null, [this.id], this.metadata);
+    if (Array.isArray(this.id) && this.id[0] === "field-literal") {
+      return new FieldLiteralDimension(
+        null,
+        this.id.slice(1),
+        this.metadata,
+        this.query,
+      );
+    }
+    return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
-  operator(op) {
+  sourceField() {
+    const d = this.dimension().sourceDimension();
+    return d && d.field();
+  }
+
+  operator(operatorName) {
     if (this.operators_lookup) {
-      return this.operators_lookup[op];
+      return this.operators_lookup[operatorName];
+    } else {
+      return this.operatorOptions().find(o => o.name === operatorName);
     }
+  }
+
+  operatorOptions() {
+    return this.operators || getOperators(this, this.table);
+  }
+
+  aggregations() {
+    return this.table
+      ? this.table.aggregation_options.filter(
+          aggregation =>
+            aggregation.validFieldsFilters[0] &&
+            aggregation.validFieldsFilters[0]([this]).length === 1,
+        )
+      : null;
   }
 
   /**
    * Returns a default breakout MBQL clause for this field
-   *
-   * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
-   * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
    */
-  getDefaultBreakout = () => {
-    const fieldIdDimension = this.dimension();
-    const defaultSubDimension = fieldIdDimension.defaultDimension();
-    if (defaultSubDimension) {
-      return defaultSubDimension.mbql();
-    } else {
-      return fieldIdDimension.mbql();
+  getDefaultBreakout() {
+    return this.dimension().defaultBreakout();
+  }
+
+  /**
+   * Returns a default date/time unit for this field
+   */
+  getDefaultDateTimeUnit() {
+    try {
+      const fingerprint = this.fingerprint.type["type/DateTime"];
+      const days = moment(fingerprint.latest).diff(
+        moment(fingerprint.earliest),
+        "day",
+      );
+      if (days < 1) {
+        return "minute";
+      } else if (days < 31) {
+        return "day";
+      } else if (days < 365) {
+        return "week";
+      } else {
+        return "month";
+      }
+    } catch (e) {
+      return "day";
     }
-  };
+  }
 
   /**
    * Returns the remapped field, if any
@@ -147,11 +234,8 @@ export default class Field extends Base {
     }
     // this enables "implicit" remappings from type/PK to type/Name on the same table,
     // used in FieldValuesWidget, but not table/object detail listings
-    if (this.isPK()) {
-      const nameField = _.find(this.table.fields, f => f.isEntityName());
-      if (nameField) {
-        return nameField;
-      }
+    if (this.name_field) {
+      return this.name_field;
     }
     return null;
   }
@@ -190,7 +274,7 @@ export default class Field extends Base {
    * Returns the field to be searched for this field, either the remapped field or itself
    */
   parameterSearchField(): ?Field {
-    let remappedField = this.remappedField();
+    const remappedField = this.remappedField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }
@@ -208,5 +292,16 @@ export default class Field extends Base {
     } else {
       return this.parameterSearchField();
     }
+  }
+
+  column() {
+    return _.pick(
+      this.getPlainObject(),
+      "id",
+      "name",
+      "display_name",
+      "base_type",
+      "special_type",
+    );
   }
 }

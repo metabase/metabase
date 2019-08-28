@@ -7,12 +7,18 @@ import {
   isAdminGroup,
   canEditMembership,
   getGroupColor,
+  getGroupNameLocalized,
 } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
 
-export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
-  const disabled = !canEditMembership(group);
+export const GroupOption = ({
+  group,
+  selectedGroups = {},
+  onGroupChange,
+  isDisabled = false,
+}) => {
+  const disabled = isDisabled || !canEditMembership(group);
   const selected = isDefaultGroup(group) || selectedGroups[group.id];
   return (
     <div
@@ -24,19 +30,25 @@ export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
       <span className={cx("pr1", getGroupColor(group), { disabled })}>
         <CheckBox checked={selected} size={18} />
       </span>
-      {group.name}
+      {getGroupNameLocalized(group)}
     </div>
   );
 };
 
-export const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
+export const GroupSelect = ({
+  groups,
+  selectedGroups,
+  onGroupChange,
+  isCurrentUser,
+}) => {
   const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
   return (
-    <div className="GroupSelect py1">
+    <div className="GroupSelect scroll-y py1">
       <GroupOption
         group={_.find(groups, isAdminGroup)}
         selectedGroups={selectedGroups}
         onGroupChange={onGroupChange}
+        isDisabled={isCurrentUser}
       />
       <GroupOption
         group={_.find(groups, isDefaultGroup)}

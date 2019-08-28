@@ -1,14 +1,19 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
 
-export const getGroups = state => state.admin.people.groups;
-export const getGroup = state => state.admin.people.group;
-export const getModal = state => state.admin.people.modal;
+import { isMetaBotGroup } from "metabase/lib/groups";
+
+import Group from "metabase/entities/groups";
+
 export const getMemberships = state => state.admin.people.memberships;
 
-export const getUsers = createSelector(
-  state => state.admin.people.users,
-  state => state.admin.people.memberships,
+export const getGroupsWithoutMetabot = createSelector(
+  [Group.selectors.getList],
+  groups => groups.filter(group => !isMetaBotGroup(group)),
+);
+
+export const getUsersWithMemberships = createSelector(
+  [state => state.entities.users, getMemberships],
   (users, memberships) =>
     users &&
     _.mapObject(users, user => ({
@@ -23,3 +28,22 @@ export const getUsers = createSelector(
           .value(),
     })),
 );
+
+// sort the users list by last_name, ignore case or diacritical marks. If last names are the same then compare by first
+// name
+const compareNames = (a, b) =>
+  a.localeCompare(b, undefined, { sensitivty: "base" });
+
+export const getSortedUsersWithMemberships = createSelector(
+  [getUsersWithMemberships],
+  users =>
+    users &&
+    _.values(users).sort(
+      (a, b) =>
+        compareNames(a.last_name, b.last_name) ||
+        compareNames(a.first_name, b.first_name),
+    ),
+);
+
+export const getUserTemporaryPassword = (state, props) =>
+  state.admin.people.temporaryPasswords[props.userId];

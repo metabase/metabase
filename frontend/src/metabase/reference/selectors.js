@@ -1,8 +1,12 @@
 import { createSelector } from "reselect";
 import { assoc, getIn } from "icepick";
-import { getDashboardListing } from "../dashboards/selectors";
 
-import Query, { AggregationClause } from "metabase/lib/query";
+import Dashboards from "metabase/entities/dashboards";
+
+import * as Query from "metabase/lib/query/query";
+import * as Filter from "metabase/lib/query/filter";
+import * as A_DEPRECATED from "metabase/lib/query_aggregation";
+
 import { resourceListToMap } from "metabase/lib/redux";
 
 import { idsToObjectMap, databaseToForeignKeys } from "./utils";
@@ -82,7 +86,11 @@ export const getTable = createSelector(
   (tableId, tables, metricId, tableByMetric, segmentId, tableBySegment) =>
     tableId
       ? tables[tableId] || { id: tableId }
-      : metricId ? tableByMetric : segmentId ? tableBySegment : {},
+      : metricId
+      ? tableByMetric
+      : segmentId
+      ? tableBySegment
+      : {},
 );
 
 export const getFieldId = (state, props) =>
@@ -107,7 +115,7 @@ export const getFieldBySegment = createSelector(
 );
 
 const getQuestions = (state, props) =>
-  getIn(state, ["questions", "entities", "cards"]) || {};
+  getIn(state, ["entities", "questions"]) || {};
 
 export const getMetricQuestions = createSelector(
   [getMetricId, getQuestions],
@@ -118,14 +126,13 @@ export const getMetricQuestions = createSelector(
           question.dataset_query.type === "query" &&
           _.any(
             Query.getAggregations(question.dataset_query.query),
-            aggregation =>
-              AggregationClause.getMetric(aggregation) === metricId,
+            aggregation => A_DEPRECATED.getMetric(aggregation) === metricId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
 );
 
-const getRevisions = (state, props) => state.metadata.revisions;
+const getRevisions = (state, props) => state.revisions;
 
 export const getMetricRevisions = createSelector(
   [getMetricId, getRevisions],
@@ -145,7 +152,7 @@ export const getSegmentQuestions = createSelector(
         question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            filter => Query.isSegmentFilter(filter) && filter[1] === segmentId,
+            filter => Filter.isSegmentFilter(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),
@@ -204,8 +211,10 @@ export const getIsFormulaExpanded = (state, props) =>
 
 export const getGuide = (state, props) => state.reference.guide;
 
-export const getDashboards = (state, props) =>
-  getDashboardListing(state) && resourceListToMap(getDashboardListing(state));
+export const getDashboards = (state, props) => {
+  const list = Dashboards.selectors.getList(state);
+  return list && resourceListToMap(list);
+};
 
 export const getIsDashboardModalOpen = (state, props) =>
   state.reference.isDashboardModalOpen;

@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import EmbedModalContent from "./EmbedModalContent";

@@ -3,10 +3,10 @@ import PropTypes from "prop-types";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
 
-import FilterList from "metabase/query_builder/components/filters/FilterList.jsx";
+import FilterList from "metabase/query_builder/components/FilterList.jsx";
 import AggregationWidget from "metabase/query_builder/components/AggregationWidget.jsx";
 
-import Query from "metabase/lib/query";
+import * as Query from "metabase/lib/query/query";
 
 export default class QueryDiff extends Component {
   static propTypes = {
@@ -15,7 +15,10 @@ export default class QueryDiff extends Component {
   };
 
   render() {
-    const { diff: { before, after }, tableMetadata } = this.props;
+    const {
+      diff: { before, after },
+      tableMetadata,
+    } = this.props;
     const defintion = after || before;
 
     const filters = Query.getFilters(defintion);
@@ -31,11 +34,7 @@ export default class QueryDiff extends Component {
               />
             )}
             {filters.length > 0 && (
-              <FilterList
-                filters={filters}
-                tableMetadata={tableMetadata}
-                maxDisplayValues={Infinity}
-              />
+              <FilterList filters={filters} maxDisplayValues={Infinity} />
             )}
           </div>
         )}

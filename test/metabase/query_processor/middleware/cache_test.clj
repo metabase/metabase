@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.test.util :as tu]
@@ -20,9 +20,9 @@
 
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 0)
 
-(defn- mock-qp [& _]
+(defn- mock-qp [_ respond _ _]
   (Thread/sleep *query-execution-delay-ms*)
-  mock-results)
+  (respond mock-results))
 
 (def ^:private maybe-return-cached-results (cache/maybe-return-cached-results mock-qp))
 
@@ -34,7 +34,12 @@
     :not-cached))
 
 (defn- run-query [& {:as query-kvs}]
-  (cached? (maybe-return-cached-results (merge {:cache_ttl 60, :query :abc} query-kvs))))
+  (cached?
+   (maybe-return-cached-results
+    (merge {:cache-ttl 60, :query :abc} query-kvs)
+    identity
+    (fn [e] (throw e))
+    nil)))
 
 
 ;;; -------------------------------------------- tests for is-cacheable? ---------------------------------------------
@@ -42,42 +47,17 @@
 ;; something is-cacheable? if it includes a cach_ttl and the caching setting is enabled
 (expect
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (#'cache/is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache-ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching false]
-    (#'cache/is-cacheable? {:cache_ttl 100})))
+    (#'cache/is-cacheable? {:cache-ttl 100})))
 
 (expect
   false
   (tu/with-temporary-setting-values [enable-query-caching true]
-    (#'cache/is-cacheable? {:cache_ttl nil})))
-
-
-;;; ------------------------------------- results-are-below-max-byte-threshold? --------------------------------------
-
-(expect
-  (tu/with-temporary-setting-values [query-caching-max-kb 128]
-    (#'cache/results-are-below-max-byte-threshold? {:data {:rows [[1 "ABCDEF"]
-                                                                  [3 "GHIJKL"]]}})))
-
-(expect
-  false
-  (tu/with-temporary-setting-values [query-caching-max-kb 1]
-    (#'cache/results-are-below-max-byte-threshold? {:data {:rows (repeat 500 [1 "ABCDEF"])}})))
-
-;; check that `#'cache/results-are-below-max-byte-threshold?` is lazy and fails fast if the query is over the
-;; threshold rather than serializing the entire thing
-(expect
-  false
-  (let [lazy-seq-realized? (atom false)]
-    (tu/with-temporary-setting-values [query-caching-max-kb 1]
-      (#'cache/results-are-below-max-byte-threshold? {:data {:rows (lazy-cat (repeat 500 [1 "ABCDEF"])
-                                                                             (do (reset! lazy-seq-realized? true)
-                                                                                 [2 "GHIJKL"]))}})
-      @lazy-seq-realized?)))
-
+    (#'cache/is-cacheable? {:cache-ttl nil})))
 
 ;;; ------------------------------------------ End-to-end middleware tests -------------------------------------------
 
@@ -104,9 +84,9 @@
   (tu/with-temporary-setting-values [enable-query-caching  true
                                      query-caching-min-ttl 0]
     (clear-cache!)
-    (run-query :cache_ttl 1)
+    (run-query :cache-ttl 1)
     (Thread/sleep 2000)
-    (run-query :cache_ttl 1)))
+    (run-query :cache-ttl 1)))
 
 ;; if caching is disabled then cache shouldn't be used even if there's something valid in there
 (expect

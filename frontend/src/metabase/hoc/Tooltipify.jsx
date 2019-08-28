@@ -4,7 +4,8 @@ import Tooltip from "metabase/components/Tooltip";
 
 const Tooltipify = ComposedComponent =>
   class extends Component {
-    static displayName = "Tooltipify[" +
+    static displayName =
+      "Tooltipify[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
     render() {

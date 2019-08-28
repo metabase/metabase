@@ -2,21 +2,22 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
-import ActionButton from "metabase/components/ActionButton.jsx";
-import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal.jsx";
-import ArchiveDashboardModal from "./ArchiveDashboardModal.jsx";
-import Header from "metabase/components/Header.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import { t } from "ttag";
+import ActionButton from "metabase/components/ActionButton";
+import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
+import ArchiveDashboardModal from "./ArchiveDashboardModal";
+import Header from "metabase/components/Header";
+import Icon from "metabase/components/Icon";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
 import { getDashboardActions } from "./DashboardActions";
 
-import ParametersPopover from "./ParametersPopover.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import ParametersPopover from "./ParametersPopover";
+import Popover from "metabase/components/Popover";
 
+import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 
 import cx from "classnames";
@@ -33,7 +34,6 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { RevisionId } from "metabase/meta/types/Revision";
 import { Link } from "react-router";
 
 type Props = {
@@ -58,12 +58,6 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttribute: (attribute: string, value: any) => void,
 
@@ -103,8 +97,6 @@ export default class DashboardHeader extends Component {
     archiveDashboard: PropTypes.func.isRequired,
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
@@ -144,8 +136,10 @@ export default class DashboardHeader extends Component {
   }
 
   async onArchive() {
-    await this.props.archiveDashboard(this.props.dashboard.id);
-    this.props.onChangeLocation("/dashboards");
+    const { dashboard } = this.props;
+    // TODO - this should use entity action
+    await this.props.archiveDashboard(dashboard.id);
+    this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
   }
 
   getEditingButtons() {
@@ -156,7 +150,7 @@ export default class DashboardHeader extends Component {
         className="Button Button--small"
         onClick={() => this.onCancel()}
       >
-        Cancel
+        {t`Cancel`}
       </a>,
       <ModalWithTrigger
         key="archive"
@@ -165,19 +159,18 @@ export default class DashboardHeader extends Component {
         triggerElement="Archive"
       >
         <ArchiveDashboardModal
-          dashboard={this.props.dashboard}
+          onArchive={() => this.onArchive(this.props.dashboard)}
           onClose={() => this.refs.archiveDashboardModal.toggle()}
-          onArchive={() => this.onArchive()}
         />
       </ModalWithTrigger>,
       <ActionButton
         key="save"
         actionFn={() => this.onSave()}
         className="Button Button--small Button--primary"
-        normalText="Save"
-        activeText="Saving…"
-        failedText="Save failed"
-        successText="Saved"
+        normalText={t`Save`}
+        activeText={t`Saving…`}
+        failedText={t`Save failed`}
+        successText={t`Saved`}
       />,
     ];
   }
@@ -193,7 +186,7 @@ export default class DashboardHeader extends Component {
       location,
     } = this.props;
     const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
-    const canEdit = isEditable && !!dashboard;
+    const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
     const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
     const isEmbeddingEnabled = MetabaseSettings.get("embedding");
@@ -207,14 +200,13 @@ export default class DashboardHeader extends Component {
     if (!isFullscreen && canEdit) {
       buttons.push(
         <ModalWithTrigger
-          full
-          key="add"
+          key="add-a-question"
           ref="addQuestionModal"
           triggerElement={
-            <Tooltip tooltip="Add a question">
+            <Tooltip tooltip={t`Add a question`}>
               <span
                 data-metabase-event="Dashboard;Add Card Modal"
-                title="Add a question to this dashboard"
+                title={t`Add a question to this dashboard`}
               >
                 <Icon
                   className={cx("text-brand-hover cursor-pointer", {
@@ -242,39 +234,38 @@ export default class DashboardHeader extends Component {
     if (isEditing) {
       // Parameters
       buttons.push(
-        <span>
-          <Tooltip tooltip="Add a filter">
+        <span key="add-a-filter">
+          <Tooltip tooltip={t`Add a filter`}>
             <a
               key="parameters"
               className={cx("text-brand-hover", {
                 "text-brand": this.state.modal == "parameters",
               })}
-              title="Parameters"
+              title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}
             >
-              <Icon name="funneladd" size={16} />
+              <Icon name="funnel_add" size={16} />
             </a>
           </Tooltip>
 
-          {this.state.modal &&
-            this.state.modal === "parameters" && (
-              <Popover onClose={() => this.setState({ modal: null })}>
-                <ParametersPopover
-                  onAddParameter={this.props.addParameter}
-                  onClose={() => this.setState({ modal: null })}
-                />
-              </Popover>
-            )}
+          {this.state.modal && this.state.modal === "parameters" && (
+            <Popover onClose={() => this.setState({ modal: null })}>
+              <ParametersPopover
+                onAddParameter={this.props.addParameter}
+                onClose={() => this.setState({ modal: null })}
+              />
+            </Popover>
+          )}
         </span>,
       );
 
       // Add text card button
       buttons.push(
-        <Tooltip tooltip="Add a text box">
+        <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
           <a
             data-metabase-event="Dashboard;Add Text Box"
             key="add-text"
-            title="Add a text box"
+            title={t`Add a text box`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onAddTextBox()}
           >
@@ -284,7 +275,7 @@ export default class DashboardHeader extends Component {
       );
 
       buttons.push(
-        <Tooltip tooltip="Revision history">
+        <Tooltip key="revision-history" tooltip={t`Revision history`}>
           <Link
             to={location.pathname + "/history"}
             data-metabase-event={"Dashboard;Revisions"}
@@ -297,11 +288,11 @@ export default class DashboardHeader extends Component {
 
     if (!isFullscreen && !isEditing && canEdit) {
       buttons.push(
-        <Tooltip tooltip="Edit dashboard">
+        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
           <a
             data-metabase-event="Dashboard;Edit"
             key="edit"
-            title="Edit Dashboard Layout"
+            title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
             onClick={() => this.onEdit()}
           >
@@ -311,12 +302,39 @@ export default class DashboardHeader extends Component {
       );
     }
 
+    if (!isFullscreen && !isEditing) {
+      if (canEdit) {
+        buttons.push(
+          <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+            <Link
+              to={location.pathname + "/move"}
+              data-metabase-event={"Dashboard;Move"}
+            >
+              <Icon className="text-brand-hover" name="move" size={18} />
+            </Link>
+          </Tooltip>,
+        );
+      }
+      buttons.push(
+        <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
+          <Link
+            to={location.pathname + "/copy"}
+            data-metabase-event={"Dashboard;Copy"}
+          >
+            <Icon className="text-brand-hover" name="clone" size={18} />
+          </Link>
+        </Tooltip>,
+      );
+    }
+
     if (
       !isFullscreen &&
       ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
         (isEmbeddingEnabled && isAdmin))
     ) {
-      buttons.push(<DashboardEmbedWidget dashboard={dashboard} />);
+      buttons.push(
+        <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
+      );
     }
 
     buttons.push(...getDashboardActions(this.props));
@@ -325,22 +343,24 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    var { dashboard } = this.props;
+    const { dashboard } = this.props;
 
     return (
       <Header
         headerClassName="wrapper"
         objectType="dashboard"
+        analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
+        showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
-        editingTitle="You are editing a dashboard"
+        editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}
         headerModalMessage={
           this.props.isEditingParameter
-            ? "Select the field that should be filtered for each card"
+            ? t`Select the field that should be filtered for each card`
             : null
         }
         onHeaderModalDone={() => this.props.setEditingParameter(null)}

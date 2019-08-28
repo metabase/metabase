@@ -1,0 +1,45 @@
+/* @flow */
+
+import { createEntity } from "metabase/lib/entities";
+
+import { SegmentSchema } from "metabase/schema";
+import colors from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+
+const Segments = createEntity({
+  name: "segments",
+  nameOne: "segment",
+  path: "/api/segment",
+  schema: SegmentSchema,
+
+  objectActions: {
+    setArchived: (
+      { id },
+      archived,
+      { revision_message = archived ? "(Archive)" : "(Unarchive)" } = {},
+    ) => Segments.actions.update({ id }, { archived, revision_message }),
+
+    // NOTE: DELETE not currently implemented
+    // $FlowFixMe: no official way to disable builtin actions yet
+    delete: null,
+  },
+
+  objectSelectors: {
+    getName: segment => segment && segment.name,
+    getUrl: segment =>
+      Urls.tableRowsQuery(
+        segment.database_id,
+        segment.table_id,
+        null,
+        segment.id,
+      ),
+    getColor: segment => colors["accent7"],
+    getIcon: segment => "segment",
+  },
+
+  form: {
+    fields: [{ name: "name" }, { name: "description", type: "text" }],
+  },
+});
+
+export default Segments;

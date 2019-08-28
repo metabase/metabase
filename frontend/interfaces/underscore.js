@@ -10,6 +10,10 @@ declare module "underscore" {
     list: ?(T[]),
     predicate: (val: T) => boolean,
   ): number;
+  declare function findLastIndex<T>(
+    list: ?(T[]),
+    predicate: (val: T) => boolean,
+  ): number;
 
   declare function clone<T>(obj: T): T;
 
@@ -110,6 +114,11 @@ declare module "underscore" {
   declare function flatten(a: Array<any>): Array<any>;
 
   declare function debounce<T: any => any>(func: T): T;
+
+  declare function partition<T>(
+    array: T[],
+    pred: (val: T) => boolean,
+  ): [T[], T[]];
 
   // TODO: improve this
   declare function chain<S>(obj: S): any;

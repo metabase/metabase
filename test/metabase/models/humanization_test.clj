@@ -1,8 +1,7 @@
 (ns metabase.models.humanization-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models
-             [field :refer [Field]]
-             [humanization :as humanization :refer :all]
+             [humanization :as humanization]
              [table :refer [Table]]]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -33,6 +32,57 @@
 (expect "Auth Authenticator"          (humanization/name->human-readable-name :advanced "auth_authenticator"))
 (expect "Auth Provider"               (humanization/name->human-readable-name :advanced "authprovider"))
 (expect "User Social Auth"            (humanization/name->human-readable-name :advanced "usersocialauth"))
+
+
+;;;  db-inspired
+(expect "Sum Subtotal"                (humanization/name->human-readable-name :advanced "sumsubtotal"))
+(expect "Sum(subtotal)"               (humanization/name->human-readable-name :advanced "sum(subtotal)"))
+(expect "Sum(subtotal)"               (humanization/name->human-readable-name :simple "sum(subtotal)"))
+(expect "sum(subtotal)"               (humanization/name->human-readable-name :none "sum(subtotal)"))
+(expect "Created At::date"            (humanization/name->human-readable-name :advanced "created_at::date"))
+(expect "Created At::date"            (humanization/name->human-readable-name :simple "created_at::date"))
+(expect "created_at::date"            (humanization/name->human-readable-name :none "created_at::date"))
+(expect "Date Created"                (humanization/name->human-readable-name :advanced "datecreated"))
+(expect "Datecreated"                 (humanization/name->human-readable-name :simple "datecreated"))
+(expect "datecreated"                 (humanization/name->human-readable-name :none "datecreated"))
+(expect "Created At"                  (humanization/name->human-readable-name :advanced "createdat"))
+(expect "Create At"                   (humanization/name->human-readable-name :advanced "createat"))
+(expect "Createdat"                   (humanization/name->human-readable-name :simple "createdat"))
+(expect "createdat"                   (humanization/name->human-readable-name :none "createdat"))
+(expect "Updated At"                  (humanization/name->human-readable-name :advanced "updatedat"))
+(expect "Update At"                   (humanization/name->human-readable-name :advanced "updateat"))
+(expect "Updatedat"                   (humanization/name->human-readable-name :simple "updatedat"))
+(expect "updatedat"                   (humanization/name->human-readable-name :none "updatedat"))
+(expect "Cast Created At As Date"     (humanization/name->human-readable-name :advanced "castcreatedatasdate"))
+(expect "Cast(createdatasdate)"       (humanization/name->human-readable-name :simple "cast(createdatasdate)"))
+(expect "cast(createdatasdate)"       (humanization/name->human-readable-name :none "cast(createdatasdate)"))
+
+(expect "All Alter"                   (humanization/name->human-readable-name :advanced "allalter"))
+(expect "Alter All"                   (humanization/name->human-readable-name :advanced "alterall"))
+(expect "And Any Or"                  (humanization/name->human-readable-name :advanced "andanyor"))
+(expect "Ascdesc"                     (humanization/name->human-readable-name :advanced "ascdesc"))
+(expect "Decimal Default Delete"      (humanization/name->human-readable-name :advanced "decimaldefaultdelete"))
+(expect "Else End Exist"              (humanization/name->human-readable-name :advanced "elseendexist"))
+(expect "For From"                    (humanization/name->human-readable-name :advanced "forfrom"))
+(expect "Goto Grant Group"            (humanization/name->human-readable-name :advanced "gotograntgroup"))
+(expect "If In Insert Is"             (humanization/name->human-readable-name :advanced "ifininsertis"))
+(expect "Not Null"                    (humanization/name->human-readable-name :advanced "notnull"))
+(expect "Of On Order"                 (humanization/name->human-readable-name :advanced "ofonorder"))
+(expect "Range Select"                (humanization/name->human-readable-name :advanced "rangeselect"))
+(expect "Table Then To Type"          (humanization/name->human-readable-name :advanced "tablethentotype"))
+(expect "Union Unique Update"         (humanization/name->human-readable-name :advanced "unionuniqueupdate"))
+(expect "Values Where With"           (humanization/name->human-readable-name :advanced "valueswherewith"))
+
+(expect "Changelog"                   (humanization/name->human-readable-name :advanced "changelog"))
+(expect "Dataflow"                    (humanization/name->human-readable-name :advanced "dataflow"))
+(expect "Bestseller"                  (humanization/name->human-readable-name :advanced "bestseller"))
+(expect "Uniques"                     (humanization/name->human-readable-name :advanced "uniques"))
+(expect "Cpi"                         (humanization/name->human-readable-name :advanced "cpi"))
+(expect "Ctr"                         (humanization/name->human-readable-name :advanced "ctr"))
+(expect "Paid To Sparkify"            (humanization/name->human-readable-name :advanced "paid_to_sparkify"))
+(expect "Paid To Sparkify"            (humanization/name->human-readable-name :advanced "paidtosparkify"))
+(expect "Assassinate"                 (humanization/name->human-readable-name :advanced "assassinate"))
+(expect "An Album Cover"              (humanization/name->human-readable-name :advanced "analbumcover"))
 
 
 ;;; :simple humanization
@@ -92,7 +142,7 @@
 ;;; Re-humanization
 
 (defn- get-humanized-display-name [actual-name strategy]
-  (tu/with-temporary-setting-values [humanization-strategy strategy]
+  (with-redefs [humanization/humanization-strategy (constantly strategy)]
     (tt/with-temp Table [{table-id :id} {:name actual-name}]
       (db/select-one-field :display_name Table, :id table-id))))
 
@@ -113,9 +163,9 @@
     (tt/with-temp Table [{table-id :id} {:name actual-name}]
       (let [display-name #(db/select-one-field :display_name Table, :id table-id)]
         {:initial  (display-name)
-         :simple   (do (humanization-strategy "simple")   (display-name))
-         :advanced (do (humanization-strategy "advanced") (display-name))
-         :none     (do (humanization-strategy "none")     (display-name))}))))
+         :simple   (do (humanization/humanization-strategy "simple")   (display-name))
+         :advanced (do (humanization/humanization-strategy "advanced") (display-name))
+         :none     (do (humanization/humanization-strategy "none")     (display-name))}))))
 (expect
   {:initial  "Toucans Are Cool"
    :simple   "Toucansare Cool"
@@ -137,7 +187,7 @@
     (tt/with-temp Table [{table-id :id} {:name "toucansare_cool"}]
       (db/update! Table table-id
         :display_name "My Favorite Table")
-      (humanization-strategy new-strategy)
+      (humanization/humanization-strategy new-strategy)
       (db/select-one-field :display_name Table, :id table-id))))
 
 (expect "My Favorite Table" (switch-strategies-and-get-display-name "advanced" "simple"))

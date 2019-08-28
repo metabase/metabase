@@ -1,36 +1,39 @@
 (ns metabase.events
-  "Provides a very simply event bus using `core.async` to allow publishing and subscribing to intersting
-   topics happening throughout the Metabase system in a decoupled way.
+  "Provides a very simply event bus using `core.async` to allow publishing and subscribing to interesting topics
+  happening throughout the Metabase system in a decoupled way.
 
-   ## Regarding Events Initialization:
+  ## Regarding Events Initialization:
 
-   The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
-   `events-init` function which accepts zero arguments.  This function is dynamically resolved and called exactly
-   once when the application goes through normal startup procedures.  Inside this function you can do any work
-   needed and add your events subscribers to the bus as usual via `start-event-listener!`."
+  The most appropriate way to initialize event listeners in any `metabase.events.*` namespace is to implement the
+  `events-init` function which accepts zero arguments. This function is dynamically resolved and called exactly once
+  when the application goes through normal startup procedures. Inside this function you can do any work needed and add
+  your events subscribers to the bus as usual via `start-event-listener!`."
   (:require [clojure.core.async :as async]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
-            (metabase [config :as config]
-                      [util :as u])))
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.util.i18n :refer [trs]]))
 
-
-;;; ## ---------------------------------------- LIFECYCLE ----------------------------------------
+;;; --------------------------------------------------- LIFECYCLE ----------------------------------------------------
 
 
 (defonce ^:private events-initialized?
   (atom nil))
 
 (defn- find-and-load-event-handlers!
-  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it exists."
+  "Search Classpath for namespaces that start with `metabase.events.`, and call their `events-init` function if it
+  exists."
   []
   (when-not config/is-test?
     (doseq [ns-symb @u/metabase-namespace-symbols
             :when   (.startsWith (name ns-symb) "metabase.events.")]
-      (require ns-symb)
+      (classloader/require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists
       (when-let [init-fn (ns-resolve ns-symb 'events-init)]
-        (log/info "Starting events listener:" (u/format-color 'blue ns-symb) (u/emoji "👂"))
+        (log/info (trs "Starting events listener:") (u/format-color 'blue ns-symb) (u/emoji "👂"))
         (init-fn)))))
 
 (defn initialize-events!
@@ -41,7 +44,7 @@
     (reset! events-initialized? true)))
 
 
-;;; ## ---------------------------------------- PUBLICATION ----------------------------------------
+;;; -------------------------------------------------- PUBLICATION ---------------------------------------------------
 
 
 (def ^:private events-channel
@@ -49,25 +52,23 @@
   (async/chan))
 
 (def ^:private events-publication
-  "Publication for general events channel.
-   Expects a map as input and the map must have a `:topic` key."
+  "Publication for general events channel. Expects a map as input and the map must have a `:topic` key."
   (async/pub events-channel :topic))
 
 (defn publish-event!
-  "Publish an item into the events stream.
-  Returns the published item to allow for chaining."
+  "Publish an item into the events stream. Returns the published item to allow for chaining."
+  {:style/indent 1}
   [topic event-item]
   {:pre [(keyword topic)]}
-  (async/go (async/>! events-channel {:topic (keyword topic) :item event-item}))
+  (async/go (async/>! events-channel {:topic (keyword topic), :item event-item}))
   event-item)
 
 
-;;; ## ---------------------------------------- SUBSCRIPTION ----------------------------------------
+;;; -------------------------------------------------- SUBSCRIPTION --------------------------------------------------
 
 (defn- subscribe-to-topic!
-  "Subscribe to a given topic of the general events stream.
-   Expects a topic to subscribe to and a `core.async` channel.
-   Returns the channel to allow for chaining."
+  "Subscribe to a given topic of the general events stream. Expects a topic to subscribe to and a `core.async` channel.
+  Returns the channel to allow for chaining."
   [topic channel]
   {:pre [(keyword topic)]}
   (async/sub events-publication (keyword topic) channel)
@@ -92,18 +93,17 @@
     (try
       (handler-fn (async/<! channel))
       (catch Throwable e
-        (log/error "Unexpected error listening on events" e)))
+        (log/error e (trs "Unexpected error listening on events"))))
     (recur)))
 
 
-;;; ## ---------------------------------------- HELPER FUNCTIONS ----------------------------------------
-
+;;; ------------------------------------------------ HELPER FUNCTIONS ------------------------------------------------
 
 (defn topic->model
   "Determine a valid `model` identifier for the given TOPIC."
   [topic]
   ;; just take the first part of the topic name after splitting on dashes.
-  (first (s/split (name topic) #"-")))
+  (first (str/split (name topic) #"-")))
 
 (defn object->model-id
   "Determine the appropriate `model_id` (if possible) for a given OBJECT."

@@ -1,0 +1,32 @@
+info:
+  name: Metabase Vertica Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Vertica databases.
+dependencies:
+  - class: com.vertica.jdbc.Driver
+    message: >
+      Metabase requires the Vertica JDBC driver in order to connect to Vertica databases, but we can't ship it as part
+      of Metabase due to licensing restrictions. See
+      https://metabase.com/docs/latest/administration-guide/databases/vertica.html for more details.
+driver:
+  name: vertica
+  display-name: Vertica
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 5433
+    - dbname
+    - user
+    - password
+    - merge:
+        - additional-options
+        - placeholder: 'ConnectionLoadBalance=1'
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.vertica
+  - step: register-jdbc-driver
+    class: com.vertica.jdbc.Driver

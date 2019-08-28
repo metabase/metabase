@@ -18,7 +18,7 @@ The Metabase team runs a number of production installations on AWS using Elastic
 
 Metabase provides an Elastic Beanstalk pre-configured launch url to help new installations getting started.  If you are starting fresh we recommend you follow this link to begin creating the Elastic Beanstalk deployment with a few choices pre-filled.
 
-[Launch Metabase on Elastic Beanstalk](http://downloads.metabase.com/{{site.latest_version}}/launch-aws-eb.html)
+[Launch Metabase on Elastic Beanstalk](https://downloads.metabase.com/{{ site.latest_version }}/launch-aws-eb.html)
 
 The rest of this guide will follow each phase of the Elastic Beanstalk setup step-by-step.
 
@@ -26,17 +26,17 @@ The rest of this guide will follow each phase of the Elastic Beanstalk setup ste
 ### New Application
 
 
-You should now see a screen that looks like 
+You should now see a screen that looks like
 
 ![Elastic Beanstalk First Screen](images/EBFirstScreen.png)
 
-NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documenatation [here](running-metabase-on-elastic-beanstalk-old.md)
+NOTE: If this screenshot does not match what you see in the Elastic Beanstalk console, it is likely that you are on an old version of the Elastic Beanstalk UI. At the time of writing this documentation, both versions of the UI are being reported in the wild. You can view our older documentation [here](running-metabase-on-elastic-beanstalk-old.md)
 
-Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application.  Enter the application name `Metabase` and continue by clicking `Next`.
+While most of the fields are correctly prefilled by following the launch url above, "Sample Application" will be incorrectly selected. To run Metabase successfully, you'll need to click the radio button for "Upload your code".
+
+Elastic Beanstalk is organized into Applications and Environments, so to get started we must create a new Application. You can customize the application name here.
 
 ![Elastic Beanstalk ApplicationInformation](images/EBApplicationInformation.png)
-
-
 
 ### Environment Information
 
@@ -52,7 +52,7 @@ And of course if you don't care about the URL you can simply leave it to whateve
 
 ### New Environment
 
-Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page. 
+Elastic Beanstalk provides two choices for environments within an Application, but you should leave the setting to `Web Server` on that landing page.
 
 ![ebnewenv](images/EBWebTier.png)
 
@@ -68,7 +68,7 @@ For the base configuration settings we want to make the following selections:
 
 This will run our Metabase application using  [Docker](https://www.docker.com) under the hood.
 
-If you reached this screen from the Metabase start page at [www.metabase.com/start/aws.html](www.metabase.com/start/aws.html) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+If you reached this screen from the Metabase start page at [metabase.com/start/aws/](https://metabase.com/start/aws/) the application code settings will have already been set and you don't need to do anything. This will use the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
 
 When your environment type settings look like the above then go ahead and click `Review and launch`.
 
@@ -80,7 +80,7 @@ You will need to enable enhanced health checks for your Beanstalk Monitoring.
 Click on the `modify` link under the Monitoring section as below.
 ![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
 
-Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch. 
+Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch.
 
 ![Elastic Beanstalk Monitoring Settings](images/EBMonitoringSettings.png)
 
@@ -95,7 +95,7 @@ To set the database password from the Beanstalk template, hit "Review and Launch
 
 ![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
-Once there, enter a database username and password. We suggest you hold onto this in a password manager, as it can be useful for things like backups or troubleshooting. 
+Once there, enter a database username and password. We suggest you hold onto this in a password manager, as it can be useful for things like backups or troubleshooting.
 
 ![Elastic Beanstalk Database Settings](images/EBDatabaseSettings.png)
 
@@ -179,7 +179,7 @@ Here's each step:
 1. Go to Elastic Beanstalk and select your `Metabase` application
 * Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
 * Download the latest Metabase Elastic Beanstalk deployment file
-  * http://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip
+  * [https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
 * Upload a new Application Version
 	* Click the `Upload` button on the upper right side of the listing
 		* Give the new version a name, ideally including the Metabase version number (e.g. {{ site.latest_version }})

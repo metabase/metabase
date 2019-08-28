@@ -1,5 +1,5 @@
 :root {
-  --icon-color: #bfc4d1;
+  --icon-color: var(--color-text-light);
 }
 
 .IconWrapper {
@@ -13,19 +13,19 @@
 
 @keyframes icon-pulse {
   0% {
-    box-shadow: 0 0 5px rgba(80, 158, 227, 1);
+    box-shadow: 0 0 5px var(--color-shadow);
   }
   50% {
-    box-shadow: 0 0 5px rgba(80, 158, 227, 0.25);
+    box-shadow: 0 0 5px var(--color-shadow);
   }
   100% {
-    box-shadow: 0 0 5px rgba(80, 158, 227, 1);
+    box-shadow: 0 0 5px var(--color-shadow);
   }
 }
 
 .Icon--pulse {
   border-radius: 99px;
-  box-shadow: 0 0 5px #509ee3;
+  box-shadow: 0 0 5px var(--color-shadow);
   padding: 0.75em;
   animation-name: icon-pulse;
   animation-duration: 2s;

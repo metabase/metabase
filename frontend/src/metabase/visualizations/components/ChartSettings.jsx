@@ -2,212 +2,308 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Warnings from "metabase/query_builder/components/Warnings.jsx";
 
+import Button from "metabase/components/Button";
+import Radio from "metabase/components/Radio";
+
 import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import { getSettingsWidgets } from "metabase/visualizations/lib/settings";
+import ChartSettingsWidget from "./ChartSettingsWidget";
+
+import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import {
   getVisualizationTransformed,
   extractRemappings,
 } from "metabase/visualizations";
+import { updateSettings } from "metabase/visualizations/lib/settings";
 
-const ChartSettingsTab = ({ name, active, onClick }) => (
-  <a
-    className={cx("block text-brand py1 text-centered", {
-      "bg-brand text-white": active,
-    })}
-    onClick={() => onClick(name)}
-  >
-    {name.toUpperCase()}
-  </a>
-);
+// section names are localized
+const DEFAULT_TAB_PRIORITY = [t`Display`];
 
-const ChartSettingsTabs = ({ tabs, selectTab, activeTab }) => (
-  <ul className="bordered rounded flex justify-around overflow-hidden">
-    {tabs.map((tab, index) => (
-      <li className="flex-full border-left" key={index}>
-        <ChartSettingsTab
-          name={tab}
-          active={tab === activeTab}
-          onClick={selectTab}
+const withTransientSettingState = ComposedComponent =>
+  class extends React.Component {
+    static displayName = `withTransientSettingState[${ComposedComponent.displayName ||
+      ComposedComponent.name}]`;
+
+    constructor(props) {
+      super(props);
+      this.state = {
+        settings: props.settings,
+      };
+    }
+
+    componentWillReceiveProps(nextProps) {
+      if (this.props.settings !== nextProps.settings) {
+        this.setState({ settings: nextProps.settings });
+      }
+    }
+
+    render() {
+      return (
+        <ComposedComponent
+          {...this.props}
+          settings={this.state.settings}
+          onChange={settings => this.setState({ settings })}
+          onDone={settings =>
+            this.props.onChange(settings || this.state.settings)
+          }
         />
-      </li>
-    ))}
-  </ul>
-);
-
-const Widget = ({
-  title,
-  hidden,
-  disabled,
-  widget,
-  value,
-  onChange,
-  props,
-}) => {
-  const W = widget;
-  return (
-    <div className={cx("mb2", { hide: hidden, disable: disabled })}>
-      {title && <h4 className="mb1">{title}</h4>}
-      {W && <W value={value} onChange={onChange} {...props} />}
-    </div>
-  );
-};
+      );
+    }
+  };
 
 class ChartSettings extends Component {
   constructor(props) {
     super(props);
-    const initialSettings = props.series[0].card.visualization_settings;
     this.state = {
-      currentTab: null,
-      settings: initialSettings,
-      series: this._getSeries(props.series, initialSettings),
+      currentSection: (props.initial && props.initial.section) || null,
+      currentWidget: (props.initial && props.initial.widget) || null,
     };
   }
 
-  selectTab = tab => {
-    this.setState({ currentTab: tab });
+  handleShowSection = section => {
+    this.setState({ currentSection: section, currentWidget: null });
   };
 
-  _getSeries(series, settings) {
-    if (settings) {
-      series = assocIn(series, [0, "card", "visualization_settings"], settings);
-    }
-    const transformed = getVisualizationTransformed(extractRemappings(series));
-    return transformed.series;
-  }
+  // allows a widget to temporarily replace itself with a different widget
+  handleShowWidget = widget => {
+    this.setState({ currentWidget: widget });
+  };
 
-  onResetSettings = () => {
+  // go back to previously selected section
+  handleEndShowWidget = () => {
+    this.setState({ currentWidget: null });
+  };
+
+  handleResetSettings = () => {
     MetabaseAnalytics.trackEvent("Chart Settings", "Reset Settings");
-    this.setState({
-      settings: {},
-      series: this._getSeries(this.props.series, {}),
-    });
+    this.props.onChange({});
   };
 
-  onChangeSettings = newSettings => {
-    for (const key of Object.keys(newSettings)) {
-      MetabaseAnalytics.trackEvent("Chart Settings", "Change Setting", key);
-    }
-    const settings = {
-      ...this.state.settings,
-      ...newSettings,
-    };
-    this.setState({
-      settings: settings,
-      series: this._getSeries(this.props.series, settings),
-    });
+  handleChangeSettings = changedSettings => {
+    this.props.onChange(updateSettings(this._getSettings(), changedSettings));
   };
 
-  onDone() {
-    this.props.onChange(this.state.settings);
+  handleDone = () => {
+    this.props.onDone(this._getSettings());
     this.props.onClose();
+  };
+
+  handleCancel = () => {
+    this.props.onClose();
+  };
+
+  _getSettings() {
+    return (
+      this.props.settings || this.props.series[0].card.visualization_settings
+    );
   }
 
-  getChartTypeName() {
-    let { CardVisualization } = getVisualizationTransformed(this.props.series);
-    switch (CardVisualization.identifier) {
-      case "table":
-        return "table";
-      case "scalar":
-        return "number";
-      case "funnel":
-        return "funnel";
-      default:
-        return "chart";
+  _getWidgets() {
+    if (this.props.widgets) {
+      return this.props.widgets;
+    } else {
+      const { isDashboard } = this.props;
+      const transformedSeries = this._getTransformedSeries();
+
+      return getSettingsWidgetsForSeries(
+        transformedSeries,
+        this.handleChangeSettings,
+        isDashboard,
+      );
     }
+  }
+
+  // TODO: move this logic out of the React component
+  _getRawSeries() {
+    const { series } = this.props;
+    const settings = this._getSettings();
+    const rawSeries = assocIn(
+      series,
+      [0, "card", "visualization_settings"],
+      settings,
+    );
+    return rawSeries;
+  }
+  _getTransformedSeries() {
+    const rawSeries = this._getRawSeries();
+    const { series: transformedSeries } = getVisualizationTransformed(
+      extractRemappings(rawSeries),
+    );
+    return transformedSeries;
   }
 
   render() {
-    const { onClose, isDashboard } = this.props;
-    const { series } = this.state;
+    const { question, addField, noPreview, children } = this.props;
+    const { currentWidget } = this.state;
 
-    const tabs = {};
-    for (const widget of getSettingsWidgets(
-      series,
-      this.onChangeSettings,
-      isDashboard,
-    )) {
-      tabs[widget.section] = tabs[widget.section] || [];
-      tabs[widget.section].push(widget);
+    const settings = this._getSettings();
+    const widgets = this._getWidgets();
+    const rawSeries = this._getRawSeries();
+
+    const widgetsById = {};
+    const sections = {};
+
+    for (const widget of widgets) {
+      widgetsById[widget.id] = widget;
+      if (widget.widget && !widget.hidden) {
+        sections[widget.section] = sections[widget.section] || [];
+        sections[widget.section].push(widget);
+      }
     }
 
     // Move settings from the "undefined" section in the first tab
-    if (tabs["undefined"] && Object.values(tabs).length > 1) {
-      let extra = tabs["undefined"];
-      delete tabs["undefined"];
-      Object.values(tabs)[0].unshift(...extra);
+    if (sections["undefined"] && Object.values(sections).length > 1) {
+      const extra = sections["undefined"];
+      delete sections["undefined"];
+      Object.values(sections)[0].unshift(...extra);
     }
 
-    const tabNames = Object.keys(tabs);
-    const currentTab = this.state.currentTab || tabNames[0];
-    const widgets = tabs[currentTab];
+    const sectionNames = Object.keys(sections);
+    const currentSection =
+      this.state.currentSection && sections[this.state.currentSection]
+        ? this.state.currentSection
+        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0];
 
+    let visibleWidgets;
+    let widget = currentWidget && widgetsById[currentWidget.id];
+    if (widget) {
+      widget = {
+        ...widget,
+        hidden: false,
+        props: {
+          ...(widget.props || {}),
+          ...(currentWidget.props || {}),
+        },
+      };
+      visibleWidgets = [widget];
+    } else {
+      visibleWidgets = sections[currentSection] || [];
+    }
+
+    const extraWidgetProps = {
+      // NOTE: special props to support adding additional fields
+      question: question,
+      addField: addField,
+      onShowWidget: this.handleShowWidget,
+      onEndShowWidget: this.handleEndShowWidget,
+    };
+
+    const sectionPicker = (
+      <Radio
+        value={currentSection}
+        onChange={this.handleShowSection}
+        options={sectionNames}
+        optionNameFn={v => v}
+        optionValueFn={v => v}
+        bubble
+      />
+    );
+
+    const widgetList = visibleWidgets.map(widget => (
+      <ChartSettingsWidget
+        key={`${widget.id}`}
+        {...widget}
+        {...extraWidgetProps}
+      />
+    ));
+
+    const onReset = !_.isEqual(settings, {}) ? this.handleResetSettings : null;
+
+    // custom render prop layout:
+    if (children) {
+      return children({
+        sectionNames,
+        sectionPicker,
+        widgetList,
+        onDone: this.handleDone,
+        onCancel: this.handleCancel,
+        onReset: onReset,
+      });
+    }
+
+    // default layout with visualization
     return (
-      <div className="flex flex-column spread p4">
-        <h2 className="my2">{t`Customize this ${this.getChartTypeName()}`}</h2>
-
-        {tabNames.length > 1 && (
-          <ChartSettingsTabs
-            tabs={tabNames}
-            selectTab={this.selectTab}
-            activeTab={currentTab}
-          />
+      <div>
+        {sectionNames.length > 1 && (
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
-        <div className="Grid flex-full mt3">
-          <div className="Grid-cell Cell--1of3 scroll-y p1">
-            {widgets &&
-              widgets.map(widget => <Widget key={widget.id} {...widget} />)}
+        {noPreview ? (
+          <div className="full-height relative scroll-y scroll-show py4">
+            {widgetList}
           </div>
-          <div className="Grid-cell flex flex-column">
-            <div className="flex flex-column">
-              <Warnings
-                className="mx2 align-self-end text-gold"
-                warnings={this.state.warnings}
-                size={20}
-              />
+        ) : (
+          <div className="full-height relative">
+            <div className="Grid spread">
+              <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+                {widgetList}
+              </div>
+              <div className="Grid-cell flex flex-column pt2">
+                <div className="mx4 flex flex-column">
+                  <Warnings
+                    className="mx2 align-self-end text-gold"
+                    warnings={this.state.warnings}
+                    size={20}
+                  />
+                </div>
+                <div className="mx4 flex-full relative">
+                  <Visualization
+                    className="spread"
+                    rawSeries={rawSeries}
+                    showTitle
+                    isEditing
+                    isDashboard
+                    isSettings
+                    showWarnings
+                    onUpdateVisualizationSettings={this.handleChangeSettings}
+                    onUpdateWarnings={warnings => this.setState({ warnings })}
+                  />
+                </div>
+                <ChartSettingsFooter
+                  onDone={this.handleDone}
+                  onCancel={this.handleCancel}
+                  onReset={onReset}
+                />
+              </div>
             </div>
-            <div className="flex-full relative">
-              <Visualization
-                className="spread"
-                rawSeries={series}
-                isEditing
-                showTitle
-                isDashboard
-                showWarnings
-                onUpdateVisualizationSettings={this.onChangeSettings}
-                onUpdateWarnings={warnings => this.setState({ warnings })}
-              />
-            </div>
           </div>
-        </div>
-        <div className="pt1">
-          {!_.isEqual(this.state.settings, {}) && (
-            <a
-              className="Button Button--danger float-right"
-              onClick={this.onResetSettings}
-              data-metabase-event="Chart Settings;Reset"
-            >{t`Reset to defaults`}</a>
-          )}
-
-          <div className="float-left">
-            <a
-              className="Button Button--primary ml2"
-              onClick={() => this.onDone()}
-              data-metabase-event="Chart Settings;Done"
-            >{t`Done`}</a>
-            <a
-              className="Button ml2"
-              onClick={onClose}
-              data-metabase-event="Chart Settings;Cancel"
-            >{t`Cancel`}</a>
-          </div>
-        </div>
+        )}
       </div>
     );
   }
 }
 
+const ChartSettingsFooter = ({ className, onDone, onCancel, onReset }) => (
+  <div className={cx("py2 px4", className)}>
+    <div className="float-right">
+      <Button
+        className="ml2"
+        onClick={onCancel}
+        data-metabase-event="Chart Settings;Cancel"
+      >{t`Cancel`}</Button>
+      <Button
+        primary
+        className="ml2"
+        onClick={onDone}
+        data-metabase-event="Chart Settings;Done"
+      >{t`Done`}</Button>
+    </div>
+
+    {onReset && (
+      <Button
+        borderless
+        icon="refresh"
+        className="float-right ml2"
+        data-metabase-event="Chart Settings;Reset"
+        onClick={onReset}
+      >{t`Reset to defaults`}</Button>
+    )}
+  </div>
+);
+
 export default ChartSettings;
+
+export const ChartSettingsWithState = withTransientSettingState(ChartSettings);

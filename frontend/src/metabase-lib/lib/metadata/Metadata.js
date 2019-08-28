@@ -24,24 +24,36 @@ export default class Metadata extends Base {
   metrics: { [id: MetricId]: Metric };
   segments: { [id: SegmentId]: Segment };
 
+  // DEPRECATED: this won't be sorted or filtered in a meaningful way
   databasesList(): Database[] {
     // $FlowFixMe
     return (Object.values(this.databases): Database[]);
   }
 
+  // DEPRECATED: this won't be sorted or filtered in a meaningful way
   tablesList(): Database[] {
     // $FlowFixMe
     return (Object.values(this.tables): Database[]);
   }
 
+  // DEPRECATED: this won't be sorted or filtered in a meaningful way
   metricsList(): Metric[] {
     // $FlowFixMe
     return (Object.values(this.metrics): Metric[]);
   }
 
+  // DEPRECATED: this won't be sorted or filtered in a meaningful way
   segmentsList(): Metric[] {
     // $FlowFixMe
     return (Object.values(this.segments): Segment[]);
+  }
+
+  segment(segmentId): ?Segment {
+    return (segmentId != null && this.segments[segmentId]) || null;
+  }
+
+  metric(metricId): ?Metric {
+    return (metricId != null && this.metrics[metricId]) || null;
   }
 
   database(databaseId): ?Database {

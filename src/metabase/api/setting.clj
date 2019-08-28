@@ -11,16 +11,18 @@
   (api/check-superuser)
   (setting/all))
 
+(api/defendpoint PUT "/"
+  "Update multiple `Settings` values.  You must be a superuser to do this."
+  [:as {settings :body}]
+  (api/check-superuser)
+  (setting/set-many! settings))
+
 (api/defendpoint GET "/:key"
   "Fetch a single `Setting`. You must be a superuser to do this."
   [key]
   {key su/NonBlankString}
   (api/check-superuser)
-  (let [k (keyword key)
-        v (setting/get k)]
-    ;; for security purposes, don't return value of a setting if it was defined via env var
-    (when (not= v (setting/env-var-value k))
-      v)))
+  (setting/user-facing-value key))
 
 (api/defendpoint PUT "/:key"
   "Create/update a `Setting`. You must be a superuser to do this.

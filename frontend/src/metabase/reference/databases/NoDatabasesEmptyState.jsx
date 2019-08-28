@@ -1,5 +1,5 @@
-import * as React from "react";
-import { t } from "c-3po";
+import React from "react";
+import { t } from "ttag";
 
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 

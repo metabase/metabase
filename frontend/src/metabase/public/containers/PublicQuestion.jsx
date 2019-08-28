@@ -20,10 +20,15 @@ import {
   applyParameters,
 } from "metabase/meta/Card";
 
-import { PublicApi, EmbedApi } from "metabase/services";
+import {
+  PublicApi,
+  EmbedApi,
+  setPublicQuestionEndpoints,
+  setEmbedQuestionEndpoints,
+} from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
-import { addParamValues } from "metabase/redux/metadata";
+import { addParamValues, addFields } from "metabase/redux/metadata";
 
 import { updateIn } from "icepick";
 
@@ -34,6 +39,7 @@ type Props = {
   height: number,
   setErrorPage: (error: { status: number }) => void,
   addParamValues: any => void,
+  addFields: any => void,
 };
 
 type State = {
@@ -45,10 +51,14 @@ type State = {
 const mapDispatchToProps = {
   setErrorPage,
   addParamValues,
+  addFields,
 };
 
-@connect(null, mapDispatchToProps)
-@ExplicitSize
+@connect(
+  null,
+  mapDispatchToProps,
+)
+@ExplicitSize()
 export default class PublicQuestion extends Component {
   props: Props;
   state: State;
@@ -69,6 +79,13 @@ export default class PublicQuestion extends Component {
       params: { uuid, token },
       location: { query },
     } = this.props;
+
+    if (uuid) {
+      setPublicQuestionEndpoints(uuid);
+    } else if (token) {
+      setEmbedQuestionEndpoints(token);
+    }
+
     try {
       let card;
       if (token) {
@@ -82,9 +99,12 @@ export default class PublicQuestion extends Component {
       if (card.param_values) {
         this.props.addParamValues(card.param_values);
       }
+      if (card.param_fields) {
+        this.props.addFields(card.param_fields);
+      }
 
-      let parameterValues: ParameterValues = {};
-      for (let parameter of getParameters(card)) {
+      const parameterValues: ParameterValues = {};
+      for (const parameter of getParameters(card)) {
         parameterValues[String(parameter.id)] = query[parameter.slug];
       }
 
@@ -109,7 +129,10 @@ export default class PublicQuestion extends Component {
 
   // $FlowFixMe: setState expects return type void
   run = async (): void => {
-    const { setErrorPage, params: { uuid, token } } = this.props;
+    const {
+      setErrorPage,
+      params: { uuid, token },
+    } = this.props;
     const { card, parameterValues } = this.state;
 
     if (!card) {
@@ -119,6 +142,8 @@ export default class PublicQuestion extends Component {
     const parameters = getParameters(card);
 
     try {
+      this.setState({ result: null });
+
       let newResult;
       if (token) {
         // embeds apply parameter values server-side
@@ -145,12 +170,14 @@ export default class PublicQuestion extends Component {
   };
 
   render() {
-    const { params: { uuid, token } } = this.props;
+    const {
+      params: { uuid, token },
+    } = this.props;
     const { card, result, parameterValues } = this.state;
 
     const actionButtons = result && (
       <QueryDownloadWidget
-        className="m1 text-grey-4-hover"
+        className="m1 text-medium-hover"
         uuid={uuid}
         token={token}
         result={result}
@@ -166,11 +193,11 @@ export default class PublicQuestion extends Component {
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result}>
+        <LoadingAndErrorWrapper loading={!result} noWrapper>
           {() => (
             <Visualization
               rawSeries={[{ card: card, data: result && result.data }]}
-              className="full flex-full"
+              className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>
                 this.setState({
                   // $FlowFixMe

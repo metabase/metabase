@@ -15,17 +15,28 @@ fi
 
 POT_NAME="locales/metabase.pot"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
+# NOTE: hardcoded in .babelrc
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"
+# NOTE: hardcoded in src/metabase/automagic_dashboards/rules.clj
+POT_AUTODASH_NAME="locales/metabase-automatic-dashboards.pot"
 
 mkdir -p "locales"
 
-# update frontend pot
+#######################
+# update frontend pot #
+#######################
 
 # NOTE: about twice as fast to call babel directly rather than a full webpack build
 BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
-# update backend pot
+# NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency
+sed -i".bak" -E 's/\$\{ *([0-9]+) *\}/{\1}/g' "$POT_FRONTEND_NAME"
+rm "$POT_FRONTEND_NAME.bak"
+
+######################
+# update backend pot #
+######################
 
 # xgettext before 0.19 does not understand --add-location=file. Even CentOS
 # 7 ships with an older gettext. We will therefore generate full location
@@ -48,7 +59,17 @@ find src -name "*.clj" | xgettext                   \
   --add-comments --sort-by-file                     \
   -o $POT_BACKEND_NAME -f -
 
-sed -i "" -e 's/charset=CHARSET/charset=UTF-8/' "$POT_BACKEND_NAME"
+sed -i".bak" 's/charset=CHARSET/charset=UTF-8/' "$POT_BACKEND_NAME"
+rm "$POT_BACKEND_NAME.bak"
 
-# merge frontend and backend pots
-msgcat "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" > "$POT_NAME"
+########################
+# update auto dash pot #
+########################
+
+lein generate-automagic-dashboards-pot
+
+##################
+# merge all pots #
+##################
+
+msgcat "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"

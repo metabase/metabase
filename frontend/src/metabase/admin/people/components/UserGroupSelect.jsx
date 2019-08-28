@@ -37,6 +37,7 @@ export default class UserGroupSelect extends Component {
     groups: PropTypes.array,
     createMembership: PropTypes.func.isRequired,
     deleteMembership: PropTypes.func.isRequired,
+    isCurrentUser: PropTypes.bool.isRequired,
   };
 
   static defaultProps = {
@@ -48,7 +49,13 @@ export default class UserGroupSelect extends Component {
   }
 
   render() {
-    let { user, groups, createMembership, deleteMembership } = this.props;
+    const {
+      user,
+      groups,
+      createMembership,
+      deleteMembership,
+      isCurrentUser,
+    } = this.props;
 
     if (!groups || groups.length === 0 || !user.memberships) {
       return <LoadingSpinner />;
@@ -69,10 +76,10 @@ export default class UserGroupSelect extends Component {
         ref="popover"
         triggerElement={
           <div className="flex align-center">
-            <span className="mr1 text-grey-4">
+            <span className="mr1 text-medium">
               <GroupSummary groups={groups} selectedGroups={user.memberships} />
             </span>
-            <Icon className="text-grey-2" name="chevrondown" size={10} />
+            <Icon className="text-light" name="chevrondown" size={10} />
           </div>
         }
         triggerClasses="AdminSelectBorderless py1"
@@ -82,6 +89,7 @@ export default class UserGroupSelect extends Component {
           groups={groups}
           selectedGroups={user.memberships}
           onGroupChange={changeMembership}
+          isCurrentUser={isCurrentUser}
         />
       </PopoverWithTrigger>
     );

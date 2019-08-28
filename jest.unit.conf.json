@@ -6,14 +6,18 @@
   },
   "testPathIgnorePatterns": [
     "<rootDir>/frontend/test/legacy-karma",
-    "<rootDir>/frontend/test/legacy-selenium",
-    "integ.spec.js"
+    "<rootDir>/frontend/test/legacy-selenium"
+  ],
+  "testMatch": [
+    "<rootDir>/frontend/test/**/*.unit.spec.js?(x)"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",
     "<rootDir>/frontend/src"
   ],
   "setupFiles": [
+    "<rootDir>/frontend/test/jest-setup.js",
+    "<rootDir>/frontend/test/enzyme-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js"
   ],
   "globals": {
@@ -23,5 +27,6 @@
   },
   "coverageDirectory": "./",
   "coverageReporters": ["text", "json-summary"],
-  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"]
+  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
+  "coveragePathIgnorePatterns": ["/node_modules/", "/frontend/src/metabase/visualizations/lib/errors.js"]
 }

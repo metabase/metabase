@@ -31,7 +31,7 @@ type StepInfo = {
   clicked?: ClickObject,
 };
 
-export default class Funnel extends Component {
+export default class FunnelNormal extends Component {
   props: VisualizationProps;
 
   render() {
@@ -43,6 +43,7 @@ export default class Funnel extends Component {
       onHoverChange,
       onVisualizationClick,
       visualizationIsClickable,
+      settings,
     } = this.props;
 
     const dimensionIndex = 0;
@@ -56,21 +57,20 @@ export default class Funnel extends Component {
 
     const formatDimension = (dimension, jsx = true) =>
       formatValue(dimension, {
-        column: cols[dimensionIndex],
+        ...settings.column(cols[dimensionIndex]),
         jsx,
         majorWidth: 0,
       });
     const formatMetric = (metric, jsx = true) =>
       formatValue(metric, {
-        column: cols[metricIndex],
+        ...settings.column(cols[metricIndex]),
         jsx,
         majorWidth: 0,
-        comma: true,
       });
     const formatPercent = percent => `${(100 * percent).toFixed(2)} %`;
 
     // Initial infos (required for step calculation)
-    var infos: StepInfo[] = [
+    let infos: StepInfo[] = [
       {
         value: rows[0][metricIndex],
         graph: {
@@ -82,7 +82,7 @@ export default class Funnel extends Component {
       },
     ];
 
-    var remaining: number = rows[0][metricIndex];
+    let remaining: number = rows[0][metricIndex];
 
     rows.map((row, rowIndex) => {
       remaining -= infos[rowIndex].value - row[metricIndex];
@@ -102,11 +102,13 @@ export default class Funnel extends Component {
           data: [
             {
               key: "Step",
-              value: formatDimension(row[dimensionIndex]),
+              value: row[dimensionIndex],
+              col: cols[dimensionIndex],
             },
             {
               key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(row[metricIndex]),
+              value: row[metricIndex],
+              col: cols[metricIndex],
             },
             {
               key: "Retained",
@@ -131,7 +133,7 @@ export default class Funnel extends Component {
     // Remove initial setup
     infos = infos.slice(1);
 
-    let initial = infos[0];
+    const initial = infos[0];
 
     const isClickable = visualizationIsClickable(infos[0].clicked);
 

@@ -2,14 +2,43 @@
 
 import React, { Component } from "react";
 import RetinaImage from "react-retina-image";
+import styled from "styled-components";
+import { color, space, hover } from "styled-system";
 import cx from "classnames";
+import colors, { darken } from "metabase/lib/colors";
 
 import { loadIcon } from "metabase/icon_paths";
+import { stripLayoutProps } from "metabase/lib/utils";
 
 import Tooltipify from "metabase/hoc/Tooltipify";
 
-@Tooltipify
-export default class Icon extends Component {
+export const IconWrapper = styled("div")`
+  ${space};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 99px;
+  cursor: pointer;
+  color: ${props => (props.open ? colors["brand"] : "inherit")};
+  // special cases for certain icons
+  // Icon-share has a taller viewvbox than most so to optically center
+  // the icon we need to translate it upwards
+  "> .icon.icon-share": {
+    transform: translateY(-2px);
+  }
+  ${hover};
+`;
+
+IconWrapper.defaultProps = {
+  hover: {
+    backgroundColor: darken(colors["brand"]),
+    color: "white",
+  },
+};
+
+class BaseIcon extends Component {
   static props: {
     name: string,
     size?: string | number,
@@ -17,19 +46,27 @@ export default class Icon extends Component {
     height?: string | number,
     scale?: string | number,
     tooltip?: string, // using Tooltipify
-    className?: string,
+  };
+
+  static defaultProps = {
+    defaultName: "unknown",
   };
 
   render() {
-    const icon = loadIcon(this.props.name);
+    const { name, defaultName, className, ...rest } = this.props;
+
+    const icon = loadIcon(name) || loadIcon(defaultName);
     if (!icon) {
-      return null;
+      console.warn(`Icon "${name}" does not exist.`);
+      return <span />;
     }
-    const className = cx(
-      icon.attrs && icon.attrs.className,
-      this.props.className,
-    );
-    const props = { ...icon.attrs, ...this.props, className };
+
+    const props = {
+      ...icon.attrs,
+      ...stripLayoutProps(rest),
+      className: cx(icon.attrs.className, className),
+    };
+
     for (const prop of ["width", "height", "size", "scale"]) {
       if (typeof props[prop] === "string") {
         props[prop] = parseInt(props[prop], 10);
@@ -43,23 +80,35 @@ export default class Icon extends Component {
       props.width *= props.scale;
       props.height *= props.scale;
     }
+    delete props.size, props.scale;
 
     if (icon.img) {
       return (
         <RetinaImage
           forceOriginalDimensions={false}
-          {...props}
           src={icon.img}
+          {...props}
         />
       );
     } else if (icon.svg) {
       return <svg {...props} dangerouslySetInnerHTML={{ __html: icon.svg }} />;
-    } else {
+    } else if (icon.path) {
       return (
         <svg {...props}>
           <path d={icon.path} />
         </svg>
       );
+    } else {
+      console.warn(`Icon "${name}" must have an img, svg, or path`);
+      return <span />;
     }
   }
 }
+
+const Icon = styled(BaseIcon)`
+  ${space}
+  ${color}
+  ${hover}
+  flex-shrink: 0
+`;
+export default Tooltipify(Icon);

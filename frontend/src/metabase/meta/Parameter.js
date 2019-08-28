@@ -14,31 +14,34 @@ import type {
   ParameterValue,
   ParameterValueOrArray,
   ParameterValues,
+  ParameterType,
 } from "metabase/meta/types/Parameter";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Metadata } from "metabase/meta/types/Metadata";
 
 import moment from "moment";
 
-import Q from "metabase/lib/query";
-import { mbqlEq } from "metabase/lib/query/util";
+import * as Q_DEPRECATED from "metabase/lib/query";
+
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
 export function getTemplateTagParameters(tags: TemplateTag[]): Parameter[] {
   return tags
     .filter(
-      tag => tag.type != null && (tag.widget_type || tag.type !== "dimension"),
+      tag =>
+        tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
     .map(tag => ({
       id: tag.id,
       type:
-        tag.widget_type || (tag.type === "date" ? "date/single" : "category"),
+        tag["widget-type"] ||
+        (tag.type === "date" ? "date/single" : "category"),
       target:
         tag.type === "dimension"
           ? ["dimension", ["template-tag", tag.name]]
           : ["variable", ["template-tag", tag.name]],
-      name: tag.display_name,
+      name: tag["display-name"],
       slug: tag.name,
       default: tag.default,
     }));
@@ -48,7 +51,7 @@ export const getParametersBySlug = (
   parameters: Parameter[],
   parameterValues: ParameterValues,
 ): { [key: string]: string } => {
-  let result = {};
+  const result = {};
   for (const parameter of parameters) {
     if (parameterValues[parameter.id] != undefined) {
       result[parameter.slug] = parameterValues[parameter.id];
@@ -63,17 +66,17 @@ export function getParameterTargetFieldId(
   datasetQuery: DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
-    let dimension = target[1];
-    if (Array.isArray(dimension) && mbqlEq(dimension[0], "template-tag")) {
+    const dimension = target[1];
+    if (Array.isArray(dimension) && dimension[0] === "template-tag") {
       if (datasetQuery.type === "native") {
-        let templateTag =
-          datasetQuery.native.template_tags[String(dimension[1])];
+        const templateTag =
+          datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
-          return Q.getFieldTargetId(templateTag.dimension);
+          return Q_DEPRECATED.getFieldTargetId(templateTag.dimension);
         }
       }
     } else {
-      return Q.getFieldTargetId(dimension);
+      return Q_DEPRECATED.getFieldTargetId(dimension);
     }
   }
   return null;
@@ -139,13 +142,14 @@ const timeParameterValueDeserializers: Deserializer[] = [
     testRegex: /^([0-9-T:]+)$/,
     deserialize: (matches, fieldRef) => ["=", fieldRef, matches[0]],
   },
-  // TODO 3/27/17 Atte Keinänen
-  // Unify BETWEEN -> between, IS_NULL -> is-null, NOT_NULL -> not-null throughout the codebase
   {
     testRegex: /^([0-9-T:]+)~([0-9-T:]+)$/,
-    deserialize: (matches, fieldRef) =>
-      // $FlowFixMe
-      ["BETWEEN", fieldRef, matches[0], matches[1]],
+    deserialize: (matches, fieldRef) => [
+      "between",
+      fieldRef,
+      matches[0],
+      matches[1],
+    ],
   },
 ];
 
@@ -207,7 +211,7 @@ export function parameterToMBQLFilter(
   if (parameter.type.indexOf("date/") === 0) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else {
-    const fieldId = Q.getFieldTargetId(fieldRef);
+    const fieldId = Q_DEPRECATED.getFieldTargetId(fieldRef);
     const field = metadata.fields[fieldId];
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {
@@ -215,5 +219,15 @@ export function parameterToMBQLFilter(
     } else {
       return stringParameterValueToMBQL(parameter.value, fieldRef);
     }
+  }
+}
+
+export function getParameterIconName(parameterType: ?ParameterType) {
+  if (/^date\//.test(parameterType || "")) {
+    return "calendar";
+  } else if (/^location\//.test(parameterType || "")) {
+    return "location";
+  } else {
+    return "label";
   }
 }

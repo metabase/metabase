@@ -1,22 +1,18 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import S from "metabase/components/Sidebar.css";
-import { t } from "c-3po";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import SidebarItem from "metabase/components/SidebarItem.jsx";
-
+import { t } from "ttag";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-const FieldSidebar = ({
-  database,
-  table,
-  field,
-  style,
-  className,
-  showXray,
-}) => (
+import MetabaseSettings from "metabase/lib/settings";
+
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import SidebarItem from "metabase/components/SidebarItem";
+
+import S from "metabase/components/Sidebar.css";
+
+const FieldSidebar = ({ database, table, field, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <ul>
       <div className={S.breadcrumbs}>
@@ -44,12 +40,13 @@ const FieldSidebar = ({
         icon="document"
         name={t`Details`}
       />
-      {showXray && (
+
+      {MetabaseSettings.get("enable_xrays") && (
         <SidebarItem
-          key={`/xray/field/${field.id}/approximate`}
-          href={`/xray/field/${field.id}/approximate`}
-          icon="beaker"
-          name={t`X-ray this Field`}
+          key={`/auto/dashboard/field/${field.id}`}
+          href={`/auto/dashboard/field/${field.id}`}
+          icon="bolt"
+          name={t`X-ray this field`}
         />
       )}
     </ul>
@@ -62,7 +59,6 @@ FieldSidebar.propTypes = {
   field: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object,
-  showXray: PropTypes.bool,
 };
 
 export default pure(FieldSidebar);

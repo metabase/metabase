@@ -1,7 +1,7 @@
 import { Lexer, Parser, getImage } from "chevrotain";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 import {
   formatFieldName,
   formatExpressionName,
@@ -38,7 +38,7 @@ class ExpressionsParser extends Parser {
     };
     super(input, allTokens, parserOptions);
 
-    let $ = this;
+    const $ = this;
 
     this._options = options;
 
@@ -56,8 +56,10 @@ class ExpressionsParser extends Parser {
     // The precedence of binary expressions is determined by
     // how far down the Parse Tree the binary expression appears.
     $.RULE("additionExpression", outsideAggregation => {
-      let initial = $.SUBRULE($.multiplicationExpression, [outsideAggregation]);
-      let operations = $.MANY(() => {
+      const initial = $.SUBRULE($.multiplicationExpression, [
+        outsideAggregation,
+      ]);
+      const operations = $.MANY(() => {
         const op = $.CONSUME(AdditiveOperator);
         const rhsVal = $.SUBRULE2($.multiplicationExpression, [
           outsideAggregation,
@@ -68,8 +70,8 @@ class ExpressionsParser extends Parser {
     });
 
     $.RULE("multiplicationExpression", outsideAggregation => {
-      let initial = $.SUBRULE($.atomicExpression, [outsideAggregation]);
-      let operations = $.MANY(() => {
+      const initial = $.SUBRULE($.atomicExpression, [outsideAggregation]);
+      const operations = $.MANY(() => {
         const op = $.CONSUME(MultiplicativeOperator);
         const rhsVal = $.SUBRULE2($.atomicExpression, [outsideAggregation]);
         return [op, rhsVal];
@@ -184,9 +186,9 @@ class ExpressionsParser extends Parser {
     });
 
     $.RULE("parenthesisExpression", outsideAggregation => {
-      let lParen = $.CONSUME(LParen);
-      let expValue = $.SUBRULE($.expression, [outsideAggregation]);
-      let rParen = $.CONSUME(RParen);
+      const lParen = $.CONSUME(LParen);
+      const expValue = $.SUBRULE($.expression, [outsideAggregation]);
+      const rParen = $.CONSUME(RParen);
       return this._parens(lParen, expValue, rParen);
     });
 
@@ -231,10 +233,10 @@ class ExpressionsParserMBQL extends ExpressionsParser {
     return arg == null ? [agg] : [agg, arg];
   }
   _metricReference(metricName, metricId) {
-    return ["METRIC", metricId];
+    return ["metric", metricId];
   }
   _fieldReference(fieldName, fieldId) {
-    return ["field-id", fieldId];
+    return Array.isArray(fieldId) ? fieldId : ["field-id", fieldId];
   }
   _expressionReference(fieldName) {
     return ["expression", fieldName];
@@ -422,7 +424,7 @@ export function suggest(
       nextTokenType === MultiplicativeOperator ||
       nextTokenType === AdditiveOperator
     ) {
-      let tokens = getSubTokenTypes(nextTokenType);
+      const tokens = getSubTokenTypes(nextTokenType);
       finalSuggestions.push(
         ...tokens.map(token => ({
           type: "operators",
@@ -456,10 +458,10 @@ export function suggest(
       if (!outsideAggregation) {
         let fields = [];
         if (startRule === "aggregation" && currentAggregationToken) {
-          let aggregationShort = getAggregationFromName(
+          const aggregationShort = getAggregationFromName(
             getImage(currentAggregationToken),
           );
-          let aggregationOption = _.findWhere(
+          const aggregationOption = _.findWhere(
             tableMetadata.aggregation_options,
             { short: aggregationShort },
           );
@@ -542,7 +544,7 @@ export function suggest(
         (suggestion.name && suggestion.name.toLowerCase().startsWith(partial)),
     );
 
-    let prefixLength = partial.length;
+    const prefixLength = partial.length;
     for (const suggestion of finalSuggestions) {
       suggestion.prefixLength = prefixLength;
     }

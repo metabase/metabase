@@ -7,17 +7,19 @@
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :refer [User]]]
             [metabase.test.data.users :as test-users]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import metabase.models.permissions_group.PermissionsGroupInstance))
 
-;;; ---------------------------------------- Check that the root entry for Admin was created ----------------------------------------
+;;; -------------------------------- Check that the root entry for Admin was created ---------------------------------
 
 (expect (db/exists? Permissions :group_id (:id (perm-group/admin)), :object "/"))
 
 
-;;; ---------------------------------------- check that we can get the magic permissions groups through the helper functions ----------------------------------------
+;;; ---------------- check that we can get the magic permissions groups through the helper functions -----------------
+
 (expect PermissionsGroupInstance (perm-group/all-users))
 (expect PermissionsGroupInstance (perm-group/admin))
 (expect PermissionsGroupInstance (perm-group/metabot))
@@ -39,7 +41,8 @@
 (expect Exception (db/update! PermissionsGroup (:id (perm-group/metabot))   :name "Cool People"))
 
 
-;;; ---------------------------------------- newly created users should get added to the appropriate magic groups ----------------------------------------
+;;; ---------------------- newly created users should get added to the appropriate magic groups ----------------------
+
 (expect
   (tt/with-temp User [{user-id :id}]
     (db/exists? PermissionsGroupMembership
@@ -62,7 +65,8 @@
 
 (expect
   (do
-    ;; make sure Crowberto is in the DB because otherwise the code will get snippy when the temp user is deleted since you're not allowed to delete the last member of Admin
+    ;; make sure Crowberto is in the DB because otherwise the code will get snippy when the temp user is deleted since
+    ;; you're not allowed to delete the last member of Admin
     (test-users/user->id :crowberto)
     (tt/with-temp User [{user-id :id} {:is_superuser true}]
       (db/exists? PermissionsGroupMembership
@@ -76,7 +80,7 @@
       :group_id (:id (perm-group/admin)))))
 
 
-;;; ---------------------------------------- magic groups should have permissions for newly created databases ----------------------------------------
+;;; ------------------------ magic groups should have permissions for newly created databases ------------------------
 
 (defn- group-has-full-access?
   "Does a group have permissions for OBJECT and *all* of its children?"
@@ -95,13 +99,21 @@
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/admin)) (perms/object-path database-id))))
 
+;; (Except for the MetaBot, which doesn't get data permissions)
 (expect
+  false
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/metabot)) (perms/object-path database-id))))
 
+;; Attempting to create a data permissions entry for the MetaBot should throw an Exception
+(expect
+  Exception
+  (tt/with-temp Database [{database-id :id}]
+    (db/insert! Permissions :group_id (u/get-id (perm-group/metabot)), :object (perms/object-path database-id))))
 
 
-;;; ---------------------------------------- flipping the is_superuser bit should add/remove user from Admin group as appropriate ----------------------------------------
+;;; -------------- flipping the is_superuser bit should add/remove user from Admin group as appropriate --------------
+
 ;; adding user to Admin should set is_superuser -> true
 (expect
   (tt/with-temp User [{user-id :id}]

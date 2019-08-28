@@ -6,6 +6,7 @@ import { connect } from "react-redux";
 import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 
 import * as Urls from "metabase/lib/urls";
+import MetabaseSettings from "metabase/lib/settings";
 
 import { getParameters } from "metabase/meta/Card";
 import {
@@ -22,7 +23,10 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class QuestionEmbedWidget extends Component {
   render() {
     const {
@@ -50,10 +54,24 @@ export default class QuestionEmbedWidget extends Component {
           updateEmbeddingParams(card, embeddingParams)
         }
         getPublicUrl={({ public_uuid }, extension) =>
-          Urls.publicCard(public_uuid, extension)
+          Urls.publicQuestion(public_uuid, extension)
         }
         extensions={["csv", "xlsx", "json"]}
       />
+    );
+  }
+
+  static shouldRender({
+    question,
+    isAdmin,
+    // preferably this would come from props
+    isPublicLinksEnabled = MetabaseSettings.get("public_sharing"),
+    isEmbeddingEnabled = MetabaseSettings.get("embedding"),
+  }) {
+    return (
+      question.isSaved() &&
+      ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
+        (isEmbeddingEnabled && isAdmin))
     );
   }
 }

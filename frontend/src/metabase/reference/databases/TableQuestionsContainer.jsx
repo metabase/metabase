@@ -17,7 +17,7 @@ import {
   getIsEditing,
 } from "../selectors";
 
-import { loadEntities } from "metabase/questions/questions";
+import Questions from "metabase/entities/questions";
 
 const mapStateToProps = (state, props) => ({
   database: getDatabase(state, props),
@@ -27,12 +27,15 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  fetchQuestions: () => loadEntities("cards", {}),
+  fetchQuestions: Questions.actions.fetchList,
   ...metadataActions,
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableQuestionsContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

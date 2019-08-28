@@ -9,8 +9,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsTimeseries } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
-
-export const NULL_DIMENSION_WARNING = "Data includes missing dimension values.";
+import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -25,7 +24,7 @@ export function initChart(chart, element) {
 }
 
 export function makeIndexMap(values: Array<Value>): Map<Value, number> {
-  let indexMap = new Map();
+  const indexMap = new Map();
   for (const [index, key] of values.entries()) {
     indexMap.set(key, index);
   }
@@ -75,24 +74,20 @@ export function reduceGroup(group, key, warnUnaggregated) {
       if (acc == null && d[key] == null) {
         return null;
       } else {
-        if (acc != null) {
+        if (acc != null && d[key] != null) {
           warnUnaggregated();
-          return acc + (d[key] || 0);
-        } else {
-          return d[key] || 0;
         }
+        return (acc || 0) + (d[key] || 0);
       }
     },
     (acc, d) => {
       if (acc == null && d[key] == null) {
         return null;
       } else {
-        if (acc != null) {
+        if (acc != null && d[key] != null) {
           warnUnaggregated();
-          return acc - (d[key] || 0);
-        } else {
-          return -(d[key] || 0);
         }
+        return (acc || 0) - (d[key] || 0);
       }
     },
     () => null,
@@ -108,13 +103,16 @@ function moment_fast_toString() {
 
 export function HACK_parseTimestamp(value, unit, warn) {
   if (value == null) {
-    warn(NULL_DIMENSION_WARNING);
+    warn(nullDimensionWarning());
     return null;
-  } else {
-    let m = parseTimestamp(value, unit);
-    m.toString = moment_fast_toString;
-    return m;
   }
+  const m = parseTimestamp(value, unit);
+  if (!m.isValid()) {
+    warn(invalidDateWarning(value));
+    return null;
+  }
+  m.toString = moment_fast_toString;
+  return m;
 }
 
 /************************************************************ PROPERTIES ************************************************************/
@@ -124,6 +122,7 @@ export const isTimeseries = settings =>
 export const isQuantitative = settings =>
   ["linear", "log", "pow"].indexOf(settings["graph.x_axis.scale"]) >= 0;
 export const isHistogram = settings =>
+  settings["graph.x_axis._scale_original"] === "histogram" ||
   settings["graph.x_axis.scale"] === "histogram";
 export const isOrdinal = settings =>
   !isTimeseries(settings) && !isHistogram(settings);
@@ -135,10 +134,8 @@ export const isOrdinal = settings =>
 export const isHistogramBar = ({ settings, chartType }) =>
   isHistogram(settings) && chartType === "bar";
 
-export const isStacked = (settings, datas) =>
-  settings["stackable.stack_type"] && datas.length > 1;
+export const isStacked = (settings, datas) => settings["stackable.stack_type"];
 export const isNormalized = (settings, datas) =>
-  isStacked(settings, datas) &&
   settings["stackable.stack_type"] === "normalized";
 
 // find the first nonempty single series

@@ -1,6 +1,7 @@
 (ns metabase.events.activity-feed-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.events.activity-feed :refer :all]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [activity :refer [Activity]]
              [card :refer [Card]]
@@ -54,7 +55,7 @@
                                                 :type     :query
                                                 :query    {:source-table (data/id :venues)}}}]
                   Card [card-2 {:name          "My Cool NESTED Card"
-                                :dataset_query {:database metabase.models.database/virtual-id
+                                :dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                 :type     :query
                                                 :query    {:source-table (str "card__" (u/get-id card-1))}}}]]
     (with-temp-activities

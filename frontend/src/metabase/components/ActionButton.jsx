@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Button from "metabase/components/Button";
 
 import { cancelable } from "metabase/lib/promise";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 type Props = {
@@ -134,7 +134,7 @@ export default class ActionButton extends Component {
             ? cx("Button", "Button--waiting")
             : cx(className, {
                 "Button--waiting pointer-events-none": active,
-                "Button--success": result === "success",
+                "Button--success pointer-events-none": result === "success",
                 "Button--danger": result === "failed",
               })
         }

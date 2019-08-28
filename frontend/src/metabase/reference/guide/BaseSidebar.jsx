@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import S from "metabase/components/Sidebar.css";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
 import SidebarItem from "metabase/components/SidebarItem.jsx";
 
@@ -20,12 +20,6 @@ const BaseSidebar = ({ style, className }) => (
       />
     </div>
     <ol>
-      <SidebarItem
-        key="/reference/guide"
-        href="/reference/guide"
-        icon="reference"
-        name={t`Start here`}
-      />
       <SidebarItem
         key="/reference/metrics"
         href="/reference/metrics"
