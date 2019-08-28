@@ -11,8 +11,7 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
-             [models :as models]]
-            [toucan.db :as tdb]))
+             [models :as models]]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -110,7 +109,7 @@
                                                       (map :collection_id)
                                                       (set)
                                                       ((fn [collection-ids]
-                                                         (tdb/select 'Collection :id [:in collection-ids])))
+                                                         (db/select 'Collection :id [:in collection-ids])))
                                                       (map i/perms-objects-set)
                                                       (set))]
         (into #{(perms/object-path database-id schema table-id)}
