@@ -37,11 +37,12 @@
 
 ;; Check that we can classify decimal fields that have specially handled NaN values
 (expect
-  [nil :type/Category]
+  [nil :type/Income]
   (tt/with-temp* [Database [db]
                   Table    [table {:db_id (u/get-id db)}]
                   Field    [field {:table_id            (u/get-id table)
-                                   :name                "Current fingerprint, not analyzed"
+                                   :name                "Income"
+                                   :base_type           :type/Float
                                    :special_type        nil
                                    :fingerprint_version i/latest-fingerprint-version
                                    :fingerprint         {:type   {:type/Number {:min "NaN"
@@ -50,16 +51,18 @@
                                                          :global {:distinct-count 3}}
                                    :last_analyzed       nil}]]
     [(:special_type (Field (u/get-id field)))
-     (do (classify/classify-fields-for-db! db [table] (constantly nil))
-         (:special_type (Field (u/get-id field))))]))
+     (do
+       (classify/classify-fields-for-db! db [table] (constantly nil))
+       (:special_type (Field (u/get-id field))))]))
 
 ;; Check that we can classify decimal fields that have specially handled infinity values
 (expect
-  [nil :type/Category]
+  [nil :type/Income]
   (tt/with-temp* [Database [db]
                   Table    [table {:db_id (u/get-id db)}]
                   Field    [field {:table_id            (u/get-id table)
-                                   :name                "Current fingerprint, not analyzed"
+                                   :name                "Income"
+                                   :base_type           :type/Float
                                    :special_type        nil
                                    :fingerprint_version i/latest-fingerprint-version
                                    :fingerprint         {:type   {:type/Number {:min "-Infinity"
@@ -68,5 +71,6 @@
                                                          :global {:distinct-count 3}}
                                    :last_analyzed       nil}]]
     [(:special_type (Field (u/get-id field)))
-     (do (classify/classify-fields-for-db! db [table] (constantly nil))
-         (:special_type (Field (u/get-id field))))]))
+     (do
+       (classify/classify-fields-for-db! db [table] (constantly nil))
+       (:special_type (Field (u/get-id field))))]))
