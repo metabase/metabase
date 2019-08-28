@@ -11,7 +11,8 @@
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
-             [models :as models]]))
+             [models :as models]]
+            [toucan.db :as tdb]))
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -103,21 +104,29 @@
    see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
    seconds."
   (memoize/ttl
-   (fn [table-id]
-     (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
-       #{(perms/object-path database-id schema table-id)}))
-   :ttl/threshold 5000))
+    (fn [table-id read-or-write]
+      (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)
+            collection-perms                     (->> (db/select 'Card :table_id table-id)
+                                                      (map :collection_id)
+                                                      (set)
+                                                      ((fn [collection-ids]
+                                                         (tdb/select 'Collection :id [:in collection-ids])))
+                                                      (map i/perms-objects-set)
+                                                      (set))]
+        (into #{(perms/object-path database-id schema table-id)}
+              collection-perms)))
+    :ttl/threshold 5000))
 
 (defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
    same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
-  [{table-id :table_id, {db-id :db_id, schema :schema} :table} _]
+  [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   {:arglists '([field read-or-write])}
   (if db-id
     ;; if Field already has a hydrated `:table`, then just use that to generate perms set (no DB calls required)
     #{(perms/object-path db-id schema table-id)}
     ;; otherwise we need to fetch additional info about Field's Table. This is cached for 5 seconds (see above)
-    (perms-objects-set* table-id)))
+    (perms-objects-set* table-id read-or-write)))
 
 
 (u/strict-extend (class Field)
