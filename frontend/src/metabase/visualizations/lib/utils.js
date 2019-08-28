@@ -146,38 +146,6 @@ export function getFriendlyName(column) {
   return column.display_name;
 }
 
-export function getXValues(datas) {
-  // get all xValues
-  const xValuesSet = new Set();
-  // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
-  let isAscending = true;
-  let isDescending = true;
-  // this is fairly optimized since it iterates over every row in the results
-  for (let i = 0, datasLength = datas.length; i < datasLength; i++) {
-    const rows = datas[i];
-    let lastValue = rows.length > 0 ? rows[0][0] : null;
-    xValuesSet.add(lastValue);
-    // skip the first row so we can compare
-    for (let j = 1, rowsLength = rows.length; j < rowsLength; j++) {
-      const value = rows[j][0];
-      xValuesSet.add(value);
-      isAscending = isAscending && lastValue <= value;
-      isDescending = isDescending && lastValue >= value;
-      lastValue = value;
-    }
-  }
-  let xValues = Array.from(xValuesSet);
-  if (isDescending) {
-    // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
-    // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
-    xValues = _.sortBy(xValues, x => x).reverse();
-  } else if (isAscending) {
-    // default line/area charts to ascending since otherwise lines could be wonky
-    xValues = _.sortBy(xValues, x => x);
-  }
-  return xValues;
-}
-
 export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&

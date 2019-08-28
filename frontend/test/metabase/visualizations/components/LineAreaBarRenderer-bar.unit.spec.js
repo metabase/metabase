@@ -27,7 +27,7 @@ const DEFAULT_COLUMN_SETTINGS = {
   date_style: "MMMM D, YYYY",
 };
 
-function MainSeries(chartType, settings = {}, value = 1) {
+function MainSeries(chartType, settings = {}, { key = "A", value = 1 } = {}) {
   return {
     card: {
       display: chartType,
@@ -41,7 +41,7 @@ function MainSeries(chartType, settings = {}, value = 1) {
         StringColumn({ display_name: "Category", source: "breakout" }),
         NumberColumn({ display_name: "Sum", source: "aggregation" }),
       ],
-      rows: [["A", value]],
+      rows: [[key, value]],
     },
   };
 }
@@ -184,7 +184,13 @@ describe("LineAreaBarRenderer-bar", () => {
     const onHoverChange = jest.fn();
     renderLineAreaBar(
       element,
-      [MainSeries("bar", { "stackable.stack_type": "normalized" }, 3)],
+      [
+        MainSeries(
+          "bar",
+          { "stackable.stack_type": "normalized" },
+          { value: 3 },
+        ),
+      ],
       { onHoverChange },
     );
 
@@ -217,6 +223,22 @@ describe("LineAreaBarRenderer-bar", () => {
       { key: "Category", value: "A" },
       { key: "Foo", value: 1 },
     ]);
+  });
+
+  it('should render "(empty)" for nulls', () => {
+    const onHoverChange = jest.fn();
+    renderLineAreaBar(element, [MainSeries("bar", {}, { key: null })], {
+      onHoverChange,
+    });
+
+    dispatchUIEvent(qsa(".bar, .dot")[0], "mousemove");
+
+    const { calls } = onHoverChange.mock;
+    const [{ value }] = getDataKeyValues(calls[0][0]);
+    expect(value).toEqual("(empty)");
+
+    const tick = element.querySelector(".axis.x .tick text");
+    expect(tick.textContent).toEqual("(empty)");
   });
 });
 
