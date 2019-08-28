@@ -29,12 +29,13 @@ export const IconWrapper = styled("div")`
     transform: translateY(-2px);
   }
   ${hover};
+  transition: all 300ms ease-in-out;
 `;
 
 IconWrapper.defaultProps = {
   hover: {
-    backgroundColor: darken(colors["brand"]),
-    color: "white",
+    backgroundColor: colors["bg-medium"],
+    color: colors["brand"],
   },
 };
 
