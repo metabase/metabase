@@ -1,6 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
@@ -8,6 +9,8 @@ import Popover from "metabase/components/Popover";
 import { Link } from "react-router";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+
+import { performAction } from "metabase/visualizations/lib/action";
 
 import type {
   ClickObject,
@@ -18,7 +21,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom",
+    icon: "zoom_in",
   },
   records: {
     icon: "table2",
@@ -38,17 +41,20 @@ const SECTIONS = {
   averages: {
     icon: "curve",
   },
+  distribution: {
+    icon: "bar",
+  },
   filter: {
-    icon: "funneloutline",
+    icon: "funnel_outline",
   },
   dashboard: {
     icon: "dashboard",
   },
-  distribution: {
-    icon: "bar",
-  },
   auto: {
     icon: "bolt",
+  },
+  formatting: {
+    icon: "pencil",
   },
 };
 // give them indexes so we can sort the sections by the above ordering (JS objects are ordered)
@@ -71,6 +77,7 @@ type State = {
   popoverAction: ?ClickAction,
 };
 
+@connect()
 export default class ChartClickActions extends Component {
   props: Props;
   state: State = {
@@ -85,7 +92,8 @@ export default class ChartClickActions extends Component {
   };
 
   handleClickAction = (action: ClickAction) => {
-    const { onChangeCardAndRun } = this.props;
+    // $FlowFixMe: dispatch provided by @connect
+    const { dispatch, onChangeCardAndRun } = this.props;
     if (action.popover) {
       MetabaseAnalytics.trackEvent(
         "Actions",
@@ -93,17 +101,21 @@ export default class ChartClickActions extends Component {
         getGALabelForAction(action),
       );
       this.setState({ popoverAction: action });
-    } else if (action.question) {
-      const nextQuestion = action.question();
-      if (nextQuestion) {
+    } else {
+      const didPerform = performAction(action, {
+        dispatch,
+        onChangeCardAndRun,
+      });
+      if (didPerform) {
         MetabaseAnalytics.trackEvent(
           "Actions",
           "Executed Click Action",
           getGALabelForAction(action),
         );
-        onChangeCardAndRun({ nextCard: nextQuestion.card() });
+        this.close();
+      } else {
+        console.warn("No action performed", action);
       }
-      this.close();
     }
   };
 
@@ -114,7 +126,7 @@ export default class ChartClickActions extends Component {
       return null;
     }
 
-    let { popoverAction } = this.state;
+    const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
       const PopoverContent = popoverAction.popover;
@@ -164,7 +176,7 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-grey-3">
+          <div className="text-bold text-medium">
             {sections.map(([key, actions]) => (
               <div
                 key={key}

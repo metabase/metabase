@@ -2,7 +2,9 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
+import cx from "classnames";
+
 import MetabaseSettings from "metabase/lib/settings";
 import ErrorMessage from "metabase/components/ErrorMessage";
 import ErrorDetails from "metabase/components/ErrorDetails";
@@ -31,10 +33,11 @@ class VisualizationError extends Component {
     card: PropTypes.object.isRequired,
     duration: PropTypes.number.isRequired,
     error: PropTypes.object.isRequired,
+    className: PropTypes.string,
   };
 
   render() {
-    const { card, duration, error } = this.props;
+    const { card, duration, error, className } = this.props;
 
     if (error && typeof error.status === "number") {
       // Assume if the request took more than 15 seconds it was due to a timeout
@@ -42,6 +45,7 @@ class VisualizationError extends Component {
       if (duration > 15 * 1000) {
         return (
           <ErrorMessage
+            className={className}
             type="timeout"
             title={t`Your question took too long`}
             message={t`We didn't get an answer back from your database in time, so we had to stop. You can try again in a minute, or if the problem persists, you can email an admin to let them know.`}
@@ -51,6 +55,7 @@ class VisualizationError extends Component {
       } else {
         return (
           <ErrorMessage
+            className={className}
             type="serverError"
             title={t`We're experiencing server issues`}
             message={t`Try refreshing the page after waiting a minute or two. If the problem persists we'd recommend you contact an admin.`}
@@ -65,7 +70,9 @@ class VisualizationError extends Component {
     ) {
       // always show errors for native queries
       return (
-        <div className="QueryError flex full align-center text-error">
+        <div
+          className={cx(className, "QueryError flex align-center text-error")}
+        >
           <div className="QueryError-iconWrapper">
             <svg
               className="QueryError-icon"
@@ -82,7 +89,7 @@ class VisualizationError extends Component {
       );
     } else {
       return (
-        <div className="QueryError2 flex full justify-center">
+        <div className={cx(className, "QueryError2 flex justify-center")}>
           <div className="QueryError-image QueryError-image--queryError mr4" />
           <div className="QueryError2-details">
             <h1 className="text-bold">{t`There was a problem with your question`}</h1>

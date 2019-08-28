@@ -10,6 +10,7 @@ import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
+import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -48,7 +49,9 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) totalLength += String(value).length;
+  for (const value of values) {
+    totalLength += String(value).length;
+  }
 
   return Math.round(totalLength / values.length);
 }
@@ -73,7 +76,9 @@ function adjustXAxisTicksIfNeeded(axis, chartWidthPixels, xValues) {
   const maxTicks = Math.floor(chartWidthPixels / tickAverageWidthPixels);
 
   // finally, if the chart is currently showing more ticks than we think it can show, adjust it down
-  if (getNumTicks(axis) > maxTicks) axis.ticks(maxTicks);
+  if (getNumTicks(axis) > maxTicks) {
+    axis.ticks(maxTicks);
+  }
 }
 
 export function applyChartTimeseriesXAxis(
@@ -92,10 +97,11 @@ export function applyChartTimeseriesXAxis(
   let dimensionColumn = firstSeries.data.cols[0];
 
   // get the data's timezone offset from the first row
-  let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
+  const dataOffset =
+    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
   // compute the data interval
-  let dataInterval = xInterval;
+  const dataInterval = xInterval;
   let tickInterval = dataInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
@@ -139,7 +145,7 @@ export function applyChartTimeseriesXAxis(
         .utcOffset(dataOffset)
         .format();
       return formatValue(timestampFixed, {
-        column: dimensionColumn,
+        ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
@@ -157,14 +163,7 @@ export function applyChartTimeseriesXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain[0] = moment(xDomain[0]).subtract(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
-  xDomain[1] = moment(xDomain[1]).add(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
+  xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
   chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
@@ -175,6 +174,29 @@ export function applyChartTimeseriesXAxis(
       1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count,
     ),
   );
+}
+
+export function stretchTimeseriesDomain([start, end], { count, interval }) {
+  // Non-timeseries axes are stretched by 0.75 x-intervals in both directions.
+  // That's a bit trickier to do with dates because moment doesn't support
+  // adding or subtracting partial months, weeks, or days. To work around this,
+  // we do approximate math with smaller units. We're unable to add 0.75 months,
+  // so instead we add 0.75 * 30 days. I'm unclear why, but moment *is* able to add partial years and quarters.
+  if (interval === "month") {
+    interval = "day";
+    count *= 30;
+  } else if (interval === "week") {
+    interval = "day";
+    count *= 7;
+  } else if (interval === "day") {
+    interval = "hour";
+    count *= 24;
+  }
+
+  return [
+    moment(start).subtract(count * 0.75, interval),
+    moment(end).add(count * 0.75, interval),
+  ];
 }
 
 export function applyChartQuantitativeXAxis(
@@ -203,13 +225,21 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    chart.xAxis().tickFormat(d =>
-      formatValue(d, {
-        column: dimensionColumn,
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      }),
-    );
+    // if xInterval is less than 1 we need to scale the values before doing
+    // modulo comparison. isMultipleOf will compute it for us but we can do it
+    // once here as an optimization
+    const modulorScale = getModuloScaleFactor(xInterval);
+
+    chart.xAxis().tickFormat(d => {
+      // don't show ticks that aren't multiples of xInterval
+      if (isMultipleOf(d, xInterval, modulorScale)) {
+        return formatValue(d, {
+          ...chart.settings.column(dimensionColumn),
+          type: "axis",
+          compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+        });
+      }
+    });
   } else {
     chart.xAxis().ticks(0);
     chart.xAxis().tickFormat("");
@@ -238,7 +268,11 @@ export function applyChartQuantitativeXAxis(
   chart.x(scale.domain(xDomain)).xUnits(dc.units.fp.precision(xInterval));
 }
 
-export function applyChartOrdinalXAxis(chart, series, { xValues }) {
+export function applyChartOrdinalXAxis(
+  chart,
+  series,
+  { xValues, isHistogramBar },
+) {
   // find the first nonempty single series
   // $FlowFixMe
   const firstSeries: SingleSeries = _.find(
@@ -264,9 +298,10 @@ export function applyChartOrdinalXAxis(chart, series, { xValues }) {
 
     chart.xAxis().tickFormat(d =>
       formatValue(d, {
-        column: dimensionColumn,
+        ...chart.settings.column(dimensionColumn),
         type: "axis",
         compact: chart.settings["graph.x_axis.labels_enabled"] === "compact",
+        noRange: isHistogramBar,
       }),
     );
   } else {
@@ -280,6 +315,17 @@ export function applyChartOrdinalXAxis(chart, series, { xValues }) {
   }
 
   chart.x(d3.scale.ordinal().domain(xValues)).xUnits(dc.units.ordinal);
+}
+
+// Sometimes tick marks are placed *just* off from zero.
+// We still want to format these as "0" rather than "0.0000000000000018".
+// But! We need to allow for real non-zero ticks at very small values,
+// so we scale a tolerance to the extent of the yAxis.
+// The tolerance is arbitrarily set to one millionth of the yExtent.
+const TOLERANCE_TO_Y_EXTENT = 1e6;
+export function maybeRoundValueToZero(value, [yMin, yMax]) {
+  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  return Math.abs(value) < tolerance ? 0 : value;
 }
 
 export function applyChartYAxis(chart, series, yExtent, axisName) {
@@ -306,7 +352,9 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       axis.label(axis.setting("title_text"), Y_LABEL_PADDING);
     } else {
       // only use the column name if all in the series are the same
-      const labels = _.uniq(series.map(s => getFriendlyName(s.data.cols[1])));
+      const labels = _.uniq(
+        series.map(single => chart.settings.series(single).title),
+      );
       if (labels.length === 1) {
         axis.label(labels[0], Y_LABEL_PADDING);
       }
@@ -319,6 +367,12 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
     if (chart.settings["stackable.stack_type"] === "normalized") {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
+    } else {
+      const metricColumn = series[0].data.cols[1];
+      axis.axis().tickFormat(value => {
+        value = maybeRoundValueToZero(value, yExtent);
+        return formatValue(value, chart.settings.column(metricColumn));
+      });
     }
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
@@ -335,6 +389,8 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   } else {
     scale = d3.scale.linear();
   }
+
+  scale.clamp(true);
 
   if (axis.setting("auto_range")) {
     // elasticY not compatible with log scale
@@ -354,15 +410,19 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     }
     axis.scale(scale);
   } else {
+    // We union data's yExtent with the range specified in the chart settings
+    // This avoids rendering issues with bars and lines overflowing the c
+    const [min, max] = d3.extent([
+      axis.setting("min"),
+      axis.setting("max"),
+      ...yExtent,
+    ]);
     if (
       axis.setting("scale") === "log" &&
-      !(
-        (axis.setting("min") < 0 && axis.setting("max") < 0) ||
-        (axis.setting("min") > 0 && axis.setting("max") > 0)
-      )
+      !((min < 0 && max < 0) || (min > 0 && max > 0))
     ) {
       throw "Y-axis must not cross 0 when using log scale.";
     }
-    axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]));
+    axis.scale(scale.domain([min, max]));
   }
 }

@@ -11,17 +11,23 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.pulse.render :as render]
+            [metabase.pulse.render
+             [body :as render.body]
+             [style :as render.style]]
             [metabase.util
              [date :as du]
              [export :as export]
+             [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
              [urls :as url]]
             [stencil
              [core :as stencil]
              [loader :as stencil-loader]]
             [toucan.db :as db])
-  (:import [java.io File FileOutputStream]
-           java.util.Arrays))
+  (:import [java.io File IOException]))
+
+(when config/is-dev?
+  (alter-meta! #'stencil.core/render-file assoc :style/indent 1))
 
 ;; Dev only -- disable template caching
 (when config/is-dev?
@@ -35,19 +41,21 @@
     {:quotation       (:quote data-quote)
      :quotationAuthor (:author data-quote)}))
 
-(def ^:private ^:const notification-context
+(def ^:private notification-context
   {:emailType  "notification"
    :logoHeader true})
 
-(def ^:private ^:const abandonment-context
-  {:heading      "We’d love your feedback."
-   :callToAction "It looks like Metabase wasn’t quite a match for you. Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"
-   :link         "http://www.metabase.com/feedback/inactive"})
+(defn- abandonment-context []
+  {:heading      (trs "We’d love your feedback.")
+   :callToAction (str (deferred-trs "It looks like Metabase wasn’t quite a match for you.")
+                      " "
+                      (deferred-trs "Would you mind taking a fast 5 question survey to help the Metabase team understand why and make things better in the future?"))
+   :link         "https://metabase.com/feedback/inactive"})
 
-(def ^:private ^:const follow-up-context
-  {:heading      "We hope you've been enjoying Metabase."
-   :callToAction "Would you mind taking a fast 6 question survey to tell us how it’s going?"
-   :link         "http://www.metabase.com/feedback/active"})
+(defn- follow-up-context []
+  {:heading      (trs "We hope you''ve been enjoying Metabase.")
+   :callToAction (trs "Would you mind taking a fast 6 question survey to tell us how it’s going?")
+   :link         "https://metabase.com/feedback/active"})
 
 
 ;;; ### Public Interface
@@ -74,8 +82,9 @@
 
 (defn- all-admin-recipients
   "Return a sequence of email addresses for all Admin users.
-   The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in `mailto` links
-   (e.g., for the new user to email with any questions)."
+
+  The first recipient will be the site admin (or oldest admin if unset), which is the address that should be used in
+  `mailto` links (e.g., for the new user to email with any questions)."
   []
   (concat (when-let [admin-email (public-settings/admin-email)]
             [admin-email])
@@ -87,10 +96,9 @@
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (email/send-message!
-      :subject      (format (if google-auth?
-                              "%s created a Metabase account"
-                              "%s accepted their Metabase invite")
-                            (:common_name new-user))
+      :subject      (str (if google-auth?
+                           (trs "{0} created a Metabase account"     (:common_name new-user))
+                           (trs "{0} accepted their Metabase invite" (:common_name new-user))))
       :recipients   recipients
       :message-type :html
       :message      (stencil/render-file "metabase/email/user_joined_notification"
@@ -118,12 +126,13 @@
                         :passwordResetUrl password-reset-url
                         :logoHeader       true})]
     (email/send-message!
-      :subject      "[Metabase] Password Reset Request"
+      :subject      (trs "[Metabase] Password Reset Request")
       :recipients   [email]
       :message-type :html
       :message      message-body)))
 
-;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is determined add appropriate documentation
+;; TODO - I didn't write these function and I don't know what it's for / what it's supposed to be doing. If this is
+;; determined add appropriate documentation
 
 (defn- model-name->url-fn [model]
   (case model
@@ -156,7 +165,7 @@
                             (random-quote-context))
         message-body (stencil/render-file "metabase/email/notification" context)]
     (email/send-message!
-      :subject      "[Metabase] Notification"
+      :subject      (trs "[Metabase] Notification")
       :recipients   [email]
       :message-type :html
       :message      message-body)))
@@ -165,14 +174,14 @@
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]
   {:pre [(u/email? email) (contains? #{"abandon" "follow-up"} msg-type)]}
-  (let [subject      (if (= "abandon" msg-type)
-                       "[Metabase] Help make Metabase better."
-                       "[Metabase] Tell us how things are going.")
+  (let [subject      (str (if (= "abandon" msg-type)
+                            (trs "[Metabase] Help make Metabase better.")
+                            (trs "[Metabase] Tell us how things are going.")))
         context      (merge notification-context
                             (random-quote-context)
                             (if (= "abandon" msg-type)
-                              abandonment-context
-                              follow-up-context))
+                              (abandonment-context)
+                              (follow-up-context)))
         message-body (stencil/render-file "metabase/email/follow_up_email" context)]
     (email/send-message!
       :subject      subject
@@ -189,15 +198,26 @@
 (defn- pulse-context [pulse]
   (merge {:emailType    "pulse"
           :pulseName    (:name pulse)
-          :sectionStyle (render/style (render/section-style))
-          :colorGrey4   render/color-gray-4
+          :sectionStyle (render.style/style (render.style/section-style))
+          :colorGrey4   render.style/color-gray-4
           :logoFooter   true}
          (random-quote-context)))
 
 (defn- create-temp-file
+  "Separate from `create-temp-file-or-throw` primarily so that we can simulate exceptions in tests"
   [suffix]
-  (doto (java.io.File/createTempFile "metabase_attachment" suffix)
+  (doto (File/createTempFile "metabase_attachment" suffix)
     .deleteOnExit))
+
+(defn- create-temp-file-or-throw
+  "Tries to create a temp file, will give the users a better error message if we are unable to create the temp file"
+  [suffix]
+  (try
+    (create-temp-file suffix)
+    (catch IOException e
+      (let [ex-msg (tru "Unable to create temp file in `{0}` for email attachments "
+                        (System/getProperty "java.io.tmpdir"))]
+        (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
   (let [{:keys [content-type ext]} (get export/export-formats export-type)]
@@ -207,21 +227,36 @@
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
-(defn- result-attachments [results]
-  (remove nil?
-          (apply concat
-                 (for [{{card-name :name, :as card} :card :as result} results
-                       :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
-                       :when (seq rows)]
-                   [(when-let [temp-file (and (render/include-csv-attachment? card result-data)
-                                              (create-temp-file "csv"))]
-                      (export/export-to-csv-writer temp-file result)
-                      (create-result-attachment-map "csv" card-name temp-file))
+(defn- include-csv-attachment?
+  "Should this `card` and `results` include a CSV attachment?"
+  [card {:keys [cols rows] :as result-data}]
+  (or (:include_csv card)
+      (and (not (:include_xls card))
+           (= :table (render/detect-pulse-card-type card result-data))
+           (or
+            ;; If some columns are not shown, include an attachment
+            (some (complement render.body/show-in-table?) cols)
+            ;; If there are too many rows or columns, include an attachment
+            (>= (count cols) render.body/cols-limit)
+            (>= (count rows) render.body/rows-limit)))))
 
-                    (when-let [temp-file (and (:include_xls card)
-                                              (create-temp-file "xlsx"))]
-                      (export/export-to-xlsx-file temp-file result)
-                      (create-result-attachment-map "xlsx" card-name temp-file))]))))
+(defn- result-attachments [results]
+  (remove
+   nil?
+   (apply
+    concat
+    (for [{{card-name :name, :as card} :card :as result} results
+          :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
+          :when (seq rows)]
+      [(when-let [temp-file (and (include-csv-attachment? card result-data)
+                                 (create-temp-file-or-throw "csv"))]
+         (export/export-to-csv-writer temp-file result)
+         (create-result-attachment-map "csv" card-name temp-file))
+
+       (when-let [temp-file (and (:include_xls card)
+                                 (create-temp-file-or-throw "xlsx"))]
+         (export/export-to-xlsx-file temp-file result)
+         (create-result-attachment-map "xlsx" card-name temp-file))]))))
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
@@ -267,8 +302,8 @@
      (merge {:questionURL (url/card-url card-id)
              :questionName card-name
              :emailType    "alert"
-             :sectionStyle (render/section-style)
-             :colorGrey4   render/color-gray-4
+             :sectionStyle (render.style/section-style)
+             :colorGrey4   render.style/color-gray-4
              :logoFooter   true}
             (random-quote-context)
             (when alert-condition-map

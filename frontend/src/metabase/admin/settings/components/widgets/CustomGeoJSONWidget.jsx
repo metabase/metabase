@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Utils from "metabase/lib/utils";
 import Select, { Option } from "metabase/components/Select.jsx";
@@ -86,7 +86,7 @@ export default class CustomGeoJSONWidget extends Component {
         geoJsonError: null,
       });
       await this._saveMap(map.id, map);
-      let geoJson = await GeoJSONApi.get({ id: map.id });
+      const geoJson = await GeoJSONApi.get({ id: map.id });
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
@@ -185,31 +185,33 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
         </tr>
       </thead>
       <tbody>
-        {maps.filter(map => !map.builtin).map(map => (
-          <tr key={map.id}>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              {map.name}
-            </td>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
-            </td>
-            <td className="Table-actions">
-              <Confirm
-                action={() => onDeleteMap(map)}
-                title={t`Delete custom map`}
-              >
-                <button className="Button Button--danger">{t`Remove`}</button>
-              </Confirm>
-            </td>
-          </tr>
-        ))}
+        {maps
+          .filter(map => !map.builtin)
+          .map(map => (
+            <tr key={map.id}>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                {map.name}
+              </td>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+              </td>
+              <td className="Table-actions">
+                <Confirm
+                  action={() => onDeleteMap(map)}
+                  title={t`Delete custom map`}
+                >
+                  <button className="Button Button--danger">{t`Remove`}</button>
+                </Confirm>
+              </td>
+            </tr>
+          ))}
       </tbody>
     </table>
   </section>
 );
 
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
-  let options = {};
+  const options = {};
   if (geoJson) {
     for (const feature of geoJson.features) {
       for (const property in feature.properties) {
@@ -255,9 +257,9 @@ const SettingContainer = ({
 }) => (
   <div className={className}>
     {name && (
-      <div className="text-grey-4 text-bold text-uppercase my1">{name}</div>
+      <div className="text-medium text-bold text-uppercase my1">{name}</div>
     )}
-    {description && <div className="text-grey-4 my1">{description}</div>}
+    {description && <div className="text-medium my1">{description}</div>}
     {children}
   </div>
 );
@@ -341,7 +343,7 @@ const EditMap = ({
             )}
           </LoadingAndErrorWrapper>
         ) : (
-          <div className="flex-full flex layout-centered text-bold text-grey-1 text-centered">
+          <div className="flex-full flex layout-centered text-bold text-light text-centered">
             {t`Load a GeoJSON file to see a preview`}
           </div>
         )}

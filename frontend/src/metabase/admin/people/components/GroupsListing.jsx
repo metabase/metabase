@@ -5,11 +5,14 @@ import _ from "underscore";
 import cx from "classnames";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { isDefaultGroup, isAdminGroup } from "metabase/lib/groups";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  getGroupNameLocalized,
+} from "metabase/lib/groups";
 import { KEYCODE_ENTER } from "metabase/lib/keyboard";
 
-import { PermissionsApi } from "metabase/services";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon.jsx";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import ModalContent from "metabase/components/ModalContent.jsx";
@@ -79,7 +82,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
   return (
     <PopoverWithTrigger
       className="block"
-      triggerElement={<Icon className="text-grey-1" name="ellipsis" />}
+      triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
       <ul className="UserActionsSelect">
         <li
@@ -175,12 +178,15 @@ function GroupRow({
           className="link no-decoration"
         >
           <span className="text-white inline-block">
-            <UserAvatar background={color} user={{ first_name: group.name }} />
+            <UserAvatar
+              background={color}
+              user={{ first_name: getGroupNameLocalized(group) }}
+            />
           </span>
-          <span className="ml2 text-bold">{group.name}</span>
+          <span className="ml2 text-bold">{getGroupNameLocalized(group)}</span>
         </Link>
       </td>
-      <td>{group.members || 0}</td>
+      <td>{group.member_count || 0}</td>
       <td className="text-right">
         {showActionsButton ? (
           <ActionsPopover
@@ -238,17 +244,12 @@ function GroupsTable({
 
 // ------------------------------------------------------------ Logic ------------------------------------------------------------
 
-function sortGroups(groups) {
-  return _.sortBy(groups, group => group.name && group.name.toLowerCase());
-}
-
 export default class GroupsListing extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
       text: "",
       showAddGroupRow: false,
-      groups: null,
       groupBeingEdited: null,
       alertMessage: null,
     };
@@ -265,25 +266,21 @@ export default class GroupsListing extends Component {
   }
 
   // TODO: move this to Redux
-  onAddGroupCreateButtonClicked() {
+  async onAddGroupCreateButtonClicked() {
     MetabaseAnalytics.trackEvent("People Groups", "Group Added");
-    PermissionsApi.createGroup({ name: this.state.text }).then(
-      newGroup => {
-        const groups = this.state.groups || this.props.groups || [];
-        const newGroups = sortGroups(_.union(groups, [newGroup]));
 
-        this.setState({
-          groups: newGroups,
-          showAddGroupRow: false,
-          text: "",
-        });
-      },
-      error => {
-        console.error("Error creating group:", error);
-        if (error.data && typeof error.data === "string")
-          this.alert(error.data);
-      },
-    );
+    try {
+      await this.props.create({ name: this.state.text });
+      this.setState({
+        showAddGroupRow: false,
+        text: "",
+      });
+    } catch (error) {
+      console.error("Error creating group:", error);
+      if (error.data && typeof error.data === "string") {
+        this.alert(error.data);
+      }
+    }
   }
 
   onAddGroupTextChanged(newText) {
@@ -302,18 +299,16 @@ export default class GroupsListing extends Component {
 
   onEditGroupClicked(group) {
     this.setState({
-      groupBeingEdited: _.clone(group),
+      groupBeingEdited: { ...group },
       text: "",
       showAddGroupRow: false,
     });
   }
 
   onEditGroupTextChange(newText) {
-    let groupBeingEdited = this.state.groupBeingEdited;
-    groupBeingEdited.name = newText;
-
+    const { groupBeingEdited } = this.state;
     this.setState({
-      groupBeingEdited: groupBeingEdited,
+      groupBeingEdited: { ...groupBeingEdited, name: newText },
     });
   }
 
@@ -323,66 +318,45 @@ export default class GroupsListing extends Component {
     });
   }
 
-  // TODO: move this to Redux
-  onEditGroupDoneClicked() {
-    const groups = this.state.groups || this.props.groups || [];
-    const originalGroup = _.findWhere(groups, {
-      id: this.state.groupBeingEdited.id,
-    });
+  async onEditGroupDoneClicked() {
+    const { groups } = this.props;
     const group = this.state.groupBeingEdited;
+    const originalGroup = _.findWhere(groups, { id: group.id });
 
     // if name hasn't changed there is nothing to do
     if (originalGroup.name === group.name) {
-      this.setState({
-        groupBeingEdited: null,
-      });
-      return;
-    }
-
-    // ok, fire off API call to change the group
-    MetabaseAnalytics.trackEvent("People Groups", "Group Updated");
-    PermissionsApi.updateGroup({ id: group.id, name: group.name }).then(
-      newGroup => {
-        // now replace the original group with the new group and update state
-        let newGroups = _.reject(groups, g => g.id === group.id);
-        newGroups = sortGroups(_.union(newGroups, [newGroup]));
-
-        this.setState({
-          groups: newGroups,
-          groupBeingEdited: null,
-        });
-      },
-      error => {
+      this.setState({ groupBeingEdited: null });
+    } else {
+      // ok, fire off API call to change the group
+      MetabaseAnalytics.trackEvent("People Groups", "Group Updated");
+      try {
+        await this.props.update({ id: group.id, name: group.name });
+        this.setState({ groupBeingEdited: null });
+      } catch (error) {
         console.error("Error updating group name:", error);
-        if (error.data && typeof error.data === "string")
+        if (error.data && typeof error.data === "string") {
           this.alert(error.data);
-      },
-    );
+        }
+      }
+    }
   }
 
   // TODO: move this to Redux
   async onDeleteGroupClicked(group) {
-    const groups = this.state.groups || this.props.groups || [];
     MetabaseAnalytics.trackEvent("People Groups", "Group Deleted");
-    PermissionsApi.deleteGroup({ id: group.id }).then(
-      () => {
-        const newGroups = sortGroups(_.reject(groups, g => g.id === group.id));
-        this.setState({
-          groups: newGroups,
-        });
-      },
-      error => {
-        console.error("Error deleting group: ", error);
-        if (error.data && typeof error.data === "string")
-          this.alert(error.data);
-      },
-    );
+    try {
+      await this.props.delete(group);
+    } catch (error) {
+      console.error("Error deleting group: ", error);
+      if (error.data && typeof error.data === "string") {
+        this.alert(error.data);
+      }
+    }
   }
 
   render() {
+    const { groups } = this.props;
     const { alertMessage } = this.state;
-    let { groups } = this.props;
-    groups = this.state.groups || groups || [];
 
     return (
       <AdminPaneLayout

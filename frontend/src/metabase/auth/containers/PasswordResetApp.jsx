@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import cx from "classnames";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
@@ -30,7 +30,10 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PasswordResetApp extends Component {
   constructor(props, context) {
     super(props, context);
@@ -42,7 +45,7 @@ export default class PasswordResetApp extends Component {
   }
 
   validateForm() {
-    let { credentials } = this.state;
+    const { credentials } = this.state;
 
     let valid = true;
 
@@ -57,7 +60,7 @@ export default class PasswordResetApp extends Component {
 
   async componentWillMount() {
     try {
-      let result = await SessionApi.password_reset_token_valid({
+      const result = await SessionApi.password_reset_token_valid({
         token: this.props.token,
       });
       if (result && result.valid) {
@@ -85,15 +88,17 @@ export default class PasswordResetApp extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { token, passwordReset } = this.props;
-    let { credentials } = this.state;
+    const { token, passwordReset } = this.props;
+    const { credentials } = this.state;
 
     passwordReset(token, credentials);
   }
 
   render() {
     const { resetError, resetSuccess, newUserJoining } = this.props;
-    const passwordComplexity = MetabaseSettings.passwordComplexity(false);
+    const passwordComplexity = MetabaseSettings.passwordComplexityDescription(
+      false,
+    );
 
     const requestLink = (
       <Link to="/auth/forgot_password" className="link">
@@ -144,7 +149,7 @@ export default class PasswordResetApp extends Component {
                 >
                   <h3 className="Login-header Form-offset">{t`New password`}</h3>
 
-                  <p className="Form-offset text-grey-3 mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
+                  <p className="Form-offset text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
 
                   <FormMessage
                     formError={

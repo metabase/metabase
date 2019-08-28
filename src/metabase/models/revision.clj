@@ -3,8 +3,10 @@
             [metabase.models.revision.diff :refer [diff-string]]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.date :as du]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [date :as du]
+             [i18n :refer [tru]]]
+            [potemkin.types :as p.types]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -16,7 +18,7 @@
 
 ;;; # IRevisioned Protocl
 
-(defprotocol IRevisioned
+(p.types/defprotocol+ IRevisioned
   "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
    All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]
@@ -66,12 +68,24 @@
 (defn- pre-insert [revision]
   (assoc revision :timestamp (du/new-sql-timestamp)))
 
+(defn- do-post-select-for-object
+  "Call the appropriate `post-select` methods (including the type functions) on the `:object` this Revision recorded.
+  This is important for things like Card revisions, where the `:dataset_query` property needs to be normalized when
+  coming out of the DB."
+  [{:keys [model], :as revision}]
+  ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
+  ;; those cases
+  (let [model (u/ignore-exceptions (db/resolve-model (symbol model)))]
+    (cond-> revision
+      model (update :object (partial models/do-post-select model)))))
+
 (u/strict-extend (class Revision)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:object :json, :message :clob})
-          :pre-insert pre-insert
-          :pre-update (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))}))
+         {:types       (constantly {:object :json, :message :clob})
+          :pre-insert  pre-insert
+          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
+          :post-select do-post-select-for-object}))
 
 
 ;;; # Functions
@@ -91,8 +105,7 @@
 (defn revisions
   "Get the revisions for ENTITY with ID in reverse chronological order."
   [entity id]
-  {:pre [(models/model? entity)
-         (integer? id)]}
+  {:pre [(models/model? entity) (integer? id)]}
   (db/select Revision, :model (:name entity), :model_id id, {:order-by [[:id :desc]]}))
 
 (defn revisions+details
@@ -109,7 +122,10 @@
   "Delete old revisions of ENTITY with ID when there are more than `max-revisions` in the DB."
   [entity id]
   {:pre [(models/model? entity) (integer? id)]}
-  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id], :model (:name entity), :model_id id, {:order-by [[:timestamp :desc]]}))))]
+  (when-let [old-revisions (seq (drop max-revisions (map :id (db/select [Revision :id]
+                                                               :model    (:name entity)
+                                                               :model_id id
+                                                               {:order-by [[:timestamp :desc]]}))))]
     (db/delete! Revision :id [:in old-revisions])))
 
 (defn push-revision!
@@ -119,6 +135,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
+  ;; TODO - rewrite this to use a schema
   {:pre [(models/model? entity)
          (integer? user-id)
          (db/exists? User :id user-id)

@@ -3,10 +3,11 @@ import { findDOMNode } from "react-dom";
 import { Link } from "react-router";
 import { connect } from "react-redux";
 
-import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import AuthScene from "../components/AuthScene.jsx";
 import SSOLoginButton from "../components/SSOLoginButton.jsx";
+import Button from "metabase/components/Button";
+import CheckBox from "metabase/components/CheckBox";
 import FormField from "metabase/components/form/FormField.jsx";
 import FormLabel from "metabase/components/form/FormLabel.jsx";
 import FormMessage from "metabase/components/form/FormMessage.jsx";
@@ -27,18 +28,22 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class LoginApp extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
       credentials: {},
       valid: false,
+      rememberMe: true,
     };
   }
 
   validateForm() {
-    let { credentials } = this.state;
+    const { credentials } = this.state;
 
     let valid = true;
 
@@ -56,7 +61,7 @@ export default class LoginApp extends Component {
 
     const { loginGoogle, location } = this.props;
 
-    let ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
+    const ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
     function attachGoogleAuth() {
       // if gapi isn't loaded yet then wait 100ms and check again. Keep doing this until we're ready
@@ -66,7 +71,7 @@ export default class LoginApp extends Component {
       }
       try {
         window.gapi.load("auth2", () => {
-          let auth2 = window.gapi.auth2.init({
+          const auth2 = window.gapi.auth2.init({
             client_id: Settings.get("google_auth_client_id"),
             cookiepolicy: "single_host_origin",
           });
@@ -101,8 +106,8 @@ export default class LoginApp extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { login, location } = this.props;
-    let { credentials } = this.state;
+    const { login, location } = this.props;
+    const { credentials } = this.state;
 
     login(credentials, location.query.redirect);
   }
@@ -112,7 +117,7 @@ export default class LoginApp extends Component {
     const ldapEnabled = Settings.ldapEnabled();
 
     return (
-      <div className="viewport-height full bg-white flex flex-column flex-full md-layout-centered">
+      <div className="full bg-white flex flex-column flex-full md-layout-centered">
         <div className="Login-wrapper wrapper Grid Grid--full md-Grid--1of2 relative z2">
           <div className="Grid-cell flex layout-centered text-brand">
             <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
@@ -133,7 +138,7 @@ export default class LoginApp extends Component {
                     className="mx1 absolute text-centered left right"
                     style={{ bottom: -8 }}
                   >
-                    <span className="text-bold px3 py2 text-grey-3 bg-white">{t`OR`}</span>
+                    <span className="text-bold px3 py2 text-medium bg-white">{t`OR`}</span>
                   </div>
                 </div>
               )}
@@ -198,21 +203,22 @@ export default class LoginApp extends Component {
               </FormField>
 
               <div className="Form-field">
-                <ul className="Form-offset">
-                  <input name="remember" type="checkbox" defaultChecked />{" "}
-                  <label className="inline-block">{t`Remember Me:`}</label>
-                </ul>
+                <div className="Form-offset flex align-center">
+                  <CheckBox
+                    name="remember"
+                    checked={this.state.rememberMe}
+                    onChange={() =>
+                      this.setState({ rememberMe: !this.state.rememberMe })
+                    }
+                  />
+                  <span className="ml1">{t`Remember Me`}</span>
+                </div>
               </div>
 
-              <div className="Form-actions p2 Grid Grid--full md-Grid--1of2">
-                <button
-                  className={cx("Button Grid-cell", {
-                    "Button--primary": this.state.valid,
-                  })}
-                  disabled={!this.state.valid}
-                >
+              <div className="Form-actions p4">
+                <Button primary={this.state.valid} disabled={!this.state.valid}>
                   {t`Sign in`}
-                </button>
+                </Button>
                 <Link
                   to={
                     "/auth/forgot_password" +
@@ -220,7 +226,7 @@ export default class LoginApp extends Component {
                       ? "?email=" + this.state.credentials.username
                       : "")
                   }
-                  className="Grid-cell py2 sm-py0 text-grey-3 md-text-right text-centered flex-full link"
+                  className="Grid-cell py2 sm-py0 md-text-right text-centered flex-full link"
                   onClick={e => {
                     window.OSX ? window.OSX.resetPassword() : null;
                   }}

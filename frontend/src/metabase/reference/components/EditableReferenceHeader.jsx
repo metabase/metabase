@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
 import E from "metabase/reference/components/EditButton.css";
@@ -13,6 +13,8 @@ import Icon from "metabase/components/Icon.jsx";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import Ellipsified from "metabase/components/Ellipsified.jsx";
 import EditButton from "metabase/reference/components/EditButton.jsx";
+
+import colors from "metabase/lib/colors";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -36,7 +38,10 @@ const EditableReferenceHeader = ({
     >
       <div className={L.leftIcons}>
         {headerIcon && (
-          <IconBorder borderWidth="0" style={{ backgroundColor: "#E9F4F8" }}>
+          <IconBorder
+            borderWidth="0"
+            style={{ backgroundColor: colors["bg-medium"] }}
+          >
             <Icon
               className="text-brand"
               name={headerIcon}
@@ -46,9 +51,9 @@ const EditableReferenceHeader = ({
           </IconBorder>
         )}
       </div>
-      {type === "table" &&
-        !hasSingleSchema &&
-        !isEditing && <div className={S.headerSchema}>{entity.schema}</div>}
+      {type === "table" && !hasSingleSchema && !isEditing && (
+        <div className={S.headerSchema}>{entity.schema}</div>
+      )}
       <div
         className={S.headerBody}
         style={
@@ -101,27 +106,24 @@ const EditableReferenceHeader = ({
             ),
           ]
         )}
-        {user &&
-          user.is_superuser &&
-          !isEditing && (
-            <EditButton className="ml1" startEditing={startEditing} />
-          )}
+        {user && user.is_superuser && !isEditing && (
+          <EditButton className="ml1" startEditing={startEditing} />
+        )}
       </div>
     </div>
-    {type === "segment" &&
-      table && (
-        <div className={S.subheader}>
-          <div className={cx(S.subheaderBody)}>
-            {t`A subset of`}{" "}
-            <Link
-              className={S.subheaderLink}
-              to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-            >
-              {table.display_name}
-            </Link>
-          </div>
+    {type === "segment" && table && (
+      <div className={S.subheader}>
+        <div className={cx(S.subheaderBody)}>
+          {t`A subset of`}{" "}
+          <Link
+            className={S.subheaderLink}
+            to={`/reference/databases/${table.db_id}/tables/${table.id}`}
+          >
+            {table.display_name}
+          </Link>
         </div>
-      )}
+      </div>
+    )}
   </div>
 );
 EditableReferenceHeader.propTypes = {

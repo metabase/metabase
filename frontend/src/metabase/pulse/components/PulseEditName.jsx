@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -20,7 +20,7 @@ export default class PulseEditName extends Component {
   static defaultProps = {};
 
   setName(e) {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     this.props.setPulse({ ...pulse, name: e.target.value });
   }
 
@@ -29,11 +29,11 @@ export default class PulseEditName extends Component {
   }
 
   render() {
-    let { pulse } = this.props;
+    const { pulse } = this.props;
     return (
       <div className="py1">
         <h2>{t`Name your pulse`}</h2>
-        <p className="mt1 h4 text-bold text-grey-3">
+        <p className="mt1 h4 text-bold text-medium">
           {t`Give your pulse a name to help others understand what it's about`}.
         </p>
         <div className="my3">

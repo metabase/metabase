@@ -37,11 +37,12 @@
 (derive :type/Decimal :type/Float)
 (derive :type/Share :type/Float)
 
-(derive :type/Income :type/Number)
-(derive :type/Discount :type/Number)
-(derive :type/Price :type/Number)
-(derive :type/GrossMargin :type/Number)
-(derive :type/Cost :type/Number)
+(derive :type/Currency :type/Float)
+(derive :type/Income :type/Currency)
+(derive :type/Discount :type/Currency)
+(derive :type/Price :type/Currency)
+(derive :type/GrossMargin :type/Currency)
+(derive :type/Cost :type/Currency)
 
 (derive :type/Coordinate :type/Float)
 (derive :type/Latitude :type/Coordinate)
@@ -57,8 +58,8 @@
 (derive :type/UUID :type/Text)
 
 (derive :type/URL :type/Text)
-(derive :type/AvatarURL :type/URL)
 (derive :type/ImageURL :type/URL)
+(derive :type/AvatarURL :type/ImageURL)
 
 (derive :type/Email :type/Text)
 
@@ -98,9 +99,15 @@
 
 (derive :type/JoinTimestamp :type/DateTime)
 (derive :type/JoinTime :type/Date)
-(derive :type/JoinTime :type/CreationTimestamp)
+(derive :type/JoinTime :type/JoinTimestamp)
 (derive :type/JoinDate :type/Date)
-(derive :type/JoinDate :type/CreationTimestamp)
+(derive :type/JoinDate :type/JoinTimestamp)
+
+(derive :type/CancelationTimestamp :type/DateTime)
+(derive :type/CancelationTime :type/Date)
+(derive :type/CancelationTime :type/CancelationTimestamp)
+(derive :type/CancelationDate :type/Date)
+(derive :type/CancelationDate :type/CancelationTimestamp)
 
 (derive :type/Birthdate :type/Date)
 

@@ -13,5 +13,5 @@
 
 :local(.placeholder) {
   /* match the placeholder text */
-  color: rgb(192, 192, 192);
+  color: var(--color-text-light);
 }

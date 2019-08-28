@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class QuestionSavedModal extends Component {
   static propTypes = {
@@ -18,7 +18,7 @@ export default class QuestionSavedModal extends Component {
         onClose={this.props.onClose}
         className="Modal-content Modal-content--small NewForm"
       >
-        <div className="Form-inputs mb4">
+        <div>
           <button
             className="Button Button--primary"
             onClick={this.props.addToDashboardFn}

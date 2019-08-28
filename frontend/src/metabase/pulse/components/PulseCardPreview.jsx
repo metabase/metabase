@@ -7,8 +7,9 @@ import Icon from "metabase/components/Icon.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
 import Tooltip from "metabase/components/Tooltip.jsx";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
+import colors, { alpha } from "metabase/lib/colors";
 
 export default class PulseCardPreview extends Component {
   constructor(props, context) {
@@ -59,7 +60,7 @@ export default class PulseCardPreview extends Component {
   };
 
   render() {
-    let { cardPreview, attachmentsEnabled } = this.props;
+    const { cardPreview, attachmentsEnabled } = this.props;
     const hasAttachment = this.hasAttachment();
     const isAttachmentOnly =
       attachmentsEnabled &&
@@ -74,34 +75,35 @@ export default class PulseCardPreview extends Component {
         }}
       >
         <div
-          className="absolute p2 text-grey-2"
+          className="absolute p2 text-light"
           style={{
             top: 2,
             right: 2,
-            background:
-              "linear-gradient(to right, rgba(255,255,255,0.2), white, white)",
+            background: `linear-gradient(to right, ${alpha(
+              colors["bg-white"],
+              0.2,
+            )}, white, white)`,
             paddingLeft: 100,
           }}
         >
-          {attachmentsEnabled &&
-            !isAttachmentOnly && (
-              <Tooltip
-                tooltip={
-                  hasAttachment
-                    ? t`Remove attachment`
-                    : t`Attach file with results`
-                }
-              >
-                <Icon
-                  name="attachment"
-                  size={18}
-                  className={cx("cursor-pointer py1 pr1 text-brand-hover", {
-                    "text-brand": this.hasAttachment(),
-                  })}
-                  onClick={this.toggleAttachment}
-                />
-              </Tooltip>
-            )}
+          {attachmentsEnabled && !isAttachmentOnly && (
+            <Tooltip
+              tooltip={
+                hasAttachment
+                  ? t`Remove attachment`
+                  : t`Attach file with results`
+              }
+            >
+              <Icon
+                name="attachment"
+                size={18}
+                className={cx("cursor-pointer py1 pr1 text-brand-hover", {
+                  "text-brand": this.hasAttachment(),
+                })}
+                onClick={this.toggleAttachment}
+              />
+            </Tooltip>
+          )}
           <Icon
             name="close"
             size={18}
@@ -177,7 +179,7 @@ const RenderedPulseCardPreviewHeader = ({ children }) => (
                 'Lato, "Helvetica Neue", Helvetica, Arial, sans-serif',
               fontSize: 16,
               fontWeight: 700,
-              color: "rgb(57,67,64)",
+              color: colors["text-dark"],
               textDecoration: "none",
             }}
           >
@@ -195,7 +197,7 @@ RenderedPulseCardPreviewHeader.propTypes = {
 };
 
 const RenderedPulseCardPreviewMessage = ({ children }) => (
-  <div className="text-grey-4">{children}</div>
+  <div className="text-medium">{children}</div>
 );
 
 RenderedPulseCardPreviewMessage.propTypes = {

@@ -1,0 +1,34 @@
+info:
+  name: Metabase Oracle Driver
+  version: 1.0.0-SNAPSHOT
+  description: Allows Metabase to connect to Oracle databases.
+dependencies:
+  - class: oracle.jdbc.OracleDriver
+    message: >
+      Metabase requires the Oracle JDBC driver in order to connect to Oracle databases, but we can't ship it as part
+      of Metabase due to licensing restrictions. See
+      https://metabase.com/docs/latest/administration-guide/databases/oracle.html for more details.
+driver:
+  name: oracle
+  display-name: Oracle
+  lazy-load: true
+  parent: sql-jdbc
+  connection-properties:
+    - host
+    - merge:
+        - port
+        - default: 1521
+    - name: sid
+      display-name: Oracle system ID (SID)
+      placehoder: Usually something like ORCL or XE. Optional if using service name
+    - name: service-name
+      display-name: Oracle service name
+      placeholder: Optional TNS alias
+    - user
+    - password
+  connection-properties-include-tunnel-config: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.oracle
+  - step: register-jdbc-driver
+    class: oracle.jdbc.OracleDriver

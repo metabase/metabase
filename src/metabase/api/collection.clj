@@ -14,11 +14,12 @@
              [pulse :as pulse :refer [Pulse]]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
             [schema.core :as s]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
+
+(declare root-collection)
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -28,10 +29,18 @@
   `?archived=true`."
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (as-> (db/select Collection :archived (Boolean/parseBoolean archived)
-                   {:order-by [[:%lower.name :asc]]}) collections
-    (filter mi/can-read? collections)
-    (hydrate collections :can_write)))
+  (let [archived? (Boolean/parseBoolean archived)]
+    (as-> (db/select Collection :archived archived?
+                     {:order-by [[:%lower.name :asc]]}) collections
+      (filter mi/can-read? collections)
+      ;; include Root Collection at beginning or results if archived isn't `true`
+      (if archived?
+        collections
+        (cons (root-collection) collections))
+      (hydrate collections :can_write)
+      ;; remove the :metabase.models.collection/is-root? tag since FE doesn't need it
+      (for [collection collections]
+        (dissoc collection ::collection/is-root?)))))
 
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -53,7 +62,7 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position]
+  (-> (db/select [Card :id :name :description :collection_position :display]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
@@ -66,17 +75,17 @@
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
-  ;; Pulses currently cannot be archived -- so if it's specified don't fetch Pulses for now
-  (when-not archived?
-    (db/select [Pulse :id :name :collection_position]
-      :collection_id   (:id collection)
-      ;; exclude Alerts
-      :alert_condition nil)))
+  (db/select [Pulse :id :name :collection_position]
+    :collection_id   (:id collection)
+    :archived        archived?
+    ;; exclude Alerts
+    :alert_condition nil))
 
 (defmethod fetch-collection-children :collection
   [_ collection {:keys [archived?]}]
-  (for [child-collection (collection/effective-children collection [:= :archived archived?])]
-    (assoc child-collection :model "collection")))
+  (-> (for [child-collection (collection/effective-children collection [:= :archived archived?])]
+        (assoc child-collection :model "collection"))
+      (hydrate :can_write)))
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
@@ -95,7 +104,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      (hydrate :effective_location :effective_ancestors :can_write)))
+      (hydrate :parent_id :effective_location [:effective_ancestors :can_write] :can_write)))
 
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.
@@ -121,18 +130,16 @@
     {:model     (keyword model)
      :archived? (Boolean/parseBoolean archived)}))
 
+
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
+
+(defn- root-collection []
+  (collection-detail (collection/root-collection-with-ui-details)))
 
 (api/defendpoint GET "/root"
   "Return the 'Root' Collection object with standard details added"
   []
-  (-> (collection-detail collection/root-collection)
-      ;; add in some things for the FE to display since the 'Root' Collection isn't real and wouldn't normally have
-      ;; these things
-      (assoc
-          :name (tru "Saved items")
-          :id   "root")
-      (dissoc ::collection/is-root?)))
+  (dissoc (root-collection) ::collection/is-root?))
 
 (api/defendpoint GET "/root/items"
   "Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
@@ -164,11 +171,9 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id]
-  (if collection-id
-    (api/write-check Collection collection-id)
-    ;; if the Collection is going to go in the Root Collection, for the time being we'll just check that you're a
-    ;; superuser. Once we merge in Root Collection permissions we'll need to change this !
-    (api/check-superuser)))
+  (api/write-check (if collection-id
+                     (Collection collection-id)
+                     collection/root-collection)))
 
 (api/defendpoint POST "/"
   "Create a new Collection."

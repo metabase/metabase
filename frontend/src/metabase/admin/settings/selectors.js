@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "c-3po";
+import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
 import {
   PublicLinksDashboardListing,
@@ -13,6 +13,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
+import FormattingWidget from "./components/widgets/FormattingWidget";
 
 import { UtilApi } from "metabase/services";
 
@@ -50,7 +51,6 @@ const SECTIONS = [
           { name: t`Database Default`, value: "" },
           ...MetabaseSettings.get("timezones"),
         ],
-        placeholder: t`Select a timezone`,
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
       },
@@ -61,7 +61,7 @@ const SECTIONS = [
         options: (MetabaseSettings.get("available_locales") || []).map(
           ([value, name]) => ({ name, value }),
         ),
-        placeholder: t`Select a language`,
+        defaultValue: "en",
         getHidden: () => MetabaseSettings.get("available_locales").length < 2,
       },
       {
@@ -81,13 +81,16 @@ const SECTIONS = [
           },
           { value: "none", name: t`Disabled` },
         ],
-        // this needs to be here because 'advanced' is the default value, so if you select 'advanced' the
-        // widget will always show the placeholder instead of the 'name' defined above :(
-        placeholder: t`Enabled`,
+        defaultValue: "advanced",
       },
       {
         key: "enable-nested-queries",
         display_name: t`Enable Nested Queries`,
+        type: "boolean",
+      },
+      {
+        key: "enable-xrays",
+        display_name: t`Enable X-ray features`,
         type: "boolean",
       },
     ],
@@ -252,13 +255,11 @@ const SECTIONS = [
         display_name: t`User filter`,
         type: "string",
         validations: [
-          [
-            value =>
-              (value.match(/\(/g) || []).length !==
-              (value.match(/\)/g) || []).length
-                ? t`Check your parentheses`
-                : null,
-          ],
+          value =>
+            (value.match(/\(/g) || []).length !==
+            (value.match(/\)/g) || []).length
+              ? t`Check your parentheses`
+              : null,
         ],
       },
       {
@@ -312,6 +313,18 @@ const SECTIONS = [
     ],
   },
   {
+    name: t`Formatting`,
+    slug: "formatting",
+    settings: [
+      {
+        display_name: t`Formatting Options`,
+        description: "",
+        key: "custom-formatting",
+        widget: FormattingWidget,
+      },
+    ],
+  },
+  {
     name: t`Public Sharing`,
     slug: "public_sharing",
     settings: [
@@ -355,7 +368,7 @@ const SECTIONS = [
             newValue &&
             !settingsValues["embedding-secret-key"]
           ) {
-            let result = await UtilApi.random_token();
+            const result = await UtilApi.random_token();
             await onChangeSetting("embedding-secret-key", result.token);
           }
         },
@@ -440,52 +453,60 @@ export const getSettings = createSelector(
   state => state.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
-    settings.map(
-      setting =>
-        warnings[setting.key]
-          ? { ...setting, warning: warnings[setting.key] }
-          : setting,
+    settings.map(setting =>
+      warnings[setting.key]
+        ? { ...setting, warning: warnings[setting.key] }
+        : setting,
     ),
 );
 
-export const getSettingValues = createSelector(getSettings, settings => {
-  const settingValues = {};
-  for (const setting of settings) {
-    settingValues[setting.key] = setting.value;
-  }
-  return settingValues;
-});
+export const getSettingValues = createSelector(
+  getSettings,
+  settings => {
+    const settingValues = {};
+    for (const setting of settings) {
+      settingValues[setting.key] = setting.value;
+    }
+    return settingValues;
+  },
+);
 
-export const getNewVersionAvailable = createSelector(getSettings, settings => {
-  return MetabaseSettings.newVersionAvailable(settings);
-});
+export const getNewVersionAvailable = createSelector(
+  getSettings,
+  settings => {
+    return MetabaseSettings.newVersionAvailable(settings);
+  },
+);
 
-export const getSections = createSelector(getSettings, settings => {
-  if (!settings || _.isEmpty(settings)) {
-    return [];
-  }
+export const getSections = createSelector(
+  getSettings,
+  settings => {
+    if (!settings || _.isEmpty(settings)) {
+      return [];
+    }
 
-  let settingsByKey = _.groupBy(settings, "key");
-  return SECTIONS.map(function(section) {
-    let sectionSettings = section.settings.map(function(setting) {
-      const apiSetting =
-        settingsByKey[setting.key] && settingsByKey[setting.key][0];
-      if (apiSetting) {
-        return {
-          placeholder: apiSetting.default,
-          ...apiSetting,
-          ...setting,
-        };
-      } else {
-        return setting;
-      }
+    const settingsByKey = _.groupBy(settings, "key");
+    return SECTIONS.map(function(section) {
+      const sectionSettings = section.settings.map(function(setting) {
+        const apiSetting =
+          settingsByKey[setting.key] && settingsByKey[setting.key][0];
+        if (apiSetting) {
+          return {
+            placeholder: apiSetting.default,
+            ...apiSetting,
+            ...setting,
+          };
+        } else {
+          return setting;
+        }
+      });
+      return {
+        ...section,
+        settings: sectionSettings,
+      };
     });
-    return {
-      ...section,
-      settings: sectionSettings,
-    };
-  });
-});
+  },
+);
 
 export const getActiveSectionName = (state, props) => props.params.section;
 

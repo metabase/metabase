@@ -1,4 +1,4 @@
-FROM java:openjdk-8-jre-alpine
+FROM adoptopenjdk/openjdk11:alpine-jre
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
@@ -6,17 +6,16 @@ ENV LC_CTYPE en_US.UTF-8
 # dependencies
 RUN apk add --update bash ttf-dejavu fontconfig
 
-# fix broken cacerts
-RUN apk add --update java-cacerts && \
-    rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    rm -rf /tmp/* /var/cache/apk/*
-
 # add Metabase jar
 COPY ./metabase.jar /app/
+RUN chmod o+r /app/metabase.jar
 
 # add our run script to the image
 COPY ./run_metabase.sh /app/
+
+# create the plugins directory, with writable permissions
+RUN mkdir -p /plugins
+RUN chmod a+rwx /plugins
 
 # expose our default runtime port
 EXPOSE 3000

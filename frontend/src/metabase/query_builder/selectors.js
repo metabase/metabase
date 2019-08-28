@@ -1,22 +1,28 @@
 import { createSelector } from "reselect";
 import _ from "underscore";
+import { getIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { getSettings as _getVisualizationSettings } from "metabase/visualizations/lib/settings";
-
+import { getMode as getMode_ } from "metabase/modes/lib/modes";
+import {
+  extractRemappings,
+  getVisualizationTransformed,
+} from "metabase/visualizations";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { getParametersWithExtras } from "metabase/meta/Card";
 
-import { isCardDirty } from "metabase/lib/card";
 import Utils from "metabase/lib/utils";
 
 import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-import { getIn } from "icepick";
+import Databases from "metabase/entities/databases";
 
-import { getMetadata, getDatabasesList } from "metabase/selectors/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getAlerts } from "metabase/alert/selectors";
 
 export const getUiControls = state => state.qb.uiControls;
 
@@ -24,8 +30,8 @@ export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
-export const getIsShowingTutorial = state =>
-  getUiControls(state).isShowingTutorial;
+export const getIsShowingRawTable = state =>
+  getUiControls(state).isShowingRawTable;
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
 
@@ -41,13 +47,6 @@ export const getFirstQueryResult = state =>
 // get instance settings, used for determining whether to display certain actions
 export const getSettings = state => state.settings.values;
 
-export const getIsDirty = createSelector(
-  [getCard, getOriginalCard],
-  (card, originalCard) => {
-    return isCardDirty(card, originalCard);
-  },
-);
-
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
 export const getDatabaseId = createSelector(
@@ -55,19 +54,24 @@ export const getDatabaseId = createSelector(
   card => card && card.dataset_query && card.dataset_query.database,
 );
 
-export const getTableId = createSelector([getCard], card =>
-  getIn(card, ["dataset_query", "query", "source_table"]),
+export const getTableId = createSelector(
+  [getCard],
+  card => getIn(card, ["dataset_query", "query", "source-table"]),
 );
 
-export const getTableForeignKeys = state => state.qb.tableForeignKeys;
 export const getTableForeignKeyReferences = state =>
   state.qb.tableForeignKeyReferences;
+
+export const getDatabasesList = state =>
+  Databases.selectors.getList(state, {
+    entityQuery: { include_tables: true, include_cards: true },
+  }) || [];
 
 export const getTables = createSelector(
   [getDatabaseId, getDatabasesList],
   (databaseId, databases) => {
     if (databaseId != null && databases && databases.length > 0) {
-      let db = _.findWhere(databases, { id: databaseId });
+      const db = _.findWhere(databases, { id: databaseId });
       if (db && db.tables) {
         return db.tables;
       }
@@ -85,7 +89,12 @@ export const getNativeDatabases = createSelector(
 
 export const getTableMetadata = createSelector(
   [getTableId, getMetadata],
-  (tableId, metadata) => metadata.tables[tableId],
+  (tableId, metadata) => metadata.table(tableId),
+);
+
+export const getTableForeignKeys = createSelector(
+  [getTableMetadata],
+  table => table && table.fks,
 );
 
 export const getSampleDatasetId = createSelector(
@@ -98,15 +107,8 @@ export const getSampleDatasetId = createSelector(
 
 export const getDatabaseFields = createSelector(
   [getDatabaseId, state => state.qb.databaseFields],
-  (databaseId, databaseFields) => databaseFields[databaseId],
+  (databaseId, databaseFields) => [], // FIXME!
 );
-
-import { getMode as getMode_ } from "metabase/qb/lib/modes";
-import { getAlerts } from "metabase/alert/selectors";
-import {
-  extractRemappings,
-  getVisualizationTransformed,
-} from "metabase/visualizations";
 
 export const getMode = createSelector(
   [getLastRunCard, getTableMetadata],
@@ -144,8 +146,10 @@ const getLastRunParameterValues = createSelector(
   [getLastRunParameters],
   parameters => parameters.map(parameter => parameter.value),
 );
-const getNextRunParameterValues = createSelector([getParameters], parameters =>
-  parameters.map(parameter => parameter.value).filter(p => p !== undefined),
+const getNextRunParameterValues = createSelector(
+  [getParameters],
+  parameters =>
+    parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
 export const getIsResultDirty = createSelector(
@@ -189,6 +193,13 @@ export const getOriginalQuestion = createSelector(
   },
 );
 
+export const getIsDirty = createSelector(
+  [getQuestion, getOriginalQuestion],
+  (question, originalQuestion) => {
+    return question && question.isDirtyComparedTo(originalQuestion);
+  },
+);
+
 export const getQuery = createSelector(
   [getQuestion],
   question => question && question.query(),
@@ -215,8 +226,29 @@ export const getResultsMetadata = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [getQuestion, getQueryResults, getIsObjectDetail, getLastRunDatasetQuery],
-  (question, results, isObjectDetail, lastRunDatasetQuery) => {
+  [
+    getQuestion,
+    getQueryResults,
+    getIsObjectDetail,
+    getLastRunDatasetQuery,
+    getIsShowingRawTable,
+  ],
+  (
+    question,
+    results,
+    isObjectDetail,
+    lastRunDatasetQuery,
+    isShowingRawTable,
+  ) => {
+    let display = question && question.display();
+    let settings = question && question.settings();
+    if (isObjectDetail) {
+      display = "object";
+    } else if (isShowingRawTable) {
+      display = "table";
+      settings = { "table.pivot": false };
+    }
+
     // we want to provide the visualization with a card containing the latest
     // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
     // BUT the last executed "dataset_query" (to ensure data matches the query)
@@ -225,7 +257,8 @@ export const getRawSeries = createSelector(
       question.atomicQueries().map((metricQuery, index) => ({
         card: {
           ...question.card(),
-          display: isObjectDetail ? "object" : question.card().display,
+          display: display,
+          visualization_settings: settings,
           dataset_query: lastRunDatasetQuery,
         },
         data: results[index] && results[index].data,
@@ -234,15 +267,24 @@ export const getRawSeries = createSelector(
   },
 );
 
+const _getVisualizationTransformed = createSelector(
+  [getRawSeries],
+  rawSeries =>
+    rawSeries && getVisualizationTransformed(extractRemappings(rawSeries)),
+);
+
 /**
  * Returns the final series data that all visualization (starting from the root-level
  * `Visualization.jsx` component) code uses for rendering visualizations.
  */
 export const getTransformedSeries = createSelector(
-  [getRawSeries],
-  rawSeries =>
-    rawSeries &&
-    getVisualizationTransformed(extractRemappings(rawSeries)).series,
+  [_getVisualizationTransformed],
+  transformed => transformed && transformed.series,
+);
+
+export const getTransformedVisualization = createSelector(
+  [_getVisualizationTransformed],
+  transformed => transformed && transformed.visualization,
 );
 
 /**
@@ -250,5 +292,77 @@ export const getTransformedSeries = createSelector(
  */
 export const getVisualizationSettings = createSelector(
   [getTransformedSeries],
-  series => series && _getVisualizationSettings(series),
+  series => series && getComputedSettingsForSeries(series),
+);
+
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+/**
+ * Returns whether the current question is a native query
+ */
+export const getIsNative = createSelector(
+  [getQuestion],
+  question => question && question.query() instanceof NativeQuery,
+);
+
+/**
+ * Returns whether the native query editor is open
+ */
+export const getIsNativeEditorOpen = createSelector(
+  [getIsNative, getUiControls],
+  (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
+);
+
+/**
+ * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
+ * NOTE: completely disabled for now
+ */
+export const getIsPreviewable = createSelector(
+  [getIsNativeEditorOpen, getQuestion, getIsNew, getIsDirty],
+  (isNativeEditorOpen, question, isNew, isDirty) =>
+    // isNativeEditorOpen &&
+    // question &&
+    // question.display() === "table" &&
+    // (isNew || isDirty),
+    false,
+);
+
+/**
+ * Returns whether the query builder is in native query "preview" mode
+ */
+export const getIsPreviewing = createSelector(
+  [getIsPreviewable, getUiControls],
+  (isPreviewable, uiControls) => isPreviewable && uiControls.isPreviewing,
+);
+
+export const getIsVisualized = createSelector(
+  [getQuestion, getVisualizationSettings],
+  (question, settings) =>
+    question &&
+    // table is the default
+    (question.display() !== "table" ||
+      // any "table." settings has been explcitly set
+      Object.keys(question.settings()).some(k => k.startsWith("table.")) ||
+      // "table.pivot" setting has been implicitly set to true
+      (settings && settings["table.pivot"])),
+);
+
+export const getIsLiveResizable = createSelector(
+  [getTransformedSeries, getTransformedVisualization],
+  (series, visualization) => {
+    try {
+      return (
+        !series ||
+        !visualization ||
+        !visualization.isLiveResizable ||
+        visualization.isLiveResizable(series)
+      );
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  },
 );

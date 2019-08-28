@@ -1,27 +1,32 @@
 (ns metabase.query-processor.middleware.permissions-test
   "Tests for the middleware that checks whether the current user has permissions to run a given query."
   (:require [expectations :refer :all]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
-             [table :refer [Table]]
-             [user :as user]]
+             [table :refer [Table]]]
             [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :as users]
-            [metabase.util :as u]
+            [schema.core :as s]
             [toucan.util.test :as tt]))
 
 (def ^:private ^{:arglists '([query]), :style/indent 0} check-perms (check-query-permissions identity))
 
 (defn- do-with-rasta
-  "Call F with rasta as the current user."
+  "Call `f` with Rasta as the current user."
   [f]
   (users/do-with-test-user :rasta f))
 
 (defn- check-perms-for-rasta
-  "Check permissions for QUERY with rasta as the current user."
+  "Check permissions for `query` with rasta as the current user."
   {:style/indent 0}
   [query]
   (do-with-rasta (fn [] (check-perms query))))
@@ -115,3 +120,22 @@
     {:database (u/get-id db)
      :type     :query
      :query    {:source-query {:source-table (u/get-id table)}}}))
+
+
+;; Make sure it works end-to-end: make sure bound `*current-user-id*` and `*current-user-permissions-set*` are used to
+;; permissions check queries
+(tu/expect-schema
+  {:status   (s/eq :failed)
+   :class    (s/eq clojure.lang.ExceptionInfo)
+   :error    (s/eq "You do not have permissions to run this query.")
+   :ex-data  (s/eq {:required-permissions #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+                    :actual-permissions   #{}
+                    :permissions-error?   true})
+   s/Keyword s/Any}
+  (binding [api/*current-user-id*              (users/user->id :rasta)
+            api/*current-user-permissions-set* (delay #{})]
+   (qp/process-query
+     {:database (data/id)
+      :type     :query
+      :query    {:source-table (data/id :venues)
+                 :limit        1}})))

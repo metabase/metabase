@@ -1,41 +1,48 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
+import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
+
 import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
 import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import { t } from "c-3po";
+import FormMessage from "metabase/components/form/FormMessage";
+
 import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
 
-import {
-  getDatabasesSorted,
-  hasSampleDataset,
-  getDeletes,
-  getDeletionError,
-} from "../selectors";
-import * as databaseActions from "../database";
-import FormMessage from "metabase/components/form/FormMessage";
+import Database from "metabase/entities/databases";
 
-const mapStateToProps = (state, props) => {
-  return {
-    created: props.location.query.created,
-    databases: getDatabasesSorted(state),
-    hasSampleDataset: hasSampleDataset(state),
-    engines: MetabaseSettings.get("engines"),
-    deletes: getDeletes(state),
-    deletionError: getDeletionError(state),
-  };
-};
+import { getDeletes, getDeletionError } from "../selectors";
+import { deleteDatabase, addSampleDataset } from "../database";
+
+const mapStateToProps = (state, props) => ({
+  hasSampleDataset: Database.selectors.getHasSampleDataset(state),
+
+  created: props.location.query.created,
+  engines: MetabaseSettings.get("engines"),
+
+  deletes: getDeletes(state),
+  deletionError: getDeletionError(state),
+});
 
 const mapDispatchToProps = {
-  ...databaseActions,
+  // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
+  // rather than metabase/entities/databases since it updates deletes/deletionError
+  deleteDatabase: deleteDatabase,
+  addSampleDataset: addSampleDataset,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@Database.loadList()
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     databases: PropTypes.array,
@@ -45,10 +52,6 @@ export default class DatabaseList extends Component {
     deletionError: PropTypes.object,
   };
 
-  componentWillMount() {
-    this.props.fetchDatabases();
-  }
-
   componentWillReceiveProps(newProps) {
     if (!this.props.created && newProps.created) {
       this.refs.createdDatabaseModal.open();
@@ -56,7 +59,7 @@ export default class DatabaseList extends Component {
   }
 
   render() {
-    let {
+    const {
       databases,
       hasSampleDataset,
       created,
@@ -156,7 +159,7 @@ export default class DatabaseList extends Component {
                 })}
               >
                 <a
-                  className="text-grey-2 text-brand-hover no-decoration"
+                  className="text-light text-brand-hover no-decoration"
                   onClick={() => this.props.addSampleDataset()}
                 >{t`Bring the sample dataset back`}</a>
               </span>

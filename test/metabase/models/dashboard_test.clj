@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.models
@@ -51,20 +51,22 @@
 ;; diff-dashboards-str
 (expect
   "renamed it from \"Diff Test\" to \"Diff Test Changed\" and added a description."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        []}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        []}
     {:name         "Diff Test Changed"
      :description  "foobar"
      :cards        []}))
 
 (expect
   "added a card."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        []}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        []}
     {:name         "Diff Test"
      :description  nil
      :cards        [{:sizeX   2
@@ -77,23 +79,24 @@
 
 (expect
   "rearranged the cards, modified the series on card 1 and added some series to card 2."
-  (diff-dashboards-str
-    {:name         "Diff Test"
-     :description  nil
-     :cards        [{:sizeX   2
-                     :sizeY   2
-                     :row     0
-                     :col     0
-                     :id      1
-                     :card_id 1
-                     :series  [5 6]}
-                    {:sizeX   2
-                     :sizeY   2
-                     :row     0
-                     :col     0
-                     :id      2
-                     :card_id 2
-                     :series  []}]}
+  (#'dashboard/diff-dashboards-str
+   nil
+   {:name         "Diff Test"
+    :description  nil
+    :cards        [{:sizeX   2
+                    :sizeY   2
+                    :row     0
+                    :col     0
+                    :id      1
+                    :card_id 1
+                    :series  [5 6]}
+                   {:sizeX   2
+                    :sizeY   2
+                    :row     0
+                    :col     0
+                    :id      2
+                    :card_id 2
+                    :series  []}]}
     {:name         "Diff Test"
      :description  nil
      :cards        [{:sizeX   2
@@ -157,7 +160,7 @@
       ;; capture our updated dashboard state
       (let [serialized-dashboard2 (serialize-dashboard (Dashboard dashboard-id))]
         ;; now do the reversion
-        (#'dashboard/revert-dashboard! dashboard-id (users/user->id :crowberto) serialized-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
         ;; final output is original-state, updated-state, reverted-state
         [(update serialized-dashboard :cards check-ids)
          serialized-dashboard2
@@ -183,15 +186,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn do-with-dash-in-collection [f]
-  (tt/with-temp* [Collection    [collection]
-                  Dashboard     [dash  {:collection_id (u/get-id collection)}]
-                  Database      [db    {:engine :h2}]
-                  Table         [table {:db_id (u/get-id db)}]
-                  Card          [card  {:dataset_query {:database (u/get-id db)
-                                                        :type     :query
-                                                        :query    {:source-table (u/get-id table)}}}]
-                  DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
-    (f db collection dash)))
+  (tu/with-non-admin-groups-no-root-collection-perms
+    (tt/with-temp* [Collection    [collection]
+                    Dashboard     [dash  {:collection_id (u/get-id collection)}]
+                    Database      [db    {:engine :h2}]
+                    Table         [table {:db_id (u/get-id db)}]
+                    Card          [card  {:dataset_query {:database (u/get-id db)
+                                                          :type     :query
+                                                          :query    {:source-table (u/get-id table)}}}]
+                    DashboardCard [_ {:dashboard_id (u/get-id dash), :card_id (u/get-id card)}]]
+      (f db collection dash))))
 
 (defmacro with-dash-in-collection
   "Execute `body` with a Dashboard in a Collection. Dashboard will contain one Card in a Database."
@@ -229,14 +233,16 @@
 
 ;; test that we save a transient dashboard
 (expect
-  8
   (tu/with-model-cleanup ['Card 'Dashboard 'DashboardCard 'Collection]
     (binding [api/*current-user-id*              (users/user->id :rasta)
               api/*current-user-permissions-set* (-> :rasta
                                                      users/user->id
                                                      user/permissions-set
                                                      atom)]
-      (->> (magic/automagic-analysis (Table (id :venues)) {})
-           save-transient-dashboard!
-           :id
-           (db/count 'DashboardCard :dashboard_id)))))
+      (let [dashboard                  (magic/automagic-analysis (Table (id :venues)) {})
+            rastas-personal-collection (db/select-one-field :id 'Collection
+                                         :personal_owner_id api/*current-user-id*)]
+        (->> (save-transient-dashboard! dashboard rastas-personal-collection)
+             :id
+             (db/count 'DashboardCard :dashboard_id)
+             (= (-> dashboard :ordered_cards count)))))))

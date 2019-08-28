@@ -18,6 +18,7 @@ type Props = {
   items: Array<EntityMenuOption>,
   triggerIcon: string,
   className?: string,
+  tooltip?: string,
 };
 
 class EntityMenu extends Component {
@@ -30,7 +31,9 @@ class EntityMenu extends Component {
   };
 
   toggleMenu = () => {
-    if (this.state.freezeMenu) return;
+    if (this.state.freezeMenu) {
+      return;
+    }
 
     const open = !this.state.open;
     this.setState({ open, menuItemContent: null });
@@ -45,7 +48,7 @@ class EntityMenu extends Component {
   };
 
   render() {
-    const { items, triggerIcon, className } = this.props;
+    const { items, triggerIcon, className, tooltip } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <div className={cx("relative", className)}>
@@ -53,20 +56,21 @@ class EntityMenu extends Component {
           icon={triggerIcon}
           onClick={this.toggleMenu}
           open={open}
+          tooltip={tooltip}
         />
         <Popover
           isOpen={open}
           onClose={this.toggleMenu}
           hasArrow={false}
           hasBackground={false}
-          horizontalAttachments={["right"]}
+          horizontalAttachments={["left", "right"]}
           targetOffsetY={0}
         >
           {/* Note: @kdoh 10/12/17
-            * React Motion has a flow type problem with children see
-            * https://github.com/chenglou/react-motion/issues/375
-            * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
-            */}
+           * React Motion has a flow type problem with children see
+           * https://github.com/chenglou/react-motion/issues/375
+           * TODO This can be removed if we upgrade to flow 0.53 and react-motion >= 0.5.1
+           */}
           <Motion
             defaultStyle={{
               opacity: 0,
@@ -88,7 +92,9 @@ class EntityMenu extends Component {
                   {menuItemContent || (
                     <ol className="py1" style={{ minWidth: 210 }}>
                       {items.map(item => {
-                        if (item.content) {
+                        if (!item) {
+                          return null;
+                        } else if (item.content) {
                           return (
                             <li key={item.title}>
                               <EntityMenuItem
@@ -111,6 +117,7 @@ class EntityMenu extends Component {
                               <EntityMenuItem
                                 icon={item.icon}
                                 title={item.title}
+                                externalLink={item.externalLink}
                                 action={
                                   item.action &&
                                   (() => {
@@ -118,7 +125,9 @@ class EntityMenu extends Component {
                                     this.toggleMenu();
                                   })
                                 }
+                                event={item.event && item.event}
                                 link={item.link}
+                                onClose={() => this.toggleMenu()}
                               />
                             </li>
                           );

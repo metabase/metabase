@@ -2,13 +2,15 @@
   (:require [clojure.java
              [io :as io]
              [shell :as shell]]
-            [clojure.string :as s]
-            [environ.core :as environ])
-  (:import clojure.lang.Keyword))
+            [clojure.string :as str]
+            [environ.core :as environ]
+            [metabase.plugins.classloader :as classloader])
+  (:import clojure.lang.Keyword
+           java.util.UUID))
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
+  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
@@ -54,15 +56,18 @@
 (def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
-
 ;;; Version stuff
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
   (try
-    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
-      {:tag tag, :hash hash, :branch branch, :date date})
-    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
+    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out str/trim (str/split #" "))]
+      {:tag    (or tag "?")
+       :hash   (or hash "?")
+       :branch (or branch "?")
+       :date   (or date "?")})
+    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't
+    ;; barf
     (catch Throwable _
       {:tag "?", :hash "?", :branch "?", :date "?"})))
 
@@ -79,9 +84,11 @@
    This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
-  (if is-prod?
-    (version-info-from-properties-file)
-    (version-info-from-shell-script)))
+  (or (if is-prod?
+        (version-info-from-properties-file)
+        (version-info-from-shell-script))
+      ;; if version info is not defined for whatever reason
+      {}))
 
 (def ^String mb-version-string
   "A formatted version string representing the currently running application.
@@ -95,13 +102,19 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
+                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                will have its own ID, making this different from the `site-uuid` Setting."}
+  local-process-uuid
+  (str (UUID/randomUUID)))
+
 
 ;; This only affects dev:
 ;;
 ;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
 ;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
 (try
-  (require 'expectations)
+  (classloader/require 'expectations)
   ((resolve 'expectations/disable-run-on-shutdown))
   ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
   (catch Throwable _))

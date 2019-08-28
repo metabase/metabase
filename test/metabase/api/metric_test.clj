@@ -1,24 +1,29 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]]
+             [util :as u]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [database :refer [Database]]
              [metric :as metric :refer [Metric]]
+             [permissions :as perms]
+             [permissions-group :as group]
              [revision :refer [Revision]]
              [table :refer [Table]]]
             [metabase.test
              [data :as data :refer :all]
              [util :as tu]]
-            [metabase.test.data.users :refer :all]
-            [toucan.hydrate :refer [hydrate]]
+            [metabase.test.data.users :refer [fetch-user user->client user->id]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 ;; ## Helper Fns
 
-(def ^:private ^:const metric-defaults
+(def ^:private metric-defaults
   {:description             nil
    :show_in_getting_started false
    :caveats                 nil
@@ -27,19 +32,10 @@
    :created_at              true
    :updated_at              true
    :archived                false
-   :definition              {}})
+   :definition              nil})
 
 (defn- user-details [user]
-  (tu/match-$ user
-    {:id           $
-     :email        $
-     :date_joined  $
-     :first_name   $
-     :last_name    $
-     :last_login   $
-     :is_superuser $
-     :is_qbnewb    $
-     :common_name  $}))
+  (select-keys user [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :common_name]))
 
 (defn- metric-response [{:keys [created_at updated_at], :as metric}]
   (-> (into {} metric)
@@ -53,8 +49,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "metric"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "metric/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "metric"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "metric/13"))
 
 
 ;; ## POST /api/metric
@@ -109,19 +105,22 @@
 ;; ## PUT /api/metric
 
 ;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 "metric/1" {:name             "abc"
-                                              :definition       {}
-                                              :revision_message "something different"}))
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp Metric [metric]
+    ((user->client :rasta) :put 403 (str "metric/" (u/get-id metric))
+     {:name             "abc"
+      :definition       {}
+      :revision_message "something different"})))
 
 ;; test validations
 (expect
-  {:errors {:name "value must be a non-blank string."}}
+  {:errors {:revision_message "value must be a non-blank string."}}
   ((user->client :crowberto) :put 400 "metric/1" {}))
 
 (expect
-  {:errors {:revision_message "value must be a non-blank string."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name "abc"}))
+  {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+  ((user->client :crowberto) :put 400 "metric/1" {:revision_message "Wow", :name ""}))
 
 (expect
   {:errors {:revision_message "value must be a non-blank string."}}
@@ -129,12 +128,7 @@
                                                   :revision_message ""}))
 
 (expect
-  {:errors {:definition "value must be a map."}}
-  ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
-                                                  :revision_message "123"}))
-
-(expect
-  {:errors {:definition "value must be a map."}}
+  {:errors {:definition "value may be nil, or if non-nil, value must be a map."}}
   ((user->client :crowberto) :put 400 "metric/1" {:name             "abc"
                                                   :revision_message "123"
                                                   :definition       "foobar"}))
@@ -145,28 +139,49 @@
           :creator_id (user->id :rasta)
           :creator    (user-details (fetch-user :rasta))
           :definition {:database 2
-                       :query    {:filter ["not" "the toucans you're looking for"]}}})
+                       :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]} {:table_id table-id}]]
-    (metric-response ((user->client :crowberto) :put 200 (format "metric/%d" id) {:id                      id
-                                                                                  :name                    "Costa Rica"
-                                                                                  :description             nil
-                                                                                  :show_in_getting_started false
-                                                                                  :caveats                 nil
-                                                                                  :points_of_interest      nil
-                                                                                  :how_is_this_calculated  nil
-                                                                                  :table_id                456
-                                                                                  :revision_message        "I got me some revisions"
-                                                                                  :definition              {:database 2
-                                                                                                            :query    {:filter ["not" "the toucans you're looking for"]}}}))))
+    (metric-response
+     ((user->client :crowberto) :put 200 (format "metric/%d" id)
+      {:id                      id
+       :name                    "Costa Rica"
+       :description             nil
+       :show_in_getting_started false
+       :caveats                 nil
+       :points_of_interest      nil
+       :how_is_this_calculated  nil
+       :table_id                456
+       :revision_message        "I got me some revisions"
+       :definition              {:database 2
+                                 :query    {:filter ["not" ["=" "field" "the toucans you're looking for"]]}}}))))
+
+;; Can we archive a Metric with the PUT endpoint?
+
+(expect
+  true
+  (tt/with-temp Metric [{:keys [id]}]
+    ((user->client :crowberto) :put 200 (str "metric/" id)
+     {:archived true, :revision_message "Archive the Metric"})
+    (db/select-one-field :archived Metric :id id)))
+
+;; Can we unarchive a Metric with the PUT endpoint?
+(expect
+  false
+  (tt/with-temp Metric [{:keys [id]} {:archived true}]
+    ((user->client :crowberto) :put 200 (str "metric/" id)
+     {:archived false, :revision_message "Unarchive the Metric"})
+    (db/select-one-field :archived Metric :id id)))
 
 
 ;; ## DELETE /api/metric/:id
 
 ;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :delete 403 "metric/1" :revision_message "yeeeehaw!"))
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp Metric [{:keys [id]}]
+    ((user->client :rasta) :delete 403 (str "metric/" id) :revision_message "yeeeehaw!")))
 
 
 ;; test validations
@@ -177,45 +192,58 @@
   ((user->client :crowberto) :delete 400 "metric/1" :revision_message ""))
 
 (expect
-  [{:success true}
-   (merge metric-defaults
-          {:name        "Toucans in the rainforest"
-           :description "Lookin' for a blueberry"
-           :creator_id  (user->id :rasta)
-           :creator     (user-details (fetch-user :rasta))
-           :archived    true})]
+  (merge
+   metric-defaults
+   {:name        "Toucans in the rainforest"
+    :description "Lookin' for a blueberry"
+    :creator_id  (user->id :rasta)
+    :creator     (user-details (fetch-user :rasta))
+    :archived    true})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:table_id table-id}]]
-    [((user->client :crowberto) :delete 200 (format "metric/%d" id) :revision_message "carryon")
-     (metric-response (metric/retrieve-metric id))]))
+    ((user->client :crowberto) :delete 204 (format "metric/%d" id) :revision_message "carryon")
+    ;; should still be able to fetch the archived Metric
+    (metric-response
+     ((user->client :crowberto) :get 200 (format "metric/%d" id)))))
 
 
 ;; ## GET /api/metric/:id
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "metric/1"))
+;; test security. Requires perms for the Table it references
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [db]
+                  Table    [table  {:db_id (u/get-id db)}]
+                  Metric   [metric {:table_id (u/get-id table)}]]
+    (perms/revoke-permissions! (group/all-users) db)
+    ((user->client :rasta) :get 403 (str "metric/" (u/get-id metric)))))
 
 
 (expect
-  (merge metric-defaults
-         {:name        "Toucans in the rainforest"
-          :description "Lookin' for a blueberry"
-          :creator_id  (user->id :crowberto)
-          :creator     (user-details (fetch-user :crowberto))})
+  (merge
+   metric-defaults
+   {:name        "Toucans in the rainforest"
+    :description "Lookin' for a blueberry"
+    :creator_id  (user->id :crowberto)
+    :creator     (user-details (fetch-user :crowberto))})
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
                   Metric   [{:keys [id]}   {:creator_id  (user->id :crowberto)
                                             :table_id    table-id}]]
-    (metric-response ((user->client :crowberto) :get 200 (format "metric/%d" id)))))
+    (metric-response ((user->client :rasta) :get 200 (format "metric/%d" id)))))
 
 
 ;; ## GET /api/metric/:id/revisions
 
-;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "metric/1/revisions"))
+;; test security. Requires read perms for Table it references
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp* [Database [db]
+                  Table    [table  {:db_id (u/get-id db)}]
+                  Metric   [metric {:table_id (u/get-id table)}]]
+    (perms/revoke-permissions! (group/all-users) db)
+    ((user->client :rasta) :get 403 (format "metric/%d/revisions" (u/get-id metric)))))
 
 
 (expect
@@ -232,7 +260,7 @@
     :user         (-> (user-details (fetch-user :rasta))
                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
     :diff         {:name       {:after "b"}
-                   :definition {:after {:filter ["AND" [">" 1 25]]}}}
+                   :definition {:after {:filter [">" ["field-id" 1] 25]}}}
     :description  nil}]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id} {:db_id database-id}]
@@ -245,27 +273,31 @@
                                             :points_of_interest      nil
                                             :how_is_this_calculated  nil
                                             :definition              {:database 123
-                                                                      :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}]
+                                                                      :query    {:filter [:= [:field-id 10] 20]}}}]
                   Revision [_              {:model       "Metric"
                                             :model_id    id
                                             :object      {:name "b"
-                                                          :definition {:filter ["AND" [">" 1 25]]}}
+                                                          :definition {:filter [:and [:> 1 25]]}}
                                             :is_creation true}]
                   Revision [_              {:model    "Metric"
                                             :model_id id
                                             :user_id  (user->id :crowberto)
                                             :object   {:name "c"
-                                                       :definition {:filter ["AND" [">" 1 25]]}}
+                                                       :definition {:filter [:and [:> 1 25]]}}
                                             :message  "updated"}]]
-    (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]
-             (dissoc revision :timestamp :id)))))
+    (vec
+     (for [revision ((user->client :rasta) :get 200 (format "metric/%d/revisions" id))]
+       (dissoc revision :timestamp :id)))))
 
 
 ;; ## POST /api/metric/:id/revert
 
 ;; test security.  requires superuser perms
-(expect "You don't have permissions to do that."
-  ((user->client :rasta) :post 403 "metric/1/revert" {:revision_id 56}))
+(expect
+  "You don't have permissions to do that."
+  (tt/with-temp Metric [{:keys [id]}]
+    ((user->client :rasta) :post 403 (format "metric/%d/revert" id)
+     {:revision_id 56})))
 
 
 (expect {:errors {:revision_id "value must be an integer greater than zero."}}
@@ -306,7 +338,7 @@
      :diff         {:name        {:after "One Metric to rule them all, one metric to define them"}
                     :description {:after "One metric to bring them all, and in the DataModel bind them"}
                     :definition  {:after {:database 123
-                                          :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}
+                                          :query    {:filter ["=" ["field-id" 10] 20]}}}}
      :description  nil}]]
   (tt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id :id}    {:db_id database-id}]
@@ -327,7 +359,7 @@
                                                                          :points_of_interest      nil
                                                                          :how_is_this_calculated  nil
                                                                          :definition              {:database 123
-                                                                                                   :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}}]
+                                                                                                   :query    {:filter [:= [:field-id 10] 20]}}}}]
                   Revision [{revision-id :id} {:model       "Metric"
                                                :model_id    id
                                                :object      {:creator_id              (user->id :crowberto)
@@ -339,7 +371,7 @@
                                                              :points_of_interest      nil
                                                              :how_is_this_calculated  nil
                                                              :definition              {:database 123
-                                                                                       :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                       :query    {:filter [:= [:field-id 10] 20]}}}
                                                :is_creation true}]
                   Revision [_                 {:model    "Metric"
                                                :model_id id
@@ -353,7 +385,7 @@
                                                           :points_of_interest      nil
                                                           :how_is_this_calculated  nil
                                                           :definition              {:database 123
-                                                                                    :query    {:filter ["In the Land of Metabase where the Datas lie"]}}}
+                                                                                    :query    {:filter [:= [:field-id 10] 20]}}}
                                                :message  "updated"}]]
     [(dissoc ((user->client :crowberto) :post 200 (format "metric/%d/revert" id) {:revision_id revision-id}) :id :timestamp)
      (doall (for [revision ((user->client :crowberto) :get 200 (format "metric/%d/revisions" id))]

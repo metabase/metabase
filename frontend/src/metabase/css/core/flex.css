@@ -5,6 +5,11 @@
   display: flex;
 }
 
+.flex-auto,
+:local(.flex-auto) {
+  flex: auto;
+}
+
 .flex-full,
 :local(.flex-full) {
   flex: 1 0 auto;
@@ -33,6 +38,10 @@
 */
 .flex-basis-auto {
   flex-basis: auto;
+}
+
+.flex-basis-none {
+  flex-basis: 0;
 }
 
 .shrink-below-content-size {
@@ -74,13 +83,26 @@
   align-items: flex-end;
 }
 
+.align-stretch {
+  align-items: stretch;
+}
+
 .align-self-end,
 :local(.align-self-end) {
   align-self: flex-end;
 }
 
+.align-self-start,
+:local(.align-self-start) {
+  align-self: flex-start;
+}
+
 .align-self-center {
   align-self: center;
+}
+
+.align-self-stretch {
+  align-self: stretch;
 }
 
 .flex-align-right,
@@ -135,6 +157,10 @@
 
 .flex-column {
   flex-direction: column;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
 }
 
 @media screen and (--breakpoint-min-sm) {

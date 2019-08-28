@@ -1,8 +1,8 @@
 :root {
-  --title-color: #606e7b;
-  --subtitle-color: #aab7c3;
-  --muted-color: #deeaf1;
-  --blue-color: #2d86d4;
+  --title-color: var(--color-text-medium);
+  --subtitle-color: var(--color-text-medium);
+  --muted-color: var(--color-text-light);
+  --blue-color: var(--color-brand);
   --icon-width: calc(48px + 1rem);
 }
 

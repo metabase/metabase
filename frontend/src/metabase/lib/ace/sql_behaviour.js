@@ -37,12 +37,12 @@
 ace.require(
   ["ace/lib/oop", "ace/mode/behaviour", "ace/token_iterator", "ace/lib/lang"],
   function(oop, { Behaviour }, { TokenIterator }, lang) {
-    let SAFE_INSERT_IN_TOKENS = [
+    const SAFE_INSERT_IN_TOKENS = [
       "text",
       "paren.rparen",
       "punctuation.operator",
     ];
-    let SAFE_INSERT_BEFORE_TOKENS = [
+    const SAFE_INSERT_BEFORE_TOKENS = [
       "text",
       "paren.rparen",
       "punctuation.operator",
@@ -51,14 +51,17 @@ ace.require(
 
     let context;
     let contextCache = {};
-    let initContext = function(editor) {
+    const initContext = function(editor) {
       let id = -1;
       if (editor.multiSelect) {
         id = editor.selection.index;
-        if (contextCache.rangeCount != editor.multiSelect.rangeCount)
+        if (contextCache.rangeCount != editor.multiSelect.rangeCount) {
           contextCache = { rangeCount: editor.multiSelect.rangeCount };
+        }
       }
-      if (contextCache[id]) return (context = contextCache[id]);
+      if (contextCache[id]) {
+        return (context = contextCache[id]);
+      }
       context = contextCache[id] = {
         autoInsertedBrackets: 0,
         autoInsertedRow: -1,
@@ -70,8 +73,8 @@ ace.require(
       };
     };
 
-    let getWrapped = function(selection, selected, opening, closing) {
-      let rowDiff = selection.end.row - selection.start.row;
+    const getWrapped = function(selection, selected, opening, closing) {
+      const rowDiff = selection.end.row - selection.start.row;
       return {
         text: opening + selected + closing,
         selection: [
@@ -94,8 +97,8 @@ ace.require(
         ) {
           if (text == opening) {
             initContext(editor);
-            let selection = editor.getSelectionRange();
-            let selected = session.doc.getTextRange(selection);
+            const selection = editor.getSelectionRange();
+            const selected = session.doc.getTextRange(selection);
             if (selected !== "" && editor.getWrapBehavioursEnabled()) {
               return getWrapped(selection, selected, opening, closing);
             } else if (SQLBehaviour.isSaneInsertion(editor, session)) {
@@ -107,11 +110,11 @@ ace.require(
             }
           } else if (text == closing) {
             initContext(editor);
-            let cursor = editor.getCursorPosition();
-            let line = session.doc.getLine(cursor.row);
-            let rightChar = line.substring(cursor.column, cursor.column + 1);
+            const cursor = editor.getCursorPosition();
+            const line = session.doc.getLine(cursor.row);
+            const rightChar = line.substring(cursor.column, cursor.column + 1);
             if (rightChar == closing) {
-              let matching = session.$findOpeningBracket(closing, {
+              const matching = session.$findOpeningBracket(closing, {
                 column: cursor.column + 1,
                 row: cursor.row,
               });
@@ -136,11 +139,11 @@ ace.require(
           session,
           range,
         ) {
-          let selected = session.doc.getTextRange(range);
+          const selected = session.doc.getTextRange(range);
           if (!range.isMultiLine() && selected == opening) {
             initContext(editor);
-            let line = session.doc.getLine(range.start.row);
-            let rightChar = line.substring(
+            const line = session.doc.getLine(range.start.row);
+            const rightChar = line.substring(
               range.start.column + 1,
               range.start.column + 2,
             );
@@ -167,12 +170,13 @@ ace.require(
           if (
             this.lineCommentStart &&
             this.lineCommentStart.indexOf(text) != -1
-          )
+          ) {
             return;
+          }
           initContext(editor);
-          let quote = text;
-          let selection = editor.getSelectionRange();
-          let selected = session.doc.getTextRange(selection);
+          const quote = text;
+          const selection = editor.getSelectionRange();
+          const selected = session.doc.getTextRange(selection);
           if (
             selected !== "" &&
             selected !== "'" &&
@@ -181,35 +185,49 @@ ace.require(
           ) {
             return getWrapped(selection, selected, quote, quote);
           } else if (!selected) {
-            let cursor = editor.getCursorPosition();
-            let line = session.doc.getLine(cursor.row);
-            let leftChar = line.substring(cursor.column - 1, cursor.column);
-            let rightChar = line.substring(cursor.column, cursor.column + 1);
+            const cursor = editor.getCursorPosition();
+            const line = session.doc.getLine(cursor.row);
+            const leftChar = line.substring(cursor.column - 1, cursor.column);
+            const rightChar = line.substring(cursor.column, cursor.column + 1);
 
-            let token = session.getTokenAt(cursor.row, cursor.column);
-            let rightToken = session.getTokenAt(cursor.row, cursor.column + 1);
+            const token = session.getTokenAt(cursor.row, cursor.column);
+            const rightToken = session.getTokenAt(
+              cursor.row,
+              cursor.column + 1,
+            );
             // We're escaped.
-            if (leftChar == "\\" && token && /escape/.test(token.type))
+            if (leftChar == "\\" && token && /escape/.test(token.type)) {
               return null;
+            }
 
-            let stringBefore = token && /string|escape/.test(token.type);
-            let stringAfter =
+            const stringBefore = token && /string|escape/.test(token.type);
+            const stringAfter =
               !rightToken || /string|escape/.test(rightToken.type);
 
             let pair;
             if (rightChar == quote) {
               pair = stringBefore !== stringAfter;
-              if (pair && /string\.end/.test(rightToken.type)) pair = false;
+              if (pair && /string\.end/.test(rightToken.type)) {
+                pair = false;
+              }
             } else {
-              if (stringBefore && !stringAfter) return null; // wrap string with different quote
-              if (stringBefore && stringAfter) return null; // do not pair quotes inside strings
-              let wordRe = session.$mode.tokenRe;
+              if (stringBefore && !stringAfter) {
+                return null;
+              } // wrap string with different quote
+              if (stringBefore && stringAfter) {
+                return null;
+              } // do not pair quotes inside strings
+              const wordRe = session.$mode.tokenRe;
               wordRe.lastIndex = 0;
-              let isWordBefore = wordRe.test(leftChar);
+              const isWordBefore = wordRe.test(leftChar);
               wordRe.lastIndex = 0;
-              let isWordAfter = wordRe.test(leftChar);
-              if (isWordBefore || isWordAfter) return null; // before or after alphanumeric
-              if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) return null; // there is rightChar and it isn't closing
+              const isWordAfter = wordRe.test(leftChar);
+              if (isWordBefore || isWordAfter) {
+                return null;
+              } // before or after alphanumeric
+              if (rightChar && !/[\s;,.})\]\\]/.test(rightChar)) {
+                return null;
+              } // there is rightChar and it isn't closing
               pair = true;
             }
             return {
@@ -227,11 +245,11 @@ ace.require(
         session,
         range,
       ) {
-        let selected = session.doc.getTextRange(range);
+        const selected = session.doc.getTextRange(range);
         if (!range.isMultiLine() && (selected == '"' || selected == "'")) {
           initContext(editor);
-          let line = session.doc.getLine(range.start.row);
-          let rightChar = line.substring(
+          const line = session.doc.getLine(range.start.row);
+          const rightChar = line.substring(
             range.start.column + 1,
             range.start.column + 2,
           );
@@ -244,8 +262,8 @@ ace.require(
     };
 
     SQLBehaviour.isSaneInsertion = function(editor, session) {
-      let cursor = editor.getCursorPosition();
-      let iterator = new TokenIterator(session, cursor.row, cursor.column);
+      const cursor = editor.getCursorPosition();
+      const iterator = new TokenIterator(session, cursor.row, cursor.column);
 
       // Don't insert in the middle of a keyword/identifier/lexical
       if (
@@ -255,7 +273,7 @@ ace.require(
         )
       ) {
         // Look ahead in case we're at the end of a token
-        let iterator2 = new TokenIterator(
+        const iterator2 = new TokenIterator(
           session,
           cursor.row,
           cursor.column + 1,
@@ -265,8 +283,9 @@ ace.require(
             iterator2.getCurrentToken() || "text",
             SAFE_INSERT_IN_TOKENS,
           )
-        )
+        ) {
           return false;
+        }
       }
 
       // Only insert in front of whitespace/comments
@@ -285,8 +304,8 @@ ace.require(
     };
 
     SQLBehaviour.recordAutoInsert = function(editor, session, bracket) {
-      let cursor = editor.getCursorPosition();
-      let line = session.doc.getLine(cursor.row);
+      const cursor = editor.getCursorPosition();
+      const line = session.doc.getLine(cursor.row);
       // Reset previous state if text or context changed too much
       if (
         !this.isAutoInsertedClosing(
@@ -294,18 +313,20 @@ ace.require(
           line,
           context.autoInsertedLineEnd[0],
         )
-      )
+      ) {
         context.autoInsertedBrackets = 0;
+      }
       context.autoInsertedRow = cursor.row;
       context.autoInsertedLineEnd = bracket + line.substr(cursor.column);
       context.autoInsertedBrackets++;
     };
 
     SQLBehaviour.recordMaybeInsert = function(editor, session, bracket) {
-      let cursor = editor.getCursorPosition();
-      let line = session.doc.getLine(cursor.row);
-      if (!this.isMaybeInsertedClosing(cursor, line))
+      const cursor = editor.getCursorPosition();
+      const line = session.doc.getLine(cursor.row);
+      if (!this.isMaybeInsertedClosing(cursor, line)) {
         context.maybeInsertedBrackets = 0;
+      }
       context.maybeInsertedRow = cursor.row;
       context.maybeInsertedLineStart = line.substr(0, cursor.column) + bracket;
       context.maybeInsertedLineEnd = line.substr(cursor.column);

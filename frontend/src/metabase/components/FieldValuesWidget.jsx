@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
 import RemappedValue from "metabase/containers/RemappedValue";
@@ -44,7 +44,10 @@ type Props = {
   formatOptions?: FormattingOptions,
   maxWidth?: number,
   minWidth?: number,
+  optionsMaxHeight?: Number,
   alwaysShowOptions?: boolean,
+
+  className?: string,
 };
 
 type State = {
@@ -118,7 +121,7 @@ export class FieldValuesWidget extends Component {
 
     const fieldId = (field.target || field).id;
     const searchFieldId = searchField.id;
-    let results = await MetabaseApi.field_search(
+    const results = await MetabaseApi.field_search(
       {
         value,
         fieldId,
@@ -172,7 +175,7 @@ export class FieldValuesWidget extends Component {
       cancelDeferred.resolve();
     };
 
-    let results = await this.search(value, cancelDeferred.promise);
+    const results = await this.search(value, cancelDeferred.promise);
 
     this._cancel = null;
 
@@ -224,7 +227,10 @@ export class FieldValuesWidget extends Component {
       multi,
       autoFocus,
       color,
+      className,
+      style,
       formatOptions,
+      optionsMaxHeight,
     } = this.props;
     const { loadingState } = this.state;
 
@@ -271,14 +277,19 @@ export class FieldValuesWidget extends Component {
           value={value.filter(v => v != null)}
           onChange={onChange}
           placeholder={placeholder}
+          updateOnInputChange
+          // forwarded props
           multi={multi}
           autoFocus={autoFocus}
           color={color}
-          style={{
-            borderWidth: 2,
-            ...this.props.style,
-          }}
-          updateOnInputChange
+          style={style}
+          className={className}
+          optionsStyle={
+            optionsMaxHeight !== undefined
+              ? { maxHeight: optionsMaxHeight }
+              : {}
+          }
+          // end forwarded props
           options={options}
           // $FlowFixMe
           valueKey={0}
@@ -287,7 +298,7 @@ export class FieldValuesWidget extends Component {
               value={value}
               column={field}
               {...formatOptions}
-              round={false}
+              maximumFractionDigits={20}
               compact={false}
               autoLoad={true}
             />
@@ -296,7 +307,7 @@ export class FieldValuesWidget extends Component {
             <RemappedValue
               value={option[0]}
               column={field}
-              round={false}
+              maximumFractionDigits={20}
               autoLoad={false}
               {...formatOptions}
             />
@@ -368,4 +379,7 @@ const OptionsMessage = ({ message }) => (
   <div className="flex layout-centered p4 border-bottom">{message}</div>
 );
 
-export default connect(null, mapDispatchToProps)(FieldValuesWidget);
+export default connect(
+  null,
+  mapDispatchToProps,
+)(FieldValuesWidget);

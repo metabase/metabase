@@ -1,13 +1,11 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
-  (:require [metabase.query-processor-test :refer :all]
-            [metabase.query-processor.middleware.expand :as ql]
+  (:require [metabase
+             [driver :as driver]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets :refer [*driver* *engine*]]
-             [interface :as i]]))
+             [util :as tu]]))
 
 ;; There were 10 "sad toucan incidents" on 2015-06-02 in UTC
 (expect-with-non-timeseries-dbs
@@ -20,14 +18,13 @@
   ;; the issue go away
   (tu/with-temporary-setting-values [report-timezone "UTC"]
     (count (rows (data/dataset sad-toucan-incidents
-                   (data/run-query incidents
-                     (ql/filter (ql/and (ql/> $timestamp "2015-06-01")
-                                        (ql/< $timestamp "2015-06-03")))
-                     (ql/order-by (ql/asc $timestamp))))))))
+                   (data/run-mbql-query incidents
+                     {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
+                      :order-by [[:asc $timestamp]]}))))))
 
 (expect-with-non-timeseries-dbs
   (cond
-    (contains? #{:sqlite :crate} *engine*)
+    (= :sqlite driver/*driver*)
     [["2015-06-01"  6]
      ["2015-06-02" 10]
      ["2015-06-03"  4]
@@ -39,7 +36,7 @@
      ["2015-06-09"  7]
      ["2015-06-10"  9]]
 
-    (contains? #{:oracle :redshift} *engine*)
+    (qp.test/tz-shifted-driver-bug? driver/*driver*)
     [["2015-06-01T00:00:00.000-07:00" 6]
      ["2015-06-02T00:00:00.000-07:00" 10]
      ["2015-06-03T00:00:00.000-07:00" 4]
@@ -51,7 +48,7 @@
      ["2015-06-09T00:00:00.000-07:00" 7]
      ["2015-06-10T00:00:00.000-07:00" 9]]
 
-    (supports-report-timezone? *engine*)
+    (supports-report-timezone? driver/*driver*)
     [["2015-06-01T00:00:00.000-07:00" 8]
      ["2015-06-02T00:00:00.000-07:00" 9]
      ["2015-06-03T00:00:00.000-07:00" 9]
@@ -77,8 +74,8 @@
 
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (->> (data/dataset sad-toucan-incidents
-           (data/run-query incidents
-             (ql/aggregation (ql/count))
-             (ql/breakout $timestamp)
-             (ql/limit 10)))
+           (data/run-mbql-query incidents
+             {:aggregation [[:count]]
+              :breakout    [$timestamp]
+              :limit       10}))
          rows (format-rows-by [identity int]))))

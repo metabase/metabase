@@ -1,15 +1,6 @@
 /* @flow */
 
-import {
-  mbqlEq,
-  op,
-  args,
-  noNullValues,
-  add,
-  update,
-  remove,
-  clear,
-} from "./util";
+import { op, args, noNullValues, add, update, remove, clear } from "./util";
 
 import type {
   FilterClause,
@@ -21,7 +12,7 @@ import type {
 export function getFilters(filter: ?FilterClause): Filter[] {
   if (!filter || (Array.isArray(filter) && filter.length === 0)) {
     return [];
-  } else if (mbqlEq(op(filter), "and")) {
+  } else if (op(filter) === "and") {
     return args(filter);
   } else {
     return [filter];
@@ -73,14 +64,11 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 }
 
 export function isSegmentFilter(filter: FilterClause): boolean {
-  return Array.isArray(filter) && mbqlEq(filter[0], "segment");
+  return Array.isArray(filter) && filter[0] === "segment";
 }
 
 export function isCompoundFilter(filter: FilterClause): boolean {
-  return (
-    Array.isArray(filter) &&
-    (mbqlEq(filter[0], "and") || mbqlEq(filter[0], "or"))
-  );
+  return Array.isArray(filter) && (filter[0] === "and" || filter[0] === "or");
 }
 
 export function isFieldFilter(filter: FilterClause): boolean {
@@ -95,7 +83,7 @@ export function hasFilterOptions(filter: Filter): boolean {
 
 export function getFilterOptions(filter: Filter): FilterOptions {
   // NOTE: just make a new "any" variable since getting flow to type checking this is a nightmare
-  let _filter: any = filter;
+  const _filter: any = filter;
   if (hasFilterOptions(filter)) {
     return _filter[_filter.length - 1];
   } else {

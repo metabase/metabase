@@ -20,13 +20,14 @@ export default class CollapsedStep extends Component {
   }
 
   render() {
-    let { isCompleted, stepCircleText, stepText } = this.props;
+    const { isCompleted, stepCircleText, stepText } = this.props;
 
     const classes = cx({
       SetupStep: true,
       rounded: true,
       full: true,
       relative: true,
+      "bg-white": true,
       "SetupStep--completed shadowed": isCompleted,
       "SetupStep--todo": !isCompleted,
     });

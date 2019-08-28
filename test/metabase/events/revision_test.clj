@@ -21,9 +21,8 @@
   []
   {:display                "table"
    :dataset_query          {:database (data/id)
-                            :type     "query"
-                            :query    {:aggregation ["rows"]
-                                       :source_table (data/id :categories)}}
+                            :type     :query
+                            :query    {:source-table (data/id :categories)}}
    :visualization_settings {}
    :creator_id             (user->id :crowberto)})
 
@@ -36,18 +35,17 @@
    :dataset_query          (:dataset_query card)
    :read_permissions       nil
    :description            nil
-   :display                "table"
+   :display                :table
    :enable_embedding       false
    :embedding_params       nil
-   :id                     (:id card)
+   :id                     (u/get-id card)
    :made_public_by_id      nil
    :name                   (:name card)
    :public_uuid            nil
    :cache_ttl              nil
-   :query_type             "query"
+   :query_type             :query
    :table_id               (data/id :categories)
-   :visualization_settings {}
-   :result_metadata        nil})
+   :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
   {:description  nil

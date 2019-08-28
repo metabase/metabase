@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { CSSTransitionGroup } from "react-transition-group";
 
 import S from "./Formula.css";
@@ -22,7 +22,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class Formula extends Component {
   props: {
     type: string,
@@ -62,7 +65,7 @@ export default class Formula extends Component {
               <QueryDefinition
                 className={S.formulaDefinitionInner}
                 object={entity}
-                tableMetadata={metadata.tables[entity.table_id]}
+                metadata={metadata}
               />
             </div>
           )}

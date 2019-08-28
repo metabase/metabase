@@ -1,25 +1,27 @@
 (ns metabase.api.table
   "/api/table endpoints."
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [GET PUT POST]]
+            [compojure.core :refer [GET POST PUT]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [related :as related]
              [sync :as sync]
              [util :as u]]
             [metabase.api.common :as api]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
-             [database :as database :refer [Database]]
-             [field :refer [Field with-normal-values]]
-             [field-values :refer [FieldValues] :as fv]
+             [field :refer [Field]]
+             [field-values :as fv :refer [FieldValues]]
              [interface :as mi]
              [table :as table :refer [Table]]]
-            [metabase.related :as related]
             [metabase.sync.field-values :as sync-field-values]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [deferred-tru trs]]
+             [schema :as su]]
             [schema.core :as s]
-            [puppetlabs.i18n.core :refer [trs tru]]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -76,9 +78,9 @@
         (sync/sync-table! updated-table))
       updated-table)))
 
-(def ^:private auto-bin-str (tru "Auto bin"))
-(def ^:private dont-bin-str (tru "Don''t bin"))
-(def ^:private day-str (tru "Day"))
+(def ^:private auto-bin-str (deferred-tru "Auto bin"))
+(def ^:private dont-bin-str (deferred-tru "Don''t bin"))
+(def ^:private day-str (deferred-tru "Day"))
 
 (def ^:private dimension-options
   (let [default-entry [auto-bin-str ["default"]]]
@@ -89,30 +91,30 @@
                      :mbql ["datetime-field" nil param]
                      :type "type/DateTime"})
                   ;; note the order of these options corresponds to the order they will be shown to the user in the UI
-                  [[(tru "Minute") "minute"]
-                   [(tru "Hour") "hour"]
+                  [[(deferred-tru "Minute") "minute"]
+                   [(deferred-tru "Hour") "hour"]
                    [day-str "day"]
-                   [(tru "Week") "week"]
-                   [(tru "Month") "month"]
-                   [(tru "Quarter") "quarter"]
-                   [(tru "Year") "year"]
-                   [(tru "Minute of Hour") "minute-of-hour"]
-                   [(tru "Hour of Day") "hour-of-day"]
-                   [(tru "Day of Week") "day-of-week"]
-                   [(tru "Day of Month") "day-of-month"]
-                   [(tru "Day of Year") "day-of-year"]
-                   [(tru "Week of Year") "week-of-year"]
-                   [(tru "Month of Year") "month-of-year"]
-                   [(tru "Quarter of Year") "quarter-of-year"]])
+                   [(deferred-tru "Week") "week"]
+                   [(deferred-tru "Month") "month"]
+                   [(deferred-tru "Quarter") "quarter"]
+                   [(deferred-tru "Year") "year"]
+                   [(deferred-tru "Minute of Hour") "minute-of-hour"]
+                   [(deferred-tru "Hour of Day") "hour-of-day"]
+                   [(deferred-tru "Day of Week") "day-of-week"]
+                   [(deferred-tru "Day of Month") "day-of-month"]
+                   [(deferred-tru "Day of Year") "day-of-year"]
+                   [(deferred-tru "Week of Year") "week-of-year"]
+                   [(deferred-tru "Month of Year") "month-of-year"]
+                   [(deferred-tru "Quarter of Year") "quarter-of-year"]])
              (conj
               (mapv (fn [[name params]]
                       {:name name
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Number"})
                     [default-entry
-                     [(tru "10 bins") ["num-bins" 10]]
-                     [(tru "50 bins") ["num-bins" 50]]
-                     [(tru "100 bins") ["num-bins" 100]]])
+                     [(deferred-tru "10 bins") ["num-bins" 10]]
+                     [(deferred-tru "50 bins") ["num-bins" 50]]
+                     [(deferred-tru "100 bins") ["num-bins" 100]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Number"})
@@ -122,10 +124,10 @@
                        :mbql (apply vector "binning-strategy" nil params)
                        :type "type/Coordinate"})
                     [default-entry
-                     [(tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
-                     [(tru "Bin every 1 degree") ["bin-width" 1.0]]
-                     [(tru "Bin every 10 degrees") ["bin-width" 10.0]]
-                     [(tru "Bin every 20 degrees") ["bin-width" 20.0]]])
+                     [(deferred-tru "Bin every 0.1 degrees") ["bin-width" 0.1]]
+                     [(deferred-tru "Bin every 1 degree") ["bin-width" 1.0]]
+                     [(deferred-tru "Bin every 10 degrees") ["bin-width" 10.0]]
+                     [(deferred-tru "Bin every 20 degrees") ["bin-width" 20.0]]])
               {:name dont-bin-str
                :mbql nil
                :type "type/Coordinate"})))))
@@ -156,22 +158,21 @@
                               (pred v))) dimension-options-for-response)))
 
 (def ^:private date-default-index
-  (dimension-index-for-type "type/DateTime" #(= day-str (:name %))))
+  (dimension-index-for-type "type/DateTime" #(= (str day-str) (str (:name %)))))
 
 (def ^:private numeric-default-index
-  (dimension-index-for-type "type/Number" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Number" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (def ^:private coordinate-default-index
-  (dimension-index-for-type "type/Coordinate" #(.contains ^String (:name %) auto-bin-str)))
+  (dimension-index-for-type "type/Coordinate" #(.contains ^String (str (:name %)) (str auto-bin-str))))
 
 (defn- supports-numeric-binning? [driver]
-  (and driver (contains? (driver/features driver) :binning)))
+  (and driver (driver/supports? driver :binning)))
 
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
-  [{:keys [base_type special_type]}]
-  (and (or (isa? base_type :type/DateTime)
-           (isa? special_type :type/DateTime))
+  [{:keys [base_type], :as field}]
+  (and (mbql.u/datetime-field? field)
        (not (isa? base_type :type/Time))))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]
@@ -212,16 +213,11 @@
                 (update field :values fv/field-values->pairs)
                 field)))))
 
-(api/defendpoint GET "/:id/query_metadata"
-  "Get metadata about a `Table` us eful for running queries.
-   Returns DB, fields, field FKs, and field values.
-
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (let [table (api/read-check Table id)
-        driver (driver/database-id->driver (:db_id table))]
+(defn fetch-query-metadata
+  "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
+  [table include_sensitive_fields]
+  (api/read-check table)
+  (let [driver (driver.u/database->driver (:db_id table))]
     (-> table
         (hydrate :db [:fields [:target :has_field_values] :dimensions :has_field_values] :segments :metrics)
         (m/dissoc-in [:db :details])
@@ -234,23 +230,31 @@
                           (partial filter (fn [{:keys [visibility_type]}]
                                             (not= (keyword visibility_type) :sensitive))))))))
 
+(api/defendpoint GET "/:id/query_metadata"
+  "Get metadata about a `Table` useful for running queries.
+   Returns DB, fields, field FKs, and field values.
+
+  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
+  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
+  [id include_sensitive_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields))
+
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
    database."
   [card-id database-id metadata]
-  (let [add-field-dimension-options #(assoc-field-dimension-options (driver/database-id->driver database-id) %)]
+  (let [add-field-dimension-options #(assoc-field-dimension-options (driver.u/database->driver database-id) %)]
     (for [col metadata]
       (-> col
           (update :base_type keyword)
           (assoc
               :table_id     (str "card__" card-id)
               :id           [:field-literal (:name col) (or (:base_type col) :type/*)]
-              ;; don't return :special_type if it's a PK or FK because it confuses the frontend since it can't
-              ;; actually be used that way IRL
-              :special_type (when-let [special-type (keyword (:special_type col))]
-                              (when-not (or (isa? special-type :type/PK)
-                                            (isa? special-type :type/FK))
-                                special-type)))
+              ;; Assoc special_type at least temprorarily. We need the correct special type in place to make decisions
+              ;; about what kind of dimension options should be added. PK/FK values will be removed after we've added
+              ;; the dimension options
+              :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
 (defn card->virtual-table
@@ -260,13 +264,23 @@
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
     (cond-> {:id           (str "card__" (u/get-id card))
-             :db_id        database/virtual-id
+             :db_id        (:database_id card)
              :display_name (:name card)
              :schema       (get-in card [:collection :name] "Everything else")
              :description  (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card)
                                                                            database_id
                                                                            (:result_metadata card))))))
+
+(defn- remove-nested-pk-fk-special-types
+  "This method clears the special_type attribute for PK/FK fields of nested queries. Those fields having a special
+  type confuses the frontend and it can really used in the same way"
+  [{:keys [fields] :as metadata-response}]
+  (assoc metadata-response :fields (for [{:keys [special_type] :as field} fields]
+                                     (if (or (isa? special_type :type/PK)
+                                             (isa? special_type :type/FK))
+                                       (assoc field :special_type nil)
+                                       field))))
 
 (api/defendpoint GET "/card__:id/query_metadata"
   "Return metadata for the 'virtual' table for a Card."
@@ -277,7 +291,8 @@
     (-> card
         api/read-check
         (card->virtual-table :include-fields? true)
-        (assoc-dimension-options (driver/database-id->driver database_id)))))
+        (assoc-dimension-options (driver.u/database->driver database_id))
+        remove-nested-pk-fk-special-types)))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
@@ -315,8 +330,9 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
   (api/check-superuser)
-  (when-let [field-ids (db/select-ids Field :table_id 212)]
-    (db/simple-delete! FieldValues :id [:in field-ids]))
+  (api/check-404 (Table id))
+  (when-let [field-ids (db/select-ids Field :table_id id)]
+    (db/simple-delete! FieldValues :field_id [:in field-ids]))
   {:status :success})
 
 (api/defendpoint GET "/:id/related"

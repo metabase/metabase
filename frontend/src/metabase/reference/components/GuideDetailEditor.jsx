@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 // FIXME: using pure seems to mess with redux form updates
 // import pure from "recompose/pure";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./GuideDetailEditor.css";
 
 import Select from "metabase/components/Select.jsx";
@@ -142,7 +142,7 @@ const GuideDetailEditor = ({
             />
           )}
         </div>
-        <div className="ml-auto cursor-pointer text-grey-2">
+        <div className="ml-auto cursor-pointer text-light">
           <Tooltip tooltip={t`Remove item`}>
             <Icon name="close" width={16} height={16} onClick={removeField} />
           </Tooltip>

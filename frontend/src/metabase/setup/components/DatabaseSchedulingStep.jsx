@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import StepTitle from "./StepTitle.jsx";
 import CollapsedStep from "./CollapsedStep.jsx";
 
@@ -35,10 +35,15 @@ export default class DatabaseSchedulingStep extends Component {
   };
 
   render() {
-    let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
-    let { formError } = this.state;
+    const {
+      activeStep,
+      databaseDetails,
+      setActiveStep,
+      stepNumber,
+    } = this.props;
+    const { formError } = this.state;
 
-    let stepText = t`Control automatic scans`;
+    const stepText = t`Control automatic scans`;
 
     const schedulingIcon = (
       <Icon
@@ -62,7 +67,7 @@ export default class DatabaseSchedulingStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep rounded full relative SetupStep--active">
+        <section className="SetupStep bg-white rounded full relative SetupStep--active">
           <StepTitle title={stepText} circleText={schedulingIcon} />
           <div className="mb4">
             <div className="text-default">

@@ -12,9 +12,9 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [interface :as i]
-             [sync-metadata :as sync-metadata]]
-            [schema.core :as s]
-            [metabase.sync.util :as sync-util]))
+             [sync-metadata :as sync-metadata]
+             [util :as sync-util]]
+            [schema.core :as s]))
 
 (s/defn sync-database!
   "Perform all the different sync operations synchronously for DATABASE.

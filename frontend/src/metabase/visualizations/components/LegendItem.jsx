@@ -39,6 +39,7 @@ export default class LegendItem extends Component {
       className,
       description,
       onClick,
+      infoClassName,
     } = this.props;
     return (
       <LegendLink
@@ -72,14 +73,12 @@ export default class LegendItem extends Component {
           </Tooltip>
         )}
         {showTitle && (
-          <div className="flex align-center">
-            <span className="mr1">
-              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
-            </span>
+          <div className="flex align-center overflow-hidden">
+            <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
               <div className="hover-child">
                 <Tooltip tooltip={description} maxWidth={"22em"}>
-                  <Icon name="info" />
+                  <Icon className={infoClassName} name="info" />
                 </Tooltip>
               </div>
             )}

@@ -1,9 +1,16 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { withBackground } from "metabase/hoc/Background";
+import { ModalRoute } from "metabase/hoc/ModalRoute";
+
+import NewUserModal from "metabase/admin/people/containers/NewUserModal";
+import UserSuccessModal from "metabase/admin/people/containers/UserSuccessModal";
+import UserPasswordResetModal from "metabase/admin/people/containers/UserPasswordResetModal";
+import EditUserModal from "metabase/admin/people/containers/EditUserModal";
+import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
@@ -21,6 +28,13 @@ import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx"
 import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
 import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
 
+import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
+import TasksApp from "metabase/admin/tasks/containers/TasksApp";
+import TaskModal from "metabase/admin/tasks/containers/TaskModal";
+import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
+import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
+import Logs from "metabase/admin/tasks/containers/Logs";
+
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
@@ -34,7 +48,7 @@ const getRoutes = (store, IsAdmin) => (
     title={t`Admin`}
     component={withBackground("bg-white")(IsAdmin)}
   >
-    <IndexRedirect to="/admin/settings" />
+    <IndexRedirect to="settings" />
 
     <Route path="databases" title={t`Databases`}>
       <IndexRoute component={DatabaseListApp} />
@@ -55,10 +69,10 @@ const getRoutes = (store, IsAdmin) => (
         path="database/:databaseId/:mode/:tableId/settings"
         component={TableSettingsApp}
       />
-      <Route
-        path="database/:databaseId/:mode/:tableId/:fieldId"
-        component={FieldApp}
-      />
+      <Route path="database/:databaseId/:mode/:tableId/:fieldId">
+        <IndexRedirect to="general" />
+        <Route path=":section" component={FieldApp} />
+      </Route>
       <Route path="metric/create" component={MetricApp} />
       <Route path="metric/:id" component={MetricApp} />
       <Route path="segment/create" component={SegmentApp} />
@@ -69,15 +83,49 @@ const getRoutes = (store, IsAdmin) => (
     {/* PEOPLE */}
     <Route path="people" title={t`People`} component={AdminPeopleApp}>
       <IndexRoute component={PeopleListingApp} />
+
+      {/*NOTE: this must come before the other routes otherwise it will be masked by them*/}
       <Route path="groups" title={t`Groups`}>
         <IndexRoute component={GroupsListingApp} />
         <Route path=":groupId" component={GroupDetailApp} />
       </Route>
+
+      <Route path="" component={PeopleListingApp}>
+        <ModalRoute path="new" modal={NewUserModal} />
+      </Route>
+
+      <Route path=":userId" component={PeopleListingApp}>
+        <ModalRoute path="edit" modal={EditUserModal} />
+        <ModalRoute path="success" modal={UserSuccessModal} />
+        <ModalRoute path="reset" modal={UserPasswordResetModal} />
+        <ModalRoute path="deactivate" modal={UserActivationModal} />
+        <ModalRoute path="reactivate" modal={UserActivationModal} />
+      </Route>
+    </Route>
+
+    {/* Troubleshooting */}
+    <Route
+      path="troubleshooting"
+      title={t`Troubleshooting`}
+      component={TroubleshootingApp}
+    >
+      <IndexRedirect to="tasks" />
+      <Route path="tasks" component={TasksApp}>
+        <ModalRoute path=":taskId" modal={TaskModal} />
+      </Route>
+      <Route path="jobs" component={JobInfoApp}>
+        <ModalRoute
+          path=":jobKey"
+          modal={JobTriggersModal}
+          modalProps={{ wide: true }}
+        />
+      </Route>
+      <Route path="logs" component={Logs} />
     </Route>
 
     {/* SETTINGS */}
     <Route path="settings" title={t`Settings`}>
-      <IndexRedirect to="/admin/settings/setup" />
+      <IndexRedirect to="setup" />
       {/* <IndexRoute component={SettingsEditorApp} /> */}
       <Route path=":section/:authType" component={SettingsEditorApp} />
       <Route path=":section" component={SettingsEditorApp} />

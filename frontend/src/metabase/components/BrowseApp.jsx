@@ -1,78 +1,70 @@
 import React from "react";
-import { Box } from "grid-styled";
-import { t } from "c-3po";
+import { Box, Flex } from "grid-styled";
+import { t } from "ttag";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
+import { connect } from "react-redux";
+
+import Database from "metabase/entities/databases";
+import Schema from "metabase/entities/schemas";
+import Table from "metabase/entities/tables";
 
 import EntityItem from "metabase/components/EntityItem";
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
-import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 
-import { normal } from "metabase/lib/colors";
-import Question from "metabase-lib/lib/Question";
+import { color } from "metabase/lib/colors";
+
+import { getXraysEnabled } from "metabase/selectors/settings";
+import { getMetadata } from "metabase/selectors/metadata";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Subhead from "metabase/components/Subhead";
+import Tooltip from "metabase/components/Tooltip";
 
-export const DatabaseListLoader = props => (
-  <EntityListLoader entityType="databases" {...props} />
-);
-
-const SchemaListLoader = ({ dbId, ...props }) => (
-  <EntityListLoader entityType="schemas" entityQuery={{ dbId }} {...props} />
-);
-
-const TableListLoader = ({ dbId, schemaName, ...props }) => (
-  <EntityListLoader
-    entityType="tables"
-    entityQuery={{ dbId, schemaName }}
-    {...props}
-  />
-);
-
-const DatabaseName = ({ dbId }) => (
-  <EntityObjectLoader
-    entityType="databases"
-    entityId={dbId}
-    properties={["name"]}
-    loadingAndErrorWrapper={false}
-  >
-    {({ object }) => (object ? <span>{object.name}</span> : null)}
-  </EntityObjectLoader>
-);
+const PAGE_PADDING = [1, 2, 4];
+const ITEM_WIDTHS = [1, 1 / 2, 1 / 3];
+const ANALYTICS_CONTEXT = "Data Browse";
 
 export class SchemaBrowser extends React.Component {
   render() {
     const { dbId } = this.props.params;
     return (
       <Box>
-        <SchemaListLoader dbId={dbId}>
+        <Schema.ListLoader query={{ dbId }}>
           {({ schemas }) =>
             schemas.length > 1 ? (
               <Box>
-                <BrowserCrumbs
+                <BrowseHeader
                   crumbs={[
-                    { title: t`Your data`, to: "browse" },
-                    { title: <DatabaseName dbId={dbId} /> },
+                    { title: t`Our data`, to: "browse" },
+                    { title: <Database.Name id={dbId} /> },
                   ]}
                 />
                 <Grid>
                   {schemas.map(schema => (
-                    <GridItem w={1 / 3}>
+                    <GridItem w={ITEM_WIDTHS} key={schema.id}>
                       <Link
                         to={`/browse/${dbId}/schema/${schema.name}`}
                         mb={1}
-                        hover={{ color: normal.purple }}
+                        hover={{ color: color("accent2") }}
+                        data-metabase-event={`${ANALYTICS_CONTEXT};Schema Click`}
+                        className="overflow-hidden"
                       >
-                        <Card hoverable>
-                          <EntityItem
-                            name={schema.name}
-                            iconName="folder"
-                            iconColor={normal.purple}
-                            item={schema}
-                          />
+                        <Card hoverable px={1}>
+                          <Flex align="center">
+                            <EntityItem
+                              name={schema.name}
+                              iconName="folder"
+                              iconColor={color("accent2")}
+                              item={schema}
+                            />
+                            <Box ml="auto">
+                              <Icon name="reference" />
+                              <Tooltip tooltip={t`X-ray this schema`}>
+                                <Icon name="bolt" mx={1} />
+                              </Tooltip>
+                            </Box>
+                          </Flex>
                         </Card>
                       </Link>
                     </GridItem>
@@ -83,26 +75,33 @@ export class SchemaBrowser extends React.Component {
               <TableBrowser {...this.props} />
             )
           }
-        </SchemaListLoader>
+        </Schema.ListLoader>
       </Box>
     );
   }
 }
 
+@connect(state => ({
+  metadata: getMetadata(state),
+  xraysEnabled: getXraysEnabled(state),
+}))
 export class TableBrowser extends React.Component {
   render() {
-    const { dbId, schemaName } = this.props.params;
+    const {
+      metadata,
+      params: { dbId, schemaName },
+    } = this.props;
     return (
       <Box>
-        <TableListLoader dbId={dbId} schemaName={schemaName}>
+        <Table.ListLoader query={{ dbId, schemaName }}>
           {({ tables, loading, error }) => {
             return (
               <Box>
-                <BrowserCrumbs
+                <BrowseHeader
                   crumbs={[
-                    { title: t`Your data`, to: "browse" },
+                    { title: t`Our data`, to: "browse" },
                     {
-                      title: <DatabaseName dbId={dbId} />,
+                      title: <Database.Name id={dbId} />,
                       to: `browse/${dbId}`,
                     },
                     schemaName != null && { title: schemaName },
@@ -110,23 +109,67 @@ export class TableBrowser extends React.Component {
                 />
                 <Grid>
                   {tables.map(table => {
-                    const link = Question.create({
-                      databaseId: parseInt(dbId),
-                      tableId: table.id,
-                    }).getUrl();
-
+                    // NOTE: currently tables entities doesn't integrate with Metadata objects
+                    const metadataTable = metadata.table(table.id);
+                    const link =
+                      metadataTable &&
+                      // NOTE: don't clean since we might not have all the metadata loaded?
+                      metadataTable.newQuestion().getUrl({ clean: false });
                     return (
-                      <GridItem w={1 / 3}>
-                        <Link to={link} mb={1} hover={{ color: normal.purple }}>
-                          <Card hoverable>
+                      <GridItem w={ITEM_WIDTHS} key={table.id}>
+                        <Card
+                          hoverable
+                          px={1}
+                          className="hover-parent hover--visibility"
+                        >
+                          <Link
+                            to={link}
+                            ml={1}
+                            hover={{ color: color("accent2") }}
+                            data-metabase-event={`${ANALYTICS_CONTEXT};Table Click`}
+                            className="block overflow-hidden"
+                          >
                             <EntityItem
                               item={table}
                               name={table.display_name || table.name}
                               iconName="table"
-                              iconColor={normal.purple}
+                              iconColor={color("accent2")}
+                              buttons={[
+                                this.props.xraysEnabled && (
+                                  <Link
+                                    to={`auto/dashboard/table/${table.id}`}
+                                    data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;X-ray Click`}
+                                    className="link--icon ml1"
+                                  >
+                                    <Icon
+                                      key="xray"
+                                      tooltip={t`X-ray this table`}
+                                      name="bolt"
+                                      color={color("warning")}
+                                      size={20}
+                                      className="hover-child"
+                                    />
+                                  </Link>
+                                ),
+                                <Link
+                                  to={`reference/databases/${dbId}/tables/${
+                                    table.id
+                                  }`}
+                                  data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
+                                  className="link--icon ml1"
+                                >
+                                  <Icon
+                                    key="reference"
+                                    tooltip={t`Learn about this table`}
+                                    name="reference"
+                                    color={color("text-medium")}
+                                    className="hover-child"
+                                  />
+                                </Link>,
+                              ]}
                             />
-                          </Card>
-                        </Link>
+                          </Link>
+                        </Card>
                       </GridItem>
                     );
                   })}
@@ -134,7 +177,7 @@ export class TableBrowser extends React.Component {
               </Box>
             );
           }}
-        </TableListLoader>
+        </Table.ListLoader>
       </Box>
     );
   }
@@ -142,7 +185,7 @@ export class TableBrowser extends React.Component {
 
 export class BrowseApp extends React.Component {
   render() {
-    return <Box mx={4}>{this.props.children}</Box>;
+    return <Box mx={PAGE_PADDING}>{this.props.children}</Box>;
   }
 }
 
@@ -150,17 +193,27 @@ export class DatabaseBrowser extends React.Component {
   render() {
     return (
       <Box>
-        <BrowserCrumbs crumbs={[{ title: t`Your data` }]} />
-        <DatabaseListLoader>
+        <BrowseHeader crumbs={[{ title: t`Our data` }]} />
+
+        <Database.ListLoader>
           {({ databases, loading, error }) => {
             return (
               <Grid>
                 {databases.map(database => (
-                  <GridItem>
-                    <Link to={`browse/${database.id}`}>
-                      <Card p={3} hover={{ color: normal.blue }}>
-                        <Icon name="database" color={normal.grey2} mb={3} />
-                        <Subhead>{database.name}</Subhead>
+                  <GridItem w={ITEM_WIDTHS} key={database.id}>
+                    <Link
+                      to={`browse/${database.id}`}
+                      data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                      hover={{ color: color("brand") }}
+                    >
+                      <Card p={3} hover={{ color: color("brand") }}>
+                        <Icon
+                          name="database"
+                          color={color("accent2")}
+                          mb={3}
+                          size={28}
+                        />
+                        <h3 className="text-wrap">{database.name}</h3>
                       </Card>
                     </Link>
                   </GridItem>
@@ -168,8 +221,32 @@ export class DatabaseBrowser extends React.Component {
               </Grid>
             );
           }}
-        </DatabaseListLoader>
+        </Database.ListLoader>
       </Box>
     );
   }
+}
+
+function BrowseHeader({ crumbs }) {
+  return (
+    <Box mt={3} mb={2}>
+      <Flex align="center" mt={1}>
+        <BrowserCrumbs crumbs={crumbs} analyticsContext={ANALYTICS_CONTEXT} />
+        <div className="flex flex-align-right">
+          <Link
+            className="flex flex-align-right"
+            to="reference"
+            data-metabase-event={`NavBar;Reference`}
+          >
+            <div className="flex align-center text-medium text-brand-hover">
+              <Icon className="flex align-center" size={14} name="reference" />
+              <Link className="ml1 flex align-center text-bold">
+                {t`Learn about our data`}
+              </Link>
+            </div>
+          </Link>
+        </div>
+      </Flex>
+    </Box>
+  );
 }

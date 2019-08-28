@@ -9,7 +9,7 @@ Before doing anything you should make sure you have a [Heroku](http://www.heroku
 
 If you've got a Heroku account then all there is to do is follow this one-click deployment button
 
-[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](http://downloads.metabase.com/launch-heroku.html)
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://downloads.metabase.com/launch-heroku.html)
 
 This will launch a Heroku deployment using a GitHub repository that Metabase maintains.
 
@@ -37,7 +37,7 @@ Now that you’ve installed Metabase, it’s time to [set it up and connect it t
 ### Troubleshooting
 
 * If your Metabase instance is getting stuck part way through the initialization process and only every shows roughly 30% completion on the loading progress.
-    * The most likely culprit here is a stale database migrations lock that was not cleared.  This can happen if for some reason Heroku kills your Metabase dyno at the wrong time during startup.  __To fix it:__ you can either clear the lock using the built-in [release-locks](start.html#metabase-fails-to-startup) command line function, or if needed you can login to your Metabase application database directly and delete the row in the `DATABASECHANGELOGLOCK` table.  Then just restart Metabase.
+    * The most likely culprit here is a stale database migrations lock that was not cleared.  This can happen if for some reason Heroku kills your Metabase dyno at the wrong time during startup.  __To fix it:__ you can either clear the lock using the built-in [release-locks](../troubleshooting-guide/application-database.md) command line function, or if needed you can login to your Metabase application database directly and delete the row in the `DATABASECHANGELOGLOCK` table.  Then just restart Metabase.
 
 
 # Deploying New Versions of Metabase

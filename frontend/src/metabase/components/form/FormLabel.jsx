@@ -25,7 +25,7 @@ export default class FormLabel extends Component {
 
     return (
       <label className={cx("Form-label", { "Form-offset": offset })}>
-        {title}: {message !== undefined ? <span>{message}</span> : null}
+        {title} {message !== undefined ? <span>: {message}</span> : null}
       </label>
     );
   }

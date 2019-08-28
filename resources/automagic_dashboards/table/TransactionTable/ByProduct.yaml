@@ -1,14 +1,11 @@
 title: "[[this]] per product"
-transient_title: Here's a closer look at your [[this]] by products
+transient_title: Here''s a closer look at your [[this]] by products
 description: How your different products are performing.
 applies_to: TransactionTable
 metrics:
 - TotalOrders: [count]
 dimensions:
 - ProductCategoryMedium:
-    field_type: ProductTable.Category
-    max_cardinality: 10
-- ProductCategoryLarge:
     field_type: ProductTable.Category
 - Rating: ProductTable.Score
 - Country: GenericTable.Country
@@ -47,19 +44,8 @@ cards:
     height: 8
 - OrdersByProductCategoryMedium:
     title: Sales per product [[ProductCategoryMedium]]
-    visualization: row
+    visualization: smart-row
     dimensions:
       - ProductCategoryMedium
     metrics: TotalOrders
-    order_by:
-     - TotalOrders: descending
-    height: 8
-- OrdersByProductCategoryLarge:
-    title: Sales per product [[ProductCategoryLarge]]
-    visualization: table
-    dimensions:
-      - ProductCategoryLarge
-    metrics: TotalOrders
-    order_by:
-     - TotalOrders: descending
     height: 8

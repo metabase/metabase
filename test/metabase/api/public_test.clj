@@ -1,12 +1,12 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
+            [clojure.string :as str]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer :all]
             [metabase
-             [config :as config]
              [http-client :as http]
-             [query-processor-test :as qp-test]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.api.public :as public-api]
             [metabase.models
@@ -31,7 +31,7 @@
 (defn count-of-venues-card []
   {:dataset_query {:database (data/id)
                    :type     :query
-                   :query    {:source_table (data/id :venues)
+                   :query    {:source-table (data/id :venues)
                               :aggregation  [:count]}}})
 
 (defn- shared-obj []
@@ -118,11 +118,11 @@
                                                             "LEFT JOIN categories ON venues.category_id = categories.id "
                                                             "WHERE {{category}}")
                                         :collection    "CATEGORIES"
-                                        :template_tags {:category {:name         "category"
-                                                                   :display_name "Category"
+                                        :template-tags {:category {:name         "category"
+                                                                   :display-name "Category"
                                                                    :type         "dimension"
                                                                    :dimension    ["field-id" (data/id :categories :name)]
-                                                                   :widget_type  "category"
+                                                                   :widget-type  "category"
                                                                    :required     true}}}}}]
     (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
         (update-in [(data/id :categories :name) :values] count))))
@@ -156,7 +156,7 @@
   [[100]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (qp-test/rows (http/client :get 200 (str "public/card/" uuid "/query"))))))
+      (qp.test/rows (http/client :get 200 (str "public/card/" uuid "/query"))))))
 
 ;; Check that we can exec a PublicCard and get results as JSON
 (expect
@@ -166,14 +166,14 @@
 
 ;; Check that we can exec a PublicCard and get results as CSV
 (expect
-  "count\n100\n"
+  "Count\n100\n"
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
 ;; Check that we can exec a PublicCard and get results as XLSX
 (expect
-  [{:col "count"} {:col 100.0}]
+  [{:col "Count"} {:col 100.0}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
@@ -198,11 +198,11 @@
     :dataset_query {:database (data/id)
                     :type     :native
                     :native   {:query         "SELECT COUNT(*) AS \"count\" FROM CHECKINS WHERE {{date}}"
-                               :template_tags {:date {:name         "date"
-                                                      :display_name "Date"
+                               :template-tags {:date {:name         "date"
+                                                      :display-name "Date"
                                                       :type         "dimension"
                                                       :dimension    [:field-id (data/id :checkins :date)]
-                                                      :widget_type  "date/quarter-year"}}}}))
+                                                      :widget-type  "date/quarter-year"}}}}))
 
 (expect
   "count\n107\n"
@@ -219,11 +219,30 @@
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
-      (binding [http/*url-prefix* (str "http://localhost:" (config/config-str :mb-jetty-port) "/")]
-        (http/client :get 200 (str "public/question/" uuid ".csv")
-                     :parameters (json/encode [{:type   :date/quarter-year
-                                                :target [:dimension [:template-tag :date]]
-                                                :value  "Q1-2014"}]))))))
+      (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
+        (tu/with-temporary-setting-values [site-url http/*url-prefix*]
+          (http/client :get 200 (str "public/question/" uuid ".csv")
+                       :parameters (json/encode [{:type   :date/quarter-year
+                                                  :target [:dimension [:template-tag :date]]
+                                                  :value  "Q1-2014"}])))))))
+
+;; make sure we include all the relevant fields like `:insights`
+(defn- card-with-trendline []
+  (assoc (shared-obj)
+    :dataset_query {:database (data/id)
+                    :type     :query
+                    :query   {:source-table (data/id :checkins)
+                              :breakout     [[:datetime-field [:field-id (data/id :checkins :date)]  :month]]
+                              :aggregation  [[:count]]}}))
+
+(expect
+  #{:cols :rows :insights}
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
+      (-> (http/client :get 200 (str "public/card/" uuid "/query"))
+          :data
+          keys
+          set))))
 
 
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
@@ -312,7 +331,7 @@
   [[100]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (qp-test/rows (http/client :get 200 (dashcard-url dash card))))))
+      (qp.test/rows (http/client :get 200 (dashcard-url dash card))))))
 
 ;; Check that we can exec a PublicCard via a PublicDashboard with `?parameters`
 (expect
@@ -341,7 +360,7 @@
                                                  :slug   :venue_id
                                                  :target [:dimension (data/id :venues :id)]
                                                  :value  [10]}]))
-         qp-test/rows))))
+         qp.test/rows))))
 
 ;; Make sure params are validated: this should fail because venue_name is *not* one of the Dashboard's :parameters
 (expect
@@ -364,7 +383,7 @@
                                                                   :card_id      (u/get-id card)
                                                                   :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
-          (qp-test/rows (http/client :get 200 (dashcard-url dash card-2))))))))
+          (qp.test/rows (http/client :get 200 (dashcard-url dash card-2))))))))
 
 ;; Make sure that parameters actually work correctly (#7212)
 (expect
@@ -373,8 +392,8 @@
     (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                               :type     :native
                                               :native   {:query         "SELECT {{num}} AS num"
-                                                         :template_tags {:num {:name         "num"
-                                                                               :display_name "Num"
+                                                         :template-tags {:num {:name         "num"
+                                                                               :display-name "Num"
                                                                                :type         "number"
                                                                                :required     true
                                                                                :default      "1"}}}}}]
@@ -394,8 +413,7 @@
                         [{:type   :category
                           :target [:variable [:template-tag :num]]
                           :value  "50"}])))
-            :data
-            :rows)))))
+            qp.test/rows)))))
 
 ;; ...with MBQL Cards as well...
 (expect
@@ -422,8 +440,7 @@
                         [{:type   :id
                           :target [:dimension [:field-id (data/id :venues :id)]]
                           :value  "50"}])))
-            :data
-            :rows)))))
+            qp.test/rows)))))
 
 ;; ...and also for DateTime params
 (expect
@@ -450,42 +467,40 @@
                         [{:type   "date/all-options"
                           :target [:dimension [:field-id (data/id :checkins :date)]]
                           :value  "~2015-01-01"}])))
-            :data
-            :rows)))))
+            qp.test/rows)))))
 
 ;; make sure DimensionValue params also work if they have a default value, even if some is passed in for some reason
 ;; as part of the query (#7253)
 ;; If passed in as part of the query however make sure it doesn't override what's actually in the DB
 (expect
- [["Wow"]]
- (tu/with-temporary-setting-values [enable-public-sharing true]
-   (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                             :type     :native
-                                             :native   {:query         "SELECT {{msg}} AS message"
-                                                        :template_tags {:msg {:id           "181da7c5"
-                                                                              :name         "msg"
-                                                                              :display_name "Message"
-                                                                              :type         "text"
-                                                                              :required     true
-                                                                              :default      "Wow"}}}}}]
-     (with-temp-public-dashboard [dash {:parameters [{:name "Message"
-                                                      :slug "msg"
-                                                      :id   "181da7c5"
-                                                      :type "category"}]}]
-       (add-card-to-dashboard! card dash
-         :parameter_mappings [{:card_id      (u/get-id card)
-                               :target       [:variable [:template-tag :msg]]
-                               :parameter_id "181da7c5"}])
-       (-> ((test-users/user->client :crowberto)
-            :get (str (dashcard-url dash card)
-                      "?parameters="
-                      (json/generate-string
-                       [{:type    :category
-                         :target  [:variable [:template-tag :msg]]
-                         :value   nil
-                         :default "Hello"}])))
-           :data
-           :rows)))))
+  [["Wow"]]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                              :type     :native
+                                              :native   {:query         "SELECT {{msg}} AS message"
+                                                         :template-tags {:msg {:id           "181da7c5"
+                                                                               :name         "msg"
+                                                                               :display-name "Message"
+                                                                               :type         "text"
+                                                                               :required     true
+                                                                               :default      "Wow"}}}}}]
+      (with-temp-public-dashboard [dash {:parameters [{:name "Message"
+                                                       :slug "msg"
+                                                       :id   "181da7c5"
+                                                       :type "category"}]}]
+        (add-card-to-dashboard! card dash
+          :parameter_mappings [{:card_id      (u/get-id card)
+                                :target       [:variable [:template-tag :msg]]
+                                :parameter_id "181da7c5"}])
+        (-> ((test-users/user->client :crowberto)
+             :get (str (dashcard-url dash card)
+                       "?parameters="
+                       (json/generate-string
+                        [{:type    :category
+                          :target  [:variable [:template-tag :msg]]
+                          :value   nil
+                          :default "Hello"}])))
+            qp.test/rows)))))
 
 
 ;;; --------------------------- Check that parameter information comes back with Dashboard ---------------------------
@@ -518,8 +533,8 @@
     (db/update! Card (u/get-id card)
       :dataset_query {:database (data/id)
                       :type     :native
-                      :native   {:template_tags {:price {:name         "price"
-                                                         :display_name "Price"
+                      :native   {:template-tags {:price {:name         "price"
+                                                         :display-name "Price"
                                                          :type         "dimension"
                                                          :dimension    ["field-id" (data/id :venues :price)]}}}})
     (add-price-param-to-dashboard! dash)
@@ -567,8 +582,8 @@
    {:database (data/id)
     :type     :native
     :native   {:query         "SELECT COUNT(*) FROM VENUES WHERE {{x}}"
-               :template_tags {:x {:name         :x
-                                   :display_name "X"
+               :template-tags {:x {:name         :x
+                                   :display-name "X"
                                    :type         :dimension
                                    :dimension    [:field-id (data/id :venues :name)]}}}}})
 
@@ -759,6 +774,7 @@
  (with-sharing-enabled-and-temp-card-referencing :venues :name [card]
    (tu/with-temporary-setting-values [enable-public-sharing false]
      (http/client :get 400 (field-values-url card (data/id :venues :name))))))
+
 
 
 ;;; ----------------------------- GET /api/public/dashboard/:uuid/field/:field-id/values -----------------------------

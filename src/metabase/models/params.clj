@@ -1,52 +1,74 @@
 (ns metabase.models.params
   "Utility functions for dealing with parameters for Dashboards and Cards."
   (:require [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util
+             [i18n :as ui18n :refer [deferred-trs tru]]
+             [schema :as su]]
+            [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]])
-  (:import metabase.query_processor.interface.FieldPlaceholder))
+             [hydrate :refer [hydrate]]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn field-form->id
-  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references.
+(s/defn field-form->id :- su/IntGreaterThanZero
+  "Expand a `field-id` or `fk->` `form` and return the ID of the Field it references. Also handles unwrapped integers.
 
-     (field-form->id [:field-id 100])  ; -> 100"
+    (field-form->id [:field-id 100]) ; -> 100"
   [field-form]
-  (when-let [field-placeholder (u/ignore-exceptions (ql/expand-ql-sexpr field-form))]
-    (when (instance? FieldPlaceholder field-placeholder)
-      (:field-id field-placeholder))))
+  (if (integer? field-form)
+    field-form
+    ;; TODO - what are we supposed to do if `field-form` is a field literal?
+    (mbql.u/field-clause->id-or-literal field-form)))
+
+(defn wrap-field-id-if-needed
+  "Wrap a raw Field ID in a `:field-id` clause if needed."
+  [field-id-or-form]
+  (cond
+    (mbql.u/mbql-clause? field-id-or-form)
+    field-id-or-form
+
+    (integer? field-id-or-form)
+    [:field-id field-id-or-form]
+
+    :else
+    (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
 
 (defn- field-ids->param-field-values
-  "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
-   This map is returned by various endpoints as `:param_values`."
+  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
+  returned by various endpoints as `:param_values`."
   [param-field-ids]
   (when (seq param-field-ids)
     (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
                           :field_id [:in param-field-ids]))))
 
 (defn- template-tag->field-form
-  "Fetch the `field-id` or `fk->` form from DASHCARD referenced by TEMPLATE-TAG.
+  "Fetch the `field-id` or `fk->` form from `dashcard` referenced by `template-tag`.
 
-     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
+    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
   [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template_tags (keyword tag) :dimension]))
+  (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (defn- param-target->field-id
-  "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
+  "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
-  (when (ql/is-clause? :dimension target)
+  (when (mbql.u/is-clause? :dimension target)
     (let [[_ dimension] target]
-      (field-form->id (if (ql/is-clause? :template-tag dimension)
-                        (template-tag->field-form dimension dashcard)
-                        dimension)))))
+      (try
+        (field-form->id
+         (if (mbql.u/is-clause? :template-tag dimension)
+           (template-tag->field-form dimension dashcard)
+           dimension))
+        (catch Throwable e
+          (log/error e (tru "Could not find matching Field ID for target:") target))))))
 
 
 (defn- pk-fields
@@ -122,7 +144,7 @@
 
 (defn- param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
-  Dashboard. These only contain the minimal amount of information neccesary needed to power public or embedded
+  Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
   [field-ids]
   (when (seq field-ids)
@@ -196,7 +218,7 @@
 (defn card->template-tag-field-ids
   "Return a set of Field IDs referenced in template tag parameters in CARD."
   [card]
-  (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template_tags])
+  (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
              :let                       [field-id (field-form->id dimension)]
              :when                      field-id]

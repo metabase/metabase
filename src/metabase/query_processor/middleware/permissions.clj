@@ -6,8 +6,9 @@
              [interface :as mi]
              [permissions :as perms]]
             [metabase.models.query.permissions :as query-perms]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [tru]]
+            [metabase.util
+             [i18n :refer [tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -15,14 +16,20 @@
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
   (when-not (mi/can-read? (or (db/select-one [Card :collection_id] :id card-id)
-                              (throw (Exception. (str (tru "Card {0} does not exist." card-id))))))
-    (throw (Exception. (str (tru "You do not have permissions to view Card {0}." card-id))))))
+                              (throw (Exception. (tru "Card {0} does not exist." card-id)))))
+    (throw (Exception. (tru "You do not have permissions to view Card {0}." card-id)))))
+
+(defn- perms-exception [required-perms]
+  (ex-info (tru "You do not have permissions to run this query.")
+    {:required-permissions required-perms
+     :actual-permissions   @*current-user-permissions-set*
+     :permissions-error?   true}))
 
 (s/defn ^:private check-ad-hoc-query-perms
   [outer-query]
-  (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set*
-              (query-perms/perms-set outer-query :throw-exceptions))
-    (throw (Exception. (str (tru "You do not have permissions to run this query."))))))
+  (let [required-perms (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)]
+    (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms)
+      (throw (perms-exception required-perms)))))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
@@ -40,3 +47,17 @@
   'publishing' a Card)."
   [qp]
   (comp qp check-query-permissions*))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Non-middleware util fns                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn check-current-user-has-adhoc-native-query-perms
+  "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
+  Exception. (This is used by `qp/query->native` to check perms before converting an MBQL query to native.)"
+  [{database-id :database, :as query}]
+  (when *current-user-id*
+    (let [required-perms (perms/adhoc-native-query-path database-id)]
+      (when-not (perms/set-has-full-permissions? @*current-user-permissions-set* required-perms)
+        (throw (perms-exception required-perms))))))

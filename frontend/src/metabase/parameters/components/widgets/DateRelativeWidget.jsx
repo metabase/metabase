@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -20,12 +20,12 @@ const SHORTCUTS = [
 ];
 
 const RELATIVE_SHORTCUTS = {
-  Last: [
+  [t`Last`]: [
     { name: t`Week`, operator: "time-interval", values: ["last", "week"] },
     { name: t`Month`, operator: "time-interval", values: ["last", "month"] },
     { name: t`Year`, operator: "time-interval", values: ["last", "year"] },
   ],
-  This: [
+  [t`This`]: [
     { name: t`Week`, operator: "time-interval", values: ["current", "week"] },
     { name: t`Month`, operator: "time-interval", values: ["current", "month"] },
     { name: t`Year`, operator: "time-interval", values: ["current", "year"] },
@@ -45,7 +45,7 @@ export class PredefinedRelativeDatePicker extends Component {
   };
 
   isSelectedShortcut(shortcut) {
-    let { filter } = this.props;
+    const { filter } = this.props;
     return (
       (Array.isArray(shortcut.operator)
         ? _.contains(shortcut.operator, filter[0])
@@ -55,7 +55,7 @@ export class PredefinedRelativeDatePicker extends Component {
   }
 
   onSetShortcut(shortcut) {
-    let { filter } = this.props;
+    const { filter } = this.props;
     let operator;
     if (Array.isArray(shortcut.operator)) {
       if (_.contains(shortcut.operator, filter[0])) {

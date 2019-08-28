@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import { getFilterOptions, setFilterOptions } from "metabase/lib/query/filter";
 
 import CheckBox from "metabase/components/CheckBox";
@@ -57,7 +57,7 @@ export default class FilterOptions extends Component {
 
   getOptionValue(name) {
     const { filter } = this.props;
-    let value = getFilterOptions(filter)[name];
+    const value = getFilterOptions(filter)[name];
     if (value !== undefined) {
       return value;
     }
@@ -98,7 +98,7 @@ export default class FilterOptions extends Component {
             className="flex align-center"
             onClick={() => this.toggleOptionValue(name)}
           >
-            <CheckBox checked={this.getOptionValue(name)} />
+            <CheckBox color="purple" checked={this.getOptionValue(name)} />
             <label className="ml1">{this.getOptionName(name)}</label>
           </div>
         ))}

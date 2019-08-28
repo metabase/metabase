@@ -5,7 +5,7 @@ import FieldList from "./FieldList.jsx";
 import FieldName from "./FieldName.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -30,16 +30,18 @@ export default class FieldWidget extends Component {
     isInitiallyOpen: PropTypes.bool,
     tableMetadata: PropTypes.object.isRequired,
     enableSubDimensions: PropTypes.bool,
+    useOriginalDimension: PropTypes.bool,
   };
 
   static defaultProps = {
     color: "brand",
     enableSubDimensions: true,
+    useOriginalDimension: false,
   };
 
   setField(value) {
     this.props.setField(value);
-    if (Query.isValidField(value)) {
+    if (Q_DEPRECATED.isValidField(value)) {
       this.toggle();
     }
   }
@@ -54,12 +56,13 @@ export default class FieldWidget extends Component {
         <Popover ref="popover" className="FieldPopover" onClose={this.toggle}>
           <FieldList
             className={"text-" + this.props.color}
-            tableMetadata={this.props.tableMetadata}
+            table={this.props.tableMetadata}
             field={this.props.field}
             fieldOptions={this.props.fieldOptions}
             customFieldOptions={this.props.customFieldOptions}
             onFieldChange={this.setField}
             enableSubDimensions={this.props.enableSubDimensions}
+            useOriginalDimension={this.props.useOriginalDimension}
           />
         </Popover>
       );
@@ -71,7 +74,7 @@ export default class FieldWidget extends Component {
     return (
       <div className="flex align-center">
         <FieldName
-          className={cx(className, "QueryOption")}
+          className={cx(className, "QueryOption text-wrap flex flex-auto")}
           field={field}
           query={query}
           tableMetadata={this.props.tableMetadata}

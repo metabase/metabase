@@ -10,7 +10,7 @@ import Icon from "metabase/components/Icon.jsx";
 import RetinaImage from "react-retina-image";
 
 import _ from "underscore";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 
 export default class SettingsSlackForm extends Component {
   constructor(props, context) {
@@ -32,7 +32,7 @@ export default class SettingsSlackForm extends Component {
 
   componentWillMount() {
     // this gives us an opportunity to load up our formData with any existing values for elements
-    let formData = {};
+    const formData = {};
     this.props.elements.forEach(function(element) {
       formData[element.key] =
         element.value == null ? element.defaultValue : element.value;
@@ -59,7 +59,9 @@ export default class SettingsSlackForm extends Component {
 
   // return null if element passes validation, otherwise return an error message
   validateElement([validationType, validationMessage], value, element) {
-    if (MetabaseUtils.isEmpty(value)) return;
+    if (MetabaseUtils.isEmpty(value)) {
+      return;
+    }
 
     switch (validationType) {
       case "email":
@@ -74,11 +76,11 @@ export default class SettingsSlackForm extends Component {
   }
 
   validateForm() {
-    let { elements } = this.props;
-    let { formData } = this.state;
+    const { elements } = this.props;
+    const { formData } = this.state;
 
-    let valid = true,
-      validationErrors = {};
+    let valid = true;
+    const validationErrors = {};
 
     elements.forEach(function(element) {
       // test for required elements
@@ -93,7 +95,9 @@ export default class SettingsSlackForm extends Component {
             formData[element.key],
             element,
           );
-          if (validationErrors[element.key]) valid = false;
+          if (validationErrors[element.key]) {
+            valid = false;
+          }
         }, this);
       }
     }, this);
@@ -121,7 +125,7 @@ export default class SettingsSlackForm extends Component {
 
   handleFormErrors(error) {
     // parse and format
-    let formErrors = {};
+    const formErrors = {};
     if (error.data && error.data.message) {
       formErrors.message = error.data.message;
     } else {
@@ -143,7 +147,7 @@ export default class SettingsSlackForm extends Component {
       submitting: "working",
     });
 
-    let { formData, valid } = this.state;
+    const { formData, valid } = this.state;
 
     if (valid) {
       this.props.updateSlackSettings(formData).then(
@@ -170,8 +174,8 @@ export default class SettingsSlackForm extends Component {
   }
 
   render() {
-    let { elements } = this.props;
-    let {
+    const { elements } = this.props;
+    const {
       formData,
       formErrors,
       submitting,
@@ -179,13 +183,13 @@ export default class SettingsSlackForm extends Component {
       validationErrors,
     } = this.state;
 
-    let settings = elements.map((element, index) => {
+    const settings = elements.map((element, index) => {
       // merge together data from a couple places to provide a complete view of the Element state
-      let errorMessage =
+      const errorMessage =
         formErrors && formErrors.elements
           ? formErrors.elements[element.key]
           : validationErrors[element.key];
-      let value =
+      const value =
         formData[element.key] == null
           ? element.defaultValue
           : formData[element.key];
@@ -213,14 +217,14 @@ export default class SettingsSlackForm extends Component {
       }
     });
 
-    let saveSettingsButtonStates = {
+    const saveSettingsButtonStates = {
       default: t`Save changes`,
       working: t`Saving...`,
       success: t`Changes saved!`,
     };
 
-    let disabled = !valid || submitting !== "default",
-      saveButtonText = saveSettingsButtonStates[submitting];
+    const disabled = !valid || submitting !== "default";
+    const saveButtonText = saveSettingsButtonStates[submitting];
 
     return (
       <form noValidate>
@@ -235,7 +239,7 @@ export default class SettingsSlackForm extends Component {
             />
             Slack
           </h1>
-          <h3 className="text-grey-1">{t`Answers sent right to your Slack #channels`}</h3>
+          <h3 className="text-light">{t`Answers sent right to your Slack #channels`}</h3>
 
           <div className="pt3">
             <a

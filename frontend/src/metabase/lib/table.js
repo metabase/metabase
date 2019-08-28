@@ -9,7 +9,7 @@ export function isQueryable(table) {
 }
 
 export async function loadTableAndForeignKeys(tableId) {
-  let [table, foreignKeys] = await Promise.all([
+  const [table, foreignKeys] = await Promise.all([
     MetabaseApi.table_query_metadata({ tableId }),
     MetabaseApi.table_fks({ tableId }),
   ]);
@@ -30,10 +30,10 @@ export async function augmentTable(table) {
 
 export function augmentDatabase(database) {
   database.tables_lookup = createLookupByProperty(database.tables, "id");
-  for (let table of database.tables) {
+  for (const table of database.tables) {
     addValidOperatorsToFields(table);
     table.fields_lookup = createLookupByProperty(table.fields, "id");
-    for (let field of table.fields) {
+    for (const field of table.fields) {
       addFkTargets(field, database.tables_lookup);
       field.operators_lookup = createLookupByProperty(field.operators, "name");
     }
@@ -44,12 +44,14 @@ export function augmentDatabase(database) {
 async function loadForeignKeyTables(table) {
   // Load joinable tables
   await Promise.all(
-    table.fields.filter(f => f.target != null).map(async field => {
-      let targetTable = await MetabaseApi.table_query_metadata({
-        tableId: field.target.table_id,
-      });
-      field.target.table = populateQueryOptions(targetTable);
-    }),
+    table.fields
+      .filter(f => f.target != null)
+      .map(async field => {
+        const targetTable = await MetabaseApi.table_query_metadata({
+          tableId: field.target.table_id,
+        });
+        field.target.table = populateQueryOptions(targetTable);
+      }),
   );
   return table;
 }

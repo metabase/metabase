@@ -22,13 +22,15 @@ export default class ItemsDragLayer extends React.Component {
       return null;
     }
     const items = selected.length > 0 ? selected : [item.item];
+    const x = currentOffset.x + window.scrollX;
+    const y = currentOffset.y + window.scrollY;
     return (
       <div
         style={{
           position: "absolute",
           top: 0,
           left: 0,
-          transform: `translate(${currentOffset.x}px, ${currentOffset.y}px)`,
+          transform: `translate(${x}px, ${y}px)`,
           pointerEvents: "none",
         }}
       >
@@ -56,7 +58,9 @@ class DraggedItems extends React.Component {
           transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
         }}
       >
-        {items.map(item => <NormalItem item={item} />)}
+        {items.map(item => (
+          <NormalItem item={item} />
+        ))}
       </div>
     );
   }

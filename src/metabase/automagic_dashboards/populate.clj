@@ -6,9 +6,10 @@
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.models
              [card :as card]
-             [field :refer [Field]]]
+             [collection :as collection]]
             [metabase.query-processor.util :as qp.util]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (def ^Long grid-width
@@ -25,12 +26,23 @@
 
 (defn create-collection!
   "Create a new collection."
-  [title color description]
-  (when api/*is-superuser?*
-    (db/insert! 'Collection
-      :name        title
+  [title color description parent-collection-id]
+  (db/insert! 'Collection
+    (merge
+     {:name        title
       :color       color
-      :description description)))
+      :description description}
+     (when parent-collection-id
+       {:location (collection/children-location (db/select-one ['Collection :location :id]
+                                                  :id parent-collection-id))}))))
+
+(defn get-or-create-root-container-collection
+  "Get or create container collection for automagic dashboards in the root collection."
+  []
+  (or (db/select-one 'Collection
+        :name     "Automatically Generated Dashboards"
+        :location "/")
+      (create-collection! "Automatically Generated Dashboards" "#509EE3" nil nil)))
 
 (def colors
   "Colors used for coloring charts and collections."
@@ -46,6 +58,13 @@
             (conj acc color)
             (concat acc [color (first (drop-while (conj (set acc) color) colors))])))
         [])))
+
+(defn map-to-colors
+  "Map given objects to distinct colors."
+  [objs]
+  (->> objs
+       (map (comp colors #(mod % (count colors)) hash))
+       ensure-distinct-colors))
 
 (defn- colorize
   "Pick the chart colors acording to the following rules:
@@ -74,34 +93,33 @@
                               filters/collect-field-references
                               (map filters/field-reference->id))
                          aggregation)]
-        {:graph.colors (->> color-keys
-                            (map (comp colors #(mod % (count colors)) hash))
-                            ensure-distinct-colors)}))))
+        {:graph.colors (map-to-colors color-keys)}))))
 
 (defn- visualization-settings
   [{:keys [metrics x_label y_label series_labels visualization dimensions] :as card}]
-  (let [metric-name (some-fn :name (comp str/capitalize name first :metric))
-        [display visualization-settings] visualization]
-    {:display display
-     :visualization_settings
-     (-> visualization-settings
-         (merge (colorize card))
-         (cond->
-           (some :name metrics) (assoc :graph.series_labels (map metric-name metrics))
-           series_labels        (assoc :graph.series_labels series_labels)
-           x_label              (assoc :graph.x_axis.title_text x_label)
-           y_label              (assoc :graph.y_axis.title_text y_label)))}))
+  (let [[display visualization-settings] visualization]
+    {:display                display
+     :visualization_settings (-> visualization-settings
+                                 (assoc :graph.series_labels (map :name metrics)
+                                        :graph.metrics       (map :op metrics)
+                                        :graph.dimensions    dimensions)
+                                 (merge (colorize card))
+                                 (cond->
+                                     series_labels (assoc :graph.series_labels series_labels)
+
+                                     x_label       (assoc :graph.x_axis.title_text x_label)
+
+                                     y_label       (assoc :graph.y_axis.title_text y_label)))}))
 
 (defn- add-card
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
-  [dashboard {:keys [title description dataset_query width height]
-              :as card} [x y]]
+  [dashboard {:keys [title description dataset_query width height id] :as card} [x y]]
   (let [card (-> {:creator_id    api/*current-user-id*
                   :dataset_query dataset_query
                   :description   description
                   :name          title
                   :collection_id nil
-                  :id            (gensym)}
+                  :id            (or id (gensym))}
                  (merge (visualization-settings card))
                  card/populate-query-fields)]
     (update dashboard :ordered_cards conj {:col                    y
@@ -193,7 +211,7 @@
   [dashboard grid group cards]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
-                    group            (+ group-heading-height))]
+                    group (+ group-heading-height))]
     (reduce (fn [[dashboard grid] card]
               (let [xy (card-position grid start-row card)]
                 [(if (text-card? card)
@@ -236,18 +254,16 @@
 (defn create-dashboard
   "Create dashboard and populate it with cards."
   ([dashboard] (create-dashboard dashboard :all))
-  ([{:keys [title transient_title description groups filters cards refinements fieldset]} n]
+  ([{:keys [title transient_title description groups filters cards refinements]} n]
    (let [n             (cond
                          (= n :all)   (count cards)
                          (keyword? n) (Integer/parseInt (name n))
                          :else        n)
-         dashboard     {:name              title
-                        :transient_name    (or transient_title title)
-                        :transient_filters refinements
-                        :param_fields      (filters/filter-referenced-fields refinements)
-                        :description       description
-                        :creator_id        api/*current-user-id*
-                        :parameters        []}
+         dashboard     {:name           title
+                        :transient_name (or transient_title title)
+                        :description    description
+                        :creator_id     api/*current-user-id*
+                        :parameters     []}
          cards         (shown-cards n cards)
          [dashboard _] (->> cards
                             (partition-by :group)
@@ -258,50 +274,69 @@
                                      ;; Height doesn't need to be precise, just some
                                      ;; safe upper bound.
                                      (make-grid grid-width (* n grid-width))]))]
-     (log/infof (trs "Adding %s cards to dashboard %s:\n%s")
-                (count cards)
-                title
-                (str/join "; " (map :title cards)))
+     (log/info (trs "Adding {0} cards to dashboard {1}:\n{2}"
+                    (count cards)
+                    title
+                    (str/join "; " (map :title cards))))
      (cond-> dashboard
        (not-empty filters) (filters/add-filters filters max-filters)))))
 
+(defn- downsize-titles
+  [markdown]
+  (->> markdown
+       str/split-lines
+       (map (fn [line]
+              (if (str/starts-with? line "#")
+                (str "#" line)
+                line)))
+       str/join))
+
+(defn- merge-filters
+  [ds]
+  (when (->> ds
+             (mapcat :ordered_cards)
+             (keep (comp :table_id :card))
+             distinct
+             count
+             (= 1))
+   [(->> ds (mapcat :parameters) distinct)
+    (->> ds
+         (mapcat :ordered_cards)
+         (mapcat :parameter_mappings)
+         (map #(dissoc % :card_id))
+         distinct)]))
+
 (defn merge-dashboards
-  "Merge dashboards `ds` into dashboard `d`."
-  [d & ds]
-  (let [filter-targets (when (->> ds
-                                  (mapcat :ordered_cards)
-                                  (keep (comp :table_id :card))
-                                  distinct
-                                  count
-                                  (= 1))
-                         (->> ds
-                              (mapcat :ordered_cards)
-                              (mapcat :parameter_mappings)
-                              (mapcat (comp filters/collect-field-references :target))
-                              (map filters/field-reference->id)
-                              distinct
-                              (map Field)))]
-    (cond-> (reduce
-             (fn [target dashboard]
-               (let [offset (->> target
-                                 :ordered_cards
-                                 (map #(+ (:row %) (:sizeY %)))
-                                 (apply max -1) ; -1 so it neturalizes +1 for spacing if
-                                                ; the target dashboard is empty.
-                                 inc)]
-                 (-> target
-                     (add-text-card {:width                  grid-width
-                                     :height                 group-heading-height
-                                     :text                   (format "# %s" (:name dashboard))
-                                     :visualization-settings {:dashcard.background false
-                                                              :text.align_vertical :bottom}}
-                                    [offset 0])
-                     (update :ordered_cards concat
-                             (->> dashboard
-                                  :ordered_cards
-                                  (map #(-> %
-                                            (update :row + offset group-heading-height)
-                                            (dissoc :parameter_mappings))))))))
-             d
-             ds)
-      (not-empty filter-targets) (filters/add-filters filter-targets max-filters))))
+  "Merge dashboards `dashboard` into dashboard `target`."
+  ([target dashboard] (merge-dashboards target dashboard {}))
+  ([target dashboard {:keys [skip-titles?]}]
+   (let [[paramters parameter-mappings] (merge-filters [target dashboard])
+         offset                         (->> target
+                                             :ordered_cards
+                                             (map #(+ (:row %) (:sizeY %)))
+                                             (apply max -1) ; -1 so it neturalizes +1 for spacing
+                                                            ; if the target dashboard is empty.
+                                             inc)
+         cards                        (->> dashboard
+                                           :ordered_cards
+                                           (map #(-> %
+                                                     (update :row + offset (if skip-titles?
+                                                                             0
+                                                                             group-heading-height))
+                                                     (u/update-in-when [:visualization_settings :text]
+                                                                       downsize-titles)
+                                                     (assoc :parameter_mappings
+                                                       (when-let [card-id (:card_id %)]
+                                                         (for [mapping parameter-mappings]
+                                                           (assoc mapping :card_id card-id)))))))]
+     (-> target
+         (assoc :parameters paramters)
+         (cond->
+           (not skip-titles?)
+           (add-text-card {:width                  grid-width
+                           :height                 group-heading-height
+                           :text                   (format "# %s" (:name dashboard))
+                           :visualization-settings {:dashcard.background false
+                                                    :text.align_vertical :bottom}}
+                          [offset 0]))
+         (update :ordered_cards concat cards)))))

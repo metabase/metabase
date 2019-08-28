@@ -1,9 +1,12 @@
 (ns metabase.api.geojson-test
   (:require [expectations :refer [expect]]
+            [metabase
+             [http-client :as client]
+             [util :as u]]
             [metabase.api.geojson :as geojson-api]
             [metabase.test.data.users :refer [user->client]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
+            [metabase.test.util.log :as tu.log]
             [schema.core :as s]))
 
 (def ^:private ^String test-geojson-url
@@ -59,6 +62,42 @@
       ((user->client :crowberto) :put 200 "setting/custom-geojson" {:value test-custom-geojson})
       ((user->client :crowberto) :get 200 "setting/custom-geojson"))))
 
+;; Test that a bad url will return a descriptive error message
+(expect
+  #"Unable to retrieve resource"
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (update-in test-custom-geojson [:middle-earth :url] str "something-random")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
+
+;; Test that a bad host will return a connection refused error
+(expect
+  #"Unable to connect"
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "https://somethingrandom.metabase.com")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
+
+;; Test out the error message for a relative path file we can't find
+(expect
+  #"Unable to find JSON via relative path"
+  (tu.log/suppress-output
+    ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+    (u/auto-retry 3
+      ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+      ;; stomping all over it
+      (tu/with-temporary-setting-values [custom-geojson nil]
+        (let [bad-url-custom-geojson (assoc-in test-custom-geojson [:middle-earth :url] "some/relative/path")]
+          (:message ((user->client :crowberto) :put 500 "setting/custom-geojson" {:value bad-url-custom-geojson})))))))
+
 
 ;;; test the endpoint that acts as a proxy for JSON files
 (expect
@@ -66,6 +105,13 @@
    :coordinates [37.77986 -122.429]}
   (tu/with-temporary-setting-values [custom-geojson test-custom-geojson]
     ((user->client :rasta) :get 200 "geojson/middle-earth")))
+
+;; should be able to fetch the GeoJSON even if you aren't logged in
+(expect
+  {:type        "Point"
+   :coordinates [37.77986 -122.429]}
+  (tu/with-temporary-setting-values [custom-geojson test-custom-geojson]
+    (client/client :get 200 "geojson/middle-earth")))
 
 ;; try fetching an invalid key; should fail
 (expect

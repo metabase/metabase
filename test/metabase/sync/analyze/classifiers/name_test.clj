@@ -4,8 +4,6 @@
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.sync.analyze.classifiers.name :refer :all]
-            [metabase.test.data :as data]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 ;; Postfix + pluralization
@@ -37,7 +35,7 @@
                                          :special_type :type/FK
                                          :name         "City"
                                          :base_type    :type/Text}]]
-    (-> field-id Field (infer-special-type nil) :special_type)))
+    (-> field-id Field (infer-and-assoc-special-type nil) :special_type)))
 
 ;; ... but overwrite other types to alow evolution of our type system
 (expect
@@ -47,4 +45,4 @@
                                          :special_type :type/Category
                                          :name         "City"
                                          :base_type    :type/Text}]]
-    (-> field-id Field (infer-special-type nil) :special_type)))
+    (-> field-id Field (infer-and-assoc-special-type nil) :special_type)))

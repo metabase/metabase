@@ -7,7 +7,7 @@ import styles from "./Text.css";
 import Icon from "metabase/components/Icon.jsx";
 
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
 
@@ -69,7 +69,7 @@ export default class Text extends Component {
       default: "",
     },
     "text.align_vertical": {
-      section: "Display",
+      section: t`Display`,
       title: t`Vertical Alignment`,
       widget: "select",
       props: {
@@ -82,7 +82,7 @@ export default class Text extends Component {
       default: "top",
     },
     "text.align_horizontal": {
-      section: "Display",
+      section: t`Display`,
       title: t`Horizontal Alignment`,
       widget: "select",
       props: {
@@ -95,7 +95,7 @@ export default class Text extends Component {
       default: "left",
     },
     "dashcard.background": {
-      section: "Display",
+      section: t`Display`,
       title: t`Show background`,
       dashboard: true,
       widget: "toggle",
@@ -123,14 +123,14 @@ export default class Text extends Component {
   }
 
   render() {
-    let {
+    const {
       className,
       actionButtons,
       gridSize,
       settings,
       isEditing,
     } = this.props;
-    let isSmall = gridSize && gridSize.width < 4;
+    const isSmall = gridSize && gridSize.width < 4;
 
     if (isEditing) {
       return (
@@ -160,11 +160,11 @@ export default class Text extends Component {
           ) : (
             <textarea
               className={cx(
-                "full flex-full flex flex-column bg-grey-0 bordered drag-disabled",
+                "full flex-full flex flex-column bg-light bordered drag-disabled",
                 styles["text-card-textarea"],
               )}
               name="text"
-              placeholder={t`Write here, and use Markdown if you''d like`}
+              placeholder={t`Write here, and use Markdown if you'd like`}
               value={settings.text}
               onChange={e => this.handleTextChange(e.target.value)}
             />
@@ -211,17 +211,20 @@ const TextActionButtons = ({
       >
         <a
           data-metabase-event={"Dashboard;Text;edit"}
-          className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": isShowingRenderedOutput,
-            "text-brand": !isShowingRenderedOutput,
-          })}
+          className={cx(
+            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
+            {
+              "text-light text-medium-hover": isShowingRenderedOutput,
+              "text-brand": !isShowingRenderedOutput,
+            },
+          )}
           onClick={onEdit}
           style={HEADER_ACTION_STYLE}
         >
           <span className="flex align-center">
             <span className="flex">
               <Icon
-                name="editdocument"
+                name="edit_document"
                 style={{ top: 0, left: 0 }}
                 size={HEADER_ICON_SIZE}
               />
@@ -231,10 +234,13 @@ const TextActionButtons = ({
 
         <a
           data-metabase-event={"Dashboard;Text;preview"}
-          className={cx(" cursor-pointer h3 flex-no-shrink relative mr1", {
-            "text-grey-2 text-grey-4-hover": !isShowingRenderedOutput,
-            "text-brand": isShowingRenderedOutput,
-          })}
+          className={cx(
+            "cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled",
+            {
+              "text-light text-medium-hover": !isShowingRenderedOutput,
+              "text-brand": isShowingRenderedOutput,
+            },
+          )}
           onClick={onPreview}
           style={HEADER_ACTION_STYLE}
         >

@@ -4,10 +4,11 @@ import PropTypes from "prop-types";
 
 import { List } from "react-virtualized";
 import "react-virtualized/styles.css";
-import { t } from "c-3po";
+import { t } from "ttag";
 import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import SelectButton from "./SelectButton";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -35,8 +36,12 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+    defaultValue: PropTypes.any,
+
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
+
     isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
     // NOTE - @kdoh
@@ -53,21 +58,24 @@ class BrowserSelect extends Component {
   };
   static defaultProps = {
     className: "",
-    width: 320,
+    width: 300,
     height: 320,
     rowHeight: 40,
     multiple: false,
+    searchCaseInsensitive: true,
+    searchFuzzy: true,
   };
 
   isSelected(otherValue) {
-    const { value, multiple } = this.props;
+    const { value, multiple, defaultValue } = this.props;
     if (multiple) {
       return _.any(value, v => v === otherValue);
     } else {
       return (
         value === otherValue ||
         ((value == null || value === "") &&
-          (otherValue == null || otherValue === ""))
+          (otherValue == null || otherValue === "")) ||
+        (value == null && otherValue === defaultValue)
       );
     }
   }
@@ -79,6 +87,7 @@ class BrowserSelect extends Component {
       onChange,
       searchProp,
       searchCaseInsensitive,
+      searchFuzzy,
       isInitiallyOpen,
       placeholder,
       triggerElement,
@@ -88,7 +97,7 @@ class BrowserSelect extends Component {
       multiple,
     } = this.props;
 
-    let children = this.props.children;
+    let children = _.flatten(this.props.children);
 
     let selectedNames = children
       .filter(child => this.isSelected(child.props.value))
@@ -97,15 +106,20 @@ class BrowserSelect extends Component {
       selectedNames = [placeholder];
     }
 
-    const { inputValue } = this.state;
+    let { inputValue } = this.state;
     let filter = () => true;
     if (searchProp && inputValue) {
       filter = child => {
         let childValue = String(child.props[searchProp] || "");
         if (!inputValue) {
           return false;
-        } else if (searchCaseInsensitive) {
-          return childValue.toLowerCase().startsWith(inputValue.toLowerCase());
+        }
+        if (searchCaseInsensitive) {
+          childValue = childValue.toLowerCase();
+          inputValue = inputValue.toLowerCase();
+        }
+        if (searchFuzzy) {
+          return childValue.indexOf(inputValue) >= 0;
         } else {
           return childValue.startsWith(inputValue);
         }
@@ -143,6 +157,11 @@ class BrowserSelect extends Component {
             </SelectButton>
           )
         }
+        pinInitialAttachment={
+          // keep the popover from jumping around one its been opened,
+          // this can happen when filtering items via search
+          true
+        }
         triggerClasses={className}
         verticalAttachments={["top", "bottom"]}
         isInitiallyOpen={isInitiallyOpen}
@@ -173,10 +192,10 @@ class BrowserSelect extends Component {
               const child = children[index];
 
               /*
-                             * for each child we need to add props based on
-                             * the parent's onClick and the current selection
-                             * status, so we use cloneElement here
-                            * */
+               * for each child we need to add props based on
+               * the parent's onClick and the current selection
+               * status, so we use cloneElement here
+               * */
               return (
                 <div key={key} style={style} onClick={e => e.stopPropagation()}>
                   {React.cloneElement(children[index], {
@@ -206,27 +225,6 @@ class BrowserSelect extends Component {
     );
   }
 }
-
-export const SelectButton = ({ hasValue, children }) => (
-  <div
-    className={
-      "AdminSelect border-med flex align-center " +
-      (!hasValue ? " text-grey-3" : "")
-    }
-  >
-    <span className="AdminSelect-content mr1">{children}</span>
-    <Icon
-      className="AdminSelect-chevron flex-align-right"
-      name="chevrondown"
-      size={12}
-    />
-  </div>
-);
-
-SelectButton.propTypes = {
-  hasValue: PropTypes.bool,
-  children: PropTypes.any,
-};
 
 export class Option extends Component {
   static propTypes = {
@@ -325,15 +323,17 @@ class LegacySelect extends Component {
       disabled,
     } = this.props;
 
-    let selectedName = value
+    const selectedName = value
       ? optionNameFn(value)
-      : options && options.length > 0 ? placeholder : emptyPlaceholder;
+      : options && options.length > 0
+      ? placeholder
+      : emptyPlaceholder;
 
-    let triggerElement = (
+    const triggerElement = (
       <div
         className={cx(
           "flex align-center",
-          !value && (!values || values.length === 0) ? " text-grey-2" : "",
+          !value && (!values || values.length === 0) ? " text-medium" : "",
         )}
       >
         {values && values.length !== 0 ? (
@@ -354,7 +354,7 @@ class LegacySelect extends Component {
 
     let sections = {};
     options.forEach(function(option) {
-      let sectionName = option.section || "";
+      const sectionName = option.section || "";
       sections[sectionName] = sections[sectionName] || {
         title: sectionName || undefined,
         items: [],
@@ -363,7 +363,7 @@ class LegacySelect extends Component {
     });
     sections = Object.keys(sections).map(sectionName => sections[sectionName]);
 
-    let columns = [
+    const columns = [
       {
         selectedItem: value,
         selectedItems: values,

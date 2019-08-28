@@ -2,62 +2,69 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
-            [clojure.tools.logging :as log]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
+            [metabase.driver.util :as driver.u]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]
-            [metabase.util.date :as du]))
-
-;; make sure all the driver test extension namespaces are loaded <3 if this isn't done some things will get loaded at
-;; the wrong time which can end up causing test databases to be created more than once, which fails
-(doseq [engine (keys (driver/available-drivers))]
-  (let [test-ns (symbol (str "metabase.test.data." (name engine)))]
-    (try
-      (require test-ns)
-      (catch Throwable e
-        (log/warn (format "Error loading %s: %s" test-ns (.getMessage e)))))))
-
+            [metabase.test.data
+             [datasets :as datasets]
+             [env :as tx.env]
+             [interface :as tx]]
+            [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
+;; TODO - now that we've added Google Analytics to this, `timeseries-drivers` doesn't really make sense anymore.
+;; Perhaps we should rename it to `abnormal-drivers`
+
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private ^:const timeseries-engines #{:druid})
+(def ^:private timeseries-drivers #{:druid :googleanalytics})
 
-(def ^:const non-timeseries-engines
+(def non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference datasets/all-valid-engines timeseries-engines))
+  (set/difference tx.env/test-drivers timeseries-drivers))
 
-(defn non-timeseries-engines-with-feature
-  "Set of engines that support a given FEATURE."
-  [feature]
-  (set (for [engine non-timeseries-engines
-             :when  (contains? (driver/features (driver/engine->driver engine)) feature)]
-         engine)))
+(defn non-timeseries-drivers-with-feature
+  "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
+  supported."
+  [feature & more-features]
+  (let [features (set (cons feature more-features))]
+    (set (for [engine non-timeseries-drivers
+               :when  (set/subset? features (driver.u/features engine))]
+           engine))))
 
-(defn non-timeseries-engines-without-feature
+(defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference non-timeseries-engines (non-timeseries-engines-with-feature feature)))
+  (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
 
+;; TODO - should be renamed to `expect-with-non-timeseries-drivers`
 (defmacro expect-with-non-timeseries-dbs
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-engines non-timeseries-engines
+  `(datasets/expect-with-drivers non-timeseries-drivers
      ~expected
      ~actual))
 
 (defmacro expect-with-non-timeseries-dbs-except
   {:style/indent 1}
   [excluded-engines expected actual]
-  `(datasets/expect-with-engines (set/difference non-timeseries-engines (set ~excluded-engines))
+  `(datasets/expect-with-drivers (set/difference non-timeseries-drivers (set ~excluded-engines))
      ~expected
      ~actual))
 
-(defmacro qp-expect-with-all-engines
+(defmacro ^:deprecated qp-expect-with-all-drivers
+  "Wraps `expected` form in the 'wrapped' query results (includes `:status` and `:row_count`.)
+
+  DEPRECATED -- If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
+  `qp.test/rows-and-columns` instead."
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -67,305 +74,299 @@
      (-> ~query-form
          ~@post-process-fns)))
 
-;; TODO - this is only used in a single place, consider removing it
-(defmacro qp-expect-with-engines
-  {:style/indent 1}
-  [datasets data query-form]
-  `(datasets/expect-with-engines ~datasets
-     {:status    :completed
-      :row_count ~(count (:rows data))
-      :data      ~data}
-     ~query-form))
-
-
-(defn ->columns
-  "Generate the vector that should go in the `columns` part of a QP result; done by calling `format-name` against each
-  column name."
-  [& names]
-  (mapv (partial data/format-name)
-        names))
-
-
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
 
-;; #### categories
-
 (defn- col-defaults []
-  {:extra_info      {}
-   :target          nil
-   :description     nil
+  {:description     nil
    :visibility_type :normal
-   :schema_name     (data/default-schema)
-   :source          :fields
-   :fk_field_id     nil
-   :remapped_from   nil
-   :remapped_to     nil})
+   :settings        nil
+   :parent_id       nil
+   :source          :fields})
 
-(defn- target-field [field]
-  (when (data/fks-supported?)
-    (dissoc field :target :extra_info :schema_name :source :fk_field_id :remapped_from :remapped_to :fingerprint)))
+(defn col
+  "Get a Field as it would appear in the Query Processor results in `:cols`.
 
-(defn categories-col
-  "Return column information for the `categories` column named by keyword COL."
-  [col]
+    (qp.test/col :venues :id)"
+  [table-kw field-kw]
   (merge
    (col-defaults)
-   {:table_id (data/id :categories)
-    :id       (data/id :categories col)}
-   (case col
-     :id   {:special_type :type/PK
-            :base_type    (data/id-field-type)
-            :name         (data/format-name "id")
-            :display_name "ID"}
-     :name {:special_type :type/Name
-            :base_type    (data/expected-base-type->actual :type/Text)
-            :name         (data/format-name "name")
-            :display_name "Name"
-            :fingerprint  {:global {:distinct-count 75}
-                           :type   {:type/Text {:percent-json   0.0
-                                                :percent-url    0.0
-                                                :percent-email  0.0
-                                                :average-length 8.333}}}})))
+   (db/select-one [Field :id :table_id :special_type :base_type :name :display_name :fingerprint]
+     :id (data/id table-kw field-kw))
+   {:field_ref [:field-id (data/id table-kw field-kw)]}
+   (when (#{:last_login :date} field-kw)
+     {:unit      :default
+      :field_ref [:datetime-field [:field-id (data/id table-kw field-kw)] :default]})))
 
-;; #### users
-(defn users-col
-  "Return column information for the `users` column named by keyword COL."
-  [col]
-  (merge
-   (col-defaults)
-   {:table_id (data/id :users)
-    :id       (data/id :users col)}
-   (case col
-     :id         {:special_type :type/PK
-                  :base_type    (data/id-field-type)
-                  :name         (data/format-name "id")
-                  :display_name "ID"
-                  :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 8.0}}}}
-     :name       {:special_type :type/Name
-                  :base_type    (data/expected-base-type->actual :type/Text)
-                  :name         (data/format-name "name")
-                  :display_name "Name"
-                  :fingerprint  {:global {:distinct-count 15}
-                                 :type   {:type/Text {:percent-json   0.0
-                                                      :percent-url    0.0
-                                                      :percent-email  0.0
-                                                      :average-length 13.267}}}}
-     :last_login {:special_type nil
-                  :base_type    (data/expected-base-type->actual :type/DateTime)
-                  :name         (data/format-name "last_login")
-                  :display_name "Last Login"
-                  :unit         :default
-                  :fingerprint  {:global {:distinct-count 11}
-                                 :type   {:type/DateTime {:earliest "2014-01-01T00:00:00.000Z"
-                                                          :latest   "2014-12-05T00:00:00.000Z"}}}})))
+(defn- expected-column-names
+  "Get a sequence of keyword names of Fields belonging to a Table in the order they'd normally appear in QP results."
+  [table-kw]
+  (case table-kw
+    :categories [:id :name]
+    :checkins   [:id :date :user_id :venue_id]
+    :users      [:id :name :last_login]
+    :venues     [:id :name :category_id :latitude :longitude :price]
+    (throw (IllegalArgumentException. (format "Sorry, we don't know the default columns for Table %s." table-kw)))))
 
-;; #### venues
-(defn venues-columns
-  "Names of all columns for the `venues` table."
-  []
-  (->columns "id" "name" "category_id" "latitude" "longitude" "price"))
+(defn expected-cols
+  "Get a sequence of Fields belonging to a Table as they would appear in the Query Processor results in `:cols`. The
+  second arg, `cols`, is optional; if not supplied, this function will return all columns for that Table in the
+  default order.
 
-(defn venues-col
-  "Return column information for the `venues` column named by keyword COL."
-  [col]
-  (merge
-   (col-defaults)
-   {:table_id (data/id :venues)
-    :id       (data/id :venues col)}
-   (case col
-     :id          {:special_type :type/PK
-                   :base_type    (data/id-field-type)
-                   :name         (data/format-name "id")
-                   :display_name "ID"
-                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 50.5}}}}
-     :category_id {:extra_info   (if (data/fks-supported?)
-                                   {:target_table_id (data/id :categories)}
-                                   {})
-                   :target       (target-field (categories-col :id))
-                   :special_type (if (data/fks-supported?)
-                                   :type/FK
-                                   :type/Category)
-                   :base_type    (data/expected-base-type->actual :type/Integer)
-                   :name         (data/format-name "category_id")
-                   :display_name "Category ID"
-                   :fingerprint  {:global {:distinct-count 28}, :type {:type/Number {:min 2, :max 74, :avg 29.98}}}}
-     :price       {:special_type :type/Category
-                   :base_type    (data/expected-base-type->actual :type/Integer)
-                   :name         (data/format-name "price")
-                   :display_name "Price"
-                   :fingerprint  {:global {:distinct-count 4}, :type {:type/Number {:min 1, :max 4, :avg 2.03}}}}
-     :longitude   {:special_type :type/Longitude
-                   :base_type    (data/expected-base-type->actual :type/Float)
-                   :name         (data/format-name "longitude")
-                   :fingerprint  {:global {:distinct-count 84}, :type {:type/Number {:min -165.374, :max -73.953, :avg -115.998}}}
-                   :display_name "Longitude"}
-     :latitude    {:special_type :type/Latitude
-                   :base_type    (data/expected-base-type->actual :type/Float)
-                   :name         (data/format-name "latitude")
-                   :display_name "Latitude"
-                   :fingerprint  {:global {:distinct-count 94}, :type {:type/Number {:min 10.065, :max 40.779, :avg 35.506}}}}
-     :name        {:special_type :type/Name
-                   :base_type    (data/expected-base-type->actual :type/Text)
-                   :name         (data/format-name "name")
-                   :display_name "Name"
-                   :fingerprint  {:global {:distinct-count 100}, :type {:type/Text {:percent-json 0.0, :percent-url 0.0, :percent-email 0.0, :average-length 15.63}}}})))
+    ;; all columns in default order
+    (qp.test/cols :users)
 
-(defn venues-cols
-  "`cols` information for all the columns in `venues`."
-  []
-  (mapv venues-col [:id :name :category_id :latitude :longitude :price]))
+    ;; users.id, users.name, and users.last_login
+    (qp.test/cols :users [:id :name :last_login])"
+  ([table-kw]
+   (expected-cols table-kw (expected-column-names table-kw)))
 
-;; #### checkins
-(defn checkins-col
-  "Return column information for the `checkins` column named by keyword COL."
-  [col]
-  (merge
-   (col-defaults)
-   {:table_id (data/id :checkins)
-    :id       (data/id :checkins col)}
-   (case col
-     :id       {:special_type :type/PK
-                :base_type    (data/id-field-type)
-                :name         (data/format-name "id")
-                :display_name "ID"}
-     :venue_id {:extra_info   (if (data/fks-supported?)
-                                {:target_table_id (data/id :venues)}
-                                {})
-                :target       (target-field (venues-col :id))
-                :special_type (when (data/fks-supported?)
-                                :type/FK)
-                :base_type    (data/expected-base-type->actual :type/Integer)
-                :name         (data/format-name "venue_id")
-                :display_name "Venue ID"
-                :fingerprint  {:global {:distinct-count 100}, :type {:type/Number {:min 1, :max 100, :avg 51.965}}}}
-     :user_id  {:extra_info   (if (data/fks-supported?) {:target_table_id (data/id :users)}
-                                  {})
-                :target       (target-field (users-col :id))
-                :special_type (if (data/fks-supported?)
-                                :type/FK
-                                :type/Category)
-                :base_type    (data/expected-base-type->actual :type/Integer)
-                :name         (data/format-name "user_id")
-                :display_name "User ID"
-                :fingerprint  {:global {:distinct-count 15}, :type {:type/Number {:min 1, :max 15, :avg 7.929}}}})))
-
-
-;;; #### aggregate columns
+  ([table-kw cols]
+   (mapv (partial col table-kw) cols)))
 
 (defn aggregate-col
   "Return the column information we'd expect for an aggregate column. For all columns besides `:count`, you'll need to
   pass the `Field` in question as well.
 
     (aggregate-col :count)
-    (aggregate-col :avg (venues-col :id))"
-  {:arglists '([ag-col-kw] [ag-col-kw field])}
-  ([ag-col-kw]
-   (case ag-col-kw
-     :count  {:base_type       :type/Integer
-              :special_type    :type/Number
-              :name            "count"
-              :display_name    "count"
-              :id              nil
-              :table_id        nil
-              :description     nil
-              :source          :aggregation
-              :extra_info      {}
-              :target          nil
-              :remapped_from   nil
-              :remapped_to     nil}))
-  ([ag-col-kw {:keys [base_type special_type]}]
-   {:pre [base_type special_type]}
-   {:base_type    base_type
-    :special_type  special_type
-    :id            nil
-    :table_id      nil
-    :description   nil
-    :source        :aggregation
-    :extra_info    {}
-    :target        nil
-    :name          (name ag-col-kw)
-    :display_name  (name ag-col-kw)
-    :remapped_from nil
-    :remapped_to   nil}))
+    (aggregate-col :avg (col :venues :id))
+    (aggregate-col :avg :venues :id)"
+  ([ag-type]
+   (tx/aggregate-column-info (tx/driver) ag-type))
 
-(defn breakout-col [column]
-  (assoc column :source :breakout))
+  ([ag-type field]
+   (tx/aggregate-column-info (tx/driver) ag-type field))
 
-;; TODO - maybe this needs a new name now that it also removes the results_metadata
-(defn booleanize-native-form
+  ([ag-type table-kw field-kw]
+   (tx/aggregate-column-info (tx/driver) ag-type (col table-kw field-kw))))
+
+(defn breakout-col
+  "Return expected `:cols` info for a Field used as a breakout.
+
+    (breakout-col :venues :price)"
+  ([col]
+   (assoc col :source :breakout))
+
+  ([table-kw field-kw]
+   (breakout-col (col table-kw field-kw))))
+
+(defn field-literal-col
+  "Return expected `:cols` info for a Field that was referred to as a `:field-literal`.
+
+    (field-literal-col :venues :price)
+    (field-literal-col (aggregate-col :count))"
+  {:arglists '([col] [table-kw field-kw])}
+  ([{field-name :name, base-type :base_type, unit :unit, :as col}]
+   (-> col
+       (assoc :field_ref [:field-literal field-name base-type]
+              :source    :fields)
+       (dissoc :description :parent_id :visibility_type)))
+
+  ([table-kw field-kw]
+   (field-literal-col (col table-kw field-kw))))
+
+(defn fk-col
+  "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
+  [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
+  (let [source-col (col source-table-kw source-field-kw)
+        dest-col   (col dest-table-kw dest-field-kw)]
+    (-> dest-col
+        (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
+        (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
+               :fk_field_id (:id source-col)))))
+
+(declare cols)
+
+(def ^:private ^{:arglists '([db-id table-id field-id])} native-query-col*
+  (memoize
+   (fn [db-id table-id field-id]
+     (first
+      (cols
+       (qp/process-query
+         {:database db-id
+          :type     :native
+          :native   (qp/query->native
+                      {:database db-id
+                       :type     :query
+                       :query    {:source-table table-id
+                                  :fields       [[:field_id field-id]]
+                                  :limit        1}})}))))))
+
+(defn native-query-col
+  "Return expected `:cols` info for a Field from a native query or native source query."
+  [table-kw field-kw]
+  (native-query-col* (data/id) (data/id table-kw) (data/id table-kw field-kw)))
+
+(defn ^:deprecated booleanize-native-form
   "Convert `:native_form` attribute to a boolean to make test results comparisons easier. Remove `data.results_metadata`
-  as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled."
+  as well since it just takes a lot of space and the checksum can vary based on whether encryption is enabled.
+
+  DEPRECATED: Just use `qp.test/rows`, `qp.test/row-and-cols`, or `qp.test/rows+column-names` instead, combined with
+  functions like `col` as needed."
   [m]
   (-> m
       (update-in [:data :native_form] boolean)
-      (m/dissoc-in [:data :results_metadata])))
+      (m/dissoc-in [:data :results_metadata])
+      (m/dissoc-in [:data :insights])))
+
+(defmulti format-rows-fns
+  "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
+  rows with `format-rows-by` or `formatted-rows`. The first arg to these macros is converted to a sequence of
+  functions by calling this function.
+
+  Sequential args are assumed to already be a sequence of functions and are returned as-is. Keywords can be thought of
+  as aliases and map to a pre-defined sequence of functions. The usual test data tables have predefined fn sequences;
+  you can add addition ones for use locally by adding more implementations for this method.
+
+    (format-rows-fns [int identity]) ;-> [int identity]
+    (format-rows-fns :venues)        ;-> [int identity int 4.0 4.0 int]"
+  {:arglists '([keyword-or-fns-seq])}
+  (fn [x]
+    (if (keyword? x) x (class x))))
+
+(defmethod format-rows-fns clojure.lang.Sequential
+  [this]
+  this)
+
+(defmethod format-rows-fns :categories
+  [_]
+  [int identity])
+
+(defmethod format-rows-fns :checkins
+  [_]
+  [int identity int int])
+
+(defmethod format-rows-fns :users
+  [_]
+  [int identity identity])
+
+(defmethod format-rows-fns :venues
+  [_]
+  [int identity int 4.0 4.0 int])
+
+(defn- format-rows-fn
+  "Handle a value formatting function passed to `format-rows-by`."
+  [x]
+  (if (float? x)
+    (partial u/round-to-decimals (int x))
+    x))
 
 (defn format-rows-by
-  "Format the values in result ROWS with the fns at the corresponding indecies in FORMAT-FNS. ROWS can be a sequence
-  or any of the common map formats we expect in QP tests.
+  "Format the values in result `rows` with the fns at the corresponding indecies in `format-fns`. `rows` can be a
+  sequence or any of the common map formats we expect in QP tests.
 
     (format-rows-by [int str double] [[1 1 1]]) -> [[1 \"1\" 1.0]]
 
-  By default, does't call fns on `nil` values; pass a truthy value as optional param FORMAT-NIL-VALUES? to override
+  `format-fns` can be a sequence of functions, or may be the name of one of the 'big four' test data Tables to use
+  their defaults:
+
+    (format-rows-by :venues (data/run-mbql-query :venues))
+
+  Additionally, you may specify an floating-point number in the rounding functions vector as shorthand for formatting
+  with `u/round-to-decimals`:
+
+    (format-rows-by [identity 4.0] ...) ;-> (format-rows-by [identity (partial u/round-to-decimals 4)] ...)
+
+  By default, does't call fns on `nil` values; pass a truthy value as optional param `format-nil-values`? to override
   this behavior."
   {:style/indent 1}
-  ([format-fns rows]
-   (format-rows-by format-fns (not :format-nil-values?) rows))
-  ([format-fns format-nil-values? rows]
-   (cond
-     (= (:status rows) :failed) (throw (ex-info (:error rows) rows))
+  ([format-fns response]
+   (format-rows-by format-fns false response))
 
-     (:data rows) (update-in rows [:data :rows] (partial format-rows-by format-fns))
-     (:rows rows) (update    rows :rows         (partial format-rows-by format-fns))
-     :else        (vec (for [row rows]
-                         (vec (for [[f v] (partition 2 (interleave format-fns row))]
-                                (when (or v format-nil-values?)
-                                  (try (f v)
-                                       (catch Throwable e
-                                         (printf "(%s %s) failed: %s" f v (.getMessage e))
-                                         (throw e)))))))))))
+  ([format-fns format-nil-values? response]
+   (when (= (:status response) :failed)
+     (println "Error running query:" (u/pprint-to-str 'red response))
+     (throw (ex-info (:error response) response)))
 
-(def ^{:arglists '([results])} formatted-venues-rows
-  "Helper function to format the rows in RESULTS when running a 'raw data' query against the Venues test table."
-  (partial format-rows-by [int str int (partial u/round-to-decimals 4) (partial u/round-to-decimals 4) int]))
+   (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
+     (-> response
+         ((fn format-rows [rows]
+            (cond
+              (:data rows)
+              (update rows :data format-rows)
 
+              (:rows rows)
+              (update rows :rows format-rows)
+
+              (sequential? rows)
+              (vec
+               (for [row rows]
+                 (vec
+                  (for [[f v] (partition 2 (interleave format-fns row))]
+                    (when (or v format-nil-values?)
+                      (try
+                        (f v)
+                        (catch Throwable e
+                          (throw (ex-info (printf "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                                   {:f f, :v v}
+                                   e)))))))))
+
+              :else
+              (throw (ex-info "Unexpected response: rows are not sequential!" {:response response})))))))))
+
+(defn data
+  "Return the result `data` from a successful query run, or throw an Exception if processing failed."
+  {:style/indent 0}
+  [results]
+  (when (= (:status results) :failed)
+    (println "Error running query:" (u/pprint-to-str 'red results))
+    (throw (ex-info (str (or (:error results) "Error running query"))
+             (if (map? results) results {:results results}))))
+  (:data results))
 
 (defn rows
-  "Return the result rows from query RESULTS, or throw an Exception if they're missing."
+  "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (vec (or (get-in results [:data :rows])
-           (println (u/pprint-to-str 'red results)) ; DEBUG
-           (throw (Exception. "Error!")))))
+  (or (some-> (data results) :rows vec)
+      (throw (ex-info "Query does not have any :rows in results." results))))
 
-(defn rows+column-names
-  "Return the result rows and column names from query RESULTS, or throw an Exception if they're missing."
-  {:style/indent 0}
-  [results]
-  {:rows    (rows results)
-   :columns (get-in results [:data :columns])})
+(defn formatted-rows
+  "Combines `rows` and `format-rows-by`."
+  {:style/indent 1}
+  ([format-fns response]
+   (format-rows-by format-fns (rows response)))
+
+  ([format-fns format-nil-values? response]
+   (format-rows-by format-fns format-nil-values? (rows response))))
 
 (defn first-row
-  "Return the first row in the RESULTS of a query, or throw an Exception if they're missing."
+  "Return the first row in the `results` of a query, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
   (first (rows results)))
 
 (defn supports-report-timezone?
-  "Returns truthy if `ENGINE` supports setting a timezone"
-  [engine]
-  (-> engine
-      driver/engine->driver
-      driver/features
-      (contains? :set-timezone)))
+  "Returns truthy if `driver` supports setting a timezone"
+  [driver]
+  (driver/supports? driver :set-timezone))
 
-(defmacro with-h2-db-timezone
-  "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
-  involving a database, but does need to parse dates"
-  [& body]
-  `(du/with-effective-timezone {:engine   :h2
-                                :timezone "UTC"
-                                :name     "mock_db"
-                                :id       1}
-    ~@body))
+(defn cols
+  "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  (or (some-> (data results) :cols vec)
+      (throw (ex-info "Query does not have any :cols in results." results))))
+
+(defn rows-and-cols
+  "Return both `:rows` and `:cols` from the results. Equivalent to
+
+    {:rows (rows results), :cols (cols results)}"
+  {:style/indent 0}
+  [results]
+  {:rows (rows results), :cols (cols results)})
+
+(defn rows+column-names
+  "Return the result rows and column names from query `results`, or throw an Exception if they're missing."
+  {:style/indent 0}
+  [results]
+  {:rows (rows results), :columns (map :name (cols results))})
+
+(defn tz-shifted-driver-bug?
+  "Returns true if `driver` is affected by the bug originally observed in
+  Oracle (https://github.com/metabase/metabase/issues/5789) but later found in Redshift and Snowflake. The timezone is
+  applied correctly, but the date operations that we use aren't using that timezone. This function is used to
+  differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
+  also have this issue."
+  [driver]
+  (contains? #{:snowflake :oracle :redshift} driver))

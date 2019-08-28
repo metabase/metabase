@@ -17,8 +17,10 @@
              [interface :as i]
              [permissions :as perms :refer [Permissions]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :as ui18n :refer [trs tru]]
+             [schema :as su]]
+            [potemkin.types :as p.types]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -42,13 +44,13 @@
 (defn- assert-valid-hex-color [^String hex-color]
   (when (or (not (string? hex-color))
             (not (re-matches hex-color-regex hex-color)))
-    (throw (ex-info (tru "Invalid color")
+    (throw (ui18n/ex-info (tru "Invalid color")
              {:status-code 400, :errors {:color (tru "must be a valid 6-character hex color code")}}))))
 
 (defn- slugify [collection-name]
   ;; double-check that someone isn't trying to use a blank string as the collection name
   (when (str/blank? collection-name)
-    (throw (ex-info (tru "Collection name cannot be blank!")
+    (throw (ui18n/ex-info (tru "Collection name cannot be blank!")
              {:status-code 400, :errors {:name (tru "cannot be blank")}})))
   (u/slugify collection-name collection-slug-max-length))
 
@@ -141,20 +143,20 @@
   (when (contains? collection :location)
     (when-not (valid-location-path? location)
       (throw
-       (ex-info (tru "Invalid Collection location: path is invalid.")
+       (ui18n/ex-info (tru "Invalid Collection location: path is invalid.")
          {:status-code 400
           :errors      {:location (tru "Invalid Collection location: path is invalid.")}})))
     ;; if this is a Personal Collection it's only allowed to go in the Root Collection: you can't put it anywhere else!
     (when (contains? collection :personal_owner_id)
       (when-not (= location "/")
         (throw
-         (ex-info (tru "You cannot move a Personal Collection.")
+         (ui18n/ex-info (tru "You cannot move a Personal Collection.")
            {:status-code 400
             :errors      {:location (tru "You cannot move a Personal Collection.")}}))))
     ;; Also make sure that all the IDs referenced in the Location path actually correspond to real Collections
     (when-not (all-ids-in-location-path-are-valid? location)
       (throw
-       (ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
+       (ui18n/ex-info (tru "Invalid Collection location: some or all ancestors do not exist.")
          {:status-code 404
           :errors      {:location (tru "Invalid Collection location: some or all ancestors do not exist.")}})))))
 
@@ -167,7 +169,7 @@
 ;; Collection in many of the functions in this namespace. The Root Collection is not a true Collection, but instead
 ;; represents things that have no collection_id, or are otherwise to be seen at the top-level by the current user.
 
-(defrecord ^:private RootCollection [])
+(p.types/defrecord+ ^:private RootCollection [])
 
 (u/strict-extend RootCollection
   i/IObjectPermissions
@@ -183,6 +185,13 @@
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."
   (map->RootCollection {::is-root? true}))
+
+(defn root-collection-with-ui-details
+  "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
+  []
+  (assoc root-collection
+    :name (tru "Our analytics")
+    :id   "root"))
 
 (defn- is-root-collection? [x]
   (instance? RootCollection x))
@@ -222,27 +231,78 @@
 ;; breadcrumbing in the frontend.
 
 (def VisibleCollections
-  "Includes the possible values for visible collections, either `:all` or a set of ids"
-  (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero}))
+  "Includes the possible values for visible collections, either `:all` or a set of ids, possibly including `\"root\"` to
+  represent the root collection."
+  (s/cond-pre (s/eq :all) #{(s/cond-pre (s/eq "root") su/IntGreaterThanZero)}))
 
 (s/defn permissions-set->visible-collection-ids :- VisibleCollections
   "Given a `permissions-set` (presumably those of the current user), return a set of IDs of Collections that the
   permissions set allows you to view. For those with *root* permissions (e.g., an admin), this function will return
-  `:all`, signifying that you are allowed to view all Collections.
+  `:all`, signifying that you are allowed to view all Collections. For *Root Collection* permissions, the response
+  will include \"root\".
 
-    (permissions-set->visible-collection-ids #{\"/collection/10/\"}) ; -> #{10}
-    (permissions-set->visible-collection-ids #{\"/\"})               ; -> :all"
+    (permissions-set->visible-collection-ids #{\"/collection/10/\"})   ; -> #{10}
+    (permissions-set->visible-collection-ids #{\"/\"})                 ; -> :all
+    (permissions-set->visible-collection-ids #{\"/collection/root/\"}) ; -> #{\"root\"}
+
+  You probably don't want to consume the results of this function directly -- most of the time, the reason you are
+  calling this function in the first place is because you want add a `FILTER` clause to an application DB query (e.g.
+  to only fetch Cards that belong to Collections visible to the current User). Use
+  `visible-collection-ids->honeysql-filter-clause` to generate a filter clause that handles all possible outputs of
+  this function correctly.
+
+  !!! IMPORTANT NOTE !!!
+
+  Because the result may include `nil` for the Root Collection, or may be `:all`, MAKE SURE YOU HANDLE THOSE
+  SITUATIONS CORRECTLY before using these IDs to make a DB call. Better yet, use
+  `collection-ids->honeysql-filter-clause` to generate appropriate HoneySQL."
   [permissions-set :- #{perms/UserPath}]
   (if (contains? permissions-set "/")
     :all
-    (set (for [path  permissions-set
-               :let  [[_ id-str] (re-matches #"/collection/(\d+)/(read/)?" path)]
-               :when id-str]
-           (Integer/parseInt id-str)))))
+    (set
+     (for [path  permissions-set
+           :let  [[_ id-str] (re-matches #"/collection/((?:\d+)|root)/(read/)?" path)]
+           :when id-str]
+       (cond-> id-str
+         (not= id-str "root") Integer/parseInt)))))
+
+
+(s/defn visible-collection-ids->honeysql-filter-clause
+  "Generate an appropriate HoneySQL `:where` clause to filter something by visible Collection IDs, such as the ones
+  returned by `permissions-set->visible-collection-ids`. Correctly handles all possible values returned by that
+  function, including `:all` and `nil` Collection IDs (for the Root Collection).
+
+  Guaranteed to always generate a valid HoneySQL form, so this can be used directly in a query without further checks.
+
+    (db/select Card
+      {:where (collection/visible-collection-ids->honeysql-filter-clause
+               (collection/permissions-set->visible-collection-ids
+                @*current-user-permissions-set*))})"
+  ([collection-ids :- VisibleCollections]
+   (visible-collection-ids->honeysql-filter-clause :collection_id collection-ids))
+
+  ([collection-id-field :- s/Keyword, collection-ids :- VisibleCollections]
+   (if (= collection-ids :all)
+     true
+     (let [{non-root-ids false, root-id true} (group-by (partial = "root") collection-ids)
+           non-root-clause                    (when (seq non-root-ids)
+                                                [:in collection-id-field non-root-ids])
+           root-clause                        (when (seq root-id)
+                                                [:= collection-id-field nil])]
+       (cond
+         (and root-clause non-root-clause)
+         [:or root-clause non-root-clause]
+
+         (or root-clause non-root-clause)
+         (or root-clause non-root-clause)
+
+         :else
+         false)))))
+
 
 (s/defn effective-location-path :- (s/maybe LocationPath)
   "Given a `location-path` and a set of Collection IDs one is allowed to view (obtained from
-  `permissions-set->visibile-collection-ids` above), calculate the 'effective' location path (excluding IDs of
+  `permissions-set->visible-collection-ids` above), calculate the 'effective' location path (excluding IDs of
   Collections for which we do not have read perms) we should show to the User.
 
   When called with a single argument, `collection`, this is used as a hydration function to hydrate
@@ -254,7 +314,7 @@
      (effective-location-path (:location collection)
                               (permissions-set->visible-collection-ids @*current-user-permissions-set*))))
 
-  ([real-location-path :- LocationPath, allowed-collection-ids :- (s/cond-pre (s/eq :all) #{su/IntGreaterThanZero})]
+  ([real-location-path :- LocationPath, allowed-collection-ids :- VisibleCollections]
    (if (= allowed-collection-ids :all)
      real-location-path
      (apply location-path (for [id    (location-path->ids real-location-path)
@@ -273,7 +333,7 @@
   (when-let [ancestor-ids (seq (location-path->ids location))]
     (db/select [Collection :name :id] :id [:in ancestor-ids] {:order-by [:%lower.name]})))
 
-(s/defn effective-ancestors :- [CollectionInstance]
+(s/defn effective-ancestors :- [(s/cond-pre RootCollection CollectionInstance)]
   "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
   in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
   Collections, nested like:
@@ -282,11 +342,11 @@
 
   The ancestors of D are:
 
-    A > B > C
+    [Root] > A > B > C
 
   If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
 
-    A > C
+    [Root] > A > C
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
@@ -294,7 +354,13 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (is-root-collection? collection)
     []
-    (filter i/can-read? (ancestors collection))))
+    (filter i/can-read? (cons (root-collection-with-ui-details) (ancestors collection)))))
+
+(s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
+  "Get the immediate parent `collection` id, if set."
+  {:hydrate :parent_id}
+  [{:keys [location]} :- CollectionWithLocationOrRoot]
+  (if location (location-path->parent-id location)))
 
 (s/defn children-location :- LocationPath
   "Given a `collection` return a location path that should match the `:location` value of all the children of the
@@ -422,10 +488,10 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to archive the Root Collection...
   (when (is-root-collection? collection)
-    (throw (Exception. (str (tru "You cannot archive the Root Collection.")))))
+    (throw (Exception. (tru "You cannot archive the Root Collection."))))
   ;; also make sure we're not trying to archive a PERSONAL Collection
   (when (db/exists? Collection :id (u/get-id collection), :personal_owner_id [:not= nil])
-    (throw (Exception. (str (tru "You cannot archive a Personal Collection.")))))
+    (throw (Exception. (tru "You cannot archive a Personal Collection."))))
   (set
    (for [collection-or-id (cons
                            (parent collection)
@@ -456,12 +522,12 @@
   [collection :- CollectionWithLocationAndIDOrRoot, new-parent :- CollectionWithLocationAndIDOrRoot]
   ;; Make sure we're not trying to move the Root Collection...
   (when (is-root-collection? collection)
-    (throw (Exception. (str (tru "You cannot move the Root Collection.")))))
+    (throw (Exception. (tru "You cannot move the Root Collection."))))
   ;; Needless to say, it makes no sense to move a Collection into itself or into one of its descendants. So let's make
   ;; sure we're not doing that...
   (when (contains? (set (location-path->ids (children-location new-parent)))
                    (u/get-id collection))
-    (throw (Exception. (str (tru "You cannot move a Collection into itself or into one of its descendants.")))))
+    (throw (Exception. (tru "You cannot move a Collection into itself or into one of its descendants."))))
   (set
    (cons (perms/collection-readwrite-path new-parent)
          (perms-for-archiving collection))))
@@ -497,11 +563,10 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived false}
         :archived true)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      false}
-          :archived true))
-      (db/delete! 'Pulse :collection_id [:in affected-collection-ids]))))
+          :archived true)))))
 
 (s/defn ^:private unarchive-collection!
   "Unarchive a Collection and its descendant Collections and their Cards, Dashboards, and Pulses."
@@ -512,7 +577,7 @@
       (db/update-where! Collection {:id       [:in affected-collection-ids]
                                     :archived true}
         :archived false)
-      (doseq [model '[Card Dashboard]]
+      (doseq [model '[Card Dashboard Pulse]]
         (db/update-where! model {:collection_id [:in affected-collection-ids]
                                  :archived      true}
           :archived false)))))
@@ -604,7 +669,7 @@
   ;; double-check and make sure it's not just the existing value getting passed back in for whatever reason
   (when (api/column-will-change? :personal_owner_id collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to change the owner of a Personal Collection.")
        {:status-code 400
         :errors      {:personal_owner_id (tru "You're not allowed to change the owner of a Personal Collection.")}})))
   ;;
@@ -615,15 +680,15 @@
   ;; You also definitely cannot *move* a Personal Collection
   (when (api/column-will-change? :location collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You're not allowed to move a Personal Collection.")
+     (ui18n/ex-info (tru "You're not allowed to move a Personal Collection.")
        {:status-code 400
         :errors      {:location (tru "You're not allowed to move a Personal Collection.")}})))
   ;; You also can't archive a Personal Collection
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     (throw
-     (ex-info (tru "You cannot archive a Personal Collection!")
+     (ui18n/ex-info (tru "You cannot archive a Personal Collection.")
        {:status-code 400
-        :errors      {:archived (tru "You cannot archive a Personal Collection!")}}))))
+        :errors      {:archived (tru "You cannot archive a Personal Collection.")}}))))
 
 (s/defn ^:private maybe-archive-or-unarchive!
   "If `:archived` specified in the updates map, archive/unarchive as needed."
@@ -632,7 +697,7 @@
   (when (api/column-will-change? :archived collection-before-updates collection-updates)
     ;; check to make sure we're not trying to change location at the same time
     (when (api/column-will-change? :location collection-before-updates collection-updates)
-      (throw (ex-info (tru "You cannot move a Collection and archive it at the same time.")
+      (throw (ui18n/ex-info (tru "You cannot move a Collection and archive it at the same time.")
                {:status-code 400
                 :errors      {:archived (tru "You cannot move a Collection and archive it at the same time.")}})))
     ;; ok, go ahead and do the archive/unarchive operation
@@ -730,10 +795,11 @@
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
-(def ^:dynamic *allow-deleting-personal-collections*
-  "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but in the single case of
-  deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get deleted, but rather
-  archived; thus this code is used solely by our test suite, by things such as the `with-temp` macros.)"
+(defonce ^:dynamic ^{:doc "Whether to allow deleting Personal Collections. Normally we should *never* allow this, but
+  in the single case of deleting a User themselves, we need to allow this. (Note that in normal usage, Users never get
+  deleted, but rather archived; thus this code is used solely by our test suite, by things such as the `with-temp`
+  macros.)"}
+  *allow-deleting-personal-collections*
   false)
 
 (defn- pre-delete [collection]
@@ -747,7 +813,7 @@
   ;; You can't delete a Personal Collection! Unless we enable it because we are simultaneously deleting the User
   (when-not *allow-deleting-personal-collections*
     (when (:personal_owner_id collection)
-      (throw (Exception. (str (tru "You cannot delete a Personal Collection!"))))))
+      (throw (Exception. (tru "You cannot delete a Personal Collection!")))))
   ;; Delete permissions records for this Collection
   (db/execute! {:delete-from Permissions
                 :where       [:or
@@ -1002,7 +1068,12 @@
   {:batched-hydrate :personal_collection_id}
   [users]
   (when (seq users)
+    ;; efficiently create a map of user ID -> personal collection ID
     (let [user-id->collection-id (db/select-field->id :personal_owner_id Collection
                                    :personal_owner_id [:in (set (map u/get-id users))])]
+      ;; now for each User, try to find the corresponding ID out of that map. If it's not present (the personal
+      ;; Collection hasn't been created yet), then instead call `user->personal-collection-id`, which will create it
+      ;; as a side-effect. This will ensure this property never comes back as `nil`
       (for [user users]
-        (assoc user :personal_collection_id (user-id->collection-id (u/get-id user)))))))
+        (assoc user :personal_collection_id (or (user-id->collection-id (u/get-id user))
+                                                (user->personal-collection-id (u/get-id user))))))))

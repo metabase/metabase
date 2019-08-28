@@ -8,8 +8,10 @@ import MetabotLogo from "metabase/components/MetabotLogo";
 import Select, { Option } from "metabase/components/Select";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Card from "metabase/components/Card";
+import { Flex } from "grid-styled";
+import colors from "metabase/lib/colors";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { DatabaseCandidates, Candidate } from "metabase/meta/types/Auto";
@@ -48,7 +50,7 @@ export class ExplorePane extends React.Component {
   };
 
   render() {
-    let {
+    const {
       candidates,
       title,
       description,
@@ -60,7 +62,7 @@ export class ExplorePane extends React.Component {
 
     let schemaNames;
     let tables;
-    let hasMore = false;
+    const hasMore = false;
     if (candidates && candidates.length > 0) {
       schemaNames = candidates.map(schema => schema.schema);
       if (schemaName == null) {
@@ -71,7 +73,7 @@ export class ExplorePane extends React.Component {
     }
 
     return (
-      <div className="pt4 pb2">
+      <div>
         {title && (
           <div className="flex align-center mb2">
             {withMetabot && <MetabotLogo />}
@@ -87,29 +89,26 @@ export class ExplorePane extends React.Component {
             <span>{description}</span>
           </div>
         )}
-        {schemaNames &&
-          schemaNames.length > 1 && (
-            <div className="px4 inline-block mb4">
-              <div className="pb1 text-paragraph">
-                Here's the schema I looked at:
-              </div>
-              <Select
-                value={schemaName}
-                onChange={e =>
-                  this.setState({
-                    schemaName: e.target.value,
-                    visibleItems: DEFAULT_VISIBLE_ITEMS,
-                  })
-                }
-              >
-                {schemaNames.map(schemaName => (
-                  <Option key={schemaName} value={schemaName}>
-                    {schemaName}
-                  </Option>
-                ))}
-              </Select>
-            </div>
-          )}
+        {schemaNames && schemaNames.length > 1 && (
+          <div className="flex align-center ml-auto">
+            <div className="mr1">{t`Based on the schema`}</div>
+            <Select
+              value={schemaName}
+              onChange={e =>
+                this.setState({
+                  schemaName: e.target.value,
+                  visibleItems: DEFAULT_VISIBLE_ITEMS,
+                })
+              }
+            >
+              {schemaNames.map(schemaName => (
+                <Option key={schemaName} value={schemaName}>
+                  {schemaName}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        )}
         {tables && (
           <ExploreList
             candidates={tables}
@@ -119,7 +118,7 @@ export class ExplorePane extends React.Component {
         )}
         {hasMore && (
           <div
-            className="border-top cursor-pointer text-brand-hover flex layout-centered text-grey-2 px2 pt2 mt4"
+            className="border-top cursor-pointer text-brand-hover flex layout-centered text-light px2 pt2 mt4"
             onClick={() => this.setState({ visibleItems: visibleItems + 4 })}
           >
             <Icon name="chevrondown" size={20} />
@@ -156,20 +155,23 @@ export const ExploreList = ({
 );
 
 export const ExploreOption = ({ option }: { option: Candidate }) => (
-  <Link to={option.url} className="flex align-center text-bold no-decoration">
-    <div
-      className="bg-grey-0 flex align-center rounded mr2 p2 justify-center text-gold"
-      style={{ width: 48, height: 48 }}
+  <Link
+    to={option.url}
+    className="flex align-center no-decoration text-medium text-brand-hover"
+  >
+    <Flex
+      align="center"
+      justify="center"
+      bg={colors["accent4"]}
+      w="42px"
+      style={{ borderRadius: 6, height: 42 }}
+      mr={1}
     >
-      <Icon name="bolt" size={24} className="flex-no-shrink" />
-    </div>
+      <Icon name="bolt" size={20} className="flex-no-shrink text-white" />
+    </Flex>
     <div>
-      <div className="link">{option.title}</div>
-      {option.description && (
-        <div className="text-grey-4 text-small" style={{ marginTop: "0.25em" }}>
-          {option.description}
-        </div>
-      )}
+      {t`A look at your`}{" "}
+      <span className="text-bold text-wrap">{option.title}</span>
     </div>
   </Link>
 );

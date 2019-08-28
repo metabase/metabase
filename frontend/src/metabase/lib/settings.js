@@ -1,6 +1,6 @@
 import _ from "underscore";
 import inflection from "inflection";
-import { t } from "c-3po";
+import { t } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 const mb_settings = _.clone(window.MetabaseBootstrap);
@@ -63,14 +63,31 @@ const MetabaseSettings = {
 
   metastoreUrl: () => mb_settings.metastore_url,
 
-  newVersionAvailable: function(settings) {
-    let versionInfo = _.findWhere(settings, { key: "version-info" }),
-      currentVersion = MetabaseSettings.get("version").tag;
+  docsUrl: (page = "", anchor = "") => {
+    let { tag } = MetabaseSettings.get("version", {});
+    if (!tag) {
+      tag = "latest";
+    }
+    if (page) {
+      page = `/${page}.html`;
+    }
+    if (anchor) {
+      anchor = `#${anchor}`;
+    }
+    return `https://metabase.com/docs/${tag}${page}${anchor}`;
+  },
 
-    if (versionInfo) versionInfo = versionInfo.value;
+  newVersionAvailable: function(settings) {
+    let versionInfo = _.findWhere(settings, { key: "version-info" });
+    const currentVersion = MetabaseSettings.get("version").tag;
+
+    if (versionInfo) {
+      versionInfo = versionInfo.value;
+    }
 
     return (
       versionInfo &&
+      versionInfo.latest &&
       MetabaseUtils.compareVersions(
         currentVersion,
         versionInfo.latest.version,
@@ -78,7 +95,11 @@ const MetabaseSettings = {
     );
   },
 
-  passwordComplexity: function(capitalize) {
+  // returns a map that looks like {total: 6, digit: 1}
+  passwordComplexityRequirements: () => mb_settings.password_complexity,
+
+  // returns a description of password complexity requirements rather than the actual map of requirements
+  passwordComplexityDescription: function(capitalize) {
     const complexity = this.get("password_complexity");
 
     const clauseDescription = function(clause) {
@@ -94,15 +115,15 @@ const MetabaseSettings = {
       }
     };
 
-    let description =
-        capitalize === false
-          ? t`must be` + " " + complexity.total + " " + t`characters long`
-          : t`Must be` + " " + complexity.total + " " + t`characters long`,
-      clauses = [];
+    const description =
+      capitalize === false
+        ? t`must be` + " " + complexity.total + " " + t`characters long`
+        : t`Must be` + " " + complexity.total + " " + t`characters long`;
+    const clauses = [];
 
     ["lower", "upper", "digit", "special"].forEach(function(clause) {
       if (clause in complexity) {
-        let desc =
+        const desc =
           complexity[clause] > 1
             ? inflection.pluralize(clauseDescription(clause))
             : clauseDescription(clause);

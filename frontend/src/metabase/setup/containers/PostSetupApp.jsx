@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
@@ -93,7 +93,7 @@ export default class PostSetupApp extends Component {
           <div className="m4 text-centered">
             <Link
               to="/"
-              className="no-decoration text-bold text-grey-3 text-grey-4-hover"
+              className="no-decoration text-bold text-medium text-medium-hover"
             >
               {t`I'm done exploring for now`}
             </Link>

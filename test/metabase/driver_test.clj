@@ -1,57 +1,41 @@
 (ns metabase.driver-test
-  (:require [expectations :refer :all]
-            [metabase.driver :as driver]))
+  (:require [expectations :refer [expect]]
+            [metabase.driver :as driver]
+            [metabase.plugins.classloader :as classloader]))
 
+(driver/register! ::test-driver, :abstract? true)
 
-(defrecord ^:private TestDriver []
-  clojure.lang.Named
-  (getName [_] "TestDriver"))
-
-(extend TestDriver
-  driver/IDriver
-  {:features (constantly #{:a})})
-
+(defmethod driver/supports? [::test-driver :foreign-keys] [_ _] true)
 
 ;; driver-supports?
 
-(expect true  (driver/driver-supports? (TestDriver.) :a))
-(expect false (driver/driver-supports? (TestDriver.) :b))
+(expect true  (driver/supports? ::test-driver :foreign-keys))
+(expect false (driver/supports? ::test-driver :expressions))
 
-;; values->base-type
+;; expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`
 (expect
-  :type/Text
-  (driver/values->base-type ["A" "B" "C"]))
+  'metabase.driver.sql-jdbc
+  (#'driver/driver->expected-namespace :sql-jdbc))
 
-;; should ignore nils
+;; for a namespaced driver it should be the namespace of the keyword
 (expect
-  :type/Text
-  (driver/values->base-type [nil nil "C"]))
+  'metabase.driver-test
+  (#'driver/driver->expected-namespace ::toucans))
 
-;; should pick base-type of most common class
+;; calling `the-driver` should set the context classloader, important because driver plugin code exists there but not
+;; elsewhere
 (expect
-  :type/Text
-  (driver/values->base-type ["A" 100 "C"]))
+  @@#'classloader/shared-context-classloader
+  (do
+    (.setContextClassLoader (Thread/currentThread) (ClassLoader/getSystemClassLoader))
+    (driver/the-driver :h2)
+    (.getContextClassLoader (Thread/currentThread))))
 
-;; should fall back to :type/* if no better type is found
+;; `driver/available?` should work for if `driver` is a string -- see #10135
 (expect
-  :type/*
-  (driver/values->base-type [(Object.)]))
+  (with-redefs [driver/concrete? (constantly true)]
+    (driver/available? ::test-driver)))
 
-;; Should work with initial nils even if sequence is lazy
 (expect
-  [:type/Integer true]
-  (let [realized-lazy-seq? (atom false)]
-    [(driver/values->base-type (lazy-cat [nil nil nil]
-                                (do (reset! realized-lazy-seq? true)
-                                    [4 5 6])))
-     @realized-lazy-seq?]))
-
-;; but it should respect laziness and not keep scanning after it finds 100 values
-(expect
-  [:type/Integer false]
-  (let [realized-lazy-seq? (atom false)]
-    [(driver/values->base-type (lazy-cat [1 2 3]
-                                         (repeat 1000 nil)
-                                         (do (reset! realized-lazy-seq? true)
-                                             [4 5 6])))
-     @realized-lazy-seq?]))
+  (with-redefs [driver/concrete? (constantly true)]
+    (driver/available? "metabase.driver-test/test-driver")))

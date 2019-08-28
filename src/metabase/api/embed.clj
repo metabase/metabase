@@ -28,9 +28,11 @@
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util :as u]
             [metabase.util
              [embed :as eu]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -84,8 +86,8 @@
            (not (str/blank? v)))))
 
 (s/defn ^:private validate-and-merge-params :- {s/Keyword s/Any}
-  "Validate that the TOKEN-PARAMS passed in the JWT and the USER-PARAMS (passed as part of the URL) are allowed, and
-  that ones that are required are specified by checking them against a Card or Dashboard's OBJECT-EMBEDDING-PARAMS
+  "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
+  that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
   [object-embedding-params :- su/EmbeddingParams, token-params :- {s/Keyword s/Any}, user-params :- {s/Keyword s/Any}]
@@ -99,14 +101,14 @@
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
 (defn- remove-params-in-set
-  "Remove any PARAMS from the list whose `:slug` is in the PARAMS-TO-REMOVE set."
+  "Remove any `params` from the list whose `:slug` is in the `params-to-remove` set."
   [params params-to-remove]
   (for [param params
         :when (not (contains? params-to-remove (keyword (:slug param))))]
     param))
 
 (s/defn ^:private remove-locked-and-disabled-params
-  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the EMBEDDING-PARAMS
+  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
@@ -120,23 +122,24 @@
     (update dashboard-or-card :parameters remove-params-in-set params-to-remove)))
 
 (defn- remove-token-parameters
-  "Removes any parameters with slugs matching keys provided in TOKEN-PARAMS, as these should not be exposed to the user."
+  "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
+  user."
   [dashboard-or-card token-params]
   (update dashboard-or-card :parameters remove-params-in-set (set (keys token-params))))
 
 (defn- template-tag-parameters
-  "Transforms native query's `template_tags` into `parameters`."
+  "Transforms native query's `template-tags` into `parameters`."
   [card]
   ;; NOTE: this should mirror `getTemplateTagParameters` in frontend/src/metabase/meta/Parameter.js
-  (for [[_ {tag-type :type, widget-type :widget_type, :as tag}] (get-in card [:dataset_query :native :template_tags])
+  (for [[_ {tag-type :type, widget-type :widget-type, :as tag}] (get-in card [:dataset_query :native :template-tags])
         :when                         (and tag-type
-                                           (or widget-type (not= tag-type "dimension")))]
+                                           (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
-     :type    (or widget-type (if (= tag-type "date") "date/single" "category"))
-     :target  (if (= tag-type "dimension")
-                ["dimension" ["template-tag" (:name tag)]]
-                ["variable" ["template-tag" (:name tag)]])
-     :name    (:display_name tag)
+     :type    (or widget-type (if (= tag-type :date) :date/single :category))
+     :target  (if (= tag-type :dimension)
+                [:dimension [:template-tag (:name tag)]]
+                [:variable  [:template-tag (:name tag)]])
+     :name    (:display-name tag)
      :slug    (:name tag)
      :default (:default tag)}))
 
@@ -146,7 +149,7 @@
   (update card :parameters concat (template-tag-parameters card)))
 
 (s/defn ^:private apply-parameter-values :- (s/maybe [{:slug   su/NonBlankString
-                                                       :type   su/NonBlankString
+                                                       :type   s/Keyword
                                                        :target s/Any
                                                        :value  s/Any}])
   "Adds `value` to parameters with `slug` matching a key in `parameter-values` and removes parameters without a
@@ -169,7 +172,8 @@
 (defn- resolve-dashboard-parameters
   "Returns parameters for a card on a dashboard with `:target` resolved via `:parameter_mappings`."
   [dashboard-id dashcard-id card-id]
-  (let [param-id->param (u/key-by :id (db/select-one-field :parameters Dashboard :id dashboard-id))]
+  (let [param-id->param (u/key-by :id (for [param (db/select-one-field :parameters Dashboard :id dashboard-id)]
+                                        (update param :type keyword)))]
     ;; throw a 404 if there's no matching DashboardCard so people can't get info about other Cards that aren't in this
     ;; Dashboard we don't need to check that card-id matches the DashboardCard because we might be trying to get param
     ;; info for a series belonging to this dashcard (card-id might be for a series)
@@ -205,22 +209,22 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Card :id card-id))))))
 
-(defn run-query-for-card-with-params
-  "Run the query associated with Card with CARD-ID using JWT TOKEN-PARAMS, user-supplied URL QUERY-PARAMS,
-   an EMBEDDING-PARAMS whitelist, and additional query OPTIONS."
+(defn run-query-for-card-with-params-async
+  "Run the query associated with Card with `card-id` using JWT `token-params`, user-supplied URL `query-params`,
+   an `embedding-params` whitelist, and additional query `options`. Returns channel for fetching the results."
   {:style/indent 0}
   [& {:keys [card-id embedding-params token-params query-params options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
-    (apply public-api/run-query-for-card-with-id card-id parameters, :context :embedded-question, options)))
+    (apply public-api/run-query-for-card-with-id-async card-id parameters, :context :embedded-question, options)))
 
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
 
 (defn dashboard-for-unsigned-token
-  "Return the info needed for embedding about Dashboard specified in TOKEN.
-   Additional CONSTRAINTS can be passed to the `public-dashboard` function that fetches the Dashboard."
+  "Return the info needed for embedding about Dashboard specified in `token`. Additional `constraints` can be passed to
+  the `public-dashboard` function that fetches the Dashboard."
   {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
   (let [dashboard-id (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
@@ -230,30 +234,34 @@
         (remove-locked-and-disabled-params (or embedding-params
                                                (db/select-one-field :embedding_params Dashboard, :id dashboard-id))))))
 
-(defn dashcard-results
+(defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard."
   {:style/indent 0}
-  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
+  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params constraints]
+      :or   {constraints constraints/default-query-constraints}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
                                                  parameter-values)]
-    (public-api/public-dashcard-results dashboard-id card-id parameters, :context :embedded-dashboard)))
+    (public-api/public-dashcard-results-async dashboard-id card-id parameters
+      :context     :embedded-dashboard
+      :constraints constraints)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
 
 (defn- check-embedding-enabled-for-object
-  "Check that embedding is enabled, that OBJECT exists, and embedding for OBJECT is enabled."
+  "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
   ([entity id]
    (check-embedding-enabled-for-object (db/select-one [entity :enable_embedding] :id id)))
+
   ([object]
    (api/check-embedding-enabled)
    (api/check-404 object)
    (api/check-not-archived object)
    (api/check (:enable_embedding object)
-     [400 "Embedding is not enabled for this object."])))
+     [400 (tru "Embedding is not enabled for this object.")])))
 
 (def ^:private ^{:arglists '([dashboard-id])} check-embedding-enabled-for-dashboard
   (partial check-embedding-enabled-for-object Dashboard))
@@ -276,13 +284,13 @@
     (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 
-(defn- run-query-for-unsigned-token
-  "Run the query belonging to Card identified by UNSIGNED-TOKEN. Checks that embedding is enabled both globally and
-  for this Card."
+(defn- run-query-for-unsigned-token-async
+  "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
+  for this Card. Returns core.async channel to fetch the results."
   [unsigned-token query-params & options]
   (let [card-id (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (check-embedding-enabled-for-card card-id)
-    (run-query-for-card-with-params
+    (run-query-for-card-with-params-async
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (db/select-one-field :embedding_params Card :id card-id)
@@ -298,15 +306,15 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token (eu/unsign token) query-params))
+  (run-query-for-unsigned-token-async (eu/unsign token) query-params))
 
 
-(api/defendpoint GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
+(api/defendpoint-async GET ["/card/:token/query/:export-format", :export-format dataset-api/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
-  [token export-format & query-params]
+  [{{:keys [token export-format]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
-  (dataset-api/as-format export-format
-    (run-query-for-unsigned-token (eu/unsign token) query-params, :constraints nil)))
+  (dataset-api/as-format-async export-format respond raise
+    (run-query-for-unsigned-token-async (eu/unsign token) (m/map-keys keyword query-params), :constraints nil)))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -324,7 +332,8 @@
     (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 
-(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+
+(defn- card-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
 
@@ -334,17 +343,26 @@
       :params   <parameters>}
 
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
-  [token dashcard-id card-id & query-params]
+  {:style/indent 1}
+  [token dashcard-id card-id query-params & {:keys [constraints]
+                                             :or   {constraints constraints/default-query-constraints}}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
-    (dashcard-results
+    (dashcard-results-async
       :dashboard-id     dashboard-id
       :dashcard-id      dashcard-id
       :card-id          card-id
       :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     query-params)))
+      :query-params     query-params
+      :constraints      constraints)))
+
+(api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key`"
+  [token dashcard-id card-id & query-params]
+  (card-for-signed-token-async token dashcard-id card-id query-params ))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -415,6 +433,20 @@
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
     (public-api/dashboard-field-remapped-values dashboard-id field-id remapped-id value)))
+
+
+(api/defendpoint-async GET ["/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format"
+                            :export-format dataset-api/export-format-regex]
+  "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
+  `embedding-secret-key` return the data in one of the export formats"
+  [{{:keys [token export-format dashcard-id card-id]} :params, :keys [query-params]} respond raise]
+  {export-format dataset-api/ExportFormat}
+  (dataset-api/as-format-async export-format respond raise
+    (card-for-signed-token-async token
+      (Integer/parseUnsignedInt dashcard-id)
+      (Integer/parseUnsignedInt card-id)
+      (m/map-keys keyword query-params)
+      :constraints nil)))
 
 
 (api/define-routes)

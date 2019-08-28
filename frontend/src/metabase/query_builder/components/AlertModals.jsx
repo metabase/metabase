@@ -1,8 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
-import cxs from "cxs";
 
 // components
 import Button from "metabase/components/Button";
@@ -17,10 +16,12 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import RetinaImage from "react-retina-image";
 
+import User from "metabase/entities/users";
+
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
 import { apiUpdateQuestion } from "metabase/query_builder/actions";
-import { fetchPulseFormInput, fetchUsers } from "metabase/pulse/actions";
+import { fetchPulseFormInput } from "metabase/pulse/actions";
 
 // selectors
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
@@ -29,11 +30,10 @@ import {
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import {
-  formInputSelector,
+  getPulseFormInput,
   hasConfiguredAnyChannelSelector,
   hasConfiguredEmailChannelSelector,
   hasLoadedChannelInfoSelector,
-  userListSelector,
 } from "metabase/pulse/selectors";
 
 // lib
@@ -57,9 +57,9 @@ const getScheduleFromChannel = channel =>
     "schedule_hour",
     "schedule_type",
   );
-const classes = cxs({
+const textStyle = {
   width: "162px",
-});
+};
 
 @connect(
   state => ({
@@ -224,7 +224,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-01-raw-data.png" />
             <p
-              className={`${classes} ml2 text-left`}
+              className="ml2 text-left"
+              style={textStyle}
             >{jt`When a raw data question ${(
               <strong>{t`returns any results`}</strong>
             )}`}</p>
@@ -235,7 +236,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-02-goal.png" />
             <p
-              className={`${classes} mr2 text-right`}
+              className="mr2 text-right"
+              style={textStyle}
             >{jt`When a line or bar ${(
               <strong>{t`crosses a goal line`}</strong>
             )}`}</p>
@@ -246,7 +248,8 @@ export class AlertEducationalScreen extends Component {
           >
             <RetinaImage src="app/assets/img/alerts/education-illustration-03-progress.png" />
             <p
-              className={`${classes} ml2 text-left`}
+              className="ml2 text-left"
+              style={textStyle}
             >{jt`When a progress bar ${(
               <strong>{t`reaches its goal`}</strong>
             )}`}</p>
@@ -365,25 +368,24 @@ export class DeleteAlertSection extends Component {
 
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
-    return this.props.alert.channels.map(
-      c =>
-        c.channel_type === "email" ? (
-          <span>{jt`This alert will no longer be emailed to ${(
-            <strong>
-              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                c.recipients.length,
-              )}
-            </strong>
-          )}.`}</span>
-        ) : c.channel_type === "slack" ? (
-          <span>{jt`Slack channel ${(
-            <strong>{c.details && c.details.channel}</strong>
-          )} will no longer get this alert.`}</span>
-        ) : (
-          <span>{jt`Channel ${(
-            <strong>{c.channel_type}</strong>
-          )} will no longer receive this alert.`}</span>
-        ),
+    return this.props.alert.channels.map(c =>
+      c.channel_type === "email" ? (
+        <span>{jt`This alert will no longer be emailed to ${(
+          <strong>
+            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+              c.recipients.length,
+            )}
+          </strong>
+        )}.`}</span>
+      ) : c.channel_type === "slack" ? (
+        <span>{jt`Slack channel ${(
+          <strong>{c.details && c.details.channel}</strong>
+        )} will no longer get this alert.`}</span>
+      ) : (
+        <span>{jt`Channel ${(
+          <strong>{c.channel_type}</strong>
+        )} will no longer receive this alert.`}</span>
+      ),
     );
   }
 
@@ -430,7 +432,10 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
+@connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,
@@ -557,7 +562,7 @@ export class AlertEditSchedule extends Component {
 
         <div className="bordered rounded mb2">
           {alertType === ALERT_TYPE_ROWS && <RawDataAlertTip />}
-          <div className="p3 bg-grey-0">
+          <div className="p3 bg-light">
             <SchedulePicker
               schedule={schedule}
               scheduleOptions={["hourly", "daily", "weekly"]}
@@ -571,28 +576,28 @@ export class AlertEditSchedule extends Component {
   }
 }
 
+@User.loadList()
 @connect(
-  state => ({
+  (state, props) => ({
     user: getUser(state),
-    userList: userListSelector(state),
-    formInput: formInputSelector(state),
+    formInput: getPulseFormInput(state),
   }),
-  { fetchPulseFormInput, fetchUsers },
+  {
+    fetchPulseFormInput,
+  },
 )
 export class AlertEditChannels extends Component {
   props: {
     onChannelsChange: any => void,
     user: any,
-    userList: any[],
+    users: any[],
     // this stupidly named property contains different channel options, nothing else
     formInput: any,
-    fetchPulseFormInput: () => void,
-    fetchUsers: () => void,
+    fetchPulseFormInput: () => Promise<void>,
   };
 
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    this.props.fetchUsers();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -610,7 +615,7 @@ export class AlertEditChannels extends Component {
   };
 
   render() {
-    const { alert, user, userList, formInput } = this.props;
+    const { alert, user, users, formInput } = this.props;
     return (
       <div className="mt4 pt2">
         <h3 className="text-dark mb3">{jt`Where do you want to send these alerts?`}</h3>
@@ -621,7 +626,7 @@ export class AlertEditChannels extends Component {
             pulseIsValid={true}
             formInput={formInput}
             user={user}
-            userList={userList}
+            users={users}
             setPulse={this.onSetPulse}
             hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
@@ -652,7 +657,7 @@ export class RawDataAlertTip extends Component {
 
     return (
       <div className="border-row-divider p3 flex align-center">
-        <div className="circle flex align-center justify-center bg-grey-0 p2 mr2 text-grey-3">
+        <div className="circle flex align-center justify-center bg-light p2 mr2 text-medium">
           <Icon name="lightbulb" size="20" />
         </div>
         {showMultiSeriesGoalAlert ? (

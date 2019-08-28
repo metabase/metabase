@@ -1,7 +1,7 @@
 import React from "react";
 import { Box } from "grid-styled";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const EntitySegments = ({ question }) => {
   const segments = question.query().filterSegmentOptions();
@@ -19,7 +19,7 @@ const EntitySegments = ({ question }) => {
       {segments.map(segment => {
         const link = question
           .query()
-          .addFilter(["SEGMENT", segment.id])
+          .addFilter(["segment", segment.id])
           .question()
           .getUrl();
         return <Link to={link}>{segment.name}</Link>;

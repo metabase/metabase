@@ -11,11 +11,12 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterType } from "metabase/meta/types/Query";
+import type { Filter as FilterObject } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 export type FilterRenderer = ({
   field?: ?React$Element<any>,
@@ -24,7 +25,7 @@ export type FilterRenderer = ({
 }) => React$Element<any>;
 
 type Props = {
-  filter: FilterType,
+  filter: FilterObject | FilterWrapper,
   metadata: Metadata,
   maxDisplayValues?: number,
   children?: FilterRenderer,
@@ -43,12 +44,14 @@ const DEFAULT_FILTER_RENDERER: FilterRenderer = ({
   }
   return (
     <span>
-      {items.filter(f => f).map((item, index, array) => (
-        <span>
-          {item}
-          {index < array.length - 1 ? " " : null}
-        </span>
-      ))}
+      {items
+        .filter(f => f)
+        .map((item, index, array) => (
+          <span>
+            {item}
+            {index < array.length - 1 ? " " : null}
+          </span>
+        ))}
     </span>
   );
 };
@@ -59,9 +62,9 @@ export const OperatorFilter = ({
   maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
 }: Props) => {
-  let [op, field] = filter;
+  const [op, field] = filter;
   // $FlowFixMe
-  let values: ValueType[] = hasFilterOptions(filter)
+  const values: ValueType[] = hasFilterOptions(filter)
     ? filter.slice(2, -1)
     : filter.slice(2);
 
@@ -75,7 +78,8 @@ export const OperatorFilter = ({
   let formattedValues;
   // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps
   if (operator && operator.multi && values.length > maxDisplayValues) {
-    formattedValues = [values.length + " selections"];
+    const n = values.length;
+    formattedValues = [ngettext(msgid`${n} selection`, `${n} selections`, n)];
   } else if (dimension.field().isDate() && !dimension.field().isTime()) {
     formattedValues = generateTimeFilterValuesDescriptions(filter);
   } else {
@@ -116,7 +120,7 @@ export const SegmentFilter = ({
 };
 
 const Filter = ({ filter, ...props }: Props) =>
-  filter[0] === "SEGMENT" ? (
+  filter[0] === "segment" ? (
     <SegmentFilter filter={filter} {...props} />
   ) : (
     <OperatorFilter filter={filter} {...props} />

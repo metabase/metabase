@@ -4,7 +4,7 @@
 
 :local(.formula) {
   composes: bordered rounded my2 from "style";
-  background-color: #fbfcfd;
+  background-color: var(--color-bg-light);
   margin-left: var(--icon-width);
   max-width: 550px;
   cursor: pointer;

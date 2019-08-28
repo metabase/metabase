@@ -3,9 +3,12 @@
 import Database from "../metadata/Database";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { TableId } from "metabase/meta/types/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import { memoize } from "metabase-lib/lib/utils";
+
+type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 
 /**
  * An abstract class for all query types (StructuredQuery & NativeQuery)
@@ -32,18 +35,12 @@ export default class Query {
    */
   @memoize
   question(): Question {
-    const isDirectChildOfQuestion =
-      typeof this._originalQuestion.query() === typeof this;
-
-    if (isDirectChildOfQuestion) {
-      return this._originalQuestion.setQuery(this);
-    } else {
-      throw new Error(
-        "Can't derive a question from a query that is a child of other query",
-      );
-    }
+    return this._originalQuestion.setQuery(this);
   }
 
+  /**
+   * Returns a "clean" version of this query with invalid parts removed
+   */
   clean(): Query {
     return this;
   }
@@ -96,9 +93,25 @@ export default class Query {
   }
 
   /**
-   * Helper for updating with functions that expect a DatasetQuery object
+   * Table IDs this query needs metadata for to display correctly
+   * NOTE: we can't get table IDs for implicit joins (fk->) until the Metadata is loaded
    */
-  update(fn: (datasetQuery: DatasetQuery) => void) {
-    return fn(this.datasetQuery());
+  dependentTableIds(): TableId[] {
+    return [];
+  }
+
+  setDefaultQuery(): Query {
+    return this;
+  }
+
+  /**
+   * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
+   */
+  update(update?: QueryUpdateFn, ...args: any[]) {
+    if (update) {
+      return update(this.datasetQuery(), ...args);
+    } else {
+      return this.question().update(undefined, ...args);
+    }
   }
 }

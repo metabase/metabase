@@ -6,36 +6,35 @@
              [util :as u]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.interface :as qpi]
-            [metabase.query-processor.middleware.expand :as ql]
+            [metabase.sync.interface :as si]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- qp-query [db-id query]
+(defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-          {:type     :query
-           :database db-id
-           :query    query}))
+         {:type     :query
+          :database db-id
+          :query    mbql-query}))
       :data
       :rows))
 
-(defn- field-query [{table-id :table_id} query]
+(defn- field-query [{table-id :table_id} mbql-query]
   {:pre [(integer? table-id)]}
   (qp-query (db/select-one-field :db_id Table, :id table-id)
             ;; this seeming useless `merge` statement IS in fact doing something important. `ql/query` is a threading
             ;; macro for building queries. Do not remove
-            (ql/query (merge query)
-                      (ql/source-table table-id))))
+            (assoc mbql-query :source-table table-id)))
 
 (defn table-row-count
   "Fetch the row count of TABLE via the query processor."
   [table]
   {:pre  [(map? table)]
    :post [(integer? %)]}
-  (let [results (qp-query (:db_id table) (ql/query (ql/source-table (u/get-id table))
-                                                   (ql/aggregation (ql/count))))]
+  (let [results (qp-query (:db_id table) {:source-table (u/get-id table)
+                                          :aggregation  [[:count]]})]
     (try (-> results first first long)
          (catch Throwable e
            (log/error "Error fetching table row count. Query returned:\n"
@@ -63,27 +62,25 @@
   (int 5000))
 
 (s/defn field-distinct-values
-  "Return the distinct values of FIELD.
+  "Return the distinct values of `field`.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
   ([field, max-results :- su/IntGreaterThanZero]
-   (mapv first (field-query field (-> {}
-                                      (ql/breakout (ql/field-id (u/get-id field)))
-                                      (ql/limit max-results))))))
+   (mapv first (field-query field {:breakout [[:field-id (u/get-id field)]]
+                                   :limit    max-results}))))
 
 (defn field-distinct-count
-  "Return the distinct count of FIELD."
+  "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (field-query field (-> {}
-                             (ql/aggregation (ql/distinct (ql/field-id (u/get-id field))))
-                             (ql/limit limit)))
+  (-> (field-query field {:aggregation [[:distinct [:field-id (u/get-id field)]]]
+                          :limit       limit})
       first first int))
 
 (defn field-count
-  "Return the count of FIELD."
+  "Return the count of `field`."
   [field]
-  (-> (field-query field (ql/aggregation {} (ql/count (ql/field-id (u/get-id field)))))
+  (-> (field-query field {:aggregation [[:count [:field-id (u/get-id field)]]]})
       first first int))
 
 (defn db-id
@@ -92,3 +89,24 @@
   (or (:db_id x)
       (:database_id x)
       (db/select-one-field :db_id 'Table :id (:table_id x))))
+
+
+(def max-sample-rows
+  "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
+  inferring special types and what-not; we don't want to scan millions of values at any rate."
+  10000)
+
+(s/defn table-rows-sample :- (s/maybe si/TableSample)
+  "Run a basic MBQL query to fetch a sample of rows belonging to a Table."
+  {:style/indent 1}
+  [table :- si/TableInstance, fields :- [si/FieldInstance]]
+  (let [results ((resolve 'metabase.query-processor/process-query)
+                 {:database   (:db_id table)
+                  :type       :query
+                  :query      {:source-table (u/get-id table)
+                               :fields       (vec (for [field fields]
+                                                    [:field-id (u/get-id field)]))
+                               :limit        max-sample-rows}
+                  :middleware {:format-rows?           false
+                               :skip-results-metadata? true}})]
+    (get-in results [:data :rows])))

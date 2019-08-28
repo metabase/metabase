@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
+import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import InputBlurChange from "metabase/components/InputBlurChange.jsx";
 import HeaderModal from "metabase/components/HeaderModal.jsx";
 import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
 import EditBar from "metabase/components/EditBar.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {
@@ -29,7 +30,7 @@ export default class Header extends Component {
     this.updateHeaderHeight();
   }
 
-  componentWillUpdate() {
+  componentDidUpdate() {
     const modalIsOpen = !!this.props.headerModalMessage;
     if (modalIsOpen) {
       this.updateHeaderHeight();
@@ -37,7 +38,9 @@ export default class Header extends Component {
   }
 
   updateHeaderHeight() {
-    if (!this.refs.header) return;
+    if (!this.refs.header) {
+      return;
+    }
 
     const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
     const headerHeight = rect.top + getScrollY();
@@ -75,6 +78,7 @@ export default class Header extends Component {
   }
 
   render() {
+    const { item } = this.props;
     let titleAndDescription;
     if (this.props.isEditingInfo) {
       titleAndDescription = (
@@ -121,7 +125,7 @@ export default class Header extends Component {
       );
     }
 
-    let headerButtons = this.props.headerButtons.map(
+    const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
           section &&
@@ -153,8 +157,14 @@ export default class Header extends Component {
           ref="header"
         >
           <div className="Entity py3">
-            {titleAndDescription}
+            <span className="inline-block mb1">{titleAndDescription}</span>
             {attribution}
+            {this.props.showBadge && (
+              <CollectionBadge
+                collectionId={item.collection_id}
+                analyticsContext={this.props.analyticsContext}
+              />
+            )}
           </div>
 
           <div className="flex align-center flex-align-right">

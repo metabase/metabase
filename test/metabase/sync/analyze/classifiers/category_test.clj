@@ -25,12 +25,10 @@
 ;; make sure the logic for deciding whether a Field should be a list works as expected
 (expect
   nil
-  (#'category-classifier/field-should-be-auto-list?
-   2500
-   (field-with-distinct-count 2500)))
+  (let [field (field-with-distinct-count 2500)]
+    (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field)))
 
 (expect
   true
-  (#'category-classifier/field-should-be-auto-list?
-   99
-   (field-with-distinct-count 99)))
+  (let [field (field-with-distinct-count 99)]
+    (#'category-classifier/field-should-be-auto-list? (:fingerprint field) field)))

@@ -33,12 +33,12 @@
 ;; DELETE /api/email - check clearing email settings
 (expect
   [default-email-settings
-   {:email-smtp-host nil,
-    :email-smtp-port nil,
-    :email-smtp-security "none",
-    :email-smtp-username nil,
-    :email-smtp-password nil,
-    :email-from-address "notifications@metabase.com"}]
+   {:email-smtp-host     nil
+    :email-smtp-port     nil
+    :email-smtp-security "none"
+    :email-smtp-username nil
+    :email-smtp-password nil
+    :email-from-address  "notifications@metabase.com"}]
   (let [orig-settings (email-settings)]
     (try
       ((user->client :crowberto) :put 200 "email" default-email-settings)

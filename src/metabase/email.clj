@@ -2,27 +2,40 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [deferred-tru trs tru]]
+             [schema :as su]]
             [postal
              [core :as postal]
              [support :refer [make-props]]]
-            [puppetlabs.i18n.core :refer [tru trs]]
             [schema.core :as s])
   (:import javax.mail.Session))
 
 ;;; CONFIG
-;; TODO - smtp-port should be switched to type :integer
 
-(defsetting email-from-address  (tru "Email address you want to use as the sender of Metabase.") :default "notifications@metabase.com")
-(defsetting email-smtp-host     (tru "The address of the SMTP server that handles your emails."))
-(defsetting email-smtp-username (tru "SMTP username."))
-(defsetting email-smtp-password (tru "SMTP password."))
-(defsetting email-smtp-port     (tru "The port your SMTP server uses for outgoing emails."))
+(defsetting email-from-address
+  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  :default "notifications@metabase.com")
+
+(defsetting email-smtp-host
+  (deferred-tru "The address of the SMTP server that handles your emails."))
+
+(defsetting email-smtp-username
+  (deferred-tru "SMTP username."))
+
+(defsetting email-smtp-password
+  (deferred-tru "SMTP password.")
+  :sensitive? true)
+
+;; TODO - smtp-port should be switched to type :integer
+(defsetting email-smtp-port
+  (deferred-tru "The port your SMTP server uses for outgoing emails."))
+
 (defsetting email-smtp-security
-  (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :default (tru "none")
+  (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :default (deferred-tru "none")
   :setter  (fn [new-value]
-             (when-not (nil? new-value)
+             (when (some? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
              (setting/set-string! :email-smtp-security new-value)))
 
@@ -39,12 +52,14 @@
   (boolean (email-smtp-host)))
 
 (defn- add-ssl-settings [m ssl-setting]
-  (merge m (case (keyword ssl-setting)
-             :tls {:tls true}
-             :ssl {:ssl true}
-             :starttls {:starttls.enable true
-                        :starttls.required true}
-             {})))
+  (merge
+   m
+   (case (keyword ssl-setting)
+     :tls      {:tls true}
+     :ssl      {:ssl true}
+     :starttls {:starttls.enable   true
+                :starttls.required true}
+     {})))
 
 (defn- smtp-settings []
   (-> {:host (email-smtp-host)

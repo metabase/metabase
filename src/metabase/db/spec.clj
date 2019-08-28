@@ -4,8 +4,7 @@
   otherwise, similar functions are only needed by drivers, and belong in those namespaces.")
 
 (defn h2
-  "Create a database specification for a h2 database. Opts should include a key
-  for :db which is the path to the database file."
+  "Create a Clojure JDBC database specification for a H2 database."
   [{:keys [db]
     :or   {db "h2.db"}
     :as   opts}]
@@ -14,30 +13,32 @@
           :subname     db}
          (dissoc opts :db)))
 
+(defn- make-subname [host port db]
+  (str "//" host ":" port "/" db))
+
 (defn postgres
-  "Create a database specification for a postgres database. Opts should include
-  keys for :db, :user, and :password. You can also optionally set host and
-  port."
+  "Create a Clojure JDBC database specification for a Postgres database."
   [{:keys [host port db]
     :or   {host "localhost", port 5432, db ""}
     :as   opts}]
-  (merge {:classname   "org.postgresql.Driver"
-          :subprotocol "postgresql"
-          :subname     (str "//" host ":" port "/" db "?OpenSourceSubProtocolOverride=true")}
-         (dissoc opts :host :port :db)))
+  (merge
+   {:classname                     "org.postgresql.Driver"
+    :subprotocol                   "postgresql"
+    :subname                       (make-subname host (or port 5432) db)
+    ;; I think this is done to prevent conflicts with redshift driver registering itself to handle postgres://
+    :OpenSourceSubProtocolOverride true}
+   (dissoc opts :host :port :db)))
 
 (defn mysql
-  "Create a database specification for a mysql database. Opts should include keys
-  for :db, :user, and :password. You can also optionally set host and port.
-  Delimiters are automatically set to \"`\"."
+  "Create a Clojure JDBC database specification for a MySQL or MariaDB database."
   [{:keys [host port db]
     :or   {host "localhost", port 3306, db ""}
     :as   opts}]
-  (merge {:classname   "com.mysql.jdbc.Driver"
-          :subprotocol "mysql"
-          :subname     (str "//" host ":" port "/" db)
-          :delimiters  "`"}
-         (dissoc opts :host :port :db)))
+  (merge
+   {:classname   "org.mariadb.jdbc.Driver"
+    :subprotocol "mysql"
+    :subname     (make-subname host (or port 3306) db)}
+   (dissoc opts :host :port :db)))
 
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

@@ -8,7 +8,10 @@ import PermissionsApp from "./PermissionsApp.jsx";
 import { PermissionsApi } from "metabase/services";
 import { fetchRealDatabases } from "metabase/redux/metadata";
 
-@connect(null, { fetchRealDatabases })
+@connect(
+  null,
+  { fetchRealDatabases },
+)
 @fitViewport
 export default class DataPermissionsApp extends Component {
   componentWillMount() {
@@ -20,7 +23,7 @@ export default class DataPermissionsApp extends Component {
         {...this.props}
         load={PermissionsApi.graph}
         save={PermissionsApi.updateGraph}
-        fitClassNames={this.props.fitClassNames}
+        fitClassNames={this.props.fitClassNames + " flex-column"}
       />
     );
   }

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
 import CheckBox from "metabase/components/CheckBox.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -23,6 +23,7 @@ export default class DeleteModalWithConfirm extends Component {
     confirmItems: PropTypes.array.isRequired,
     onClose: PropTypes.func.isRequired,
     onDelete: PropTypes.func.isRequired,
+    buttonText: PropTypes.string,
   };
 
   async onDelete() {
@@ -31,9 +32,9 @@ export default class DeleteModalWithConfirm extends Component {
   }
 
   render() {
-    const { title, objectType, confirmItems } = this.props;
+    const { title, objectType, confirmItems, buttonText } = this.props;
     const { checked } = this.state;
-    let confirmed = confirmItems.reduce(
+    const confirmed = confirmItems.reduce(
       (acc, item, index) => acc && checked[index],
       true,
     );
@@ -76,7 +77,7 @@ export default class DeleteModalWithConfirm extends Component {
             })}
             onClick={this.onDelete}
           >
-            {t`Delete this ${objectType}`}
+            {buttonText || t`Delete this ${objectType}`}
           </button>
         </div>
       </ModalContent>

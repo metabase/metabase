@@ -20,10 +20,11 @@
              [config :as config]
              [db :as mdb]
              [util :as u]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.date :as du]))
 
 (defn ^:command migrate
-  "Run database migrations. Valid options for DIRECTION are `up`, `force`, `down-one`, `print`, or `release-locks`."
+  "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
   [direction]
   (mdb/migrate! (keyword direction)))
 
@@ -32,7 +33,7 @@
   ([]
    (load-from-h2 nil))
   ([h2-connection-string]
-   (require 'metabase.cmd.load-from-h2)
+   (classloader/require 'metabase.cmd.load-from-h2)
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
@@ -40,20 +41,20 @@
   "Start Metabase the usual way and exit. Useful for profiling Metabase launch time."
   []
   ;; override env var that would normally make Jetty block forever
-  (require 'environ.core)
-  (intern 'environ.core 'env (assoc @(resolve 'environ.core/env) :mb-jetty-join "false"))
+  (classloader/require 'environ.core 'metabase.core)
+  (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
   (du/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
-  "Reset the password for a user with EMAIL-ADDRESS."
+  "Reset the password for a user with `email-address`."
   [email-address]
-  (require 'metabase.cmd.reset-password)
+  (classloader/require 'metabase.cmd.reset-password)
   ((resolve 'metabase.cmd.reset-password/reset-password!) email-address))
 
 (defn ^:command refresh-integration-test-db-metadata
   "Re-sync the frontend integration test DB's metadata for the Sample Dataset."
   []
-  (require 'metabase.cmd.refresh-integration-test-db-metadata)
+  (classloader/require 'metabase.cmd.refresh-integration-test-db-metadata)
   ((resolve 'metabase.cmd.refresh-integration-test-db-metadata/refresh-integration-test-db-metadata)))
 
 (defn ^:command help
@@ -89,30 +90,15 @@
   "Generate a markdown file containing documentation for all API endpoints. This is written to a file called
   `docs/api-documentation.md`."
   []
-  (require 'metabase.cmd.endpoint-dox)
+  (classloader/require 'metabase.cmd.endpoint-dox)
   ((resolve 'metabase.cmd.endpoint-dox/generate-dox!)))
 
-(defn ^:command check-i18n
-  "Run normally, but with fake translations in place for all user-facing backend strings. Useful for checking what
-  things need to be translated."
+(defn ^:command driver-methods
+  "Print a list of all multimethods a available for a driver to implement. A useful reference when implementing a new
+  driver."
   []
-  (println "Swapping out implementation of puppetlabs.i18n.core/fmt...")
-  (require 'puppetlabs.i18n.core)
-  (let [orig-fn @(resolve 'puppetlabs.i18n.core/fmt)]
-    (intern 'puppetlabs.i18n.core 'fmt (comp str/reverse orig-fn)))
-  (println "Ok.")
-  (println "Reloading all Metabase namespaces...")
-  (let [namespaces-to-reload (for [ns-symb @u/metabase-namespace-symbols
-                                   :when (and (not (#{'metabase.cmd 'metabase.core} ns-symb))
-                                              (u/ignore-exceptions
-                                                ;; try to resolve namespace. If it's not loaded yet, this will throw
-                                                ;; an Exception, so we can skip reloading it
-                                                (the-ns ns-symb)))]
-                               ns-symb)]
-    (apply require (conj (vec namespaces-to-reload) :reload)))
-  (println "Ok.")
-  (println "Starting normally with swapped i18n strings...")
-  ((resolve 'metabase.core/start-normally)))
+  (classloader/require 'metabase.cmd.driver-methods)
+  ((resolve 'metabase.cmd.driver-methods/print-available-multimethods)))
 
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------

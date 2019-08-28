@@ -1,5 +1,5 @@
 import { TYPE } from "metabase/lib/types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export const field_special_types = [
   {
@@ -38,6 +38,11 @@ export const field_special_types = [
   {
     id: TYPE.Country,
     name: t`Country`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.Currency,
+    name: t`Currency`,
     section: t`Common`,
   },
   {
@@ -133,6 +138,21 @@ export const field_special_types = [
   {
     id: TYPE.CreationDate,
     name: t`Creation date`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationTimestamp,
+    name: t`Cancelation timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationTime,
+    name: t`Cancelation time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationDate,
+    name: t`Cancelation date`,
     section: t`Common`,
   },
   {

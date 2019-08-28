@@ -4,7 +4,7 @@
              [collection :as collection :refer [Collection]]
              [collection-test :as collection-test]
              [database :refer [Database]]
-             [permissions :as perms]
+             [permissions :as perms :refer [Permissions]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [table :refer [Table]]]
             [metabase.test.data :as data]
@@ -116,6 +116,12 @@
 (expect false (perms/valid-object-path? "/db/1/SCHEMA/"))
 (expect false (perms/valid-object-path? "/db/1/SCHEMA/PUBLIC/"))
 (expect false (perms/valid-object-path? "/db/1/schema/PUBLIC/TABLE/1/"))
+
+;; do we allow backslashes in permissions paths? (#8693)
+(expect
+  (perms/valid-object-path? "/db/16/schema/COMPANY-NET\\john.doe/"))
+
+;; TODO - it would be nice if we could escape forward slashes somehow too...
 
 
 ;;; -------------------------------------------------- object-path ---------------------------------------------------
@@ -574,7 +580,49 @@
     ;; now fetch the perms that have been granted
     (get-in (perms/graph) [:groups (u/get-id group) (u/get-id database) :schemas])))
 
+;; The data permissions graph should never return permissions for the MetaBot, because the MetaBot can only have
+;; collection permissions
+(expect
+  false
+  ;; need to swap out the perms check function because otherwise we couldn't even insert the object we want to insert
+  (with-redefs [perms/assert-valid-metabot-permissions (constantly nil)]
+    (tt/with-temp* [Database    [db]
+                    Permissions [perms {:group_id (u/get-id (group/metabot)), :object (perms/object-path db)}]]
+      (contains? (:groups (perms/graph)) (u/get-id (group/metabot))))))
 
+;; Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :all
+                          :query :none}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-read-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :none
+                          :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :categories) :none
+   (data/id :checkins)   :none
+   (data/id :users)      :none
+   (data/id :venues)     {:read  :all
+                          :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/update-graph! [(u/get-id group) (data/id) :schemas]
+                         {"PUBLIC"
+                          {(data/id :venues)
+                           {:read :all, :query :segmented}}})
+    (test-data-graph group)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |

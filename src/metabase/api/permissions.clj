@@ -67,7 +67,7 @@
 
 (api/defendpoint PUT "/graph"
   "Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
-  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever neccesary. This
+  format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
   modified graph must correspond to the `PermissionsGraph` schema. If successful, this endpoint returns the updated
   permissions graph; use this as a base for any further modifications.
 
@@ -89,13 +89,15 @@
   "Return a map of `PermissionsGroup` ID -> number of members in the group. (This doesn't include entries for empty
   groups.)"
   []
-  (into {} (for [{:keys [group_id members]} (db/query
-                                             {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
-                                              :from      [[:permissions_group_membership :pgm]]
-                                              :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
-                                              :where     [:= :user.is_active true]
-                                              :group-by  [:pgm.group_id]})]
-             {group_id members})))
+  (let [results (db/query
+                 {:select    [[:pgm.group_id :group_id] [:%count.pgm.id :members]]
+                  :from      [[:permissions_group_membership :pgm]]
+                  :left-join [[:core_user :user] [:= :pgm.user_id :user.id]]
+                  :where     [:= :user.is_active true]
+                  :group-by  [:pgm.group_id]})]
+    (zipmap
+     (map :group_id results)
+     (map :members results))))
 
 (defn- ordered-groups
   "Return a sequence of ordered `PermissionsGroups`, including the `MetaBot` group only if MetaBot is enabled."
@@ -106,14 +108,20 @@
                  [:not= :id (u/get-id (group/metabot))])
      :order-by [:%lower.name]}))
 
+(defn add-member-counts
+  "Efficiently add `:member_count` to PermissionGroups."
+  {:batched-hydrate :member_count}
+  [groups]
+  (let [group-id->num-members (group-id->num-members)]
+    (for [group groups]
+      (assoc group :member_count (get group-id->num-members (u/get-id group) 0)))))
+
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
   (api/check-superuser)
-  (let [group-id->members (group-id->num-members)]
-    (for [group (ordered-groups)]
-      (assoc group :members (or (group-id->members (u/get-id group))
-                                0)))))
+  (-> (ordered-groups)
+      (hydrate :member_count)))
 
 (api/defendpoint GET "/group/:id"
   "Fetch the details for a certain permissions group."

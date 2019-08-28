@@ -1,17 +1,21 @@
 (ns metabase.models.interface
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
+            [clojure.tools.logging :as log]
+            [metabase.mbql.normalize :as normalize]
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
              [date :as du]
-             [encryption :as encryption]]
+             [encryption :as encryption]
+             [i18n :refer [trs tru]]]
+            [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
-            [toucan
-             [models :as models]
-             [util :as toucan-util]])
-  (:import java.sql.Blob))
+            [toucan.models :as models])
+  (:import [java.io BufferedInputStream ByteArrayInputStream DataInputStream]
+           java.sql.Blob
+           java.util.zip.GZIPInputStream))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Toucan Extensions                                                |
@@ -23,7 +27,7 @@
 ;;; types
 
 (defn json-in
-  "Serializes clojure object `obj` to a JSON string"
+  "Default in function for columns given a Toucan type `:json`. Serializes object as JSON."
   [obj]
   (if (string? obj)
     obj
@@ -32,15 +36,22 @@
 (defn- json-out [obj keywordize-keys?]
   (let [s (u/jdbc-clob->str obj)]
     (if (string? s)
-      (json/parse-string s keywordize-keys?)
+      (try
+        (json/parse-string s keywordize-keys?)
+        (catch Throwable e
+          (log/error e (str (trs "Error parsing JSON")))
+          s))
       obj)))
 
 (defn json-out-with-keywordization
-  "Deserialize JSON string `obj` to a clojure object"
+  "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
   [obj]
   (json-out obj true))
 
-(defn- json-out-without-keywordization [obj]
+(defn json-out-without-keywordization
+  "Out function for columns given a Toucan type `:json-no-keywordization`. Similar to `:json-out` but does leaves keys
+  as strings."
+  [obj]
   (json-out obj false))
 
 (models/add-type! :json
@@ -51,11 +62,53 @@
   :in  json-in
   :out json-out-without-keywordization)
 
+;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
+(defn- maybe-normalize [query]
+  (when query
+    (normalize/normalize query)))
+
+(defn- catch-normalization-exceptions
+  "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
+  invalid queries (etc.) come out of the Database, it's best we handle normalization failures gracefully rather than
+  letting the Exception cause the entire API call to fail because of one bad object. (See #8914 for more details.)"
+  [f]
+  (fn [query]
+    (try
+      (doall (f query))
+      (catch Throwable e
+        (log/error e (tru "Unable to normalize:") "\n"
+                   (u/pprint-to-str 'red query))
+        nil))))
+
+(models/add-type! :metabase-query
+  :in  (comp json-in maybe-normalize)
+  :out (comp (catch-normalization-exceptions maybe-normalize) json-out-with-keywordization))
+
+;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
+(defn- normalize-metric-segment-definition [definition]
+  (when definition
+    (normalize/normalize-fragment [:query] definition)))
+
+;; For inner queries like those in Metric definitions
+(models/add-type! :metric-segment-definition
+  :in  (comp json-in normalize-metric-segment-definition)
+  :out (comp (catch-normalization-exceptions normalize-metric-segment-definition) json-out-with-keywordization))
+
+;; For DashCard parameter lists
+(defn- normalize-parameter-mapping-targets [parameter-mappings]
+  (or (normalize/normalize-fragment [:parameters] parameter-mappings)
+      []))
+
+(models/add-type! :parameter-mappings
+  :in  (comp json-in normalize-parameter-mapping-targets)
+  :out (comp (catch-normalization-exceptions normalize-parameter-mapping-targets) json-out-with-keywordization))
+
+
 ;; json-set is just like json but calls `set` on it when coming out of the DB. Intended for storing things like a
 ;; permissions set
 (models/add-type! :json-set
   :in  json-in
-  :out #(when % (set (json-out-with-keywordization %))))
+  :out #(some-> % json-out-with-keywordization set))
 
 (models/add-type! :clob
   :in  identity
@@ -72,20 +125,23 @@
   :in  encrypted-json-in
   :out (comp cached-encrypted-json-out u/jdbc-clob->str))
 
-(defn compress
-  "Compress OBJ, returning a byte array."
-  [obj]
-  (nippy/freeze obj {:compressor nippy/snappy-compressor}))
+(models/add-type! :encrypted-text
+  :in  encryption/maybe-encrypt
+  :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
 
 (defn decompress
-  "Decompress COMPRESSED-BYTES."
+  "Decompress `compressed-bytes`."
   [compressed-bytes]
   (if (instance? Blob compressed-bytes)
     (recur (.getBytes ^Blob compressed-bytes 0 (.length ^Blob compressed-bytes)))
-    (nippy/thaw compressed-bytes {:compressor nippy/snappy-compressor})))
+    (with-open [bis     (ByteArrayInputStream. compressed-bytes)
+                bif     (BufferedInputStream. bis)
+                gz-in   (GZIPInputStream. bif)
+                data-in (DataInputStream. gz-in)]
+      (nippy/thaw-from-in! data-in))))
 
 (models/add-type! :compressed
-  :in  compress
+  :in  identity
   :out decompress)
 
 (defn- validate-cron-string [s]
@@ -99,7 +155,7 @@
 ;; might need to get de-CLOB-bered first. So replace the default Toucan `:keyword` implementation with one that
 ;; handles those cases.
 (models/add-type! :keyword
-  :in  toucan-util/keyword->qualified-name
+  :in  u/qualified-name
   :out (comp keyword u/jdbc-clob->str))
 
 
@@ -125,7 +181,7 @@
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defprotocol IObjectPermissions
+(p.types/defprotocol+ IObjectPermissions
   "Methods for determining whether the current user has read/write permissions for a given object."
 
   (perms-objects-set [this, ^clojure.lang.Keyword read-or-write]
@@ -150,11 +206,26 @@
      *  `superuser?`
      *  `(partial current-user-has-full-permissions? :write)` (you must also implement `perms-objects-set` to use this)
      *  `(partial current-user-has-partial-permissions? :write)` (you must also implement `perms-objects-set` to use
-        this)"))
+        this)")
+
+  (^{:added "0.32.0"} can-create? ^Boolean [entity m]
+    "NEW! Check whether or not current user is allowed to CREATE a new instance of `entity` with properties in map
+    `m`.
+
+    Because this method was added YEARS after `can-read?` and `can-write?`, most models do not have an implementation
+    for this method, and instead `POST` API endpoints themselves contain the appropriate permissions logic (ick).
+    Implement this method as you come across models that are missing it."))
 
 (def IObjectPermissionsDefaults
   "Default implementations for `IObjectPermissions`."
-  {:perms-objects-set (constantly nil)})
+  {:perms-objects-set
+   (constantly nil)
+
+   :can-create?
+   (fn [entity _]
+     (throw
+      (NoSuchMethodException.
+       (format "%s does not yet have an implementation for `can-create?`. Feel free to add one!" (name entity)))))})
 
 (defn superuser?
   "Is `*current-user*` is a superuser? Ignores args.

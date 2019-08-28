@@ -7,18 +7,14 @@ import {
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
-import Q from "metabase/lib/query"; // legacy
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type {
-  StructuredQuery,
-  NativeQuery,
-  TemplateTag,
-} from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase/meta/types/Query";
 import type {
   Card,
   DatasetQuery,
@@ -43,7 +39,7 @@ export const STRUCTURED_QUERY_TEMPLATE: StructuredDatasetQuery = {
   type: "query",
   database: null,
   query: {
-    source_table: null,
+    "source-table": null,
     aggregation: undefined,
     breakout: undefined,
     filter: undefined,
@@ -55,7 +51,7 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
   native: {
     query: "",
-    template_tags: {},
+    "template-tags": {},
   },
 };
 
@@ -65,24 +61,6 @@ export function isStructured(card: Card): boolean {
 
 export function isNative(card: Card): boolean {
   return card.dataset_query.type === "native";
-}
-
-export function canRun(card: Card): boolean {
-  if (card.dataset_query.type === "query") {
-    const query = getQuery(card);
-    return (
-      query != null &&
-      query.source_table != undefined &&
-      Query.hasValidAggregation(query)
-    );
-  } else if (card.dataset_query.type === "native") {
-    const native: NativeQuery = card.dataset_query.native;
-    return (
-      native && card.dataset_query.database != undefined && native.query !== ""
-    );
-  } else {
-    return false;
-  }
 }
 
 export function cardVisualizationIsEquivalent(
@@ -124,8 +102,8 @@ export function getTableMetadata(
   metadata: Metadata,
 ): ?TableMetadata {
   const query = getQuery(card);
-  if (query && query.source_table != null) {
-    return metadata.tables[query.source_table] || null;
+  if (query && query["source-table"] != null) {
+    return metadata.tables[query["source-table"]] || null;
   }
   return null;
 }
@@ -134,8 +112,8 @@ export function getTemplateTags(card: ?Card): Array<TemplateTag> {
   return card &&
     card.dataset_query &&
     card.dataset_query.type === "native" &&
-    card.dataset_query.native.template_tags
-    ? Object.values(card.dataset_query.native.template_tags)
+    card.dataset_query.native["template-tags"]
+    ? Object.values(card.dataset_query.native["template-tags"])
     : [];
 }
 
@@ -180,11 +158,11 @@ export function applyParameters(
   const datasetQuery = Utils.copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
-    datasetQuery.query = Q.cleanQuery(datasetQuery.query);
+    datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
-    let value = parameterValues[parameter.id];
+    const value = parameterValues[parameter.id];
     if (value == null) {
       continue;
     }

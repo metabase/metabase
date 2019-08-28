@@ -1,0 +1,50 @@
+#! /usr/bin/env bash
+
+set -euo pipefail
+
+driver="$1"
+
+if [ ! "$driver" ]; then
+    echo 'Usage: ./bin/verify-driver [driver]'
+    exit -1
+fi
+
+echo "Verifying $driver driver..."
+
+driver_file="resources/modules/$driver.metabase-driver.jar"
+
+echo "Checking whether $driver_file exists...."
+if [ ! -f "$driver_file" ]; then
+    echo 'File does not exist. Driver verification failed.'
+    exit -2
+fi
+
+echo 'File exists.'
+
+# This assumes that the driver's main namespace is {driver}.clj, which is not necessarily required. Namespace is
+# determined by `load-namespace` in the plugin manifest
+#
+# TODO - this won't work for drivers that have slashes in the name, because of namespace munging
+munged_driver=`echo "$driver" | sed 's/-/_/g'`
+driver_main_class="metabase/driver/${munged_driver}__init.class"
+
+echo "Checking whether driver contains main class file $driver_main_class..."
+
+if [ `jar -tf "$driver_file" | grep "$driver_main_class"` ]; then
+    echo 'Main class file found.'
+else
+    echo 'Main class file missing. Driver verification failed.'
+    exit -3
+fi
+
+echo "Checking whether driver contains plugin manifest..."
+
+if [ `jar -tf "$driver_file" | grep 'metabase-plugin.yaml'` ]; then
+    echo 'Plugin manifest found.'
+else
+    echo 'Plugin manifest missing. Driver verification failed.'
+    exit -4
+fi
+
+echo 'Driver verification successful.'
+exit 0

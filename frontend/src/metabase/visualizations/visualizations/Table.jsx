@@ -4,154 +4,51 @@ import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
+import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
+import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
+import { getColumnCardinality } from "metabase/visualizations/lib/utils";
+import { formatColumn } from "metabase/lib/formatting";
 
-import Query from "metabase/lib/query";
-import { isMetric, isDimension } from "metabase/lib/schema_metadata";
+import * as Q_DEPRECATED from "metabase/lib/query";
 import {
-  columnsAreValid,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
-import ChartSettingOrderedFields from "metabase/visualizations/components/settings/ChartSettingOrderedFields.jsx";
+  isMetric,
+  isDimension,
+  isNumber,
+  isString,
+  isURL,
+  isEmail,
+  isImageURL,
+  isAvatarURL,
+} from "metabase/lib/schema_metadata";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
 import ChartSettingsTableFormatting, {
   isFormattable,
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
 
+import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
 import _ from "underscore";
 import cx from "classnames";
-import d3 from "d3";
-import Color from "color";
-import { getColorScale } from "metabase/lib/colors";
 
 import RetinaImage from "react-retina-image";
 import { getIn } from "icepick";
 
 import type { DatasetData } from "metabase/meta/types/Dataset";
-import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-
-const CELL_ALPHA = 0.65;
-const ROW_ALPHA = 0.2;
-const GRADIENT_ALPHA = 0.75;
+import type { VisualizationSettings } from "metabase/meta/types/Card";
+import type { Series } from "metabase/meta/types/Visualization";
+import type { SettingDefs } from "metabase/visualizations/lib/settings";
 
 type Props = {
-  card: Card,
-  data: DatasetData,
+  series: Series,
   settings: VisualizationSettings,
   isDashboard: boolean,
 };
 type State = {
   data: ?DatasetData,
 };
-
-const alpha = (color, amount) =>
-  Color(color)
-    .alpha(amount)
-    .string();
-
-function compileFormatter(
-  format,
-  columnName,
-  columnExtents,
-  isRowFormatter = false,
-) {
-  if (format.type === "single") {
-    let { operator, value, color } = format;
-    if (isRowFormatter) {
-      color = alpha(color, ROW_ALPHA);
-    } else {
-      color = alpha(color, CELL_ALPHA);
-    }
-    switch (operator) {
-      case "<":
-        return v => (v < value ? color : null);
-      case "<=":
-        return v => (v <= value ? color : null);
-      case ">=":
-        return v => (v >= value ? color : null);
-      case ">":
-        return v => (v > value ? color : null);
-      case "=":
-        return v => (v === value ? color : null);
-      case "!=":
-        return v => (v !== value ? color : null);
-    }
-  } else if (format.type === "range") {
-    const columnMin = name =>
-      columnExtents && columnExtents[name] && columnExtents[name][0];
-    const columnMax = name =>
-      columnExtents && columnExtents[name] && columnExtents[name][1];
-
-    const min =
-      format.min_type === "custom"
-        ? format.min_value
-        : format.min_type === "all"
-          ? Math.min(...format.columns.map(columnMin))
-          : columnMin(columnName);
-    const max =
-      format.max_type === "custom"
-        ? format.max_value
-        : format.max_type === "all"
-          ? Math.max(...format.columns.map(columnMax))
-          : columnMax(columnName);
-
-    if (typeof max !== "number" || typeof min !== "number") {
-      console.warn("Invalid range min/max", min, max);
-      return () => null;
-    }
-
-    return getColorScale(
-      [min, max],
-      format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
-    ).clamp(true);
-  } else {
-    console.warn("Unknown format type", format.type);
-    return () => null;
-  }
-}
-
-function computeColumnExtents(formats, data) {
-  return _.chain(formats)
-    .map(format => format.columns)
-    .flatten()
-    .uniq()
-    .map(columnName => {
-      const colIndex = _.findIndex(data.cols, col => col.name === columnName);
-      return [columnName, d3.extent(data.rows, row => row[colIndex])];
-    })
-    .object()
-    .value();
-}
-
-function compileFormatters(formats, columnExtents) {
-  const formatters = {};
-  for (const format of formats) {
-    for (const columnName of format.columns) {
-      formatters[columnName] = formatters[columnName] || [];
-      formatters[columnName].push(
-        compileFormatter(format, columnName, columnExtents, false),
-      );
-    }
-  }
-  return formatters;
-}
-
-function compileRowFormatters(formats) {
-  const rowFormatters = [];
-  for (const format of formats.filter(
-    format => format.type === "single" && format.highlight_row,
-  )) {
-    const formatter = compileFormatter(format, null, null, true);
-    if (formatter) {
-      for (const colName of format.columns) {
-        rowFormatters.push((row, colIndexes) =>
-          formatter(row[colIndexes[colName]]),
-        );
-      }
-    }
-  }
-  return rowFormatters;
-}
 
 export default class Table extends Component {
   props: Props;
@@ -163,110 +60,230 @@ export default class Table extends Component {
 
   static minSize = { width: 4, height: 3 };
 
-  static isSensible(cols, rows) {
+  static isSensible({ cols, rows }) {
     return true;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static isLiveResizable(series) {
+    return false;
+  }
+
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     // scalar can always be rendered, nothing needed here
   }
 
-  static settings = {
+  static settings: SettingDefs = {
+    ...columnSettings({ hidden: true }),
     "table.pivot": {
-      section: "Data",
+      section: t`Columns`,
       title: t`Pivot the table`,
       widget: "toggle",
       getHidden: ([{ card, data }]) => data && data.cols.length !== 3,
       getDefault: ([{ card, data }]) =>
         data &&
         data.cols.length === 3 &&
-        Query.isStructured(card.dataset_query) &&
+        Q_DEPRECATED.isStructured(card.dataset_query) &&
         data.cols.filter(isMetric).length === 1 &&
         data.cols.filter(isDimension).length === 2,
     },
+    "table.pivot_column": {
+      section: t`Columns`,
+      title: t`Pivot column`,
+      widget: "field",
+      getDefault: (
+        [
+          {
+            data: { cols, rows },
+          },
+        ],
+        settings,
+      ) => {
+        const col = _.min(cols.filter(isDimension), col =>
+          getColumnCardinality(cols, rows, cols.indexOf(col)),
+        );
+        return col && col.name;
+      },
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
+        options: cols.filter(isDimension).map(getOptionFromColumn),
+      }),
+      getHidden: (series, settings) => !settings["table.pivot"],
+      readDependencies: ["table.pivot"],
+      persistDefault: true,
+    },
+    "table.cell_column": {
+      section: t`Columns`,
+      title: t`Cell column`,
+      widget: "field",
+      getDefault: ([{ data }], { "table.pivot_column": pivotCol }) => {
+        // We try to show numeric values in pivot cells, but if none are
+        // available, we fall back to the last column in the unpivoted table
+        const nonPivotCols = data.cols.filter(c => c.name !== pivotCol);
+        const lastCol = nonPivotCols[nonPivotCols.length - 1];
+        const { name } = nonPivotCols.find(isMetric) || lastCol || {};
+        return name;
+      },
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
+        options: cols.map(getOptionFromColumn),
+      }),
+      getHidden: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => !settings["table.pivot"],
+      readDependencies: ["table.pivot", "table.pivot_column"],
+      persistDefault: true,
+    },
+    // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
+    //   { name: "COLUMN_NAME", enabled: true }
+    //   { fieldRef: ["fk->", 1, 2], enabled: true }
+    //   { fieldRef: ["fk->", ["field-id", 1], ["field-id", 2]], enabled: true }
     "table.columns": {
-      section: "Data",
-      title: t`Fields to include`,
-      widget: ChartSettingOrderedFields,
+      section: t`Columns`,
+      title: t`Visible columns`,
+      widget: ChartSettingOrderedColumns,
       getHidden: (series, vizSettings) => vizSettings["table.pivot"],
       isValid: ([{ card, data }]) =>
-        card.visualization_settings["table.columns"] &&
-        columnsAreValid(
-          card.visualization_settings["table.columns"].map(x => x.name),
-          data,
+        _.all(
+          card.visualization_settings["table.columns"],
+          columnSetting =>
+            findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),
-      getDefault: ([{ data: { cols } }]) =>
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) =>
         cols.map(col => ({
           name: col.name,
           enabled: col.visibility_type !== "details-only",
         })),
-      getProps: ([{ data: { cols } }]) => ({
-        columnNames: cols.reduce(
-          (o, col) => ({ ...o, [col.name]: getFriendlyName(col) }),
-          {},
-        ),
+      getProps: ([
+        {
+          data: { cols },
+        },
+      ]) => ({
+        columns: cols,
       }),
     },
     "table.column_widths": {},
     "table.column_formatting": {
-      section: "Formatting",
+      section: t`Conditional Formatting`,
       widget: ChartSettingsTableFormatting,
       default: [],
-      getProps: ([{ data: { cols } }], settings) => ({
+      getProps: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => ({
         cols: cols.filter(isFormattable),
         isPivoted: settings["table.pivot"],
       }),
-      getHidden: ([{ data: { cols } }], settings) =>
-        cols.filter(isFormattable).length === 0,
+      getHidden: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => cols.filter(isFormattable).length === 0,
       readDependencies: ["table.pivot"],
     },
     "table._cell_background_getter": {
-      getValue([{ data }], settings) {
-        const { rows, cols } = data;
-        const formats = settings["table.column_formatting"];
-        const pivot = settings["table.pivot"];
-        let formatters = {};
-        let rowFormatters = [];
-        try {
-          const columnExtents = computeColumnExtents(formats, data);
-          formatters = compileFormatters(formats, columnExtents);
-          rowFormatters = compileRowFormatters(formats, columnExtents);
-        } catch (e) {
-          console.error(e);
-        }
-        const colIndexes = _.object(
-          cols.map((col, index) => [col.name, index]),
-        );
-        if (
-          Object.values(formatters).length === 0 &&
-          Object.values(formatters).length === 0
-        ) {
-          return null;
-        } else {
-          return function(value, rowIndex, colName) {
-            if (formatters[colName]) {
-              // const value = rows[rowIndex][colIndexes[colName]];
-              for (const formatter of formatters[colName]) {
-                const color = formatter(value);
-                if (color != null) {
-                  return color;
-                }
-              }
-            }
-            // don't highlight row for pivoted tables
-            if (!pivot) {
-              for (const rowFormatter of rowFormatters) {
-                const color = rowFormatter(rows[rowIndex], colIndexes);
-                if (color != null) {
-                  return color;
-                }
-              }
-            }
-          };
-        }
+      getValue(
+        [
+          {
+            data: { rows, cols },
+          },
+        ],
+        settings,
+      ) {
+        return makeCellBackgroundGetter(rows, cols, settings);
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
+  };
+
+  static columnSettings = column => {
+    const settings: SettingDefs = {
+      column_title: {
+        title: t`Column title`,
+        widget: "input",
+        getDefault: column => formatColumn(column),
+      },
+    };
+    if (isNumber(column)) {
+      settings["show_mini_bar"] = {
+        title: t`Show a mini bar chart`,
+        widget: "toggle",
+      };
+    }
+    if (isString(column)) {
+      let defaultValue = null;
+      const options: { name: string, value: null | string }[] = [
+        { name: t`Off`, value: null },
+      ];
+      if (!column.special_type || isURL(column)) {
+        defaultValue = "link";
+        options.push({ name: t`Link`, value: "link" });
+      }
+      if (!column.special_type || isEmail(column)) {
+        defaultValue = "email_link";
+        options.push({ name: t`Email link`, value: "email_link" });
+      }
+      if (!column.special_type || isImageURL(column) || isAvatarURL(column)) {
+        defaultValue = isAvatarURL(column) ? "image" : "link";
+        options.push({ name: t`Image`, value: "image" });
+      }
+      if (!column.special_type) {
+        defaultValue = "auto";
+        options.push({ name: t`Automatic`, value: "auto" });
+      }
+
+      if (options.length > 1) {
+        settings["view_as"] = {
+          title: t`View as link or image`,
+          widget: "select",
+          default: defaultValue,
+          props: {
+            options,
+          },
+        };
+      }
+
+      settings["link_text"] = {
+        title: t`Link text`,
+        widget: "input",
+        default: null,
+        getHidden: (column, settings) =>
+          settings["view_as"] !== "link" &&
+          settings["view_as"] !== "email_link",
+      };
+    }
+    return settings;
   };
 
   constructor(props: Props) {
@@ -282,9 +299,8 @@ export default class Table extends Component {
   }
 
   componentWillReceiveProps(newProps: Props) {
-    // TODO: remove use of deprecated "card" and "data" props
     if (
-      newProps.data !== this.props.data ||
+      newProps.series !== this.props.series ||
       !_.isEqual(newProps.settings, this.props.settings)
     ) {
       this._updateData(newProps);
@@ -292,37 +308,80 @@ export default class Table extends Component {
   }
 
   _updateData({
-    data,
+    series: [{ data }],
     settings,
   }: {
-    data: DatasetData,
+    series: Series,
     settings: VisualizationSettings,
   }) {
     if (settings["table.pivot"]) {
+      const pivotIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.pivot_column"],
+      );
+      const cellIndex = _.findIndex(
+        data.cols,
+        col => col.name === settings["table.cell_column"],
+      );
+      const normalIndex = _.findIndex(
+        data.cols,
+        (col, index) => index !== pivotIndex && index !== cellIndex,
+      );
       this.setState({
-        data: DataGrid.pivot(data),
+        data: DataGrid.pivot(
+          data,
+          normalIndex,
+          pivotIndex,
+          cellIndex,
+          settings,
+        ),
       });
     } else {
-      const { cols, rows, columns } = data;
-      const columnIndexes = settings["table.columns"]
-        .filter(f => f.enabled)
-        .map(f => _.findIndex(cols, c => c.name === f.name))
-        .filter(i => i >= 0 && i < cols.length);
+      const { cols, rows } = data;
+      const columnSettings = settings["table.columns"];
+      const columnIndexes = columnSettings
+        .filter(columnSetting => columnSetting.enabled)
+        .map(columnSetting =>
+          findColumnIndexForColumnSetting(cols, columnSetting),
+        )
+        .filter(columnIndex => columnIndex >= 0 && columnIndex < cols.length);
 
       this.setState({
         data: {
           cols: columnIndexes.map(i => cols[i]),
-          columns: columnIndexes.map(i => columns[i]),
           rows: rows.map(row => columnIndexes.map(i => row[i])),
         },
       });
     }
   }
 
+  // shared helpers for table implementations
+
+  getColumnTitle = (columnIndex: number): ?string => {
+    const cols = this.state.data && this.state.data.cols;
+    if (!cols) {
+      return null;
+    }
+    const { settings } = this.props;
+    const isPivoted = settings["table.pivot"];
+    const column = cols[columnIndex];
+    if (isPivoted) {
+      return formatColumn(column) || (columnIndex !== 0 ? t`Unset` : null);
+    } else {
+      return (
+        settings.column(column)["_column_title_full"] || formatColumn(column)
+      );
+    }
+  };
+
   render() {
-    const { card, isDashboard, settings } = this.props;
+    const {
+      series: [{ card }],
+      isDashboard,
+      settings,
+    } = this.props;
     const { data } = this.state;
-    const sort = getIn(card, ["dataset_query", "query", "order_by"]) || null;
+    const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
@@ -357,6 +416,7 @@ export default class Table extends Component {
           data={data}
           isPivoted={isPivoted}
           sort={sort}
+          getColumnTitle={this.getColumnTitle}
         />
       );
     }

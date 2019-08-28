@@ -1,6 +1,6 @@
 (ns metabase.models.field
   (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [metabase.models
              [dimension :refer [Dimension]]
              [field-values :as fv :refer [FieldValues]]
@@ -152,6 +152,7 @@
                                        :description      :clob
                                        :has_field_values :keyword
                                        :fingerprint      :json-for-fingerprints})
+                                       :settings         :json})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-update     pre-update
@@ -289,7 +290,7 @@
 (defn qualified-name
   "Return a combined qualified name for FIELD, e.g. `table_name.parent_field_name.field_name`."
   [field]
-  (s/join \. (qualified-name-components field)))
+  (str/join \. (qualified-name-components field)))
 
 (defn table
   "Return the `Table` associated with this `Field`."

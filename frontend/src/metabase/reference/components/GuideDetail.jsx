@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import pure from "recompose/pure";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import * as Urls from "metabase/lib/urls";
 
@@ -150,13 +150,13 @@ const ItemTitle = ({ title, link, linkColorClass, linkHoverClass }) => (
 );
 
 const ContextHeading = ({ children }) => (
-  <h3 className="my2 text-grey-4">{children}</h3>
+  <h3 className="my2 text-medium">{children}</h3>
 );
 
 const ContextContent = ({ empty, children }) => (
   <p
     className={cx("m0 text-paragraph text-measure text-pre-wrap", {
-      "text-grey-3": empty,
+      "text-medium": empty,
     })}
   >
     {children}

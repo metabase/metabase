@@ -1,7 +1,9 @@
 /* @flow weak */
 
 import d3 from "d3";
+import _ from "underscore";
 
+import colors from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
@@ -9,6 +11,35 @@ const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
 const X_LABEL_HIDE_THRESHOLD = 12; // tick width breakpoint for hiding labels entirely
 const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowed to take
+const X_LABEL_DISABLED_SPACING = 6; // spacing to use if the x-axis is disabled completely
+
+// +-------------------------------------------------------------------------------------------------------------------+
+// |                                                  HELPER FUNCTIONS                                                 |
+// +-------------------------------------------------------------------------------------------------------------------+
+
+// moves an element on top of all siblings
+function moveToTop(element) {
+  if (element) {
+    element.parentNode.appendChild(element);
+  }
+}
+
+// assumes elements are in order from left to right, skips those that aren't
+function getMinElementSpacing(elements) {
+  let min = null;
+  let lastLeft = null;
+  for (const element of elements) {
+    const { left } = element.getBoundingClientRect();
+    if (lastLeft !== null) {
+      const delta = left - lastLeft;
+      if (delta > 0 && (min == null || delta < min)) {
+        min = delta;
+      }
+    }
+    lastLeft = left;
+  }
+  return min;
+}
 
 // +-------------------------------------------------------------------------------------------------------------------+
 // |                                                ON RENDER FUNCTIONS                                                |
@@ -17,66 +48,119 @@ const X_LABEL_MAX_LABEL_HEIGHT_RATIO = 0.7; // percent rotated labels are allowe
 // The following functions are applied once the chart is rendered.
 
 function onRenderRemoveClipPath(chart) {
-  for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
+  for (const elem of chart.selectAll(".sub, .chart-body")[0]) {
     // prevents dots from being clipped:
     elem.removeAttribute("clip-path");
   }
 }
 
 function onRenderMoveContentToTop(chart) {
-  for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
+  for (const element of chart.selectAll(".sub, .chart-body")[0]) {
     // move chart content on top of axis (z-index doesn't work on SVG):
-    elem.parentNode.appendChild(elem);
+    moveToTop(element);
   }
 }
 
+function onRenderReorderCharts(chart) {
+  const displayTypes = chart.series.map(
+    single => chart.settings.series(single).display,
+  );
+  const isHeterogenous = _.uniq(displayTypes).length > 0;
+  if (isHeterogenous) {
+    // move area charts first
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "area") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+    // move line charts second
+    for (const [index, display] of displayTypes.entries()) {
+      if (display === "line") {
+        moveToTop(chart.select(`.sub._${index}`)[0][0]);
+      }
+    }
+  }
+}
 function onRenderSetDotStyle(chart) {
-  for (let elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
+  for (const elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
     elem.style.color = elem.getAttribute("fill");
   }
 }
 
+// more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map or figuring out if we should adjust the line width
+const MAX_DOTS_FOR_VORONOI = 500;
+const MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT = 500;
+
 const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
-function onRenderEnableDots(chart) {
-  let enableDots;
-  const dots = chart.svg().selectAll(".dc-tooltip .dot")[0];
-  if (chart.settings["line.marker_enabled"] != null) {
-    enableDots = !!chart.settings["line.marker_enabled"];
-  } else if (dots.length > 500) {
-    // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
-    enableDots = false;
-  } else {
-    const vertices = dots.map((e, index) => {
-      let rect = e.getBoundingClientRect();
-      return [rect.left, rect.top, index];
-    });
-    const overlappedIndex = {};
-    // essentially pairs of vertices closest to each other
-    for (let { source, target } of d3.geom.voronoi().links(vertices)) {
-      if (
-        Math.sqrt(
-          Math.pow(source[0] - target[0], 2) +
-            Math.pow(source[1] - target[1], 2),
-        ) < DOT_OVERLAP_DISTANCE
-      ) {
-        // if they overlap, mark both as overlapped
-        overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
-      }
+function onRenderSetLineWidth(chart) {
+  const dots = chart.svg()[0][0].getElementsByClassName("dot");
+  if (dots.length < MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT) {
+    const min = getMinElementSpacing(dots);
+    if (min > 150) {
+      chart.svg().classed("line--heavy", true);
+    } else if (min > 75) {
+      chart.svg().classed("line--medium", true);
     }
-    const total = vertices.length;
-    const overlapping = Object.keys(overlappedIndex).length;
-    enableDots =
-      overlapping < DOT_OVERLAP_COUNT_LIMIT ||
-      overlapping / total < DOT_OVERLAP_RATIO;
   }
-  chart
-    .svg()
-    .classed("enable-dots", enableDots)
-    .classed("enable-dots-onhover", !enableDots);
+}
+
+function onRenderEnableDots(chart) {
+  const markerEnabledByIndex = chart.series.map(
+    single => chart.settings.series(single)["line.marker_enabled"],
+  );
+
+  // if any settings are auto, determine the correct auto setting
+  let enableDotsAuto;
+  const hasAuto = _.any(markerEnabledByIndex, enabled => enabled == null);
+  if (hasAuto) {
+    // get all enabled or auto dots
+    const dots = [].concat(
+      ...markerEnabledByIndex.map((markerEnabled, index) =>
+        markerEnabled === false
+          ? []
+          : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
+      ),
+    );
+    if (dots.length > MAX_DOTS_FOR_VORONOI) {
+      enableDotsAuto = false;
+    } else {
+      const vertices = dots.map((e, index) => {
+        const rect = e.getBoundingClientRect();
+        return [rect.left, rect.top, index];
+      });
+      const overlappedIndex = {};
+      // essentially pairs of vertices closest to each other
+      for (const { source, target } of d3.geom.voronoi().links(vertices)) {
+        if (
+          Math.sqrt(
+            Math.pow(source[0] - target[0], 2) +
+              Math.pow(source[1] - target[1], 2),
+          ) < DOT_OVERLAP_DISTANCE
+        ) {
+          // if they overlap, mark both as overlapped
+          overlappedIndex[source[2]] = overlappedIndex[target[2]] = true;
+        }
+      }
+      const total = vertices.length;
+      const overlapping = Object.keys(overlappedIndex).length;
+      enableDotsAuto =
+        overlapping < DOT_OVERLAP_COUNT_LIMIT ||
+        overlapping / total < DOT_OVERLAP_RATIO;
+    }
+  }
+
+  for (const [index, markerEnabled] of markerEnabledByIndex.entries()) {
+    const enableDots = markerEnabled != null ? !!markerEnabled : enableDotsAuto;
+    chart
+      .svg()
+      .select(`.sub._${index}`)
+      .classed("enable-dots", enableDots)
+      .classed("enable-dots-onhover", !enableDots);
+  }
 }
 
 const VORONOI_TARGET_RADIUS = 25;
@@ -84,7 +168,7 @@ const VORONOI_MAX_POINTS = 300;
 
 /// dispatchUIEvent used below in the "Voroni Hover" stuff
 function dispatchUIEvent(element, eventName) {
-  let e = document.createEvent("UIEvents");
+  const e = document.createEvent("UIEvents");
   // $FlowFixMe
   e.initUIEvent(eventName, true, true, window, 1);
   element.dispatchEvent(e);
@@ -145,40 +229,36 @@ function onRenderVoronoiHover(chart) {
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked
     .on("mousemove", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "mousemove");
       d3.select(e).classed("hover", true);
     })
     .on("mouseleave", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "mouseleave");
       d3.select(e).classed("hover", false);
     })
     .on("click", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "click");
     })
     .order();
 }
 
-function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
+function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   // remove dots
-  chart.selectAll(".goal .dot").remove();
+  chart.selectAll(".goal .dot, .trend .dot").remove();
 
   // move to end of the parent node so it's on top
-  chart.selectAll(".goal").each(function() {
+  chart.selectAll(".goal, .trend").each(function() {
     this.parentNode.appendChild(this);
-  });
-  chart.selectAll(".goal .line").attr({
-    stroke: "rgba(157,160,164, 0.7)",
-    "stroke-dasharray": "5,5",
   });
 
   // add the label
-  let goalLine = chart.selectAll(".goal .line")[0][0];
+  const goalLine = chart.selectAll(".goal .line")[0][0];
   if (goalLine) {
     // stretch the goal line all the way across, use x axis as reference
-    let xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
+    const xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
 
     // HACK Atte Keinänen 8/8/17: For some reason getBBox method is not present in Jest/Enzyme tests
     if (xAxisLine && goalLine.getBBox) {
@@ -198,13 +278,13 @@ function onRenderCleanupGoal(chart, onGoalHover, isSplitAxis) {
     chart
       .selectAll(".goal .stack._0")
       .append("text")
-      .text("Goal")
+      .text(chart.settings["graph.goal_label"])
       .attr({
         x: labelOnRight ? x + width : x,
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: "rgb(157,160,164)",
+        fill: colors["text-medium"],
       })
       .on("mouseenter", function() {
         onGoalHover(this);
@@ -234,7 +314,7 @@ function onRenderHideDisabledAxis(chart) {
 }
 
 function onRenderHideBadAxis(chart) {
-  if (chart.selectAll(".axis.x .tick")[0].length === 1) {
+  if (chart.selectAll(".axis.x .tick")[0].length === 0) {
     chart.selectAll(".axis.x").remove();
   }
 }
@@ -261,7 +341,7 @@ function onRenderSetClassName(chart, isStacked) {
 }
 
 function getXAxisRotation(chart) {
-  let match = String(chart.settings["graph.x_axis.axis_enabled"] || "").match(
+  const match = String(chart.settings["graph.x_axis.axis_enabled"] || "").match(
     /^rotate-(\d+)$/,
   );
   if (match) {
@@ -272,15 +352,28 @@ function getXAxisRotation(chart) {
 }
 
 function onRenderRotateAxis(chart) {
-  let degrees = getXAxisRotation(chart);
+  const degrees = getXAxisRotation(chart);
   if (degrees !== 0) {
     chart.selectAll("g.x text").attr("transform", function() {
       const { width, height } = this.getBBox();
-      return (// translate left half the width so the right edge is at the tick
+      return (
+        // translate left half the width so the right edge is at the tick
         `translate(-${width / 2},${-height / 2}) ` +
         // rotate counter-clockwise around the right edge
-        `rotate(${-degrees}, ${width / 2}, ${height})` );
+        `rotate(${-degrees}, ${width / 2}, ${height})`
+      );
     });
+  }
+}
+
+function onRenderAddExtraClickHandlers(chart) {
+  const { onEditBreakout } = chart.props;
+  if (onEditBreakout) {
+    chart
+      .svg()
+      .select(".x-axis-label")
+      .classed("cursor-pointer", true)
+      .on("click", () => onEditBreakout(d3.event, 0));
   }
 }
 
@@ -288,10 +381,12 @@ function onRenderRotateAxis(chart) {
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
+  onRenderReorderCharts(chart);
   onRenderSetDotStyle(chart);
+  onRenderSetLineWidth(chart);
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
-  onRenderCleanupGoal(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
@@ -299,6 +394,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
+  onRenderAddExtraClickHandlers(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -337,7 +433,7 @@ function adjustMargin(
 }
 
 function computeMinHorizontalMargins(chart) {
-  let min = { left: 0, right: 0 };
+  const min = { left: 0, right: 0 };
   const ticks = chart.selectAll(".axis.x .tick text")[0];
   if (ticks.length > 0) {
     const chartRect = chart
@@ -373,6 +469,9 @@ function rotateSize(size, rotation) {
 }
 
 function computeXAxisMargin(chart) {
+  if (chart.settings["graph.x_axis.axis_enabled"] === false) {
+    return X_LABEL_DISABLED_SPACING;
+  }
   const rotation = getXAxisRotation(chart);
   const maxSize = computeXAxisLabelMaxSize(chart);
   const rotatedMaxSize = rotateSize(maxSize, rotation);

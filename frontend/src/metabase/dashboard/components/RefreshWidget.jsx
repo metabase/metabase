@@ -6,7 +6,7 @@ import Tooltip from "metabase/components/Tooltip.jsx";
 import Icon from "metabase/components/Icon.jsx";
 import ClockIcon from "metabase/components/icons/ClockIcon.jsx";
 import CountdownIcon from "metabase/components/icons/CountdownIcon.jsx";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 const OPTIONS = [
@@ -20,8 +20,28 @@ const OPTIONS = [
 ];
 
 export default class RefreshWidget extends Component {
+  state = { elapsed: null };
+
+  componentWillMount() {
+    const { setRefreshElapsedHook } = this.props;
+    if (setRefreshElapsedHook) {
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
+    }
+  }
+
+  componentDidUpdate(prevProps) {
+    const { setRefreshElapsedHook } = this.props;
+    if (
+      setRefreshElapsedHook &&
+      prevProps.setRefreshElapsedHook !== setRefreshElapsedHook
+    ) {
+      setRefreshElapsedHook(elapsed => this.setState({ elapsed }));
+    }
+  }
+
   render() {
-    const { period, elapsed, onChangePeriod, className } = this.props;
+    const { period, onChangePeriod, className } = this.props;
+    const { elapsed } = this.state;
     const remaining = period - elapsed;
     return (
       <PopoverWithTrigger

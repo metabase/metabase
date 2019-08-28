@@ -9,18 +9,26 @@ const PARENTS = MetabaseSettings.get("types");
 /// isa(TYPE.BigInteger, TYPE.Number) -> true
 /// isa(TYPE.Text, TYPE.Boolean) -> false
 export function isa(child, ancestor) {
-  if (!child || !ancestor) return false;
+  if (!child || !ancestor) {
+    return false;
+  }
 
-  if (child === ancestor) return true;
+  if (child === ancestor) {
+    return true;
+  }
 
   const parents = PARENTS[child];
   if (!parents) {
-    if (child !== "type/*") console.error("Invalid type:", child); // the base type is the only type with no parents, so anything else that gets here is invalid
+    if (child !== "type/*") {
+      console.error("Invalid type:", child);
+    } // the base type is the only type with no parents, so anything else that gets here is invalid
     return false;
   }
 
   for (const parent of parents) {
-    if (isa(parent, ancestor)) return true;
+    if (isa(parent, ancestor)) {
+      return true;
+    }
   }
 
   return false;
@@ -28,7 +36,7 @@ export function isa(child, ancestor) {
 
 // build a pretty sweet dictionary of top-level types, so people can do TYPE.Latitude instead of "type/Latitude" and get error messages / etc.
 // this should also make it easier to keep track of things when we tweak the type hierarchy
-export let TYPE = {};
+export const TYPE = {};
 for (const type of _.keys(PARENTS)) {
   const key = type.substring(5); // strip off "type/"
   TYPE[key] = type;

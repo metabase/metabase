@@ -3,15 +3,16 @@
              [data :refer [diff]]
              [set :as set]
              [string :as str]]
+            [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
              [events :as events]
              [public-settings :as public-settings]
-             [query-processor :as qp]
              [util :as u]]
             [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :as card :refer [Card]]
+             [collection :as collection]
              [dashboard-card :as dashboard-card :refer [DashboardCard]]
              [field-values :as field-values]
              [interface :as i]
@@ -19,7 +20,8 @@
              [permissions :as perms]
              [revision :as revision]]
             [metabase.models.revision.diff :refer [build-sentence]]
-            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.async :as qp.async]
+            [metabase.util.i18n :as ui18n]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -84,7 +86,7 @@
 
 (defn- revert-dashboard!
   "Revert a Dashboard to the state defined by `serialized-dashboard`."
-  [dashboard-id user-id serialized-dashboard]
+  [_ dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
   (db/update! Dashboard dashboard-id, (dissoc serialized-dashboard :cards))
   ;; Now update the cards as needed
@@ -111,9 +113,9 @@
 
   serialized-dashboard)
 
-(defn diff-dashboards-str
+(defn- diff-dashboards-str
   "Describe the difference between two Dashboard instances."
-  [dashboard₁ dashboard₂]
+  [_ dashboard₁ dashboard₂]
   (when dashboard₁
     (let [[removals changes]  (diff dashboard₁ dashboard₂)
           check-series-change (fn [idx card-changes]
@@ -153,8 +155,8 @@
   revision/IRevisioned
   (merge revision/IRevisionedDefaults
          {:serialize-instance  (fn [_ _ dashboard] (serialize-dashboard dashboard))
-          :revert-to-revision! (u/drop-first-arg revert-dashboard!)
-          :diff-str            (u/drop-first-arg diff-dashboards-str)}))
+          :revert-to-revision! revert-dashboard!
+          :diff-str            diff-dashboards-str}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -215,15 +217,21 @@
       (update-field-values-for-on-demand-dbs! old-param-field-ids new-param-field-ids))))
 
 
+;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
 (defn- result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
-  (binding [qpi/*disable-qp-logging* true]
-    (get-in (qp/process-query query) [:data :results_metadata :columns])))
+  (a/<!! (qp.async/result-metadata-for-query-async query)))
 
 (defn- save-card!
   [card]
-  (when (-> card :dataset_query not-empty)
+  (cond
+    ;; If this is a pre-existing card, just return it
+    (and (integer? (:id card)) (Card (:id card)))
+    card
+
+    ;; Don't save text cards
+    (-> card :dataset_query not-empty)
     (let [card (db/insert! 'Card
                  (-> card
                      (update :result_metadata #(or % (-> card
@@ -243,28 +251,34 @@
            (str "Filtered by: ")))
 
 (defn- ensure-unique-collection-name
-  [collection]
-  (let [c (db/count 'Collection :name [:like (format "%s%%" collection)])]
+  [collection-name parent-collection-id]
+  (let [c (db/count 'Collection
+            :name     [:like (format "%s%%" collection-name)]
+            :location (collection/children-location (db/select-one ['Collection :location :id]
+                                                      :id parent-collection-id)))]
     (if (zero? c)
-      collection
-      (format "%s %s" collection (inc c)))))
+      collection-name
+      (format "%s %s" collection-name (inc c)))))
 
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
-  [dashboard]
-  (let [dashcards  (:ordered_cards dashboard)
+  [dashboard parent-collection-id]
+  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+        dashcards  (:ordered_cards dashboard)
+        collection (magic.populate/create-collection!
+                    (ensure-unique-collection-name (:name dashboard) parent-collection-id)
+                    (rand-nth magic.populate/colors)
+                    "Automatically generated cards."
+                    parent-collection-id)
         dashboard  (db/insert! Dashboard
                      (-> dashboard
                          (dissoc :ordered_cards :rule :related :transient_name
                                  :transient_filters :param_fields :more)
-                         (assoc :description (->> dashboard
-                                                  :transient_filters
-                                                  applied-filters-blurb))))
-        collection (magic.populate/create-collection!
-                    (ensure-unique-collection-name
-                     (format "Questions for the dashboard \"%s\"" (:name dashboard)))
-                    (rand-nth magic.populate/colors)
-                    "Automatically generated cards.")]
+                         (assoc :description         (->> dashboard
+                                                          :transient_filters
+                                                          applied-filters-blurb)
+                                :collection_id       (:id collection)
+                                :collection_position 1)))]
     (doseq [dashcard dashcards]
       (let [card     (some-> dashcard :card (assoc :collection_id (:id collection)) save-card!)
             series   (some->> dashcard :series (map (fn [card]

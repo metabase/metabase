@@ -26,45 +26,34 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
+// check if we have access to localStorage to avoid handling "access denied"
+// exceptions
+export const HAS_LOCAL_STORAGE = (function() {
+  try {
+    window.localStorage; // This will trigger an exception if access is denied.
+    return true;
+  } catch (e) {
+    console.warn("localStorage not available:", e);
+    return false;
+  }
+})();
+
 export function isObscured(element, offset) {
   if (!document.elementFromPoint) {
     return false;
   }
+  const box = element.getBoundingClientRect();
   // default to the center of the element
   offset = offset || {
-    top: Math.round(element.offsetHeight / 2),
-    left: Math.round(element.offsetWidth / 2),
+    top: Math.round(box.height / 2),
+    left: Math.round(box.width / 2),
   };
-  let position = findPosition(element, true);
-  let elem = document.elementFromPoint(
-    position.left + offset.left,
-    position.top + offset.top,
-  );
+  const position = {
+    left: box.x + offset.left,
+    top: box.y + offset.top,
+  };
+  const elem = document.elementFromPoint(position.left, position.top);
   return !element.contains(elem);
-}
-
-// get the position of an element on the page
-export function findPosition(element, excludeScroll = false) {
-  let offset = { top: 0, left: 0 };
-  let scroll = { top: 0, left: 0 };
-  let offsetParent = element;
-  while (offsetParent) {
-    // we need to check every element for scrollTop/scrollLeft
-    scroll.left += element.scrollLeft || 0;
-    scroll.top += element.scrollTop || 0;
-    // but only the original element and offsetParents for offsetTop/offsetLeft
-    if (offsetParent === element) {
-      offset.left += element.offsetLeft;
-      offset.top += element.offsetTop;
-      offsetParent = element.offsetParent;
-    }
-    element = element.parentNode;
-  }
-  if (excludeScroll) {
-    offset.left -= scroll.left;
-    offset.top -= scroll.top;
-  }
-  return offset;
 }
 
 // based on http://stackoverflow.com/a/38039019/113
@@ -144,7 +133,7 @@ export function setSelectionPosition(element, [start, end]) {
 }
 
 export function saveSelection(element) {
-  let range = getSelectionPosition(element);
+  const range = getSelectionPosition(element);
   return () => setSelectionPosition(element, range);
 }
 
@@ -157,12 +146,12 @@ export function setCaretPosition(element, position) {
 }
 
 export function saveCaretPosition(element) {
-  let position = getCaretPosition(element);
+  const position = getCaretPosition(element);
   return () => setCaretPosition(element, position);
 }
 
 function getTextNodeAtPosition(root, index) {
-  let treeWalker = document.createTreeWalker(
+  const treeWalker = document.createTreeWalker(
     root,
     NodeFilter.SHOW_TEXT,
     elem => {
@@ -173,7 +162,7 @@ function getTextNodeAtPosition(root, index) {
       return NodeFilter.FILTER_ACCEPT;
     },
   );
-  let c = treeWalker.nextNode();
+  const c = treeWalker.nextNode();
   return {
     node: c ? c : root,
     position: c ? index : 0,
@@ -181,9 +170,9 @@ function getTextNodeAtPosition(root, index) {
 }
 
 // https://davidwalsh.name/add-rules-stylesheets
-let STYLE_SHEET = (function() {
+const STYLE_SHEET = (function() {
   // Create the <style> tag
-  let style = document.createElement("style");
+  const style = document.createElement("style");
 
   // WebKit hack :(
   style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
@@ -207,16 +196,16 @@ export function constrainToScreen(element, direction, padding) {
     return false;
   }
   if (direction === "bottom") {
-    let screenBottom = window.innerHeight + getScrollY();
-    let overflowY = element.getBoundingClientRect().bottom - screenBottom;
+    const screenBottom = window.innerHeight + getScrollY();
+    const overflowY = element.getBoundingClientRect().bottom - screenBottom;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
       return true;
     }
   } else if (direction === "top") {
-    let screenTop = getScrollY();
-    let overflowY = screenTop - element.getBoundingClientRect().top;
+    const screenTop = getScrollY();
+    const overflowY = screenTop - element.getBoundingClientRect().top;
     if (overflowY + padding > 0) {
       element.style.maxHeight =
         element.getBoundingClientRect().height - overflowY - padding + "px";
@@ -246,6 +235,81 @@ export function moveToFront(element) {
   if (element && element.parentNode) {
     element.parentNode.appendChild(element);
   }
+}
+
+// need to keep track of the latest click's metaKey state because sometimes
+// `open` is called asynchronously, thus window.event isn't the click event
+let metaKey;
+window.addEventListener(
+  "mouseup",
+  e => {
+    metaKey = e.metaKey;
+  },
+  true,
+);
+
+/**
+ * helper for opening links in same or different window depending on origin and
+ * meta key state
+ */
+export function open(
+  url,
+  {
+    // custom function for opening in same window
+    openInSameWindow = url => clickLink(url, false),
+    // custom function for opening in new window
+    openInBlankWindow = url => clickLink(url, true),
+    ...options
+  } = {},
+) {
+  if (shouldOpenInBlankWindow(url, options)) {
+    openInBlankWindow(url);
+  } else {
+    openInSameWindow(url);
+  }
+}
+
+function clickLink(url, blank = false) {
+  const a = document.createElement("a");
+  a.style.display = "none";
+  document.body.appendChild(a);
+  try {
+    a.href = url;
+    a.rel = "noopener";
+    if (blank) {
+      a.target = "_blank";
+    }
+    a.click();
+  } finally {
+    a.remove();
+  }
+}
+
+export function shouldOpenInBlankWindow(
+  url,
+  {
+    event = window.event,
+    // always open in new window
+    blank = false,
+    // open in new window if command-click
+    blankOnMetaKey = true,
+    // open in new window for different origin
+    blankOnDifferentOrigin = true,
+  } = {},
+) {
+  if (blank) {
+    return true;
+  } else if (
+    blankOnMetaKey &&
+    (event && event.metaKey != null ? event.metaKey : metaKey)
+  ) {
+    return true;
+  } else if (blankOnDifferentOrigin) {
+    const a = document.createElement("a");
+    a.href = url;
+    return a.origin !== window.location.origin;
+  }
+  return false;
 }
 
 /**

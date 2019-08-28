@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 export default class ErrorDetails extends React.Component {
@@ -26,14 +26,14 @@ export default class ErrorDetails extends React.Component {
           <h2>{t`Here's the full error message`}</h2>
           <div
             style={{ fontFamily: "monospace" }}
-            className="QueryError2-detailBody bordered rounded bg-grey-0 text-bold p2 mt1"
+            className="QueryError2-detailBody bordered rounded bg-light text-bold p2 mt1"
           >
             {/* ensure we don't try to render anything except a string */}
             {typeof details === "string"
               ? details
               : typeof details.message === "string"
-                ? details.message
-                : String(details)}
+              ? details.message
+              : String(details)}
           </div>
         </div>
       </div>

@@ -1,22 +1,23 @@
 /* @flow weak */
 
-import "babel-polyfill";
+import "core-js/stable";
+import "regenerator-runtime/runtime";
+
+// Use of classList.add and .remove in Background and FitViewPort Hocs requires
+// this polyfill so that those work in older browsers
+import "classlist-polyfill";
+
 import "number-to-locale-string";
 
 // If enabled this monkeypatches `t` and `jt` to return blacked out
 // strings/elements to assist in finding untranslated strings.
 import "metabase/lib/i18n-debug";
 
-// make the i18n function "t" global so we don't have to import it in basically every file
-import { t, jt } from "c-3po";
-global.t = t;
-global.jt = jt;
-
 // set the locale before loading anything else
-import { setLocalization } from "metabase/lib/i18n";
-if (window.MetabaseLocalization) {
-  setLocalization(window.MetabaseLocalization);
-}
+import "metabase/lib/i18n";
+
+// NOTE: why do we need to load this here?
+import "metabase/lib/colors";
 
 import React from "react";
 import ReactDOM from "react-dom";

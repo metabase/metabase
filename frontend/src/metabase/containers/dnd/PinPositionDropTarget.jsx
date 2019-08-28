@@ -10,6 +10,20 @@ const PIN_DROP_TARGET_INDICATOR_WIDTH = 3;
   PinnableDragTypes,
   {
     drop(props, monitor, component) {
+      const { item } = monitor.getItem();
+      // no need to move to the same position
+      if (item.collection_position == props.pinIndex) {
+        return;
+      }
+      // no already pinned, so add it at the dropped position
+      if (item.collection_position == null) {
+        return { pinIndex: props.pinIndex };
+      }
+      // being moved to a later position, which will cause everything to be shifted down, so subtract one
+      if (item.collection_position < props.pinIndex) {
+        return { pinIndex: props.pinIndex - 1 };
+      }
+      // being moved to an earlier position, no need to account for shift
       return { pinIndex: props.pinIndex };
     },
   },
