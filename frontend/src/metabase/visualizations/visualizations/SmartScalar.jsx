@@ -8,8 +8,6 @@ import colors from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
-import { formatBucketing } from "metabase/lib/query_time";
-
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { NoBreakoutError } from "metabase/visualizations/lib/errors";
 
@@ -92,7 +90,6 @@ export default class Smart extends React.Component {
     const lastRow = rows[rows.length - 1];
     const value = lastRow && lastRow[metricIndex];
     const column = cols[metricIndex];
-    const dimensionColumn = cols[dimensionIndex];
 
     const insights =
       rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
