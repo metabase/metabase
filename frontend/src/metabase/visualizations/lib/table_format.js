@@ -182,6 +182,9 @@ function compileFormatter(
           v.endsWith(value)
             ? color
             : null;
+      default:
+        console.error('Unsupported formatting operator:', operator);
+        return () => null;
     }
   } else if (format.type === "range") {
     const columnMin = name =>
