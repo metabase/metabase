@@ -203,7 +203,8 @@
                    :slope          slope
                    :offset         offset
                    :best-fit       best-fit
-                   :col            (:name number-col)})))))))
+                   :col            (:name number-col)
+                   :unit           unit})))))))
 
 (defn- datetime-truncated-to-year?
   "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
