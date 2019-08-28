@@ -94,17 +94,14 @@ export default class Smart extends React.Component {
     const column = cols[metricIndex];
     const dimensionColumn = cols[dimensionIndex];
 
-    const granularity =
-      dimensionColumn && dimensionColumn.unit
-        ? formatBucketing(dimensionColumn.unit).toLowerCase()
-        : null;
-
     const insights =
       rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
     const insight = _.findWhere(insights, { col: column.name });
     if (!insight) {
       return null;
     }
+
+    const granularity = insight["unit"];
 
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];
