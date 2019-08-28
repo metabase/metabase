@@ -105,13 +105,14 @@
   (memoize/ttl
     (fn [table-id read-or-write]
       (let [{schema :schema, database-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)
-            collection-perms                     (->> (db/select 'Card :table_id table-id)
-                                                      (map :collection_id)
-                                                      (set)
-                                                      ((fn [collection-ids]
-                                                         (db/select 'Collection :id [:in collection-ids])))
-                                                      (map i/perms-objects-set)
-                                                      (set))]
+            collection-perms                     (some->> (db/select 'Card :table_id table-id)
+                                                          (map :collection_id)
+                                                          (distinct)
+                                                          (filter identity)
+                                                          (seq)
+                                                          ((fn [collection-ids]
+                                                             (db/select 'Collection :id [:in collection-ids])))
+                                                          (mapcat #(i/perms-objects-set % read-or-write)))]
         (into #{(perms/object-path database-id schema table-id)}
               collection-perms)))
     :ttl/threshold 5000))
