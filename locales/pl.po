@@ -11837,7 +11837,8 @@ msgstr "Wtyczka \"{0}\" zależy od wtyczki \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
-msgstr "{0} zależności {1} zadowolony? {2}"
+msgstr "{0} zależności {1} zadowolony? {2}\n"
+""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugins with unsatisfied deps: {0}"
@@ -12530,7 +12531,7 @@ msgstr "Przeglądaj Dane"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:376
 msgid "Write SQL"
-msgstr "Napis SQL"
+msgstr "Napisz SQL"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:147
 msgid "Simple question"
@@ -12884,7 +12885,8 @@ msgstr "Błąd podczas niszczenia puli wątków dla bazy danych."
 
 #: src/metabase/models/humanization.clj
 msgid "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
-msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''"
+msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''\n"
+""
 
 #: src/metabase/models/humanization.clj
 msgid "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
@@ -13181,7 +13183,7 @@ msgstr "Nie udało się zaplanować zadań dla bazy danych {0}"
 msgid "All elements must be distinct."
 msgstr "Wszystkie elementy muszą być unikalne."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wybierz kolumny, które chcesz uwzględnić"
@@ -13223,3 +13225,4 @@ msgstr "Błąd podczas określania oczekiwanych kolumn dla zapytania"
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Nieobsługiwany wyjątek, oczekiwane oprogramowanie pośredniczące `catch-exceptions`  do obsługi."
+
