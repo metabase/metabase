@@ -227,7 +227,7 @@ const PREFERRED_COLORS = {
 
 const PREFERRED_COLORS_MAP = {};
 for (const color in PREFERRED_COLORS) {
-  if (PREFERRED_COLORS.hasOwnProperty(color)){
+  if (PREFERRED_COLORS.hasOwnProperty(color)) {
     const keys = PREFERRED_COLORS[color];
     // $FlowFixMe
     for (let i = 0; i < keys.length; i++) {
