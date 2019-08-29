@@ -5,7 +5,7 @@ import RetinaImage from "react-retina-image";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
-import colors, { darken } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
 
 import { loadIcon } from "metabase/icon_paths";
 import { stripLayoutProps } from "metabase/lib/utils";
@@ -29,12 +29,13 @@ export const IconWrapper = styled("div")`
     transform: translateY(-2px);
   }
   ${hover};
+  transition: all 300ms ease-in-out;
 `;
 
 IconWrapper.defaultProps = {
   hover: {
-    backgroundColor: darken(colors["brand"]),
-    color: "white",
+    backgroundColor: colors["bg-medium"],
+    color: colors["brand"],
   },
 };
 
