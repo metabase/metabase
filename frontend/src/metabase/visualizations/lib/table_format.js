@@ -125,6 +125,37 @@ function getColumnIndexesByName(cols) {
 }
 
 function compileFormatter(
+export const OPERATOR_FORMATTER_FACTORIES = {
+  "<": (value, color) => v =>
+    typeof value === "number" && v < value ? color : null,
+  "<=": (value, color) => v =>
+    typeof value === "number" && v <= value ? color : null,
+  ">=": (value, color) => v =>
+    typeof value === "number" && v >= value ? color : null,
+  ">": (value, color) => v =>
+    typeof value === "number" && v > value ? color : null,
+  "=": (value, color) => v => (v === value ? color : null),
+  "!=": (value, color) => v => (v !== value ? color : null),
+  "is-null": (value, color) => v => (v === null ? color : null),
+  "not-null": (value, color) => v => (v !== null ? color : null),
+  contains: (value, color) => v =>
+    typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
+      ? color
+      : null,
+  "does-not-contain": (value, color) => v =>
+    typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0
+      ? color
+      : null,
+  "starts-with": (value, color) => v =>
+    typeof value === "string" && typeof v === "string" && v.startsWith(value)
+      ? color
+      : null,
+  "ends-with": (value, color) => v =>
+    typeof value === "string" && typeof v === "string" && v.endsWith(value)
+      ? color
+      : null,
+};
+
   format,
   columnName,
   columnExtents,
@@ -137,55 +168,14 @@ function compileFormatter(
     } else {
       color = alpha(color, CELL_ALPHA);
     }
-    switch (operator) {
-      case "<":
-        return v => (typeof value === "number" && v < value ? color : null);
-      case "<=":
-        return v => (typeof value === "number" && v <= value ? color : null);
-      case ">=":
-        return v => (typeof value === "number" && v >= value ? color : null);
-      case ">":
-        return v => (typeof value === "number" && v > value ? color : null);
-      case "=":
-        return v => (v === value ? color : null);
-      case "!=":
-        return v => (v !== value ? color : null);
-      case "is-null":
-        return v => (v === null ? color : null);
-      case "not-null":
-        return v => (v !== null ? color : null);
-      case "contains":
-        return v =>
-          typeof value === "string" &&
-          typeof v === "string" &&
-          v.indexOf(value) >= 0
-            ? color
-            : null;
-      case "does-not-contain":
-        return v =>
-          typeof value === "string" &&
-          typeof v === "string" &&
-          v.indexOf(value) < 0
-            ? color
-            : null;
-      case "starts-with":
-        return v =>
-          typeof value === "string" &&
-          typeof v === "string" &&
-          v.startsWith(value)
-            ? color
-            : null;
-      case "ends-with":
-        return v =>
-          typeof value === "string" &&
-          typeof v === "string" &&
-          v.endsWith(value)
-            ? color
-            : null;
-      default:
-        console.error("Unsupported formatting operator:", operator);
-        return () => null;
+
+    const formatterFactory = OPERATOR_FORMATTER_FACTORIES[operator];
+    if (formatterFactory) {
+      return formatterFactory(value, color);
     }
+
+    console.error("Unsupported formatting operator:", operator);
+    return () => null;
   } else if (format.type === "range") {
     const columnMin = name =>
       // $FlowFixMe
