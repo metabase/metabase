@@ -272,7 +272,7 @@ const CASE_SENSITIVE_OPTION = {
   },
 };
 
-export const OPERATORS = {
+const OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
