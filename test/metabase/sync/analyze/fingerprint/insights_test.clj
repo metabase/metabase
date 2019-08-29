@@ -34,6 +34,12 @@
       first
       :last-value))
 
+(expect
+  (transduce identity
+             (insights [{:base_type :type/DateTime :unit :year}
+                        {:base_type :type/Integer}])
+             [["2014-01-01T00:00:00Z" 100]
+              ["2015-01-01T00:00:00Z" 200]]))
 
 (defn- inst->day
   [inst]
