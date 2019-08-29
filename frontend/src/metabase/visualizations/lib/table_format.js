@@ -124,7 +124,6 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
-function compileFormatter(
 export const OPERATOR_FORMATTER_FACTORIES = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
@@ -156,6 +155,7 @@ export const OPERATOR_FORMATTER_FACTORIES = {
       : null,
 };
 
+export function compileFormatter(
   format,
   columnName,
   columnExtents,
