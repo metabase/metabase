@@ -4094,7 +4094,9 @@ module.exports = g;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.OPERATOR_FORMATTER_FACTORIES = undefined;
 exports.makeCellBackgroundGetter = makeCellBackgroundGetter;
+exports.compileFormatter = compileFormatter;
 
 var _colors = __webpack_require__(58);
 
@@ -4146,6 +4148,7 @@ function makeCellBackgroundGetter(rows, cols, settings) {
           }
         }
       }
+      return null;
     };
   }
 }
@@ -4158,74 +4161,88 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
+var OPERATOR_FORMATTER_FACTORIES = exports.OPERATOR_FORMATTER_FACTORIES = {
+  "<": function _(value, color) {
+    return function (v) {
+      return typeof value === "number" && v < value ? color : null;
+    };
+  },
+  "<=": function _(value, color) {
+    return function (v) {
+      return typeof value === "number" && v <= value ? color : null;
+    };
+  },
+  ">=": function _(value, color) {
+    return function (v) {
+      return typeof value === "number" && v >= value ? color : null;
+    };
+  },
+  ">": function _(value, color) {
+    return function (v) {
+      return typeof value === "number" && v > value ? color : null;
+    };
+  },
+  "=": function _(value, color) {
+    return function (v) {
+      return v === value ? color : null;
+    };
+  },
+  "!=": function _(value, color) {
+    return function (v) {
+      return v !== value ? color : null;
+    };
+  },
+  "is-null": function isNull(_value, color) {
+    return function (v) {
+      return v === null ? color : null;
+    };
+  },
+  "not-null": function notNull(_value, color) {
+    return function (v) {
+      return v !== null ? color : null;
+    };
+  },
+  contains: function contains(value, color) {
+    return function (v) {
+      return typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0 ? color : null;
+    };
+  },
+  "does-not-contain": function doesNotContain(value, color) {
+    return function (v) {
+      return typeof value === "string" && typeof v === "string" && v.indexOf(value) < 0 ? color : null;
+    };
+  },
+  "starts-with": function startsWith(value, color) {
+    return function (v) {
+      return typeof value === "string" && typeof v === "string" && v.startsWith(value) ? color : null;
+    };
+  },
+  "ends-with": function endsWith(value, color) {
+    return function (v) {
+      return typeof value === "string" && typeof v === "string" && v.endsWith(value) ? color : null;
+    };
+  }
+};
+
 function compileFormatter(format, columnName, columnExtents) {
   var isRowFormatter = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
 
   if (format.type === "single") {
     var _operator = format.operator,
-        _value = format.value,
+        _value2 = format.value,
         _color3 = format.color;
 
-    if (isRowFormatter) {
-      _color3 = (0, _colors.alpha)(_color3, ROW_ALPHA);
-    } else {
-      _color3 = (0, _colors.alpha)(_color3, CELL_ALPHA);
+    _color3 = (0, _colors.alpha)(_color3, isRowFormatter ? ROW_ALPHA : CELL_ALPHA);
+
+    var formatterFactory = OPERATOR_FORMATTER_FACTORIES[_operator];
+    if (formatterFactory) {
+      return formatterFactory(_value2, _color3);
     }
-    switch (_operator) {
-      case "<":
-        return function (v) {
-          return typeof _value === "number" && v < _value ? _color3 : null;
-        };
-      case "<=":
-        return function (v) {
-          return typeof _value === "number" && v <= _value ? _color3 : null;
-        };
-      case ">=":
-        return function (v) {
-          return typeof _value === "number" && v >= _value ? _color3 : null;
-        };
-      case ">":
-        return function (v) {
-          return typeof _value === "number" && v > _value ? _color3 : null;
-        };
-      case "=":
-        return function (v) {
-          return v === _value ? _color3 : null;
-        };
-      case "!=":
-        return function (v) {
-          return v !== _value ? _color3 : null;
-        };
-      case "is-null":
-        return function (v) {
-          return v === null ? _color3 : null;
-        };
-      case "not-null":
-        return function (v) {
-          return v !== null ? _color3 : null;
-        };
-      case "contains":
-        return function (v) {
-          return typeof _value === "string" && typeof v === "string" && v.indexOf(_value) >= 0 ? _color3 : null;
-        };
-      case "does-not-contain":
-        return function (v) {
-          return typeof _value === "string" && typeof v === "string" && v.indexOf(_value) < 0 ? _color3 : null;
-        };
-      case "starts-with":
-        return function (v) {
-          return typeof _value === "string" && typeof v === "string" && v.startsWith(_value) ? _color3 : null;
-        };
-      case "ends-with":
-        return function (v) {
-          return typeof _value === "string" && typeof v === "string" && v.endsWith(_value) ? _color3 : null;
-        };
-      default:
-        console.error("Unsupported formatting operator:", _operator);
-        return function () {
-          return null;
-        };
-    }
+
+    console.error("Unsupported formatting operator:", _operator);
+    return function () {
+      return null;
+    };
   } else if (format.type === "range") {
     var columnMin = function columnMin(name) {
       return (
@@ -4273,12 +4290,12 @@ function extent(rows, colIndex) {
   var max = -Infinity;
   var length = rows.length;
   for (var i = 0; i < length; i++) {
-    var _value2 = rows[i][colIndex];
-    if (_value2 < min) {
-      min = _value2;
+    var _value3 = rows[i][colIndex];
+    if (_value3 < min) {
+      min = _value3;
     }
-    if (_value2 > max) {
-      max = _value2;
+    if (_value3 > max) {
+      max = _value3;
     }
   }
   return [min, max];
@@ -4521,7 +4538,6 @@ var PREFERRED_COLORS_MAP = {};
 for (var _color in PREFERRED_COLORS) {
   if (PREFERRED_COLORS.hasOwnProperty(_color)) {
     var keys = PREFERRED_COLORS[_color];
-    // $FlowFixMe
     for (var i = 0; i < keys.length; i++) {
       PREFERRED_COLORS_MAP[keys[i]] = _color;
     }
