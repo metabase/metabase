@@ -5,7 +5,7 @@
             [metabase.models
              [database :refer [Database]]
              [table :refer [Table]]]
-            [metabase.sync-database :as sync-database]))
+            [metabase.sync :as sync]))
 
 (api/defendpoint POST "/db/:id"
   "Notification about a potential schema change to one of our `Databases`.
@@ -14,10 +14,10 @@
   (api/let-404 [database (Database id)]
     (cond
       table_id (when-let [table (Table :db_id id, :id (int table_id))]
-                 (future (sync-database/sync-table! table)))
+                 (future (sync/sync-table! table)))
       table_name (when-let [table (Table :db_id id, :name table_name)]
-                   (future (sync-database/sync-table! table)))
-      :else (future (sync-database/sync-database! database))))
+                   (future (sync/sync-table! table)))
+      :else (future (sync/sync-database! database))))
   {:success true})
 
 

@@ -1,305 +1,192 @@
 /* @flow */
 
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
-import FieldList from "../FieldList.jsx";
-import OperatorSelector from "./OperatorSelector.jsx";
+import DimensionList from "../DimensionList";
 
-import DatePicker from "./pickers/DatePicker.jsx";
-import NumberPicker from "./pickers/NumberPicker.jsx";
-import SelectPicker from "./pickers/SelectPicker.jsx";
-import TextPicker from "./pickers/TextPicker.jsx";
+import FilterPopoverHeader from "./FilterPopoverHeader";
+import FilterPopoverPicker from "./FilterPopoverPicker";
+import FilterPopoverFooter from "./FilterPopoverFooter";
 
-import Icon from "metabase/components/Icon.jsx";
+import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 
-import Query from "metabase/lib/query";
-import { isDate } from "metabase/lib/schema_metadata";
-import { singularize } from "metabase/lib/formatting";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
 
-import cx from "classnames";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import type { Filter, FieldFilter, ConcreteField, ExpressionClause } from "metabase/meta/types/Query";
-import type { TableMetadata, FieldMetadata, Operator } from "metabase/meta/types/Metadata";
+import { color } from "metabase/lib/colors";
 
 type Props = {
-    filter?: Filter,
-    onCommitFilter: (filter: Filter) => void,
-    onClose: () => void,
-    tableMetadata: TableMetadata,
-    customFields?: ExpressionClause
-}
+  query: StructuredQuery,
+  filter?: Filter,
+  onChange?: (filter: ?Filter) => void,
+  // NOTE: this should probably be called onCommit
+  onChangeFilter?: (filter: Filter) => void,
+  onClose: () => void,
+
+  style?: {},
+  className?: string,
+
+  fieldPickerTitle?: string,
+  showFieldPicker?: boolean,
+  isTopLevel?: boolean,
+  isSidebar?: boolean,
+};
 
 type State = {
-    filter: FieldFilter
-}
+  filter: ?Filter,
+};
 
-export default class FilterPopover extends Component {
-    props: Props;
-    state: State;
+const MIN_WIDTH = 300;
+const MAX_WIDTH = 410;
 
-    constructor(props: Props) {
-        super(props);
+// NOTE: this is duplicated from FilterPopover but allows you to add filters on
+// the last two "stages" of a nested query, e.x. post aggregation filtering
+export default class ViewFilterPopover extends Component {
+  props: Props;
+  state: State;
 
-        this.state = {
-            // $FlowFixMe
-            filter: props.filter || []
-        };
-    }
+  static defaultProps = {
+    style: {},
+    showFieldPicker: true,
+  };
 
-    static propTypes = {
-        filter: PropTypes.array,
-        onCommitFilter: PropTypes.func.isRequired,
-        onClose: PropTypes.func.isRequired,
-        tableMetadata: PropTypes.object.isRequired
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      filter: props.filter instanceof Filter ? props.filter : null,
     };
+  }
 
-    componentWillMount() {
-        window.addEventListener('keydown', this.commitOnEnter);
+  componentWillMount() {
+    window.addEventListener("keydown", this.handleCommitOnEnter);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleCommitOnEnter);
+  }
+
+  componentWillReceiveProps(nextProps: Props) {
+    const { filter } = this.state;
+    // HACK?: if the underlying query changes (e.x. additional metadata is loaded) update the filter's query
+    if (filter && this.props.query !== nextProps.query) {
+      this.setState({
+        filter: filter.setQuery(nextProps.query),
+      });
     }
+  }
 
-    componentWillUnmount() {
-        window.removeEventListener('keydown', this.commitOnEnter);
+  setFilter(filter: ?Filter) {
+    this.setState({ filter });
+    if (this.props.onChange) {
+      this.props.onChange(filter);
     }
+  }
 
-    commitOnEnter = (event: KeyboardEvent) => {
-        if(this.isValid() && event.key === "Enter") {
-            this.commitFilter(this.state.filter);
-        }
+  handleCommit = () => {
+    this.handleCommitFilter(this.state.filter, this.props.query);
+  };
+
+  handleCommitOnEnter = (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      this.handleCommitFilter(this.state.filter, this.props.query);
     }
+  };
 
-    commitFilter = (filter: FieldFilter) => {
-        this.props.onCommitFilter(filter);
+  handleCommitFilter = (filter: ?Filter, query: StructuredQuery) => {
+    if (filter && !(filter instanceof Filter)) {
+      filter = new Filter(filter, null, query);
+    }
+    if (filter && filter.isValid() && this.props.onChangeFilter) {
+      this.props.onChangeFilter(filter);
+      if (this.props.onClose) {
         this.props.onClose();
+      }
     }
+  };
 
-    setField = (fieldId: ConcreteField) => {
-        let { filter } = this.state;
-        if (filter[1] !== fieldId) {
-            // different field, reset the filter
-            filter = [];
+  handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
+    const filter = new Filter([], null, query);
+    this.setFilter(filter.setDimension(fieldRef, { useDefaultOperator: true }));
+  };
 
-            // update the field
-            filter[1] = fieldId;
+  handleFilterChange = (newFilter: ?FieldFilter) => {
+    this.setFilter(
+      newFilter && this.state.filter ? this.state.filter.set(newFilter) : null,
+    );
+  };
 
-            // default to the first operator
-            let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
+  render() {
+    const {
+      className,
+      style,
+      query,
+      showFieldPicker,
+      fieldPickerTitle,
+      isSidebar,
+      isTopLevel,
+    } = this.props;
+    const { filter } = this.state;
 
-            // let the DatePicker choose the default operator, otherwise use the first one
-            let operator = isDate(field) ? null : field.operators[0].name;
-
-            // $FlowFixMe
-            filter = this._updateOperator(filter, operator);
-        }
-        this.setState({ filter });
-    }
-
-    setFilter = (filter: FieldFilter) => {
-        this.setState({ filter });
-    }
-
-    setOperator = (operator: string) => {
-        let { filter } = this.state;
-        if (filter[0] !== operator) {
-            filter = this._updateOperator(filter, operator);
-            this.setState({ filter });
-        }
-    }
-
-    setValue(index: number, value: any) {
-        let { filter } = this.state;
-        filter[index + 2] = value;
-        this.setState({ filter: filter });
-    }
-
-    setValues = (values: any[]) => {
-        let { filter } = this.state;
-        // $FlowFixMe
-        this.setState({ filter: filter.slice(0,2).concat(values) });
-    }
-
-    _updateOperator(oldFilter: FieldFilter, operatorName: ?string): FieldFilter {
-        let { field } = Query.getFieldTarget(oldFilter[1], this.props.tableMetadata);
-        let operator = field.operators_lookup[operatorName];
-        let oldOperator = field.operators_lookup[oldFilter[0]];
-
-        // update the operator
-        // $FlowFixMe
-        let filter: FieldFilter = [operatorName, oldFilter[1]];
-
-        if (operator) {
-            for (let i = 0; i < operator.fields.length; i++) {
-                if (operator.defaults && operator.defaults[i] !== undefined) {
-                    filter.push(operator.defaults[i]);
-                } else {
-                    filter.push(undefined);
-                }
+    const dimension = filter && filter.dimension();
+    if (!dimension) {
+      return (
+        <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
+          {fieldPickerTitle && (
+            <SidebarHeader className="mx1 my2" title={fieldPickerTitle} />
+          )}
+          <DimensionList
+            style={{ color: color("filter") }}
+            maxHeight={Infinity}
+            dimension={dimension}
+            sections={
+              isTopLevel
+                ? query.topLevelFilterFieldOptionSections()
+                : (
+                    (filter && filter.query()) ||
+                    query
+                  ).filterFieldOptionSections(filter)
             }
-            if (oldOperator) {
-                // copy over values of the same type
-                for (let i = 0; i < oldFilter.length - 2; i++) {
-                    let field = operator.multi ? operator.fields[0] : operator.fields[i];
-                    let oldField = oldOperator.multi ? oldOperator.fields[0] : oldOperator.fields[i];
-                    if (field && oldField && field.type === oldField.type && oldFilter[i + 2] !== undefined) {
-                        filter[i + 2] = oldFilter[i + 2];
-                    }
-                }
+            onChangeDimension={dimension =>
+              this.handleFieldChange(dimension.mbql(), dimension.query())
             }
-        }
-        return filter;
+            onChange={item => {
+              this.handleCommitFilter(item.filter, item.query);
+            }}
+            width={isSidebar ? null : MIN_WIDTH}
+            alwaysExpanded={isTopLevel || isSidebar}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
+          <FilterPopoverHeader
+            className={isSidebar ? "px1 pt1" : "p1 mb1 border-bottom"}
+            isSidebar={isSidebar}
+            filter={filter}
+            onFilterChange={this.handleFilterChange}
+            showFieldPicker={showFieldPicker}
+          />
+          <FilterPopoverPicker
+            className={isSidebar ? "p1" : "px1 pt1 pb1"}
+            isSidebar={isSidebar}
+            filter={filter}
+            onFilterChange={this.handleFilterChange}
+            minWidth={isSidebar ? null : MIN_WIDTH}
+            maxWidth={isSidebar ? null : MAX_WIDTH}
+          />
+          <FilterPopoverFooter
+            className={isSidebar ? "p1" : "px1 pb1"}
+            isSidebar={isSidebar}
+            filter={filter}
+            onFilterChange={this.handleFilterChange}
+            onCommit={!this.props.noCommitButton ? this.handleCommit : null}
+            isNew={!this.props.filter}
+          />
+        </div>
+      );
     }
-
-    isValid() {
-        let { filter } = this.state;
-        // has an operator name and field id
-        if (filter[0] == null || !Query.isValidField(filter[1])) {
-            return false;
-        }
-        // field/operator combo is valid
-        let { field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
-        let operator = field.operators_lookup[filter[0]];
-        if (operator) {
-            // has the mininum number of arguments
-            if (filter.length - 2 < operator.fields.length) {
-                return false;
-            }
-        }
-        // arguments are non-null/undefined
-        for (var i = 2; i < filter.length; i++) {
-            if (filter[i] == null) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    clearField = () => {
-        let { filter } = this.state;
-        // $FlowFixMe
-        this.setState({ filter: [...filter.slice(0, 1), null, ...filter.slice(2)] });
-    }
-
-    renderPicker(filter: FieldFilter, field: FieldMetadata) {
-        let operator: ?Operator = field.operators_lookup[filter[0]];
-        return operator && operator.fields.map((operatorField, index) => {
-            if (!operator) {
-                return;
-            }
-            let values, onValuesChange;
-            let placeholder = operator && operator.placeholders && operator.placeholders[index] || undefined;
-            if (operator.multi) {
-                values = this.state.filter.slice(2);
-                onValuesChange = (values) => this.setValues(values);
-            } else {
-                values = [this.state.filter[2 + index]];
-                onValuesChange = (values) => this.setValue(index, values[0]);
-            }
-            if (operatorField.type === "select") {
-                return (
-                    <SelectPicker
-                        options={operatorField.values}
-                        // $FlowFixMe
-                        values={(values: Array<string>)}
-                        onValuesChange={onValuesChange}
-                        placeholder={placeholder}
-                        multi={operator.multi}
-                        onCommit={this.onCommit}
-                    />
-                );
-            } else if (operatorField.type === "text") {
-                return (
-                    <TextPicker
-                        // $FlowFixMe
-                        values={(values: Array<string>)}
-                        onValuesChange={onValuesChange}
-                        placeholder={placeholder}
-                        multi={operator.multi}
-                        onCommit={this.onCommit}
-                    />
-                );
-            } else if (operatorField.type === "number") {
-                return (
-                    <NumberPicker
-                        // $FlowFixMe
-                        values={(values: Array<number|null>)}
-                        onValuesChange={onValuesChange}
-                        placeholder={placeholder}
-                        multi={operator.multi}
-                        onCommit={this.onCommit}
-                    />
-                );
-            }
-            return <span>not implemented {operatorField.type} {operator.multi ? "true" : "false"}</span>;
-        });
-    }
-
-    onCommit = () => {
-        if (this.isValid()) {
-            this.commitFilter(this.state.filter)
-        }
-    }
-
-    render() {
-        let { filter } = this.state;
-        if (filter[0] === "SEGMENT" || filter[1] == undefined) {
-            return (
-                <div className="FilterPopover">
-                    <FieldList
-                        className="text-purple"
-                        field={this.state.filter[1]}
-                        fieldOptions={Query.getFieldOptions(this.props.tableMetadata.fields, true)}
-                        customFieldOptions={this.props.customFields}
-                        segmentOptions={this.props.tableMetadata.segments && this.props.tableMetadata.segments.filter((sgmt) => sgmt.is_active === true)}
-                        tableMetadata={this.props.tableMetadata}
-                        onFieldChange={this.setField}
-                        onFilterChange={this.commitFilter}
-                    />
-                </div>
-            );
-        } else {
-            let { filter } = this.state;
-            let { table, field } = Query.getFieldTarget(filter[1], this.props.tableMetadata);
-
-            return (
-                <div style={{
-                    minWidth: 300
-                }}>
-                    <div className="FilterPopover-header text-grey-3 p1 mt1 flex align-center">
-                        <a className="cursor-pointer flex align-center" onClick={this.clearField}>
-                            <Icon name="chevronleft" size={18}/>
-                            <h3 className="inline-block">{singularize(table.display_name)}</h3>
-                        </a>
-                        <h3 className="mx1">-</h3>
-                        <h3 className="text-default">{field.display_name}</h3>
-                    </div>
-                    { isDate(field) ?
-                        <DatePicker
-                            className="mt1 border-top"
-                            filter={filter}
-                            onFilterChange={this.setFilter}
-                        />
-                    :
-                        <div>
-                            <OperatorSelector
-                                operator={filter[0]}
-                                operators={field.operators}
-                                onOperatorChange={this.setOperator}
-                            />
-                            { this.renderPicker(filter, field) }
-                        </div>
-                    }
-                    <div className="FilterPopover-footer p1">
-                        <button
-                            data-ui-tag="add-filter"
-                            className={cx("Button Button--purple full", { "disabled": !this.isValid() })}
-                            onClick={() => this.commitFilter(this.state.filter)}
-                        >
-                            {!this.props.filter ? "Add filter" : "Update filter"}
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-    }
+  }
 }

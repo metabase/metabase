@@ -1,0 +1,12 @@
+title: A look at your [[this]]
+transient_title: Here''s an overview of your [[this]]
+description: How [[this]] is distributed and more.
+applies_to: GenericTable.FK
+metrics:
+- Count: [count]
+cards:
+  - Distribution:
+      title: How [[this]] is distributed
+      visualization: bar
+      metrics: Count
+      dimensions: this

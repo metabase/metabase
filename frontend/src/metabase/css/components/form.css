@@ -1,225 +1,234 @@
 :root {
-    --form-padding: 1em;
-    --form-input-placeholder-color: #C0C0C0;
+  --form-padding: 1em;
+  --form-input-placeholder-color: var(--color-text-light);
 
-    --form-input-size: 1.0rem;
-    --form-input-size-medium: 1.25rem;
-    --form-input-size-large: 1.571rem;
+  --form-input-size: 1rem;
+  --form-input-size-medium: 1.25rem;
+  --form-input-size-large: 1.571rem;
 
-    --form-label-color: #949494;
-    --form-offset: 2.4rem;
+  --form-label-color: var(--color-text-medium);
+  --form-offset: 2.4rem;
 }
 
 .Form-new {
-    padding-top: 2rem;
+  padding-top: 2rem;
 }
 
 /* TODO: combine this and the scoped version */
 .Form-label {
   display: block;
-  color: var(--form-label-color);
+  color: var(--color-text-medium);
   font-size: 1.2rem;
 }
 
 .Form-field {
-    position: relative;
-    color: #6C6C6C;
-    margin-bottom: 1.5rem;
+  position: relative;
+  color: var(--color-text-medium);
+  margin-bottom: 1.5rem;
 }
 
 /* TODO: remove this scoping once we've converted non admin forms */
 /* form labels inherit the color of the parent, allowing for easy error changes */
 .Form-field .Form-label {
-    display: block;
-    font-size: 0.85em;
-    font-weight: bold;
-    color: currentColor;
+  display: block;
+  font-size: 0.85em;
+  font-weight: 700;
+  color: currentColor;
 }
 
 .Form-field.Form--fieldError {
-    color: var(--error-color);
+  color: var(--color-error);
 }
 
 .Form-input {
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
-    font-family: var(--default-font-family);
-    line-height: 1;
-    border: none;
-    background-color: transparent;
-    transition: color .3s linear;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+  font-family: var(--default-font-family);
+  line-height: 1;
+  border: none;
+  background-color: transparent;
+  transition: color 0.3s linear;
 }
 
 .Form-message {
-    opacity: 0;
-    transition: none;
+  opacity: 0;
+  transition: none;
 }
 
 .Form-message.Form-message--visible {
-    opacity: 1;
-    transition: opacity 500ms linear;
+  opacity: 1;
+  transition: opacity 500ms linear;
 }
 
 /* form-input font sizes */
-.Form-input { font-size: var(--form-input-size); }
+.Form-input {
+  font-size: var(--form-input-size);
+}
 
 @media screen and (--breakpoint-min-md) {
-    .Form-input { font-size: var(--form-input-size-medium); }
+  .Form-input {
+    font-size: var(--form-input-size-medium);
+  }
 }
 
 @media screen and (--breakpoint-min-lg) {
-    .Form-input { font-size: var(--form-input-size-large); }
+  .Form-input {
+    font-size: var(--form-input-size-large);
+  }
 }
 
 .Form-input:focus {
-    outline: none;
+  outline: none;
 }
 
 .Form-offset {
-    padding-left: var(--form-offset);
+  padding-left: var(--form-offset);
 }
 
 .Form-charm {
-    position: absolute;
-    display: block;
-    bottom: 0;
-    left: 0;
-    width: 0.15em;
-    height: 3em;
-    background-color: #ddd;
-    box-sizing: border-box;
-    opacity: 0;
-    transition: background-color .3s linear;
-    transition: opacity .3s linear;
+  position: absolute;
+  display: block;
+  bottom: 0;
+  left: 0;
+  width: 0.15em;
+  height: 3em;
+  background-color: var(--color-bg-medium);
+  box-sizing: border-box;
+  opacity: 0;
+  transition: background-color 0.3s linear;
+  transition: opacity 0.3s linear;
 }
 
-
 .Form-field.Form--fieldError .Form-charm {
-    background-color: var(--error-color);
-    opacity: 1;
+  background-color: var(--color-error);
+  opacity: 1;
 }
 
 .Form-input:focus + .Form-charm {
-    background-color: var(--brand-color);
-    opacity: 1;
+  background-color: var(--color-brand);
+  opacity: 1;
 }
 
 .Form-field:hover .Form-input {
-    color: #ddd;
-    background: rgba(0, 0, 0, 0.02);
+  color: var(--color-text-light);
+  background: color(var(--color-bg-black) alpha(-98%));
 }
 
 /* ewww */
 .Form-field:hover .Form-input.ng-dirty {
-    color: #222;
-    background-color: #fff;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-white);
 }
 
 .Form-field:hover .Form-charm {
-    opacity: 1;
+  opacity: 1;
 }
 
 .Form-field:hover .Form-input:focus {
-    transition: color .3s linear;
-    color: #444;
-    background-color: transparent;
-    transition: background .3s linear;
+  transition: color 0.3s linear;
+  color: var(--color-text-dark);
+  background-color: transparent;
+  transition: background 0.3s linear;
 }
 
 .Form-radio {
-    display: none;
+  display: none;
 }
 
 .Form-radio + label {
-    cursor: pointer;
-    display: inline-block;
-    flex: 0 0 auto;
-    position: relative;
-    margin-right: var(--margin-1);
-    width: 8px;
-    height: 8px;
-    border: 2px solid white;
-    box-shadow: 0 0 0 2px var(--grey-3);
-    border-radius: 8px;
+  cursor: pointer;
+  display: inline-block;
+  flex: 0 0 auto;
+  position: relative;
+  margin-right: var(--margin-1);
+  width: 8px;
+  height: 8px;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px var(--color-shadow);
+  border-radius: 8px;
 }
 
 .Form-radio:checked + label {
-    box-shadow: 0 0 0 2px var(--brand-color);
-    background-color: var(--brand-color);
+  box-shadow: 0 0 0 2px var(--color-shadow);
+  background-color: var(--color-brand);
 }
 
 /* TODO: replace instances of Form-group with Form-field */
 .Form-group {
   padding: var(--form-padding);
-  transition: opacity .3s linear;
+  transition: opacity 0.3s linear;
 }
 
 .Form-groupDisabled {
   opacity: 0.2;
   pointer-events: none;
-  transition: opacity .3s linear;
+  transition: opacity 0.3s linear;
 }
 
 .Form-actions {
-    padding-left: var(--form-offset);
-    padding-bottom: var(--form-offset);
-    display: flex;
-    align-items: center;
+  padding-left: var(--form-offset);
+  padding-bottom: var(--form-offset);
+  display: flex;
+  align-items: center;
 }
 
 .FormTitleSeparator {
-    position: relative;
-    border-bottom: 1px solid #e8e8e8;
+  position: relative;
+  border-bottom: 1px solid var(--color-border);
 }
 
-::-webkit-input-placeholder { /* WebKit browsers */
-    color: var(--form-input-placeholder-color);
+::-webkit-input-placeholder {
+  /* WebKit browsers */
+  color: var(--color-text-light);
 }
-:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
-   color:    var(--form-input-placeholder-color);
-   opacity:  1;
+:-moz-placeholder {
+  /* Mozilla Firefox 4 to 18 */
+  color: var(--color-text-light);
+  opacity: 1;
 }
-::-moz-placeholder { /* Mozilla Firefox 19+ */
-   color:    var(--form-input-placeholder-color);
-   opacity:  1;
+::-moz-placeholder {
+  /* Mozilla Firefox 19+ */
+  color: var(--color-text-light);
+  opacity: 1;
 }
-:-ms-input-placeholder { /* Internet Explorer 10+ */
-   color:    var(--form-input-placeholder-color);
+:-ms-input-placeholder {
+  /* Internet Explorer 10+ */
+  color: var(--color-text-light);
 }
 
 .NewForm .Form-label {
-    text-transform: uppercase;
-    color: color(var(--base-grey) shade(30%));
-    margin-bottom: 0.5em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-medium);
+  margin-bottom: 0.5em;
 }
 
 .NewForm .Form-input {
-    font-size: 16px;
-    color: var(--default-font-color);
-    padding: 0.5em;
-    background-color: #FCFCFC;
-    border: 1px solid #EAEAEA;
-    border-radius: 4px;
+  font-size: 16px;
+  color: var(--color-text-dark);
+  padding: 0.5em;
+  background-color: var(--color-bg-white);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
 }
 .NewForm .Form-input:focus {
-    border-color: var(--brand-color);
-    box-shadow: none;
-    outline: 0;
+  border-color: var(--color-brand);
+  box-shadow: none;
+  outline: 0;
 }
 
 .NewForm .Form-header {
-    padding: var(--padding-4);
+  padding: var(--padding-4);
 }
 
 .NewForm .Form-inputs {
-    padding-left: var(--padding-4);
-    padding-right: var(--padding-4);
+  padding-left: var(--padding-4);
+  padding-right: var(--padding-4);
 }
 
 .NewForm .Form-actions {
-    border-top: 1px solid #EAEAEA;
-    padding-bottom: 1.2rem;
-    padding-top: 1.2rem;
-    padding-left: var(--padding-4);
-    padding-right: var(--padding-4);
+  padding-bottom: 1.2rem;
+  padding-top: 1.2rem;
+  padding-left: var(--padding-4);
+  padding-right: var(--padding-4);
 }

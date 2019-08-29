@@ -1,0 +1,33 @@
+@media screen and (--breakpoint-min-md) {
+  .Entity-search-back-button {
+    position: absolute;
+    margin-left: -150px;
+  }
+
+  .Entity-search-grouping-options {
+    position: absolute;
+    margin-left: -150px;
+    margin-top: 22px;
+  }
+}
+
+@media screen and (--breakpoint-max-md) {
+  .Entity-search-grouping-options {
+    display: flex;
+    align-items: center;
+  }
+  .Entity-search-grouping-options > h3 {
+    margin-bottom: 0;
+    margin-right: 20px;
+  }
+  .Entity-search-grouping-options > ul {
+    display: flex;
+  }
+  .Entity-search-grouping-options > ul > li {
+    margin-right: 10px;
+  }
+}
+
+.Entity-search input {
+  width: 100%;
+}

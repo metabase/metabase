@@ -1,7 +1,14 @@
-.cursor-pointer, :local(.cursor-pointer) {
-    cursor: pointer;
+.cursor-pointer,
+:local(.cursor-pointer) {
+  cursor: pointer;
 }
 
-.cursor-default, :local(.cursor-default) {
-    cursor: default;
+.cursor-grab,
+:local(.cursor-grab) {
+  cursor: grab;
+}
+
+.cursor-default,
+:local(.cursor-default) {
+  cursor: default;
 }

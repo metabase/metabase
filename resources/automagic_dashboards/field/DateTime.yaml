@@ -1,0 +1,126 @@
+title: A look at your [[this]]
+transient_title: Here''s a closer look at your [[this]]
+description: How [[GenericTable]] are distributed across this time field, and if it has any seasonal patterns.
+applies_to: GenericTable.DateTime
+metrics:
+- Sum: [sum, [dimension, GenericNumber]]
+- Avg: [avg, [dimension, GenericNumber]]
+- Count: [count]
+- Distinct: [distinct, [dimension, this]]
+dimensions:
+  - GenericNumber: GenericTable.Number
+  - GenericCategoryMedium:
+      field_type: GenericTable.Category
+      max_cardinality: 10
+      score: 90
+# bind just so they don't get used
+  - LongLat: GenericTable.Coordinate
+  - ZipCode: GenericTable.ZipCode
+# only used for filters
+  - Country:
+      field_type: GenericTable.Country
+  - State:
+      field_type: GenericTable.State
+filters:
+  - Nils: [is-null, [dimension, this]]
+dashboard_filters:
+  - this
+  - State
+  - Country
+  - GenericCategoryMedium
+groups:
+  - Overview:
+      title: Overview
+  - Breakdowns:
+      title: How the [[this]] is distributed
+      comparison_title: How they compare by distribution
+  - Seasonality:
+      title: Seasonal patterns in the [[this]]
+      comparison_title: How they compare by seasonality
+cards:
+  - Count:
+      title: Count
+      visualization: scalar
+      metrics: Count
+      group: Overview
+      width: 6
+  - Nils:
+      title: Null values
+      visualization: scalar
+      metrics: Count
+      filters: Nils
+      group: Overview
+      width: 6
+  - Distinct:
+      title: Distinct values
+      visualization: scalar
+      metrics: Distinct
+      group: Overview
+      width: 6
+  - Distribution:
+      title: "[[GenericTable]] by [[this]]"
+      visualization: line
+      metrics: Count
+      dimensions: this
+      width: 18
+      group: Overview
+  - ByNumber:
+      title: "[[GenericNumber]] by [[this]]"
+      visualization: line
+      metrics:
+      - Sum
+      - Avg
+      dimensions: this
+      width: 9
+      group: Breakdowns
+  - ByCategory:
+      title: "Count of [[GenericCategoryMedium]] by [[this]]"
+      visualization:
+        area:
+          stackable.stack_type: stacked
+      metrics: Count
+      dimensions:
+        - this
+        - GenericCategoryMedium
+      width: 9
+      group: Breakdowns
+  - DayOfWeek:
+      title: "[[this]] by day of the week"
+      visualization: bar
+      dimensions:
+        - this:
+            aggregation: day-of-week
+      metrics: Count
+      score: 60
+      group: Seasonality
+      width: 9
+  - HourOfDay:
+      title: "[[this]] by hour of the day"
+      visualization: bar
+      dimensions:
+      - this:
+          aggregation: hour-of-day
+      metrics: Count
+      score: 50
+      group: Seasonality
+      width: 9
+  - MonthOfYear:
+      title: "[[this]] by month of the year"
+      visualization: bar
+      dimensions:
+        - this:
+            aggregation: month-of-year
+      metrics: Count
+      score: 40
+      group: Seasonality
+      width: 9
+  - QuarterOfYear:
+      title: "[[this]] by quarter of the year"
+      visualization: bar
+      dimensions:
+        - this:
+            aggregation: quarter-of-year
+      metrics: Count
+      score: 40
+      group: Seasonality
+      width: 9

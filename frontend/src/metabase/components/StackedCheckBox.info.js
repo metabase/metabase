@@ -8,7 +8,7 @@ A stacked checkbox, representing "all" items.
 `;
 
 export const examples = {
-    "off": <StackedCheckBox />,
-    "on": <StackedCheckBox checked />,
-    "on inverted": <StackedCheckBox style={{ color: "#509EE3" }} invertChecked checked />
+  "Off - Default": <StackedCheckBox />,
+  Checked: <StackedCheckBox checked />,
+  "Checked with color": <StackedCheckBox checked color="purple" />,
 };

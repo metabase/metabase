@@ -3,15 +3,27 @@
   hide and show a child element using display
 */
 .hover-parent.hover--display .hover-child,
-.hover-parent:hover.hover--display .hover-child--hidden { display: none; }
+.hover-parent:hover.hover--display .hover-child--hidden {
+  display: none;
+}
 
-.hover-parent:hover.hover--display .hover-child { display: block; }
+.hover-parent:hover.hover--display .hover-child {
+  display: block;
+}
 
 /*
   visibility
   hide and show a child element using visibility
 */
 .hover-parent.hover--visibility .hover-child,
-.hover-parent:hover.hover--visibility .hover-child--hidden { visibility: hidden; }
+.hover-parent:hover.hover--visibility .hover-child--hidden {
+  visibility: hidden;
+}
 
-.hover-parent:hover.hover--visibility .hover-child { visibility: visible; }
+.hover-parent:hover.hover--visibility .hover-child {
+  visibility: visible;
+}
+
+.hover-parent:hover.hover--inherit > * {
+  color: inherit !important;
+}

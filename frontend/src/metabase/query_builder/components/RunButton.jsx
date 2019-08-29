@@ -1,40 +1,71 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon.jsx";
+import Button from "metabase/components/Button";
 
 import cx from "classnames";
 
 export default class RunButton extends Component {
-    static propTypes = {
-        isRunnable: PropTypes.bool.isRequired,
-        isRunning: PropTypes.bool.isRequired,
-        isDirty: PropTypes.bool.isRequired,
-        onRun: PropTypes.func.isRequired,
-        onCancel: PropTypes.func
-    };
+  static propTypes = {
+    className: PropTypes.string,
+    isRunnable: PropTypes.bool.isRequired,
+    isRunning: PropTypes.bool.isRequired,
+    isDirty: PropTypes.bool.isRequired,
+    isPreviewing: PropTypes.bool,
+    onRun: PropTypes.func.isRequired,
+    onCancel: PropTypes.func,
+  };
 
-    render() {
-        let { isRunnable, isRunning, isDirty, onRun, onCancel } = this.props;
-        let buttonText = null;
-        if (isRunning) {
-            buttonText = <div className="flex align-center"><Icon className="mr1" name="close" />Cancel</div>;
-        } else if (isRunnable && isDirty) {
-            buttonText = "Get Answer";
-        } else if (isRunnable && !isDirty) {
-            buttonText = <div className="flex align-center"><Icon className="mr1" name="refresh" />Refresh</div>;
-        }
-        let actionFn = isRunning ? onCancel : onRun;
-        let classes = cx("Button Button--medium circular RunButton ml-auto mr-auto block", {
-            "RunButton--hidden": !buttonText,
-            "Button--primary": isDirty,
-            "text-grey-2": !isDirty,
-            "text-grey-4-hover": !isDirty,
-        });
-        return (
-            <button className={classes} onClick={() => actionFn()}>
-            {buttonText}
-            </button>
-        );
+  static defaultProps = {};
+
+  render() {
+    const {
+      isRunnable,
+      isRunning,
+      isDirty,
+      isPreviewing,
+      onRun,
+      onCancel,
+      className,
+      compact,
+      circular,
+      hidden,
+      ...props
+    } = this.props;
+    let buttonText = null;
+    let buttonIcon = null;
+    if (isRunning) {
+      buttonIcon = "close";
+      if (!compact) {
+        buttonText = t`Cancel`;
+      }
+    } else if (isRunnable && isDirty) {
+      if (compact) {
+        buttonIcon = "play";
+      } else {
+        buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
+      }
+    } else if (isRunnable && !isDirty) {
+      buttonIcon = "refresh";
     }
+    if (!buttonIcon && !buttonText) {
+      return null;
+    }
+    return (
+      <Button
+        {...props}
+        icon={buttonIcon}
+        primary={isDirty}
+        iconSize={16}
+        className={cx(className, "RunButton", {
+          "RunButton--hidden": hidden,
+          circular: circular,
+        })}
+        onClick={isRunning ? onCancel : onRun}
+      >
+        {buttonText}
+      </Button>
+    );
+  }
 }

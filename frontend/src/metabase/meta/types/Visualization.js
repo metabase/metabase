@@ -2,86 +2,111 @@
 
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { ReduxAction } from "metabase/meta/types/redux";
+import Question from "metabase-lib/lib/Question";
 
-export type ActionCreator = (props: ClickActionProps) => ClickAction[]
+export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
-    name: string,
-    actions: ActionCreator[],
-    drills: ActionCreator[]
-}
+  name: string,
+  actions: ActionCreator[],
+  drills: ActionCreator[],
+};
 
 export type HoverData = Array<{ key: string, value: any, col?: Column }>;
 
 export type HoverObject = {
-    index?: number,
-    axisIndex?: number,
-    data?: HoverData,
-    element?: ?HTMLElement,
-    event?: MouseEvent,
-}
+  index?: number,
+  axisIndex?: number,
+  data?: HoverData,
+  element?: ?HTMLElement,
+  event?: MouseEvent,
+};
 
 export type DimensionValue = {
-    value: Value,
-    column: Column
+  value: Value,
+  column: Column,
 };
 
 export type ClickObject = {
-    value?: Value,
-    column?: Column,
-    dimensions?: DimensionValue[],
-    event?: MouseEvent,
-    element?: HTMLElement,
-    seriesIndex?: number,
-}
+  value?: Value,
+  column?: ?Column,
+  dimensions?: DimensionValue[],
+  event?: MouseEvent,
+  element?: HTMLElement,
+  seriesIndex?: number,
+};
 
 export type ClickAction = {
-    title: any, // React Element
-    icon?: string,
-    popover?: (props: ClickActionPopoverProps) => any, // React Element
-    card?: () => ?Card,
-
-    section?: string,
-    name?: string,
-}
+  title: any, // React Element
+  icon?: string,
+  popover?: (props: ClickActionPopoverProps) => any, // React Element
+  question?: () => ?Question,
+  url?: () => string,
+  action?: () => ?ReduxAction,
+  section?: string,
+  name?: string,
+  default?: boolean,
+  defaultAlways?: boolean,
+};
 
 export type ClickActionProps = {
-    card: Card,
-    tableMetadata: TableMetadata,
-    clicked?: ClickObject
-}
+  question: Question,
+  clicked?: ClickObject,
+};
+
+export type OnChangeCardAndRun = ({
+  nextCard: Card,
+  previousCard?: ?Card,
+}) => void;
 
 export type ClickActionPopoverProps = {
-    onChangeCardAndRun: (Object) => void,
-    onClose: () => void,
-}
+  onChangeCardAndRun: OnChangeCardAndRun,
+  onClose: () => void,
+};
 
 export type SingleSeries = { card: Card, data: DatasetData };
-export type Series = SingleSeries[] & { _raw: Series }
+export type RawSeries = SingleSeries[];
+export type TransformedSeries = RawSeries & { _raw: Series };
+export type Series = RawSeries | TransformedSeries;
 
+// These are the props provided to the visualization implementations BY the Visualization component
 export type VisualizationProps = {
-    series: Series,
-    card: Card,
-    data: DatasetData,
-    settings: VisualizationSettings,
+  series: Series,
+  card: Card,
+  data: DatasetData,
+  settings: VisualizationSettings,
 
-    className?: string,
-    gridSize: ?{
-        width: number,
-        height: number
-    },
+  className?: string,
+  gridSize: ?{
+    width: number,
+    height: number,
+  },
 
-    showTitle: boolean,
-    isDashboard: boolean,
-    isEditing: boolean,
-    actionButtons: Node,
+  width: number,
+  height: number,
 
-    hovered: ?HoverObject,
-    onHoverChange: (?HoverObject) => void,
-    onVisualizationClick: (?ClickObject) => void,
-    visualizationIsClickable: (?ClickObject) => boolean,
-    onChangeCardAndRun: (Object) => void,
+  showTitle: boolean,
+  isDashboard: boolean,
+  isEditing: boolean,
+  isSettings: boolean,
+  actionButtons: Node,
 
-    onUpdateVisualizationSettings: ({ [key: string]: any }) => void
-}
+  onRender: ({
+    yAxisSplit?: number[][],
+    warnings?: string[],
+  }) => void,
+  onRenderError: (error: ?Error) => void,
+
+  hovered: ?HoverObject,
+  onHoverChange: (?HoverObject) => void,
+  onVisualizationClick: (?ClickObject) => void,
+  visualizationIsClickable: (?ClickObject) => boolean,
+  onChangeCardAndRun: OnChangeCardAndRun,
+
+  onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
+
+  onAddSeries?: Function,
+  onEditSeries?: Function,
+  onRemoveSeries?: Function,
+};

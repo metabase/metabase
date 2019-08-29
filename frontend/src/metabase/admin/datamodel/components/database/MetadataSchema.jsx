@@ -1,48 +1,56 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
+import Tables from "metabase/entities/tables";
 
+@Tables.load({ id: (state, { tableId }) => tableId, wrapped: true })
+@withTableMetadataLoaded
 export default class MetadataSchema extends Component {
-    static propTypes = {
-        tableMetadata: PropTypes.object
-    };
+  static propTypes = {
+    tableMetadata: PropTypes.object,
+  };
 
-    render() {
-        const { tableMetadata } = this.props;
-        if (!tableMetadata) {
-            return false;
-        }
-
-        var fields = tableMetadata.fields.map((field) => {
-            return (
-                <li key={field.id} className="px1 py2 flex border-bottom">
-                    <div className="flex-full flex flex-column mr1">
-                        <span className="TableEditor-field-name text-bold">{field.name}</span>
-                    </div>
-                    <div className="flex-half">
-                        <span className="text-bold">{field.base_type}</span>
-                    </div>
-                    <div className="flex-half">
-                    </div>
-                </li>
-            );
-        });
-
-        return (
-            <div className="MetadataTable px2 flex-full">
-                <div className="flex flex-column px1">
-                    <div className="TableEditor-table-name text-bold">{tableMetadata.name}</div>
-                </div>
-                <div className="mt2 ">
-                    <div className="text-uppercase text-grey-3 py1 flex">
-                        <div className="flex-full px1">Column</div>
-                        <div className="flex-half px1">Data Type</div>
-                        <div className="flex-half px1">Additional Info</div>
-                    </div>
-                    <ol className="border-top border-bottom">
-                        {fields}
-                    </ol>
-                </div>
-            </div>
-        );
+  render() {
+    const { table } = this.props;
+    if (!table || !table.fields) {
+      return false;
     }
+
+    const tdClassName = "py2 px1 border-bottom";
+
+    const fields = table.fields.map(field => {
+      return (
+        <tr key={field.id}>
+          <td className={tdClassName}>
+            <span className="TableEditor-field-name text-bold">
+              {field.name}
+            </span>
+          </td>
+          <td className={tdClassName}>
+            <span className="text-bold">{field.base_type}</span>
+          </td>
+          <td className={tdClassName} />
+        </tr>
+      );
+    });
+
+    return (
+      <div className="MetadataTable px2 full">
+        <div className="flex flex-column px1">
+          <div className="TableEditor-table-name text-bold">{table.name}</div>
+        </div>
+        <table className="mt2 full">
+          <thead className="text-uppercase text-medium py1">
+            <tr>
+              <th className={tdClassName}>{t`Column`}</th>
+              <th className={tdClassName}>{t`Data Type`}</th>
+              <th className={tdClassName}>{t`Additional Info`}</th>
+            </tr>
+          </thead>
+          <tbody>{fields}</tbody>
+        </table>
+      </div>
+    );
+  }
 }

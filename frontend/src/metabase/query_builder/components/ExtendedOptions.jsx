@@ -1,200 +1,252 @@
+/* @flow weak */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
-
+import { t } from "ttag";
 import AddClauseButton from "./AddClauseButton.jsx";
 import Expressions from "./expressions/Expressions.jsx";
-import ExpressionWidget from './expressions/ExpressionWidget.jsx';
+import ExpressionWidget from "./expressions/ExpressionWidget.jsx";
 import LimitWidget from "./LimitWidget.jsx";
 import SortWidget from "./SortWidget.jsx";
 import Popover from "metabase/components/Popover.jsx";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import Query from "metabase/lib/query";
 
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { GuiQueryEditorFeatures } from "./GuiQueryEditor";
 
-export default class ExtendedOptions extends Component {
-    state = {
-        isOpen: false,
-        editExpression: null
-    };
+type Props = {
+  query: StructuredQuery,
+  setDatasetQuery: (
+    datasetQuery: DatasetQuery,
+    options: { run: boolean },
+  ) => void,
+  features: GuiQueryEditorFeatures,
+  onClose?: () => void,
+};
 
-    static propTypes = {
-        features: PropTypes.object.isRequired,
-        datasetQuery: PropTypes.object.isRequired,
-        tableMetadata: PropTypes.object,
-        setDatasetQuery: PropTypes.func.isRequired
-    };
+type State = {
+  editExpression: any,
+};
 
-    static defaultProps = {
-        expressions: {}
-    };
+export class ExtendedOptionsPopover extends Component {
+  props: Props;
+  state: State = {
+    editExpression: null,
+  };
 
+  static propTypes = {
+    features: PropTypes.object.isRequired,
+    datasetQuery: PropTypes.object.isRequired,
+    tableMetadata: PropTypes.object,
+    setDatasetQuery: PropTypes.func.isRequired,
+    onClose: PropTypes.func,
+  };
 
-    setExpression(name, expression, previousName) {
-        const { datasetQuery: { query } } = this.props;
+  static defaultProps = {
+    features: {
+      sort: true,
+      limit: true,
+    },
+  };
 
-        if (!_.isEmpty(previousName)) {
-            // remove old expression using original name.  this accounts for case where expression is renamed.
-            Query.removeExpression(query, previousName);
-        }
+  setExpression(name, expression, previousName) {
+    const { query, setDatasetQuery } = this.props;
+    query
+      .updateExpression(name, expression, previousName)
+      .update(setDatasetQuery);
+    this.setState({ editExpression: null });
+    MetabaseAnalytics.trackEvent(
+      "QueryBuilder",
+      "Set Expression",
+      !_.isEmpty(previousName),
+    );
+  }
 
-        // now add the new expression to the query
-        Query.setExpression(query, name, expression);
-        this.props.setDatasetQuery(this.props.datasetQuery);
-        this.setState({editExpression: null});
+  removeExpression(name) {
+    const { query, setDatasetQuery } = this.props;
+    query.removeExpression(name).update(setDatasetQuery);
+    this.setState({ editExpression: null });
 
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Set Expression', !_.isEmpty(previousName));
+    MetabaseAnalytics.trackEvent("QueryBuilder", "Remove Expression");
+  }
+
+  setLimit = limit => {
+    const { query, setDatasetQuery } = this.props;
+    query.updateLimit(limit).update(setDatasetQuery);
+    MetabaseAnalytics.trackEvent("QueryBuilder", "Set Limit", limit);
+    if (this.props.onClose) {
+      this.props.onClose();
     }
+  };
 
-    removeExpression(name) {
-        let scrubbedQuery = Query.removeExpression(this.props.datasetQuery.query, name);
-        this.props.datasetQuery.query = scrubbedQuery;
-        this.props.setDatasetQuery(this.props.datasetQuery);
-        this.setState({editExpression: null});
+  renderSort() {
+    const { query, setDatasetQuery } = this.props;
 
-        MetabaseAnalytics.trackEvent('QueryBuilder', 'Remove Expression');
-    }
+    let sortList, addSortButton;
 
-    renderSort() {
-        const { datasetQuery: { query }, tableMetadata } = this.props;
+    const tableMetadata = query.table();
+    if (tableMetadata) {
+      const sorts = query.sorts();
 
-        if (!this.props.features.limit) {
-            return;
-        }
+      sortList = sorts.map((sort, index) => (
+        <SortWidget
+          key={index}
+          query={query}
+          tableMetadata={query.table()}
+          sort={sort}
+          fieldOptions={query.sortOptions(sort)}
+          removeOrderBy={() => query.removeSort(index).update(setDatasetQuery)}
+          updateOrderBy={orderBy =>
+            query.updateSort(index, orderBy).update(setDatasetQuery)
+          }
+        />
+      ));
 
-        let sortList, addSortButton;
-
-        if (tableMetadata) {
-            const sorts = Query.getOrderBys(query);
-            const expressions = Query.getExpressions(query);
-
-            const usedFields = {};
-            const usedExpressions = {};
-            for (const sort of sorts) {
-                if (Query.isExpressionField(sort[0])) {
-                    usedExpressions[sort[0][1]] = true;
-                } else {
-                    usedFields[Query.getFieldTargetId(sort[0])] = true;
-                }
-            }
-
-            sortList = sorts.map((sort, index) =>
-                <SortWidget
-                    key={index}
-                    tableMetadata={tableMetadata}
-                    sort={sort}
-                    fieldOptions={
-                        Query.getFieldOptions(
-                            tableMetadata.fields,
-                            true,
-                            Query.getSortableFields.bind(null, query),
-                            _.omit(usedFields, sort[0])
-                        )
-                    }
-                    customFieldOptions={expressions}
-                    removeOrderBy={() => this.props.removeQueryOrderBy(index)}
-                    updateOrderBy={(orderBy) => this.props.updateQueryOrderBy(index, orderBy)}
-                />
-            );
-
-
-            const remainingFieldOptions = Query.getFieldOptions(
-                tableMetadata.fields,
-                true,
-                Query.getSortableFields.bind(null, query),
-                usedFields
-            );
-            const remainingExpressions = Object.keys(_.omit(expressions, usedExpressions));
-            if ((remainingFieldOptions.count > 0 || remainingExpressions.length > 1) &&
-                (sorts.length === 0 || sorts[sorts.length - 1][0] != null)) {
-                addSortButton = (<AddClauseButton text="Pick a field to sort by" onClick={() => this.props.addQueryOrderBy([null, "ascending"])} />);
-            }
-        }
-
-        if ((sortList && sortList.length > 0) || addSortButton) {
-            return (
-                <div className="pb3">
-                    <div className="pb1 h6 text-uppercase text-grey-3 text-bold">Sort</div>
-                    {sortList}
-                    {addSortButton}
-                </div>
-            );
-        }
-    }
-
-    renderExpressionWidget() {
-        // if we aren't editing any expression then there is nothing to do
-        if (!this.state.editExpression || !this.props.tableMetadata) return null;
-
-        const query = this.props.datasetQuery.query,
-              expressions = Query.getExpressions(query),
-              expression = expressions && expressions[this.state.editExpression],
-              name = _.isString(this.state.editExpression) ? this.state.editExpression : "";
-
-        return (
-            <Popover onClose={() => this.setState({editExpression: null})}>
-                <ExpressionWidget
-                    name={name}
-                    expression={expression}
-                    tableMetadata={this.props.tableMetadata}
-                    onSetExpression={(newName, newExpression) => this.setExpression(newName, newExpression, name)}
-                    onRemoveExpression={(name) => this.removeExpression(name)}
-                    onCancel={() => this.setState({editExpression: null})}
-                />
-            </Popover>
+      if (query.canAddSort()) {
+        addSortButton = (
+          <AddClauseButton
+            text={t`Pick a field to sort by`}
+            onClick={() => {
+              // $FlowFixMe: shouldn't be adding a sort with null field
+              query.addSort(["asc", null]).update(setDatasetQuery);
+            }}
+          />
         );
+      }
     }
 
-    renderPopover() {
-        if (!this.state.isOpen) return null;
+    if ((sortList && sortList.length > 0) || addSortButton) {
+      return (
+        <div className="pb3">
+          <div className="pb1 h6 text-uppercase text-medium text-bold">{t`Sort`}</div>
+          {sortList}
+          {addSortButton}
+        </div>
+      );
+    }
+  }
 
-        const { features, datasetQuery, tableMetadata } = this.props;
+  renderLimit() {
+    const { query } = this.props;
+    return (
+      <div>
+        <div className="mb1 h6 text-uppercase text-medium text-bold">{t`Row limit`}</div>
+        <LimitWidget limit={query.limit()} onChange={this.setLimit} />
+      </div>
+    );
+  }
 
-        return (
-            <Popover onClose={() => this.setState({isOpen: false})}>
-                <div className="p3">
-                    {this.renderSort()}
+  renderExpressions() {
+    const { query } = this.props;
+    return (
+      <Expressions
+        expressions={query.expressions()}
+        tableMetadata={query.table()}
+        onAddExpression={() => this.setState({ editExpression: true })}
+        onEditExpression={name => {
+          this.setState({ editExpression: name });
+          MetabaseAnalytics.trackEvent(
+            "QueryBuilder",
+            "Show Edit Custom Field",
+          );
+        }}
+      />
+    );
+  }
 
-                    {_.contains(tableMetadata.db.features, "expressions") ?
-                        <Expressions
-                            expressions={datasetQuery.query.expressions}
-                            tableMetadata={tableMetadata}
-                            onAddExpression={() => this.setState({isOpen: false, editExpression: true})}
-                            onEditExpression={(name) => {
-                                this.setState({isOpen: false, editExpression: name});
-                                MetabaseAnalytics.trackEvent("QueryBuilder", "Show Edit Custom Field");
-                            }}
-                        />
-                    : null}
-
-                    { features.limit &&
-                        <div>
-                            <div className="mb1 h6 text-uppercase text-grey-3 text-bold">Row limit</div>
-                            <LimitWidget limit={datasetQuery.query.limit} onChange={(limit) => {
-                                this.props.updateQueryLimit(limit);
-                                this.setState({ isOpen: false })
-                            }} />
-                        </div>
-                    }
-                </div>
-            </Popover>
-        );
+  renderExpressionWidget() {
+    // if we aren't editing any expression then there is nothing to do
+    if (!this.state.editExpression || !this.props.tableMetadata) {
+      return null;
     }
 
-    render() {
-        const { features } = this.props;
-        if (!features.sort && !features.limit) return null;
+    const { query } = this.props;
 
-        const onClick = this.props.tableMetadata ? () => this.setState({isOpen: true}) : null;
+    const expressions = query.expressions();
+    const expression = expressions && expressions[this.state.editExpression];
+    const name = _.isString(this.state.editExpression)
+      ? this.state.editExpression
+      : "";
 
-        return (
-            <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
-                <span className={cx("EllipsisButton no-decoration text-grey-1 px1", {"cursor-pointer": onClick})} onClick={onClick}>…</span>
-                {this.renderPopover()}
-                {this.renderExpressionWidget()}
-            </div>
-        );
+    return (
+      <ExpressionWidget
+        query={query}
+        name={name}
+        expression={expression}
+        onChangeExpression={(newName, newExpression) =>
+          this.setExpression(newName, newExpression, name)
+        }
+        onRemoveExpression={name => this.removeExpression(name)}
+        onClose={() => this.setState({ editExpression: null })}
+      />
+    );
+  }
+
+  renderPopover() {
+    const { features, query } = this.props;
+
+    const sortEnabled = features.sort;
+    const expressionsEnabled =
+      query.table() && _.contains(query.table().db.features, "expressions");
+    const limitEnabled = features.limit;
+
+    return (
+      <div className="p3">
+        {sortEnabled && this.renderSort()}
+        {expressionsEnabled && this.renderExpressions()}
+        {limitEnabled && this.renderLimit()}
+      </div>
+    );
+  }
+
+  render() {
+    return this.renderExpressionWidget() || this.renderPopover();
+  }
+}
+
+export default class ExtendedOptions extends React.Component {
+  state = {
+    isOpen: false,
+  };
+
+  static defaultProps = {
+    features: {
+      sort: true,
+      limit: true,
+    },
+  };
+
+  render() {
+    const { features } = this.props;
+    if (!features.sort && !features.limit) {
+      return null;
     }
+
+    const onClick = this.props.tableMetadata
+      ? () => this.setState({ isOpen: true })
+      : null;
+
+    return (
+      <div className="GuiBuilder-section GuiBuilder-sort-limit flex align-center">
+        <span
+          className={cx("EllipsisButton no-decoration text-light px1", {
+            "cursor-pointer": onClick,
+          })}
+          onClick={onClick}
+        >
+          …
+        </span>
+        <Popover
+          isOpen={this.state.isOpen}
+          onClose={() => this.setState({ isOpen: false })}
+        >
+          <ExtendedOptionsPopover {...this.props} />
+        </Popover>
+      </div>
+    );
+  }
 }

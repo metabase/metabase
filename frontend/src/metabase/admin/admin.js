@@ -11,9 +11,9 @@ import settings from "metabase/admin/settings/settings";
 import { combineReducers } from "metabase/lib/redux";
 
 export default combineReducers({
-    databases,
-    datamodel,
-    people,
-    permissions,
-    settings
-})
+  databases,
+  datamodel,
+  people,
+  permissions,
+  settings,
+});

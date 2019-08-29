@@ -13,8 +13,8 @@
              [hydrate :refer [hydrate]]]))
 
 (defn- dashcard-activity? [activity]
-  (contains? #{:dashboard-add-cards :dashboard-remove-cards}
-             (:topic activity)))
+  (#{:dashboard-add-cards :dashboard-remove-cards}
+   (:topic activity)))
 
 (defn- activities->referenced-objects
   "Get a map of model name to a set of referenced IDs in these ACTIVITIES.
@@ -24,24 +24,27 @@
   (apply merge-with set/union (for [{:keys [model model_id], :as activity} activities
                                     :when                                  model]
                                 (merge {model #{model_id}}
-                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites that involve adding/removing cards
+                                       ;; pull the referenced card IDs out of the dashcards for dashboard activites
+                                       ;; that involve adding/removing cards
                                        (when (dashcard-activity? activity)
                                          {"card" (set (for [dashcard (get-in activity [:details :dashcards])]
                                                         (:card_id dashcard)))})))))
 
 (defn- referenced-objects->existing-objects
-  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of models to IDs of objects *that exist*.
+  "Given a map of existing objects like the one returned by `activities->referenced-objects`, return a similar map of
+   models to IDs of objects *that exist*.
 
-     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...}) -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
+     (referenced-objects->existing-objects {\"dashboard\" #{41 42 43}, \"card\" #{100 101}, ...})
+     ;; -> {\"dashboard\" #{41 43}, \"card\" #{101}, ...}"
   [referenced-objects]
   (into {} (for [[model ids] referenced-objects
                  :when       (seq ids)]
              {model (case model
                       "card"      (db/select-ids 'Card,      :id [:in ids])
                       "dashboard" (db/select-ids 'Dashboard, :id [:in ids])
-                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :is_active true)
+                      "metric"    (db/select-ids 'Metric,    :id [:in ids], :archived false)
                       "pulse"     (db/select-ids 'Pulse,     :id [:in ids])
-                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :is_active true)
+                      "segment"   (db/select-ids 'Segment,   :id [:in ids], :archived false)
                       nil)}))) ; don't care about other models
 
 (defn- add-model-exists-info
@@ -54,7 +57,8 @@
           activity
           (update-in activity [:details :dashcards] (fn [dashcards]
                                                       (for [dashcard dashcards]
-                                                        (assoc dashcard :exists (contains? (get existing-objects "card") (:card_id dashcard)))))))))))
+                                                        (assoc dashcard :exists (contains? (get existing-objects "card")
+                                                                                           (:card_id dashcard)))))))))))
 
 (defendpoint GET "/"
   "Get recent activity."
@@ -63,6 +67,13 @@
                                (hydrate :user :table :database)
                                add-model-exists-info)))
 
+(defn- view-log-entry->matching-object [{:keys [model model_id]}]
+  (when (contains? #{"card" "dashboard"} model)
+    (db/select-one
+        (case model
+          "card"      [Card      :id :name :collection_id :description :display :dataset_query]
+          "dashboard" [Dashboard :id :name :collection_id :description])
+        :id model_id)))
 
 (defendpoint GET "/recent_views"
   "Get the list of 10 things the current user has been viewing most recently."
@@ -75,10 +86,7 @@
                    {:group-by [:user_id :model :model_id]
                     :order-by [[:max_ts :desc]]
                     :limit    10})
-        :let     [model-object (case (:model view-log)
-                                 "card"      (db/select-one [Card :id :name :description :display :dataset_query], :id (:model_id view-log))
-                                 "dashboard" (db/select-one [Dashboard :id :name :description],                    :id (:model_id view-log))
-                                 nil)]
+        :let     [model-object (view-log-entry->matching-object view-log)]
         :when    (and model-object
                       (mi/can-read? model-object))]
     (assoc view-log :model_object (dissoc model-object :dataset_query))))

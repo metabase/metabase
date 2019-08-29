@@ -15,10 +15,10 @@ textarea,
 ul,
 li,
 span {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 /* for applying border-box to other elements on ad-hoc basis */
 .border-box {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }

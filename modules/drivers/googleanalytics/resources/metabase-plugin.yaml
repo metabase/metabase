@@ -1,0 +1,31 @@
+info:
+  name: Metabase Google Analytics Driver
+  version: 1.0.0-SNAPSHOT-1.27.0
+  description: Allows Metabase to connect to Google Analytics accounts.
+dependencies:
+  - plugin: Metabase Google Drivers Shared Dependencies
+driver:
+  name: googleanalytics
+  display-name: Google Analytics
+  lazy-load: true
+  parent: google
+  connection-properties:
+    - name: account-id
+      display-name: Google Analytics Account ID
+      placeholder: '1234567'
+      required: true
+    - name: client-id
+      display-name: Client ID
+      placeholder: 1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com
+      required: true
+    - name: client-secret
+      display-name: Client Secret
+      placeholder: dJNi4utWgMzyIFo2JbnsK6Np
+      required: true
+    - name: auth-code
+      display-name: Auth Code
+      placeholder: 4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek
+      required: true
+init:
+  - step: load-namespace
+    namespace: metabase.driver.googleanalytics

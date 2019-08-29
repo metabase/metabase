@@ -1,47 +1,21 @@
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 
-import _ from "underscore";
+import cx from "classnames";
 
-export default class Input extends Component {
-    constructor(props, context) {
-        super(props, context);
-        this.onBlur = this.onBlur.bind(this);
-        this.onChange = this.onChange.bind(this);
-        this.state = { value: props.value };
-    }
+const DEFAULT_STYLE = {
+  borderWidth: 2,
+};
 
-    static propTypes = {
-        type: PropTypes.string,
-        value: PropTypes.string,
-        placeholder: PropTypes.string,
-        onChange: PropTypes.func,
-        onBlurChange: PropTypes.func
-    };
+const Input = ({ className, small, medium, style = {}, ...props }) => (
+  <input
+    className={cx("input", className, {
+      // HACK: reuse Button styles
+      "Button--small": small,
+      "Button-medium": medium,
+    })}
+    style={{ ...DEFAULT_STYLE, ...style }}
+    {...props}
+  />
+);
 
-    static defaultProps = {
-        type: "text"
-    };
-
-    componentWillReceiveProps(newProps) {
-        this.setState({ value: newProps.value });
-    }
-
-    onChange(event) {
-        this.setState({ value:  event.target.value });
-        if (this.props.onChange) {
-            this.props.onChange(event);
-        }
-    }
-
-    onBlur(event) {
-        if (this.props.onBlurChange && (this.props.value || "") !== event.target.value) {
-            this.props.onBlurChange(event);
-        }
-    }
-
-    render() {
-        let props = _.omit(this.props, "onBlurChange", "value", "onBlur", "onChange");
-        return <input {...props} value={this.state.value} onBlur={this.onBlur} onChange={this.onChange} />
-    }
-}
+export default Input;

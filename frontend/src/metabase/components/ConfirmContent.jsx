@@ -1,33 +1,55 @@
 import React from "react";
 
 import ModalContent from "metabase/components/ModalContent.jsx";
+import { t } from "ttag";
+
+import Button from "metabase/components/Button";
 
 const nop = () => {};
 
 const ConfirmContent = ({
-    title,
-    content,
-    message = "Are you sure you want to do this?",
-    onClose = nop,
-    onAction = nop,
-    onCancel = nop,
-    confirmButtonText = "Yes",
-    cancelButtonText = "No"
-}) =>
-    <ModalContent
-        title={title}
-        onClose={() => { onCancel(); onClose(); }}
-    >
-        <div className="mx4">{content}</div>
+  title,
+  content,
+  message = t`Are you sure you want to do this?`,
+  onClose = nop,
+  onAction = nop,
+  onCancel = nop,
+  confirmButtonText = t`Yes`,
+  cancelButtonText = t`Cancel`,
+}) => (
+  <ModalContent
+    title={title}
+    formModal
+    onClose={() => {
+      onCancel();
+      onClose();
+    }}
+  >
+    <div>{content}</div>
 
-        <div className="Form-inputs mb4">
-            <p>{message}</p>
-        </div>
+    <p className="mb4">{message}</p>
 
-        <div className="Form-actions">
-            <button className="Button Button--danger" onClick={() => { onAction(); onClose(); }}>{confirmButtonText}</button>
-            <button className="Button ml1" onClick={() => { onCancel(); onClose(); }}>{cancelButtonText}</button>
-        </div>
-    </ModalContent>
+    <div className="ml-auto mb4">
+      <Button
+        onClick={() => {
+          onCancel();
+          onClose();
+        }}
+      >
+        {cancelButtonText}
+      </Button>
+      <Button
+        danger
+        ml={2}
+        onClick={() => {
+          onAction();
+          onClose();
+        }}
+      >
+        {confirmButtonText}
+      </Button>
+    </div>
+  </ModalContent>
+);
 
 export default ConfirmContent;

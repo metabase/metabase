@@ -8,21 +8,24 @@ import { selectors } from "../selectors";
 import { setTab, updatePassword, updateUser } from "../actions";
 
 const mapStateToProps = (state, props) => {
-    return {
-        ...selectors(state),
-        user: state.currentUser
-    }
-}
-
-const mapDispatchToProps = {
-    setTab,
-    updatePassword,
-    updateUser
+  return {
+    ...selectors(state),
+    user: state.currentUser,
+  };
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+const mapDispatchToProps = {
+  setTab,
+  updatePassword,
+  updateUser,
+};
+
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class UserSettingsApp extends Component {
-    render() {
-        return <UserSettings {...this.props} />;
-    }
+  render() {
+    return <UserSettings {...this.props} />;
+  }
 }

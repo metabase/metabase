@@ -6,30 +6,33 @@
   overflow: hidden;
 }
 
-/* TODO (@kdoh) remove this if dc-js/dc.js#1260 is merged */
-.LineAreaBarChart .dc-chart .axis text {
-  font-family: sans-serif;
-}
-
 .LineAreaBarChart .dc-chart .grid-line.horizontal {
-  stroke: rgba(151, 151, 151, 0.2);
-  stroke-dasharray: 5,5;
+  stroke: color(var(--color-text-medium) alpha(-80%));
+  stroke-dasharray: 5, 5;
 }
 
 .LineAreaBarChart .dc-chart .axis {
   z-index: -1;
 }
+
+.LineAreaBarChart .dc-chart .axis text {
+  font-size: 12px;
+  font-family: "Lato", sans-serif;
+  font-weight: 900;
+}
+
 .LineAreaBarChart .dc-chart .axis .domain,
 .LineAreaBarChart .dc-chart .axis .tick line {
-  stroke: #EDEDED;
+  stroke: var(--color-text-light);
 }
 
 .LineAreaBarChart .dc-chart .axis .tick text {
-  fill: #C5C6C8;
+  fill: var(--color-text-medium);
 }
 
 .LineAreaBarChart .dc-chart g.row text.outside {
-  fill: #C5C6C8;
+  fill: var(--color-text-medium);
+  font-weight: 900;
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
@@ -45,8 +48,9 @@
 
 .LineAreaBarChart .dc-chart .x-axis-label,
 .LineAreaBarChart .dc-chart .y-axis-label {
-  /*fill: #C5C6C8;*/
-  fill: #A2A2A2;
+  fill: var(--color-text-medium);
+  font-size: 14px;
+  font-weight: 900;
 }
 
 .LineAreaBarChart .dc-chart .tick line {
@@ -84,19 +88,10 @@
   opacity: 1 !important;
 }
 
-.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot {
-  r: 3px !important;
-  fill: white;
-  stroke: currentColor;
-  stroke-width: 2;
-  fill-opacity: 1 !important;
-  stroke-opacity: 1 !important;
-}
-
 .LineAreaBarChart .dc-chart circle.bubble {
-    fill-opacity: 0.80;
-    stroke-width: 1;
-    stroke: white;
+  fill-opacity: 0.8;
+  stroke-width: 1;
+  stroke: white;
 }
 
 .LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot:hover,
@@ -104,21 +99,48 @@
   fill: currentColor;
 }
 
+/* line width = 2px (default) */
+.LineAreaBarChart .dc-chart .line {
+  stroke-width: 2px;
+}
+.LineAreaBarChart .dc-chart .dc-tooltip .dot {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 3px */
+.LineAreaBarChart .dc-chart .line--medium .line {
+  stroke-width: 3px;
+}
+.LineAreaBarChart .dc-chart .line--medium .dc-tooltip .dot {
+  r: 3px !important;
+  stroke-width: 2px;
+}
+
+/* line width = 4px */
+.LineAreaBarChart .dc-chart .line--heavy .line {
+  stroke-width: 4px;
+}
+.LineAreaBarChart .dc-chart .line--heavy .dc-tooltip .dot {
+  r: 3.5px !important;
+  stroke-width: 3px;
+}
+
+.LineAreaBarChart .dc-chart .enable-dots .dc-tooltip .dot,
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.selected,
 .LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot:hover,
 .LineAreaBarChart .dc-chart .enable-dots-onhover .dc-tooltip .dot.hover {
-  r: 3px !important;
   fill: white;
   stroke: currentColor;
-  stroke-width: 2;
   fill-opacity: 1 !important;
   stroke-opacity: 1 !important;
 }
+
 .LineAreaBarChart .dc-chart .dc-tooltip .dot.deselected {
   opacity: 0;
 }
 .LineAreaBarChart .dc-chart .line.deselected {
-  color: #ccc;
+  color: var(--color-text-light);
 }
 
 .LineAreaBarChart .dc-chart .area,
@@ -165,6 +187,15 @@
 
 /* brush handles */
 .LineAreaBarChart .dc-chart .brush .resize path {
-  fill: #F9FBFC;
-  stroke: #9BA5B1;
+  fill: var(--color-bg-light);
+  stroke: var(--color-text-medium);
+}
+
+.LineAreaBarChart .dc-chart .goal .line {
+  stroke: var(--color-text-medium);
+  stroke-dasharray: 5, 5;
+}
+
+.LineAreaBarChart .dc-chart .trend .line {
+  stroke-dasharray: 5, 5;
 }

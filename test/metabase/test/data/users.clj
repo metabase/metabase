@@ -6,11 +6,14 @@
              [http-client :as http]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.models.user :refer [User]]
+            [metabase.middleware.session :as mw.session]
+            [metabase.models.user :as user :refer [User]]
+            [schema.core :as s]
             [toucan.db :as db])
-  (:import clojure.lang.ExceptionInfo))
+  (:import clojure.lang.ExceptionInfo
+           metabase.models.user.UserInstance))
 
-;;; ------------------------------------------------------------ User Definitions ------------------------------------------------------------
+;;; ------------------------------------------------ User Definitions ------------------------------------------------
 
 ;; ## Test Users
 ;;
@@ -41,10 +44,13 @@
                :password "birdseed"
                :active   false}})
 
-(def ^:private ^:const usernames
+(def ^:private usernames
   (set (keys user->info)))
 
-;;; ------------------------------------------------------------ Test User Fns ------------------------------------------------------------
+(def ^:private TestUserName
+  (apply s/enum usernames))
+
+;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
 (defn- wait-for-initiailization
   "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
@@ -58,15 +64,16 @@
      (when-not (init-status/complete?)
        (when (<= max-wait-seconds 0)
          (throw (Exception. "Metabase still hasn't finished initializing.")))
-       (printf "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n" max-wait-seconds)
+       (println (format "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n"
+                        max-wait-seconds))
        (Thread/sleep 1000)
        (recur (dec max-wait-seconds))))))
 
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
-      :or {superuser false
-           active    true}}]
+      :or   {superuser false
+             active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (wait-for-initiailization)
   (or (User :email email)
@@ -80,19 +87,18 @@
         :is_active    active)))
 
 
-(defn fetch-user
+(s/defn fetch-user :- UserInstance
   "Fetch the User object associated with USERNAME. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
-  [username]
-  {:pre [(contains? usernames username)]}
+  [username :- TestUserName]
   (m/mapply fetch-or-create-user! (user->info username)))
 
-(defn create-users-if-needed!
+(s/defn create-users-if-needed!
   "Force creation of the test users if they don't already exist."
   ([]
    (apply create-users-if-needed! usernames))
-  ([& usernames]
+  ([& usernames :- [TestUserName]]
    (doseq [username usernames]
      ;; fetch-user will force creation of users
      (fetch-user username))))
@@ -102,17 +108,19 @@
 
     (user->id :rasta) -> 4"
   (memoize
-   (fn [username]
+   (s/fn :- s/Int [username :- TestUserName]
      {:pre [(contains? usernames username)]}
-     (:id (fetch-user username)))))
+     (u/get-id (fetch-user username)))))
 
-(defn user->credentials
-  "Return a map with `:email` and `:password` for User with USERNAME.
+(s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
+  "Return a map with `:username` and `:password` for User with USERNAME.
 
-    (user->credentials :rasta) -> {:email \"rasta@metabase.com\", :password \"blueberries\"}"
-  [username]
+    (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
+  [username :- TestUserName]
   {:pre [(contains? usernames username)]}
-  (select-keys (user->info username) [:email :password]))
+  (let [{:keys [email password]} (user->info username)]
+    {:username email
+     :password password}))
 
 (def ^{:arglists '([id])} id->user
   "Reverse of `user->id`.
@@ -124,11 +132,20 @@
 
 (defonce ^:private tokens (atom {}))
 
-(defn- username->token [username]
+(s/defn username->token :- u/uuid-regex
+  "Return cached session token for a test User, logging in first if needed."
+  [username :- TestUserName]
   (or (@tokens username)
       (u/prog1 (http/authenticate (user->credentials username))
         (swap! tokens assoc username <>))
-      (throw (Exception. (format "Authentication failed for %s with credentials %s" username (user->credentials username))))))
+      (throw (Exception. (format "Authentication failed for %s with credentials %s"
+                                 username (user->credentials username))))))
+
+(defn clear-cached-session-tokens!
+  "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
+  `401` unauthenticated response, and then retry the request."
+  []
+  (reset! tokens {}))
 
 (defn- client-fn [username & args]
   (try
@@ -138,21 +155,31 @@
         (when-not (= status-code 401)
           (throw e))
         ;; If we got a 401 unauthenticated clear the tokens cache + recur
-        (reset! tokens {})
+        (clear-cached-session-tokens!)
         (apply client-fn username args)))))
 
-(defn user->client
+(s/defn user->client :- (s/pred fn?)
   "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")"
-  [username]
+  [username :- TestUserName]
   (create-users-if-needed! username)
   (partial client-fn username))
 
+(s/defn do-with-test-user
+  "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
+  [user-kwd :- TestUserName, f :- (s/pred fn?)]
+  ((mw.session/bind-current-user (fn [_ respond _] (respond (f))))
+   (let [user-id (user->id user-kwd)]
+     {:metabase-user-id user-id
+      :is-superuser?    (db/select-one-field :is_superuser User :id user-id)})
+   identity
+   (fn [e] (throw e))))
 
-(defn ^:deprecated delete-temp-users!
-  "Delete all users besides the 4 persistent test users.
-   This is a HACK to work around tests that don't properly clean up after themselves; one day we should be able to remove this. (TODO)"
-  []
-  (db/delete! User :id [:not-in (map user->id [:crowberto :lucky :rasta :trashbird])]))
+(defmacro with-test-user
+  "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
+  `user-kwd`."
+  {:style/indent 1}
+  [user-kwd & body]
+  `(do-with-test-user ~user-kwd (fn [] ~@body)))

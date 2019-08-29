@@ -1,58 +1,28 @@
-import React, { Component } from "react"
-import { connect } from "react-redux"
+import React, { Component } from "react";
+import { connect } from "react-redux";
 
-import Button from "metabase/components/Button"
-import Icon from "metabase/components/Icon"
-import ModalWithTrigger from "metabase/components/ModalWithTrigger"
-import Tooltip from "metabase/components/Tooltip"
+import { t } from "ttag";
 
-import { archiveQuestion } from "metabase/query_builder/actions"
+import ArchiveModal from "metabase/components/ArchiveModal";
 
-const mapStateToProps = () => ({})
+import { archiveQuestion } from "metabase/query_builder/actions";
 
-const mapDispatchToProps = {
-    archiveQuestion
-}
-
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  null,
+  { onArchive: archiveQuestion },
+)
 class ArchiveQuestionModal extends Component {
-    onArchive = async () => {
-        try {
-            await this.props.archiveQuestion()
-            this.onClose();
-        } catch (error) {
-            console.error(error)
-            this.setState({ error })
-        }
-    }
-
-    onClose = () => {
-        if (this.refs.archiveModal) {
-            this.refs.archiveModal.close();
-        }
-    }
-
-    render () {
-        return (
-            <ModalWithTrigger
-                ref="archiveModal"
-                triggerElement={
-                    <Tooltip key="archive" tooltip="Archive">
-                        <span className="text-brand-hover">
-                            <Icon name="archive" size={16} />
-                        </span>
-                    </Tooltip>
-                }
-                title="Archive this question?"
-                footer={[
-                    <Button key='cancel' onClick={this.onClose}>Cancel</Button>,
-                    <Button key='archive' warning onClick={this.onArchive}>Archive</Button>
-                ]}
-            >
-                <div className="px4 pb4">This question will be removed from any dashboards or pulses using it.</div>
-            </ModalWithTrigger>
-        )
-    }
+  render() {
+    const { onArchive, onClose } = this.props;
+    return (
+      <ArchiveModal
+        title={t`Archive this question?`}
+        message={t`This question will be removed from any dashboards or pulses using it.`}
+        onArchive={onArchive}
+        onClose={onClose}
+      />
+    );
+  }
 }
 
-export default ArchiveQuestionModal
+export default ArchiveQuestionModal;

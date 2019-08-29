@@ -1,30 +1,16 @@
-import React, { Component } from "react";
+import React from "react";
 import { connect } from "react-redux";
 
-import { getGroups } from "../selectors";
-import { loadGroups } from "../people";
-
+import Group from "metabase/entities/groups";
 import GroupsListing from "../components/GroupsListing.jsx";
+import { getGroupsWithoutMetabot } from "../selectors";
 
-const mapStateToProps = function(state, props) {
-    return {
-        groups: getGroups(state, props)
-    };
-}
-
-const mapDispatchToProps = {
-    loadGroups
-};
-
-@connect(mapStateToProps, mapDispatchToProps)
-export default class GroupsListingApp extends Component {
-    async componentWillMount() {
-        await this.props.loadGroups();
-    }
-
-    render() {
-        return (
-            <GroupsListing {...this.props} />
-        );
-    }
+@Group.loadList()
+@connect((state, props) => ({
+  groups: getGroupsWithoutMetabot(state, props),
+}))
+export default class GroupsListingApp extends React.Component {
+  render() {
+    return <GroupsListing {...this.props} />;
+  }
 }

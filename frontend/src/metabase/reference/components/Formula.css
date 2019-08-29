@@ -1,44 +1,44 @@
 :root {
-    --icon-width: calc(48px + 1rem);
+  --icon-width: calc(48px + 1rem);
 }
 
 :local(.formula) {
-    composes: bordered rounded my2 from "style";
-    background-color: #FBFCFD;
-    margin-left: var(--icon-width);
-    max-width: 550px;
-    cursor: pointer;
+  composes: bordered rounded my2 from "style";
+  background-color: var(--color-bg-light);
+  margin-left: var(--icon-width);
+  max-width: 550px;
+  cursor: pointer;
 }
 
 :local(.formulaHeader) {
-    composes: flex align-center text-brand py1 px2 from "style";
+  composes: flex align-center text-brand py1 px2 from "style";
 }
 
 :local(.formulaTitle) {
-    composes: ml2 from "style";
-    font-size: 16px;
+  composes: ml2 from "style";
+  font-size: 16px;
 }
 
 :local(.formulaDefinitionInner) {
-    composes: p2 from "style";
+  composes: p2 from "style";
 }
 
 .formulaDefinition {
-    overflow: hidden;
+  overflow: hidden;
 }
 
 .formulaDefinition-enter {
-    max-height: 0px;
+  max-height: 0px;
 }
 .formulaDefinition-enter.formulaDefinition-enter-active {
-    /* using 100% max-height breaks the transition */
-    max-height: 150px;
-    transition: max-height 300ms ease-out;
+  /* using 100% max-height breaks the transition */
+  max-height: 150px;
+  transition: max-height 300ms ease-out;
 }
 .formulaDefinition-leave {
-    max-height: 150px;
+  max-height: 150px;
 }
 .formulaDefinition-leave.formulaDefinition-leave-active {
-    max-height: 0px;
-    transition: max-height 300ms ease-out;
+  max-height: 0px;
+  transition: max-height 300ms ease-out;
 }

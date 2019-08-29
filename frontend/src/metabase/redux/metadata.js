@@ -1,439 +1,360 @@
-import {
-    handleActions,
-    combineReducers,
-    createAction,
-    createThunkAction,
-    resourceListToMap,
-    fetchData,
-    updateData,
-    handleEntities
-} from "metabase/lib/redux";
+import { createThunkAction, fetchData, updateData } from "metabase/lib/redux";
 
-import { normalize } from "normalizr";
-import { DatabaseSchema, TableSchema, FieldSchema, SegmentSchema, MetricSchema } from "metabase/schema";
-
-import { getIn, assocIn } from "icepick";
+import { getIn } from "icepick";
 import _ from "underscore";
 
-import { MetabaseApi, MetricApi, SegmentApi, RevisionsApi } from "metabase/services";
+import { getMetadata } from "metabase/selectors/metadata";
 
-const FETCH_METRICS = "metabase/metadata/FETCH_METRICS";
-export const fetchMetrics = createThunkAction(FETCH_METRICS, (reload = false) => {
+import { MetabaseApi, MetricApi, RevisionsApi } from "metabase/services";
+
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
+import Segments from "metabase/entities/segments";
+import Metrics from "metabase/entities/metrics";
+
+// NOTE: All of these actions are deprecated. Use metadata entities directly.
+
+const deprecated = message => console.warn("DEPRECATED: " + message);
+
+export const FETCH_METRICS = Metrics.actions.fetchList.toString();
+export const fetchMetrics = (reload = false) => {
+  deprecated("metabase/redux/metadata fetchMetrics");
+  return Metrics.actions.fetchList(null, { reload });
+};
+
+export const updateMetric = metric => {
+  deprecated("metabase/redux/metadata updateMetric");
+  return Metrics.actions.update(metric);
+};
+
+const UPDATE_METRIC_IMPORTANT_FIELDS =
+  "metabase/guide/UPDATE_METRIC_IMPORTANT_FIELDS";
+export const updateMetricImportantFields = createThunkAction(
+  UPDATE_METRIC_IMPORTANT_FIELDS,
+  function(metricId, importantFieldIds) {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "metrics"];
-        const existingStatePath = requestStatePath;
-        const getData = async () => {
-            const metrics = await MetricApi.list();
-            return normalize(metrics, [MetricSchema]);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
+      const requestStatePath = [
+        "reference",
+        "guide",
+        "metric_important_fields",
+        metricId,
+      ];
+      const existingStatePath = requestStatePath;
+      const dependentRequestStatePaths = [["reference", "guide"]];
+      const putData = async () => {
+        await MetricApi.update_important_fields({
+          metricId,
+          important_field_ids: importantFieldIds,
         });
-    };
-});
+      };
 
-const UPDATE_METRIC = "metabase/metadata/UPDATE_METRIC";
-export const updateMetric = createThunkAction(UPDATE_METRIC, function(metric) {
+      return await updateData({
+        dispatch,
+        getState,
+        requestStatePath,
+        existingStatePath,
+        dependentRequestStatePaths,
+        putData,
+      });
+    };
+  },
+);
+
+export const FETCH_SEGMENTS = Segments.actions.fetchList.toString();
+export const fetchSegments = (reload = false) => {
+  deprecated("metabase/redux/metadata fetchSegments");
+  return Segments.actions.fetchList(null, { reload });
+};
+
+export const updateSegment = segment => {
+  deprecated("metabase/redux/metadata updateSegment");
+  return Segments.actions.update(segment);
+};
+
+export const FETCH_DATABASES = Databases.actions.fetchList.toString();
+export const fetchDatabases = (reload = false) => {
+  deprecated("metabase/redux/metadata fetchDatabases");
+  return Databases.actions.fetchList(
+    {
+      include_tables: true,
+      include_cards: true,
+    },
+    { reload },
+  );
+};
+
+export const FETCH_REAL_DATABASES = Databases.actions.fetchList.toString();
+export const fetchRealDatabases = (reload = false) => {
+  deprecated("metabase/redux/metadata fetchRealDatabases");
+  return Databases.actions.fetchList(
+    {
+      include_tables: true,
+      include_cards: false,
+    },
+    { reload },
+  );
+};
+
+export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
+export const fetchDatabaseMetadata = (dbId, reload = false) => {
+  deprecated("metabase/redux/metadata fetchDatabaseMetadata");
+  return Databases.actions.fetchDatabaseMetadata({ id: dbId }, reload);
+};
+
+export const updateDatabase = database => {
+  deprecated("metabase/redux/metadata updateDatabase");
+  const slimDatabase = _.omit(database, "tables", "tables_lookup");
+  return database.actions.update(slimDatabase);
+};
+
+export const updateTable = table => {
+  deprecated("metabase/redux/metadata updateTable");
+  const slimTable = _.omit(
+    table,
+    "fields",
+    "fields_lookup",
+    "aggregation_options",
+    "breakout_options",
+    "metrics",
+    "segments",
+  );
+  return Tables.actions.update(slimTable);
+};
+
+export const fetchTables = (reload = false) => {
+  deprecated("metabase/redux/metadata fetchTables");
+  return Tables.actions.fetchList(null, { reload });
+};
+
+export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
+export const fetchTableMetadata = (id, reload = false) => {
+  deprecated("metabase/redux/metadata fetchTableMetadata");
+  return Tables.actions.fetchTableMetadata({ id }, { reload });
+};
+
+export const fetchField = (id, reload = false) => {
+  deprecated("metabase/redux/metadata fetchField");
+  return Fields.actions.fetch({ id }, { reload });
+};
+
+export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
+export const fetchFieldValues = (id, reload = false) => {
+  deprecated("metabase/redux/metadata fetchFieldValues");
+  return Fields.actions.fetchFieldValues({ id }, reload);
+};
+
+export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();
+export const updateFieldValues = (fieldId, fieldValuePairs) => {
+  deprecated("metabase/redux/metadata updateFieldValues");
+  return Fields.actions.updateFieldValues({ id: fieldId }, fieldValuePairs);
+};
+
+export { ADD_PARAM_VALUES } from "metabase/entities/fields";
+export const addParamValues = paramValues => {
+  deprecated("metabase/redux/metadata addParamValues");
+  return Fields.actions.addParamValues(paramValues);
+};
+
+export { ADD_FIELDS } from "metabase/entities/fields";
+export const addFields = fieldMaps => {
+  deprecated("metabase/redux/metadata addFields");
+  return Fields.actions.addFields(fieldMaps);
+};
+
+export const UPDATE_FIELD = Fields.actions.update.toString();
+export const updateField = field => {
+  deprecated("metabase/redux/metadata updateField");
+  const slimField = _.omit(field, "operators_lookup");
+  return Fields.actions.update(slimField);
+};
+
+export const DELETE_FIELD_DIMENSION = Fields.actions.deleteFieldDimension.toString();
+export const deleteFieldDimension = fieldId => {
+  deprecated("metabase/redux/metadata deleteFieldDimension");
+  return Fields.actions.deleteFieldDimension({ id: fieldId });
+};
+
+export const UPDATE_FIELD_DIMENSION = Fields.actions.updateFieldDimension.toString();
+export const updateFieldDimension = (fieldId, dimension) => {
+  deprecated("metabase/redux/metadata updateFieldDimension");
+  return Fields.actions.updateFieldDimension({ id: fieldId }, dimension);
+};
+
+export const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
+export const fetchRevisions = createThunkAction(
+  FETCH_REVISIONS,
+  (type, id, reload = false) => {
     return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "metrics", metric.id];
-        const existingStatePath = ["metadata", "metrics"];
-        const dependentRequestStatePaths = [['metadata', 'revisions', 'metric', metric.id]];
-        const putData = async () => {
-            const updatedMetric = await MetricApi.update(metric);
-            return normalize(updatedMetric, MetricSchema);
+      const requestStatePath = ["revisions", type, id];
+      const existingStatePath = ["revisions"];
+      const getData = async () => {
+        return {
+          type,
+          id,
+          revisions: await RevisionsApi.get({ id, entity: type }),
         };
+      };
 
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            dependentRequestStatePaths,
-            putData
-        });
+      return await fetchData({
+        dispatch,
+        getState,
+        requestStatePath,
+        existingStatePath,
+        getData,
+        reload,
+      });
     };
-});
-
-const UPDATE_METRIC_IMPORTANT_FIELDS = "metabase/guide/UPDATE_METRIC_IMPORTANT_FIELDS";
-export const updateMetricImportantFields = createThunkAction(UPDATE_METRIC_IMPORTANT_FIELDS, function(metricId, importantFieldIds) {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["reference", "guide", "metric_important_fields", metricId];
-        const existingStatePath = requestStatePath;
-        const dependentRequestStatePaths = [['reference', 'guide']];
-        const putData = async () => {
-            await MetricApi.update_important_fields({ metricId, important_field_ids: importantFieldIds });
-        };
-
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            dependentRequestStatePaths,
-            putData
-        });
-    };
-});
-
-
-const FETCH_SEGMENTS = "metabase/metadata/FETCH_SEGMENTS";
-export const fetchSegments = createThunkAction(FETCH_SEGMENTS, (reload = false) => {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "segments"];
-        const existingStatePath = requestStatePath;
-        const getData = async () => {
-            const segments = await SegmentApi.list();
-            return normalize(segments, [SegmentSchema]);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-const UPDATE_SEGMENT = "metabase/metadata/UPDATE_SEGMENT";
-export const updateSegment = createThunkAction(UPDATE_SEGMENT, function(segment) {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "segments", segment.id];
-        const existingStatePath = ["metadata", "segments"];
-        const dependentRequestStatePaths = [['metadata', 'revisions', 'segment', segment.id]];
-        const putData = async () => {
-            const updatedSegment = await SegmentApi.update(segment);
-            return normalize(updatedSegment, SegmentSchema);
-        };
-
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            dependentRequestStatePaths,
-            putData
-        });
-    };
-});
-
-const FETCH_DATABASES = "metabase/metadata/FETCH_DATABASES";
-export const fetchDatabases = createThunkAction(FETCH_DATABASES, (reload = false) => {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "databases"];
-        const existingStatePath = requestStatePath;
-        const getData = async () => {
-            const databases = await MetabaseApi.db_list_with_tables();
-            return normalize(databases, [DatabaseSchema]);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-const FETCH_DATABASE_METADATA = "metabase/metadata/FETCH_DATABASE_METADATA";
-export const fetchDatabaseMetadata = createThunkAction(FETCH_DATABASE_METADATA, function(dbId, reload = false) {
-    return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "databases", dbId];
-        const existingStatePath = ["metadata"];
-        const getData = async () => {
-            const databaseMetadata = await MetabaseApi.db_metadata({ dbId });
-            return normalize(databaseMetadata, DatabaseSchema);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-const UPDATE_DATABASE = "metabase/metadata/UPDATE_DATABASE";
-export const updateDatabase = createThunkAction(UPDATE_DATABASE, function(database) {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "databases", database.id];
-        const existingStatePath = ["metadata", "databases"];
-        const putData = async () => {
-            // make sure we don't send all the computed metadata
-            // there may be more that I'm missing?
-            const slimDatabase = _.omit(database, "tables", "tables_lookup");
-            const updatedDatabase = await MetabaseApi.db_update(slimDatabase);
-            return normalize(updatedDatabase, DatabaseSchema);
-        };
-
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            putData
-        });
-    };
-});
-
-const UPDATE_TABLE = "metabase/metadata/UPDATE_TABLE";
-export const updateTable = createThunkAction(UPDATE_TABLE, function(table) {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "tables", table.id];
-        const existingStatePath = ["metadata", "tables"];
-        const putData = async () => {
-            // make sure we don't send all the computed metadata
-            const slimTable = _.omit(table, "fields", "fields_lookup", "aggregation_options", "breakout_options", "metrics", "segments");
-
-            const updatedTable = await MetabaseApi.table_update(slimTable);
-            return normalize(updatedTable, TableSchema);
-        };
-
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            putData
-        });
-    };
-});
-
-const FETCH_TABLES = "metabase/metadata/FETCH_TABLES";
-export const fetchTables = createThunkAction(FETCH_TABLES, (reload = false) => {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "tables"];
-        const existingStatePath = requestStatePath;
-        const getData = async () => {
-            const tables = await MetabaseApi.table_list();
-            return normalize(tables, [TableSchema]);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-const FETCH_TABLE_METADATA = "metabase/metadata/FETCH_TABLE_METADATA";
-export const fetchTableMetadata = createThunkAction(FETCH_TABLE_METADATA, function(tableId, reload = false) {
-    return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "tables", tableId];
-        const existingStatePath = ["metadata"];
-        const getData = async () => {
-            const tableMetadata = await MetabaseApi.table_query_metadata({ tableId });
-            const fkTableIds = _.chain(tableMetadata.fields).filter(field => field.target).map(field => field.target.table_id).uniq().value();
-            const fkTables = await Promise.all(fkTableIds.map(tableId => MetabaseApi.table_query_metadata({ tableId })));
-            return normalize([tableMetadata].concat(fkTables), [TableSchema]);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-const FETCH_FIELD_VALUES = "metabase/metadata/FETCH_FIELD_VALUES";
-export const fetchFieldValues = createThunkAction(FETCH_FIELD_VALUES, function(fieldId, reload) {
-    return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "fields", fieldId];
-        const existingStatePath = requestStatePath;
-        const getData = () => MetabaseApi.field_values({ fieldId })
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
-
-export const ADD_PARAM_VALUES = "metabase/metadata/ADD_PARAM_VALUES";
-export const addParamValues = createAction(ADD_PARAM_VALUES);
-
-const UPDATE_FIELD = "metabase/metadata/UPDATE_FIELD";
-export const updateField = createThunkAction(UPDATE_FIELD, function(field) {
-    return async function(dispatch, getState) {
-        const requestStatePath = ["metadata", "fields", field.id];
-        const existingStatePath = ["metadata", "fields"];
-        const putData = async () => {
-            // make sure we don't send all the computed metadata
-            // there may be more that I'm missing?
-            const slimField = _.omit(field, "operators_lookup");
-
-            const updatedField = await MetabaseApi.field_update(slimField);
-            return normalize(updatedField, FieldSchema);
-        };
-
-        return await updateData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            putData
-        });
-    };
-});
-
-const FETCH_REVISIONS = "metabase/metadata/FETCH_REVISIONS";
-export const fetchRevisions = createThunkAction(FETCH_REVISIONS, (type, id, reload = false) => {
-    return async (dispatch, getState) => {
-        const requestStatePath = ["metadata", "revisions", type, id];
-        const existingStatePath = ["metadata", "revisions"];
-        const getData = async () => {
-            const revisions = await RevisionsApi.get({id, entity: type});
-            const revisionMap = resourceListToMap(revisions);
-
-            const existingRevisions = getIn(getState(), existingStatePath);
-            return assocIn(existingRevisions, [type, id], revisionMap);
-        };
-
-        return await fetchData({
-            dispatch,
-            getState,
-            requestStatePath,
-            existingStatePath,
-            getData,
-            reload
-        });
-    };
-});
+  },
+);
 
 // for fetches with data dependencies in /reference
-const FETCH_METRIC_TABLE = "metabase/metadata/FETCH_METRIC_TABLE";
-export const fetchMetricTable = createThunkAction(FETCH_METRIC_TABLE, (metricId, reload = false) => {
+export const FETCH_METRIC_TABLE = "metabase/metadata/FETCH_METRIC_TABLE";
+export const fetchMetricTable = createThunkAction(
+  FETCH_METRIC_TABLE,
+  (metricId, reload = false) => {
     return async (dispatch, getState) => {
-        await dispatch(fetchMetrics()); // FIXME: fetchMetric?
-        const metric = getIn(getState(), ['metadata', 'metrics', metricId]);
-        const tableId = metric.table_id;
-        await dispatch(fetchTableMetadata(tableId));
+      await dispatch(fetchMetrics()); // FIXME: fetchMetric?
+      const metric = getIn(getState(), ["entities", "metrics", metricId]);
+      const tableId = metric.table_id;
+      await dispatch(fetchTableMetadata(tableId));
     };
-});
+  },
+);
 
-const FETCH_METRIC_REVISIONS = "metabase/metadata/FETCH_METRIC_REVISIONS";
-export const fetchMetricRevisions = createThunkAction(FETCH_METRIC_REVISIONS, (metricId, reload = false) => {
+export const FETCH_METRIC_REVISIONS =
+  "metabase/metadata/FETCH_METRIC_REVISIONS";
+export const fetchMetricRevisions = createThunkAction(
+  FETCH_METRIC_REVISIONS,
+  (metricId, reload = false) => {
     return async (dispatch, getState) => {
-        await Promise.all([
-            dispatch(fetchRevisions('metric', metricId)),
-            dispatch(fetchMetrics())
-        ]);
-        const metric = getIn(getState(), ['metadata', 'metrics', metricId]);
-        const tableId = metric.table_id;
-        await dispatch(fetchTableMetadata(tableId));
+      await Promise.all([
+        dispatch(fetchRevisions("metric", metricId)),
+        dispatch(fetchMetrics()),
+      ]);
+      const metric = getIn(getState(), ["entities", "metrics", metricId]);
+      const tableId = metric.table_id;
+      await dispatch(fetchTableMetadata(tableId));
     };
-});
+  },
+);
 
-const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
-export const fetchSegmentFields = createThunkAction(FETCH_SEGMENT_FIELDS, (segmentId, reload = false) => {
+export const FETCH_SEGMENT_FIELDS = "metabase/metadata/FETCH_SEGMENT_FIELDS";
+export const fetchSegmentFields = createThunkAction(
+  FETCH_SEGMENT_FIELDS,
+  (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        await dispatch(fetchSegments()); // FIXME: fetchSegment?
-        const segment = getIn(getState(), ['metadata', 'segments', segmentId]);
-        const tableId = segment.table_id;
-        await dispatch(fetchTableMetadata(tableId));
-        const table = getIn(getState(), ['metadata', 'tables', tableId]);
-        const databaseId = table.db_id;
-        await dispatch(fetchDatabaseMetadata(databaseId));
+      await dispatch(fetchSegments()); // FIXME: fetchSegment?
+      const segment = getIn(getState(), ["entities", "segments", segmentId]);
+      const tableId = segment.table_id;
+      await dispatch(fetchTableMetadata(tableId));
+      const table = getIn(getState(), ["entities", "tables", tableId]);
+      const databaseId = table.db_id;
+      await dispatch(fetchDatabaseMetadata(databaseId));
     };
-});
+  },
+);
 
-const FETCH_SEGMENT_TABLE = "metabase/metadata/FETCH_SEGMENT_TABLE";
-export const fetchSegmentTable = createThunkAction(FETCH_SEGMENT_TABLE, (segmentId, reload = false) => {
+export const FETCH_SEGMENT_TABLE = "metabase/metadata/FETCH_SEGMENT_TABLE";
+export const fetchSegmentTable = createThunkAction(
+  FETCH_SEGMENT_TABLE,
+  (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        await dispatch(fetchSegments()); // FIXME: fetchSegment?
-        const segment = getIn(getState(), ['metadata', 'segments', segmentId]);
-        const tableId = segment.table_id;
-        await dispatch(fetchTableMetadata(tableId));
+      await dispatch(fetchSegments()); // FIXME: fetchSegment?
+      const segment = getIn(getState(), ["entities", "segments", segmentId]);
+      const tableId = segment.table_id;
+      await dispatch(fetchTableMetadata(tableId));
     };
-});
+  },
+);
 
-const FETCH_SEGMENT_REVISIONS = "metabase/metadata/FETCH_SEGMENT_REVISIONS";
-export const fetchSegmentRevisions = createThunkAction(FETCH_SEGMENT_REVISIONS, (segmentId, reload = false) => {
+export const FETCH_SEGMENT_REVISIONS =
+  "metabase/metadata/FETCH_SEGMENT_REVISIONS";
+export const fetchSegmentRevisions = createThunkAction(
+  FETCH_SEGMENT_REVISIONS,
+  (segmentId, reload = false) => {
     return async (dispatch, getState) => {
-        await Promise.all([
-            dispatch(fetchRevisions('segment', segmentId)),
-            dispatch(fetchSegments())
-        ]);
-        const segment = getIn(getState(), ['metadata', 'segments', segmentId]);
-        const tableId = segment.table_id;
-        await dispatch(fetchTableMetadata(tableId));
+      await Promise.all([
+        dispatch(fetchRevisions("segment", segmentId)),
+        dispatch(fetchSegments()),
+      ]);
+      const segment = getIn(getState(), ["entities", "segments", segmentId]);
+      const tableId = segment.table_id;
+      await dispatch(fetchTableMetadata(tableId));
     };
-});
+  },
+);
 
-const FETCH_DATABASES_WITH_METADATA = "metabase/metadata/FETCH_DATABASES_WITH_METADATA";
-export const fetchDatabasesWithMetadata = createThunkAction(FETCH_DATABASES_WITH_METADATA, (reload = false) => {
+const FETCH_DATABASES_WITH_METADATA =
+  "metabase/metadata/FETCH_DATABASES_WITH_METADATA";
+export const fetchDatabasesWithMetadata = createThunkAction(
+  FETCH_DATABASES_WITH_METADATA,
+  (reload = false) => {
     return async (dispatch, getState) => {
-        await dispatch(fetchDatabases());
-        const databases = getIn(getState(), ['metadata', 'databases']);
-        await Promise.all(Object.values(databases).map(database =>
-            dispatch(fetchDatabaseMetadata(database.id))
-        ));
+      await dispatch(fetchDatabases());
+      const databases = getIn(getState(), ["entities", "databases"]);
+      await Promise.all(
+        Object.values(databases).map(database =>
+          dispatch(fetchDatabaseMetadata(database.id)),
+        ),
+      );
     };
-});
+  },
+);
 
-const databases = handleActions({
-}, {});
+export const addRemappings = (fieldId, remappings) => {
+  deprecated("metabase/redux/metadata addRemappings");
+  return Fields.actions.addRemappings({ id: fieldId }, remappings);
+};
 
-const databasesList = handleActions({
-    [FETCH_DATABASES]: { next: (state, { payload }) => (payload && payload.result) || state }
-}, []);
+const FETCH_REMAPPING = "metabase/metadata/FETCH_REMAPPING";
+export const fetchRemapping = createThunkAction(
+  FETCH_REMAPPING,
+  (value, fieldId) => async (dispatch, getState) => {
+    const metadata = getMetadata(getState());
+    const field = metadata.field(fieldId);
+    const remappedField = field && field.remappedField();
+    if (field && remappedField && !field.hasRemappedValue(value)) {
+      const fieldId = (field.target || field).id;
+      const remappedFieldId = remappedField.id;
+      fetchData({
+        dispatch,
+        getState,
+        requestStatePath: [
+          "entities",
+          "remapping",
+          fieldId,
+          JSON.stringify(value),
+        ],
+        getData: async () => {
+          const remapping = await MetabaseApi.field_remapping({
+            value,
+            fieldId,
+            remappedFieldId,
+          });
+          if (remapping) {
+            // FIXME: should this be field.id (potentially the FK) or fieldId (always the PK)?
+            dispatch(addRemappings(field.id, [remapping]));
+          }
+        },
+      });
+    }
+  },
+);
 
-const tables = handleActions({
-}, {});
-
-const fields = handleActions({
-    [FETCH_FIELD_VALUES]: { next: (state, { payload: fieldValues }) =>
-        fieldValues ? assocIn(state, [fieldValues.field_id, "values"], fieldValues) : state },
-    [ADD_PARAM_VALUES]: { next: (state, { payload: paramValues }) => {
-        for (const fieldValues of Object.values(paramValues)) {
-            state = assocIn(state, [fieldValues.field_id, "values"], fieldValues);
-        }
-        return state;
-    }}
-}, {});
-
-const metrics = handleActions({
-}, {});
-
-const segments = handleActions({
-}, {});
-
-const revisions = handleActions({
-    [FETCH_REVISIONS]: { next: (state, { payload }) => payload }
-}, {});
-
-export default combineReducers({
-    metrics:   handleEntities(/^metabase\/metadata\//, "metrics", metrics),
-    segments:  handleEntities(/^metabase\/metadata\//, "segments", segments),
-    databases: handleEntities(/^metabase\/metadata\//, "databases", databases),
-    tables:    handleEntities(/^metabase\/metadata\//, "tables", tables),
-    fields:    handleEntities(/^metabase\/metadata\//, "fields", fields),
-    revisions,
-    databasesList,
-});
+const FETCH_REAL_DATABASES_WITH_METADATA =
+  "metabase/metadata/FETCH_REAL_DATABASES_WITH_METADATA";
+export const fetchRealDatabasesWithMetadata = createThunkAction(
+  FETCH_REAL_DATABASES_WITH_METADATA,
+  (reload = false) => {
+    return async (dispatch, getState) => {
+      await dispatch(fetchRealDatabases());
+      const databases = getIn(getState(), ["entities", "databases"]);
+      await Promise.all(
+        Object.values(databases).map(database =>
+          dispatch(fetchDatabaseMetadata(database.id)),
+        ),
+      );
+    };
+  },
+);

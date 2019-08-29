@@ -1,6 +1,7 @@
 (ns metabase.models.common)
 
-(def ^:const timezones
+;; TODO - why is this here? Doesn't seem like the right place for it
+(def timezones
   "The different timezones supported by Metabase.
    Presented as options for the `report-timezone` Setting in the admin panel."
   ["Africa/Algiers"
@@ -20,6 +21,7 @@
    "America/Mexico_City"
    "America/Montevideo"
    "America/Santiago"
+   "America/Sao_Paulo"
    "America/Tijuana"
    "Asia/Amman"
    "Asia/Baghdad"
@@ -69,6 +71,7 @@
    "Europe/Berlin"
    "Europe/Brussels"
    "Europe/Helsinki"
+   "Europe/Istanbul"
    "Europe/London"
    "Europe/Minsk"
    "Europe/Moscow"

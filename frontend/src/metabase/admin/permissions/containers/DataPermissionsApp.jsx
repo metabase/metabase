@@ -1,23 +1,30 @@
 import React, { Component } from "react";
-import { connect } from "react-redux"
+import { connect } from "react-redux";
+
+import fitViewport from "metabase/hoc/FitViewPort";
 
 import PermissionsApp from "./PermissionsApp.jsx";
 
 import { PermissionsApi } from "metabase/services";
-import { fetchDatabases } from "metabase/redux/metadata";
+import { fetchRealDatabases } from "metabase/redux/metadata";
 
-@connect(null, { fetchDatabases })
+@connect(
+  null,
+  { fetchRealDatabases },
+)
+@fitViewport
 export default class DataPermissionsApp extends Component {
-    componentWillMount() {
-        this.props.fetchDatabases();
-    }
-    render() {
-        return (
-            <PermissionsApp
-                {...this.props}
-                load={PermissionsApi.graph}
-                save={PermissionsApi.updateGraph}
-            />
-        );
-    }
+  componentWillMount() {
+    this.props.fetchRealDatabases(true);
+  }
+  render() {
+    return (
+      <PermissionsApp
+        {...this.props}
+        load={PermissionsApi.graph}
+        save={PermissionsApi.updateGraph}
+        fitClassNames={this.props.fitClassNames + " flex-column"}
+      />
+    );
+  }
 }

@@ -1,216 +1,108 @@
+/* @flow weak */
+
 import React, { Component } from "react";
-import PropTypes from "prop-types";
 
-import AccordianList from "metabase/components/AccordianList.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import TimeGroupingPopover from "./TimeGroupingPopover.jsx";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
+import DimensionList from "./DimensionList";
 
-import { isDate, getIconForField } from 'metabase/lib/schema_metadata';
-import { parseFieldBucketing, parseFieldTargetId } from "metabase/lib/query_time";
-import { stripId, singularize } from "metabase/lib/formatting";
-import Query from "metabase/lib/query";
+import Dimension from "metabase-lib/lib/Dimension";
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
-import _ from "underscore";
+import type { StructuredQuery, ConcreteField } from "metabase/meta/types/Query";
+import type Table from "metabase-lib/lib/metadata/Table";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
+// import type { Section } from "metabase/components/AccordionList";
+export type AccordionListItem = {};
 
+export type AccordionListSection = {
+  name: ?string,
+  items: AccordionListItem[],
+};
+
+type Props = {
+  field: ?ConcreteField,
+  onFieldChange: (field: ConcreteField) => void,
+  fieldOptions: any,
+
+  // HACK: for segments
+  onFilterChange?: (filter: any) => void,
+
+  table?: Table,
+  // query should be included otherwise FieldList may not display field-literal display name correctly
+  query?: StructuredQuery,
+  metadata?: Metadata,
+
+  // AccordionList props:
+  className?: string,
+  maxHeight?: number,
+  width?: number,
+  alwaysExpanded?: boolean,
+
+  // DimensionList props:
+  enableSubDimensions?: boolean,
+  useOriginalDimension?: boolean,
+};
+
+type State = {
+  sections: AccordionListSection[],
+};
+
+// DEPRECATED: use DimensionList directly
 export default class FieldList extends Component {
-    constructor(props, context) {
-        super(props, context);
+  props: Props;
+  state: State = {
+    sections: [],
+  };
 
-        _.bindAll(this, "onChange", "itemIsSelected", "renderItemExtra", "renderItemIcon", "renderSectionIcon", "getItemClasses");
+  componentWillMount() {
+    this._updateSections(this.props);
+  }
+  componentWillReceiveProps(nextProps) {
+    this._updateSections(nextProps);
+  }
+  _updateSections({
+    fieldOptions = { dimensions: [], fks: [] },
+    segmentOptions = [],
+    table = null,
+  } = {}) {
+    const sections = new DimensionOptions(fieldOptions).sections({
+      extraItems: segmentOptions.map(segment => ({
+        filter: ["segment", segment.id],
+        name: segment.name,
+        icon: "star_outline",
+        className: "List-item--segment",
+      })),
+    });
+    this.setState({ sections });
+  }
+
+  handleChangeDimension = (dimension, item) => {
+    this.props.onFieldChange(dimension.mbql(), item);
+  };
+
+  handleChange = item => {
+    if (item.filter && this.props.onFilterChange) {
+      this.props.onFilterChange(item.filter);
     }
+  };
 
-    static propTypes = {
-        field: PropTypes.oneOfType([PropTypes.number, PropTypes.array]),
-        fieldOptions: PropTypes.object.isRequired,
-        customFieldOptions: PropTypes.object,
-        segmentOptions: PropTypes.array,
-        tableName: PropTypes.string,
-        onFieldChange: PropTypes.func.isRequired,
-        onFilterChange: PropTypes.func,
-        enableTimeGrouping: PropTypes.bool,
-        tableMetadata: PropTypes.object.isRequired
-    };
-
-    componentWillMount() {
-        this.componentWillReceiveProps(this.props);
-    }
-
-    componentWillReceiveProps(newProps) {
-        let { tableMetadata, field, fieldOptions, customFieldOptions, segmentOptions } = newProps;
-        let tableName = tableMetadata.display_name;
-
-        let specialOptions = [];
-        if (segmentOptions) {
-            specialOptions = segmentOptions.map(segment => ({
-                name: segment.name,
-                value: ["SEGMENT", segment.id],
-                segment: segment
-            }));
-        }
-
-        if (customFieldOptions) {
-            specialOptions = specialOptions.concat(Object.keys(customFieldOptions).map(name => ({
-                name: name,
-                value: ["expression", name],
-                customField: customFieldOptions[name]
-            })));
-        }
-
-        let mainSection = {
-            name: singularize(tableName),
-            items: specialOptions.concat(fieldOptions.fields.map(field => ({
-                name: Query.getFieldPathName(field.id, tableMetadata),
-                value: typeof field.id === "number" ? ["field-id", field.id] : field.id,
-                field: field
-            })))
-        };
-
-        let fkSections = fieldOptions.fks.map(fk => ({
-            name: stripId(fk.field.display_name),
-            items: fk.fields.map(field => {
-                const value = ["fk->", fk.field.id, field.id];
-                const target = Query.getFieldTarget(value, tableMetadata);
-                return {
-                    name: Query.getFieldPathName(target.field.id, target.table),
-                    value: value,
-                    field: field
-                };
-            })
-        }));
-
-        let sections = []
-        if (mainSection.items.length > 0) {
-            sections.push(mainSection);
-        }
-        sections.push(...fkSections);
-
-        let fieldTarget = parseFieldTargetId(field);
-
-        this.setState({ sections, fieldTarget });
-    }
-
-    itemIsSelected(item) {
-        let { fieldTarget } = this.state;
-        if (typeof fieldTarget === "number") {
-            fieldTarget = ["field-id", fieldTarget];
-        }
-        return _.isEqual(fieldTarget, item.value);
-    }
-
-    renderItemExtra(item) {
-        let { field, enableTimeGrouping } = this.props;
-
-        return (
-            <div className="Field-extra flex align-center">
-                { item.segment &&
-                    this.renderSegmentTooltip(item.segment)
-                }
-                { item.customField &&
-                    <span className="h5 text-grey-2 px1">Custom</span>
-                }
-                { item.field && enableTimeGrouping && isDate(item.field) &&
-                    <PopoverWithTrigger
-                        id="TimeGroupingPopover"
-                        className={this.props.className}
-                        hasArrow={false}
-                        triggerElement={this.renderTimeGroupingTrigger(field)}
-                        tetherOptions={{
-                            attachment: 'top left',
-                            targetAttachment: 'top right',
-                            targetOffset: '0 0',
-                            constraints: [{ to: 'window', attachment: 'together', pin: ['left', 'right']}]
-                        }}
-                    >
-                        <TimeGroupingPopover
-                            field={field || ["datetime-field", item.value, "as", null]}
-                            onFieldChange={this.props.onFieldChange}
-                            groupingOptions={item.field.grouping_options}
-                        />
-                    </PopoverWithTrigger>
-                }
-            </div>
-        );
-    }
-
-    renderItemIcon(item) {
-        let name;
-        if (item.segment) {
-            name = "staroutline";
-        } else if (item.field) {
-            name = getIconForField(item.field);
-        } else if (item.customField) {
-            // TODO: need to make this better
-            name = 'int';
-        }
-        return <Icon name={name || 'unknown'} size={18} />;
-    }
-
-    renderTimeGroupingTrigger(field) {
-        return (
-            <div className="FieldList-grouping-trigger flex align-center p1 cursor-pointer">
-                <h4 className="mr1">by {parseFieldBucketing(field, "day").split("-").join(" ")}</h4>
-                <Icon name="chevronright" size={16} />
-            </div>
-        );
-    }
-
-    renderSegmentTooltip(segment) {
-        let { tableMetadata } = this.props;
-        return (
-            <div className="p1">
-                <Tooltip tooltip={<QueryDefinitionTooltip object={segment} tableMetadata={tableMetadata} />}>
-                    <span className="QuestionTooltipTarget" />
-                </Tooltip>
-            </div>
-        );
-    }
-
-    getItemClasses(item, itemIndex) {
-        if (item.segment) {
-            return "List-item--segment";
-        } else {
-            return null;
-        }
-    }
-
-    renderSectionIcon(section, sectionIndex) {
-        if (sectionIndex > 0) {
-            return <Icon name="connections" size={18} />
-        } else {
-            return <Icon name="table2" size={18} />;
-        }
-    }
-
-    onChange(item) {
-        if (item.segment) {
-            this.props.onFilterChange(item.value);
-        } else if (this.itemIsSelected(item)) {
-            // ensure if we select the same item we don't reset datetime-field's unit
-            this.props.onFieldChange(this.props.field);
-        }  else if (this.props.enableTimeGrouping && isDate(item.field)) {
-            this.props.onFieldChange(["datetime-field", item.value, "as", "day"]);
-        } else {
-            this.props.onFieldChange(item.value);
-        }
-    }
-
-    render() {
-        return (
-            <AccordianList
-                className={this.props.className}
-                sections={this.state.sections}
-                onChange={this.onChange}
-                itemIsSelected={this.itemIsSelected}
-                renderSectionIcon={this.renderSectionIcon}
-                renderItemExtra={this.renderItemExtra}
-                renderItemIcon={this.renderItemIcon}
-                getItemClasses={this.getItemClasses}
-                alwaysExpanded={this.props.alwaysExpanded}
-            />
-        )
-    }
+  render() {
+    const { field, metadata, query } = this.props;
+    return (
+      <DimensionList
+        sections={this.state.sections}
+        dimension={field && Dimension.parseMBQL(field, metadata, query)}
+        onChangeDimension={this.handleChangeDimension}
+        onChange={this.handleChange}
+        // forward AccordionList props
+        className={this.props.className}
+        maxHeight={this.props.maxHeight}
+        width={this.props.width}
+        alwaysExpanded={this.props.alwaysExpanded}
+        // forward DimensionList props
+        useOriginalDimension={this.props.useOriginalDimension}
+        enableSubDimensions={this.props.enableSubDimensions}
+      />
+    );
+  }
 }

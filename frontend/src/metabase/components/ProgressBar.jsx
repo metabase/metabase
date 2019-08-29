@@ -1,20 +1,65 @@
+/* @flow */
 import React, { Component } from "react";
-import PropTypes from "prop-types";
+import styled from "styled-components";
+
+import colors from "metabase/lib/colors";
+
+type Props = {
+  percentage: number,
+  animated: boolean,
+  color: string,
+  height: number,
+};
+
+const ProgressWrapper = styled.div`
+  position: relative;
+  border: 1px solid ${props => props.color};
+  height: 10px;
+  borderradius: 99px;
+`;
+
+const Progress = styled.div`
+      overflow: hidden;
+      background-color: ${props => props.color};
+      position: relative;
+      height: 100%;
+      top: 0;
+      left: 0;
+      border-radius: inherit;
+      border-top-left-radius: 0;
+      borderBottomLeftRadius: 0;
+      width: ${props => props.width}%;
+      ":before": {
+        display: ${props => (props.animated ? "block" : "none")};
+        position: absolute,
+        content: "";
+        left: 0;
+        width: ${props => props.width / 4}%;
+        height: 100%;
+        background-color: ${colors["bg-black"]};
+        animation: ${props =>
+          props.animated ? "progress-bar 1.5s linear infinite" : "none"};
+      },
+`;
 
 export default class ProgressBar extends Component {
-    static propTypes = {
-        percentage: PropTypes.number.isRequired
-    };
+  props: Props;
 
-    static defaultProps = {
-        className: "ProgressBar"
-    };
+  static defaultProps = {
+    animated: false,
+    color: colors["brand"],
+    height: 10,
+  };
 
-    render() {
-        return (
-            <div className={this.props.className}>
-                <div className="ProgressBar-progress" style={{"width": (this.props.percentage * 100) + "%"}}></div>
-            </div>
-        );
-    }
+  render() {
+    const { percentage, animated, color } = this.props;
+
+    const width = percentage * 100;
+
+    return (
+      <ProgressWrapper color={color}>
+        <Progress width={width} animated={animated} />
+      </ProgressWrapper>
+    );
+  }
 }

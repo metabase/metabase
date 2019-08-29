@@ -1,22 +1,32 @@
 import React from "react";
-import { Link } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
+import Badge from "metabase/components/Badge";
 
-import Color from "color";
-import cx from "classnames";
+import Collection from "metabase/entities/collections";
 
-const CollectionBadge = ({ className, collection }) =>
-    <Link
-        to={Urls.collection(collection)}
-        className={cx(className, "flex align-center px1 rounded mx1")}
-        style={{
-            fontSize: 14,
-            color: Color(collection.color).darken(0.1).hex(),
-            backgroundColor: Color(collection.color).lighten(0.4).hex()
-        }}
-    >
-        {collection.name}
-    </Link>
+@Collection.load({
+  id: (state, props) => props.collectionId || "root",
+  wrapped: true,
+  loadingAndErrorWrapper: false,
+  properties: ["name"],
+})
+class CollectionBadge extends React.Component {
+  render() {
+    const { collection, analyticsContext, ...props } = this.props;
+    if (!collection) {
+      return null;
+    }
+    return (
+      <Badge
+        to={collection.getUrl()}
+        icon={collection.getIcon()}
+        data-metabase-event={`${analyticsContext};Collection Badge Click`}
+        {...props}
+      >
+        {collection.getName()}
+      </Badge>
+    );
+  }
+}
 
 export default CollectionBadge;

@@ -1,23 +1,38 @@
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import PermissionsEditor from "../components/PermissionsEditor.jsx";
 
-import { getDatabasesPermissionsGrid, getIsDirty, getSaveError, getDiff } from "../selectors";
-import { updatePermission, savePermissions, loadPermissions } from "../permissions"
+import {
+  getDatabasesPermissionsGrid,
+  getIsDirty,
+  getSaveError,
+  getDiff,
+} from "../selectors";
+import {
+  updatePermission,
+  savePermissions,
+  loadPermissions,
+} from "../permissions";
 
 const mapStateToProps = (state, props) => {
-    return {
-        grid: getDatabasesPermissionsGrid(state, props),
-        isDirty: getIsDirty(state, props),
-        saveError: getSaveError(state, props),
-        diff: getDiff(state, props)
-    }
-}
-
-const mapDispatchToProps = {
-    onUpdatePermission: updatePermission,
-    onSave: savePermissions,
-    onCancel: loadPermissions,
+  return {
+    grid: getDatabasesPermissionsGrid(state, props),
+    isDirty: getIsDirty(state, props),
+    saveError: getSaveError(state, props),
+    diff: getDiff(state, props),
+    tab: "databases",
+  };
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
+const mapDispatchToProps = {
+  onUpdatePermission: updatePermission,
+  onSave: savePermissions,
+  onCancel: loadPermissions,
+  onChangeTab: tab => push(`/admin/permissions/${tab}`),
+};
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(PermissionsEditor);

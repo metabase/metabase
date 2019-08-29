@@ -1,8 +1,7 @@
 (ns metabase.routes
-  (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [compojure
+  "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
+   how these work. `/api/` routes are in `metabase.api.routes`."
+  (:require [compojure
              [core :refer [context defroutes GET]]
              [route :as route]]
             [metabase
@@ -12,56 +11,37 @@
              [dataset :as dataset-api]
              [routes :as api]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.util.embed :as embed]
-            [ring.util.response :as resp]
-            [stencil.core :as stencil]))
+            [metabase.routes.index :as index]
+            [ring.util.response :as resp]))
 
-(defn- base-href []
-  (str (.getPath (io/as-url (public-settings/site-url))) "/"))
+(defn- redirect-including-query-string
+  "Like `resp/redirect`, but passes along query string URL params as well. This is important because the public and
+   embedding routes below pass query params (such as template tags) as part of the URL."
+  [url]
+  (fn [{:keys [query-string]} respond _]
+    (respond (resp/redirect (str url "?" query-string)))))
 
-(defn- escape-script [s]
-  ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
-  ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
-  (str/replace s #"</script" "</scr\\\\ipt"))
 
-(defn- load-file-at-path [path]
-  (slurp (or (io/resource path)
-             (throw (Exception. (str "Cannot find '" path "'. Did you remember to build the Metabase frontend?"))))))
-
-(defn- load-template [path variables]
-  (stencil/render-string (load-file-at-path path) variables))
-
-(defn- entrypoint [entry embeddable? {:keys [uri]}]
-  (-> (if (init-status/complete?)
-        (load-template (str "frontend_client/" entry ".html")
-                       {:bootstrap_json (escape-script (json/generate-string (public-settings/public-settings)))
-                        :uri            (escape-script (json/generate-string uri))
-                        :base_href      (escape-script (json/generate-string (base-href)))
-                        :embed_code     (when embeddable? (embed/head uri))})
-        (load-file-at-path "frontend_client/init.html"))
-      resp/response
-      (resp/content-type "text/html; charset=utf-8")))
-
-(def ^:private index  (partial entrypoint "index"  (not :embeddable)))
-(def ^:private public (partial entrypoint "public" :embeddable))
-(def ^:private embed  (partial entrypoint "embed"  :embeddable))
-
+;; /public routes. /public/question/:uuid.:export-format redirects to /api/public/card/:uuid/query/:export-format
 (defroutes ^:private public-routes
   (GET ["/question/:uuid.:export-format", :uuid u/uuid-regex, :export-format dataset-api/export-format-regex]
        [uuid export-format]
-       (resp/redirect (format "/api/public/card/%s/query/%s" uuid export-format)))
-  (GET "*" [] public))
+       (redirect-including-query-string (format "%s/api/public/card/%s/query/%s" (public-settings/site-url) uuid export-format)))
+  (GET "*" [] index/public))
 
+
+;; /embed routes. /embed/question/:token.:export-format redirects to /api/public/card/:token/query/:export-format
 (defroutes ^:private embed-routes
   (GET ["/question/:token.:export-format", :export-format dataset-api/export-format-regex]
        [token export-format]
-       (resp/redirect (format "/api/embed/card/%s/query/%s" token export-format)))
-  (GET "*" [] embed))
+       (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
+  (GET "*" [] index/embed))
+
 
 ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
 (defroutes ^{:doc "Top-level ring routes for Metabase."} routes
   ;; ^/$ -> index.html
-  (GET "/" [] index)
+  (GET "/" [] index/index)
   (GET "/favicon.ico" [] (resp/resource-response "frontend_client/favicon.ico"))
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" [] (if (init-status/complete?)
@@ -69,7 +49,8 @@
                           {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
-                       ;; if Metabase is not finished initializing, return a generic error message rather than something potentially confusing like "DB is not set up"
+                       ;; if Metabase is not finished initializing, return a generic error message rather than
+                       ;; something potentially confusing like "DB is not set up"
                        (if-not (init-status/complete?)
                          {:status 503, :body "Metabase is still initializing. Please sit tight..."}
                          (apply api/routes args))))
@@ -83,4 +64,4 @@
   ;; ^/emebed/ -> Embed frontend and download routes
   (context "/embed" [] embed-routes)
   ;; Anything else (e.g. /user/edit_current) should serve up index.html; React app will handle the rest
-  (GET "*" [] index))
+  (GET "*" [] index/index))

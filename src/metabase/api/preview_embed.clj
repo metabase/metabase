@@ -4,7 +4,8 @@
 
    1.  Require admin access
    2.  Ignore the values of `:enabled_embedding` for Cards/Dashboards
-   3.  Ignore the `:embed_params` whitelist for Card/Dashboards, instead using a field called `:_embedding_params` in the JWT token itself.
+   3.  Ignore the `:embed_params` whitelist for Card/Dashboards, instead using a field called `:_embedding_params` in
+       the JWT token itself.
 
    Refer to the documentation for those endpoints for further details."
   (:require [compojure.core :refer [GET]]
@@ -29,7 +30,7 @@
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (embed-api/run-query-for-card-with-params
+    (embed-api/run-query-for-card-with-params-async
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -46,7 +47,7 @@
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT TOKEN."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token (check-and-unsign token)]
-    (embed-api/dashcard-results
+    (embed-api/dashcard-results-async
       :dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
       :dashcard-id      dashcard-id
       :card-id          card-id

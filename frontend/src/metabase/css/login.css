@@ -1,148 +1,147 @@
 /* ensure our form doesn't get too wide */
 .Login-wrapper {
-    max-width: 1240px;
-    margin: 0 auto;
+  max-width: 1240px;
+  margin: 0 auto;
 }
 
 /* the login content should always sit on top of the illustration */
 .Login-content {
-    position: relative;
+  position: relative;
 }
 
 .Login-header {
-    color: #6A6A6A;
+  color: var(--color-text-dark);
 }
 
 .brand-scene {
-    overflow: hidden;
-    height: 180px;
+  overflow: hidden;
+  height: 180px;
 }
 
 .brand-boat-container {
-    position: absolute;
-    bottom: 0;
-    z-index: 6;
-    -webkit-animation: boat_trip 200s linear infinite;
-    margin-bottom: 0.5em;
+  position: absolute;
+  bottom: 0;
+  z-index: 6;
+  -webkit-animation: boat_trip 200s linear infinite;
+  margin-bottom: 0.5em;
 }
 
 .brand-boat {
-    transform-origin: 50% bottom;
-    animation: boat_rock 2s ease-in-out infinite;
-    animation-direction: alternate;
+  transform-origin: 50% bottom;
+  animation: boat_rock 2s ease-in-out infinite;
+  animation-direction: alternate;
 }
 
 @keyframes boat_trip {
-    0% {
-        margin-left: -2%;
-    }
-    10% {
-        margin-left: 5%;
-        transform: translate3d(0, 0, 2%);
-    }
-    100% {
-        margin-left: 120%;
-    }
+  0% {
+    margin-left: -2%;
+  }
+  10% {
+    margin-left: 5%;
+    transform: translate3d(0, 0, 2%);
+  }
+  100% {
+    margin-left: 120%;
+  }
 }
 
 @keyframes boat_lost {
-    0% {
-        margin-left: 40%;
-        transform: rotateY(0deg);
-    }
-    45% {
-        margin-left: 60%;
-        transform: rotateY(0deg);
-    }
-    50% {
-        margin-left: 60%;
-        transform: rotateY(180deg);
-    }
-    95% {
-        margin-left: 40%;
-        transform: rotateY(180deg);
-    }
-    100% {
-        margin-left: 40%;
-        transform: rotateY(0deg);
-    }
+  0% {
+    margin-left: 40%;
+    transform: rotateY(0deg);
+  }
+  45% {
+    margin-left: 60%;
+    transform: rotateY(0deg);
+  }
+  50% {
+    margin-left: 60%;
+    transform: rotateY(180deg);
+  }
+  95% {
+    margin-left: 40%;
+    transform: rotateY(180deg);
+  }
+  100% {
+    margin-left: 40%;
+    transform: rotateY(0deg);
+  }
 }
 
 @keyframes boat_rock {
-    from {
-        transform: rotate(-10deg);
-    }
-    to {
-        transform: rotate(10deg);
-    }
+  from {
+    transform: rotate(-10deg);
+  }
+  to {
+    transform: rotate(10deg);
+  }
 }
 
 .brand-illustration {
-    height: 180px;
-    position: absolute;
-    bottom: 15px;
-    z-index: 5;
-    margin: 0 auto;
-    display: flex;
+  height: 180px;
+  position: absolute;
+  bottom: 15px;
+  z-index: 5;
+  margin: 0 auto;
+  display: flex;
 }
 
 .brand-bridge {
-    margin-left: -140px;
+  margin-left: -140px;
 }
 
 .brand-mountain-1 {
-    position: relative;
-    z-index: 50;
+  position: relative;
+  z-index: 50;
 }
 
 .NotFoundScene .brand-bridge,
 .NotFoundScene .brand-mountain-1,
 .NotFoundScene .brand-mountain-1,
 .NotFoundScene .brand-illustration {
-    display: none;
+  display: none;
 }
 
 .NotFoundScene .brand-boat-container {
-    animation: boat_lost 30s linear infinite;
+  animation: boat_lost 30s linear infinite;
 }
 
 /* flip the second mountain around */
 .brand-mountain-2 {
-    -moz-transform: scaleX(-1);
-    -webkit-transform: scaleX(-1);
-    -o-transform: scaleX(-1);
-    transform: scaleX(-1);
-    -ms-filter: fliph; /*IE*/
-    filter: fliph; /*IE*/
-    margin-left: -170px;
+  -moz-transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+  -o-transform: scaleX(-1);
+  transform: scaleX(-1);
+  -ms-filter: fliph; /*IE*/
+  filter: fliph; /*IE*/
+  margin-left: -170px;
 }
 
-
 .SuccessGroup {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: var(--success-color);
-    padding: 4em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--color-accent1);
+  padding: 4em;
 }
 
 .SuccessMark {
-    display: flex;
-    padding: 1em;
-    border: 3px solid var(--success-color);
-    border-radius: 99px;
-    color: var(--success-color);
-    line-height: 1;
+  display: flex;
+  padding: 1em;
+  border: 3px solid var(--color-accent1);
+  border-radius: 99px;
+  color: var(--color-accent1);
+  line-height: 1;
 }
 
 .SuccessText {
-    font-weight: bold;
-    margin-top: 1em;
-    text-align: center;
+  font-weight: bold;
+  margin-top: 1em;
+  text-align: center;
 }
 
 .ForgotForm,
 .SuccessGroup {
-    position: relative;
-    z-index: 10;
+  position: relative;
+  z-index: 10;
 }

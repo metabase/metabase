@@ -4,18 +4,20 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
              [events :as events]
+             [related :as related]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [dataset :as dataset]]
+            [metabase.api.common :as api]
+            [metabase.automagic-dashboards.populate :as magic.populate]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection]
              [dashboard :as dashboard :refer [Dashboard]]
-             [dashboard-card :refer [create-dashboard-card! DashboardCard delete-dashboard-card! update-dashboard-card!]]
+             [dashboard-card :refer [DashboardCard delete-dashboard-card!]]
              [dashboard-favorite :refer [DashboardFavorite]]
              [interface :as mi]
              [query :as query :refer [Query]]
              [revision :as revision]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.query-processor.util :as qp-util]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -57,25 +59,44 @@
 
 
 (api/defendpoint POST "/"
-  "Create a new `Dashboard`."
-  [:as {{:keys [name parameters], :as dashboard} :body}]
-  {name       su/NonBlankString
-   parameters [su/Map]}
-  (dashboard/create-dashboard! dashboard api/*current-user-id*))
+  "Create a new Dashboard."
+  [:as {{:keys [name description parameters collection_id collection_position], :as dashboard} :body}]
+  {name                su/NonBlankString
+   parameters          [su/Map]
+   description         (s/maybe s/Str)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
+  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+  (collection/check-write-perms-for-collection collection_id)
+  (let [dashboard-data {:name                name
+                        :description         description
+                        :parameters          (or parameters [])
+                        :creator_id          api/*current-user-id*
+                        :collection_id       collection_id
+                        :collection_position collection_position}]
+    (db/transaction
+      ;; Adding a new dashboard at `collection_position` could cause other dashboards in this collection to change
+      ;; position, check that and fix up if needed
+      (api/maybe-reconcile-collection-position! dashboard-data)
+      ;; Ok, now save the Dashboard
+      (->> (db/insert! Dashboard dashboard-data)
+           ;; publish an event and return the newly created Dashboard
+           (events/publish-event! :dashboard-create)))))
 
 
-;;; ------------------------------------------------------------ Hiding Unreadable Cards ------------------------------------------------------------
+;;; -------------------------------------------- Hiding Unreadable Cards ---------------------------------------------
 
 (defn- hide-unreadable-card
   "If CARD is unreadable, replace it with an object containing only its `:id`."
   [card]
-  (if (mi/can-read? card)
-    card
-    (select-keys card [:id])))
+  (when card
+    (if (mi/can-read? card)
+      card
+      (select-keys card [:id]))))
 
 (defn- hide-unreadable-cards
   "Replace the `:card` and `:series` entries from dashcards that they user isn't allowed to read with empty objects."
-  [dashboard]
+  [{public-uuid :public_uuid, :as dashboard}]
   (update dashboard :ordered_cards (fn [dashcards]
                                      (vec (for [dashcard dashcards]
                                             (-> dashcard
@@ -83,33 +104,43 @@
                                                 (update :series (partial mapv hide-unreadable-card))))))))
 
 
-;;; ------------------------------------------------------------ Query Average Duration Info ------------------------------------------------------------
+;;; ------------------------------------------ Query Average Duration Info -------------------------------------------
 
-;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a few things that make this tricky:
+;; Adding the average execution time to all of the Cards in a Dashboard efficiently is somewhat involved. There are a
+;; few things that make this tricky:
 ;;
-;; 1.  Queries are usually executed with `:constraints` that different from how they're actually definied, but not always. This means we should look
-;;     up hashes for both the query as-is and for the query with `default-query-constraints` and use whichever one we find
-;; 2.  The structure of DashCards themselves is complicated. It has a top-level `:card` property and (optionally) a sequence of additional Cards under `:series`
-;; 3.  Query hashes are byte arrays, and two idential byte arrays aren't equal to each other in Java; thus they don't work as one would expect when being used as map keys
+;; 1. Queries are usually executed with `:constraints` that different from how they're actually definied, but not
+;;    always. This means we should look up hashes for both the query as-is and for the query with
+;;    `default-query-constraints` and use whichever one we find
+;;
+;; 2. The structure of DashCards themselves is complicated. It has a top-level `:card` property and (optionally) a
+;;    sequence of additional Cards under `:series`
+;;
+;; 3. Query hashes are byte arrays, and two idential byte arrays aren't equal to each other in Java; thus they don't
+;;    work as one would expect when being used as map keys
 ;;
 ;; Here's an overview of the approach used to efficiently add the info:
 ;;
-;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the dashboard cards
-;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector)  -> average execution time
-;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash or the hash with default constraints,
-;;    and add the result as `:average_execution_time`
+;; 1. Build a sequence of query hashes (both as-is and with default constraints) for every card and series in the
+;;    dashboard cards
+;;
+;; 2. Fetch all matching entires from Query in the DB and build a map of hash (converted to a Clojure vector) ->
+;;    average execution time
+;;
+;; 3. Iterate back over each card and look for matching entries in the `hash-vec->avg-time` for either the normal hash
+;;    or the hash with default constraints, and add the result as `:average_execution_time`
 
 (defn- card->query-hashes
-  "Return a tuple of possible hashes that would be associated with executions of CARD.
-   The first is the hash of the query dictionary as-is; the second is one with the `default-query-constraints`,
-   which is how it will most likely be run."
+  "Return a tuple of possible hashes that would be associated with executions of CARD. The first is the hash of the
+  query dictionary as-is; the second is one with the `default-query-constraints`, which is how it will most likely be
+  run."
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints dataset/default-query-constraints))]))
+     (qp-util/query-hash (assoc dataset_query :constraints constraints/default-query-constraints))]))
 
 (defn- dashcard->query-hashes
-  "Return a sequence of all the query hashes for this DASHCARD, including the top-level Card and any Series."
+  "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
   [{:keys [card series]}]
   (reduce concat
           (card->query-hashes card)
@@ -117,29 +148,30 @@
             (card->query-hashes card))))
 
 (defn- dashcards->query-hashes
-  "Return a sequence of all the query hashes used in a DASHCARDS."
+  "Return a sequence of all the query hashes used in a `dashcards`."
   [dashcards]
   (apply concat (for [dashcard dashcards]
                   (dashcard->query-hashes dashcard))))
 
 (defn- hashes->hash-vec->avg-time
-  "Given some query HASHES, return a map of hashes (as normal Clojure vectors) to the average query durations.
-   (The hashes are represented as normal Clojure vectors because identical byte arrays aren't considered equal to one another, and thus do not
-   work as one would expect when used as map keys.)"
+  "Given some query `hashes`, return a map of hashes (as normal Clojure vectors) to the average query durations.
+  (The hashes are represented as normal Clojure vectors because identical byte arrays aren't considered equal to one
+  another, and thus do not work as one would expect when used as map keys.)"
   [hashes]
   (when (seq hashes)
     (into {} (for [[k v] (db/select-field->field :query_hash :average_execution_time Query :query_hash [:in hashes])]
                {(vec k) v}))))
 
 (defn- add-query-average-duration-to-card
-  "Add `:query_average_duration` info to a CARD (i.e., the `:card` property of a DashCard or an entry in its `:series` array)."
+  "Add `:query_average_duration` info to a `card` (i.e., the `:card` property of a DashCard or an entry in its `:series`
+  array)."
   [card hash-vec->avg-time]
   (assoc card :query_average_duration (some (fn [query-hash]
                                               (hash-vec->avg-time (vec query-hash)))
                                             (card->query-hashes card))))
 
 (defn- add-query-average-duration-to-dashcards
-  "Add `:query_average_duration` to the top-level Card and any Series in a sequence of DASHCARDS."
+  "Add `:query_average_duration` to the top-level Card and any Series in a sequence of `dashcards`."
   ([dashcards]
    (add-query-average-duration-to-dashcards dashcards (hashes->hash-vec->avg-time (dashcards->query-hashes dashcards))))
   ([dashcards hash-vec->avg-time]
@@ -151,31 +183,78 @@
                              (add-query-average-duration-to-card card hash-vec->avg-time))))))))
 
 (defn add-query-average-durations
-  "Add a `average_execution_time` field to each card (and series) belonging to DASHBOARD."
+  "Add a `average_execution_time` field to each card (and series) belonging to `dashboard`."
   [dashboard]
   (update dashboard :ordered_cards add-query-average-duration-to-dashcards))
 
 
-;;; ------------------------------------------------------------------------------------------------------------------------------------------------------
+(defn- get-dashboard
+  "Get Dashboard with ID."
+  [id]
+  (-> (Dashboard id)
+      api/check-404
+      (hydrate [:ordered_cards :card :series] :can_write)
+      api/read-check
+      api/check-not-archived
+      hide-unreadable-cards
+      add-query-average-durations))
+
+
+(api/defendpoint POST "/:from-dashboard-id/copy"
+  "Copy a Dashboard."
+  [from-dashboard-id :as {{:keys [name description collection_id collection_position], :as dashboard} :body}]
+  {name                (s/maybe su/NonBlankString)
+   description         (s/maybe s/Str)
+   collection_id       (s/maybe su/IntGreaterThanZero)
+   collection_position (s/maybe su/IntGreaterThanZero)}
+  ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
+  (collection/check-write-perms-for-collection collection_id)
+  (let [existing-dashboard (get-dashboard from-dashboard-id)
+        dashboard-data {:name                (or name (:name existing-dashboard))
+                        :description         (or description (:description existing-dashboard))
+                        :parameters          (or (:parameters existing-dashboard) [])
+                        :creator_id          api/*current-user-id*
+                        :collection_id       collection_id
+                        :collection_position collection_position}
+        dashboard      (db/transaction
+                         ;; Adding a new dashboard at `collection_position` could cause other dashboards in this
+                         ;; collection to change position, check that and fix up if needed
+                         (api/maybe-reconcile-collection-position! dashboard-data)
+                         ;; Ok, now save the Dashboard
+                         (u/prog1 (db/insert! Dashboard dashboard-data)
+                           ;; Get cards from existing dashboard and associate to copied dashboard
+                           (doseq [card (:ordered_cards existing-dashboard)]
+                             (api/check-500 (dashboard/add-dashcard! <> (:card_id card) card)))))]
+    (events/publish-event! :dashboard-create dashboard)))
+
+
+;;; --------------------------------------------- Fetching/Updating/Etc. ---------------------------------------------
 
 (api/defendpoint GET "/:id"
-  "Get `Dashboard` with ID."
+  "Get Dashboard with ID."
   [id]
-  (u/prog1 (-> (Dashboard id)
-               (hydrate :creator [:ordered_cards [:card :creator] :series])
-               api/read-check
-               api/check-not-archived
-               hide-unreadable-cards
-               add-query-average-durations)
+  (u/prog1 (get-dashboard id)
     (events/publish-event! :dashboard-read (assoc <> :actor_id api/*current-user-id*))))
 
 
-(api/defendpoint PUT "/:id"
-  "Update a `Dashboard`.
+(defn- check-allowed-to-change-embedding
+  "You must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be
+  enabled."
+  [dash-before-update dash-updates]
+  (when (or (api/column-will-change? :enable_embedding dash-before-update dash-updates)
+            (api/column-will-change? :embedding_params dash-before-update dash-updates))
+    (api/check-embedding-enabled)
+    (api/check-superuser)))
 
-   Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate permissions for the Cards belonging to this Dashboard),
-   but to change the value of `enable_embedding` you must be a superuser."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding embedding_params position archived], :as dashboard} :body}]
+(api/defendpoint PUT "/:id"
+  "Update a Dashboard.
+
+  Usually, you just need write permissions for this Dashboard to do this (which means you have appropriate
+  permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
+  superuser."
+  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
+                   embedding_params position archived collection_id collection_position]
+            :as dash-updates} :body}]
   {name                    (s/maybe su/NonBlankString)
    description             (s/maybe s/Str)
    caveats                 (s/maybe s/Str)
@@ -185,31 +264,39 @@
    embedding_params        (s/maybe su/EmbeddingParams)
    parameters              (s/maybe [su/Map])
    position                (s/maybe su/IntGreaterThanZero)
-   archived                (s/maybe s/Bool)}
-  (let [dash (api/write-check Dashboard id)]
-    ;; you must be a superuser to change the value of `enable_embedding` or `embedding_params`. Embedding must be enabled
-    (when (or (and (not (nil? enable_embedding))
-                   (not= enable_embedding (:enable_embedding dash)))
-              (and embedding_params
-                   (not= embedding_params (:embedding_params dash))))
-      (api/check-embedding-enabled)
-      (api/check-superuser)))
-  (api/check-500
-   (db/update! Dashboard id
-     ;; description, position are allowed to be `nil`. Everything else must be non-nil
-     (u/select-keys-when dashboard
-       :present #{:description :position}
-       :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding :embedding_params :archived})))
+   archived                (s/maybe s/Bool)
+   collection_id           (s/maybe su/IntGreaterThanZero)
+   collection_position     (s/maybe su/IntGreaterThanZero)}
+  (let [dash-before-update (api/write-check Dashboard id)]
+    ;; Do various permissions checks as needed
+    (collection/check-allowed-to-change-collection dash-before-update dash-updates)
+    (check-allowed-to-change-embedding dash-before-update dash-updates)
+    (api/check-500
+     (db/transaction
+
+       ;;If the dashboard has an updated position, or if the dashboard is moving to a new collection, we might need to
+       ;;adjust the collection position of other dashboards in the collection
+       (api/maybe-reconcile-collection-position! dash-before-update dash-updates)
+
+       (db/update! Dashboard id
+         ;; description, position, collection_id, and collection_position are allowed to be `nil`. Everything else must be
+         ;; non-nil
+         (u/select-keys-when dash-updates
+           :present #{:description :position :collection_id :collection_position}
+           :non-nil #{:name :parameters :caveats :points_of_interest :show_in_getting_started :enable_embedding
+                      :embedding_params :archived})))))
   ;; now publish an event and return the updated Dashboard
   (u/prog1 (Dashboard id)
     (events/publish-event! :dashboard-update (assoc <> :actor_id api/*current-user-id*))))
 
 
-;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to be setting `:archived` to `true` via the `PUT` endpoint instead
+;; TODO - We can probably remove this in the near future since it should no longer be needed now that we're going to
+;; be setting `:archived` to `true` via the `PUT` endpoint instead
 (api/defendpoint DELETE "/:id"
-  "Delete a `Dashboard`."
+  "Delete a Dashboard."
   [id]
-  (log/warn "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its `archived` value via PUT /api/dashboard/:id.")
+  (log/warn (str "DELETE /api/dashboard/:id is deprecated. Instead of deleting a Dashboard, you should change its "
+                 "`archived` value via PUT /api/dashboard/:id."))
   (let [dashboard (api/write-check Dashboard id)]
     (db/delete! Dashboard :id id)
     (events/publish-event! :dashboard-delete (assoc dashboard :actor_id api/*current-user-id*)))
@@ -218,26 +305,22 @@
 
 ;; TODO - param should be `card_id`, not `cardId` (fix here + on frontend at the same time)
 (api/defendpoint POST "/:id/cards"
-  "Add a `Card` to a `Dashboard`."
-  [id :as {{:keys [cardId parameter_mappings series] :as dashboard-card} :body}]
-  {cardId             su/IntGreaterThanZero
+  "Add a `Card` to a Dashboard."
+  [id :as {{:keys [cardId parameter_mappings series], :as dashboard-card} :body}]
+  {cardId             (s/maybe su/IntGreaterThanZero)
    parameter_mappings [su/Map]}
   (api/check-not-archived (api/write-check Dashboard id))
-  (api/check-not-archived (api/read-check Card cardId))
-  (let [defaults       {:dashboard_id           id
-                        :card_id                cardId
-                        :visualization_settings {}
-                        :creator_id             api/*current-user-id*
-                        :series                 (or series [])}
-        dashboard-card (-> (merge dashboard-card defaults)
-                           (update :series #(filter identity (map :id %))))]
-    (u/prog1 (api/check-500 (create-dashboard-card! dashboard-card))
-      (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]}))))
+  (when cardId
+    (api/check-not-archived (api/read-check Card cardId)))
+  (u/prog1 (api/check-500 (dashboard/add-dashcard! id cardId (-> dashboard-card
+                                                                 (assoc :creator_id api/*current-user*)
+                                                                 (dissoc :cardId))))
+    (events/publish-event! :dashboard-add-cards {:id id, :actor_id api/*current-user-id*, :dashcards [<>]})))
 
 
 ;; TODO - we should use schema to validate the format of the Cards :D
 (api/defendpoint PUT "/:id/cards"
-  "Update `Cards` on a `Dashboard`. Request body should have the form:
+  "Update `Cards` on a Dashboard. Request body should have the form:
 
     {:cards [{:id     ...
               :sizeX  ...
@@ -248,17 +331,13 @@
                         ...}]} ...]}"
   [id :as {{:keys [cards]} :body}]
   (api/check-not-archived (api/write-check Dashboard id))
-  (let [dashcard-ids (db/select-ids DashboardCard, :dashboard_id id)]
-    (doseq [{dashcard-id :id, :as dashboard-card} cards]
-      ;; ensure the dashcard we are updating is part of the given dashboard
-      (when (contains? dashcard-ids dashcard-id)
-        (update-dashboard-card! (update dashboard-card :series #(filter identity (map :id %)))))))
+  (dashboard/update-dashcards! id cards)
   (events/publish-event! :dashboard-reposition-cards {:id id, :actor_id api/*current-user-id*, :dashcards cards})
   {:status :ok})
 
 
 (api/defendpoint DELETE "/:id/cards"
-  "Remove a `DashboardCard` from a `Dashboard`."
+  "Remove a `DashboardCard` from a Dashboard."
   [id dashcardId]
   {dashcardId su/IntStringGreaterThanZero}
   (api/check-not-archived (api/write-check Dashboard id))
@@ -268,14 +347,14 @@
 
 
 (api/defendpoint GET "/:id/revisions"
-  "Fetch `Revisions` for `Dashboard` with ID."
+  "Fetch `Revisions` for Dashboard with ID."
   [id]
   (api/read-check Dashboard id)
   (revision/revisions+details Dashboard id))
 
 
 (api/defendpoint POST "/:id/revert"
-  "Revert a `Dashboard` to a prior `Revision`."
+  "Revert a Dashboard to a prior `Revision`."
   [id :as {{:keys [revision_id]} :body}]
   {revision_id su/IntGreaterThanZero}
   (api/write-check Dashboard id)
@@ -286,7 +365,7 @@
     :revision-id revision_id))
 
 
-;;; ------------------------------------------------------------ Favoriting ------------------------------------------------------------
+;;; --------------------------------------------------- Favoriting ---------------------------------------------------
 
 (api/defendpoint POST "/:id/favorite"
   "Favorite a Dashboard."
@@ -304,12 +383,12 @@
   api/generic-204-no-content)
 
 
-;;; ------------------------------------------------------------ Sharing is Caring ------------------------------------------------------------
+;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:dashboard-id/public_link"
-  "Generate publically-accessible links for this Dashboard. Returns UUID to be used in public links.
-   (If this Dashboard has already been shared, it will return the existing public link rather than creating a new one.)
-   Public sharing must be enabled."
+  "Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
+  Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
+  sharing must be enabled."
   [dashboard-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -321,7 +400,7 @@
                  :made_public_by_id api/*current-user-id*)))})
 
 (api/defendpoint DELETE "/:dashboard-id/public_link"
-  "Delete the publically-accessible link to this Dashboard."
+  "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
   (api/check-superuser)
   (api/check-public-sharing-enabled)
@@ -332,18 +411,44 @@
   {:status 204, :body nil})
 
 (api/defendpoint GET "/public"
-  "Fetch a list of Dashboards with public UUIDs. These dashboards are publically-accessible *if* public sharing is enabled."
+  "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
+  enabled."
   []
   (api/check-superuser)
   (api/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
 (api/defendpoint GET "/embeddable"
-  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding endpoints and a signed JWT."
+  "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
+  endpoints and a signed JWT."
   []
   (api/check-superuser)
   (api/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
+
+(api/defendpoint GET "/:id/related"
+  "Return related entities."
+  [id]
+  (-> id Dashboard api/read-check related/related))
+
+;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
+
+(api/defendpoint POST "/save/collection/:parent-collection-id"
+  "Save a denormalized description of dashboard into collection with ID `:parent-collection-id`."
+  [parent-collection-id :as {dashboard :body}]
+  (collection/check-write-perms-for-collection parent-collection-id)
+  (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
+       (events/publish-event! :dashboard-create)))
+
+(api/defendpoint POST "/save"
+  "Save a denormalized description of dashboard."
+  [:as {dashboard :body}]
+  (let [parent-collection-id (if api/*is-superuser?*
+                               (:id (magic.populate/get-or-create-root-container-collection))
+                               (db/select-one-field :id 'Collection
+                                 :personal_owner_id api/*current-user-id*))]
+    (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
+         (events/publish-event! :dashboard-create))))
 
 
 (api/define-routes)

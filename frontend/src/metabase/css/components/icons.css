@@ -1,5 +1,5 @@
 :root {
-  --icon-color: #BFC4D1;
+  --icon-color: var(--color-text-light);
 }
 
 .IconWrapper {
@@ -7,36 +7,35 @@
 }
 
 .Logo .Icon {
-    width: 33px;
-    height: 42.5px;
+  width: 33px;
+  height: 42.5px;
 }
 
 @keyframes icon-pulse {
-    0% {
-        box-shadow: 0 0 5px rgba(80,158,227, 1.0);
-    }
-    50% {
-        box-shadow: 0 0 5px rgba(80,158,227, 0.25);
-    }
-    100% {
-        box-shadow: 0 0 5px rgba(80,158,227, 1.0);
-    }
+  0% {
+    box-shadow: 0 0 5px var(--color-shadow);
+  }
+  50% {
+    box-shadow: 0 0 5px var(--color-shadow);
+  }
+  100% {
+    box-shadow: 0 0 5px var(--color-shadow);
+  }
 }
 
-
 .Icon--pulse {
-    border-radius: 99px;
-    box-shadow: 0 0 5px #509EE3;
-    padding: 0.75em;
-    animation-name: icon-pulse;
-    animation-duration: 2s;
-    animation-iteration-count: infinite;
-    animation-timing-function: linear;
+  border-radius: 99px;
+  box-shadow: 0 0 5px var(--color-shadow);
+  padding: 0.75em;
+  animation-name: icon-pulse;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
 }
 
 @media screen and (--breakpoint-min-md) {
-    .Logo .Icon {
-        width: 66px;
-        height: 85px;
-    }
+  .Logo .Icon {
+    width: 66px;
+    height: 85px;
+  }
 }
