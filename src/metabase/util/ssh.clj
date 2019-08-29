@@ -8,21 +8,22 @@
 
 (defn ssh-add-key
   "Adds SSH private key to Jsch class."
-  [jsch key-file-name]
-  (log/debug "Adding ssh key:" key-file-name)
-  (when-not (string/blank? key-file-name) (doto ^com.jcraft.jsch.JSch jsch (.addIdentity key-file-name)))
-)
+  [^com.jcraft.jsch.JSch jsch ^String key-file-name]
+  (when-not (str/blank? key-file-name)
+    (log/debug "Adding ssh key:" key-file-name)
+    (.addIdentity jsch key-file-name)))
 
 (defn start-ssh-tunnel
   "Opens a new ssh tunnel and returns the connection along with the dynamically
    assigned tunnel entrance port. It's the callers responsibility to call .disconnect
    on the returned connection object."
   [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass tunnel-private-key-file-name host port]}]
-  (let [connection (doto ^com.jcraft.jsch.Session (.getSession (doto (new com.jcraft.jsch.JSch)
-                                                                     (ssh-add-key ^String tunnel-private-key-file-name))
-                                                               ^String tunnel-user
-                                                               ^String tunnel-host
-                                                               tunnel-port)
+  (let [connection (doto ^com.jcraft.jsch.Session
+                     (.getSession (doto (new com.jcraft.jsch.JSch)
+                                    (ssh-add-key tunnel-private-key-file-name))
+                                  ^String tunnel-user
+                                  ^String tunnel-host
+                                  tunnel-port)
                      (.setPassword ^String tunnel-pass)
                      (.setConfig "StrictHostKeyChecking" "no")
                      (.connect default-ssh-timeout)

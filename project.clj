@@ -165,6 +165,7 @@
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [methodical "0.9.4-alpha"]
+     [org.apache.sshd/sshd-core "2.3.0"]                              ; SSH test server
      [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
 
