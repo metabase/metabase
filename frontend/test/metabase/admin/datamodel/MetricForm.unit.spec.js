@@ -39,7 +39,7 @@ describe("MetricForm", () => {
     const updatePreviewSummary = jest.fn();
     const { getByText } = renderForm({ metadata, updatePreviewSummary });
     getByText("Count of rows");
-    const [[{ query }]] = updatePreviewSummary.mock.calls;
-    expect(query.aggregation).toEqual(["count"]);
+    const [{ query }] = updatePreviewSummary.mock.calls[1];
+    expect(query.aggregation).toEqual([["count"]]);
   });
 });

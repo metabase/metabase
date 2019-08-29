@@ -98,6 +98,11 @@ export default class MetricForm extends Component {
       updatePreviewSummary,
     } = this.props;
 
+    if (!metadata) {
+      // we need metadata to generate a default question
+      return;
+    }
+
     const query = Question.create({ databaseId, tableId, metadata }).query();
     const table = query.table();
     let queryWithFilters;
