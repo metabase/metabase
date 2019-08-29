@@ -17,23 +17,25 @@ type Row = Value[];
 type ColumnName = string;
 type Color = string;
 
+type Operator =
+  | "<"
+  | ">"
+  | "<="
+  | ">="
+  | "="
+  | "!="
+  | "is-null"
+  | "not-null"
+  | "contains"
+  | "does-not-contain"
+  | "starts-with"
+  | "ends-with";
+
 type SingleFormat = {
   type: "single",
   columns: ColumnName[],
   color: Color,
-  operator:
-    | "<"
-    | ">"
-    | "<="
-    | ">="
-    | "="
-    | "!="
-    | "is-null"
-    | "not-null"
-    | "contains"
-    | "does-not-contain"
-    | "starts-with"
-    | "ends-with",
+  operator: Operator,
   value: number | string,
   highlight_row: boolean,
 };
@@ -57,6 +59,8 @@ type Settings = {
 
 type Formatter = (value: number) => ?Color;
 type RowFormatter = (row: number[], colIndexes: ColumnIndexes) => ?Color;
+
+type FormatterFactory = (value: number | string, color: Color) => Formatter;
 
 type BackgroundGetter = (
   value: number,
@@ -124,7 +128,9 @@ function getColumnIndexesByName(cols) {
   return colIndexes;
 }
 
-export const OPERATOR_FORMATTER_FACTORIES = {
+export const OPERATOR_FORMATTER_FACTORIES: {
+  [Operator]: FormatterFactory,
+} = {
   "<": (value, color) => v =>
     typeof value === "number" && v < value ? color : null,
   "<=": (value, color) => v =>
@@ -156,10 +162,10 @@ export const OPERATOR_FORMATTER_FACTORIES = {
 };
 
 export function compileFormatter(
-  format,
-  columnName,
-  columnExtents,
-  isRowFormatter = false,
+  format: Format,
+  columnName: ?ColumnName,
+  columnExtents: ?ColumnExtents,
+  isRowFormatter: boolean = false,
 ): ?Formatter {
   if (format.type === "single") {
     let { operator, value, color } = format;
