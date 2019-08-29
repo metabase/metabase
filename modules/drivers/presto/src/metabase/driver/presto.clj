@@ -58,11 +58,6 @@
          (when password
            {:basic-auth [user password]})))
 
-(defn ^:private create-cancel-url [cancel-uri host port info-uri]
-  ;; Replace the host in the cancel-uri with the host from the info-uri provided from the presto response- this doesn't
-  ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
-  (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
-
 (defn- parse-time-with-tz [s]
   ;; Try parsing with offset first then with full ZoneId
   (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
@@ -118,9 +113,38 @@
         (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
             (fetch-presto-results! details results nextUri))))))
 
+(defn- cancel-uri [^String query-uri, ^String info-uri]
+  ;; Replace the host in the `query-uri` with the host from the `info-uri` provided from the presto response- this
+  ;; doesn't break SSH tunneling as the host in the `cancel-uri` is different if it's enabled
+  (let [query-uri (URI. query-uri)
+        info-uri  (URI. info-uri)]
+    (.toString (URI. (.getScheme info-uri) (.getHost info-uri) (.getPath query-uri) (.getFragment query-uri)))))
+
+(defn- cancel-query! [details-with-tunnel query-id info-uri]
+  (if-not query-id
+    (log/warn (trs "Client connection closed, no query-id found, can't cancel query"))
+    ;; If we have a query id, we can cancel the query
+    (try
+      (let [query-uri    (details->uri details-with-tunnel (str "/v1/query/" query-id))
+            adjusted-uri (cancel-uri query-uri info-uri)]
+        (http/delete adjusted-uri (details->request details-with-tunnel)))
+      ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+      ;; covering it up with a failed cancel
+      (catch Exception e
+        (log/error e (trs "Error canceling query with ID {0}" query-id))))))
+
+(defn- execute-query! [details-with-tunnel query]
+  (let [{{:keys [error], :as response} :body} (http/post (details->uri details-with-tunnel "/v1/statement")
+                                                         (assoc (details->request details-with-tunnel)
+                                                           :body query, :as :json, :redirect-strategy :lax))]
+    (when error
+      (throw (ex-info (str (or (:message error) (tru "Error preparing query.")))
+               error)))
+    response))
+
 (defn- execute-presto-query!
   {:style/indent 1}
-  [details query]
+  [{:keys [report-timezone], :as details} query]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (let [{{:keys [columns data nextUri error id infoUri]} :body}
