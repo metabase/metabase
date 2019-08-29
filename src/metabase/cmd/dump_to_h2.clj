@@ -153,9 +153,9 @@
     (insert-chunk! target-db-conn table-name chunk))
   (println-ok))
 
-(defn- load-data! [target-db-conn app-db-connection-string-or-nil]
-  (let [conn-map (mdb/parse-connection-string app-db-connection-string-or-nil)]
-    (println "Conn of source: " conn-map app-db-connection-string-or-nil)
+(defn- load-data! [target-db-conn ]
+  (let [conn-map (mdb/jdbc-details)]
+    (println "Conn of source: " conn-map )
     (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
       (doseq [{table-name :table, :as e} entities
               :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
@@ -176,8 +176,7 @@
   from one instance to another using H2 as serialization target.
 
   Defaults to using `@metabase.db/db-file` as the connection string."
-  [app-db-connection-string-or-nil
-   h2-filename-or-nil]
+  [h2-filename-or-nil]
 
   (doseq [filename [h2-filename-or-nil
                     (str h2-filename-or-nil ".mv.db")]]
@@ -188,13 +187,11 @@
 
   ;;TODO determine app-db-connection spec from (mdb/jdbc-details) or the like, don't require this command to take the conn str in
 
-  (println "Dumping from " app-db-connection-string-or-nil " to H2: " h2-filename-or-nil " or H2 from env.")
-
-  (assert app-db-connection-string-or-nil (trs "Metabase can only dump to H2 if it has the source db connection string."))
+  (println "Dumping from " (mdb/jdbc-details) " to H2: " h2-filename-or-nil " or H2 from env.")
 
   (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
 
-  (let [src-conn (mdb/parse-connection-string app-db-connection-string-or-nil)]
+  (let [src-conn (mdb/jdbc-details)]
     (when (= :h2 (:type src-conn))
       ;;TODO
       (println (trs "Don't need to migrate, just use the existing H2 file"))
@@ -204,7 +201,7 @@
     (println "Conn of target: " target-db-conn)
     (println-ok)
     (println (u/format-color 'blue "Loading data..."))
-    (load-data! target-db-conn app-db-connection-string-or-nil)
+    (load-data! target-db-conn )
     (println-ok)
     (jdbc/db-unset-rollback-only! target-db-conn))
   (println "Dump complete")

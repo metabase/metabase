@@ -38,23 +38,21 @@
      ((resolve 'metabase.cmd.load-from-h2/load-from-h2!) h2-connection-string))))
 
 (defn ^:command dump-to-h2
-  "Transfer data from existing database specified by env vars to the newly created H2 DB."
-  ([]
-   (dump-to-h2 nil nil))
-  ([db-connection-string]
-   (dump-to-h2 db-connection-string nil))
-  ([db-connection-string h2-filename]
+  "Transfer data from existing database to newly created H2 DB."
+  ([ h2-filename]
    (classloader/require 'metabase.cmd.dump-to-h2)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) db-connection-string h2-filename))))
+     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename))))
 
 (defn ^:command secure-dump-and-upload
+  ""
   ([s3-upload-url-str curr-db-conn-str]
    (classloader/require 'metabase.cmd.dump-upload)
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.dump-upload/up!) s3-upload-url-str curr-db-conn-str))))
 
 (defn ^:command secure-dump-download-and-unlock
+  ""
   ([h2-dump-path s3-bucket s3-key secret-key]
    (classloader/require 'metabase.cmd.dump-download)
    (binding [mdb/*disable-data-migrations* true]

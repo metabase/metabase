@@ -64,13 +64,28 @@
 (api/defendpoint-async
   POST ["/to-h2"]
   "Dump db to H2 file."
-  [{{:keys [db-conn-str h2-filename] :as body} :body} respond raise]
-  {db-conn-str su/NonBlankString
-   h2-filename su/NonBlankString}
+  [{{:keys [h2-filename] :as body} :body} respond raise]
+  {h2-filename su/NonBlankString}
   (as-async respond raise
-            (let []
-                     (log/info (trs "Dumping to H2: " db-conn-str h2-filename))
-                     (cmd/dump-to-h2 db-conn-str h2-filename))))
+            (let [c (a/chan)]
+              (a/go
+                (log/info (trs "Dumping to H2: " h2-filename))
+                (cmd/dump-to-h2 h2-filename)
+                (a/>! c {"status" "Done"}))
+              c)))
+
+(api/defendpoint-async
+  POST ["/load"]
+  "Load H2 dump"
+  [{{:keys [h2-filename] :as body} :body} respond raise]
+  {h2-filename su/NonBlankString}
+  (as-async respond raise
+            (let [c (a/chan)]
+              (a/go
+                (log/info (trs "Loading from H2: " h2-filename))
+                (cmd/load-from-h2 h2-filename)
+                (a/>! c {"status" "Done"}))
+              c)))
 
 (api/defendpoint-async
   POST ["/secure-upload"]
@@ -78,9 +93,12 @@
   [{{:keys [s3-upload-str] :as body} :body} respond raise]
   {s3-upload-str su/NonBlankString}
   (as-async respond raise
-            (let []
-                     (log/info (trs "Secure dump and upload: " s3-upload-str))
-                     (cmd/secure-dump-and-upload s3-upload-str nil))))
+            (let [c (a/chan)]
+              (a/go
+                (log/info (trs "Secure dump and upload: " s3-upload-str))
+                (cmd/secure-dump-and-upload s3-upload-str nil)
+                (a/>! c {"status" "Done"}))
+              c)))
 
 (api/defendpoint-async
   POST ["/download-and-unlock"]
@@ -91,8 +109,11 @@
    s3-key       su/NonBlankString
    secret-key   su/NonBlankString}
   (as-async respond raise
-            (let []
-                     (log/info (trs "Download secure dump: " h2-dump-path s3-bucket s3-key (count secret-key)))
-                     (cmd/secure-dump-download-and-unlock h2-dump-path s3-bucket s3-key secret-key))))
+            (let [c (a/chan)]
+              (a/go
+                (log/info (trs "Download secure dump: " h2-dump-path s3-bucket s3-key (count secret-key)))
+                (cmd/secure-dump-download-and-unlock h2-dump-path s3-bucket s3-key secret-key)
+                (a/>! c {"status" "Done"}))
+              c)))
 
 (api/define-routes)

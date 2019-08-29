@@ -46,6 +46,7 @@
           :as   database}                              :database
          {:keys [first_name last_name email password]} :user
          {:keys [allow_tracking site_name]}            :prefs} :body, :as request}]
+                 ;(println "Setup req:  " request)
   {token            SetupToken
    site_name        su/NonBlankString
    first_name       su/NonBlankString
