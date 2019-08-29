@@ -116,6 +116,7 @@ export function makeCellBackgroundGetter(
           }
         }
       }
+      return null;
     };
   }
 }
@@ -141,8 +142,8 @@ export const OPERATOR_FORMATTER_FACTORIES: {
     typeof value === "number" && v > value ? color : null,
   "=": (value, color) => v => (v === value ? color : null),
   "!=": (value, color) => v => (v !== value ? color : null),
-  "is-null": (value, color) => v => (v === null ? color : null),
-  "not-null": (value, color) => v => (v !== null ? color : null),
+  "is-null": (_value, color) => v => (v === null ? color : null),
+  "not-null": (_value, color) => v => (v !== null ? color : null),
   contains: (value, color) => v =>
     typeof value === "string" && typeof v === "string" && v.indexOf(value) >= 0
       ? color
@@ -169,11 +170,7 @@ export function compileFormatter(
 ): ?Formatter {
   if (format.type === "single") {
     let { operator, value, color } = format;
-    if (isRowFormatter) {
-      color = alpha(color, ROW_ALPHA);
-    } else {
-      color = alpha(color, CELL_ALPHA);
-    }
+    color = alpha(color, isRowFormatter ? ROW_ALPHA : CELL_ALPHA);
 
     const formatterFactory = OPERATOR_FORMATTER_FACTORIES[operator];
     if (formatterFactory) {
