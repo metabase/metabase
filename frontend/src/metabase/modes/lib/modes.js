@@ -1,15 +1,5 @@
 /* @flow weak */
 
-import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
-import {
-  isDate,
-  isAddress,
-  isCategory,
-  isPK,
-} from "metabase/lib/schema_metadata";
-import * as Query from "metabase/lib/query/query";
-import * as Card from "metabase/meta/Card";
-
 import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
@@ -19,51 +9,45 @@ import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
 
-import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { QueryMode } from "metabase/meta/types/Visualization";
 
-import _ from "underscore";
+import type Question from "metabase-lib/lib/Question";
 
-export function getMode(
-  card: CardObject,
-  tableMetadata: ?TableMetadata,
-): ?QueryMode {
-  if (!card) {
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+
+export function getMode(question: ?Question): ?QueryMode {
+  if (!question) {
     return null;
   }
 
-  if (Card.isNative(card)) {
+  const query = question.query();
+
+  if (query instanceof NativeQuery) {
     return NativeMode;
   }
 
-  const query = Card.getQuery(card);
-  if (Card.isStructured(card) && query) {
-    if (!tableMetadata) {
-      return null;
-    }
-
-    const aggregations = Query.getAggregations(query);
-    const breakouts = Query.getBreakouts(query);
-    const filters = Query.getFilters(query);
+  if (query instanceof StructuredQuery) {
+    const aggregations = query.aggregations();
+    const breakouts = query.breakouts();
+    const filters = query.filters();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
       const isPKFilter = filter => {
-        if (tableMetadata && Array.isArray(filter) && filter[0] === "=") {
-          const fieldId = Q_DEPRECATED.getFieldTargetId(filter[1]);
-          const field = tableMetadata.fields_lookup[fieldId];
+        if (filter.isFieldFilter()) {
+          const field = filter.field();
           if (
             field &&
+            field.isPK() &&
             field.table &&
-            field.table.id === query["source-table"] &&
-            isPK(field)
+            field.table.id === query.sourceTableId()
           ) {
             return true;
           }
         }
         return false;
       };
-      if (_.any(filters, isPKFilter)) {
+      if (filters.some(isPKFilter)) {
         return ObjectMode;
       } else {
         return SegmentMode;
@@ -73,26 +57,23 @@ export function getMode(
       return MetricMode;
     }
     if (aggregations.length > 0 && breakouts.length > 0) {
-      const breakoutFields = breakouts.map(
-        breakout =>
-          (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
-      );
+      const breakoutFields = breakouts.map(b => b.field());
       if (
-        (breakoutFields.length === 1 && isDate(breakoutFields[0])) ||
+        (breakoutFields.length === 1 && breakoutFields[0].isDate()) ||
         (breakoutFields.length === 2 &&
-          isDate(breakoutFields[0]) &&
-          isCategory(breakoutFields[1]))
+          breakoutFields[0].isDate() &&
+          breakoutFields[1].isCategory())
       ) {
         return TimeseriesMode;
       }
-      if (breakoutFields.length === 1 && isAddress(breakoutFields[0])) {
+      if (breakoutFields.length === 1 && breakoutFields[0].isAddress()) {
         return GeoMode;
       }
       if (
-        (breakoutFields.length === 1 && isCategory(breakoutFields[0])) ||
+        (breakoutFields.length === 1 && breakoutFields[0].isCategory()) ||
         (breakoutFields.length === 2 &&
-          isCategory(breakoutFields[0]) &&
-          isCategory(breakoutFields[1]))
+          breakoutFields[0].isCategory() &&
+          breakoutFields[1].isCategory())
       ) {
         return PivotMode;
       }
