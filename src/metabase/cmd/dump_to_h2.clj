@@ -190,7 +190,7 @@
                 (for [filename [h2-filename
                                 (str h2-filename ".mv.db")]]
                   (when (.exists (io/file filename))
-                    (println (trs "Output H2 database already exists!") filename)
+                    (println (u/format-color 'red (trs "Output H2 database already exists: %s") filename))
                     1))))
 
       (println "Dumping from configured Metabase db to H2 file" h2-filename)
