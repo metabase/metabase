@@ -200,7 +200,7 @@
 
       (when (= :h2 (mdb/db-type))
         (println (u/format-color 'yellow (trs "Don't need to migrate, just use the existing H2 file")))
-        #_(System/exit 0))
+        1)
 
       (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename)]
         (println "Conn of target: " target-db-conn)
