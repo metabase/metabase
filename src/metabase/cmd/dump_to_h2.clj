@@ -139,7 +139,7 @@
   (flush)
   (try
     (let [{:keys [cols vals]} (objects->colums+values chunkk)]
-      (jdbc/insert-multi! target-db-conn table-name cols vals))
+      (jdbc/insert-multi! target-db-conn table-name (map str/upper-case cols) vals))
     (catch SQLException e
       (jdbc/print-sql-exception-chain e)
       (throw e))))
