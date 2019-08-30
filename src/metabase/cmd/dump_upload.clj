@@ -3,6 +3,7 @@
             [clojure.java.io :as io]
             [metabase.crypto.asymmetric :as asymm]
             [metabase.crypto.symmetric :as symm]
+            [metabase.crypto.random :as crand]
             [metabase.s3 :as s3])
   (:import (java.net URL)
            (java.util.zip ZipOutputStream ZipEntry)
@@ -81,8 +82,7 @@
         generated-h2-path "./dumps_out/dump.h2.db.mv.db"
         enc-dump-path "./dumps_out/dump.aes.enc"
         enc-secret-path "./dumps_out/dump.secret.aes.enc"
-        ;;TODO generate secret
-        aes-secret "mysecretkey"
+        aes-secret (crand/fixed-length-string)
         s3-upload-url (URL. s3-upload-url-str)
 
         ]
@@ -93,6 +93,7 @@
                    :enc-dump-path   enc-dump-path
                    :enc-secret-path enc-secret-path
                    :key-spec        {:secret-key   aes-secret
+                                     ;;TODO get pub key from path
                                      :pub-key-path "./keys/pub_key"}})
 
     (zip-secure-dump {:enc-dump-path   enc-dump-path
