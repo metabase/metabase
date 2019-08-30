@@ -24,6 +24,7 @@
 
 
 (defn down! [h2-dump-path s3-bucket s3-key secret-key]
+  (println "Loading from H2 dump:" s3-bucket s3-key h2-dump-path (count secret-key))
   (let [enc-dump-path "./dumps_in/dumped.enc"
         enc-secret-path "./dumps_in/dumped_secret.enc"
         zip-path "./dumps_in/dumped.zip"
@@ -39,7 +40,7 @@
     (with-open [w (io/output-stream h2-dump-path)]
       (.write w enc-payload-decrypted))
 
-    ;(println "Loading from H2 dump:")
+
     ;(metabase.cmd.load-from-h2/load-from-h2! h2-dump-path)
 
 

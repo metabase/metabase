@@ -4,8 +4,6 @@
            (java.io ByteArrayOutputStream)))
 
 
-;; TODO Needs AWS_... env vars for auth in order for these to work
-
 (defn- file->bytes ^bytes [file]
   (with-open [xin (io/input-stream file)
               xout (ByteArrayOutputStream.)]
