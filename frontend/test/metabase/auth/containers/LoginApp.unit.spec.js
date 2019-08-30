@@ -3,7 +3,6 @@ import React from "react";
 import LoginApp from "metabase/auth/containers/LoginApp";
 
 import { mountWithStore } from "__support__/integration_tests";
-import { click, clickButton } from "__support__/enzyme_utils";
 
 jest.mock("metabase/lib/settings", () => ({
   get: () => ({
