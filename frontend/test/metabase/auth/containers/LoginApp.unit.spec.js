@@ -3,7 +3,7 @@ import React from "react";
 import LoginApp from "metabase/auth/containers/LoginApp";
 
 import { mountWithStore } from "__support__/integration_tests";
-import { click } from "__support__/enzyme_utils";
+import { click, clickButton } from "__support__/enzyme_utils";
 
 jest.mock("metabase/lib/settings", () => ({
   get: () => ({
@@ -20,7 +20,9 @@ describe("LoginApp", () => {
   describe("initial state", () => {
     describe("without SSO", () => {
       it("should show the login form", () => {
-        const { wrapper } = mountWithStore(<LoginApp />);
+        const { wrapper } = mountWithStore(
+          <LoginApp location={{ query: {} }} />,
+        );
         expect(wrapper.find("FormField").length).toBe(2);
       });
     });
@@ -29,32 +31,24 @@ describe("LoginApp", () => {
         Settings.ssoEnabled.mockReturnValue(true);
       });
       it("should show the SSO button", () => {
-        const { wrapper } = mountWithStore(<LoginApp />);
+        const { wrapper } = mountWithStore(
+          <LoginApp location={{ query: {} }} />,
+        );
         expect(wrapper.find("SSOLoginButton").length).toBe(1);
         expect(wrapper.find(".Button.EmailSignIn").length).toBe(1);
       });
 
       it("should hide the login form initially", () => {
-        const { wrapper } = mountWithStore(<LoginApp />);
+        const { wrapper } = mountWithStore(
+          <LoginApp location={{ query: {} }} />,
+        );
         expect(wrapper.find("FormField").length).toBe(0);
       });
 
-      it("should show the login form if the user clicks the email button", () => {
-        const { wrapper } = mountWithStore(<LoginApp />);
-        const withEmail = wrapper.find(".Button.EmailSignIn");
-        expect(withEmail.length).toBe(1);
-
-        click(withEmail);
-
-        expect(wrapper.find("FormField").length).toBe(2);
-        expect(wrapper.find("SSOLoginButton").length).toBe(0);
-      });
       it("should show the login form if the url param is set", () => {
-        const { wrapper } = mountWithStore(<LoginApp />);
-        const withEmail = wrapper.find(".Button.EmailSignIn");
-        expect(withEmail.length).toBe(1);
-
-        click(withEmail);
+        const { wrapper } = mountWithStore(
+          <LoginApp location={{ query: { useMBLogin: true } }} />,
+        );
 
         expect(wrapper.find("FormField").length).toBe(2);
         expect(wrapper.find("SSOLoginButton").length).toBe(0);
