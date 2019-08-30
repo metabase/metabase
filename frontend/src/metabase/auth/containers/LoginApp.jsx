@@ -147,7 +147,7 @@ export default class LoginApp extends Component {
                   <div className="py3">
                     <Link to="/auth/login?useMBLogin=true">
                       <Button className="EmailSignIn full">
-                        {t`Sign in with Metabase`}
+                        {t`Sign in with email`}
                       </Button>
                     </Link>
                   </div>
