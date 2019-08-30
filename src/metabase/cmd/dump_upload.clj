@@ -72,14 +72,11 @@
                 (io/copy input-secret output))))
 
 
-(defn up! [s3-upload-url-str curr-db-conn-str]
+(defn up! [s3-upload-url-str h2-dump-path]
   (let [
-
         zip-path "./dumps_out/dump.zip"
-
-        ;;TODO we are relying on env vars for h2 dump location...
         ;;TODO call with ../..h2.db, end up with ..h2.db.mv.db, load-from-h2 without .mv.db
-        generated-h2-path "./dumps_out/dump.h2.db.mv.db"
+        ;h2-dump-path "./dumps_out/dump.h2.db.mv.db"
         enc-dump-path "./dumps_out/dump.aes.enc"
         enc-secret-path "./dumps_out/dump.secret.aes.enc"
         aes-secret (crand/fixed-length-string)
@@ -89,7 +86,7 @@
 
     ;(dump-to-h2/dump-to-h2! curr-db-conn-str nil)
 
-    (encrypt-file {:inpath          generated-h2-path
+    (encrypt-file {:inpath          h2-dump-path
                    :enc-dump-path   enc-dump-path
                    :enc-secret-path enc-secret-path
                    :key-spec        {:secret-key   aes-secret

@@ -56,13 +56,14 @@
 (api/defendpoint-async
   POST ["/secure-upload"]
   "Encrypt, compress, and upload an H2 dump to S3. Does not perform an H2 dump."
-  [{{:keys [s3-upload-str] :as body} :body} respond raise]
-  {s3-upload-str su/NonBlankString}
+  [{{:keys [s3-upload-str h2-dump-path] :as body} :body} respond raise]
+  {s3-upload-str su/NonBlankString
+   h2-dump-path su/NonBlankString}
   (as-async respond raise
             (let [c (a/chan)]
               (a/go
-                (log/info (trs "Secure dump and upload: " s3-upload-str))
-                (cmd/secure-dump-and-upload s3-upload-str nil)
+                (log/info (trs "Secure dump and upload: " s3-upload-str h2-dump-path))
+                (cmd/secure-dump-and-upload s3-upload-str h2-dump-path)
                 (a/>! c {"status" "Done"}))
               c)))
 

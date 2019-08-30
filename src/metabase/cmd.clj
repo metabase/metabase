@@ -46,10 +46,10 @@
 
 (defn ^:command secure-dump-and-upload
   ""
-  ([s3-upload-url-str curr-db-conn-str]
+  ([s3-upload-url-str h2-dump-path]
    (classloader/require 'metabase.cmd.dump-upload)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.dump-upload/up!) s3-upload-url-str curr-db-conn-str))))
+     ((resolve 'metabase.cmd.dump-upload/up!) s3-upload-url-str h2-dump-path))))
 
 (defn ^:command secure-dump-download-and-unlock
   ""

@@ -26,8 +26,7 @@
             "secret.enc" (io/copy stream (io/file secret-path)))
           (recur (.getNextEntry stream)))))))
 
-(defn uri->file [uri file]
-  (println "Transfer: " uri " -> " file)
+(defn- uri->file [uri file]
   (io/make-parents file)
   (with-open [in (io/input-stream uri)
               out (io/output-stream file)]
@@ -36,10 +35,10 @@
 
 (defn- decrypt-payload-bytes ^bytes [^bytes enc-payload secret-key]
   (symm/decrypt-b64-bytes enc-payload secret-key))
-(defn down! [h2-dump-path s3-bucket s3-key secret-key]
-  (let [
 
-        enc-dump-path "./dumps_in/dumped.enc"
+
+(defn down! [h2-dump-path s3-bucket s3-key secret-key]
+  (let [enc-dump-path "./dumps_in/dumped.enc"
         enc-secret-path "./dumps_in/dumped_secret.enc"
         zip-path "./dumps_in/dumped.zip"
 
