@@ -5,8 +5,8 @@
                                    (SecureRandom/getInstance "SHA1PRNG" "SUN")
                                    (.nextBytes (byte-array 16))))
 
-(defonce ^ThreadLocal threadlocal-random (proxy [ThreadLocal] []
-                                           (initialValue [] secure-random)))
+(defonce ^:private ^ThreadLocal threadlocal-random (proxy [ThreadLocal] []
+                                                     (initialValue [] secure-random)))
 
 (defn secure-rand-int
   "Returns a secure random integer between 0 (inclusive) and n (exclusive)."
@@ -17,7 +17,7 @@
   "Random char between ascii range, defaults to lowercase alphabet range."
   ([]
    (secure-rand-char 26 65))
-  ([lower upper ]
+  ([lower upper]
    (char (+ (secure-rand-int lower) upper))))
 
 (defn fixed-length-string

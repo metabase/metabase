@@ -4,18 +4,8 @@
   (:import (java.net URL HttpURLConnection)
            (java.io ByteArrayOutputStream)))
 
-;;TODO credentials
 
-;; Needs AWS_... env vars for auth in order for these to work
-
-(defn upload
-  "Upload a path to an S3 bucket/key"
-  [obj-path s3-bucket s3-key]
-  (let [upload-file (io/file obj-path)]
-    (aws-s3/put-object :bucket-name s3-bucket
-                       :key s3-key
-                       :metadata {:server-side-encryption "AES256"}
-                       :file upload-file)))
+;; TODO Needs AWS_... env vars for auth in order for these to work
 
 (defn download
   "Download to a path to an S3 bucket/key"
@@ -42,4 +32,3 @@
     (when-not (= 200 (.getResponseCode conn))
       (throw (ex-info "Could not upload to S3" {:status (.getResponseCode conn)})))
     (.getResponseCode conn)))
-

@@ -4,9 +4,9 @@
             [metabase.crypto.asymmetric :as asymm]
             [metabase.crypto.symmetric :as symm]
             [metabase.crypto.random :as crand]
-            [metabase.s3 :as s3])
+            [metabase.s3 :as s3]
+            [metabase.zip :as zip])
   (:import (java.net URL)
-           (java.util.zip ZipOutputStream ZipEntry)
            (java.io ByteArrayOutputStream)))
 
 (defn- file->bytes ^bytes [file]
@@ -51,27 +51,6 @@
       (println "Error: " e))))
 
 
-(defmacro ^:private with-entry
-  [zip entry-name & body]
-  `(let [^ZipOutputStream zip# ~zip]
-     (.putNextEntry zip# (ZipEntry. ~entry-name))
-     ~@body
-     (flush)
-     (.closeEntry zip#)))
-
-
-(defn- zip-secure-dump
-  [{:keys [enc-dump-path enc-secret-path zip-path]}]
-  (println "Zipping " enc-dump-path enc-secret-path " --> " zip-path)
-  (with-open [output (ZipOutputStream. (io/output-stream zip-path))
-              input-dump (io/input-stream enc-dump-path)
-              input-secret (io/input-stream enc-secret-path)]
-    (with-entry output "dump.enc"
-                (io/copy input-dump output))
-    (with-entry output "secret.enc"
-                (io/copy input-secret output))))
-
-
 (defn up! [s3-upload-url-str h2-dump-path]
   (let [
         zip-path "./dumps_out/dump.zip"
@@ -80,9 +59,7 @@
         enc-dump-path "./dumps_out/dump.aes.enc"
         enc-secret-path "./dumps_out/dump.secret.aes.enc"
         aes-secret (crand/fixed-length-string)
-        s3-upload-url (URL. s3-upload-url-str)
-
-        ]
+        s3-upload-url (URL. s3-upload-url-str)]
 
     ;(dump-to-h2/dump-to-h2! curr-db-conn-str nil)
 
@@ -93,11 +70,10 @@
                                      ;;TODO get pub key from path
                                      :pub-key-path "./keys/pub_key"}})
 
-    (zip-secure-dump {:enc-dump-path   enc-dump-path
+    (zip/zip-secure-dump {:enc-dump-path   enc-dump-path
                       :enc-secret-path enc-secret-path
                       :zip-path        zip-path})
 
     (s3/upload-to-url s3-upload-url zip-path)
-
 
     (println "Done " s3-upload-url-str)))
