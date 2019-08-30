@@ -39,7 +39,7 @@
 
 (defn ^:command dump-to-h2
   "Transfer data from existing database to newly created H2 DB."
-  ([ h2-filename]
+  ([h2-filename]
    (classloader/require 'metabase.cmd.dump-to-h2)
    (binding [mdb/*disable-data-migrations* true]
      ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename))))

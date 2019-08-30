@@ -153,22 +153,28 @@
     (insert-chunk! target-db-conn table-name chunk))
   (println-ok))
 
-(defn- load-data! [target-db-conn ]
-  (let [conn-map (mdb/jdbc-details)]
-    (println "Conn of source: " conn-map )
-    (jdbc/with-db-connection [db-conn (mdb/jdbc-details conn-map)]
-      (doseq [{table-name :table, :as e} entities
-              :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
-              :when (seq rows)]
-        (insert-entity! target-db-conn e rows)))))
+(defn- load-data! [target-db-conn]
+  (println "Source db:" (mdb/jdbc-details))
+  (jdbc/with-db-connection [db-conn (mdb/jdbc-details)]
+    (doseq [{table-name :table, :as e} entities
+            :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
+            :when (seq rows)]
+      (insert-entity! target-db-conn e rows))))
 
-
-(defn- get-target-db-conn [h2-filename-or-nil]
-  (if h2-filename-or-nil
-    (h2-details h2-filename-or-nil)
-    (mdb/jdbc-details)))
+(defn- get-target-db-conn [h2-filename]
+  (h2-details h2-filename))
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
+
+(defmacro dowhile-> [pred & [f & fs]]
+  "Execute `f` (and `fs`) while `(pred (f))` is true. The return value of the `f` that does not satisfy `pred`, or `nil`
+  is returned."
+  {:style/indent 1}
+  (when f
+    `(let [retval# ~f]
+       (if (~pred retval#)
+         (dowhile-> ~pred ~@fs)
+         retval#))))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string
@@ -176,35 +182,32 @@
   from one instance to another using H2 as serialization target.
 
   Defaults to using `@metabase.db/db-file` as the connection string."
-  [h2-filename-or-nil]
+  [h2-filename]
+  (let [h2-filename (or h2-filename "metabase_dump.h2")]
+    (dowhile-> #(or (nil? %) (and (seq? %) (empty? %)))
+      (first
+        (remove nil?
+                (for [filename [h2-filename
+                                (str h2-filename ".mv.db")]]
+                  (when (.exists (io/file filename))
+                    (println (trs "Output H2 database already exists!") filename)
+                    1))))
 
-  (doseq [filename [h2-filename-or-nil
-                    (str h2-filename-or-nil ".mv.db")]]
-    (println "Checking for existing file:" filename)
-    (when (.exists (io/file filename))
-      (println (trs "Output H2 database already exists!") filename)
-      (System/exit 1)))
+      (println "Dumping from configured Metabase db to H2 file" h2-filename)
 
-  ;;TODO determine app-db-connection spec from (mdb/jdbc-details) or the like, don't require this command to take the conn str in
+      (mdb/setup-db!* (get-target-db-conn h2-filename) true)
+      (mdb/setup-db!)
 
-  (println "Dumping from " (mdb/jdbc-details) " to H2: " h2-filename-or-nil " or H2 from env.")
+      (when (= :h2 (mdb/db-type))
+        (println (u/format-color 'yellow (trs "Don't need to migrate, just use the existing H2 file")))
+        #_(System/exit 0))
 
-  (mdb/setup-db!* (get-target-db-conn h2-filename-or-nil) true)
+      (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename)]
+        (println "Conn of target: " target-db-conn)
+        (println-ok)
+        (println (u/format-color 'blue "Loading data..."))
+        (load-data! target-db-conn)
+        (println-ok)
+        (jdbc/db-unset-rollback-only! target-db-conn))
 
-  (let [src-conn (mdb/jdbc-details)]
-    (when (= :h2 (:type src-conn))
-      ;;TODO
-      (println (trs "Don't need to migrate, just use the existing H2 file"))
-      (System/exit 0)))
-
-  (jdbc/with-db-transaction [target-db-conn (get-target-db-conn h2-filename-or-nil)]
-    (println "Conn of target: " target-db-conn)
-    (println-ok)
-    (println (u/format-color 'blue "Loading data..."))
-    (load-data! target-db-conn )
-    (println-ok)
-    (jdbc/db-unset-rollback-only! target-db-conn))
-  (println "Dump complete")
-  )
-
-;(dump-to-h2! "")
+      (println "Dump complete"))))
