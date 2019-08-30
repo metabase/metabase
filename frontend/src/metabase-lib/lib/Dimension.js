@@ -89,6 +89,10 @@ export default class Dimension {
     return null;
   }
 
+  parseMBQL(mbql: ConcreteField): ?Dimension {
+    return Dimension.parseMBQL(mbql, this._metadata, this._query);
+  }
+
   /**
    * Returns true if these two dimensions are identical to one another.
    */
@@ -200,7 +204,7 @@ export default class Dimension {
     } else {
       mbql = fieldRef;
     }
-    const dimension = Dimension.parseMBQL(mbql, this._metadata, this._query);
+    const dimension = this.parseMBQL(mbql);
     if (option.name) {
       dimension._subDisplayName = option.name;
       dimension._subTriggerDisplayName = option.name;
@@ -217,9 +221,7 @@ export default class Dimension {
     }
 
     const otherDimension: ?Dimension =
-      other instanceof Dimension
-        ? other
-        : Dimension.parseMBQL(other, this._metadata, this._query);
+      other instanceof Dimension ? other : this.parseMBQL(other);
     if (!otherDimension) {
       return false;
     }
@@ -236,9 +238,7 @@ export default class Dimension {
     }
 
     const otherDimension: ?Dimension =
-      other instanceof Dimension
-        ? other
-        : Dimension.parseMBQL(other, this._metadata, this._query);
+      other instanceof Dimension ? other : this.parseMBQL(other);
 
     const baseDimensionA = this.baseDimension();
     const baseDimensionB = otherDimension && otherDimension.baseDimension();
@@ -553,7 +553,7 @@ export class FKDimension extends FieldDimension {
     query?: ?StructuredQuery,
   ): Dimension {
     super(parent, args, metadata, query);
-    this._dest = Dimension.parseMBQL(args[0], metadata, query);
+    this._dest = this.parseMBQL(args[0]);
   }
 
   mbql(): ForeignFieldReference {
@@ -580,11 +580,9 @@ export class FKDimension extends FieldDimension {
   }
 
   render() {
-    return [
-      stripId(this._parent.field().display_name),
-      ` ${FK_SYMBOL} `,
-      this.field().display_name,
-    ].join("");
+    return `${stripId(
+      this._parent.field().displayName(),
+    )} ${FK_SYMBOL} ${this.field().displayName()}`;
   }
 }
 
@@ -686,7 +684,7 @@ export class DatetimeFieldDimension extends FieldDimension {
   }
 
   render() {
-    return [super.render(), ": ", this.subDisplayName()].join("");
+    return `${super.render()}: ${this.subDisplayName()}`;
   }
 }
 
@@ -733,7 +731,7 @@ export class BinnedDimension extends FieldDimension {
   }
 
   render() {
-    return [super.render(), ": ", this.subTriggerDisplayName()].join("");
+    return `${super.render()}: ${this.subTriggerDisplayName()}`;
   }
 }
 
@@ -817,7 +815,7 @@ export class AggregationDimension extends Dimension {
   fieldDimension() {
     const aggregation = this.aggregation();
     if (aggregation.length === 2 && aggregation[1]) {
-      return Dimension.parseMBQL(aggregation[1], this._metadata, this._query);
+      return this.parseMBQL(aggregation[1]);
     }
     return null;
   }
@@ -896,8 +894,58 @@ export class JoinedDimension extends FieldDimension {
     return null;
   }
 
+  subDisplayName(): string {
+    return this._parent.subDisplayName();
+  }
+
+  subTriggerDisplayName() {
+    return this._parent.subTriggerDisplayName();
+  }
+
+  defaultDimension(...args) {
+    let dimension = this._parent.defaultDimension(...args);
+    if (
+      dimension instanceof BinnedDimension ||
+      dimension instanceof DatetimeFieldDimension
+    ) {
+      // `binning-strategy` and `datetime-field` go outside of `joined-dimension`
+      const mbql = dimension.mbql();
+      dimension = this.parseMBQL([
+        mbql[0],
+        ["joined-field", this.joinAlias(), mbql[1]],
+        ...mbql.slice(2),
+      ]);
+    } else if (
+      dimension instanceof FieldIDDimension ||
+      dimension instanceof FieldLiteralDimension
+    ) {
+      // `field-id` and `field-literal` goes inside of `joined-dimension`
+      dimension = this.parseMBQL([
+        "joined-field",
+        this.joinAlias(),
+        dimension.mbql(),
+      ]);
+    }
+    // TODO: any others?
+    return dimension;
+  }
+
+  joinAlias() {
+    return this._args[0];
+  }
+
+  join() {
+    return _.findWhere(this._query && this._query.joins(), {
+      alias: this.joinAlias(),
+    });
+  }
+
   mbql(): ForeignFieldReference {
     return ["joined-field", this._args[0], this._parent.mbql()];
+  }
+
+  render() {
+    return `${this.joinAlias()} ${FK_SYMBOL} ${super.render()}`;
   }
 }
 

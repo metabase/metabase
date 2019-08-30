@@ -409,7 +409,7 @@ const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
     ? existingDisplay
     : defaultDisplay;
 
-// DEPRECATED: use question.setDisplayDefault()
+// DEPRECATED: use question.setDefaultDisplay()
 export function guessVisualization(
   card: CardObject,
   tableMetadata: Table,

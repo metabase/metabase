@@ -7,6 +7,8 @@ import {
 import {
   makeStructuredQuery,
   ORDERS_TOTAL_FIELD_ID,
+  PRODUCT_PRICE_FIELD_ID,
+  PRODUCT_TABLE_ID,
 } from "__support__/sample_dataset_fixture";
 
 const FIELD_COLUMN = { id: 1 };
@@ -122,6 +124,93 @@ describe("metabase/util/dataset", () => {
       );
       expect(question.query().query()).toEqual({
         "source-table": 1,
+      });
+    });
+
+    describe("with joins", () => {
+      it("should sync included `table.columns` by name to join clauses", () => {
+        const question = syncTableColumnsToQuery(
+          makeStructuredQuery()
+            .addJoin({
+              alias: "products",
+              fields: "all",
+              "source-table": PRODUCT_TABLE_ID,
+            })
+            .question()
+            .setSettings({
+              "table.columns": [
+                {
+                  name: "TOTAL",
+                  enabled: true,
+                },
+                {
+                  name: "PRICE",
+                  enabled: true,
+                },
+              ],
+            }),
+        );
+        expect(question.query().query()).toEqual({
+          "source-table": 1,
+          joins: [
+            {
+              alias: "products",
+              "source-table": PRODUCT_TABLE_ID,
+              fields: [
+                [
+                  "joined-field",
+                  "products",
+                  ["field-id", PRODUCT_PRICE_FIELD_ID],
+                ],
+              ],
+            },
+          ],
+          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        });
+      });
+      it("should sync included `table.columns` by fieldRef to join clauses", () => {
+        const question = syncTableColumnsToQuery(
+          makeStructuredQuery()
+            .addJoin({
+              alias: "products",
+              fields: "all",
+              "source-table": PRODUCT_TABLE_ID,
+            })
+            .question()
+            .setSettings({
+              "table.columns": [
+                {
+                  fieldRef: ["field-id", ORDERS_TOTAL_FIELD_ID],
+                  enabled: true,
+                },
+                {
+                  fieldRef: [
+                    "joined-field",
+                    "products",
+                    ["field-id", PRODUCT_PRICE_FIELD_ID],
+                  ],
+                  enabled: true,
+                },
+              ],
+            }),
+        );
+        expect(question.query().query()).toEqual({
+          "source-table": 1,
+          joins: [
+            {
+              alias: "products",
+              "source-table": PRODUCT_TABLE_ID,
+              fields: [
+                [
+                  "joined-field",
+                  "products",
+                  ["field-id", PRODUCT_PRICE_FIELD_ID],
+                ],
+              ],
+            },
+          ],
+          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        });
       });
     });
   });

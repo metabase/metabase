@@ -276,7 +276,7 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  setDisplayDefault(): Question {
+  setDefaultDisplay(): Question {
     const query = this.query();
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -339,6 +339,12 @@ export default class Question {
       }
     }
     return this.setDisplay("table");
+  }
+
+  setDefaultQuery() {
+    return this.query()
+      .setDefaultQuery()
+      .question();
   }
 
   settings(): VisualizationSettings {

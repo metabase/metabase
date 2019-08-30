@@ -738,26 +738,24 @@ export const DatabaseSchemaPicker = ({
   }
 
   return (
-    <div className="scroll-y">
-      <AccordionList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
-        className="text-brand"
-        sections={sections}
-        onChange={onChangeSchema}
-        onChangeSection={(section, sectionIndex) =>
-          onChangeDatabase(sectionIndex, true)
-        }
-        itemIsSelected={schema => schema === selectedSchema}
-        renderSectionIcon={item => (
-          <Icon className="Icon text-default" name={item.icon} size={18} />
-        )}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        initiallyOpenSection={openSection}
-        alwaysTogglable={true}
-        showItemArrows={hasAdjacentStep}
-      />
-    </div>
+    <AccordionList
+      id="DatabaseSchemaPicker"
+      key="databaseSchemaPicker"
+      className="text-brand"
+      sections={sections}
+      onChange={onChangeSchema}
+      onChangeSection={(section, sectionIndex) =>
+        onChangeDatabase(sectionIndex, true)
+      }
+      itemIsSelected={schema => schema === selectedSchema}
+      renderSectionIcon={item => (
+        <Icon className="Icon text-default" name={item.icon} size={18} />
+      )}
+      renderItemIcon={() => <Icon name="folder" size={16} />}
+      initiallyOpenSection={openSection}
+      alwaysTogglable={true}
+      showItemArrows={hasAdjacentStep}
+    />
   );
 };
 
@@ -826,7 +824,7 @@ export const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300 }} className="scroll-y">
+      <div>
         <AccordionList
           id="TablePicker"
           key="tablePicker"

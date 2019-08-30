@@ -40,7 +40,7 @@ Now that you have the time zone adjustment, look at the list of time zone questi
 
 For example, let's say have a PST server time zone, and a GMT reporting time zone. If you had to manually go back 9 hours to get correct numbers, that suggests that the conversion is not happening for some reason -- this suggests you are using timestamps without a time zone.
 
-You can see a number of common problems below. If none of them apply, please [open a bug report](www.github.com/metabase/metabase/issues/new) with the above information (time zones, and the results of the second troubleshooting process) as well as your Metabase, OS, and web browser versions.
+You can see a number of common problems below. If none of them apply, please [open a bug report](https://github.com/metabase/metabase/issues/new/choose) with the above information (time zones, and the results of the second troubleshooting process) as well as your Metabase, OS, and web browser versions.
 
 ## Specific Problems:
 

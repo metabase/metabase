@@ -53,12 +53,16 @@
     (fn []
       (memoized-load-localization *locale*))))
 
+(defn- load-inline-js* [resource-name]
+  (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
+
+(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize load-inline-js*))
 
 (defn- load-template [path variables]
   (try
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
-      (let [message (str (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path))]
+      (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
         (log/error e message)
         (throw (Exception. message e))))))
 
@@ -66,7 +70,10 @@
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
-     {:bootstrapJSON      (escape-script (json/generate-string public-settings))
+     {:bootstrapJS        (load-inline-js "index_bootstrap")
+      :googleAnalyticsJS  (load-inline-js "index_ganalytics")
+      :webFontConfigJS    (load-inline-js "index_webfontconfig")
+      :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
       :uri                (h.util/escape-html uri)
       :baseHref           (h.util/escape-html (base-href))
@@ -74,14 +81,19 @@
       :enableGoogleAuth   (boolean google_auth_client_id)
       :enableAnonTracking (boolean anon_tracking_enabled)})))
 
+(defn- load-init-template []
+  (load-template
+    "frontend_client/init.html"
+    {:initJS (load-inline-js "init")}))
+
 (defn- entrypoint
   "Repsonse that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond raise]
   (respond
-   (-> (if (init-status/complete?)
-         (resp/response (load-entrypoint-template entrypoint-name embeddable? uri))
-         (resp/resource-response "frontend_client/init.html"))
-       (resp/content-type "text/html; charset=utf-8"))))
+    (-> (resp/response (if (init-status/complete?)
+                         (load-entrypoint-template entrypoint-name embeddable? uri)
+                         (load-init-template)))
+        (resp/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))

@@ -85,6 +85,7 @@
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
 (prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/FK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]
@@ -128,7 +129,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
+         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))

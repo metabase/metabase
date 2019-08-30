@@ -1,6 +1,7 @@
 /* @flow */
 
 import { MBQLObjectClause } from "./MBQLClause";
+import { t } from "ttag";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";
@@ -12,16 +13,18 @@ import type {
   JoinFields,
   JoinAlias,
   JoinCondition,
+  JoinedFieldReference,
   StructuredQuery as StructuredQueryObject,
+  ConcreteField,
 } from "metabase/meta/types/Query";
 
 import _ from "underscore";
 
 const JOIN_STRATEGY_OPTIONS = [
-  { value: "left-join", name: "Left outer join", icon: "join_left_outer" }, // default
-  { value: "right-join", name: "Right outer join", icon: "join_right_outer" },
-  { value: "inner-join", name: "Inner join", icon: "join_inner" },
-  { value: "full-join", name: "Full outer join", icon: "join_full_outer" },
+  { value: "left-join", name: t`Left outer join`, icon: "join_left_outer" }, // default
+  { value: "right-join", name: t`Right outer join`, icon: "join_right_outer" },
+  { value: "inner-join", name: t`Inner join`, icon: "join_inner" },
+  { value: "full-join", name: t`Full outer join`, icon: "join_full_outer" },
 ];
 
 export default class Join extends MBQLObjectClause {
@@ -38,8 +41,7 @@ export default class Join extends MBQLObjectClause {
   }
 
   displayName() {
-    const table = this.joinedTable();
-    return table && table.displayName();
+    return this.alias;
   }
 
   /**
@@ -54,25 +56,22 @@ export default class Join extends MBQLObjectClause {
     // $FlowFixMe
     return this["source-table"];
   }
-  setJoinSourceTableId(
-    tableId: TableId,
-    { defaultCondition = true }: { defaultCondition?: boolean } = {},
-  ) {
+  setJoinSourceTableId(tableId: TableId) {
     // $FlowFixMe
     if (tableId !== this["source-table"]) {
-      const table = this.metadata().table(tableId);
       const join = this.set({
         ...this,
         "source-query": undefined,
         "source-table": tableId,
-        alias: this._uniqueAlias((table && table.name) || `table_${tableId}`),
         condition: null,
       });
-      if (defaultCondition) {
-        return join.setDefaultCondition();
+      if (!join.alias) {
+        return join.setDefaultAlias();
       } else {
         return join;
       }
+    } else {
+      return this;
     }
   }
 
@@ -86,12 +85,12 @@ export default class Join extends MBQLObjectClause {
       ...this,
       "source-table": undefined,
       "source-query": query,
-      alias: this._uniqueAlias("source"),
       condition: null,
     });
   }
 
-  _uniqueAlias(name: JoinAlias) {
+  // $FlowFixMe: will always return JoinAlias even though Flow doesn't think so
+  _uniqueAlias(name: JoinAlias): JoinAlias {
     const usedAliases = new Set(
       this.query()
         .joins()
@@ -116,6 +115,60 @@ export default class Join extends MBQLObjectClause {
   // FIELDS
   setFields(fields: JoinFields) {
     return this.set({ ...this, fields });
+  }
+
+  addField(field: JoinedFieldReference) {
+    if (Array.isArray(this.fields)) {
+      return this.setFields([...this.fields, field]);
+    } else if (this.fields === "none") {
+      return this.setFields([field]);
+    } else {
+      return this;
+    }
+  }
+
+  clearFields() {
+    return this.setFields("none");
+  }
+
+  // ALIAS
+  setAlias(alias: JoinAlias) {
+    alias = this._uniqueAlias(alias);
+    if (alias !== this.alias) {
+      const join = this.set({ ...this, alias });
+      // propagate alias change to join dimension
+      // TODO: do this in a generic way for all joined-field clauses in the query
+      const joinDimension = join.joinDimension();
+      if (
+        joinDimension instanceof JoinedDimension &&
+        joinDimension.joinAlias() === this.alias
+      ) {
+        // TODO: JoinedDimension should have setJoinAlias()
+        const mbql = joinDimension.mbql();
+        mbql[1] = alias;
+        return join.setJoinDimension(mbql);
+      } else {
+        return join;
+      }
+    }
+    return this;
+  }
+
+  setDefaultAlias() {
+    const parentDimension = this.parentDimension();
+    if (parentDimension && parentDimension.field().isFK()) {
+      return this.setAlias(parentDimension.field().targetDisplayName());
+    } else {
+      const table = this.joinedTable();
+      // $FlowFixMe
+      const match = String(table.id).match(/card__(\d+)/);
+      if (match) {
+        // NOTE: special case for "Saved Questions" tables
+        return this.setAlias(`Question ${match[1]}`);
+      } else {
+        return this.setAlias((table && table.display_name) || "source");
+      }
+    }
   }
 
   // STRATEGY
@@ -188,7 +241,7 @@ export default class Join extends MBQLObjectClause {
     }
     return options;
   }
-  setParentDimension(dimension: Dimension): Join {
+  setParentDimension(dimension: Dimension | ConcreteField): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
     }
@@ -207,7 +260,7 @@ export default class Join extends MBQLObjectClause {
       return joinedQuery && joinedQuery.parseFieldReference(condition[2]);
     }
   }
-  setJoinDimension(dimension: Dimension): Join {
+  setJoinDimension(dimension: Dimension | ConcreteField): Join {
     if (dimension instanceof Dimension) {
       dimension = dimension.mbql();
     }

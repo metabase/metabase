@@ -47,7 +47,7 @@
   (let [date-string (.getString rs i)]
     (if-let [parsed-date (du/str->date-time date-string (.getTimeZone cal))]
       parsed-date
-      (throw (Exception. (str (tru "Unable to parse date ''{0}''" date-string)))))))
+      (throw (Exception. (tru "Unable to parse date ''{0}''" date-string))))))
 
 (defmulti read-column
   "Read a single value from a single column in a single row from the JDBC ResultSet of a Metabase query. Normal

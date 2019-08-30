@@ -141,6 +141,21 @@ export const field_special_types = [
     section: t`Common`,
   },
   {
+    id: TYPE.CancelationTimestamp,
+    name: t`Cancelation timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationTime,
+    name: t`Cancelation time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationDate,
+    name: t`Cancelation date`,
+    section: t`Common`,
+  },
+  {
     id: TYPE.Product,
     name: t`Product`,
     section: t`Common`,

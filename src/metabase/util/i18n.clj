@@ -62,7 +62,7 @@
   "Schema for user and system localized string instances"
   (s/cond-pre UserLocalizedString SystemLocalizedString))
 
-(defmacro tru
+(defmacro deferred-tru
   "Similar to `puppetlabs.i18n.core/tru` but creates a `UserLocalizedString` instance so that conversion to the
   correct locale can be delayed until it is needed. The user locale comes from the browser, so conversion to the
   localized string needs to be 'late bound' and only occur when the user's locale is in scope. Calling `str` on the
@@ -70,13 +70,34 @@
   [msg & args]
   `(UserLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
-(defmacro trs
+(defmacro deferred-trs
   "Similar to `puppetlabs.i18n.core/trs` but creates a `SystemLocalizedString` instance so that conversion to the
   correct locale can be delayed until it is needed. This is needed as the system locale from the JVM can be
   overridden/changed by a setting. Calling `str` on the results of this invocation will lookup the translated version
   of the string."
   [msg & args]
   `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
+
+(def ^String str*
+  "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
+  (if *compile-files*
+    (fn [& _]
+      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
+    str))
+
+(defmacro tru
+  "Applies `str` to `deferred-tru`'s expansion.
+  Prefer this over `deferred-tru`. Use `deferred-tru` only in code executed at compile time, or where `str` is manually
+  applied to the result."
+  [msg & args]
+  `(str* (deferred-tru ~msg ~@args)))
+
+(defmacro trs
+  "Applies `str` to `deferred-trs`'s expansion.
+  Prefer this over `deferred-trs`. Use `deferred-trs` only in code executed at compile time, or where `str` is manually
+  applied to the result."
+  [msg & args]
+  `(str* (deferred-trs ~msg ~@args)))
 
 (def ^:private localized-string-checker
   "Compiled checker for `LocalizedString`s which is more efficient when used repeatedly like in `localized-string?`

@@ -4,8 +4,12 @@
             [metabase.pulse.render
              [color :as color]
              [style :as style]])
-  (:import jdk.nashorn.api.scripting.JSObject
-           metabase.pulse.render.common.NumericWrapper))
+  (:import jdk.nashorn.api.scripting.JSObject))
+
+;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so
+;; NumericWrapper exists in the first place.
+(require 'metabase.pulse.render.common)
+(import 'metabase.pulse.render.common.NumericWrapper)
 
 (defn- bar-th-style []
   (merge (style/font-style) {:font-size :14.22px
@@ -70,7 +74,7 @@
          (h cell)])
       (when bar-width
         [:td {:style (style/style (bar-td-style) {:width :99%})}
-         [:div {:style (style/style {:background-color style/color-purple
+         [:div {:style (style/style {:background-color (style/primary-color)
                                      :max-height       :10px
                                      :height           :10px
                                      :border-radius    :2px

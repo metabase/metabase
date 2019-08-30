@@ -76,7 +76,7 @@
   (when (and source-query (empty? source-metadata))
     (when-not qp.i/*disable-qp-logging*
       (log/warn
-       (trs "Warining: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))))
+       (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))
@@ -98,8 +98,8 @@
                         [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
-                                     (:name (qp.store/table source-table-id)))))))
+        (throw (Exception. (tru "Table ''{0}'' has no Fields associated with it."
+                                (:name (qp.store/table source-table-id))))))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 

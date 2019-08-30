@@ -40,7 +40,7 @@
             [metabase.sync.analyze.classify :as classify]
             [metabase.util
              [date :as date]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
@@ -74,15 +74,15 @@
   (comp (some-fn :display_name :name) :source))
 
 (def ^:private op->name
-  {:sum       (tru "sum")
-   :avg       (tru "average")
-   :min       (tru "minumum")
-   :max       (tru "maximum")
-   :count     (tru "number")
-   :distinct  (tru "distinct count")
-   :stddev    (tru "standard deviation")
-   :cum-count (tru "cumulative count")
-   :cum-sum   (tru "cumulative sum")})
+  {:sum       (deferred-tru "sum")
+   :avg       (deferred-tru "average")
+   :min       (deferred-tru "minumum")
+   :max       (deferred-tru "maximum")
+   :count     (deferred-tru "number")
+   :distinct  (deferred-tru "distinct count")
+   :stddev    (deferred-tru "standard deviation")
+   :cum-count (deferred-tru "cumulative count")
+   :cum-sum   (deferred-tru "cumulative sum")})
 
 (def ^:private ^{:arglists '([metric])} saved-metric?
   (every-pred (partial mbql.u/is-clause? :metric)
@@ -737,6 +737,7 @@
                         (comp (->> (db/select Field
                                      :table_id        [:in (map u/get-id tables)]
                                      :visibility_type "normal"
+                                     :preview_display true
                                      :active          true)
                                    field/with-targets
                                    (map #(assoc % :engine engine))
@@ -826,7 +827,7 @@
       :entity
       related/related
       (update :fields (partial remove key-col?))
-      (->> (m/map-vals (comp (partial map ->related-entity) rules/ensure-seq)))))
+      (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
 (s/defn ^:private indepth
   [root, rule :- (s/maybe rules/Rule)]
@@ -991,15 +992,15 @@
                                            ;; (no chunking).
                                            first))]
     (let [show (or show max-cards)]
-      (log/infof (str (trs "Applying heuristic {0} to {1}." (:rule rule) full-name)))
-      (log/infof (str (trs "Dimensions bindings:\n{0}"
-                           (->> context
-                                :dimensions
-                                (m/map-vals #(update % :matches (partial map :name)))
-                                u/pprint-to-str))))
-      (log/infof (str (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
-                           (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
-                           (-> context :filters u/pprint-to-str))))
+      (log/infof (trs "Applying heuristic {0} to {1}." (:rule rule) full-name))
+      (log/infof (trs "Dimensions bindings:\n{0}"
+                      (->> context
+                           :dimensions
+                           (m/map-vals #(update % :matches (partial map :name)))
+                           u/pprint-to-str)))
+      (log/infof (trs "Using definitions:\nMetrics:\n{0}\nFilters:\n{1}"
+                      (->> context :metrics (m/map-vals :metric) u/pprint-to-str)
+                      (-> context :filters u/pprint-to-str)))
       (-> dashboard
           (populate/create-dashboard show)
           (assoc :related           (related context rule)
@@ -1114,14 +1115,14 @@
   humanize-filter-value (fn [_ [op & args]]
                           (qp.util/normalize-token op)))
 
-(def ^:private unit-name (comp {:minute-of-hour  (tru "minute")
-                                :hour-of-day     (tru "hour")
-                                :day-of-week     (tru "day of week")
-                                :day-of-month    (tru "day of month")
-                                :day-of-year     (tru "day of year")
-                                :week-of-year    (tru "week")
-                                :month-of-year   (tru "month")
-                                :quarter-of-year (tru "quarter")}
+(def ^:private unit-name (comp {:minute-of-hour  (deferred-tru "minute")
+                                :hour-of-day     (deferred-tru "hour")
+                                :day-of-week     (deferred-tru "day of week")
+                                :day-of-month    (deferred-tru "day of month")
+                                :day-of-year     (deferred-tru "day of year")
+                                :week-of-year    (deferred-tru "week")
+                                :month-of-year   (deferred-tru "month")
+                                :quarter-of-year (deferred-tru "quarter")}
                                qp.util/normalize-token))
 
 (defn- field-name

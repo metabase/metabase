@@ -7,7 +7,7 @@
             [metabase.util
              [encryption :as encryption]
              [encryption-test :as encryption-test]
-             [i18n :refer [tru]]]
+             [i18n :refer [deferred-tru]]]
             [puppetlabs.i18n.core :as i18n]
             [toucan.db :as db]))
 
@@ -246,7 +246,7 @@
         setting)))
 
 (defsetting ^:private test-i18n-setting
-  (tru "Test setting - with i18n"))
+  (deferred-tru "Test setting - with i18n"))
 
 ;; Validate setting description with i18n string
 (expect
@@ -497,7 +497,7 @@
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
-  (tru "This is a sample sensitive Setting.")
+  (deferred-tru "This is a sample sensitive Setting.")
   :sensitive? true)
 
 ;; `user-facing-value` should obfuscate sensitive settings

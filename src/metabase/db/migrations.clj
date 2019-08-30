@@ -337,9 +337,9 @@
     (doseq [group-id non-admin-group-ids]
       (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
-                                         Pulse     (str (trs "Migrated Pulses"))
-                                         Card      (str (trs "Migrated Questions"))}
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
             :when                       (db/exists? model :collection_id nil)
             :let                        [new-collection (db/insert! Collection
                                                           :name  new-collection-name

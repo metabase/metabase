@@ -70,7 +70,7 @@ export default class NativeQueryButton extends React.Component {
   }
 
   render() {
-    const { question, size } = this.props;
+    const { question, size, ...props } = this.props;
     const { loading, error } = this.state;
 
     const engineType = getEngineNativeType(question.database().engine);
@@ -78,7 +78,7 @@ export default class NativeQueryButton extends React.Component {
       STRINGS[engineType] || Object.values(STRINGS)[0];
 
     return (
-      <span>
+      <span {...props}>
         <Icon
           name="sql"
           size={size}

@@ -28,6 +28,7 @@
 (def ^:private default-search-row
   {:id                  true
    :description         nil
+   :display_name        nil
    :archived            false
    :collection_id       false
    :collection_position nil
@@ -48,8 +49,12 @@
    (db/select-one [Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
      :id (data/id :checkins))))
 
+(defn- sorted-results [results]
+  (sort-by (juxt :model :name) results))
+
 (defn- default-search-results []
-  #{(merge
+  (sorted-results
+   [(merge
      default-search-row
      {:name "dashboard test dashboard", :model "dashboard", :favorite false})
     (merge
@@ -68,21 +73,21 @@
     (merge
      default-search-row
      {:model "segment", :name "segment test segment", :description "Lookin' for a blueberry"}
-     (table-search-results))})
+     (table-search-results))]))
 
 (defn- default-metric-segment-results []
-  (set (filter (comp #{"metric" "segment"} :model) (default-search-results))))
+  (filter #(contains? #{"metric" "segment"} (:model %)) (default-search-results)))
 
 (defn- default-archived-results []
-  (set (for [result (default-search-results)
-             :when (false? (:archived result))]
-         (assoc result :archived true))))
+  (for [result (default-search-results)
+        :when (false? (:archived result))]
+    (assoc result :archived true)))
 
 (defn- on-search-types [model-set f coll]
-  (set (for [search-item coll]
-         (if (contains? model-set (:model search-item))
-           (f search-item)
-           search-item))))
+  (for [search-item coll]
+    (if (contains? model-set (:model search-item))
+      (f search-item)
+      search-item)))
 
 (defn- default-results-with-collection []
   (on-search-types #{"dashboard" "pulse" "card"}
@@ -116,11 +121,15 @@
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
 (defn- search-request [user-kwd & params]
-  (set
-   (for [result (apply (test-users/user->client user-kwd) :get 200 "search" params)]
-     (-> result
-         tu/boolean-ids-and-timestamps
-         (update :collection_name #(some-> % string?))))))
+  (vec
+   (sorted-results
+    (let [raw-results (apply (test-users/user->client user-kwd) :get 200 "search" params)]
+      (for [result raw-results
+            ;; filter out any results not from the usual test data DB (e.g. results from other drivers)
+            :when  (contains? #{(data/id) nil} (:database_id result))]
+        (-> result
+            tu/boolean-ids-and-timestamps
+            (update :collection_name #(some-> % string?))))))))
 
 ;; Basic search, should find 1 of each entity type, all items in the root collection
 (expect
@@ -132,9 +141,9 @@
 ;; previous tests. Instead of an = comparison here, just ensure our default results are included
 (expect
   (set/subset?
-   (default-search-results)
-   (with-search-items-in-root-collection "test"
-     (search-request :crowberto))))
+   (set (default-search-results))
+   (set (with-search-items-in-root-collection "test"
+          (search-request :crowberto)))))
 
 ;; Ensure that users without perms for the root collection don't get results
 ;; NOTE: Metrics and segments don't have collections, so they'll be returned
@@ -146,7 +155,7 @@
 
 ;; Users that have root collection permissions should get root collection search results
 (expect
-  (set (remove (comp #{"collection"} :model) (default-search-results)))
+  (remove (comp #{"collection"} :model) (default-search-results))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-root-collection "test"
       (tt/with-temp* [PermissionsGroup           [group]
@@ -156,10 +165,12 @@
 
 ;; Users without root collection permissions should still see other collections they have access to
 (expect
-  (into (default-results-with-collection)
-        (map #(merge default-search-row % (table-search-results))
-             [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-              {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
+  (sorted-results
+   (into
+    (default-results-with-collection)
+    (map #(merge default-search-row % (table-search-results))
+         [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+          {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
@@ -171,10 +182,12 @@
 ;; Users with root collection permissions should be able to search root collection data long with collections they
 ;; have access to
 (expect
-  (into (default-results-with-collection)
-        (for [row (default-search-results)
-              :when (not= "collection" (:model row))]
-          (update row :name #(str/replace % "test" "test2"))))
+  (sorted-results
+   (into
+    (default-results-with-collection)
+    (for [row   (default-search-results)
+          :when (not= "collection" (:model row))]
+      (update row :name #(str/replace % "test" "test2")))))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {:keys [collection]} "test"
       (with-search-items-in-root-collection "test2"
@@ -186,9 +199,11 @@
 
 ;; Users with access to multiple collections should see results from all collections they have access to
 (expect
-  (into (default-results-with-collection)
-        (map (fn [row] (update row :name #(str/replace % "test" "test2")))
-             (default-results-with-collection)))
+  (sorted-results
+   (into
+    (default-results-with-collection)
+    (map (fn [row] (update row :name #(str/replace % "test" "test2")))
+         (default-results-with-collection))))
   (with-search-items-in-collection {coll-1 :collection} "test"
     (with-search-items-in-collection {coll-2 :collection} "test2"
       (tt/with-temp* [PermissionsGroup           [group]
@@ -199,10 +214,12 @@
 
 ;; User should only see results in the collection they have access to
 (expect
-  (into (default-results-with-collection)
-        (map #(merge default-search-row % (table-search-results))
-             [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
-              {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}]))
+  (sorted-results
+   (into
+    (default-results-with-collection)
+    (map #(merge default-search-row % (table-search-results))
+         [{:name "metric test2 metric", :description "Lookin' for a blueberry", :model "metric"}
+          {:name "segment test2 segment", :description "Lookin' for a blueberry", :model "segment"}])))
   (tu/with-non-admin-groups-no-root-collection-perms
     (with-search-items-in-collection {coll-1 :collection} "test"
       (with-search-items-in-collection {coll-2 :collection} "test2"
@@ -282,23 +299,40 @@
 (defn- default-table-search-row [table-name]
   (merge
    default-search-row
-   {:name table-name, :table_name table-name :table_id true, :archived nil, :model "table", :database_id true}))
+   {:name         table-name
+    :display_name table-name
+    :table_name   table-name
+    :table_id     true
+    :archived     nil
+    :model        "table"
+    :database_id  true}))
+
+(expect
+  [(default-table-search-row "Round Table")]
+  (tt/with-temp Table [table {:name "Round Table"}]
+    (search-request :crowberto :q "Round Table")))
+
+(expect
+  [(default-table-search-row "Kitchen Table")]
+  (tt/with-temp Table [table {:name "Kitchen Table"}]
+    (search-request :rasta :q "Kitchen Table")))
+
+;; But *archived* tables should not appear in search results
+(let [table-name (tu/random-name)]
+  (expect
+    []
+    (tt/with-temp Table [table {:name table-name}]
+      (search-request :crowberto :q table-name :archived true))))
 
 (let [table-name (tu/random-name)]
   (expect
-    #{(default-table-search-row table-name)}
+    []
     (tt/with-temp Table [table {:name table-name}]
-      (search-request :crowberto :q table-name))))
-
-(let [table-name (tu/random-name)]
-  (expect
-    #{(default-table-search-row table-name)}
-    (tt/with-temp Table [table {:name table-name}]
-      (search-request :rasta :q table-name))))
+      (search-request :rasta :q table-name :archived true))))
 
 ;; you should not be able to see a Table if the current user doesn't have permissions for that Table
 (expect
-  #{}
+  []
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [table {:db_id db-id}]]
     (perms/revoke-permissions! (group/all-users) db-id)
