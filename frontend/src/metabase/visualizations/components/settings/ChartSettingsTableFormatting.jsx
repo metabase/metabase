@@ -44,7 +44,7 @@ const STRING_OPERATOR_NAMES = {
   "ends-with": t`ends with`,
 };
 
-const ALL_OPERATOR_NAMES = {
+export const ALL_OPERATOR_NAMES = {
   ...NUMBER_OPERATOR_NAMES,
   ...STRING_OPERATOR_NAMES,
 };
