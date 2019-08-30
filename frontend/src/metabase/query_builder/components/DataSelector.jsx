@@ -136,6 +136,8 @@ export const TableTriggerContent = ({ selectedTable }) =>
 @connect(
   state => ({ metadata: getMetadata(state) }),
   { fetchTableMetadata },
+  undefined,
+  { withRef: true },
 )
 export default class DataSelector extends Component {
   constructor(props) {
@@ -250,7 +252,7 @@ export default class DataSelector extends Component {
       this.props.databases.length === 1 &&
       !this.props.segments;
     if (useOnlyAvailableDatabase) {
-      setTimeout(() => this.onChangeDatabase(0));
+      setTimeout(() => this.onChangeDatabase(0, true));
     }
 
     this.hydrateActiveStep();
