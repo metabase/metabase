@@ -7,12 +7,12 @@ import DataSelector, {
   TableTriggerContent,
 } from "metabase/query_builder/components/DataSelector.jsx";
 
-describe("DatabaseSchemaAndTableDataSelector",  () => {
+describe("DatabaseSchemaAndTableDataSelector", () => {
   it("should render", async () => {
     const store = getStore(normalReducers);
     const dataSelector = mount(
       <DataSelector
-				store={store}
+        store={store}
         steps={["DATABASE_SCHEMA", "TABLE"]}
         getTriggerElementContent={TableTriggerContent}
         databases={[
@@ -20,8 +20,8 @@ describe("DatabaseSchemaAndTableDataSelector",  () => {
             id: 1,
             name: "db-1",
             tables: [
-              { name:"table-1",display_name: "table-1", schema: "schema-1" },
-              { name:"table-2",display_name: "table-2", schema: "schema-2" },
+              { name: "table-1", display_name: "table-1", schema: "schema-1" },
+              { name: "table-2", display_name: "table-2", schema: "schema-2" },
             ],
           },
         ]}
@@ -29,8 +29,8 @@ describe("DatabaseSchemaAndTableDataSelector",  () => {
       />,
     );
 
-		// this await is because onChangeDatabase get scheduled for the next tick
-		await new Promise(r => setTimeout(r))
+    // this await is because onChangeDatabase get scheduled for the next tick
+    await new Promise(r => setTimeout(r));
 
     const dataSelectorInstance = dataSelector.instance().getWrappedInstance();
     let popoverContent = mount(dataSelectorInstance.renderActiveStep());
