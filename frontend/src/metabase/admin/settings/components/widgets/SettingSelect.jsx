@@ -1,6 +1,6 @@
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select";
 
 const SettingSelect = ({
   setting: { placeholder, value, options, defaultValue },

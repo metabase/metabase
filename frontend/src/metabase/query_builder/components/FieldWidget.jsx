@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import FieldList from "./FieldList.jsx";
-import FieldName from "./FieldName.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import FieldList from "./FieldList";
+import FieldName from "./FieldName";
+import Popover from "metabase/components/Popover";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 

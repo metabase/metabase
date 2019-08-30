@@ -3,8 +3,8 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon.jsx";
-import Card from "metabase/components/Card.jsx";
+import Icon from "metabase/components/Icon";
+import Card from "metabase/components/Card";
 
 const DetailPane = ({ name, description, extra, values }) => (
   <div className="ml1">

@@ -1,6 +1,6 @@
 import React from "react";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 
 import {
   isDefaultGroup,

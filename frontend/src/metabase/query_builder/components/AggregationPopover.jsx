@@ -2,13 +2,13 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import AccordionList from "metabase/components/AccordionList.jsx";
-import FieldList from "./FieldList.jsx";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip.jsx";
+import AccordionList from "metabase/components/AccordionList";
+import FieldList from "./FieldList";
+import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
 
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Button from "metabase/components/Button.jsx";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import Button from "metabase/components/Button";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
@@ -17,7 +17,7 @@ import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
 import _ from "underscore";
 
-import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield.jsx";
+import ExpressionEditorTextfield from "./expressions/ExpressionEditorTextfield";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;

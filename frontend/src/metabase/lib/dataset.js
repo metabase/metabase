@@ -80,9 +80,6 @@ export function fieldRefForColumnWithLegacyFallback(
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
  *
- * NOTE: this returns non-normalized ["fk->", 1, 2] style fk field references
- * which is unfortunately used in table.columns visualization_settings
- *
  * @param  {Column} column Dataset result column
  * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?FieldReference} MBQL field reference

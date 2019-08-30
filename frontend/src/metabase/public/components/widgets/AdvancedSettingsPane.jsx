@@ -9,7 +9,7 @@ import Button from "metabase/components/Button";
 import Parameters from "metabase/parameters/components/Parameters";
 import Select, { Option } from "metabase/components/Select";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import DisplayOptionsPane from "./DisplayOptionsPane";
 
@@ -88,7 +88,7 @@ const AdvancedSettingsPane = ({
             <Icon
               name={getIconForParameter(parameter)}
               className="mr2"
-              style={{ color: colors["text-light"] }}
+              style={{ color: color("text-light") }}
             />
             <h3>{parameter.name}</h3>
             <Select

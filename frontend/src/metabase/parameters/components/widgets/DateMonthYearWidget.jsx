@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import YearPicker from "./YearPicker.jsx";
+import YearPicker from "./YearPicker";
 
 import moment from "moment";
 import _ from "underscore";

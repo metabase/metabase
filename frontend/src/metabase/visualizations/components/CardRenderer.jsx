@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 

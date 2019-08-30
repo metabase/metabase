@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import "./TableInteractive.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isFK } from "metabase/lib/schema_metadata";
@@ -22,13 +22,13 @@ import Dimension from "metabase-lib/lib/Dimension";
 import _ from "underscore";
 import cx from "classnames";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 import MiniBar from "./MiniBar";
 
 // $FlowFixMe: had to ignore react-virtualized in flow, probably due to different version
 import { Grid, ScrollSync } from "react-virtualized";
 import Draggable from "react-draggable";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Ellipsified from "metabase/components/Ellipsified";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;

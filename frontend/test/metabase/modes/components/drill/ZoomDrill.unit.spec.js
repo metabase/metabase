@@ -27,7 +27,6 @@ describe("ZoomDrill", () => {
             [
               "datetime-field",
               ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-              "as",
               "month",
             ],
           ],
@@ -49,21 +48,11 @@ describe("ZoomDrill", () => {
       aggregation: [["count"]],
       filter: [
         "=",
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
-          "month",
-        ],
+        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "month"],
         clickedDateTimeValue.value,
       ],
       breakout: [
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          // "as",
-          "week",
-        ],
+        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "week"],
       ],
     });
     expect(newCard.display).toEqual("line");

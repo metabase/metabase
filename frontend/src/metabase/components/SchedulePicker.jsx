@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Select from "metabase/components/Select.jsx";
+import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";

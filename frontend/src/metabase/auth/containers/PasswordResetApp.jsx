@@ -4,12 +4,12 @@ import { Link } from "react-router";
 
 import cx from "classnames";
 import { t, jt } from "ttag";
-import AuthScene from "../components/AuthScene.jsx";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import AuthScene from "../components/AuthScene";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
+import LogoIcon from "metabase/components/LogoIcon";
+import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
 

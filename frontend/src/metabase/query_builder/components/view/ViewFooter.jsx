@@ -4,7 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 import styled from "styled-components";
 import { Flex } from "grid-styled";
-import colors, { darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
@@ -201,7 +201,7 @@ const VizSettingsButton = ({ ...props }) => (
 const Well = styled(Flex)`
   border-radius: 99px;
   &:hover {
-    background-color: ${darken(colors["bg-medium"], 0.05)};
+    background-color: ${darken(color("bg-medium"), 0.05)};
   }
   transition: background 300ms linear;
 `;
@@ -210,13 +210,12 @@ Well.defaultProps = {
   px: "6px",
   py: "4px",
   align: "center",
-  bg: colors["bg-medium"],
+  bg: color("bg-medium"),
 };
 
 const ToggleIcon = styled(Flex)`
   cursor: pointer;
-  background-color: ${props =>
-    props.active ? colors["brand"] : "transparent"};
+  background-color: ${props => (props.active ? color("brand") : "transparent")};
   color: ${props => (props.active ? "white" : "inherit")};
   border-radius: 99px;
 `;

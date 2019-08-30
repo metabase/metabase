@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 

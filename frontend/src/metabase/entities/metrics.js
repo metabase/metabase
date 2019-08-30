@@ -1,7 +1,7 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { MetricSchema } from "metabase/schema";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
 const Metrics = createEntity({
@@ -26,7 +26,7 @@ const Metrics = createEntity({
     getName: metric => metric && metric.name,
     getUrl: metric =>
       Urls.tableRowsQuery(metric.database_id, metric.table_id, metric.id),
-    getColor: metric => colors["accent1"],
+    getColor: metric => color("accent1"),
     getIcon: metric => "sum",
   },
 

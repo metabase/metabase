@@ -16,7 +16,7 @@ import {
   getUnsignedPreviewUrl,
   getSignedToken,
 } from "metabase/public/lib/embed";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   getSiteUrl,
@@ -179,7 +179,7 @@ export default class EmbedModalContent extends Component {
           style={{
             boxShadow:
               embedType === "application"
-                ? `0px 8px 15px -9px ${colors["text-dark"]}`
+                ? `0px 8px 15px -9px ${color("text-dark")}`
                 : undefined,
           }}
         >

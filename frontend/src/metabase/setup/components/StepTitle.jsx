@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 export default class StepTitle extends Component {
   static propTypes = {

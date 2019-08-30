@@ -5,7 +5,7 @@ import { t } from "ttag";
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import PermissionsGrid from "../components/PermissionsGrid.jsx";
+import PermissionsGrid from "../components/PermissionsGrid";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import "./ColumnarSelector.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 

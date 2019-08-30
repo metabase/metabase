@@ -4,10 +4,10 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import DirectionalButton from "metabase/components/DirectionalButton";
-import ExpandableString from "metabase/query_builder/components/ExpandableString.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import {
   isID,

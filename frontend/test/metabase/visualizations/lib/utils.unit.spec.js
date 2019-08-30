@@ -33,7 +33,10 @@ const breakoutMultiseriesQuery = {
   ...baseQuery,
   query: {
     ...baseQuery.query,
-    breakout: [...baseQuery.query.breakout, ["fk->", 1, 10]],
+    breakout: [
+      ...baseQuery.query.breakout,
+      ["fk->", ["field-id", 1], ["field-id", 10]],
+    ],
   },
 };
 const derivedBreakoutMultiseriesQuery = {

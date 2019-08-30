@@ -3,7 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import colors, { lighten, darken } from "metabase/lib/colors";
+import { color as c, lighten, darken } from "metabase/lib/colors";
 
 import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
@@ -27,60 +27,60 @@ import LimitStep from "./steps/LimitStep";
 const STEP_UI = {
   data: {
     title: t`Data`,
-    color: colors["brand"],
+    color: c("brand"),
     component: DataStep,
   },
   join: {
     title: t`Join data`,
-    color: colors["brand"],
+    color: c("brand"),
     icon: "join_left_outer",
     component: JoinStep,
     priority: 1,
   },
   expression: {
     title: t`Custom column`,
-    color: colors["bg-dark"],
+    color: c("bg-dark"),
     icon: "add_data",
     component: ExpressionStep,
   },
   filter: {
     title: t`Filter`,
-    color: colors["accent7"],
+    color: c("accent7"),
     icon: "filter",
     component: FilterStep,
     priority: 10,
   },
   summarize: {
     title: t`Summarize`,
-    color: colors["accent1"],
+    color: c("accent1"),
     icon: "sum",
     component: SummarizeStep,
     priority: 5,
   },
   aggregate: {
     title: t`Aggregate`,
-    color: colors["accent1"],
+    color: c("accent1"),
     icon: "sum",
     component: AggregateStep,
     priority: 5,
   },
   breakout: {
     title: t`Breakout`,
-    color: colors["accent4"],
+    color: c("accent4"),
     icon: "segment",
     component: BreakoutStep,
     priority: 1,
   },
   sort: {
     title: t`Sort`,
-    color: colors["bg-dark"],
+    color: c("bg-dark"),
     icon: "smartscalar",
     component: SortStep,
     compact: true,
   },
   limit: {
     title: t`Row limit`,
-    color: colors["bg-dark"],
+    color: c("bg-dark"),
     icon: "list",
     component: LimitStep,
     compact: true,
@@ -182,7 +182,7 @@ export default class NotebookStep extends React.Component {
                   }
                   icon="play"
                   title={t`Preview`}
-                  color={colors["text-light"]}
+                  color={c("text-light")}
                   onClick={() => this.setState({ showPreview: true })}
                 />
               </Box>
@@ -205,12 +205,12 @@ export default class NotebookStep extends React.Component {
 
 const ColorButton = Button.extend`
   border: none;
-  color: ${({ color }) => (color ? color : colors["text-medium"])}
+  color: ${({ color }) => (color ? color : c("text-medium"))}
   background-color: ${({ color }) => (color ? lighten(color, 0.61) : null)};
   &:hover {
-    color: ${({ color }) => (color ? darken(color, 0.115) : colors["brand"])};
+    color: ${({ color }) => (color ? darken(color, 0.115) : color("brand"))};
     background-color: ${({ color }) =>
-      color ? lighten(color, 0.5) : lighten(colors["brand"], 0.61)};
+      color ? lighten(color, 0.5) : lighten(color("brand"), 0.61)};
   }
   transition: background 300ms;
 `;

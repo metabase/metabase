@@ -3,7 +3,7 @@
 import d3 from "d3";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
@@ -284,7 +284,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: colors["text-medium"],
+        fill: color("text-medium"),
       })
       .on("mouseenter", function() {
         onGoalHover(this);

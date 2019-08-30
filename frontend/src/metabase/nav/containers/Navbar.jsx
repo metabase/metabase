@@ -10,10 +10,9 @@ import { t } from "ttag";
 import { Flex } from "grid-styled";
 import styled from "styled-components";
 import { space } from "styled-system";
-import color from "color";
 
 import * as Urls from "metabase/lib/urls";
-import colors, { darken } from "metabase/lib/colors";
+import { color, darken, lighten } from "metabase/lib/colors";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -61,12 +60,8 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = color(colors.brand)
-  .lighten(0.07)
-  .string();
-const ActiveSearchColor = color(colors.brand)
-  .lighten(0.1)
-  .string();
+const DefaultSearchColor = lighten("brand", 0.07);
+const ActiveSearchColor = lighten("brand", 0.1);
 
 const SearchWrapper = Flex.extend`
   background-color: ${props =>
@@ -93,7 +88,7 @@ const SearchInput = styled.input`
     outline: none;
   }
   &::placeholder {
-    color: ${colors["text-white"]};
+    color: ${color("text-white")};
   }
 `;
 
@@ -316,7 +311,7 @@ export default class Navbar extends Component {
               to={Urls.newQuestionFlow()}
               p={1}
               hover={{
-                backgroundColor: darken(colors["brand"]),
+                backgroundColor: darken(color("brand")),
               }}
               className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;New Question`}
@@ -333,7 +328,7 @@ export default class Navbar extends Component {
               className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;Data Browse`}
               hover={{
-                backgroundColor: darken(colors["brand"]),
+                backgroundColor: darken(color("brand")),
               }}
             >
               <Icon name="table_spaced" size={14} />

@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import ChoroplethMap, {
   getColorplethColorScale,
-} from "../components/ChoroplethMap.jsx";
-import PinMap from "../components/PinMap.jsx";
+} from "../components/ChoroplethMap";
+import PinMap from "../components/PinMap";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {

@@ -7,7 +7,7 @@ import {
   formatUrl,
   formatDateTimeWithUnit,
 } from "metabase/lib/formatting";
-import ExternalLink from "metabase/components/ExternalLink.jsx";
+import ExternalLink from "metabase/components/ExternalLink";
 import { TYPE } from "metabase/lib/types";
 
 describe("formatting", () => {
