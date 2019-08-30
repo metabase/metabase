@@ -42,7 +42,9 @@
   ([h2-filename]
    (classloader/require 'metabase.cmd.dump-to-h2)
    (binding [mdb/*disable-data-migrations* true]
-     ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename))))
+     (let [return-code ((resolve 'metabase.cmd.dump-to-h2/dump-to-h2!) h2-filename)]
+       (when (pos-int? return-code)
+         (System/exit return-code))))))
 
 (defn ^:command secure-dump-and-upload
   ""
