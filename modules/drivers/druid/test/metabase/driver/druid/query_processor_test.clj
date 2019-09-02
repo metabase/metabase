@@ -8,17 +8,11 @@
             [metabase.test.data.datasets :as datasets]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
 
-(defn- do-query->native [query]
-  (driver/with-driver :druid
-    (tqpt/with-flattened-dbdef
-      (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
-        (qp/query->native
-          query)))))
-
-(defmacro ^:private query->native [query]
-  `(do-query->native
-    (data/mbql-query ~'checkins
-      ~query)))
+(defmacro ^:private do-query [query]
+  `(driver/with-driver :druid
+     (tqpt/with-flattened-dbdef
+       (with-redefs [druid.qp/random-query-id (constantly "<Query ID>")]
+         ~query))))
 
 (datasets/expect-with-driver :druid
   {:projections [:venue_price :__count_0 :expression]
@@ -43,6 +37,21 @@
                    :aggregator {:type :count, :name "__count_0"}}]}
    :query-type  ::druid.qp/topN
    :mbql?       true}
-  (query->native
-   {:aggregation [[:* [:count $id] 10]]
-    :breakout    [$venue_price]}))
+  (do-query
+   (qp/query->native
+     (data/mbql-query 'checkins
+       {:aggregation [[:* [:count $id] 10]]
+        :breakout    [$venue_price]}))))
+
+(datasets/expect-with-driver :druid
+  [[]
+   []
+   []]
+  (do-query
+   (-> (qp/process-query
+         (data/mbql-query 'checkins
+           {:aggregation [[:count]]
+            :breakout    [[:datetime-field $date :day]]
+            :limit       3}))
+       :data
+       :rows)))
