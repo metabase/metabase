@@ -39,7 +39,7 @@
    :mbql?       true}
   (do-query
    (qp/query->native
-     (data/mbql-query 'checkins
+     (data/mbql-query :checkins
        {:aggregation [[:* [:count $id] 10]]
         :breakout    [$venue_price]}))))
 
@@ -49,7 +49,7 @@
    []]
   (do-query
    (-> (qp/process-query
-         (data/mbql-query 'checkins
+         (data/mbql-query :checkins
            {:aggregation [[:count]]
             :breakout    [[:datetime-field $date :day]]
             :limit       3}))
