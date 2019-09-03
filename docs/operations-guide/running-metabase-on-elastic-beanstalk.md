@@ -231,7 +231,7 @@ This will create a new certificate inside your AWS environment which can be reus
 * Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page)
 	* Enter in a **Name**: for your application.  this should be the exact url you plan to access Metabase with.  (e.g. metabase.mycompany.com)
 	* Under the dropdown for **Type**: select *A - IPv4 Address* (sometimes you can also choose CNAME - Canonical name but this may cause more trouble)
-	* In the box labeled **Alias**: choose your elastic bean environment in the drop-down or directly input the full path to your Elastic Beanstalk environment (e.g. mycompany-metabase.elasticbeanstalk.com)
+	* In the box labeled **Alias**: choose your elastic beanstalk environment in the drop-down or directly input the full path to your Elastic Beanstalk environment (e.g. mycompany-metabase.elasticbeanstalk.com)
 	* Leave all other settings in their default values and click the **Create** button at the bottom of the page
 	* NOTE: after the record is created you must wait for your change to propagate on the internet which can take 5-10 minutes, sometimes longer (but usually not more than 30 minutes).
 
