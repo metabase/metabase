@@ -1,3 +1,6 @@
+:root {
+  --form-field-border-color: color(var(--color-border) blackness(+10%));
+}
 ::-webkit-input-placeholder {
   color: var(--color-text-light);
 }
@@ -31,7 +34,7 @@
   font-size: 16px;
   color: var(--color-text-dark);
   background-color: var(--color-bg-white);
-  border: 1px solid color(var(--color-border) blackness(+ 10%));
+  border: 1px solid var(--form-field-border-color);
   border-radius: 4px;
   padding: 0.75em;
   line-height: 1;
@@ -78,4 +81,13 @@
 .Form-radio:checked + label {
   box-shadow: 0 0 0 2px var(--color-shadow);
   background-color: var(--color-brand);
+}
+
+.Form-field .AdminSelect {
+  border-color: var(--form-field-border-color);
+}
+
+.Form-field .AdminSelect:hover {
+  border-color: var(--color-brand);
+  transition: border 300ms ease-in-out;
 }
