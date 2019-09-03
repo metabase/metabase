@@ -32,12 +32,10 @@
       (log/errorf e "Unable to translate string '%s'" msg)
       msg)))
 
-(def translate-system-locale
-  "A wrapper function to partially apply i18n/system-locale args for translate function"
+(def ^:private translate-system-locale
   (partial translate i18n/system-locale))
 
-(def translate-user-locale
-  "A wrapper function to partially apply i18n/user-locale args for translate function"
+(def ^:private translate-user-locale
   (partial translate i18n/user-locale))
 
 (p.types/defrecord+ UserLocalizedString [ns-str msg args]
