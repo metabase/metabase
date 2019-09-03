@@ -44,7 +44,7 @@ export default class FormField extends Component {
         {displayName && (
           <label className="Form-label" htmlFor={name}>
             {displayName}{" "}
-            {error && <span className="text-error mx1">{error}</span>}
+            {error && <span className="text-error">: {error}</span>}
           </label>
         )}
         {children}
