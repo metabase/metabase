@@ -1,5 +1,9 @@
-::-webkit-input-placeholder,
-:-moz-placeholder,
+::-webkit-input-placeholder {
+  color: var(--color-text-light);
+}
+:-moz-placeholder {
+  color: var(--color-text-light);
+}
 :-ms-input-placeholder {
   color: var(--color-text-light);
 }
