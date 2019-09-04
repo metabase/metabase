@@ -134,7 +134,7 @@ export default class DatabaseEditApp extends Component {
           ]}
         />
         <Flex pb={2}>
-          <Box w={2 / 3}>
+          <Box>
             <div className="pt0">
               {showTabs && (
                 <div className="border-bottom">
@@ -183,7 +183,7 @@ export default class DatabaseEditApp extends Component {
 
           {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <Box w={1 / 3} ml={[2, 3]}>
+            <Box ml={[2, 3]} w={420}>
               <div className="Actions bg-light rounded p3">
                 <div className="Actions-group">
                   <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
