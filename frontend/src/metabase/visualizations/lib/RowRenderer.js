@@ -6,10 +6,14 @@ import dc from "dc";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { initChart, forceSortedGroup, makeIndexMap } from "./renderer_utils";
+import {
+  initChart,
+  forceSortedGroup,
+  makeIndexMap,
+  formatNull,
+} from "./renderer_utils";
 import { getFriendlyName } from "./utils";
 import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
-import { NULL_DISPLAY_VALUE } from "./constants";
 
 export default function rowRenderer(
   element,
@@ -29,7 +33,7 @@ export default function rowRenderer(
   // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
   // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
   const rowsWithFormattedNull = series[0].data.rows.map(([first, ...rest]) => [
-    first === null ? NULL_DISPLAY_VALUE : first,
+    formatNull(first),
     ...rest,
   ]);
   const rows = rowsWithFormattedNull.map(([a, b]) => [

@@ -5,7 +5,7 @@ import moment from "moment";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { isNormalized, isStacked } from "./renderer_utils";
+import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
 
@@ -83,8 +83,9 @@ export function getClickHoverObject(
           // this catches values like years that don't parse correctly above
           formatValue(key, { column: rawCols[0] }) === String(x)
         : // otherwise, we just check if the string value matches
+          // we also format null so it matches a key displayed as "(empty)"
           // e.g. String("123") === String(123)
-          String(x) === String(key),
+          String(formatNull(x)) === String(key),
     );
 
     // try to get row from _origin but fall back to the row we already have
@@ -106,7 +107,7 @@ export function getClickHoverObject(
         }
         return {
           key: getColumnDisplayName(col),
-          value: rawRow[i],
+          value: formatNull(rawRow[i]),
           col: col,
         };
       });
