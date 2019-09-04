@@ -64,7 +64,7 @@ const DefaultSearchColor = lighten("brand", 0.07);
 const ActiveSearchColor = lighten("brand", 0.1);
 
 const NavHover = {
-  backgroundColor: darken(colors["brand"]),
+  backgroundColor: darken(color("brand")),
   color: "white",
 };
 
