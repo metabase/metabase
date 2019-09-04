@@ -42,9 +42,10 @@ export default class LoadingAndErrorWrapper extends Component {
       // NOTE Atte Keinänen 5/10/17 Dashboard API endpoint returns the error as JSON with `message` field
       (error.data && (error.data.message ? error.data.message : error.data)) ||
       error.statusText ||
-      error.message;
+      error.message ||
+      error;
 
-    if (!errorMessage || typeof errorMessage === "object") {
+    if (!errorMessage || typeof errorMessage !== "string") {
       errorMessage = t`An error occurred`;
     }
     return errorMessage;
