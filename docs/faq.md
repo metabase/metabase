@@ -54,7 +54,7 @@ To manually fix field or table names if they still look wrong, you can go to the
 
 ### Can I add headings, free text, section dividers, or images to my dashboards?
 
-Yes, by using [text cards](users-guide/07-dashboards.md#adding-headings-or-descriptions-with-text-cards).
+Yes, by using [text cards](users-guide/07-dashboards.html#adding-headings-or-descriptions-with-text-cards).
 
 ### Why do my cards fade out when I use dashboard filters?
 
