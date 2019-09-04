@@ -250,7 +250,7 @@ export default class DataSelector extends Component {
       this.props.databases.length === 1 &&
       !this.props.segments;
     if (useOnlyAvailableDatabase) {
-      setTimeout(() => this.onChangeDatabase(0));
+      setTimeout(() => this.onChangeDatabase(0, true));
     }
 
     this.hydrateActiveStep();
