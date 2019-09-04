@@ -2,6 +2,7 @@
 
 import _ from "underscore";
 import { getIn } from "icepick";
+import { t } from "ttag";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
@@ -10,7 +11,6 @@ import { dimensionIsNumeric } from "./numeric";
 import { dimensionIsTimeseries } from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
-import { NULL_DISPLAY_VALUE } from "./constants";
 
 export function initChart(chart, element) {
   // set the bounds
@@ -110,11 +110,7 @@ const memoizedParseXValue = _.memoize(
     if (isTimeseries && !isQuantitative) {
       return parseTimestampAndWarn(xValue, unit);
     }
-    const parsedValue = isNumeric
-      ? xValue
-      : xValue === null
-      ? NULL_DISPLAY_VALUE
-      : String(xValue);
+    const parsedValue = isNumeric ? xValue : String(formatNull(xValue));
     return { parsedValue };
   },
   // create cache key from args
@@ -243,3 +239,8 @@ export const isRemappedToString = series =>
 export const isMultiCardSeries = series =>
   series.length > 1 &&
   getIn(series, [0, "card", "id"]) !== getIn(series, [1, "card", "id"]);
+
+const NULL_DISPLAY_VALUE = t`(empty)`;
+export function formatNull(value) {
+  return value === null ? NULL_DISPLAY_VALUE : value;
+}
