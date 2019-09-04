@@ -108,7 +108,7 @@ export class ObjectDetail extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // if the card has changed or table metadat laoded then reload fk references
+    // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded =
       nextProps.tableForeignKeys && !this.props.tableForeignKeys;
     if (this.props.data != nextProps.data || tableFKsJustLoaded) {
