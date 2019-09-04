@@ -17,6 +17,10 @@ Also open up your server logs, and see if there are any errors related to authen
 #### How to fix this:
 Remove the old token from the Google Auth SSO tab in the Admin Panel and create a new one. If the root cause was an invalid auth token, this should fix the problem.
 
+### Forgotten Password
+
+[This FAQ](../faq/how-do-i-reset-my-password.md) will tell you what to do in the event of a forgotten password.
+
 
 
 ## Helpful tidbits

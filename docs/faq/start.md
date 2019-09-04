@@ -21,6 +21,7 @@ Here is a list of some frequently asked questions about Metabase.
 
 ## Using Metabase
 
+* [How do I reset my password?](using-metabase/how-do-i-reset-my-password.md)
 * [How do I ask questions about my data?](using-metabase/how-do-i-ask-questions.md)
 * [I'm not getting the email notifications I expect to!](using-metabase/i-am-not-getting-email-notifications.md)
 * [How do I answer questions about data that lives in multiple databases?](using-metabase/how-do-i-answer-questions-when-data-is-in-multiple-databases.md)
