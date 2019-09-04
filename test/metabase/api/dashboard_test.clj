@@ -249,8 +249,8 @@
                                                              :result_metadata        nil})
                              :series                 []}]})
     ;; fetch a dashboard WITH a dashboard card on it
-    (tt/with-temp* [Table         [{table-id :id} {:id table-id}]
-                    Field         [{field-id :id} {:table_id table-id :id field-id :display_name display-name}]
+    (tt/with-temp* [Table         [_ {:id table-id}]
+                    Field         [_ {:table_id table-id :id field-id :display_name display-name}]
 
                     Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                     Card          [{card-id :id}      {:name "Dashboard Test Card"}]
