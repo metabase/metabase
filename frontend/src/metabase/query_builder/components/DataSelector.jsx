@@ -136,8 +136,6 @@ export const TableTriggerContent = ({ selectedTable }) =>
 @connect(
   state => ({ metadata: getMetadata(state) }),
   { fetchTableMetadata },
-  undefined,
-  { withRef: true },
 )
 export default class DataSelector extends Component {
   constructor(props) {
