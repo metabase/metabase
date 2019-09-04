@@ -9,7 +9,7 @@ import {
   PRODUCT_CATEGORY_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
-import FieldName from "metabase/query_builder/components/FieldName.jsx";
+import FieldName from "metabase/query_builder/components/FieldName";
 
 describe("FieldName", () => {
   it("should render regular field correctly", () => {
@@ -60,7 +60,10 @@ describe("FieldName", () => {
   it("should render nested fk field correctly", () => {
     pending();
     const fieldName = mount(
-      <FieldName field={["fk->", 3, 2]} tableMetadata={ORDERS_TABLE_ID} />,
+      <FieldName
+        field={["fk->", ["field-id", 3], ["field-id", 2]]}
+        tableMetadata={ORDERS_TABLE_ID}
+      />,
     );
     expect(fieldName.text()).toEqual("BarFoo: Baz");
   });

@@ -55,7 +55,7 @@ import Select from "metabase/components/Select";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
-import TextWidget from "metabase/parameters/components/widgets/TextWidget.jsx";
+import TextWidget from "metabase/parameters/components/widgets/TextWidget";
 import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import SharingPane from "metabase/public/components/widgets/SharingPane";
 import { EmbedTitle } from "metabase/public/components/widgets/EmbedModalContent";
@@ -414,7 +414,7 @@ describe("public/embedded", () => {
           type: "query",
           query: {
             "source-table": PEOPLE_TABLE_ID,
-            aggregation: ["count"],
+            aggregation: [["count"]],
           },
         },
       });

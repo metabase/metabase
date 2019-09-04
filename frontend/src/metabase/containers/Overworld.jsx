@@ -8,7 +8,7 @@ import { createSelector } from "reselect";
 import CollectionItemsLoader from "metabase/containers/CollectionItemsLoader";
 import CandidateListLoader from "metabase/containers/CandidateListLoader";
 import ExplorePane from "metabase/components/ExplorePane";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Tooltip from "metabase/components/Tooltip";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import CollectionList from "metabase/components/CollectionList";
 
@@ -20,7 +20,7 @@ import Subhead from "metabase/components/Subhead";
 import RetinaImage from "react-retina-image";
 
 import * as Urls from "metabase/lib/urls";
-import colors, { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Greeting from "metabase/lib/greeting";
 
 import Database from "metabase/entities/databases";
@@ -138,12 +138,12 @@ class Overworld extends React.Component {
                             pin.model
                           }`}
                           to={Urls.dashboard(pin.id)}
-                          hover={{ color: normal.blue }}
+                          hover={{ color: color("brand") }}
                         >
                           <Card hoverable p={3}>
                             <Icon
                               name="dashboard"
-                              color={normal.blue}
+                              color={color("brand")}
                               mb={2}
                               size={28}
                             />
@@ -163,7 +163,7 @@ class Overworld extends React.Component {
 
         <Box px={PAGE_PADDING} my={3}>
           <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
-          <Box p={[1, 2]} mt={2} bg={colors["bg-medium"]}>
+          <Box p={[1, 2]} mt={2} bg={color("bg-medium")}>
             {this.props.collections.filter(
               c => c.id !== user.personal_collection_id,
             ).length > 0 ? (
@@ -193,11 +193,11 @@ class Overworld extends React.Component {
             )}
             <Link
               to="/collection/root"
-              color={normal.grey2}
+              color={color("text-medium")}
               className="text-brand-hover"
               data-metabase-event={`Homepage;Browse Items Clicked;`}
             >
-              <Flex color={colors["brand"]} p={2} my={1} align="center">
+              <Flex color={color("brand")} p={2} my={1} align="center">
                 <Box ml="auto" mr="auto">
                   <Flex align="center">
                     <h4>{t`Browse all items`}</h4>
@@ -223,19 +223,19 @@ class Overworld extends React.Component {
                       <GridItem w={[1, 1 / 3]} key={database.id}>
                         <Link
                           to={`browse/${database.id}`}
-                          hover={{ color: normal.blue }}
+                          hover={{ color: color("brand") }}
                           data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${
                             database.engine
                           }`}
                         >
                           <Box
                             p={3}
-                            bg={colors["bg-medium"]}
+                            bg={color("bg-medium")}
                             className="hover-parent hover--visibility"
                           >
                             <Icon
                               name="database"
-                              color={normal.purple}
+                              color={color("database")}
                               mb={3}
                               size={28}
                             />
@@ -251,7 +251,7 @@ class Overworld extends React.Component {
                                     >
                                       <Icon
                                         name="reference"
-                                        color={normal.grey1}
+                                        color={color("text-light")}
                                       />
                                     </Link>
                                   </Tooltip>
@@ -301,13 +301,13 @@ export class AdminPinMessage extends React.Component {
         <SectionHeading>{t`Start here`}</SectionHeading>
 
         <Flex
-          bg={colors["bg-medium"]}
+          bg={color("bg-medium")}
           p={2}
           align="center"
           style={{ borderRadius: 6 }}
           className="hover-parent hover--visibility"
         >
-          <Icon name="dashboard" color={colors["brand"]} size={32} mr={1} />
+          <Icon name="dashboard" color={color("brand")} size={32} mr={1} />
           <Box ml={1}>
             <h3>{t`Your team's most important dashboards go here`}</h3>
             <p className="m0 mt1 text-medium text-bold">{jt`Pin dashboards in ${link} to have them appear in this space for everyone`}</p>
@@ -328,7 +328,7 @@ const SectionHeading = ({ children }) => (
   <Box mb={1}>
     <h5
       className="text-uppercase"
-      style={{ color: colors["text-medium"], fontWeight: 900 }}
+      style={{ color: color("text-medium"), fontWeight: 900 }}
     >
       {children}
     </h5>

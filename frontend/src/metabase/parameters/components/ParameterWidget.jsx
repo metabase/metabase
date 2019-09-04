@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import ParameterValueWidget from "./ParameterValueWidget.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import ParameterValueWidget from "./ParameterValueWidget";
+import Icon from "metabase/components/Icon";
 
 import S from "./ParameterWidget.css";
 import cx from "classnames";

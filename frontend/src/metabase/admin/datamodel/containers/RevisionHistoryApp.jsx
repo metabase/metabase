@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
+import RevisionHistory from "../components/revisions/RevisionHistory";
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 

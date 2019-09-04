@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import TokenizedExpression from "./TokenizedExpression.jsx";
+import TokenizedExpression from "./TokenizedExpression";
 
 import {
   getCaretPosition,

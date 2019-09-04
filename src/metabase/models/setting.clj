@@ -32,6 +32,7 @@
   (:require [cheshire.core :as json]
             [clojure
              [core :as core]
+             [data :as data]
              [string :as str]]
             [clojure.data.csv :as csv]
             [clojure.tools.logging :as log]
@@ -82,7 +83,12 @@
    :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :internal?   s/Bool           ; should the API never return this setting? (default: false)
-   :cache?      s/Bool})         ; should the getter always fetch this value "fresh" from the DB? (default: false)
+   :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
+
+  ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+  ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
+  ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
+  :on-change   (s/maybe clojure.lang.IFn)})
 
 
 (defonce ^:private registered-settings
@@ -97,6 +103,18 @@
           (throw (Exception.
                   (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))))))
 
+
+(defn- call-on-change
+  "Cache watcher that applies `:on-change` callback for all settings that have changed."
+  [_key _ref old new]
+  (let [rs      @registered-settings
+        [d1 d2] (data/diff old new)]
+    (doseq [changed-setting (into (set (keys d1))
+                                  (set (keys d2)))]
+      (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
+        (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
+
+(add-watch @#'cache/cache* :call-on-change call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -382,6 +400,7 @@
                :description nil
                :type        setting-type
                :default     default
+               :on-change   nil
                :getter      (partial (default-getter-for-type setting-type) setting-name)
                :setter      (partial (default-setter-for-type setting-type) setting-name)
                :tag         (default-tag-for-type setting-type)

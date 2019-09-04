@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { connect } from "react-redux";
 
@@ -18,7 +18,7 @@ import EntityListLoader, {
 
 import Collections from "metabase/entities/collections";
 
-const COLLECTION_ICON_COLOR = colors["text-light"];
+const COLLECTION_ICON_COLOR = color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 

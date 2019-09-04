@@ -5,7 +5,7 @@ import { assocIn } from "icepick";
 
 import DashCard from "metabase/dashboard/components/DashCard";
 
-jest.mock("metabase/visualizations/components/Visualization.jsx");
+jest.mock("metabase/visualizations/components/Visualization");
 
 const DEFAULT_PROPS = {
   dashcard: {

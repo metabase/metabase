@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import ActionButton from "metabase/components/ActionButton.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ActionButton from "metabase/components/ActionButton";
+import ModalContent from "metabase/components/ModalContent";
 
 import moment from "moment";
 

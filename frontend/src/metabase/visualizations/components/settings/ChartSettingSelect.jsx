@@ -1,6 +1,6 @@
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select";
 
 import cx from "classnames";
 

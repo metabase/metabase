@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import ActionButton from "metabase/components/ActionButton.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ActionButton from "metabase/components/ActionButton";
+import ModalContent from "metabase/components/ModalContent";
 import { t } from "ttag";
 import cx from "classnames";
 

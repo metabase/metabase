@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import Filter from "./Filter.jsx";
+import Filter from "./Filter";
 import { filterWidgetFilterRenderer } from "./filters/FilterWidget";
 
 import { getMetadata } from "metabase/selectors/metadata";

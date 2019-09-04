@@ -6,7 +6,7 @@ import cx from "classnames";
 
 import S from "./GuideEditSection.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const GuideEditSection = ({
   children,

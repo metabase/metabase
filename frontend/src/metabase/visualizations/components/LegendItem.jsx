@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 

@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import _ from "underscore";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ModalContent from "metabase/components/ModalContent";
 
 import { fetchJobInfo } from "../jobInfo";

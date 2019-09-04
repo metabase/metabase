@@ -15,7 +15,7 @@ import EntityItem from "metabase/components/EntityItem";
 import Subhead from "metabase/components/Subhead";
 import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 const PAGE_PADDING = [1, 2, 4];
@@ -103,7 +103,7 @@ export default class SearchApp extends React.Component {
                     <Link
                       className="flex align-center"
                       mb={3}
-                      color={!location.query.type ? colors.brand : "inherit"}
+                      color={!location.query.type ? color("brand") : "inherit"}
                       to={{
                         pathname: location.pathname,
                         query: { ...location.query, type: null },
@@ -120,8 +120,8 @@ export default class SearchApp extends React.Component {
                       }
 
                       const color = isActive
-                        ? colors.brand
-                        : colors["text-medium"];
+                        ? color("brand")
+                        : color("text-medium");
 
                       return (
                         <Link
@@ -158,7 +158,7 @@ const SearchResultSection = ({ title, items }) => (
         case "segment":
         case "metric":
           extraInfo = (
-            <Flex align="center" color={colors["text-medium"]}>
+            <Flex align="center" color={color("text-medium")}>
               <Icon name="database" size={8} mr="4px" />
               <span className="text-small text-bold" style={{ lineHeight: 1 }}>
                 <Database.Name id={item.database_id} />
@@ -171,7 +171,7 @@ const SearchResultSection = ({ title, items }) => (
         default:
           extraInfo = (
             <div className="inline-block">
-              <Flex align="center" color={colors["text-medium"]}>
+              <Flex align="center" color={color("text-medium")}>
                 <Icon name="all" size={10} mr="4px" />
                 <span
                   className="text-small text-bold"

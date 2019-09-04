@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetricsList from "./MetricsList.jsx";
-import ColumnsList from "./ColumnsList.jsx";
-import SegmentsList from "./SegmentsList.jsx";
+import MetricsList from "./MetricsList";
+import ColumnsList from "./ColumnsList";
+import SegmentsList from "./SegmentsList";
 import { t } from "ttag";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
 import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";

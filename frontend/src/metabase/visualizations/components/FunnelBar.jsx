@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 
-import BarChart from "metabase/visualizations/visualizations/BarChart.jsx";
+import BarChart from "metabase/visualizations/visualizations/BarChart";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import { assocIn } from "icepick";

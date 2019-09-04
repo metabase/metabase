@@ -4,10 +4,10 @@ import _ from "underscore";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import Toggle from "metabase/components/Toggle.jsx";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
+import Toggle from "metabase/components/Toggle";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Select, { Option } from "metabase/components/Select";
+import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
 import type { TemplateTag } from "metabase/meta/types/Query";

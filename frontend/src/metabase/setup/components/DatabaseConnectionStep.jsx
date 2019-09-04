@@ -2,11 +2,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import StepTitle from "./StepTitle.jsx";
-import CollapsedStep from "./CollapsedStep.jsx";
+import StepTitle from "./StepTitle";
+import CollapsedStep from "./CollapsedStep";
 
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
-import FormField from "metabase/components/form/FormField.jsx";
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
+import FormField from "metabase/components/form/FormField";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 

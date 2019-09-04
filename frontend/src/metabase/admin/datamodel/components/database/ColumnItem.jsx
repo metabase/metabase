@@ -2,8 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";

@@ -147,7 +147,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -183,7 +183,7 @@ describe("Reference utils.js", () => {
           table: 4,
           display: "bar",
           breakout: [["field-id", 5]],
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -203,7 +203,7 @@ describe("Reference utils.js", () => {
           table: 4,
           display: "pie",
           breakout: [["field-id", 5]],
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -217,7 +217,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
+          aggregation: [["metric", 3]],
         }),
       );
     });
@@ -232,7 +232,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
+          aggregation: [["metric", 3]],
           breakout: [["field-id", 4]],
         }),
       );
@@ -249,7 +249,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          filter: ["and", ["segment", 4]],
+          filter: ["segment", 4],
         }),
       );
     });
@@ -266,8 +266,8 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          aggregation: ["count"],
-          filter: ["and", ["segment", 4]],
+          aggregation: [["count"]],
+          filter: ["segment", 4],
         }),
       );
     });
