@@ -19,6 +19,7 @@ import {
   isString,
   isSummable,
   isCategory,
+  isAddress,
   isState,
   isCountry,
   isCoordinate,
@@ -94,6 +95,9 @@ export default class Field extends Base {
   }
   isString() {
     return isString(this);
+  }
+  isAddress() {
+    return isAddress(this);
   }
   isState() {
     return isState(this);

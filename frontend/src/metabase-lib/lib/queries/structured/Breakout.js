@@ -3,8 +3,9 @@
 import MBQLClause from "./MBQLClause";
 
 import type { Breakout as BreakoutObject } from "metabase/meta/types/Query";
-import type StructuredQuery from "../StructuredQuery";
-import type Dimension from "../../Dimension";
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type Dimension from "metabase-lib/lib/Dimension";
+import type Field from "metabase-lib/lib/metadata/Field";
 
 export default class Breakout extends MBQLClause {
   /**
@@ -50,9 +51,16 @@ export default class Breakout extends MBQLClause {
   }
 
   /**
-   * Returns the breakout's dimension
+   * Returns the breakout's Dimension
    */
   dimension(): Dimension {
     return this._query.parseFieldReference(this);
+  }
+
+  /**
+   * Returns the breakout's Field
+   */
+  field(): Field {
+    return this.dimension().field();
   }
 }

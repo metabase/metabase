@@ -26,6 +26,8 @@ export const Column = (col = {}) => ({
   display_name: col.display_name || col.name || "column_display_name",
 });
 
+export const BooleanColumn = (col = {}) =>
+  Column({ base_type: "type/Boolean", special_type: null, ...col });
 export const DateTimeColumn = (col = {}) =>
   Column({ base_type: "type/DateTime", special_type: null, ...col });
 export const NumberColumn = (col = {}) =>

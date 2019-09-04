@@ -24,6 +24,7 @@ export const ORDERS_PRODUCT_FK_FIELD_ID = 3;
 export const ORDERS_SUBTOTAL_FIELD_ID = 4;
 export const ORDERS_TAX_FIELD_ID = 5;
 export const ORDERS_TOTAL_FIELD_ID = 6;
+export const ORDERS_USER_FK_FIELD_ID = 7;
 
 export const MAIN_METRIC_ID = 1;
 

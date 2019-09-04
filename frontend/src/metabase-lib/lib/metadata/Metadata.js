@@ -1,5 +1,7 @@
 /* @flow weak */
 
+import _ from "underscore";
+
 import Base from "./Base";
 
 import Database from "./Database";
@@ -25,9 +27,12 @@ export default class Metadata extends Base {
   segments: { [id: SegmentId]: Segment };
 
   // DEPRECATED: this won't be sorted or filtered in a meaningful way
-  databasesList(): Database[] {
-    // $FlowFixMe
-    return (Object.values(this.databases): Database[]);
+  databasesList({ savedQuestions = true } = {}): Database[] {
+    return _.chain(this.databases)
+      .values()
+      .filter(db => savedQuestions || !db.is_saved_questions)
+      .sortBy(db => db.name)
+      .value();
   }
 
   // DEPRECATED: this won't be sorted or filtered in a meaningful way
