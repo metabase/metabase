@@ -180,6 +180,8 @@
           :creator_id    (user->id :rasta)
           :collection_id true
           :can_write     false
+          :param_values  nil
+          :param_fields  nil
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
