@@ -22,7 +22,7 @@ describe("actions", () => {
       expect(newCard.dataset_query.query).toEqual({
         filter: [
           "=",
-          ["datetime-field", ["field-id", 123], "as", "day"],
+          ["datetime-field", ["field-id", 123], "day"],
           "2018-04-27T00:00:00+02:00",
         ],
       });

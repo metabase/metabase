@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import SegmentSidebar from "./SegmentSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import SegmentFieldList from "metabase/reference/segments/SegmentFieldList.jsx";
+import SegmentSidebar from "./SegmentSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import SegmentFieldList from "metabase/reference/segments/SegmentFieldList";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";

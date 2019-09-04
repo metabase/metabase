@@ -16,7 +16,7 @@ import listSelect from "metabase/hoc/ListSelect";
 import BulkActionBar from "metabase/components/BulkActionBar";
 
 import * as Urls from "metabase/lib/urls";
-import colors, { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Button from "metabase/components/Button";
 import Card from "metabase/components/Card";
@@ -217,7 +217,7 @@ class DefaultLanding extends React.Component {
             pt={2}
             pb={3}
             px={4}
-            bg={pinned.length ? colors["bg-medium"] : null}
+            bg={pinned.length ? color("bg-medium") : null}
           >
             <Box>
               <Box mb={1}>
@@ -245,8 +245,8 @@ class DefaultLanding extends React.Component {
                       name="info"
                       ml={1}
                       mt="4px"
-                      color={colors["bg-dark"]}
-                      hover={{ color: colors["brand"] }}
+                      color={color("bg-dark")}
+                      hover={{ color: color("brand") }}
                     />
                   </Tooltip>
                 )}
@@ -282,7 +282,7 @@ class DefaultLanding extends React.Component {
           <Box>
             <Box>
               {collectionHasPins ? (
-                <Box px={PAGE_PADDING} pt={2} pb={3} bg={colors["bg-medium"]}>
+                <Box px={PAGE_PADDING} pt={2} pb={3} bg={color("bg-medium")}>
                   <CollectionSectionHeading>{t`Pins`}</CollectionSectionHeading>
                   <PinDropTarget
                     pinIndex={pinned[pinned.length - 1].collection_position + 1}
@@ -447,9 +447,7 @@ class DefaultLanding extends React.Component {
                         justify="center"
                         py={2}
                         m={2}
-                        color={
-                          hovered ? colors["brand"] : colors["text-medium"]
-                        }
+                        color={hovered ? color("brand") : color("text-medium")}
                       >
                         {t`Drag here to un-pin`}
                       </Flex>
@@ -582,7 +580,7 @@ const PinnedItem = ({ item, index, collection }) => (
   <Link
     to={item.getUrl()}
     className="hover-parent hover--visibility"
-    hover={{ color: normal.blue }}
+    hover={{ color: color("brand") }}
     data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Click;${item.model}`}
   >
     <Card hoverable p={3}>
@@ -678,7 +676,7 @@ class CollectionLanding extends React.Component {
 const CollectionSectionHeading = ({ children }) => (
   <h5
     className="text-uppercase"
-    style={{ color: colors["text-medium"], fontWeight: 900 }}
+    style={{ color: color("text-medium"), fontWeight: 900 }}
   >
     {children}
   </h5>

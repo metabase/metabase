@@ -205,6 +205,19 @@ jobs:
           command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
           no_output_timeout: 2m
 
+  verify-i18n-files:
+    executor: node
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
+      - run:
+          name: Install gettext
+          command: sudo apt-get install gettext
+      - run:
+          name: Verify i18n .po files
+          command: ./bin/i18n/build-translation-resources
+          no_output_timeout: 2m
+
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
@@ -467,6 +480,11 @@ workflows:
           requires:
             - checkout
 
+      - verify-i18n-files:
+          requires:
+            - checkout
+            - fe-deps
+
       - be-deps:
           requires:
             - checkout
@@ -660,6 +678,7 @@ workflows:
       - deploy-master:
           requires:
             - yaml-linter
+            - verify-i18n-files
 
             - be-linter-bikeshed
             - be-linter-docstring-checker

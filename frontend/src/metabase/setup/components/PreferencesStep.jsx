@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 import { t, jt } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
-import Toggle from "metabase/components/Toggle.jsx";
+import Toggle from "metabase/components/Toggle";
 
-import StepTitle from "./StepTitle.jsx";
-import CollapsedStep from "./CollapsedStep.jsx";
+import StepTitle from "./StepTitle";
+import CollapsedStep from "./CollapsedStep";
 
 export default class PreferencesStep extends Component {
   static propTypes = {

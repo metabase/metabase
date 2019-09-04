@@ -21,12 +21,7 @@ describe("CountByTimeAction", () => {
       "source-table": ORDERS_TABLE_ID,
       aggregation: [["count"]],
       breakout: [
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
-          "day",
-        ],
+        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "day"],
       ],
     });
     expect(newCard.display).toEqual("bar");

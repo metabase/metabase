@@ -4,7 +4,7 @@ import styled from "styled-components";
 import { Flex } from "grid-styled";
 import { height } from "styled-system";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const Avatar = styled(Flex).attrs({
   align: "center",
@@ -20,7 +20,7 @@ const Avatar = styled(Flex).attrs({
 `;
 
 Avatar.defaultProps = {
-  bg: colors["brand"],
+  bg: color("brand"),
   color: "white",
   size: ["3em"],
 };

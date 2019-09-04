@@ -5,7 +5,7 @@ import { t, jt } from "ttag";
 import cx from "classnames";
 
 import ErrorMessage from "metabase/components/ErrorMessage";
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { DatasetQuery } from "metabase/meta/types/Card";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";

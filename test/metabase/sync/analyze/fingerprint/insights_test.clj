@@ -121,7 +121,7 @@
     :slope          -7.671473413418271,
     :offset         137234.92983406168,
     :best-fit       [:* 1.5672560913548484E227 [:exp [:* -0.02899533549378612 :x]]],
-    :unit           :day
+    :unit           :day,
     :col            nil}
    {:last-value     2525,
     :previous-value 3311,
@@ -129,7 +129,7 @@
     :slope          -498.764272733624,
     :offset         8915371.843617931,
     :best-fit       [:+ 8915371.843617931 [:* -498.764272733624 :x]],
-    :col            nil
+    :col            nil,
     :unit           :day}]
   (transduce identity
              (insights [{:base_type :type/DateTime} {:base_type :type/Number} {:base_type :type/Number}])

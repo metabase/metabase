@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import Modal from "metabase/components/Modal.jsx";
+import Modal from "metabase/components/Modal";
 import { t } from "ttag";
 
 export default class SavedQuestionIntroModal extends Component {

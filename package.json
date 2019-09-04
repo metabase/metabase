@@ -30,6 +30,7 @@
     "inflection": "^1.7.1",
     "isomorphic-fetch": "^2.2.1",
     "js-cookie": "^2.1.2",
+    "json-bigint": "^0.3.0",
     "jsrsasign": "^7.1.0",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.9",

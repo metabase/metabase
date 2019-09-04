@@ -1,6 +1,7 @@
 /* @flow weak */
 
 import querystring from "querystring";
+import JSONbig from "json-bigint";
 
 import EventEmitter from "events";
 
@@ -177,7 +178,7 @@ export class Api extends EventEmitter {
         if (xhr.readyState === XMLHttpRequest.DONE) {
           let body = xhr.responseText;
           try {
-            body = JSON.parse(body);
+            body = JSONbig.parse(body);
           } catch (e) {}
           if (xhr.status >= 200 && xhr.status <= 299) {
             if (options.transformResponse) {

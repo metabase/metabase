@@ -52,6 +52,9 @@ export default colors;
 export const aliases = {
   summarize: "accent1",
   filter: "accent7",
+  database: "accent2",
+  dashboard: "brand",
+  pulse: "accent4",
 };
 
 export const harmony = [];
@@ -199,6 +202,7 @@ const PREFERRED_COLORS = {
     "success",
     "succeeded",
     "pass",
+    "passed",
     "valid",
     "complete",
     "completed",
@@ -207,6 +211,7 @@ const PREFERRED_COLORS = {
     "profit",
   ],
   [colors["error"]]: [
+    "error",
     "fail",
     "failed",
     "failure",
@@ -219,7 +224,7 @@ const PREFERRED_COLORS = {
     "deleted",
     "pending",
   ],
-  [colors["warning"]]: ["warn", "warning", "incomplete"],
+  [colors["warning"]]: ["warn", "warning", "incomplete", "unstable"],
   [colors["brand"]]: ["count"],
   [colors["accent1"]]: ["sum"],
   [colors["accent2"]]: ["average"],

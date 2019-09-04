@@ -7,13 +7,13 @@ import title from "metabase/hoc/Title";
 import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
-import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import DatabaseEditForms from "../components/DatabaseEditForms";
 import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
-import ActionButton from "metabase/components/ActionButton.jsx";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import Radio from "metabase/components/Radio.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import ActionButton from "metabase/components/ActionButton";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Radio from "metabase/components/Radio";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import {
   getEditingDatabase,

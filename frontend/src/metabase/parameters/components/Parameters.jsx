@@ -2,9 +2,9 @@
 
 import React, { Component } from "react";
 
-import StaticParameterWidget from "./ParameterWidget.jsx";
+import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import querystring from "querystring";
 import cx from "classnames";
@@ -215,7 +215,7 @@ const SortableParameterHandle = SortableHandle(() => (
   <div
     className="absolute top bottom left flex layout-centered hover-child cursor-grab"
     style={{
-      color: colors["border"],
+      color: color("border"),
       // width should match the left padding of the ParameterWidget container class so that it's centered
       width: "1em",
       marginLeft: "1px",

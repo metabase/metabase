@@ -3,8 +3,8 @@ import React from "react";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 type Attributes = {
   title: string,

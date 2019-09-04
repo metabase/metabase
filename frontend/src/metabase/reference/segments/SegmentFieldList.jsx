@@ -8,13 +8,13 @@ import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
 
-import Field from "metabase/reference/components/Field.jsx";
-import List from "metabase/components/List.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Field from "metabase/reference/components/Field";
+import List from "metabase/components/List";
+import EmptyState from "metabase/components/EmptyState";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 
 import cx from "classnames";
 

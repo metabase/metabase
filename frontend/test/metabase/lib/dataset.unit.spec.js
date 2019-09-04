@@ -21,7 +21,7 @@ describe("metabase/util/dataset", () => {
     it('should return `["field-id", 1]` for a normal column', () => {
       expect(fieldRefForColumn(FIELD_COLUMN)).toEqual(["field-id", 1]);
     });
-    it('should return `["fk->", 2, 1]` for a fk column', () => {
+    it('should return `["fk->", ["field-id", 2], ["field-id", 1]]` for a fk column', () => {
       expect(fieldRefForColumn(FK_COLUMN)).toEqual([
         "fk->",
         ["field-id", 2],
@@ -233,7 +233,7 @@ describe("metabase/util/dataset", () => {
     });
     it("should find column with non-normalized fieldRef", () => {
       const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["fk->", 2, 1],
+        fieldRef: ["fk->", 2, 1], // deprecated
       });
       expect(column).toBe(columns[1]);
     });

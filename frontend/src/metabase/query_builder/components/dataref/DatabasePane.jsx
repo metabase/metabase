@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { isQueryable } from "metabase/lib/table";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const DatabasePane = ({ database, show, ...props }) => (
   <div>
