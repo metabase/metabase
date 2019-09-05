@@ -9,7 +9,6 @@ import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
-import BigNumber from "bignumber.js";
 
 import ExternalLink from "metabase/components/ExternalLink";
 
@@ -720,13 +719,8 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
       return formatNumber(value, options);
     }
   } else if (typeof value === "object") {
-    // Don't want to add extra quotes if BigNumber
-    if (value instanceof BigNumber) {
-      return value.toString();
-    } else {
-      // no extra whitespace for table cells
-      return JSON.stringify(value);
-    }
+    // no extra whitespace for table cells
+    return JSON.stringify(value);
   } else {
     return String(value);
   }
