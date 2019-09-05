@@ -1265,6 +1265,7 @@ export default class StructuredQuery extends AtomicQuery {
       column,
       c => this.fieldReferenceForColumn_LEGACY(c),
       "StructuredQuery::fieldReferenceForColumn",
+      ["field-literal"],
     );
   }
 
