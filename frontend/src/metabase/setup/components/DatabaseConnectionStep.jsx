@@ -6,6 +6,7 @@ import { t } from "ttag";
 import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
+import Select, { Option } from "metabase/components/Select";
 
 import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
 import FormField from "metabase/components/form/FormField";
@@ -122,15 +123,19 @@ export default class DatabaseConnectionStep extends Component {
     const engineNames = _.keys(engines).sort();
 
     return (
-      <label className="Select mt1">
-        <select defaultValue={engine} onChange={this.chooseDatabaseEngine}>
-          <option value="">{t`Select the type of Database you use`}</option>
+      <label className="mt1">
+        <Select
+          defaultValue={engine}
+          onChange={this.chooseDatabaseEngine}
+          value={engine}
+          placeholder={t`Select the type of Database you use`}
+        >
           {engineNames.map(opt => (
-            <option key={opt} value={opt}>
+            <Option key={opt} value={opt}>
               {engines[opt]["driver-name"]}
-            </option>
+            </Option>
           ))}
-        </select>
+        </Select>
       </label>
     );
   }
