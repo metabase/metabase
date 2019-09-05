@@ -1500,6 +1500,7 @@ export const orders_count_by_id_card = {
 export const clickedCreatedAtHeader = {
   column: {
     ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
+    field_ref: ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
     source: "fields",
   },
 };
@@ -1507,6 +1508,7 @@ export const clickedCreatedAtHeader = {
 export const clickedFloatHeader = {
   column: {
     ...metadata.field(ORDERS_TOTAL_FIELD_ID),
+    field_ref: ["field-id", ORDERS_TOTAL_FIELD_ID],
     source: "fields",
   },
 };
@@ -1514,6 +1516,7 @@ export const clickedFloatHeader = {
 export const clickedCategoryHeader = {
   column: {
     ...metadata.field(PRODUCT_CATEGORY_FIELD_ID),
+    field_ref: ["field-id", PRODUCT_CATEGORY_FIELD_ID],
     source: "fields",
   },
 };
@@ -1521,6 +1524,7 @@ export const clickedCategoryHeader = {
 export const clickedFloatValue = {
   column: {
     ...metadata.field(ORDERS_TOTAL_FIELD_ID),
+    field_ref: ["field-id", ORDERS_TOTAL_FIELD_ID],
     source: "fields",
   },
   value: 1234,
@@ -1529,6 +1533,7 @@ export const clickedFloatValue = {
 export const clickedPKValue = {
   column: {
     ...metadata.field(ORDERS_PK_FIELD_ID),
+    field_ref: ["field-id", ORDERS_PK_FIELD_ID],
     source: "fields",
   },
   value: 42,
@@ -1537,6 +1542,7 @@ export const clickedPKValue = {
 export const clickedFKValue = {
   column: {
     ...metadata.field(ORDERS_PRODUCT_FK_FIELD_ID),
+    field_ref: ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
     source: "fields",
   },
   value: 43,
@@ -1545,6 +1551,7 @@ export const clickedFKValue = {
 export const clickedDateTimeValue = {
   column: {
     ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
+    field_ref: ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
     source: "fields",
   },
   value: "2018-01-01T00:00:00Z",
@@ -1556,6 +1563,7 @@ export const clickedMetric = {
     display_name: "count",
     base_type: "type/Integer",
     special_type: "type/Number",
+    field_ref: ["aggregation", 0],
     source: "aggregation",
   },
   value: 42,
