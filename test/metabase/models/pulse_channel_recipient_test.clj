@@ -14,7 +14,7 @@
   (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
                   PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
                                                            :channel_type  "email"
-                                                           :schedule_type "daily" 
+                                                           :schedule_type "daily"
                                                            :details       {:other  "stuff"
                                                                            :emails ["foo@bar.com"]}}]
                   PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
@@ -27,7 +27,7 @@
   (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
                   PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
                                                            :channel_type  "email"
-                                                           :schedule_type "daily" 
+                                                           :schedule_type "daily"
                                                            :details       {:other  "stuff"
                                                                            :emails ["foo@bar.com"]}}]
                   PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]

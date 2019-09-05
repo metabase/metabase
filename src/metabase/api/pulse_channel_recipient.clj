@@ -1,9 +1,9 @@
 (ns metabase.api.pulse-channel-recipient
   "/api/pulse-channel-recipient endpoints."
   (:require [compojure.core :refer [DELETE]]
-            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.api.common :as api]
             [metabase.events :as events]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [toucan.db :as db]))
 
 (api/defendpoint DELETE "/:id"
