@@ -57,7 +57,9 @@
    #"^/collection/(\d+)/$"                                ; readwrite permissions for a collection
    #"^/collection/(\d+)/read/$"                           ; read permissions for a collection
    #"^/collection/root/$"                                 ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
-   #"^/collection/root/read/$"])                          ; read permissions for the 'Root' Collection
+   #"^/collection/root/read/$"                            ; read permissions for the 'Root' Collection
+   #"^/member/\d+/$"]                                     ; handle user memberships
+  )
 
 (defn valid-object-path?
   "Does `object-path` follow a known, allowed format to an *object*? (The root path, \"/\", is not considered an object;
