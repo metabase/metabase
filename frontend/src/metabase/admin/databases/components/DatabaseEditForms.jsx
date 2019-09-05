@@ -2,6 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
+import Select, { Option } from "metabase/components/Select";
 import { t } from "ttag";
 
 export default class DatabaseEditForms extends Component {
@@ -33,21 +34,21 @@ export default class DatabaseEditForms extends Component {
           <label className="Form-label">
             Database type: <span>{errors["engine"]}</span>
           </label>
-          <label className="Select mt1">
-            <select
-              className="Select"
+          <label className="mt1">
+            <Select
               defaultValue={database.engine}
+              placeholder={t`Select a database`}
               onChange={e => this.props.selectEngine(e.target.value)}
+              value={database.engine}
             >
-              <option value="" disabled>{t`Select a database type`}</option>
               {Object.keys(engines)
                 .sort()
                 .map(opt => (
-                  <option key={opt} value={opt}>
+                  <Option key={opt} value={opt}>
                     {engines[opt]["driver-name"]}
-                  </option>
+                  </Option>
                 ))}
-            </select>
+            </Select>
           </label>
         </div>
         {database.engine ? (
