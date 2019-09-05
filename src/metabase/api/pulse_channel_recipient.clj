@@ -14,3 +14,5 @@
                (db/delete! PulseChannelRecipient :id id)
                (events/publish-event! :pulse-channel-recipient-delete (assoc pcr :actor_id api/*current-user-id*)))
   api/generic-204-no-content)
+
+(api/define-routes)
