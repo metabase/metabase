@@ -31,6 +31,10 @@ export default class TroubleshootingApp extends Component {
               name={t`Logs`}
               path="/admin/troubleshooting/logs"
             />
+            <LeftNavPaneItem
+              name={t`Bug Report`}
+              path="/admin/troubleshooting/bug-report"
+            />
           </LeftNavPane>
         }
       >
