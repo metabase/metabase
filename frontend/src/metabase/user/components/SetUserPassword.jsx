@@ -107,7 +107,6 @@ export default class SetUserPassword extends Component {
               title={t`Current password`}
               fieldName="old_password"
               formError={formError}
-              offset={false}
             />
             <input
               ref="oldPassword"
@@ -126,7 +125,6 @@ export default class SetUserPassword extends Component {
               title={t`New password`}
               fieldName="password"
               formError={formError}
-              offset={false}
             />
             <span className="block mb1">{passwordComplexity}</span>
             <input
@@ -145,7 +143,6 @@ export default class SetUserPassword extends Component {
               title={t`Confirm new password`}
               fieldName="password2"
               formError={formError}
-              offset={false}
             />
             <input
               ref="password2"

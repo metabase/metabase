@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
+import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
@@ -120,7 +122,7 @@ export default class DatabaseConnectionStep extends Component {
     const engineNames = _.keys(engines).sort();
 
     return (
-      <label className="Select Form-offset mt1">
+      <label className="Select mt1">
         <select defaultValue={engine} onChange={this.chooseDatabaseEngine}>
           <option value="">{t`Select the type of Database you use`}</option>
           {engineNames.map(opt => (
@@ -163,10 +165,13 @@ export default class DatabaseConnectionStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep bg-white rounded full relative SetupStep--active">
+        <Box
+          p={4}
+          className="SetupStep bg-white rounded full relative SetupStep--active"
+        >
           <StepTitle title={stepText} circleText={"2"} />
           <div className="mb4">
-            <div style={{ maxWidth: 600 }} className="Form-field Form-offset">
+            <div style={{ maxWidth: 600 }} className="Form-field">
               {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
             </div>
 
@@ -195,14 +200,14 @@ export default class DatabaseConnectionStep extends Component {
               />
             ) : null}
 
-            <div className="Form-field Form-offset">
+            <div className="Form-field mt1">
               <a
                 className="link"
                 onClick={this.skipDatabase.bind(this)}
               >{t`I'll add my data later`}</a>
             </div>
           </div>
-        </section>
+        </Box>
       );
     }
   }

@@ -41,17 +41,15 @@ const StandardForm = ({
             displayName={
               formField.title || nameComponents[nameComponents.length - 1]
             }
-            offset={!newForm}
             {...field}
             hidden={formField.type === "hidden"}
           >
-            <FormWidget field={field} offset={!newForm} {...formField} />
-            {!newForm && <span className="Form-charm" />}
+            <FormWidget field={field} {...formField} />
           </FormField>
         );
       })}
     </div>
-    <div className={cx("flex", { "Form-offset": !newForm })}>
+    <div className="flex">
       <div className="ml-auto flex align-center">
         {error && <FormMessage message={error} formError />}
         {onClose && (

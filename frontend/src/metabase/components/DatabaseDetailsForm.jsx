@@ -153,7 +153,7 @@ export default class DatabaseDetailsForm extends Component {
     switch (field.type) {
       case "boolean":
         return (
-          <div className="Form-input Form-offset full Button-group">
+          <div className="Form-input full Button-group">
             <div
               className={cx(
                 "Button",
@@ -182,7 +182,7 @@ export default class DatabaseDetailsForm extends Component {
         return (
           <input
             type={field.type === "password" ? "password" : "text"}
-            className="Form-input Form-offset full"
+            className="Form-input full"
             ref={field.name}
             name={field.name}
             value={value}
@@ -207,7 +207,7 @@ export default class DatabaseDetailsForm extends Component {
           : details["tunnel-enabled"];
       return (
         <FormField key={field.name} fieldName={field.name}>
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
@@ -235,7 +235,7 @@ export default class DatabaseDetailsForm extends Component {
           : details["use-jvm-timezone"];
       return (
         <FormField key={field.name} fieldName={field.name}>
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
@@ -256,7 +256,7 @@ export default class DatabaseDetailsForm extends Component {
       const on = details["use-srv"] == null ? false : details["use-srv"];
       return (
         <FormField key={field.name} fieldName={field.name}>
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
@@ -266,9 +266,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="px2">
               <h3>{t`Use DNS SRV when connecting`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`Using this option requires that provided host is a FQDN.  If connecting to 
-                an Atlas cluster, you might need to enable this option.  If you don't know what this means,
-                leave this disabled.`}
+                {t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`}
               </div>
             </div>
           </div>
@@ -281,7 +279,7 @@ export default class DatabaseDetailsForm extends Component {
           : details["let-user-control-scheduling"];
       return (
         <FormField key={field.name} fieldName={field.name}>
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
@@ -293,8 +291,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="px2">
               <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.
-                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
+                {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
               </div>
             </div>
           </div>
@@ -307,7 +304,7 @@ export default class DatabaseDetailsForm extends Component {
           : details["auto_run_queries"];
       return (
         <FormField key={field.name} fieldName={field.name}>
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
@@ -330,7 +327,7 @@ export default class DatabaseDetailsForm extends Component {
       const credentialsURL =
         CREDENTIALS_URL_PREFIXES[engine] + (projectID || "");
       const credentialsURLLink = (
-        <div className="flex align-center Form-offset">
+        <div className="flex align-center">
           <div className="Grid-cell--top">
             {jt`${(
               <a className="link" href={credentialsURL} target="_blank">
@@ -357,7 +354,7 @@ export default class DatabaseDetailsForm extends Component {
       if (clientID) {
         const authURL = AUTH_URL_PREFIXES[engine] + clientID;
         authURLLink = (
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               {jt`${(
                 <a className="link" href={authURL} target="_blank">
@@ -390,7 +387,7 @@ export default class DatabaseDetailsForm extends Component {
         // URL looks like https://console.developers.google.com/apis/api/analytics.googleapis.com/overview?project=12343611585
         const enableAPIURL = ENABLE_API_PREFIXES[engine] + projectID;
         enableAPILink = (
-          <div className="flex align-center Form-offset">
+          <div className="flex align-center">
             <div className="Grid-cell--top">
               {t`To use Metabase with this data you must enable API access in the Google Developers Console.`}
             </div>
@@ -426,7 +423,6 @@ export default class DatabaseDetailsForm extends Component {
             formError={formError}
           />
           {this.renderFieldInput(field, fieldIndex)}
-          <span className="Form-charm" />
         </FormField>
       );
     }
