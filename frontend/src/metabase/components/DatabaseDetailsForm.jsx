@@ -266,9 +266,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="px2">
               <h3>{t`Use DNS SRV when connecting`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`Using this option requires that provided host is a FQDN.  If connecting to
-                an Atlas cluster, you might need to enable this option.  If you don't know what this means,
-                leave this disabled.`}
+                {t`Using this option requires that provided host is a FQDN.  If connecting to an Atlas cluster, you might need to enable this option.  If you don't know what this means, leave this disabled.`}
               </div>
             </div>
           </div>
@@ -293,8 +291,7 @@ export default class DatabaseDetailsForm extends Component {
             <div className="px2">
               <h3>{t`This is a large database, so let me choose when Metabase syncs and scans`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values.
-                                If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
+                {t`By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, we recommend turning this on and reviewing when and how often the field value scans happen.`}
               </div>
             </div>
           </div>
