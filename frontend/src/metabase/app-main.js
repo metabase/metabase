@@ -17,6 +17,7 @@ const WHITELIST_FORBIDDEN_URLS = [
   // we should gracefully handle cases where we don't have access to metadata
   /api\/database\/\d+\/metadata$/,
   /api\/database\/\d+\/fields/,
+  /api\/field\/\d+/,
   /api\/field\/\d+\/values/,
   /api\/table\/\d+\/query_metadata$/,
   /api\/table\/\d+\/fks$/,

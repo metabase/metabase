@@ -32,7 +32,9 @@
                        :postgres "cast((current_timestamp + interval '1 second') AS text)"))))
 
 (defn- simulate-another-instance-updating-setting! [setting-name new-value]
-  (db/update-where! Setting {:key (name setting-name)} :value new-value)
+  (if new-value
+    (db/update-where! Setting {:key (name setting-name)} :value new-value)
+    (db/simple-delete! Setting {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 
 (defn- flush-memoized-results-for-should-restore-cache!
@@ -123,6 +125,33 @@
     ;; Since memoized value is no longer present, this should call `cache-out-of-date?`, which checks the DB; it will
     ;; detect a cache out-of-date situation and flush the cache as appropriate, giving us the updated value when we
     ;; call! :wow:
+    (setting-test/toucan-name)))
+
+
+;; Simulate experience where:
+;; 1. User writes a setting on Server 1
+;; 2. User reads settings, served from Server 1, memoizing theresult of should-restore-cache?
+;; 3. User writes setting :toucan-name on Server 2
+;; 4. User writes setting on Server 1
+;; 5. User reads setting :toucan-name from Server 1
+;;
+;; This process was causing the updated `:toucan-name` to never be read on Server 1 because Server 1 "thought" it had
+;; the latest values and didn't restore the cache from the db
+(expect
+  "Batman Toucan"
+  (let [internal-cache       @#'metabase.models.setting.cache/cache*
+        external-cache       (atom nil)
+        external-cache-check (memoize/ttl (constantly nil) :ttl/threshold 60000)]
+    (clear-cache!)
+    (flush-memoized-results-for-should-restore-cache!)
+    (setting-test/test-setting-1 "Starfish")
+    ;; Call this to force memoization, simulating process of:
+    ;; 1. User writes
+    (@#'metabase.models.setting.cache/should-restore-cache?)
+    (with-redefs [metabase.models.setting.cache/cache*                external-cache
+                  metabase.models.setting.cache/should-restore-cache? external-cache-check]
+      (setting-test/toucan-name "Batman Toucan"))
+    (setting-test/test-setting-1 "Batman")
     (setting-test/toucan-name)))
 
 ;; sets site locale setting

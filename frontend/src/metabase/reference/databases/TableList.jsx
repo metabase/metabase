@@ -73,6 +73,7 @@ export const separateTablesBySchema = (
         ? 0
         : -1,
     )
+    .filter(isQueryable)
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
         return;

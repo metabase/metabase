@@ -400,11 +400,16 @@ export default class TableInteractive extends Component {
   @memoize
   getCellBackgroundColor(
     settings: VisualizationSettings,
+    value: Value,
     rowIndex: number,
-    columnIndex: number,
+    columnName: number,
   ) {
     try {
-      return settings["table._cell_background_getter"](rowIndex, columnIndex);
+      return settings["table._cell_background_getter"](
+        value,
+        rowIndex,
+        columnName,
+      );
     } catch (e) {
       console.error(e);
     }
@@ -438,8 +443,9 @@ export default class TableInteractive extends Component {
     const isClickable = this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
+      value,
       rowIndex,
-      columnIndex,
+      column.name,
     );
 
     const columnSettings = settings.column(column);

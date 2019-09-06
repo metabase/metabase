@@ -1,3 +1,5 @@
+/*eslint no-use-before-define: "error"*/
+
 import { createSelector } from "reselect";
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -6,7 +8,6 @@ import { getIn } from "icepick";
 // eslint-disable-next-line no-unused-vars
 import Visualization from "metabase/visualizations/components/Visualization";
 
-import { getMode as getMode_ } from "metabase/modes/lib/modes";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -110,16 +111,6 @@ export const getDatabaseFields = createSelector(
   (databaseId, databaseFields) => [], // FIXME!
 );
 
-export const getMode = createSelector(
-  [getLastRunCard, getTableMetadata],
-  (card, tableMetadata) => getMode_(card, tableMetadata),
-);
-
-export const getIsObjectDetail = createSelector(
-  [getMode],
-  mode => mode && mode.name === "object",
-);
-
 export const getParameters = createSelector(
   [getCard, getParameterValues],
   (card, parameterValues) => getParametersWithExtras(card, parameterValues),
@@ -191,6 +182,16 @@ export const getOriginalQuestion = createSelector(
     // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
     return metadata && card && new Question(metadata, card);
   },
+);
+
+export const getMode = createSelector(
+  [getLastRunQuestion],
+  question => question && question.mode(),
+);
+
+export const getIsObjectDetail = createSelector(
+  [getMode],
+  mode => mode && mode.name() === "object",
 );
 
 export const getIsDirty = createSelector(

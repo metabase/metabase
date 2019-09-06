@@ -280,7 +280,7 @@
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
-        (cache/restore-cache-if-needed!)
+        (cache/restore-cache!)
         ;; write to DB
         (cond
           (nil? new-value)

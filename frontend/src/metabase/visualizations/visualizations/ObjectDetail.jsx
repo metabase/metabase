@@ -97,7 +97,9 @@ export class ObjectDetail extends Component {
 
   componentDidMount() {
     // load up FK references
-    this.props.loadObjectDetailFKReferences();
+    if (this.props.tableForeignKeys) {
+      this.props.loadObjectDetailFKReferences();
+    }
     window.addEventListener("keydown", this.onKeyDown, true);
   }
 
@@ -106,8 +108,10 @@ export class ObjectDetail extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // if the card has changed then reload fk references
-    if (this.props.data != nextProps.data) {
+    // if the card changed or table metadata loaded then reload fk references
+    const tableFKsJustLoaded =
+      nextProps.tableForeignKeys && !this.props.tableForeignKeys;
+    if (this.props.data != nextProps.data || tableFKsJustLoaded) {
       this.props.loadObjectDetailFKReferences();
     }
   }

@@ -2,41 +2,130 @@ import {
   metadata,
   DATABASE_ID,
   ORDERS_TABLE_ID,
+  ORDERS_PK_FIELD_ID,
+  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS_PRODUCT_FK_FIELD_ID,
+  ORDERS_USER_FK_FIELD_ID,
+  PRODUCT_CATEGORY_FIELD_ID,
+  PEOPLE_STATE_FIELD_ID,
   orders_raw_card,
 } from "__support__/sample_dataset_fixture";
 
 import Question from "metabase-lib/lib/Question";
 
 describe("Mode", () => {
-  const rawDataQuestionMode = new Question(metadata, orders_raw_card).mode();
-  const timeBreakoutQuestionMode = Question.create({
-    databaseId: DATABASE_ID,
-    tableId: ORDERS_TABLE_ID,
-    metadata,
-  })
-    .query()
-    .addAggregation(["count"])
-    .addBreakout(["datetime-field", ["field-id", 1], "day"])
-    .question()
-    .setDisplay("table")
-    .mode();
+  const rawDataQuestion = new Question(metadata, orders_raw_card);
+  const rawDataQuery = rawDataQuestion.query();
+  const rawDataQuestionMode = rawDataQuestion.mode();
 
   describe("forQuestion(question)", () => {
     describe("with structured query question", () => {
       // testbed for generative testing? see http://leebyron.com/testcheck-js
 
-      it("returns `segment` mode with raw data", () => {});
+      it("returns `segment` mode with raw data", () => {
+        const mode = rawDataQuery.question().mode();
+        expect(mode && mode.name()).toEqual("segment");
+      });
 
-      it("returns `metric` mode with >= 1 aggregations", () => {});
+      it("returns `metric` mode with >= 1 aggregations", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("metric");
+      });
 
-      it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {});
-      it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {});
+      it("returns `timeseries` mode with >=1 aggregations and date breakout", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .breakout([
+            "datetime-field",
+            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            "day",
+          ])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("timeseries");
+      });
+      it("returns `timeseries` mode with >=1 aggregations and date + category breakout", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .breakout([
+            "datetime-field",
+            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            "day",
+          ])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+          ])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("timeseries");
+      });
 
-      it("returns `geo` mode with >=1 aggregations and an address breakout", () => {});
+      it("returns `geo` mode with >=1 aggregations and an address breakout", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_USER_FK_FIELD_ID],
+            ["field-id", PEOPLE_STATE_FIELD_ID],
+          ])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("geo");
+      });
 
-      it("returns `pivot` mode with >=1 aggregations and 1-2 category breakouts", () => {});
+      it("returns `pivot` mode with >=1 aggregations and 1-2 category breakouts", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+          ])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_USER_FK_FIELD_ID],
+            ["field-id", PEOPLE_STATE_FIELD_ID],
+          ])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("pivot");
+      });
 
-      it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {});
+      it("returns `object` mode with pk filter", () => {
+        const mode = rawDataQuery
+          .filter(["=", ["field-id", ORDERS_PK_FIELD_ID], 42])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("object");
+      });
+
+      it("returns `default` mode with >=0 aggregations and >=3 breakouts", () => {
+        const mode = rawDataQuery
+          .aggregate(["count"])
+          .breakout([
+            "datetime-field",
+            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            "day",
+          ])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+          ])
+          .breakout([
+            "fk->",
+            ["field-id", ORDERS_USER_FK_FIELD_ID],
+            ["field-id", PEOPLE_STATE_FIELD_ID],
+          ])
+          .question()
+          .mode();
+        expect(mode && mode.name()).toEqual("default");
+      });
       it("returns `default` mode with >=1 aggregations and >=1 breakouts when first neither date or category", () => {});
     });
     describe("with native query question", () => {
@@ -83,6 +172,18 @@ describe("Mode", () => {
     });
 
     describe("for a question with an aggregation and a time breakout", () => {
+      const timeBreakoutQuestionMode = Question.create({
+        databaseId: DATABASE_ID,
+        tableId: ORDERS_TABLE_ID,
+        metadata,
+      })
+        .query()
+        .aggregate(["count"])
+        .breakout(["datetime-field", ["field-id", 1], "day"])
+        .question()
+        .setDisplay("table")
+        .mode();
+
       it("has pivot as mode actions 1 and 2", () => {
         expect(timeBreakoutQuestionMode.actions()[0].name).toBe(
           "pivot-by-category",

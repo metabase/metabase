@@ -12,7 +12,8 @@ export default class MetricsList extends Component {
 
   render() {
     const { onRetire, tableMetadata } = this.props;
-    const { metrics = [] } = tableMetadata;
+    const { metrics: allMetrics = [] } = tableMetadata;
+    const metrics = allMetrics.filter(m => !m.googleAnalyics);
 
     return (
       <div id="MetricsList" className="my3">

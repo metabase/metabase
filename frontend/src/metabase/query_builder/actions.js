@@ -1081,6 +1081,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   () => {
     return async (dispatch, getState) => {
+      dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
       const {
         qb: { card },
@@ -1141,10 +1142,23 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkReferences[fk.origin.id] = info;
       }
 
+      // It's possible that while we were running those queries, the object
+      // detail id changed. If so, these fk reference are stale and we shouldn't
+      // put them in state.
+      const updatedQueryResult = getFirstQueryResult(getState());
+      if (
+        getObjectDetailIdValue(queryResult.data) !==
+        getObjectDetailIdValue(updatedQueryResult.data)
+      ) {
+        return null;
+      }
       return fkReferences;
     };
   },
 );
+
+export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";
