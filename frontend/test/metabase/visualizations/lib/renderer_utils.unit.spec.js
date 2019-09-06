@@ -64,12 +64,48 @@ describe("getXValues", () => {
   it("should use raw row ordering rather than broken out series", () => {
     const series = [
       // these are broken out series. the ordering here is ignored
-      { data: { rows: [["bar"]], cols: [{}] } },
-      { data: { rows: [["foo"]], cols: [{}] } },
+      { data: { rows: [["a"], ["b"]], cols: [{}] } },
+      { data: { rows: [["c"], ["d"]], cols: [{}] } },
     ];
-    series._raw = [{ data: { rows: [["foo"], ["bar"]], cols: [{}] } }];
+    series._raw = [
+      { data: { rows: [["d"], ["c"], ["b"], ["a"]], cols: [{}] } },
+    ];
     const settings = {};
-    expect(getXValues({ settings, series })).toEqual(["foo", "bar"]);
+    expect(getXValues({ settings, series })).toEqual(["d", "c", "b", "a"]);
+  });
+  it("should use the correct column as the dimension for raw series", () => {
+    const series = [
+      {
+        data: {
+          rows: [["second", "first"]],
+          cols: [{ name: "second" }, { name: "first" }],
+        },
+      },
+    ];
+    series._raw = [
+      {
+        data: {
+          rows: [["first", "second"]],
+          cols: [{ name: "first" }, { name: "second" }],
+        },
+      },
+    ];
+    const settings = { "graph.dimensions": ["second"] };
+    expect(getXValues({ settings, series })).toEqual(["second"]);
+  });
+  it("should use the correct column as the dimension for parsing options", () => {
+    const series = [
+      {
+        data: {
+          rows: [["foo", "2019-09-01T00:00:00Z"]],
+          cols: [{ name: "other" }, { name: "date" }],
+        },
+      },
+    ];
+    series._raw = series;
+    const settings = { "graph.dimensions": ["date"] };
+    const [xVal] = getXValues({ settings, series });
+    expect(moment.isMoment(xVal)).toBe(true);
   });
   it("should sort values according to parsed value", () => {
     expect(
