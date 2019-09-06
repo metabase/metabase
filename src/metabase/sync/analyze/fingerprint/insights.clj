@@ -203,17 +203,8 @@
                    :slope          slope
                    :offset         offset
                    :best-fit       best-fit
-                   :col            (:name number-col)})))))))
-
-(defn- datetime-truncated-to-year?
-  "This is hackish as hell, but we change datetimes with year granularity to strings upstream and
-   this is the only way to recover the information they were once datetimes."
-  [{:keys [base_type unit fingerprint] :as field}]
-  (and (= base_type :type/Text)
-       (contains? field :unit)
-       (nil? unit)
-       (or (nil? (:type fingerprint))
-           (-> fingerprint :type :type/DateTime))))
+                   :col            (:name number-col)
+                   :unit           unit})))))))
 
 (defn insights
   "Based on the shape of returned data construct a transducer to statistically analyize data."
@@ -224,7 +215,7 @@
                           (group-by (fn [{:keys [base_type special_type unit] :as field}]
                                       (cond
                                         (#{:type/FK :type/PK} special_type)          :others
-                                        (datetime-truncated-to-year? field)          :datetimes
+                                        (= unit :year)                               :datetimes
                                         (metabase.util.date/date-extract-units unit) :numbers
                                         (field/unix-timestamp? field)                :datetimes
                                         (isa? base_type :type/Number)                :numbers

@@ -8,22 +8,22 @@ If you are running the MacOS application on your laptop, you can click on the He
 
 If you are using a browser to access Metabase, then someone downloaded our software and installed it on a server. We at Metabase don't host your instance. We write software that someone at your company decided to run. You should ask whomever it was that set up your company's Metabase for help resetting your password.
 
-
 ## Metabase on macOS
 
 ### How should I use the macOS application?
 
 Our macOS application is best thought of as Metabase in single-player mode. It's meant to be a way to quickly try Metabase out and see if it's something you'd want to use across your team. It's also useful for use on your own.
 
-When you need to share dashboards or pulses with others, we *strongly* recommend you run our server application.
-
+When you need to share dashboards or pulses with others, we _strongly_ recommend you run our server application.
 
 ## Asking questions and running queries
 
 ### Can I use SQL with Metabase?
+
 [Yes](users-guide/writing-sql.md).
 
 ### Do I need to know SQL to use Metabase?
+
 [No](users-guide/04-asking-questions.md)
 
 ### Does Metabase support SQL Joins?
@@ -53,35 +53,40 @@ To manually fix field or table names if they still look wrong, you can go to the
 ## Dashboards
 
 ### Can I add headings, free text, section dividers, or images to my dashboards?
-Yes, by using [text cards](users-guide/07-dashboards.md#adding-headings-or-descriptions-with-text-cards).
+
+Yes, by using [text cards](users-guide/07-dashboards.html#adding-headings-or-descriptions-with-text-cards).
 
 ### Why do my cards fade out when I use dashboard filters?
-When one or more dashboard filters are active, any card on that dashboard that isn't connected to *every currently active filter* will fade out a bit to clarify that they are not being affected by all active filters. We understand this behavior is contentious, so we're [actively discussing it on GitHub](https://github.com/metabase/metabase/issues/4220).
+
+When one or more dashboard filters are active, any card on that dashboard that isn't connected to _every currently active filter_ will fade out a bit to clarify that they are not being affected by all active filters. We understand this behavior is contentious, so we're [actively discussing it on GitHub](https://github.com/metabase/metabase/issues/4220).
 
 ### Can I set permissions to choose which users can view which dashboards?
-Not directly. But if a user does not have permission to view *any* of the cards that a dashboard includes, she won't see that dashboard listed in the Dashboards section, and won't be allowed to see that dashboard if given a direct link to it. Additionally, we're currently actively considering placing dashboards inside collections, which would allow administrators to use collection permissions to restrict user group access to dashboards the same way they currently can to restrict access to saved questions.
+
+Not directly. But if a user does not have permission to view _any_ of the cards that a dashboard includes, she won't see that dashboard listed in the Dashboards section, and won't be allowed to see that dashboard if given a direct link to it. Additionally, we're currently actively considering placing dashboards inside collections, which would allow administrators to use collection permissions to restrict user group access to dashboards the same way they currently can to restrict access to saved questions.
 
 ### Why can't I make my dashboard cards smaller?
-Metabase has minimum size limits for dashboard cards to ensure that numbers and charts on dashboards are legible. You might be asking this question because you're trying to fit a lot of things in a dashboard, and another way we're exploring to solve *that* problem is by making it easier to put more than one series or metric in the same question, which would reduce the number of cards required to be on a dashboard in the first place.
+
+Metabase has minimum size limits for dashboard cards to ensure that numbers and charts on dashboards are legible. You might be asking this question because you're trying to fit a lot of things in a dashboard, and another way we're exploring to solve _that_ problem is by making it easier to put more than one series or metric in the same question, which would reduce the number of cards required to be on a dashboard in the first place.
 
 ### When I make a number card on a dashboard small, the number changes. Why?
-In an effort to make sure that dashboards are legible, Metabase changes the way charts and numbers in cards look at different sizes. When a number card is small, Metabase abbreviates numbers like 42,177 to 42k, for example.
 
+In an effort to make sure that dashboards are legible, Metabase changes the way charts and numbers in cards look at different sizes. When a number card is small, Metabase abbreviates numbers like 42,177 to 42k, for example.
 
 ## Pulses and Metabot
 
 ### Why do my charts look different when I put them in a Pulse?
+
 Metabase automatically changes the visualization type of saved questions you put in Pulses so that they fit better in emails and Slack. Here is [an inventory of how charts get changed](https://github.com/metabase/metabase/issues/5493#issuecomment-318198816), and here is [the logic for how this works](https://github.com/metabase/metabase/blob/8f1a287496899250d89a20ec57ac8477cd20bce5/src/metabase/pulse/render.clj#L385-L397).
 
 We understand this behavior isn't expected, and are currently exploring ways to handle this better.
 
 ### Can I set more specific or granular schedules for Pulses?
+
 Not yet, but [we'd love your help](https://github.com/metabase/metabase/issues/3846#issuecomment-318516189) working on implementing designs for this feature.
 
 ### Can I send Pulses to private Slack channels, or to multiple channels?
+
 No, this is currently [a limitation with the way we're required to implement our Slack integration](https://github.com/metabase/metabase/issues/2694).
-
-
 
 ## Databases
 
@@ -89,16 +94,16 @@ No, this is currently [a limitation with the way we're required to implement our
 
 Metabase currently supports:
 
-* Amazon Redshift
-* BigQuery
-* Druid
-* H2
-* MongoDB (version 3.4 or higher)
-* MySQL (and MariaDB)
-* PostgreSQL
-* Presto
-* SQL Server
-* SQLite
+- Amazon Redshift
+- BigQuery
+- Druid
+- H2
+- MongoDB (version 3.4 or higher)
+- MySQL (and MariaDB)
+- PostgreSQL
+- Presto
+- SQL Server
+- SQLite
 
 ### Can Metabase support database X?
 
@@ -117,8 +122,6 @@ We do not currently offer a way to connect to other third-party APIs or services
 ### Can I upload data to Metabase?
 
 Not exactly. Metabase provides access to data you have in an existing database you control. We currently do not add or modify the information in your database. You should ask whomever controls the database you are accessing how to upload the data you're interested in accessing.
-
-
 
 ## Support and troubleshooting
 
@@ -139,5 +142,6 @@ We are experimenting with offering paid support to a limited number of companies
 ### Can I embed charts or dashboards in another application?
 
 Yes, Metabase offers two solutions for sharing charts and dashboards:
+
 - [Public links](administration-guide/12-public-links.md) let you share or embed charts with simplicity.
 - A powerful [application embedding](administration-guide/13-embedding.md) let you to embed and customize charts in your own web applications.

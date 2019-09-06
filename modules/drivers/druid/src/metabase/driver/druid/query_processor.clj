@@ -84,7 +84,8 @@
     :distinct___count
 
     (= ag-type :aggregation-options)
-    (recur (second ag))
+    (let [[_ wrapped-ag options] ag]
+      (or (:name options) (recur wrapped-ag)))
 
     ag-type
     ag-type
@@ -514,13 +515,23 @@
 
 (defn- ag:distinct
   [field output-name]
-  (if (isa? (:base-type field) :type/DruidHyperUnique)
+  (cond
+    (mbql.u/is-clause? #{:+} field)
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames (mapv ->rvalue (rest field))
+     :byRow      true
+     :round      true}
+    (isa? (:base-type field) :type/DruidHyperUnique)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
+    :else
     {:type       :cardinality
      :name       output-name
-     :fieldNames [(->rvalue field)]}))
+     :fieldNames [(->rvalue field)]
+     :byRow      true
+     :round      true}))
 
 (defn- ag:count
   ([output-name]
@@ -888,6 +899,9 @@
                             :distinct
                             :distinct___count
 
+                            [:aggregation-options _ (options :guard :name)]
+                            (:name options)
+
                             [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
 
@@ -1007,7 +1021,8 @@
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} updated-query]
   (if-not limit
-    updated-query
+    (-> updated-query
+        (assoc-in [:query :limitSpec :type]  :default))
     (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))

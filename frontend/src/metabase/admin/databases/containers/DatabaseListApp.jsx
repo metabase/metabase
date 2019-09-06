@@ -9,12 +9,12 @@ import { t } from "ttag";
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
+import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
 import Database from "metabase/entities/databases";
 

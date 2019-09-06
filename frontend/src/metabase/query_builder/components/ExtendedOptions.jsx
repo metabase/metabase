@@ -5,12 +5,12 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import cx from "classnames";
 import { t } from "ttag";
-import AddClauseButton from "./AddClauseButton.jsx";
-import Expressions from "./expressions/Expressions.jsx";
-import ExpressionWidget from "./expressions/ExpressionWidget.jsx";
-import LimitWidget from "./LimitWidget.jsx";
-import SortWidget from "./SortWidget.jsx";
-import Popover from "metabase/components/Popover.jsx";
+import AddClauseButton from "./AddClauseButton";
+import Expressions from "./expressions/Expressions";
+import ExpressionWidget from "./expressions/ExpressionWidget";
+import LimitWidget from "./LimitWidget";
+import SortWidget from "./SortWidget";
+import Popover from "metabase/components/Popover";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 

@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import FieldName from "./FieldName.jsx";
+import FieldName from "./FieldName";
 import Value from "metabase/components/Value";
 
 import Dimension from "metabase-lib/lib/Dimension";

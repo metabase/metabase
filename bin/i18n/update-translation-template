@@ -53,6 +53,8 @@ find src -name "*.clj" | xgettext                   \
   -kmark:1 -ki18n/mark:1                            \
   -ktrs:1 -ki18n/trs:1                              \
   -ktru:1 -ki18n/tru:1                              \
+  -kdeferred-trs:1 -ki18n/deferred-trs:1            \
+  -kdeferred-tru:1 -ki18n/deferred-tru:1            \
   -ktrun:1,2 -ki18n/trun:1,2                        \
   -ktrsn:1,2 -ki18n/trsn:1,2                        \
   $LOC_OPT                                          \

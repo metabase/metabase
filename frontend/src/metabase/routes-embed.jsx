@@ -6,9 +6,9 @@ import { Route } from "react-router";
 
 import PublicNotFound from "metabase/public/components/PublicNotFound";
 
-import PublicApp from "metabase/public/containers/PublicApp.jsx";
-import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
-import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+import PublicApp from "metabase/public/containers/PublicApp";
+import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import PublicDashboard from "metabase/public/containers/PublicDashboard";
 
 export const getRoutes = store => (
   <Route>

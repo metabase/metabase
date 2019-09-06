@@ -49,7 +49,7 @@ type Props = {
   isNightMode: boolean,
 
   refreshPeriod: ?number,
-  refreshElapsed: ?number,
+  setRefreshElapsedHook: Function,
 
   parametersWidget: React$Element<*>,
 
@@ -90,7 +90,7 @@ export default class DashboardHeader extends Component {
     isNightMode: PropTypes.bool.isRequired,
 
     refreshPeriod: PropTypes.number,
-    refreshElapsed: PropTypes.number,
+    setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,

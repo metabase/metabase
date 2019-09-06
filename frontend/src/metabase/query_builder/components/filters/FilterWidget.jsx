@@ -2,9 +2,9 @@
 
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import FilterPopover from "./FilterPopover.jsx";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import FilterPopover from "./FilterPopover";
 import Filter from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";

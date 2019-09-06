@@ -1,4 +1,4 @@
-(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.27.1051"
+(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.32.1056"
   :min-lein-version "2.5.0"
 
   :repositories
@@ -6,7 +6,7 @@
 
 
   :dependencies
-  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.27.1051"]]
+  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.32.1056"]]
 
   :profiles
   {:provided

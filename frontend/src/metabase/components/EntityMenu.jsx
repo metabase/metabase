@@ -19,6 +19,7 @@ type Props = {
   triggerIcon: string,
   className?: string,
   tooltip?: string,
+  triggerProps: object,
 };
 
 class EntityMenu extends Component {
@@ -48,7 +49,7 @@ class EntityMenu extends Component {
   };
 
   render() {
-    const { items, triggerIcon, className, tooltip } = this.props;
+    const { items, triggerIcon, triggerProps, className, tooltip } = this.props;
     const { open, menuItemContent } = this.state;
     return (
       <div className={cx("relative", className)}>
@@ -57,6 +58,7 @@ class EntityMenu extends Component {
           onClick={this.toggleMenu}
           open={open}
           tooltip={tooltip}
+          triggerProps={triggerProps}
         />
         <Popover
           isOpen={open}

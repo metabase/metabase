@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
 import { t } from "ttag";
 
 export default class DatabaseEditForms extends Component {

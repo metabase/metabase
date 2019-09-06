@@ -80,9 +80,6 @@ export function fieldRefForColumnWithLegacyFallback(
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
  *
- * NOTE: this returns non-normalized ["fk->", 1, 2] style fk field references
- * which is unfortunately used in table.columns visualization_settings
- *
  * @param  {Column} column Dataset result column
  * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?FieldReference} MBQL field reference
@@ -131,7 +128,15 @@ function fieldRefForColumn_LEGACY(
 
 export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
-  return JSON.stringify(ref ? ["ref", ref] : ["name", column.name]);
+  // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
+  if (
+    Array.isArray(ref) &&
+    ref[0] !== "field-literal" &&
+    ref[0] !== "aggregation"
+  ) {
+    return JSON.stringify(["ref", ref]);
+  }
+  return JSON.stringify(["name", column.name]);
 };
 
 /**

@@ -8,7 +8,7 @@ import { Flex } from "grid-styled";
 import { t } from "ttag";
 import { capitalize, inflect } from "metabase/lib/formatting";
 
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
 
@@ -84,8 +84,8 @@ export default class UndoListing extends Component {
               )}
               <Icon
                 ml={1}
-                color={normal.grey1}
-                hover={{ color: normal.grey2 }}
+                color={color("text-light")}
+                hover={{ color: color("text-medium") }}
                 name="close"
                 onClick={() => dismissUndo(undo.id)}
               />

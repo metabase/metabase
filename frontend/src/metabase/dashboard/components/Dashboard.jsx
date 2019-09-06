@@ -6,11 +6,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import DashboardHeader from "../components/DashboardHeader.jsx";
-import DashboardGrid from "../components/DashboardGrid.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import DashboardHeader from "../components/DashboardHeader";
+import DashboardGrid from "../components/DashboardGrid";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -90,7 +90,7 @@ type Props = {
   editingParameter: ?Parameter,
 
   refreshPeriod: number,
-  refreshElapsed: number,
+  setRefreshElapsedHook: Function,
   isFullscreen: boolean,
   isNightMode: boolean,
   hideParameters: ?string,

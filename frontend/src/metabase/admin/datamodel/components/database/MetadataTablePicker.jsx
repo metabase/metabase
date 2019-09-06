@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetadataTableList from "./MetadataTableList.jsx";
-import MetadataSchemaList from "./MetadataSchemaList.jsx";
+import MetadataTableList from "./MetadataTableList";
+import MetadataSchemaList from "./MetadataSchemaList";
 
 import Tables from "metabase/entities/tables";
 

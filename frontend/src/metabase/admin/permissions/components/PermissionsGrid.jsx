@@ -5,23 +5,23 @@ import { connect } from "react-redux";
 
 import { Link } from "react-router";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import ConfirmContent from "metabase/components/ConfirmContent.jsx";
-import Modal from "metabase/components/Modal.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 
-import FixedHeaderGrid from "./FixedHeaderGrid.jsx";
+import FixedHeaderGrid from "./FixedHeaderGrid";
 import { AutoSizer } from "react-virtualized";
 
 import { isAdminGroup, getGroupNameLocalized } from "metabase/lib/groups";
 import cx from "classnames";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
-const LIGHT_BORDER = colors["text-light"];
-const DARK_BORDER = colors["text-medium"];
+const LIGHT_BORDER = color("text-light");
+const DARK_BORDER = color("text-medium");
 const BORDER_RADIUS = 4;
 
 const getBorderStyles = ({
@@ -48,8 +48,8 @@ const HEADER_WIDTH = 240;
 
 const DEFAULT_OPTION = {
   icon: "unknown",
-  iconColor: colors["text-medium"],
-  bgColor: colors["bg-medium"],
+  iconColor: color("text-medium"),
+  bgColor: color("bg-medium"),
 };
 
 const PermissionsHeader = ({ permissions, isFirst, isLast }) => (
@@ -274,7 +274,7 @@ class GroupPermissionCell extends Component {
                 size={28}
                 style={{
                   color: this.state.hovered
-                    ? colors["text-white"]
+                    ? color("text-white")
                     : option.iconColor,
                 }}
               />

@@ -131,10 +131,10 @@
   :manifest
   {"Liquibase-Package"
    #=(eval
-      (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-           "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-           "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-           "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -151,7 +151,9 @@
 
   :profiles
   {:dev
-   {:dependencies
+   {:source-paths ["dev/src" "local/src"]
+    
+    :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [expectations "2.1.10"]                                          ; unit tests
      [ring/ring-mock "0.3.2"]]
@@ -247,7 +249,7 @@
      [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths]
+     {:exclude-namespaces [:test-paths dev]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
                            :unused-namespaces
@@ -255,7 +257,7 @@
                            ;; disabled (yet)
                            ;;
                            ;; For example see https://github.com/jonase/eastwood/issues/193
-                           ;
+                                                                      ;
                            ;; It's still useful to re-enable them and run them every once in a while because they catch
                            ;; a lot of actual errors too. Keep an eye on the issue above and re-enable them if we can
                            ;; get them to work
@@ -283,7 +285,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ["test"]
+     :source-paths          ^:replace ["src" "test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`

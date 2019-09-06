@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import ColumnItem from "./ColumnItem.jsx";
+import ColumnItem from "./ColumnItem";
 
 export default class ColumnsList extends Component {
   static propTypes = {

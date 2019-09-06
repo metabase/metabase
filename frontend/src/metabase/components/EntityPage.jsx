@@ -13,7 +13,7 @@ import QuestionAndResultLoader from "metabase/containers/QuestionAndResultLoader
 
 import RelatedItems from "metabase/components/RelatedItems";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 class EntityPage extends Component {
   render() {
@@ -34,7 +34,7 @@ class EntityPage extends Component {
             <div key="entity">
               <Box
                 className="border-bottom hover-parent hover--visibility relative"
-                style={{ backgroundColor: colors["bg-white"], height: "65vh" }}
+                style={{ backgroundColor: color("bg-white"), height: "65vh" }}
               >
                 <Box className="hover-child absolute top right">
                   {!loading && (
@@ -68,7 +68,7 @@ class EntityPage extends Component {
                         p={2}
                         mt={4}
                         style={{
-                          border: `1px solid ${colors["border"]}`,
+                          border: `1px solid ${color("border")}`,
                           borderRadius: 6,
                         }}
                       >

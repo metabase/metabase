@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
 import { t } from "ttag";
-import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
+import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 
-import Select from "metabase/components/Select.jsx";
+import Select from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 

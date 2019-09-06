@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip.jsx";
-import ChartWithLegend from "../components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -23,7 +23,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import colors, { getColorsForValues } from "metabase/lib/colors";
+import { color, getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -267,7 +267,7 @@ export default class PieChart extends Component {
             key: "Other",
             value: otherTotal,
             percentage: otherTotal / total,
-            color: colors["text-light"],
+            color: color("text-light"),
           };
     if (otherSlice.value > 0) {
       // increase "other" slice so it's barely visible
@@ -303,7 +303,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors["text-light"],
+        color: color("text-light"),
         noHover: true,
       };
       slices.push(otherSlice);

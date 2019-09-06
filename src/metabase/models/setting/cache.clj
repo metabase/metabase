@@ -86,21 +86,22 @@
       to invalidate our cache.)"
   []
   (log/debug (trs "Checking whether settings cache is out of date (requires DB call)..."))
-  (boolean
-   (or
-    ;; is the cache empty?
-    (not @cache*)
-    ;; if not, get the cached value of `settings-last-updated`, and if it exists...
-    (when-let [last-known-update (core/get @cache* settings-last-updated-key)]
-      ;; compare it to the value in the DB. This is done be seeing whether a row exists
-      ;; WHERE value > <local-value>
-      (u/prog1 (db/select-one 'Setting
-                 {:where [:and
-                          [:= :key settings-last-updated-key]
-                          [:> :value last-known-update]]})
-        (when <>
-          (log/info (u/format-color 'red
-                        (trs "Settings have been changed on another instance, and will be reloaded here.")))))))))
+  (let [current-cache (cache)]
+    (boolean
+      (or
+        ;; is the cache empty?
+        (not current-cache)
+        ;; if not, get the cached value of `settings-last-updated`, and if it exists...
+        (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
+          ;; compare it to the value in the DB. This is done be seeing whether a row exists
+          ;; WHERE value > <local-value>
+          (u/prog1 (db/select-one 'Setting
+                                  {:where [:and
+                                           [:= :key settings-last-updated-key]
+                                           [:> :value last-known-update]]})
+                   (when <>
+                     (log/info (u/format-color 'red
+                                               (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
 (def ^:private cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
@@ -113,6 +114,12 @@
   (memoize/ttl cache-out-of-date? :ttl/threshold cache-update-check-interval-ms))
 
 (def ^:private restore-cache-if-needed-lock (Object.))
+
+(defn restore-cache!
+  "Populate cache with the latest hotness from the db"
+  []
+  (log/debug (trs "Refreshing Settings cache..."))
+  (reset! cache* (db/select-field->field :key :value 'Setting)))
 
 (defn restore-cache-if-needed!
   "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
@@ -129,8 +136,7 @@
   ;; certainly quicker than starting the task ourselves from scratch
   (locking restore-cache-if-needed-lock
     (when (should-restore-cache?)
-      (log/debug (trs "Refreshing Settings cache..."))
-      (reset! cache* (db/select-field->field :key :value 'Setting))
+      (restore-cache!)
       ;; Now the cache is up-to-date. That is all good, but if we call `should-restore-cache?` again in a second it
       ;; will still return `true`, because its result is memoized, and we would be on the hook to (again) update the
       ;; cache. So go ahead and clear the memozied results for `should-restore-cache?`. The next time around when

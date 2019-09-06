@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 type Props = {
   value: ?(number | string),

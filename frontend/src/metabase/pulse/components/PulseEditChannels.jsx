@@ -5,13 +5,13 @@ import _ from "underscore";
 import { assoc, assocIn } from "icepick";
 import { t } from "ttag";
 
-import RecipientPicker from "./RecipientPicker.jsx";
+import RecipientPicker from "./RecipientPicker";
 
-import SchedulePicker from "metabase/components/SchedulePicker.jsx";
-import ActionButton from "metabase/components/ActionButton.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import SchedulePicker from "metabase/components/SchedulePicker";
+import ActionButton from "metabase/components/ActionButton";
+import Select, { Option } from "metabase/components/Select";
+import Toggle from "metabase/components/Toggle";
+import Icon from "metabase/components/Icon";
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
