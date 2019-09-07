@@ -119,15 +119,11 @@ export default class SearchApp extends React.Component {
                         isActive = true;
                       }
 
-                      const color = isActive
-                        ? color("brand")
-                        : color("text-medium");
-
                       return (
                         <Link
                           className="flex align-center"
                           mb={3}
-                          color={color}
+                          color={color(isActive ? "brand" : "text-medium")}
                           to={{
                             pathname: location.pathname,
                             query: { ...location.query, type: f.filter },
