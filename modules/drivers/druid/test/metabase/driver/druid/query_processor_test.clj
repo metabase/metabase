@@ -118,6 +118,7 @@
     :breakout    [$venue_category_name]
     :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))
 
+;; `distinct` when used in post aggregations should have type `:finalizingFieldAccess`
 (datasets/expect-with-driver :druid
   {:projections [:distinct_0 :expression]
    :query       {:queryType        :total
@@ -137,7 +138,7 @@
                                      :fields
                                      [{:type :constant, :name "1", :value 1}
                                       {:type :finalizingFieldAccess, :fieldName "__distinct_0"}]}]}
-   :query-type  ::druid.qp/topN
+   :query-type  ::druid.qp/total
    :mbql?       true}
   (query->native
    {:aggregation [[:+ 1 [:aggregation-options [:distinct $venue_name] {:name "__distinct_0"}]]]}))
