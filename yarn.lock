@@ -11373,6 +11373,11 @@ react-router-redux@^4.0.8:
   resolved "https://registry.yarnpkg.com/react-router-redux/-/react-router-redux-4.0.8.tgz#227403596b5151e182377dab835b5d45f0f8054e"
   integrity sha1-InQDWWtRUeGCN32rg1tdRfD4BU4=
 
+react-router-to-array@^0.1.3:
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/react-router-to-array/-/react-router-to-array-0.1.3.tgz#b287a403c21b3900b3c37e3d919e6bef82913982"
+  integrity sha512-rg4zwEzRApWrenY1rGO32t9z+R156wsZUUj3eTD3H2tv497ItWiEJkn5ekvGKZ6aYJXz7Fhb1GW0dqJeVPExog==
+
 react-router@3:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/react-router/-/react-router-3.2.0.tgz#62b6279d589b70b34e265113e4c0a9261a02ed36"
