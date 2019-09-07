@@ -119,6 +119,20 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
     JAVA_OPTS="${JAVA_OPTS} -Duser.timezone=${JAVA_TIMEZONE}"
 fi
 
+# Initialize the Metabase db from H2 dump, if available
+INITIAL_DB=/h2-init.db
+if [ -f "${INITIAL_DB}" ]; then
+    echo "Initializing Metabase database from H2 database ${INITIAL_DB}..."
+    su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar load-from-h2 ${INITIAL_DB} $@"
+
+    if [ $? -ne 0 ]; then
+        echo "Failed to initialize database from H2 database!"
+        exit 1
+    fi
+
+    echo "Done."
+fi
+
 # Launch the application
 # exec is here twice on purpose to  ensure that metabase runs as PID 1 (the init process)
 # and thus receives signals sent to the container. This allows it to shutdown cleanly on exit

@@ -20,5 +20,8 @@ RUN chmod a+rwx /plugins
 # expose our default runtime port
 EXPOSE 3000
 
+# copy database dump from which to initialize Metabase db
+COPY ./h2-init.db /h2-init.db
+
 # run it
 ENTRYPOINT ["/app/run_metabase.sh"]
