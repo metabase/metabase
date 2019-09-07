@@ -635,6 +635,15 @@
     [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
     [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
+(defn- post-aggregator-type
+  "Complex aggregators like `cardinality` and ``hyperUnique` (which we use to implement MBQL
+  `:distinct`) require finalizing their return value.
+  https://druid.apache.org/docs/latest/querying/post-aggregations.html"
+  [[op & _]]
+  (if (= :distinct op)
+    :finalizingFieldAccess
+    :fieldAccess))
+
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
   (mbql.u/match-one expression
@@ -652,8 +661,8 @@
                       number?
                       {:type :constant, :name (str &match), :value &match}
 
-                      [:aggregation-options _ (options :guard :name)]
-                      {:type :fieldAccess, :fieldName (:name options)}
+                      [:aggregation-options ag (options :guard :name)]
+                      {:type (post-aggregator-type ag), :fieldName (:name options)}
 
                       #{:+ :- :/ :*}
                       (expression-post-aggregation &match)

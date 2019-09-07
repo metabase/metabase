@@ -117,3 +117,27 @@
    {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
     :breakout    [$venue_category_name]
     :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]}))
+
+(datasets/expect-with-driver :druid
+  {:projections [:distinct_0 :expression]
+   :query       {:queryType        :total
+                 :threshold        1000
+                 :granularity      :all
+                 :dataSource       "checkins"
+                 :context          {:timeout 60000, :queryId "<Query ID>"}
+                 :intervals        ["1900-01-01/2100-01-01"]
+                 :aggregations     [{:type       :cardinality
+                                     :name       "__distinct_0"
+                                     :fieldNames ["venue_name"]
+                                     :byRow      true
+                                     :round      true}]
+                 :postAggregations [{:type :arithmetic,
+                                     :name "expression",
+                                     :fn :+,
+                                     :fields
+                                     [{:type :constant, :name "1", :value 1}
+                                      {:type :finalizingFieldAccess, :fieldName "__distinct_0"}]}]}
+   :query-type  ::druid.qp/topN
+   :mbql?       true}
+  (query->native
+   {:aggregation [[:+ 1 [:aggregation-options [:distinct $venue_name] {:name "__distinct_0"}]]]}))
