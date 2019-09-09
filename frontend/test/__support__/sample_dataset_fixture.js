@@ -10,33 +10,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { assocIn } from "icepick";
 import _ from "underscore";
 
-export const DATABASE_ID = 1;
+export const SAMPLE_DATASET_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
 
-export const ORDERS_TABLE_ID = 1;
-export const PEOPLE_TABLE_ID = 2;
-export const PRODUCT_TABLE_ID = 3;
-
-export const ORDERS_CREATED_DATE_FIELD_ID = 1;
-export const ORDERS_PK_FIELD_ID = 2;
-export const ORDERS_PRODUCT_FK_FIELD_ID = 3;
-export const ORDERS_SUBTOTAL_FIELD_ID = 4;
-export const ORDERS_TAX_FIELD_ID = 5;
-export const ORDERS_TOTAL_FIELD_ID = 6;
-export const ORDERS_USER_FK_FIELD_ID = 7;
-
 export const MAIN_METRIC_ID = 1;
-
-export const PRODUCT_CATEGORY_FIELD_ID = 21;
-export const PRODUCT_CREATED_AT_FIELD_ID = 22;
-export const PRODUCT_PK_FIELD_ID = 24;
-export const PRODUCT_PRICE_FIELD_ID = 25;
-export const PRODUCT_TILE_FIELD_ID = 27;
-
-export const PEOPLE_LATITUDE_FIELD_ID = 14;
-export const PEOPLE_LONGITUDE_FIELD_ID = 15;
-export const PEOPLE_STATE_FIELD_ID = 19;
 
 // TODO: dump this from a real instance
 export const state = {
@@ -1336,6 +1314,30 @@ export const state = {
 
 export const metadata = getMetadata(state);
 
+// alias DATABASE.TABLE.FIELD for convienence in tests
+// NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Dataset
+for (const database of Object.values(metadata.databases)) {
+  for (const table of database.tables) {
+    if (!(table.name in database)) {
+      database[table.name] = table;
+    }
+    for (const field of table.fields) {
+      if (!(field.name in table)) {
+        table[field.name] = field;
+      }
+    }
+  }
+}
+
+export const SAMPLE_DATASET = metadata.database(SAMPLE_DATASET_ID);
+export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
+export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID);
+
+export const ORDERS = SAMPLE_DATASET.ORDERS;
+export const PRODUCTS = SAMPLE_DATASET.PRODUCTS;
+export const PEOPLE = SAMPLE_DATASET.PEOPLE;
+export const REVIEWS = SAMPLE_DATASET.REVIEWS;
+
 export function makeMetadata(metadata) {
   metadata = {
     databases: {
@@ -1390,9 +1392,9 @@ export const card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
     },
   },
 };
@@ -1402,9 +1404,9 @@ export const product_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
-      "source-table": PRODUCT_TABLE_ID,
+      "source-table": PRODUCTS.id,
     },
   },
 };
@@ -1417,9 +1419,9 @@ export const orders_raw_card = {
   can_write: true,
   dataset_query: {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
     },
   },
 };
@@ -1431,10 +1433,10 @@ export const orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
       aggregation: [["count"]],
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
     },
   },
 };
@@ -1446,7 +1448,7 @@ export const native_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     native: {
       query: "SELECT count(*) FROM orders",
     },
@@ -1459,7 +1461,7 @@ export const unsaved_native_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "native",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     native: {
       query: "SELECT count(*) FROM orders",
     },
@@ -1473,7 +1475,7 @@ export const invalid_orders_count_card = {
   visualization_settings: {},
   dataset_query: {
     type: "nosuchqueryprocessor",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
       query: "SELECT count(*) FROM orders",
     },
@@ -1488,43 +1490,43 @@ export const orders_count_by_id_card = {
   visualization_settings: {},
   dataset_query: {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
       aggregation: [["count"]],
-      "source-table": ORDERS_TABLE_ID,
-      breakout: [["field-id", ORDERS_PK_FIELD_ID]],
+      "source-table": ORDERS.id,
+      breakout: [["field-id", ORDERS.ID.id]],
     },
   },
 };
 
 export const clickedCreatedAtHeader = {
   column: {
-    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
-    field_ref: ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+    ...metadata.field(ORDERS.CREATED_AT.id),
+    field_ref: ["field-id", ORDERS.CREATED_AT.id],
     source: "fields",
   },
 };
 
 export const clickedFloatHeader = {
   column: {
-    ...metadata.field(ORDERS_TOTAL_FIELD_ID),
-    field_ref: ["field-id", ORDERS_TOTAL_FIELD_ID],
+    ...metadata.field(ORDERS.TOTAL.id),
+    field_ref: ["field-id", ORDERS.TOTAL.id],
     source: "fields",
   },
 };
 
 export const clickedCategoryHeader = {
   column: {
-    ...metadata.field(PRODUCT_CATEGORY_FIELD_ID),
-    field_ref: ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+    ...metadata.field(PRODUCTS.CATEGORY.id),
+    field_ref: ["field-id", PRODUCTS.CATEGORY.id],
     source: "fields",
   },
 };
 
 export const clickedFloatValue = {
   column: {
-    ...metadata.field(ORDERS_TOTAL_FIELD_ID),
-    field_ref: ["field-id", ORDERS_TOTAL_FIELD_ID],
+    ...metadata.field(ORDERS.TOTAL.id),
+    field_ref: ["field-id", ORDERS.TOTAL.id],
     source: "fields",
   },
   value: 1234,
@@ -1532,8 +1534,8 @@ export const clickedFloatValue = {
 
 export const clickedPKValue = {
   column: {
-    ...metadata.field(ORDERS_PK_FIELD_ID),
-    field_ref: ["field-id", ORDERS_PK_FIELD_ID],
+    ...metadata.field(ORDERS.ID.id),
+    field_ref: ["field-id", ORDERS.ID.id],
     source: "fields",
   },
   value: 42,
@@ -1541,8 +1543,8 @@ export const clickedPKValue = {
 
 export const clickedFKValue = {
   column: {
-    ...metadata.field(ORDERS_PRODUCT_FK_FIELD_ID),
-    field_ref: ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
+    ...metadata.field(ORDERS.PRODUCT_ID.id),
+    field_ref: ["field-id", ORDERS.PRODUCT_ID.id],
     source: "fields",
   },
   value: 43,
@@ -1550,8 +1552,8 @@ export const clickedFKValue = {
 
 export const clickedDateTimeValue = {
   column: {
-    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
-    field_ref: ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+    ...metadata.field(ORDERS.CREATED_AT.id),
+    field_ref: ["field-id", ORDERS.CREATED_AT.id],
     source: "fields",
   },
   value: "2018-01-01T00:00:00Z",
@@ -1569,7 +1571,7 @@ export const clickedMetric = {
   value: 42,
 };
 
-export const tableMetadata = metadata.table(ORDERS_TABLE_ID);
+export const tableMetadata = metadata.table(ORDERS.id);
 
 export function makeQuestion(fn = (card, state) => ({ card, state })) {
   const result = fn(card, state);
@@ -1583,7 +1585,7 @@ export const unsavedOrderCountQuestion = new Question(
 );
 export const productQuestion = new Question(metadata, product_card);
 const NoFieldsMetadata = getMetadata(
-  assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "fields"], []),
+  assocIn(state, ["entities", "tables", ORDERS.id, "fields"], []),
 );
 export const questionNoFields = new Question(NoFieldsMetadata, card);
 
@@ -1592,7 +1594,7 @@ export const questionNoFields = new Question(NoFieldsMetadata, card);
 export const countByCreatedAtQuestion = question
   .query()
   .addAggregation(["count"])
-  .addBreakout(["field-id", ORDERS_CREATED_DATE_FIELD_ID])
+  .addBreakout(["field-id", ORDERS.CREATED_AT.id])
   .question();
 
 export const clickedCountAggregationHeader = {
@@ -1607,7 +1609,7 @@ export const clickedCountAggregationHeader = {
 
 export const clickedCreatedAtBreakoutHeader = {
   column: {
-    ...metadata.field(ORDERS_CREATED_DATE_FIELD_ID),
+    ...metadata.field(ORDERS.CREATED_AT.id),
     source: "breakout",
   },
 };
@@ -1616,9 +1618,9 @@ export const clickedCreatedAtBreakoutHeader = {
 export function makeDatasetQuery(query = {}) {
   return {
     type: "query",
-    database: DATABASE_ID,
+    database: SAMPLE_DATASET.id,
     query: {
-      "source-table": query["source-query"] ? undefined : ORDERS_TABLE_ID,
+      "source-table": query["source-query"] ? undefined : ORDERS.id,
       ...query,
     },
   };

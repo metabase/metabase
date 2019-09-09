@@ -6,8 +6,7 @@ import {
   countByCreatedAtQuestion,
   clickedCountAggregationHeader,
   clickedCreatedAtBreakoutHeader,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import SortAction from "metabase/modes/components/drill/SortAction";
@@ -47,7 +46,7 @@ describe("SortAction", () => {
     const actions = SortAction({
       question: question
         .query()
-        .addSort(["asc", ["field-id", ORDERS_CREATED_DATE_FIELD_ID]])
+        .addSort(["asc", ["field-id", ORDERS.CREATED_AT.id]])
         .question(),
       clicked: clickedCreatedAtHeader,
     });
@@ -66,9 +65,9 @@ describe("SortAction", () => {
     });
     expect(query(actions[0])).toEqual({
       aggregation: [["count"]],
-      breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]],
+      breakout: [["field-id", ORDERS.CREATED_AT.id]],
       "order-by": [["asc", ["aggregation", 0]]],
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
     });
   });
 
@@ -79,9 +78,9 @@ describe("SortAction", () => {
     });
     expect(query(actions[0])).toEqual({
       aggregation: [["count"]],
-      breakout: [["field-id", ORDERS_CREATED_DATE_FIELD_ID]],
+      breakout: [["field-id", ORDERS.CREATED_AT.id]],
       "order-by": [["asc", ["field-id", 1]]],
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
     });
   });
 });

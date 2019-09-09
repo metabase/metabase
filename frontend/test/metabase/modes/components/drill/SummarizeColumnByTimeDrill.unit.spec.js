@@ -4,9 +4,7 @@ import {
   question,
   questionNoFields,
   clickedFloatHeader,
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import SummarizeColumnByTimeDrill from "metabase/modes/components/drill/SummarizeColumnByTimeDrill";
@@ -31,11 +29,9 @@ describe("SummarizeColumnByTimeDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
-      aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
-      breakout: [
-        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "day"],
-      ],
+      "source-table": ORDERS.id,
+      aggregation: [["sum", ["field-id", ORDERS.TOTAL.id]]],
+      breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"]],
     });
     expect(newCard.display).toEqual("line");
   });

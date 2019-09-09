@@ -2,7 +2,7 @@
 
 import {
   makeQuestion,
-  ORDERS_TABLE_ID,
+  ORDERS,
   MAIN_METRIC_ID,
 } from "__support__/sample_dataset_fixture";
 
@@ -12,14 +12,14 @@ import { assocIn } from "icepick";
 
 const question0Metrics = makeQuestion((card, state) => ({
   card,
-  state: assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "metrics"], []),
+  state: assocIn(state, ["entities", "tables", ORDERS.id, "metrics"], []),
 }));
 const question1Metrics = makeQuestion();
 const question6Metrics = makeQuestion((card, state) => ({
   card,
   state: assocIn(
     state,
-    ["entities", "tables", ORDERS_TABLE_ID, "metrics"],
+    ["entities", "tables", ORDERS.id, "metrics"],
     [
       MAIN_METRIC_ID,
       MAIN_METRIC_ID,
@@ -46,7 +46,7 @@ describe("CommonMetricsAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       aggregation: [["metric", MAIN_METRIC_ID]],
     });
     expect(newCard.display).toEqual("scalar");

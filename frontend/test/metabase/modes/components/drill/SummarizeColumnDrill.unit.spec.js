@@ -5,8 +5,7 @@ import SummarizeColumnDrill from "metabase/modes/components/drill/SummarizeColum
 import {
   question,
   clickedFloatHeader,
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 describe("SummarizeColumnDrill", () => {
@@ -21,8 +20,8 @@ describe("SummarizeColumnDrill", () => {
     expect(actions.length).toEqual(5);
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
-      aggregation: [["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]]],
+      "source-table": ORDERS.id,
+      aggregation: [["sum", ["field-id", ORDERS.TOTAL.id]]],
     });
     expect(newCard.display).toEqual("scalar");
   });

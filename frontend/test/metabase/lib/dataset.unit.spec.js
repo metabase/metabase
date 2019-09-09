@@ -6,9 +6,8 @@ import {
 
 import {
   makeStructuredQuery,
-  ORDERS_TOTAL_FIELD_ID,
-  PRODUCT_PRICE_FIELD_ID,
-  PRODUCT_TABLE_ID,
+  ORDERS,
+  PRODUCTS,
 } from "__support__/sample_dataset_fixture";
 
 const FIELD_COLUMN = { id: 1 };
@@ -68,12 +67,12 @@ describe("metabase/util/dataset", () => {
     it("should not modify `fields` if no `table.columns` setting preset", () => {
       const question = syncTableColumnsToQuery(
         makeStructuredQuery({
-          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+          fields: [["field-id", ORDERS.TOTAL.id]],
         }).question(),
       );
       expect(question.query().query()).toEqual({
         "source-table": 1,
-        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        fields: [["field-id", ORDERS.TOTAL.id]],
       });
     });
     it("should sync included `table.columns` by name", () => {
@@ -91,7 +90,7 @@ describe("metabase/util/dataset", () => {
       );
       expect(question.query().query()).toEqual({
         "source-table": 1,
-        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        fields: [["field-id", ORDERS.TOTAL.id]],
       });
     });
     it("should sync included `table.columns` by fieldRef", () => {
@@ -101,7 +100,7 @@ describe("metabase/util/dataset", () => {
           .setSettings({
             "table.columns": [
               {
-                fieldRef: ["field-id", ORDERS_TOTAL_FIELD_ID],
+                fieldRef: ["field-id", ORDERS.TOTAL.id],
                 enabled: true,
               },
             ],
@@ -109,7 +108,7 @@ describe("metabase/util/dataset", () => {
       );
       expect(question.query().query()).toEqual({
         "source-table": 1,
-        fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        fields: [["field-id", ORDERS.TOTAL.id]],
       });
     });
     it("should not modify columns if all default columns are enabled", () => {
@@ -134,7 +133,7 @@ describe("metabase/util/dataset", () => {
             .addJoin({
               alias: "products",
               fields: "all",
-              "source-table": PRODUCT_TABLE_ID,
+              "source-table": PRODUCTS.id,
             })
             .question()
             .setSettings({
@@ -155,17 +154,13 @@ describe("metabase/util/dataset", () => {
           joins: [
             {
               alias: "products",
-              "source-table": PRODUCT_TABLE_ID,
+              "source-table": PRODUCTS.id,
               fields: [
-                [
-                  "joined-field",
-                  "products",
-                  ["field-id", PRODUCT_PRICE_FIELD_ID],
-                ],
+                ["joined-field", "products", ["field-id", PRODUCTS.PRICE.id]],
               ],
             },
           ],
-          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+          fields: [["field-id", ORDERS.TOTAL.id]],
         });
       });
       it("should sync included `table.columns` by fieldRef to join clauses", () => {
@@ -174,20 +169,20 @@ describe("metabase/util/dataset", () => {
             .addJoin({
               alias: "products",
               fields: "all",
-              "source-table": PRODUCT_TABLE_ID,
+              "source-table": PRODUCTS.id,
             })
             .question()
             .setSettings({
               "table.columns": [
                 {
-                  fieldRef: ["field-id", ORDERS_TOTAL_FIELD_ID],
+                  fieldRef: ["field-id", ORDERS.TOTAL.id],
                   enabled: true,
                 },
                 {
                   fieldRef: [
                     "joined-field",
                     "products",
-                    ["field-id", PRODUCT_PRICE_FIELD_ID],
+                    ["field-id", PRODUCTS.PRICE.id],
                   ],
                   enabled: true,
                 },
@@ -199,17 +194,13 @@ describe("metabase/util/dataset", () => {
           joins: [
             {
               alias: "products",
-              "source-table": PRODUCT_TABLE_ID,
+              "source-table": PRODUCTS.id,
               fields: [
-                [
-                  "joined-field",
-                  "products",
-                  ["field-id", PRODUCT_PRICE_FIELD_ID],
-                ],
+                ["joined-field", "products", ["field-id", PRODUCTS.PRICE.id]],
               ],
             },
           ],
-          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+          fields: [["field-id", ORDERS.TOTAL.id]],
         });
       });
     });

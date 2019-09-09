@@ -1,4 +1,4 @@
-import { state, ORDERS_TABLE_ID } from "__support__/sample_dataset_fixture";
+import { state, ORDERS } from "__support__/sample_dataset_fixture";
 
 import Table from "metabase-lib/lib/metadata/Table";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -9,7 +9,7 @@ describe("Table", () => {
   let metadata, table;
   beforeEach(() => {
     metadata = getMetadata(state);
-    table = metadata.tables[ORDERS_TABLE_ID];
+    table = metadata.tables[ORDERS.id];
   });
 
   it("should be a table", () => {

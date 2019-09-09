@@ -5,8 +5,7 @@ import QuickFilterDrill from "metabase/modes/components/drill/QuickFilterDrill";
 import {
   question,
   clickedFloatValue,
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
+  ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 
@@ -22,7 +21,7 @@ describe("QuickFilterDrill", () => {
     expect(actions.length).toEqual(4);
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       filter: ["<", ["field-id", 6], 1234],
     });
     expect(newCard.display).toEqual("table");
@@ -42,7 +41,7 @@ describe("QuickFilterDrill", () => {
     expect(actions.length).toEqual(4);
     let newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       filter: ["<", ["joined-field", "foo", ["field-id", 6]], 1234],
     });
     expect(newCard.display).toEqual("table");

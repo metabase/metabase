@@ -4,8 +4,7 @@ import {
   question,
   clickedMetric,
   clickedDateTimeValue,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import { assocIn, chain } from "icepick";
@@ -18,10 +17,10 @@ function getActionPropsForTimeseriesClick(unit, value) {
     question: question
       .query()
       .setQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         aggregation: [["count"]],
         breakout: [
-          ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], unit],
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], unit],
         ],
       })
       .question(),
@@ -49,10 +48,10 @@ describe("UnderlyingRecordsDrill", () => {
     expect(actions).toHaveLength(1);
     const q = actions[0].question();
     expect(q.query().query()).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       filter: [
         "=",
-        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "month"],
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
         value,
       ],
     });
@@ -77,14 +76,10 @@ describe("UnderlyingRecordsDrill", () => {
       null,
     );
     expect(queryWithoutFilterValue).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       filter: [
         "=",
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "day-of-week",
-        ],
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day-of-week"],
         null,
       ],
     });

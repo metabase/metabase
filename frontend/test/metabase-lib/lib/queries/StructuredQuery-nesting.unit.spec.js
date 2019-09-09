@@ -1,55 +1,53 @@
 import {
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID,
+  ORDERS,
   makeStructuredQuery,
 } from "__support__/sample_dataset_fixture";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
     it("", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS_TABLE_ID });
-      expect(q.query()).toEqual({ "source-table": ORDERS_TABLE_ID });
+      const q = makeStructuredQuery({ "source-table": ORDERS.id });
+      expect(q.query()).toEqual({ "source-table": ORDERS.id });
       expect(q.nest().query()).toEqual({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
+        "source-query": { "source-table": ORDERS.id },
       });
     });
 
     it("should be able to modify the outer question", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS_TABLE_ID });
+      const q = makeStructuredQuery({ "source-table": ORDERS.id });
       expect(
         q
           .nest()
-          .addFilter(["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 42])
+          .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 42])
           .query(),
       ).toEqual({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
-        filter: ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 42],
+        "source-query": { "source-table": ORDERS.id },
+        filter: ["=", ["field-id", ORDERS.TOTAL.id], 42],
       });
     });
 
     it("should be able to modify the source question", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS_TABLE_ID });
+      const q = makeStructuredQuery({ "source-table": ORDERS.id });
       expect(
         q
           .nest()
           .sourceQuery()
-          .addFilter(["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 42])
+          .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 42])
           .parentQuery()
           .query(),
       ).toEqual({
         "source-query": {
-          "source-table": ORDERS_TABLE_ID,
-          filter: ["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 42],
+          "source-table": ORDERS.id,
+          filter: ["=", ["field-id", ORDERS.TOTAL.id], 42],
         },
       });
     });
 
     it("should return a table with correct dimensions", () => {
       const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         aggregation: [["count"]],
-        breakout: [["field-id", ORDERS_PRODUCT_FK_FIELD_ID]],
+        breakout: [["field-id", ORDERS.PRODUCT_ID.id]],
       });
       expect(
         q
@@ -67,19 +65,15 @@ describe("StructuredQuery nesting", () => {
     it("should return filters for the last two stages", () => {
       const q = makeStructuredQuery({
         "source-query": {
-          "source-table": ORDERS_TABLE_ID,
+          "source-table": ORDERS.id,
           aggregation: [["count"]],
-          filter: ["=", ["field-id", ORDERS_PRODUCT_FK_FIELD_ID], 1],
+          filter: ["=", ["field-id", ORDERS.PRODUCT_ID.id], 1],
         },
         filter: ["=", ["field-literal", "count", "type/Integer"], 2],
       });
       const filters = q.topLevelFilters();
       expect(filters).toHaveLength(2);
-      expect(filters[0]).toEqual([
-        "=",
-        ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-        1,
-      ]);
+      expect(filters[0]).toEqual(["=", ["field-id", ORDERS.PRODUCT_ID.id], 1]);
       expect(filters[1]).toEqual([
         "=",
         ["field-literal", "count", "type/Integer"],
@@ -90,38 +84,38 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS_TABLE_ID });
+      const q = makeStructuredQuery({ "source-table": ORDERS.id });
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
       });
     });
     it("should return the query if it's not summarized", () => {
       const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         aggregation: [["count"]],
       });
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         aggregation: [["count"]],
       });
     });
     it("should return last stage if none are summarized", () => {
       const q = makeStructuredQuery({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
+        "source-query": { "source-table": ORDERS.id },
       });
       expect(q.topLevelQuery().query()).toEqual({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
+        "source-query": { "source-table": ORDERS.id },
       });
     });
     it("should return last summarized stage if any is summarized", () => {
       const q = makeStructuredQuery({
         "source-query": {
-          "source-table": ORDERS_TABLE_ID,
+          "source-table": ORDERS.id,
           aggregation: [["count"]],
         },
       });
       expect(q.topLevelQuery().query()).toEqual({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         aggregation: [["count"]],
       });
     });
@@ -130,25 +124,25 @@ describe("StructuredQuery nesting", () => {
   describe("topLevelDimension", () => {
     it("should return same dimension if not nested", () => {
       const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
       });
       const d = q.topLevelDimension(
-        q.parseFieldReference(["field-id", ORDERS_TOTAL_FIELD_ID]),
+        q.parseFieldReference(["field-id", ORDERS.TOTAL.id]),
       );
-      expect(d.mbql()).toEqual(["field-id", ORDERS_TOTAL_FIELD_ID]);
+      expect(d.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
     });
     it("should return underlying dimension for a nested query", () => {
       const q = makeStructuredQuery({
         "source-query": {
-          "source-table": ORDERS_TABLE_ID,
+          "source-table": ORDERS.id,
           aggregation: [["count"]],
-          breakout: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+          breakout: [["field-id", ORDERS.TOTAL.id]],
         },
       });
       const d = q.topLevelDimension(
         q.parseFieldReference(["field-literal", "TOTAL", "type/Float"]),
       );
-      expect(d.mbql()).toEqual(["field-id", ORDERS_TOTAL_FIELD_ID]);
+      expect(d.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
     });
   });
 });

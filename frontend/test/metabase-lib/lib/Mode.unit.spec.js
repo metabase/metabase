@@ -1,13 +1,9 @@
 import {
   metadata,
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
-  ORDERS_PK_FIELD_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID,
-  ORDERS_USER_FK_FIELD_ID,
-  PRODUCT_CATEGORY_FIELD_ID,
-  PEOPLE_STATE_FIELD_ID,
+  SAMPLE_DATASET,
+  ORDERS,
+  PRODUCTS,
+  PEOPLE,
   orders_raw_card,
 } from "__support__/sample_dataset_fixture";
 
@@ -40,7 +36,7 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            ["field-id", ORDERS.CREATED_AT.id],
             "day",
           ])
           .question()
@@ -52,13 +48,13 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            ["field-id", ORDERS.CREATED_AT.id],
             "day",
           ])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+            ["field-id", ORDERS.PRODUCT_ID.id],
+            ["field-id", PRODUCTS.CATEGORY.id],
           ])
           .question()
           .mode();
@@ -70,8 +66,8 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_USER_FK_FIELD_ID],
-            ["field-id", PEOPLE_STATE_FIELD_ID],
+            ["field-id", ORDERS.USER_ID.id],
+            ["field-id", PEOPLE.STATE.id],
           ])
           .question()
           .mode();
@@ -83,13 +79,13 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+            ["field-id", ORDERS.PRODUCT_ID.id],
+            ["field-id", PRODUCTS.CATEGORY.id],
           ])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_USER_FK_FIELD_ID],
-            ["field-id", PEOPLE_STATE_FIELD_ID],
+            ["field-id", ORDERS.USER_ID.id],
+            ["field-id", PEOPLE.STATE.id],
           ])
           .question()
           .mode();
@@ -98,7 +94,7 @@ describe("Mode", () => {
 
       it("returns `object` mode with pk filter", () => {
         const mode = rawDataQuery
-          .filter(["=", ["field-id", ORDERS_PK_FIELD_ID], 42])
+          .filter(["=", ["field-id", ORDERS.ID.id], 42])
           .question()
           .mode();
         expect(mode && mode.name()).toEqual("object");
@@ -109,18 +105,18 @@ describe("Mode", () => {
           .aggregate(["count"])
           .breakout([
             "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
+            ["field-id", ORDERS.CREATED_AT.id],
             "day",
           ])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-            ["field-id", PRODUCT_CATEGORY_FIELD_ID],
+            ["field-id", ORDERS.PRODUCT_ID.id],
+            ["field-id", PRODUCTS.CATEGORY.id],
           ])
           .breakout([
             "fk->",
-            ["field-id", ORDERS_USER_FK_FIELD_ID],
-            ["field-id", PEOPLE_STATE_FIELD_ID],
+            ["field-id", ORDERS.USER_ID.id],
+            ["field-id", PEOPLE.STATE.id],
           ])
           .question()
           .mode();
@@ -173,8 +169,8 @@ describe("Mode", () => {
 
     describe("for a question with an aggregation and a time breakout", () => {
       const timeBreakoutQuestionMode = Question.create({
-        databaseId: DATABASE_ID,
-        tableId: ORDERS_TABLE_ID,
+        databaseId: SAMPLE_DATASET.id,
+        tableId: ORDERS.id,
         metadata,
       })
         .query()

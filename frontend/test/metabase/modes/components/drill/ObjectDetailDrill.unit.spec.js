@@ -7,10 +7,8 @@ import {
   clickedFloatValue,
   clickedPKValue,
   clickedFKValue,
-  ORDERS_TABLE_ID,
-  PRODUCT_TABLE_ID,
-  ORDERS_PK_FIELD_ID,
-  PRODUCT_PK_FIELD_ID,
+  ORDERS,
+  PRODUCTS,
 } from "__support__/sample_dataset_fixture";
 
 describe("ObjectDetailDrill", () => {
@@ -30,8 +28,8 @@ describe("ObjectDetailDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
-      filter: ["=", ["field-id", ORDERS_PK_FIELD_ID], 42],
+      "source-table": ORDERS.id,
+      filter: ["=", ["field-id", ORDERS.ID.id], 42],
     });
   });
   it("should be return correct new card for FKs", () => {
@@ -42,8 +40,8 @@ describe("ObjectDetailDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": PRODUCT_TABLE_ID,
-      filter: ["=", ["field-id", PRODUCT_PK_FIELD_ID], 43],
+      "source-table": PRODUCTS.id,
+      filter: ["=", ["field-id", PRODUCTS.ID.id], 43],
     });
   });
 });

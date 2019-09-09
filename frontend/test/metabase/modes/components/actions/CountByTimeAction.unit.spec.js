@@ -3,8 +3,7 @@
 import {
   question,
   questionNoFields,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import CountByTimeAction from "metabase/modes/components/actions/CountByTimeAction";
@@ -18,11 +17,9 @@ describe("CountByTimeAction", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       aggregation: [["count"]],
-      breakout: [
-        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "day"],
-      ],
+      breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"]],
     });
     expect(newCard.display).toEqual("bar");
   });

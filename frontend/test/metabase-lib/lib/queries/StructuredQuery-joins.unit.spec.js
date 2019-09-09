@@ -1,18 +1,16 @@
 import {
-  ORDERS_TABLE_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID,
-  PRODUCT_TABLE_ID,
-  PRODUCT_PK_FIELD_ID,
+  ORDERS,
+  PRODUCTS,
   makeStructuredQuery,
 } from "__support__/sample_dataset_fixture";
 
 const EXAMPLE_JOIN = {
   alias: "join0",
-  "source-table": PRODUCT_TABLE_ID,
+  "source-table": PRODUCTS.id,
   condition: [
     "=",
-    ["field-id", ORDERS_PRODUCT_FK_FIELD_ID],
-    ["joined-field", "join0", ["field-id", PRODUCT_PK_FIELD_ID]],
+    ["field-id", ORDERS.PRODUCT_ID.id],
+    ["joined-field", "join0", ["field-id", PRODUCTS.ID.id]],
   ],
 };
 
@@ -20,32 +18,32 @@ describe("StructuredQuery nesting", () => {
   describe("parentDimension", () => {
     it("should return the correct dimension", () => {
       const j = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         joins: [EXAMPLE_JOIN],
       }).joins()[0];
       expect(j.parentDimension().mbql()).toEqual([
         "field-id",
-        ORDERS_PRODUCT_FK_FIELD_ID,
+        ORDERS.PRODUCT_ID.id,
       ]);
     });
   });
   describe("joinDimension", () => {
     it("should return the correct dimension", () => {
       const j = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         joins: [EXAMPLE_JOIN],
       }).joins()[0];
       expect(j.joinDimension().mbql()).toEqual([
         "joined-field",
         "join0",
-        ["field-id", PRODUCT_PK_FIELD_ID],
+        ["field-id", PRODUCTS.ID.id],
       ]);
     });
   });
   describe("parentDimensionOptions", () => {
     it("should return correct dimensions for a source-table", () => {
       const j = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
+        "source-table": ORDERS.id,
         joins: [{ alias: "join0" }],
       }).joins()[0];
       const options = j.parentDimensionOptions();
@@ -54,7 +52,7 @@ describe("StructuredQuery nesting", () => {
     });
     it("should return correct dimensions for a source-query", () => {
       const j = makeStructuredQuery({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
+        "source-query": { "source-table": ORDERS.id },
         joins: [{ alias: "join0" }],
       }).joins()[0];
       const options = j.parentDimensionOptions();
@@ -69,8 +67,8 @@ describe("StructuredQuery nesting", () => {
   describe("joinDimensionOptions", () => {
     it("should return correct dimensions with a source-table", () => {
       const j = makeStructuredQuery({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
-        joins: [{ alias: "join0", "source-table": ORDERS_TABLE_ID }],
+        "source-query": { "source-table": ORDERS.id },
+        joins: [{ alias: "join0", "source-table": ORDERS.id }],
       }).joins()[0];
       const options = j.joinDimensionOptions();
       expect(options.count).toBe(7);
@@ -82,11 +80,11 @@ describe("StructuredQuery nesting", () => {
     });
     it("should return correct dimensions with a source-query", () => {
       const j = makeStructuredQuery({
-        "source-query": { "source-table": ORDERS_TABLE_ID },
+        "source-query": { "source-table": ORDERS.id },
         joins: [
           {
             alias: "join0",
-            "source-query": { "source-table": ORDERS_TABLE_ID },
+            "source-query": { "source-table": ORDERS.id },
           },
         ],
       }).joins()[0];
@@ -102,11 +100,11 @@ describe("StructuredQuery nesting", () => {
   describe("dimensionOptions", () => {
     it("should include joined table's fields", () => {
       const q = makeStructuredQuery({
-        "source-table": PRODUCT_TABLE_ID,
+        "source-table": PRODUCTS.id,
         joins: [
           {
             alias: "join0",
-            "source-table": ORDERS_TABLE_ID,
+            "source-table": ORDERS.id,
           },
         ],
       });

@@ -4,8 +4,7 @@ import {
   question,
   clickedMetric,
   clickedDateTimeValue,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import { chain } from "icepick";
@@ -21,14 +20,10 @@ describe("ZoomDrill", () => {
       question: question
         .query()
         .setQuery({
-          "source-table": ORDERS_TABLE_ID,
+          "source-table": ORDERS.id,
           aggregation: [["count"]],
           breakout: [
-            [
-              "datetime-field",
-              ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-              "month",
-            ],
+            ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
           ],
         })
         .question(),
@@ -44,15 +39,15 @@ describe("ZoomDrill", () => {
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       aggregation: [["count"]],
       filter: [
         "=",
-        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "month"],
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
         clickedDateTimeValue.value,
       ],
       breakout: [
-        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "week"],
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "week"],
       ],
     });
     expect(newCard.display).toEqual("line");
