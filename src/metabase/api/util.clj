@@ -3,9 +3,10 @@
   page tasks."
   (:require [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
+            [metabase
+             [logger :as logger]
+             [troubleshooting :as troubleshooting]]
             [metabase.api.common :as api]
-            [metabase.logger :as logger]
-            [metabase.troubleshooting :as troubleshooting]
             [metabase.util
              [schema :as su]
              [stats :as stats]]))
