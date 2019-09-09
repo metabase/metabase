@@ -128,7 +128,7 @@ describe("setup wizard", () => {
     expect(databaseStep.find(".SetupStep--active").length).toBe(1);
 
     // add h2 database
-    chooseSelectOption(app.find("option[value='h2']"));
+    chooseSelectOption(app.find("Option[value='h2']"));
     setInputValue(databaseStep.find("input[name='name']"), "Metabase H2");
 
     const nextButton = databaseStep.find('button[children="Next"]');
