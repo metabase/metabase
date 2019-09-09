@@ -120,11 +120,11 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
 fi
 
 # Initialize the Metabase db from H2 dump, if available
-INITIAL_DB=/app/h2-init.db
-if [ -f "${INITIAL_DB}.mv.db" ]; then
+INITIAL_DB=$(ls /app/initial*.db | head -n 1)
+if [ -f "${INITIAL_DB}" ]; then
     echo "Initializing Metabase database from H2 database ${INITIAL_DB}..."
-    chown metabase: ${INITIAL_DB}.mv.db
-    su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar load-from-h2 ${INITIAL_DB} $@"
+    chmod o+r ${INITIAL_DB}
+    su metabase -s /bin/sh -c "exec java $JAVA_OPTS -jar /app/metabase.jar load-from-h2 ${INITIAL_DB%.mv.db} $@"
 
     if [ $? -ne 0 ]; then
         echo "Failed to initialize database from H2 database!"
