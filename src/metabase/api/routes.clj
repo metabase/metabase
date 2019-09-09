@@ -6,6 +6,7 @@
              [activity :as activity]
              [alert :as alert]
              [automagic-dashboards :as magic]
+             [bug-report-details :as bug-report-details]
              [card :as card]
              [collection :as collection]
              [dashboard :as dashboard]

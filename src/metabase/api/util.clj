@@ -5,6 +5,7 @@
             [crypto.random :as crypto-random]
             [metabase.api.common :as api]
             [metabase.logger :as logger]
+            [metabase.troubleshooting :as troubleshooting]
             [metabase.util
              [schema :as su]
              [stats :as stats]]))
@@ -34,5 +35,9 @@
   []
   {:token (crypto-random/hex 32)})
 
+(api/defendpoint GET "/bug-report-details"
+  []
+  (api/check-superuser)
+  {:system-info (troubleshooting/system-info)})
 
 (api/define-routes)
