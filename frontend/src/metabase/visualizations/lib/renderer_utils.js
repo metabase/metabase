@@ -129,9 +129,17 @@ function getParseOptions({ settings, data }) {
 }
 
 export function getDatas({ settings, series }, warn) {
+  const isHist = isHistogram(settings);
   return series.map(({ data }) => {
+    // histograms can't display null values on the x axis, so we filter them out
+    // and display a warning
+    const rows = isHist ? data.rows.filter(([x]) => x !== null) : data.rows;
+    if (rows.length < data.rows.length) {
+      warn(nullDimensionWarning());
+    }
+
     const parseOptions = getParseOptions({ settings, data });
-    return data.rows.map(row => {
+    return rows.map(row => {
       const [x, ...rest] = row;
       const newRow = [parseXValue(x, parseOptions, warn), ...rest];
       newRow._origin = row._origin;
@@ -143,6 +151,7 @@ export function getDatas({ settings, series }, warn) {
 export function getXValues({ settings, series }) {
   // if _raw isn't set then we already have the raw series
   const { _raw: rawSeries = series } = series;
+  const isHist = isHistogram(settings);
   const warn = () => {}; // no op since warning in handled by getDatas
   const uniqueValues = new Set();
   let isAscending = true;
