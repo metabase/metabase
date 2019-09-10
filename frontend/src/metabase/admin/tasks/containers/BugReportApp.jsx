@@ -18,7 +18,11 @@ const InfoBlock = ({ children }) => (
       <CopyButton value={children} />
     </Box>
     <pre
-      style={{ fontFamily: "Lucida Console, Monaco, monospace", fontSize: 14 }}
+      style={{
+        fontFamily: "Lucida Console, Monaco, monospace",
+        fontSize: 14,
+        whiteSpace: "pre-wrap",
+      }}
     >
       {children}
     </pre>
