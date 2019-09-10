@@ -7,7 +7,7 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Question from "metabase-lib/lib/Question";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { assocIn } from "icepick";
+import { chain } from "icepick";
 import _ from "underscore";
 
 export const SAMPLE_DATASET_ID = 1;
@@ -1312,22 +1312,31 @@ export const state = {
   },
 };
 
-export const metadata = getMetadata(state);
-
-// alias DATABASE.TABLE.FIELD for convienence in tests
-// NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Dataset
-for (const database of Object.values(metadata.databases)) {
-  for (const table of database.tables) {
-    if (!(table.name in database)) {
-      database[table.name] = table;
-    }
-    for (const field of table.fields) {
-      if (!(field.name in table)) {
-        table[field.name] = field;
+function aliasTablesAndFields(metadata) {
+  // alias DATABASE.TABLE.FIELD for convienence in tests
+  // NOTE: this assume names don't conflict with other properties in Database/Table which I think is safe for Sample Dataset
+  for (const database of Object.values(metadata.databases)) {
+    for (const table of database.tables) {
+      if (!(table.name in database)) {
+        database[table.name] = table;
+      }
+      for (const field of table.fields) {
+        if (!(field.name in table)) {
+          table[field.name] = field;
+        }
       }
     }
   }
 }
+
+export function createMetadata(updateFn) {
+  const stateModified = updateFn(chain(state)).value();
+  const metadata = getMetadata(stateModified);
+  aliasTablesAndFields(metadata);
+  return metadata;
+}
+
+export const metadata = createMetadata(state => state);
 
 export const SAMPLE_DATASET = metadata.database(SAMPLE_DATASET_ID);
 export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
@@ -1387,6 +1396,7 @@ export function makeMetadata(metadata) {
   return getMetadata({ entities: metadata });
 }
 
+// DEPRECATED
 export const card = {
   display: "table",
   visualization_settings: {},
@@ -1399,18 +1409,7 @@ export const card = {
   },
 };
 
-export const product_card = {
-  display: "table",
-  visualization_settings: {},
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DATASET.id,
-    query: {
-      "source-table": PRODUCTS.id,
-    },
-  },
-};
-
+// DEPRECATED
 export const orders_raw_card = {
   id: 1,
   name: "Raw orders data",
@@ -1426,6 +1425,7 @@ export const orders_raw_card = {
   },
 };
 
+// DEPRECATED
 export const orders_count_card = {
   id: 2,
   name: "# orders data",
@@ -1435,12 +1435,13 @@ export const orders_count_card = {
     type: "query",
     database: SAMPLE_DATASET.id,
     query: {
-      aggregation: [["count"]],
       "source-table": ORDERS.id,
+      aggregation: [["count"]],
     },
   },
 };
 
+// DEPRECATED
 export const native_orders_count_card = {
   id: 3,
   name: "# orders data",
@@ -1455,6 +1456,7 @@ export const native_orders_count_card = {
   },
 };
 
+// DEPRECATED
 export const unsaved_native_orders_count_card = {
   name: "# orders data",
   display: "table",
@@ -1468,6 +1470,7 @@ export const unsaved_native_orders_count_card = {
   },
 };
 
+// DEPRECATED
 export const invalid_orders_count_card = {
   id: 2,
   name: "# orders data",
@@ -1482,6 +1485,7 @@ export const invalid_orders_count_card = {
   },
 };
 
+// DEPRECATED
 export const orders_count_by_id_card = {
   id: 2,
   name: "# orders data",
@@ -1492,129 +1496,20 @@ export const orders_count_by_id_card = {
     type: "query",
     database: SAMPLE_DATASET.id,
     query: {
-      aggregation: [["count"]],
       "source-table": ORDERS.id,
+      aggregation: [["count"]],
       breakout: [["field-id", ORDERS.ID.id]],
     },
   },
 };
 
-export const clickedCreatedAtHeader = {
-  column: {
-    ...metadata.field(ORDERS.CREATED_AT.id),
-    field_ref: ["field-id", ORDERS.CREATED_AT.id],
-    source: "fields",
-  },
-};
-
-export const clickedFloatHeader = {
-  column: {
-    ...metadata.field(ORDERS.TOTAL.id),
-    field_ref: ["field-id", ORDERS.TOTAL.id],
-    source: "fields",
-  },
-};
-
-export const clickedCategoryHeader = {
-  column: {
-    ...metadata.field(PRODUCTS.CATEGORY.id),
-    field_ref: ["field-id", PRODUCTS.CATEGORY.id],
-    source: "fields",
-  },
-};
-
-export const clickedFloatValue = {
-  column: {
-    ...metadata.field(ORDERS.TOTAL.id),
-    field_ref: ["field-id", ORDERS.TOTAL.id],
-    source: "fields",
-  },
-  value: 1234,
-};
-
-export const clickedPKValue = {
-  column: {
-    ...metadata.field(ORDERS.ID.id),
-    field_ref: ["field-id", ORDERS.ID.id],
-    source: "fields",
-  },
-  value: 42,
-};
-
-export const clickedFKValue = {
-  column: {
-    ...metadata.field(ORDERS.PRODUCT_ID.id),
-    field_ref: ["field-id", ORDERS.PRODUCT_ID.id],
-    source: "fields",
-  },
-  value: 43,
-};
-
-export const clickedDateTimeValue = {
-  column: {
-    ...metadata.field(ORDERS.CREATED_AT.id),
-    field_ref: ["field-id", ORDERS.CREATED_AT.id],
-    source: "fields",
-  },
-  value: "2018-01-01T00:00:00Z",
-};
-
-export const clickedMetric = {
-  column: {
-    name: "count",
-    display_name: "count",
-    base_type: "type/Integer",
-    special_type: "type/Number",
-    field_ref: ["aggregation", 0],
-    source: "aggregation",
-  },
-  value: 42,
-};
-
-export const tableMetadata = metadata.table(ORDERS.id);
-
-export function makeQuestion(fn = (card, state) => ({ card, state })) {
-  const result = fn(card, state);
-  return new Question(getMetadata(result.state), result.card);
-}
-
-export const question = new Question(metadata, card);
+// DEPRECATED
 export const unsavedOrderCountQuestion = new Question(
   metadata,
   _.omit(orders_count_card, "id"),
 );
-export const productQuestion = new Question(metadata, product_card);
-const NoFieldsMetadata = getMetadata(
-  assocIn(state, ["entities", "tables", ORDERS.id, "fields"], []),
-);
-export const questionNoFields = new Question(NoFieldsMetadata, card);
 
-// COUNT BY CREATED AT
-
-export const countByCreatedAtQuestion = question
-  .query()
-  .addAggregation(["count"])
-  .addBreakout(["field-id", ORDERS.CREATED_AT.id])
-  .question();
-
-export const clickedCountAggregationHeader = {
-  column: {
-    name: "count",
-    display_name: "count",
-    base_type: "type/Integer",
-    special_type: "type/Number",
-    source: "aggregation",
-  },
-};
-
-export const clickedCreatedAtBreakoutHeader = {
-  column: {
-    ...metadata.field(ORDERS.CREATED_AT.id),
-    source: "breakout",
-  },
-};
-
-// NOTE: defauts to orders table
+// DEPRECATED
 export function makeDatasetQuery(query = {}) {
   return {
     type: "query",
@@ -1626,22 +1521,15 @@ export function makeDatasetQuery(query = {}) {
   };
 }
 
-// NOTE: defauts to orders table
+// DEPRECATED
+export const question = ORDERS.question();
+
+// DEPRECATED
 export function makeStructuredQuery(query) {
   return new StructuredQuery(question, makeDatasetQuery(query));
 }
 
-export const orders_past_300_days_segment = {
-  id: null,
-  name: "Past 300 days",
-  description: "Past 300 days created at",
-  table_id: 1,
-  definition: {
-    "source-table": 1,
-    filter: ["time-interval", ["field-id", 1], -300, "day"],
-  },
-};
-
+// DEPRECATED
 export const vendor_count_metric = {
   id: null,
   name: "Vendor count",

@@ -1,12 +1,9 @@
-import {
-  ORDERS,
-  makeStructuredQuery,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
 describe("StructuredQuery nesting", () => {
   describe("nest", () => {
     it("", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS.id });
+      const q = ORDERS.query();
       expect(q.query()).toEqual({ "source-table": ORDERS.id });
       expect(q.nest().query()).toEqual({
         "source-query": { "source-table": ORDERS.id },
@@ -14,7 +11,7 @@ describe("StructuredQuery nesting", () => {
     });
 
     it("should be able to modify the outer question", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS.id });
+      const q = ORDERS.query();
       expect(
         q
           .nest()
@@ -27,7 +24,7 @@ describe("StructuredQuery nesting", () => {
     });
 
     it("should be able to modify the source question", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS.id });
+      const q = ORDERS.query();
       expect(
         q
           .nest()
@@ -44,11 +41,9 @@ describe("StructuredQuery nesting", () => {
     });
 
     it("should return a table with correct dimensions", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS.id,
-        aggregation: [["count"]],
-        breakout: [["field-id", ORDERS.PRODUCT_ID.id]],
-      });
+      const q = ORDERS.query()
+        .aggregate(["count"])
+        .breakout(["field-id", ORDERS.PRODUCT_ID.id]);
       expect(
         q
           .nest()
@@ -63,14 +58,11 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelFilters", () => {
     it("should return filters for the last two stages", () => {
-      const q = makeStructuredQuery({
-        "source-query": {
-          "source-table": ORDERS.id,
-          aggregation: [["count"]],
-          filter: ["=", ["field-id", ORDERS.PRODUCT_ID.id], 1],
-        },
-        filter: ["=", ["field-literal", "count", "type/Integer"], 2],
-      });
+      const q = ORDERS.query()
+        .aggregate(["count"])
+        .filter(["=", ["field-id", ORDERS.PRODUCT_ID.id], 1])
+        .nest()
+        .filter(["=", ["field-literal", "count", "type/Integer"], 2]);
       const filters = q.topLevelFilters();
       expect(filters).toHaveLength(2);
       expect(filters[0]).toEqual(["=", ["field-id", ORDERS.PRODUCT_ID.id], 1]);
@@ -84,36 +76,28 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelQuery", () => {
     it("should return the query if it's summarized", () => {
-      const q = makeStructuredQuery({ "source-table": ORDERS.id });
+      const q = ORDERS.query();
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
       });
     });
     it("should return the query if it's not summarized", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS.id,
-        aggregation: [["count"]],
-      });
+      const q = ORDERS.query().aggregate(["count"]);
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
         aggregation: [["count"]],
       });
     });
     it("should return last stage if none are summarized", () => {
-      const q = makeStructuredQuery({
-        "source-query": { "source-table": ORDERS.id },
-      });
+      const q = ORDERS.query().nest();
       expect(q.topLevelQuery().query()).toEqual({
         "source-query": { "source-table": ORDERS.id },
       });
     });
     it("should return last summarized stage if any is summarized", () => {
-      const q = makeStructuredQuery({
-        "source-query": {
-          "source-table": ORDERS.id,
-          aggregation: [["count"]],
-        },
-      });
+      const q = ORDERS.query()
+        .aggregate(["count"])
+        .nest();
       expect(q.topLevelQuery().query()).toEqual({
         "source-table": ORDERS.id,
         aggregation: [["count"]],
@@ -123,22 +107,17 @@ describe("StructuredQuery nesting", () => {
 
   describe("topLevelDimension", () => {
     it("should return same dimension if not nested", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS.id,
-      });
+      const q = ORDERS.query();
       const d = q.topLevelDimension(
         q.parseFieldReference(["field-id", ORDERS.TOTAL.id]),
       );
       expect(d.mbql()).toEqual(["field-id", ORDERS.TOTAL.id]);
     });
     it("should return underlying dimension for a nested query", () => {
-      const q = makeStructuredQuery({
-        "source-query": {
-          "source-table": ORDERS.id,
-          aggregation: [["count"]],
-          breakout: [["field-id", ORDERS.TOTAL.id]],
-        },
-      });
+      const q = ORDERS.query()
+        .aggregate(["count"])
+        .breakout(["field-id", ORDERS.TOTAL.id])
+        .nest();
       const d = q.topLevelDimension(
         q.parseFieldReference(["field-literal", "TOTAL", "type/Float"]),
       );

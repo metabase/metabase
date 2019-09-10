@@ -9,7 +9,6 @@ import { click } from "__support__/enzyme_utils";
 import React from "react";
 import { mount } from "enzyme";
 import {
-  orders_past_300_days_segment,
   unsavedOrderCountQuestion,
   vendor_count_metric,
 } from "__support__/sample_dataset_fixture";
@@ -35,7 +34,18 @@ describe("HomepageApp", () => {
     // Delays are required for having separable creation times for each entity
     cleanup.question(await createSavedQuestion(unsavedOrderCountQuestion));
     await delay(100);
-    cleanup.segment(await SegmentApi.create(orders_past_300_days_segment));
+    cleanup.segment(
+      await SegmentApi.create({
+        id: null,
+        name: "Past 300 days",
+        description: "Past 300 days created at",
+        table_id: 1,
+        definition: {
+          "source-table": 1,
+          filter: ["time-interval", ["field-id", 1], -300, "day"],
+        },
+      }),
+    );
     await delay(100);
     cleanup.metric(await MetricApi.create(vendor_count_metric));
     await delay(100);

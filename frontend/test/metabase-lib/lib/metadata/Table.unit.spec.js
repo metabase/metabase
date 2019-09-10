@@ -6,11 +6,8 @@ import Database from "metabase-lib/lib/metadata/Database";
 import { getMetadata } from "metabase/selectors/metadata";
 
 describe("Table", () => {
-  let metadata, table;
-  beforeEach(() => {
-    metadata = getMetadata(state);
-    table = metadata.tables[ORDERS.id];
-  });
+  const metadata = getMetadata(state);
+  const table = metadata.table(ORDERS.id);
 
   it("should be a table", () => {
     expect(table).toBeInstanceOf(Table);

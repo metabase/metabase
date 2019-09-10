@@ -1,5 +1,4 @@
 import {
-  metadata,
   question,
   SAMPLE_DATASET,
   ANOTHER_DATABASE,
@@ -55,7 +54,7 @@ describe("StructuredQuery unit tests", () => {
     });
     describe("table", () => {
       it("Return the table wrapper object for the query", () => {
-        expect(query.table()).toBe(metadata.tables[ORDERS.id]);
+        expect(query.table()).toBe(ORDERS);
       });
     });
     describe("databaseId", () => {
@@ -99,15 +98,13 @@ describe("StructuredQuery unit tests", () => {
     });
     describe("setTable", () => {
       it("allows you to set a new table", () => {
-        expect(query.setTable(metadata.tables[PRODUCTS.id]).tableId()).toBe(
-          PRODUCTS.id,
-        );
+        expect(query.setTable(PRODUCTS).tableId()).toBe(PRODUCTS.id);
       });
 
       it("retains the correct database id when setting a new table", () => {
-        expect(
-          query.setTable(metadata.tables[PRODUCTS.id]).table().database.id,
-        ).toBe(SAMPLE_DATASET.id);
+        expect(query.setTable(PRODUCTS).table().database.id).toBe(
+          SAMPLE_DATASET.id,
+        );
       });
     });
     describe("tableId", () => {

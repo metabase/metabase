@@ -266,6 +266,15 @@ export default class Dimension {
     );
   }
 
+  datetime(unit: DatetimeUnit): DatetimeFieldDimension {
+    return new DatetimeFieldDimension(
+      this,
+      [unit],
+      this._metadata,
+      this._query,
+    );
+  }
+
   /**
    * The underlying field for this dimension
    */

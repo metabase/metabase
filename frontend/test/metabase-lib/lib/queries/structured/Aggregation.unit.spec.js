@@ -1,8 +1,8 @@
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import { question, ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
-const query = question.query();
+const query = ORDERS.query();
 
 function aggregationForMBQL(mbql) {
   return new Aggregation(mbql, 0, query);

@@ -39,13 +39,23 @@ export default class Table extends Base {
   }
 
   newQuestion(): Question {
+    return this.question()
+      .setDefaultQuery()
+      .setDefaultDisplay();
+  }
+
+  question(): Question {
     return Question.create({
       databaseId: this.db.id,
       tableId: this.id,
       metadata: this.metadata,
-    })
-      .setDefaultQuery()
-      .setDefaultDisplay();
+    });
+  }
+
+  query(query = {}): StructuredQuery {
+    return this.question()
+      .query()
+      .updateQuery(q => ({ ...q, ...query }));
   }
 
   dimensions(): Dimension[] {

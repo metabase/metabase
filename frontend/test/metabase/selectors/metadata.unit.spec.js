@@ -36,8 +36,7 @@ describe("getMetadata", () => {
   });
 
   describe("connected table", () => {
-    const table = metadata.tables[ORDERS.id];
-
+    const table = metadata.table(ORDERS.id);
     it("should have the proper number of fields", () => {
       // TODO - make this more dynamic
       expect(table.fields.length).toEqual(7);
@@ -49,9 +48,9 @@ describe("getMetadata", () => {
   });
 
   describe("connected field", () => {
-    const field = metadata.fields[ORDERS.CREATED_AT.id];
+    const field = metadata.field(ORDERS.CREATED_AT.id);
     it("should have a parent table", () => {
-      expect(field.table).toEqual(metadata.tables[ORDERS.id]);
+      expect(field.table).toEqual(metadata.table(ORDERS.id));
     });
   });
 });

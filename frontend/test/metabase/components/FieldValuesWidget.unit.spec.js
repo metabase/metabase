@@ -1,7 +1,7 @@
 import React from "react";
 import { mount } from "enzyme";
 
-import { metadata, ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import TokenField from "metabase/components/TokenField";
@@ -23,7 +23,7 @@ describe("FieldValuesWidget", () => {
   describe("category field", () => {
     describe("has_field_values = none", () => {
       const props = {
-        field: mock(metadata.field(PRODUCTS.CATEGORY.id), {
+        field: mock(PRODUCTS.CATEGORY, {
           has_field_values: "none",
         }),
       };
@@ -41,7 +41,7 @@ describe("FieldValuesWidget", () => {
     });
     describe("has_field_values = list", () => {
       const props = {
-        field: metadata.field(PRODUCTS.CATEGORY.id),
+        field: PRODUCTS.CATEGORY,
       };
       it("should call fetchFieldValues", () => {
         const fetchFieldValues = jest.fn();
@@ -57,10 +57,10 @@ describe("FieldValuesWidget", () => {
     });
     describe("has_field_values = search", () => {
       const props = {
-        field: mock(metadata.field(PRODUCTS.CATEGORY.id), {
+        field: mock(PRODUCTS.CATEGORY, {
           has_field_values: "search",
         }),
-        searchField: metadata.field(PRODUCTS.CATEGORY.id),
+        searchField: PRODUCTS.CATEGORY,
       };
       it("should not call fetchFieldValues", () => {
         const fetchFieldValues = jest.fn();
@@ -79,7 +79,7 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = none", () => {
       it("should have 'Enter an ID' as the placeholder text", () => {
         const component = mountFieldValuesWidget({
-          field: mock(metadata.field(ORDERS.PRODUCT_ID.id), {
+          field: mock(ORDERS.PRODUCT_ID, {
             has_field_values: "none",
           }),
         });
@@ -91,7 +91,7 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = list", () => {
       it("should have 'Search the list' as the placeholder text", () => {
         const component = mountFieldValuesWidget({
-          field: mock(metadata.field(ORDERS.PRODUCT_ID.id), {
+          field: mock(ORDERS.PRODUCT_ID, {
             has_field_values: "list",
             values: [[1234]],
           }),
@@ -104,17 +104,17 @@ describe("FieldValuesWidget", () => {
     describe("has_field_values = search", () => {
       it("should have 'Search by Category or enter an ID' as the placeholder text", () => {
         const component = mountFieldValuesWidget({
-          field: mock(metadata.field(ORDERS.PRODUCT_ID.id), {
+          field: mock(ORDERS.PRODUCT_ID, {
             has_field_values: "search",
           }),
-          searchField: metadata.field(PRODUCTS.CATEGORY.id),
+          searchField: PRODUCTS.CATEGORY,
         });
         expect(component.find(TokenField).props().placeholder).toEqual(
           "Search by Category or enter an ID",
         );
       });
       it("should not duplicate 'ID' in placeholder when ID itself is searchable", () => {
-        const field = mock(metadata.field(ORDERS.PRODUCT_ID.id), {
+        const field = mock(ORDERS.PRODUCT_ID, {
           base_type: "type/Text",
           has_field_values: "search",
         });

@@ -1,8 +1,8 @@
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import { question, ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
-const query = question.query();
+const query = ORDERS.query();
 
 function filterForMBQL(mbql) {
   return new Filter(mbql, 0, query);

@@ -4,13 +4,12 @@ import {
   ORDERS,
   PRODUCTS,
   PEOPLE,
-  orders_raw_card,
 } from "__support__/sample_dataset_fixture";
 
 import Question from "metabase-lib/lib/Question";
 
 describe("Mode", () => {
-  const rawDataQuestion = new Question(metadata, orders_raw_card);
+  const rawDataQuestion = ORDERS.question();
   const rawDataQuery = rawDataQuestion.query();
   const rawDataQuestionMode = rawDataQuestion.mode();
 

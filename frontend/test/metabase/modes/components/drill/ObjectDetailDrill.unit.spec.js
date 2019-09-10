@@ -2,28 +2,27 @@
 
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 
-import {
-  question,
-  clickedFloatValue,
-  clickedPKValue,
-  clickedFKValue,
-  ORDERS,
-  PRODUCTS,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 describe("ObjectDetailDrill", () => {
   it("should not be valid non-PK cells", () => {
     expect(
       ObjectDetailDrill({
-        question,
-        clicked: clickedFloatValue,
+        question: ORDERS.question(),
+        clicked: {
+          column: ORDERS.TOTAL.column(),
+          value: 42,
+        },
       }),
     ).toHaveLength(0);
   });
   it("should be return correct new card for PKs", () => {
     const actions = ObjectDetailDrill({
-      question,
-      clicked: clickedPKValue,
+      question: ORDERS.question(),
+      clicked: {
+        column: ORDERS.ID.column(),
+        value: 42,
+      },
     });
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
@@ -34,14 +33,17 @@ describe("ObjectDetailDrill", () => {
   });
   it("should be return correct new card for FKs", () => {
     const actions = ObjectDetailDrill({
-      question,
-      clicked: clickedFKValue,
+      question: ORDERS.question(),
+      clicked: {
+        column: ORDERS.PRODUCT_ID.column(),
+        value: 42,
+      },
     });
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
       "source-table": PRODUCTS.id,
-      filter: ["=", ["field-id", PRODUCTS.ID.id], 43],
+      filter: ["=", ["field-id", PRODUCTS.ID.id], 42],
     });
   });
 });

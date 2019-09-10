@@ -1,21 +1,14 @@
 import React from "react";
 import { mount } from "enzyme";
 
-import {
-  metadata, // connected graph,
-  ORDERS,
-  PRODUCTS,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import FieldName from "metabase/query_builder/components/FieldName";
 
 describe("FieldName", () => {
   it("should render regular field correctly", () => {
     const fieldName = mount(
-      <FieldName
-        field={ORDERS.CREATED_AT.id}
-        tableMetadata={metadata.tables[ORDERS.id]}
-      />,
+      <FieldName field={ORDERS.CREATED_AT.id} tableMetadata={ORDERS} />,
     );
     expect(fieldName.text()).toEqual("Created At");
   });
@@ -23,7 +16,7 @@ describe("FieldName", () => {
     const fieldName = mount(
       <FieldName
         field={["field-id", ORDERS.CREATED_AT.id]}
-        tableMetadata={metadata.tables[ORDERS.id]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Created At");
@@ -32,7 +25,7 @@ describe("FieldName", () => {
     const fieldName = mount(
       <FieldName
         field={["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.CATEGORY.id]}
-        tableMetadata={metadata.tables[ORDERS.id]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Product → Category");
@@ -41,7 +34,7 @@ describe("FieldName", () => {
     const fieldName = mount(
       <FieldName
         field={["datetime-field", ORDERS.CREATED_AT.id, "week"]}
-        tableMetadata={metadata.tables[ORDERS.id]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Created At: Week");

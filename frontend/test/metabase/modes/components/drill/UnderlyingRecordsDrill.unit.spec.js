@@ -1,36 +1,26 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import {
-  question,
-  clickedMetric,
-  clickedDateTimeValue,
-  ORDERS,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
-import { assocIn, chain } from "icepick";
+import { assocIn } from "icepick";
 import moment from "moment";
 
 import UnderlyingRecordsDrill from "metabase/modes/components/drill/UnderlyingRecordsDrill";
 
 function getActionPropsForTimeseriesClick(unit, value) {
+  const query = ORDERS.query()
+    .aggregate(["count"])
+    .breakout(["datetime-field", ["field-id", ORDERS.CREATED_AT.id], unit]);
   return {
-    question: question
-      .query()
-      .setQuery({
-        "source-table": ORDERS.id,
-        aggregation: [["count"]],
-        breakout: [
-          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], unit],
-        ],
-      })
-      .question(),
+    question: query.question(),
     clicked: {
-      ...clickedMetric,
+      column: query.aggregationDimensions()[0].column(),
+      value: 42,
       dimensions: [
-        chain(clickedDateTimeValue)
-          .assocIn(["column", "unit"], unit)
-          .assocIn(["value"], value)
-          .value(),
+        {
+          column: ORDERS.CREATED_AT.column({ unit }),
+          value: value,
+        },
       ],
     },
   };
@@ -38,7 +28,9 @@ function getActionPropsForTimeseriesClick(unit, value) {
 
 describe("UnderlyingRecordsDrill", () => {
   it("should not be valid for top level actions", () => {
-    expect(UnderlyingRecordsDrill({ question })).toHaveLength(0);
+    expect(
+      UnderlyingRecordsDrill({ question: ORDERS.newQuestion() }),
+    ).toHaveLength(0);
   });
   it("should be return correct new card for breakout by month", () => {
     const value = "2018-01-01T00:00:00Z";

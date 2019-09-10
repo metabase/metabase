@@ -1,19 +1,20 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import {
-  question,
-  questionNoFields,
-  ORDERS,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, createMetadata } from "__support__/sample_dataset_fixture";
 
 import CountByTimeAction from "metabase/modes/components/actions/CountByTimeAction";
 
 describe("CountByTimeAction", () => {
-  it("should not be valid if the table has no metrics", () => {
-    expect(CountByTimeAction({ question: questionNoFields })).toHaveLength(0);
+  it("should not be valid if the table has no date fields", () => {
+    const metadata = createMetadata(state =>
+      state.assocIn(["entities", "tables", ORDERS.id, "fields"], []),
+    );
+    expect(
+      CountByTimeAction({ question: metadata.table(ORDERS.id).question() }),
+    ).toHaveLength(0);
   });
   it("should return a scalar card for the metric", () => {
-    const actions = CountByTimeAction({ question: question });
+    const actions = CountByTimeAction({ question: ORDERS.question() });
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({

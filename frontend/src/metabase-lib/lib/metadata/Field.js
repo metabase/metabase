@@ -299,7 +299,7 @@ export default class Field extends Base {
   }
 
   column(extra = {}) {
-    return this.dimension().column(extra);
+    return this.dimension().column({ source: "fields", ...extra });
   }
 
   /**

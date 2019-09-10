@@ -1,7 +1,7 @@
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
-import { question } from "__support__/sample_dataset_fixture";
+import { question, ORDERS } from "__support__/sample_dataset_fixture";
 import Utils from "metabase/lib/utils";
 
 const mockTableMetadata = {
@@ -326,7 +326,7 @@ describe("generateQueryDescription", () => {
   it("should work with multiple aggregations", () => {
     expect(
       Q_DEPRECATED.generateQueryDescription(mockTableMetadata, {
-        "source-table": 1,
+        "source-table": ORDERS.id,
         aggregation: [["count"], ["sum", ["field-id", 1]]],
       }),
     ).toEqual("Orders, Count and Sum of Total");
@@ -334,7 +334,7 @@ describe("generateQueryDescription", () => {
   it("should work with named aggregations", () => {
     expect(
       Q_DEPRECATED.generateQueryDescription(mockTableMetadata, {
-        "source-table": 1,
+        "source-table": ORDERS.id,
         aggregation: [
           [
             "aggregation-options",

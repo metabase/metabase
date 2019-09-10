@@ -373,7 +373,7 @@ describe("Question", () => {
       it("works with a time filter", () => {
         const filteringQuestion = questionForFiltering.filter(
           "=",
-          metadata.field(ORDERS.CREATED_AT.id).column(),
+          ORDERS.CREATED_AT.column(),
           "12/12/2012",
         );
 
@@ -396,9 +396,7 @@ describe("Question", () => {
 
       // ???
       it("applies a filter to a given filterspec", () => {
-        const dimensions = [
-          { value: 1, column: metadata.field(ORDERS.ID.id).column() },
-        ];
+        const dimensions = [{ value: 1, column: ORDERS.ID.column() }];
 
         const drilledQuestion = ordersCountQuestion.drillUnderlyingRecords(
           dimensions,
@@ -472,10 +470,7 @@ describe("Question", () => {
     describe("drillPK(...)", async () => {
       const question = new Question(metadata, orders_raw_card);
       it("returns the correct query for a PK detail drill-through", () => {
-        const drilledQuestion = question.drillPK(
-          metadata.fields[ORDERS.ID.id],
-          1,
-        );
+        const drilledQuestion = question.drillPK(ORDERS.ID, 1);
 
         expect(drilledQuestion.canRun()).toBe(true);
 
