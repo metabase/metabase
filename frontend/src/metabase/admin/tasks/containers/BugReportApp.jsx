@@ -27,7 +27,7 @@ const InfoBlock = ({ children }) => (
 
 export default class BugReportApp extends Component {
   state = {
-    details: {"browser-info": navigatorInfo()},
+    details: { "browser-info": navigatorInfo() },
   };
 
   copyToClipboard = e => {
@@ -38,7 +38,7 @@ export default class BugReportApp extends Component {
 
   async fetchDetails() {
     const details = await UtilApi.bug_report_details();
-    this.setState({ details: { ...this.state.details, ...details  } });
+    this.setState({ details: { ...this.state.details, ...details } });
   }
 
   componentWillMount() {
@@ -51,7 +51,14 @@ export default class BugReportApp extends Component {
       <Box p={3}>
         <AdminHeader title={t`Bug Report`} />
         <p>
-          Running into issues? <a className="link" href="https://github.com/metabase/metabase/issues/new?assignees=&labels=Type%3ABug&template=bug_report.md&title=">File a bug report on GitHub</a>. Please include the following:
+          Running into issues?{" "}
+          <a
+            className="link"
+            href="https://github.com/metabase/metabase/issues/new?assignees=&labels=Type%3ABug&template=bug_report.md&title="
+          >
+            File a bug report on GitHub
+          </a>
+          . Please include the following:
         </p>
         <Box my={2}>
           <h3 className="mb1">Diagnostic Info</h3>
