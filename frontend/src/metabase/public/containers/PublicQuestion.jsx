@@ -203,6 +203,7 @@ export default class PublicQuestion extends Component {
         >
           {() => (
             <Visualization
+              error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
               className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>

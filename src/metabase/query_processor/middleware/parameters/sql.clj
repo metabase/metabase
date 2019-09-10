@@ -155,7 +155,7 @@
   "Return the default value for a Dimension (Field Filter) param defined by the map TAG, if one is set."
   [tag :- TagParam]
   (when (and (:required tag) (not (:default tag)))
-    (throw (Exception. (tru "''{0}'' is a required param." (:display-name tag)))))
+    (throw (Exception. (tru "You''ll need to pick a value for ''{0}'' before this query can run." (:display-name tag)))))
   (when-let [default (:default tag)]
     {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
@@ -194,7 +194,7 @@
   [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (tru "''{0}'' is a required param." display-name))))))
+        (throw (Exception. (tru "You''ll need to pick a value for ''{0}'' before this query can run." display-name))))))
 
 
 ;;; Parsing Values

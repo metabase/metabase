@@ -38,6 +38,7 @@
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
+(def ^:private ^:const error-whitelist #"You'll need to pick a value for '.*' before this query can run\.")
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
@@ -67,7 +68,7 @@
   (card-with-uuid uuid))
 
 (defn- transform-results [results]
-  (if (= (:status results) :failed)
+  (if (and (= (:status results) :failed) (not (re-matches error-whitelist (:error results))))
     ;; if the query failed instead of returning anything about the query just return a generic error message
     (ex-info "An error occurred while running the query." {:status-code 400})
     (u/select-nested-keys
