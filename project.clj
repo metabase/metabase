@@ -25,7 +25,8 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
+   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
+   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -320,4 +321,8 @@
    {:main org.h2.tools.Shell}
 
    :generate-automagic-dashboards-pot
-   {:main metabase.automagic-dashboards.rules}})
+   {:main metabase.automagic-dashboards.rules}
+
+   :compare-h2-dbs
+   {:main ^:skip-aot metabase.cmd.compare-h2-dbs
+    :source-paths ["test"]}})

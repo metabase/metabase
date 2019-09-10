@@ -342,12 +342,12 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - run:
-          name: Test migrating from H2 -> << parameters.db-type >>
+          name: Test migrating from H2 -> << parameters.db-type >> -> H2
           environment:
             MB_DB_TYPE: << parameters.db-type >>
             MB_DB_HOST: localhost
           command: >
-            lein run load-from-h2 ./frontend/test/__runner__/test_db_fixture.db
+            ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
 
