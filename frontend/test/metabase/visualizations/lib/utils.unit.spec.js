@@ -302,5 +302,41 @@ describe("metabase/visualization/lib/utils", () => {
         ]),
       ).toEqual({ dimensions: ["date", "category"], metrics: ["count"] });
     });
+    it("should pick two metrics and two dimensions", () => {
+      expect(
+        getDefaultDimensionsAndMetrics([
+          {
+            data: {
+              rows: [[0, 0, 0, 0]],
+              cols: [
+                {
+                  name: "count",
+                  base_type: "type/Number",
+                  source: "aggregation",
+                },
+                {
+                  name: "sum",
+                  base_type: "type/Number",
+                  source: "aggregation",
+                },
+                {
+                  name: "date",
+                  base_type: "type/DateTime",
+                  source: "breakout",
+                },
+                {
+                  name: "category",
+                  base_type: "type/Text",
+                  source: "breakout",
+                },
+              ],
+            },
+          },
+        ]),
+      ).toEqual({
+        dimensions: ["date", "category"],
+        metrics: ["count", "sum"],
+      });
+    });
   });
 });

@@ -279,12 +279,6 @@ export function getDefaultDimensionsAndMetrics(
   );
   if (
     dimensionNotMetricColumns.length <= maxDimensions &&
-    metricColumns.length === 1
-  ) {
-    dimensions = dimensionNotMetricColumns;
-    metrics = metricColumns;
-  } else if (
-    dimensionNotMetricColumns.length === 1 &&
     metricColumns.length <= maxMetrics
   ) {
     dimensions = dimensionNotMetricColumns;
