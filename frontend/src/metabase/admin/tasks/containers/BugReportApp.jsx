@@ -1,19 +1,15 @@
 import React, { Component } from "react";
+import { t } from "ttag";
+import _ from "underscore";
+
 import { Box } from "grid-styled";
 import AdminHeader from "metabase/components/AdminHeader";
-import { t } from "ttag";
-import { UtilApi } from "metabase/services";
-
 import CopyButton from "metabase/components/CopyButton";
 
+import { UtilApi } from "metabase/services";
+
 function navigatorInfo() {
-  return {
-    appVersion: navigator.appVersion,
-    language: navigator.language,
-    platform: navigator.platform,
-    userAgent: navigator.userAgent,
-    vendor: navigator.vendor,
-  };
+  return _.pick(navigator, "language", "platform", "userAgent", "vendor");
 }
 
 const InfoBlock = ({ children }) => (
@@ -30,12 +26,9 @@ const InfoBlock = ({ children }) => (
 );
 
 export default class BugReportApp extends Component {
-  constructor() {
-    super();
-    this.state = {
-      details: {},
-    };
-  }
+  state = {
+    details: {"browser-info": navigatorInfo()},
+  };
 
   copyToClipboard = e => {
     this.textArea.select();
@@ -45,7 +38,7 @@ export default class BugReportApp extends Component {
 
   async fetchDetails() {
     const details = await UtilApi.bug_report_details();
-    this.setState({ details: details });
+    this.setState({ details: { ...this.state.details, ...details  } });
   }
 
   componentWillMount() {
@@ -56,14 +49,14 @@ export default class BugReportApp extends Component {
     const { details } = this.state;
     return (
       <Box p={3}>
-        <AdminHeader title={t`Bug Report Details`} />
+        <AdminHeader title={t`Bug Report`} />
+        <p>
+          Running into issues? <a className="link" href="https://github.com/metabase/metabase/issues/new?assignees=&labels=Type%3ABug&template=bug_report.md&title=">File a bug report on GitHub</a>. Please include the following:
+        </p>
         <Box my={2}>
-          <h3 className="mb1">System Info</h3>
+          <h3 className="mb1">Diagnostic Info</h3>
           <InfoBlock>{JSON.stringify(details, null, 2)}</InfoBlock>
         </Box>
-
-        <h3 className="mb1">Browser Info</h3>
-        <InfoBlock>{JSON.stringify(navigatorInfo(), null, 2)}</InfoBlock>
       </Box>
     );
   }
