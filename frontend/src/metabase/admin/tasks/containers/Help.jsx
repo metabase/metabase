@@ -11,7 +11,6 @@ import ExternalLink from "metabase/components/ExternalLink";
 import { UtilApi } from "metabase/services";
 import MetabaseSettings from "metabase/lib/settings";
 
-
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
 }
@@ -58,7 +57,7 @@ function discourseLink(bugReportDetails) {
     "http://discourse.metabase.com/new-topic?category_id=7&body=" +
     encodeURIComponent(template) +
     encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
-  )
+  );
 }
 
 const HelpLink = ({ title, description, link }) => (
@@ -80,9 +79,7 @@ const InfoBlock = ({ children }) => (
     <Box m={2} className="absolute top right text-brand-hover cursor-pointer">
       <CopyButton value={children} />
     </Box>
-    <Code>
-      {children}
-    </Code>
+    <Code>{children}</Code>
   </Box>
 );
 
