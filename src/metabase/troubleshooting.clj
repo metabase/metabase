@@ -3,6 +3,7 @@
              [config :as mc]
              [db :as mdb]]
             [metabase.util.stats :as mus]
+            [metabase.models.setting :as setting]
             [toucan.db :as tdb]))
 
 (defn system-info
@@ -28,4 +29,5 @@
    :hosting-env          (mus/environment-type)
    :application-database (mdb/db-type)
    :run-mode             (mc/config-kw :mb-run-mode)
-   :version              mc/mb-version-info})
+   :version              mc/mb-version-info
+   :settings             {:report-timezone (setting/get :report-timezone)}})

@@ -4,10 +4,13 @@ import _ from "underscore";
 
 import { Box } from "grid-styled";
 import AdminHeader from "metabase/components/AdminHeader";
+import Code from "metabase/components/Code";
 import CopyButton from "metabase/components/CopyButton";
 import ExternalLink from "metabase/components/ExternalLink";
 
 import { UtilApi } from "metabase/services";
+import MetabaseSettings from "metabase/lib/settings";
+
 
 function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");
@@ -45,10 +48,17 @@ Add any other context about the problem here.
 function githubIssueLink(bugReportDetails) {
   return (
     "https://github.com/metabase/metabase/issues/new?title=&labels=Type:Bug&body=" +
-    encodeURI(template) +
-    // replace semicolons because everything after is ignored
-    encodeURI(bugReportDetails.replace(";", " "))
+    encodeURIComponent(template) +
+    encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
   );
+}
+
+function discourseLink(bugReportDetails) {
+  return (
+    "http://discourse.metabase.com/new-topic?category_id=7&body=" +
+    encodeURIComponent(template) +
+    encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
+  )
 }
 
 const HelpLink = ({ title, description, link }) => (
@@ -70,15 +80,9 @@ const InfoBlock = ({ children }) => (
     <Box m={2} className="absolute top right text-brand-hover cursor-pointer">
       <CopyButton value={children} />
     </Box>
-    <pre
-      style={{
-        fontFamily: "Lucida Console, Monaco, monospace",
-        fontSize: 14,
-        whiteSpace: "pre-wrap",
-      }}
-    >
+    <Code>
       {children}
-    </pre>
+    </Code>
   </Box>
 );
 
@@ -98,25 +102,26 @@ export default class Help extends Component {
 
   render() {
     const { details } = this.state;
+    const detailString = JSON.stringify(details, null, 2);
     return (
       <Box p={3}>
         <AdminHeader title={t`Help`} className="mb2" />
         <Box my={2} style={{ maxWidth: "468px" }}>
           <ol>
             <HelpLink
-              title="Post on the Metabase support forum"
-              description="A community forum for all things Metabase"
-              link="https://discourse.metabase.com"
-            />
-            <HelpLink
               title="Metabase Documentation"
               description="Includes a troubleshooting guide"
-              link="https://metabase.com/docs/latest/"
+              link={MetabaseSettings.docsUrl()}
+            />
+            <HelpLink
+              title="Post on the Metabase support forum"
+              description="A community forum for all things Metabase"
+              link={discourseLink(detailString)}
             />
             <HelpLink
               title="File a bug report"
               description="Create a GitHub issue (includes the diagnostic info below)"
-              link={githubIssueLink(JSON.stringify(details, null, 2))}
+              link={githubIssueLink(detailString)}
             />
           </ol>
         </Box>
@@ -124,7 +129,7 @@ export default class Help extends Component {
         <Box my={2}>
           <AdminHeader title={t`Diagnostic Info`} className="mb2" />
           <p>Please include these details in support requests. Thank you!</p>
-          <InfoBlock>{JSON.stringify(details, null, 2)}</InfoBlock>
+          <InfoBlock>{detailString}</InfoBlock>
         </Box>
       </Box>
     );
