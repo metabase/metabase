@@ -1,7 +1,6 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
-import { formatValue } from "metabase/lib/formatting";
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip";
 
 export function makeCard(card) {
