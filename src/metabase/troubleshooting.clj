@@ -1,6 +1,7 @@
 (ns metabase.troubleshooting
-  (:require [metabase.config :as mc]
-            [metabase.db :as mdb]
+  (:require [metabase
+             [config :as mc]
+             [db :as mdb]]
             [metabase.util.stats :as mus]
             [toucan.db :as tdb]))
 
