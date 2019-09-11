@@ -122,7 +122,7 @@ const getRoutes = (store, IsAdmin) => (
         />
       </Route>
       <Route path="logs" component={Logs} />
-      <Route path="bug-report" component={BugReportApp} />
+      <Route path="bug_report" component={BugReportApp} />
     </Route>
 
     {/* SETTINGS */}

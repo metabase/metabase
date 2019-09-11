@@ -36,9 +36,10 @@
   []
   {:token (crypto-random/hex 32)})
 
-(api/defendpoint GET "/bug-report-details"
+(api/defendpoint GET "/bug_report_details"
   []
   (api/check-superuser)
-  {:system-info (troubleshooting/system-info)})
+  {:system-info (troubleshooting/system-info)
+   :metabase-info (troubleshooting/metabase-info)})
 
 (api/define-routes)

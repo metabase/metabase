@@ -1,7 +1,11 @@
-(ns metabase.troubleshooting)
+(ns metabase.troubleshooting
+  (:require [metabase.config :as mc]
+            [metabase.db :as mdb]
+            [metabase.util.stats :as mus]
+            [toucan.db :as tdb]))
 
 (defn system-info
-  "Useful for debugging"
+  "System info we ask for for bug reports"
   []
   (into (sorted-map)
         (select-keys (System/getProperties) ["java.runtime.name"
@@ -15,3 +19,12 @@
                                              "os.version"
                                              "user.language"
                                              "user.timezone"])))
+
+(defn metabase-info
+  "Make it easy for the user to tell us what they're using"
+  []
+  {:databases            (->> (tdb/select 'Database) (map :engine) distinct)
+   :hosting-env          (mus/environment-type)
+   :application-database (mdb/db-type)
+   :run-mode             (mc/config-kw :mb-run-mode)
+   :version              mc/mb-version-info})
