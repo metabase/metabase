@@ -51,6 +51,20 @@ function githubIssueLink(bugReportDetails) {
   );
 }
 
+const HelpLink = ({ title, description, link }) => (
+  <li className="mb2">
+    <ExternalLink
+      className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
+      href={link}
+    >
+      <div>
+        <h3 className="text-brand">{title}</h3>
+        <p className="m0 mt1">{description}</p>
+      </div>
+    </ExternalLink>
+  </li>
+);
+
 const InfoBlock = ({ children }) => (
   <Box p={2} className="bordered rounded bg-light relative">
     <Box m={2} className="absolute top right text-brand-hover cursor-pointer">
@@ -86,39 +100,27 @@ export default class Help extends Component {
     const { details } = this.state;
     return (
       <Box p={3}>
-        <AdminHeader title={t`Help`} className="mb2"/>
-        <Box my={2} style={{maxWidth: "468px"}}>
+        <AdminHeader title={t`Help`} className="mb2" />
+        <Box my={2} style={{ maxWidth: "468px" }}>
           <ol>
-            <li className="mb2">
-              <ExternalLink className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
-                            href="https://discourse.metabase.com">
-                <div>
-                  <h3 className="text-brand">Post on the Metabase support forum</h3>
-                  <p className="m0 mt1">A community forum for all things Metabase</p>
-                </div>
-              </ExternalLink>
-            </li>
-            <li className="mb2">
-              <ExternalLink className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
-                            href="https://metabase.com/docs/latest/">
-                <div>
-                  <h3 className="text-brand">Metabase Documentation</h3>
-                  <p className="m0 mt1">Includes a troubleshooting guide</p>
-                </div>
-              </ExternalLink>
-            </li>
-            <li className="mb2">
-              <ExternalLink className="bordered border-brand-hover rounded transition-border flex p2 no-decoration"
-                            href={githubIssueLink(JSON.stringify(details, null, 2))}>
-                <div>
-                  <h3 className="text-brand">File a bug report</h3>
-                  <p className="m0 mt1">Create a GitHub issue (includes the diagnostic info below)</p>
-                </div>
-              </ExternalLink>
-            </li>
+            <HelpLink
+              title="Post on the Metabase support forum"
+              description="A community forum for all things Metabase"
+              link="https://discourse.metabase.com"
+            />
+            <HelpLink
+              title="Metabase Documentation"
+              description="Includes a troubleshooting guide"
+              link="https://metabase.com/docs/latest/"
+            />
+            <HelpLink
+              title="File a bug report"
+              description="Create a GitHub issue (includes the diagnostic info below)"
+              link={githubIssueLink(JSON.stringify(details, null, 2))}
+            />
           </ol>
         </Box>
-        
+
         <Box my={2}>
           <h3 className="mb1">Diagnostic Info</h3>
           <InfoBlock>{JSON.stringify(details, null, 2)}</InfoBlock>
