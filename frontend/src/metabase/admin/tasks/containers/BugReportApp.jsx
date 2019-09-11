@@ -41,11 +41,13 @@ Add any other context about the problem here.
 **Metabase Diagnostic Info**
 `;
 
-function githubIssueLink ( bugReportDetails ) {
-  return "https://github.com/metabase/metabase/issues/new?title=&labels=Type:Bug&body=" +
+function githubIssueLink(bugReportDetails) {
+  return (
+    "https://github.com/metabase/metabase/issues/new?title=&labels=Type:Bug&body=" +
     encodeURI(template) +
     // replace semicolons because everything after is ignored
-    encodeURI(bugReportDetails.replace(";", " "));
+    encodeURI(bugReportDetails.replace(";", " "))
+  );
 }
 
 const InfoBlock = ({ children }) => (
@@ -88,7 +90,7 @@ export default class BugReportApp extends Component {
           Running into issues?{" "}
           <a
             className="link"
-            href={ githubIssueLink(JSON.stringify(details, null, 2)) }
+            href={githubIssueLink(JSON.stringify(details, null, 2))}
           >
             File a bug report on GitHub
           </a>
@@ -96,7 +98,7 @@ export default class BugReportApp extends Component {
         </p>
         <Box my={2}>
           <h3 className="mb1">Diagnostic Info</h3>
-          <InfoBlock>{ JSON.stringify(details, null, 2) }</InfoBlock>
+          <InfoBlock>{JSON.stringify(details, null, 2)}</InfoBlock>
         </Box>
       </Box>
     );
