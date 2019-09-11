@@ -47,7 +47,6 @@ Add any other context about the problem here.
 function githubIssueLink(bugReportDetails) {
   return (
     "https://github.com/metabase/metabase/issues/new?title=&labels=Type:Bug&body=" +
-    encodeURIComponent(template) +
     encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
   );
 }
@@ -55,8 +54,7 @@ function githubIssueLink(bugReportDetails) {
 function discourseLink(bugReportDetails) {
   return (
     "http://discourse.metabase.com/new-topic?category_id=7&body=" +
-    encodeURIComponent(template) +
-    encodeURIComponent(template + "\n```json\n" + bugReportDetails + "\n```")
+    encodeURIComponent("```json\n" + bugReportDetails + "\n```")
   );
 }
 

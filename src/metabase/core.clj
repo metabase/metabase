@@ -58,7 +58,6 @@
   []
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
   (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
-  (log/info (trs "Metabase info:\n {0}" (u/pprint-to-str (troubleshooting/metabase-info))))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit
