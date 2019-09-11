@@ -2,8 +2,8 @@
   (:require [metabase
              [config :as mc]
              [db :as mdb]]
-            [metabase.util.stats :as mus]
             [metabase.models.setting :as setting]
+            [metabase.util.stats :as mus]
             [toucan.db :as tdb]))
 
 (defn system-info
