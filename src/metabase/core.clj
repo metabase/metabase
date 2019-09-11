@@ -13,6 +13,7 @@
              [server :as server]
              [setup :as setup]
              [task :as task]
+             [troubleshooting :as troubleshooting]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.driver.util :as driver.u]
@@ -56,7 +57,7 @@
   "General application initialization function which should be run once at application startup."
   []
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
-  (log/info (trs "System timezone is ''{0}'' ..." (System/getProperty "user.timezone")))
+  (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit

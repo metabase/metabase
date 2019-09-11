@@ -127,7 +127,7 @@
   []
   (:min (db/select-one [User [:%min.date_joined :min]])))
 
-(defn- environment-type
+(defn environment-type
   "Figure out what we're running under"
   []
   (cond

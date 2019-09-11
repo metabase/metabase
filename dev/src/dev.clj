@@ -11,7 +11,6 @@
             [metabase.models.interface :as mi]
             [toucan.db :as tdb]))
 
-
 (defn init!
   []
   (mbc/init!))
