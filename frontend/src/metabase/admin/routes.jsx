@@ -34,7 +34,7 @@ import TaskModal from "metabase/admin/tasks/containers/TaskModal";
 import JobInfoApp from "metabase/admin/tasks/containers/JobInfoApp";
 import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 import Logs from "metabase/admin/tasks/containers/Logs";
-import BugReportApp from "metabase/admin/tasks/containers/BugReportApp";
+import Help from "metabase/admin/tasks/containers/Help";
 
 // People
 import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
@@ -122,7 +122,7 @@ const getRoutes = (store, IsAdmin) => (
         />
       </Route>
       <Route path="logs" component={Logs} />
-      <Route path="bug_report" component={BugReportApp} />
+      <Route path="help" component={Help} />
     </Route>
 
     {/* SETTINGS */}
