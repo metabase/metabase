@@ -6,6 +6,7 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import HeaderModal from "metabase/components/HeaderModal";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
+import EditWarning from "metabase/components/EditWarning";
 import { t } from "ttag";
 import { getScrollY } from "metabase/lib/dom";
 
@@ -64,6 +65,15 @@ export default class Header extends Component {
       );
     }
   }
+
+  renderEditWarning() {
+    if (this.props.editingWarning) {
+      return (
+        <EditWarning title={this.props.editingWarning} />
+      );
+    }
+  }
+
 
   renderHeaderModal() {
     return (
@@ -148,6 +158,7 @@ export default class Header extends Component {
     return (
       <div>
         {this.renderEditHeader()}
+        {this.renderEditWarning()}
         {this.renderHeaderModal()}
         <div
           className={
