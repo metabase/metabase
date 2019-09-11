@@ -13,6 +13,9 @@ import {
   getFormattedTooltips,
 } from "../__support__/visualizations";
 
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
+
 const formatTz = offset =>
   (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
 
@@ -138,6 +141,41 @@ describe("LineAreaBarRenderer", () => {
       "January 1, 2016, 3:00 AM",
       "January 1, 2016, 4:00 AM",
     ]);
+  });
+
+  it("should display weekly ranges in tooltips and months on x axis", () => {
+    const rows = [
+      ["2020-01-05T00:00:00.000Z", 1],
+      ["2020-01-12T00:00:00.000Z", 1],
+      ["2020-01-19T00:00:00.000Z", 1],
+      ["2020-02-02T00:00:00.000Z", 1],
+      ["2020-02-09T00:00:00.000Z", 1],
+      ["2020-02-16T00:00:00.000Z", 1],
+      ["2020-02-23T00:00:00.000Z", 1],
+      ["2020-03-01T00:00:00.000Z", 1],
+    ];
+
+    // column settings are cached based on name.
+    // we need something unique to not conflict with other tests.
+    const dateColumn = DateTimeColumn({ unit: "week", name: "uniqueName123" });
+
+    const cols = [dateColumn, NumberColumn()];
+    const chartType = "line";
+    const series = [{ data: { cols, rows }, card: { display: chartType } }];
+    const settings = getComputedSettingsForSeries(series);
+    const onHoverChange = jest.fn();
+
+    const props = { chartType, series, settings, onHoverChange };
+    lineAreaBarRenderer(element, props);
+
+    dispatchUIEvent(qs(".dot"), "mousemove");
+
+    const hover = onHoverChange.mock.calls[0][0];
+    const [formattedWeek] = getFormattedTooltips(hover, settings);
+    expect(formattedWeek).toEqual("January 5 – 11, 2020");
+
+    const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
+    expect(ticks).toEqual(["January, 2020", "February, 2020", "March, 2020"]);
   });
 
   describe("should render correctly a compound line graph", () => {
