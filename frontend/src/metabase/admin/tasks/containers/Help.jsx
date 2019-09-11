@@ -122,7 +122,8 @@ export default class Help extends Component {
         </Box>
 
         <Box my={2}>
-          <h3 className="mb1">Diagnostic Info</h3>
+          <AdminHeader title={t`Diagnostic Info`} className="mb2" />
+          <p>Please include these details in support requests. Thank you!</p>
           <InfoBlock>{JSON.stringify(details, null, 2)}</InfoBlock>
         </Box>
       </Box>

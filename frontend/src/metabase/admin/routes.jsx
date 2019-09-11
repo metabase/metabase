@@ -110,7 +110,8 @@ const getRoutes = (store, IsAdmin) => (
       title={t`Troubleshooting`}
       component={TroubleshootingApp}
     >
-      <IndexRedirect to="tasks" />
+      <IndexRedirect to="help" />
+      <Route path="help" component={Help} />
       <Route path="tasks" component={TasksApp}>
         <ModalRoute path=":taskId" modal={TaskModal} />
       </Route>
@@ -122,7 +123,6 @@ const getRoutes = (store, IsAdmin) => (
         />
       </Route>
       <Route path="logs" component={Logs} />
-      <Route path="help" component={Help} />
     </Route>
 
     {/* SETTINGS */}
