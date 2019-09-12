@@ -33,7 +33,9 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
@@ -256,6 +258,7 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
+  (initialize/initialize-if-needed! :db)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
