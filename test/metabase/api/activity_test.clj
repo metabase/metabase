@@ -1,6 +1,6 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.api.activity :as activity-api]
             [metabase.models
              [activity :refer [Activity]]

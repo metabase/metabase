@@ -9,6 +9,7 @@
              [setting :refer [Setting]]
              [setting-test :as setting-test]]
             [metabase.models.setting.cache :as cache]
+            [metabase.test.util :as tu]
             [toucan.db :as db]))
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
@@ -157,24 +158,26 @@
 ;; sets site locale setting
 (expect
   "fr"
-  (let [original-locale (java.util.Locale/getDefault)]
-    (try (let [new-language (do (clear-cache!)
-                                (public-settings/site-locale "en")
-                                (simulate-another-instance-updating-setting! :site-locale "fr")
-                                (flush-memoized-results-for-should-restore-cache!)
-                                (public-settings/site-locale))]
-           new-language)
-         (finally (java.util.Locale/setDefault original-locale)))))
+  (tu/discard-setting-changes [site-locale]
+    (let [original-locale (java.util.Locale/getDefault)]
+      (try (let [new-language (do (clear-cache!)
+                                  (public-settings/site-locale "en")
+                                  (simulate-another-instance-updating-setting! :site-locale "fr")
+                                  (flush-memoized-results-for-should-restore-cache!)
+                                  (public-settings/site-locale))]
+             new-language)
+           (finally (java.util.Locale/setDefault original-locale))))))
 
 ;; sets java util locale
 (expect
   "fr"
-  (let [original-locale (java.util.Locale/getDefault)]
-    (try (let [new-language (do (clear-cache!)
-                                (public-settings/site-locale "en")
-                                (simulate-another-instance-updating-setting! :site-locale "fr")
-                                (flush-memoized-results-for-should-restore-cache!)
-                                (public-settings/site-locale)
-                                (.getLanguage (java.util.Locale/getDefault)))]
-           new-language)
-         (finally (java.util.Locale/setDefault original-locale)))))
+  (tu/discard-setting-changes [site-locale]
+    (let [original-locale (java.util.Locale/getDefault)]
+      (try (let [new-language (do (clear-cache!)
+                                  (public-settings/site-locale "en")
+                                  (simulate-another-instance-updating-setting! :site-locale "fr")
+                                  (flush-memoized-results-for-should-restore-cache!)
+                                  (public-settings/site-locale)
+                                  (.getLanguage (java.util.Locale/getDefault)))]
+             new-language)
+           (finally (java.util.Locale/setDefault original-locale))))))

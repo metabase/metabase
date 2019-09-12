@@ -16,7 +16,7 @@
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "run"                               ["with-profile" "+run" "run"]
    "ring"                              ["with-profile" "+ring" "ring"]
-   "test"                              ["with-profile" "+expectations" "expectations"]
+   "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
@@ -91,6 +91,7 @@
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
                  org.yaml/snakeyaml]]
+   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
    [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
     :exclusions [javax.mail/mail
@@ -101,10 +102,11 @@
    [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.4"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [javax.xml.bind/jaxb-api "2.4.0-b180830.0359"]                     ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
+   [methodical "0.9.4-alpha"]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
+   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
@@ -119,7 +121,6 @@
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [ring/ring-core "1.7.1"]
    [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
@@ -152,16 +153,25 @@
   :profiles
   {:dev
    {:source-paths ["dev/src" "local/src"]
-    
+
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [expectations "2.1.10"]                                          ; unit tests
+     [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
 
     :plugins
     [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
 
-    :env      {:mb-run-mode "dev"}
+    :injections
+    [(require 'pjstadig.humane-test-output)
+     (pjstadig.humane-test-output/activate!)
+     ;; redefs lives in the `test/` directory; it's only relevant to tests, so if it's not there (e.g. when running
+     ;; `lein ring server` or the like) it doesn't matter
+     (try (require 'metabase.test.redefs)
+          (catch Throwable _))]
+
+    :env      {:mb-run-mode       "dev"
+               :mb-test-setting-1 "ABCDEFG"}
     :jvm-opts ["-Dlogfile.path=target/log"]}
 
    :ci
@@ -185,7 +195,8 @@
    [:exclude-tests
     :include-all-drivers
     {:dependencies
-     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x faster launch time
+     ;; used internally by lein ring to track namespace changes. Newer version contains fix by yours truly with 1000x
+     ;; faster launch time
      [[ns-tracker "0.4.0"]]
 
      :plugins
@@ -205,27 +216,16 @@
     :middleware
     [leiningen.include-drivers/middleware]}
 
-   :expectations
+   :test
    [:with-include-drivers-middleware
-    {:plugins
-     [[lein-expectations "0.0.8"
-       :exclusions [expectations]]]
-
-     :injections
-     [(require 'expectation-options                                   ; expectations customizations
-               'metabase.test-setup                                   ; for test setup stuff
-               'metabase.test.util)]                                  ; for the toucan.util.test default values for temp models
-
-     :resource-paths
+    {:resource-paths
      ["test_resources"]
 
      :env
-     {:mb-test-setting-1 "ABCDEFG"
-      :mb-run-mode       "test"}
+     {:mb-run-mode "test"}
 
      :jvm-opts
-     ["-Xms1024m"                                                     ; give JVM a decent heap size to start with
-      "-Duser.timezone=UTC"
+     ["-Duser.timezone=UTC"
       "-Dmb.db.in.memory=true"
       "-Dmb.jetty.join=false"
       "-Dmb.jetty.port=3010"
