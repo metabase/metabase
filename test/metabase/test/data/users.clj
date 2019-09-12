@@ -2,12 +2,11 @@
   "Code related to creating / managing fake `Users` for testing purposes."
   (:require [medley.core :as m]
             [metabase
-             [config :as config]
              [http-client :as http]
              [util :as u]]
-            [metabase.core.initialization-status :as init-status]
             [metabase.middleware.session :as mw.session]
             [metabase.models.user :as user :refer [User]]
+            [metabase.test.initialize :as initialize]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
@@ -52,30 +51,13 @@
 
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
-(defn- wait-for-initiailization
-  "Wait up to MAX-WAIT-SECONDS (default: 30) for Metabase to finish initializing.
-   (Sometimes it can take Metabase a while to reload during live development with `lein ring server`.)"
-  ([]
-   (wait-for-initiailization 30))
-  ([max-wait-seconds]
-   ;; only need to wait when running unit tests. When doing REPL dev and using the test users we're probably
-   ;; the server is probably a separate process (`lein ring server`)
-   (when config/is-test?
-     (when-not (init-status/complete?)
-       (when (<= max-wait-seconds 0)
-         (throw (Exception. "Metabase still hasn't finished initializing.")))
-       (println (format "Metabase is not yet initialized, waiting 1 second (max wait remaining: %d seconds)...\n"
-                        max-wait-seconds))
-       (Thread/sleep 1000)
-       (recur (dec max-wait-seconds))))))
-
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
       :or   {superuser false
              active    true}}]
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
-  (wait-for-initiailization)
+  (initialize/initialize-if-needed! :db)
   (or (User :email email)
       (db/insert! User
         :email        email

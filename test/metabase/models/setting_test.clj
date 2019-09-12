@@ -1,8 +1,11 @@
 (ns metabase.models.setting-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test.util :refer :all]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :refer :all]]
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
@@ -10,6 +13,8 @@
              [i18n :refer [deferred-tru]]]
             [puppetlabs.i18n.core :as i18n]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched
