@@ -119,11 +119,12 @@ const memoizedParseXValue = _.memoize(
 );
 
 function getParseOptions({ settings, data }) {
+  const columnIndex = getColumnIndex({ settings, data });
   return {
-    isNumeric: dimensionIsNumeric(data),
-    isTimeseries: dimensionIsTimeseries(data),
+    isNumeric: dimensionIsNumeric(data, columnIndex),
+    isTimeseries: dimensionIsTimeseries(data, columnIndex),
     isQuantitative: isQuantitative(settings),
-    unit: data.cols[0].unit,
+    unit: data.cols[columnIndex].unit,
   };
 }
 
@@ -140,17 +141,21 @@ export function getDatas({ settings, series }, warn) {
 }
 
 export function getXValues({ settings, series }) {
-  // if _.raw isn't set then we already have the raw series
+  // if _raw isn't set then we already have the raw series
   const { _raw: rawSeries = series } = series;
   const warn = () => {}; // no op since warning in handled by getDatas
   const uniqueValues = new Set();
   let isAscending = true;
   let isDescending = true;
   for (const { data } of rawSeries) {
+    // In the raw series, the dimension isn't necessarily in the first element
+    // of each row. This finds the correct column index.
+    const columnIndex = getColumnIndex({ settings, data });
+
     const parseOptions = getParseOptions({ settings, data });
     let lastValue;
-    for (const [x] of data.rows) {
-      const value = parseXValue(x, parseOptions, warn);
+    for (const row of data.rows) {
+      const value = parseXValue(row[columnIndex], parseOptions, warn);
       if (lastValue !== undefined) {
         isAscending = isAscending && lastValue <= value;
         isDescending = isDescending && value <= lastValue;
@@ -169,6 +174,12 @@ export function getXValues({ settings, series }) {
     xValues = _.sortBy(xValues, x => x);
   }
   return xValues;
+}
+
+function getColumnIndex({ settings, data: { cols } }) {
+  const [dim] = settings["graph.dimensions"] || [];
+  const i = cols.findIndex(c => c.name === dim);
+  return i === -1 ? 0 : i;
 }
 
 // Crossfilter calls toString on each moment object, which calls format(), which is very slow.
