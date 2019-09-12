@@ -8,14 +8,18 @@ class EditWarning extends Component {
 
   render() {
     const { title } = this.props;
-    return (
-      <div
-        className={"EditHeader wrapper py1 flex align-center"}
-        ref="editWarning"
-      >
-        <span className="EditHeader-title">{title}</span>
-      </div>
-    );
+    if (title) {
+      return (
+        <div
+          className={"EditHeader wrapper py1 flex align-center"}
+          ref="editWarning"
+        >
+          <span className="EditHeader-title">{title}</span>
+        </div>
+      );
+    } else {
+      return null;
+    }
   }
 }
 

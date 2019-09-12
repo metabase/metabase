@@ -344,7 +344,7 @@ export default class DashboardHeader extends Component {
 
   render() {
     const { dashboard } = this.props;
-
+    
     return (
       <Header
         headerClassName="wrapper"
@@ -355,6 +355,7 @@ export default class DashboardHeader extends Component {
         showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
+        editWarning={dashboard.editWarning}
         editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}
