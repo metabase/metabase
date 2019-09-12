@@ -344,7 +344,7 @@ export default class DashboardHeader extends Component {
 
   render() {
     const { dashboard } = this.props;
-    
+
     return (
       <Header
         headerClassName="wrapper"

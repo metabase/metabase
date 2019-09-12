@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 class EditWarning extends Component {
   static propTypes = {
-    title: PropTypes.string.isRequired
+    title: PropTypes.string.isRequired,
   };
 
   render() {

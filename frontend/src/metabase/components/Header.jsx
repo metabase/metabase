@@ -68,12 +68,9 @@ export default class Header extends Component {
 
   renderEditWarning() {
     if (this.props.editWarning) {
-      return (
-        <EditWarning title={this.props.editWarning} />
-      );
+      return <EditWarning title={this.props.editWarning} />;
     }
   }
-
 
   renderHeaderModal() {
     return (
