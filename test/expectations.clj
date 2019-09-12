@@ -124,5 +124,6 @@
 
   ([expected actual]
    `(t/deftest ~(symbol (format "expect-%d" (hash &form)))
-      (t/is
-       (~'expect= ~expected ~actual)))))
+      (t/testing ~(format "%s:%d" (name (ns-name *ns*)) (some (comp :line meta) [&form actual]))
+        (t/is
+         (~'expect= ~expected ~actual))))))
