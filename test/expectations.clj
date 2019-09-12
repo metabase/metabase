@@ -123,7 +123,8 @@
    `(expect ::truthy ~actual))
 
   ([expected actual]
-   `(t/deftest ~(symbol (format "expect-%d" (hash &form)))
-      (t/testing ~(format "%s:%d" (name (ns-name *ns*)) (some (comp :line meta) [&form actual]))
-        (t/is
-         (~'expect= ~expected ~actual))))))
+   (let [test-name (symbol (format "expect-%d" (hash &form)))]
+     `(t/deftest ~test-name
+        (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
+          (t/is
+           (~'expect= ~expected ~actual)))))))
