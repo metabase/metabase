@@ -2,9 +2,9 @@
   "Utility functions for comparing the contents of two H2 DBs, for testing the `load-from-h2 and `dump-to-h2` commands."
   (:require [clojure
              [data :as data]
-             [pprint :as pprint]]
+             [pprint :as pprint]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
-            [medley.core :as m]
             [metabase.util :as u])
   (:import org.h2.jdbc.JdbcClob))
 
@@ -56,8 +56,13 @@
   [v]
   (u/jdbc-clob->str v))
 
+(def ^:private ignored-keys
+  #{:created_at :updated_at :timestamp})
+
 (defn- normalize-values [row]
-  (m/map-vals normalize-value row))
+  (into {} (for [[k v] row
+                 :when (not (ignored-keys (keyword (str/lower-case k))))]
+             [k (normalize-value v)])))
 
 (defn- sort-rows [rows]
   (vec (sort-by (fn [row]
@@ -119,11 +124,9 @@
       (or (different-table-names? conn-1 conn-2)
           (different-rows? conn-1 conn-2)))))
 
-
-(defn diff-h2-dbs [db-file-1 db-file-2]
-  (println (list 'diff-h2-dbs db-file-1 db-file-2)))
-
-(defn -main [db-file-1 db-file-2]
+(defn -main
+  "Main entrypoint."
+  [db-file-1 db-file-2]
   (when-let [difference (different-contents? db-file-1 db-file-2)]
     (println "DB contents are different. Reason:" difference)
     (System/exit 1))
