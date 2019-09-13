@@ -16,9 +16,7 @@ import type {
   ParameterValues,
 } from "metabase/meta/types/Parameter";
 
-import type {
-  DashboardWithCards
-} from "metabase/meta/types/Dashboard";
+import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
 
 type Props = {
   className?: string,

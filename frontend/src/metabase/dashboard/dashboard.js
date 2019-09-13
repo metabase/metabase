@@ -937,24 +937,21 @@ const cardList = handleActions(
 
 function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters) {
-    return Object.keys(before.embedding_params).reduce(
-      (memo, embedSlug) => {
-        const slugParam = _.find(before.parameters, param => {
-          return param.slug == embedSlug;
+    return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
+      const slugParam = _.find(before.parameters, param => {
+        return param.slug == embedSlug;
+      });
+      if (slugParam) {
+        const slugParamId = slugParam && slugParam.id;
+        const newParam = _.find(after.parameters, param => {
+          return param.id == slugParamId;
         });
-        if (slugParam) {
-          const slugParamId = slugParam && slugParam.id;
-          const newParam = _.find(after.parameters, param => {
-            return param.id == slugParamId;
-          });
-          if (newParam) {
-            memo[newParam.slug] = before.embedding_params[embedSlug];
-          }
+        if (newParam) {
+          memo[newParam.slug] = before.embedding_params[embedSlug];
         }
-        return memo;
-      },
-      {},
-    );
+      }
+      return memo;
+    }, {});
   } else {
     return before.embedding_params;
   }
