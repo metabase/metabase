@@ -61,7 +61,7 @@
 
 (defn- normalize-values [row]
   (into {} (for [[k v] row
-                 :when (not (ignored-keys (keyword (str/lower-case k))))]
+                 :when (not (ignored-keys (keyword (str/lower-case (name k)))))]
              [k (normalize-value v)])))
 
 (defn- sort-rows [rows]
