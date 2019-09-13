@@ -145,13 +145,13 @@ export default class DashboardHeader extends Component {
   }
 
   editWarning(dashboard: DashboardWithCards) {
-    const currentSlugs = _.keys(dashboard.embedding_params);
+    const currentSlugs = Object.keys(dashboard.embedding_params);
     // are all of the original embedding params keys in the current
     // embedding params keys?
     if (
       this.props.isEditing &&
-      !_.every(_.keys(this.props.isEditing.embedding_params), slug => {
-        return _.contains(currentSlugs, slug);
+      !_.every(Object.keys(this.props.isEditing.embedding_params), slug => {
+        return currentSlugs.includes(slug);
       })
     ) {
       return "You've updated embedded params and will need to update your embed code.";
