@@ -129,11 +129,13 @@ function getParseOptions({ settings, data }) {
 }
 
 export function getDatas({ settings, series }, warn) {
-  const isHist = isHistogram(settings);
+  const isNotOrdinal = !isOrdinal(settings);
   return series.map(({ data }) => {
-    // histograms can't display null values on the x axis, so we filter them out
-    // and display a warning
-    const rows = isHist ? data.rows.filter(([x]) => x !== null) : data.rows;
+    // non-ordinal dimensions can't display null values,
+    // so we filter them out and display a warning
+    const rows = isNotOrdinal
+      ? data.rows.filter(([x]) => x !== null)
+      : data.rows;
     if (rows.length < data.rows.length) {
       warn(nullDimensionWarning());
     }
@@ -151,7 +153,7 @@ export function getDatas({ settings, series }, warn) {
 export function getXValues({ settings, series }) {
   // if _raw isn't set then we already have the raw series
   const { _raw: rawSeries = series } = series;
-  const isHist = isHistogram(settings);
+  const isNotOrdinal = !isOrdinal(settings);
   const warn = () => {}; // no op since warning in handled by getDatas
   const uniqueValues = new Set();
   let isAscending = true;
@@ -164,6 +166,10 @@ export function getXValues({ settings, series }) {
     const parseOptions = getParseOptions({ settings, data });
     let lastValue;
     for (const row of data.rows) {
+      // non ordinal dimensions can't display null values, so we exclude them from xValues
+      if (isNotOrdinal && row[columnIndex] === null) {
+        continue;
+      }
       const value = parseXValue(row[columnIndex], parseOptions, warn);
       if (lastValue !== undefined) {
         isAscending = isAscending && lastValue <= value;

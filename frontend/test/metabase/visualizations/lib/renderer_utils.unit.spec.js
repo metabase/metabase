@@ -129,6 +129,16 @@ describe("getXValues", () => {
     });
     expect(xValues).toEqual(["foo", "bar"]);
   });
+  it("should exclude nulls for timeseries", () => {
+    const xValues = getXValuesForRows(
+      [[["2019-01-02"], [null], ["2019-01-03"]]],
+      {
+        "graph.x_axis.scale": "timeseries",
+      },
+    );
+    const formattedXValues = xValues.map(v => v.format("YYYY-MM-DD"));
+    expect(formattedXValues).toEqual(["2019-01-02", "2019-01-03"]);
+  });
 });
 
 describe("parseXValue", () => {
