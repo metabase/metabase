@@ -31,7 +31,6 @@ import type {
   ParameterOption,
 } from "metabase/meta/types/Parameter";
 import type {
-  Dashboard,
   DashboardWithCards,
   DashboardId,
   DashCardId,
@@ -46,7 +45,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: false | Dashboard,
+  isEditing: false | DashboardWithCards,
   isFullscreen: boolean,
   isNightMode: boolean,
 
@@ -66,7 +65,7 @@ type Props = {
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   setEditingParameter: (parameterId: ?ParameterId) => void,
 
-  onEditingChange: (isEditing: false | Dashboard) => void,
+  onEditingChange: (isEditing: false | DashboardWithCards) => void,
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
   onFullscreenChange: boolean => void,
@@ -87,7 +86,8 @@ export default class DashboardHeader extends Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
-    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object]).isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
@@ -108,7 +108,7 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
   };
 
-  onEdit(dashboard) {
+  onEdit(dashboard: DashboardWithCards) {
     this.props.onEditingChange(dashboard);
   }
 
@@ -144,7 +144,7 @@ export default class DashboardHeader extends Component {
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
   }
 
-  editWarning(dashboard) {
+  editWarning(dashboard: DashboardWithCards) {
     const currentSlugs = _.keys(dashboard.embedding_params);
     // are all of the original embedding params keys in the current
     // embedding params keys?
