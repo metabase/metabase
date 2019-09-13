@@ -1,5 +1,5 @@
 (ns metabase.test.initialize
-  "Logic for initializing different components that needed to be initialized when running tests."
+  "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
             [colorize.core :as colorize]))
 
@@ -16,12 +16,17 @@
   (doseq [k args]
     (initialize-if-needed! k)))
 
-(defn- task-name-init-message [task-name]
+(defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
         border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)]
-    (str "\n"
-         (str/join "\n" [border body border])
-         "\n")))
+    (println
+     (colorize/blue
+      (str "\n"
+           (str/join "\n" [border body border])
+           "\n")))
+    #_(println "REASON:")
+    #_(u/pprint-to-str 'blue (u/filtered-stacktrace (Thread/currentThread)))
+    #_"\n"))
 
 (defmacro ^:private define-initialization [task-name & body]
   (let [delay-symb (vary-meta (symbol (format "init-%s-%d" (name task-name) (hash &form)))
@@ -29,7 +34,7 @@
     `(do
        (defonce ~delay-symb
          (delay
-           (println (colorize/blue ~(task-name-init-message task-name)))
+           (log-init-message ~(keyword task-name))
            ~@body
            nil))
        (defmethod initialize-if-needed! ~(keyword task-name)
@@ -39,10 +44,6 @@
 (define-initialization :plugins
   (require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
-
-(define-initialization :scheduler
-  (require 'metabase.test.initialize.scheduler)
-  ((resolve 'metabase.test.initialize.scheduler/init!)))
 
 (define-initialization :db
   (require 'metabase.test.initialize.db)

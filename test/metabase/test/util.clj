@@ -33,7 +33,9 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
@@ -256,6 +258,7 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
+  (initialize/initialize-if-needed! :db)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
@@ -273,7 +276,8 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
   [[setting-k value & more] & body]
-  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
+                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))

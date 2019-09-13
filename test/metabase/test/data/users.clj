@@ -1,6 +1,7 @@
 (ns metabase.test.data.users
   "Code related to creating / managing fake `Users` for testing purposes."
-  (:require [medley.core :as m]
+  (:require [clojure.test :as t]
+            [medley.core :as m]
             [metabase
              [http-client :as http]
              [util :as u]]
@@ -164,4 +165,5 @@
   `user-kwd`."
   {:style/indent 1}
   [user-kwd & body]
-  `(do-with-test-user ~user-kwd (fn [] ~@body)))
+  `(t/testing ~(format "with test user %s" user-kwd)
+     (do-with-test-user ~user-kwd (fn [] ~@body))))

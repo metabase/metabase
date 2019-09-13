@@ -5,7 +5,7 @@
              [plugins :as plugins]
              [util :as u]]
             [metabase.plugins.initialize :as plugins.init]
-            [metabase.test.data.env :as tx.env]
+            [metabase.test.data.env.impl :as tx.env.impl]
             [yaml.core :as yaml]))
 
 (defn- driver-plugin-manifest [driver]
@@ -26,7 +26,7 @@
 
   Work some magic and find manifest files and load them the way the plugins namespace would have done."
   ([]
-   (load-plugin-manifests! tx.env/test-drivers))
+   (load-plugin-manifests! (tx.env.impl/get-test-drivers)))
 
   ([drivers]
    (doseq [driver drivers
