@@ -935,27 +935,33 @@ const cardList = handleActions(
   null,
 );
 
-function syncParametersAndEmbeddingParams (before, after) {
+function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters) {
-    return _.reduce(_.keys(before.embedding_params),
-                    (memo, embedSlug) => {
-                      const slugParam = _.find(before.parameters, (param) => { return param.slug == embedSlug });
-                      if (slugParam) {
-                        const slugParamId = slugParam && slugParam.id 
-                        const newParam = _.find(after.parameters, (param) => { return param.id == slugParamId });
-                        if (newParam) {
-                          memo[newParam.slug] = before.embedding_params[embedSlug]
-                        }
-                      }
-                      return memo;
-                    },
-                    {});
+    return _.reduce(
+      _.keys(before.embedding_params),
+      (memo, embedSlug) => {
+        const slugParam = _.find(before.parameters, param => {
+          return param.slug == embedSlug;
+        });
+        if (slugParam) {
+          const slugParamId = slugParam && slugParam.id;
+          const newParam = _.find(after.parameters, param => {
+            return param.id == slugParamId;
+          });
+          if (newParam) {
+            memo[newParam.slug] = before.embedding_params[embedSlug];
+          }
+        }
+        return memo;
+      },
+      {},
+    );
   } else {
-    return before.embedding_params
+    return before.embedding_params;
   }
 }
 
-function newDashboard(before, after){
+function newDashboard(before, after) {
   const dashboard = { ...before, ...after, isDirty: true };
   dashboard.embedding_params = syncParametersAndEmbeddingParams(before, after);
   return dashboard;

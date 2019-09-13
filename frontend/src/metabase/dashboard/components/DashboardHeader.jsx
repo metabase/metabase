@@ -37,10 +37,7 @@ import type {
 } from "metabase/meta/types/Dashboard";
 import { Link } from "react-router";
 
-const isEditingType = PropTypes.oneOfType([
-  PropTypes.bool,
-  PropTypes.object,
-]);
+const isEditingType = PropTypes.oneOfType([PropTypes.bool, PropTypes.object]);
 
 type Props = {
   location: LocationDescriptor,
