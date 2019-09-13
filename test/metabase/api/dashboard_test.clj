@@ -17,10 +17,12 @@
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [dashboard-test :as dashboard-test]
+             [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
              [pulse :refer [Pulse]]
-             [revision :refer [Revision]]]
+             [revision :refer [Revision]]
+             [table :refer [Table]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -178,6 +180,8 @@
           :creator_id    (user->id :rasta)
           :collection_id true
           :can_write     false
+          :param_values  nil
+          :param_fields  nil
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -204,6 +208,56 @@
     (with-dashboards-in-readable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id]
         (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))))
+
+;; As above, but with a param
+(tt/expect-with-temp [Table         [{table-id :id} {}]
+                      Field         [{field-id :id display-name :display_name} {:table_id table-id}]
+
+                      Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [{dc-id :id}        {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      1
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension [:field_id field-id]]}]}]]
+  (merge dashboard-defaults
+         {:name          "Test Dashboard"
+          :creator_id    (user->id :rasta)
+          :collection_id true
+          :can_write     false
+          :param_values  {}
+          :param_fields  {(keyword (str field-id)) {:id               field-id
+                                                    :table_id         table-id
+                                                    :display_name     display-name
+                                                    :base_type        "type/Text"
+                                                    :special_type     nil
+                                                    :has_field_values "search" :name_field nil
+                                                    :dimensions       ()}}
+          :ordered_cards [{:sizeX                  2
+                           :sizeY                  2
+                           :col                    0
+                           :row                    0
+                           :updated_at             true
+                           :created_at             true
+                           :parameter_mappings     [{:card_id      1
+                                                     :parameter_id "foo"
+                                                     :target       ["dimension" ["field-id" field-id]]}]
+                           :visualization_settings {}
+                           :card                   (merge card-api-test/card-defaults
+                                                          {:name                   "Dashboard Test Card"
+                                                           :creator_id             (user->id :rasta)
+                                                           :collection_id          true
+                                                           :display                "table"
+                                                           :query_type             nil
+                                                           :dataset_query          {}
+                                                           :read_permissions       nil
+                                                           :visualization_settings {}
+                                                           :result_metadata        nil})
+                           :series                 []}]})
+  ;; fetch a dashboard WITH a dashboard card on it
+  (with-dashboards-in-readable-collection [dashboard-id]
+    (card-api-test/with-cards-in-readable-collection [card-id]
+      (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id))))))
 
 ;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
 (expect
