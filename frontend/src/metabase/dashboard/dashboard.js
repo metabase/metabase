@@ -943,7 +943,7 @@ function syncParametersAndEmbeddingParams(before, after) {
       });
       if (slugParam) {
         const slugParamId = slugParam && slugParam.id;
-        const newParam = _.findWhere(after.parameters, {id: slugParamId});
+        const newParam = _.findWhere(after.parameters, { id: slugParamId });
         if (newParam) {
           memo[newParam.slug] = before.embedding_params[embedSlug];
         }
@@ -960,7 +960,7 @@ function newDashboard(before, after) {
     ...before,
     ...after,
     embedding_params: syncParametersAndEmbeddingParams(before, after),
-    isDirty: true
+    isDirty: true,
   };
 }
 

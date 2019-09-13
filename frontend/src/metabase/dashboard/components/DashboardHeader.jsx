@@ -149,7 +149,9 @@ export default class DashboardHeader extends Component {
     // embedding params keys?
     if (
       this.props.isEditing &&
-      !(Object.keys(this.props.isEditing.embedding_params).every(slug => currentSlugs.includes(slug)))
+      !Object.keys(this.props.isEditing.embedding_params).every(slug =>
+        currentSlugs.includes(slug),
+      )
     ) {
       return "You've updated embedded params and will need to update your embed code.";
     }
