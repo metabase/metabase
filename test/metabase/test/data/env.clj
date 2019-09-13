@@ -12,7 +12,7 @@
   (:require [clojure.tools.logging :as log]
             [colorize.core :as color]
             [metabase.test.data.env.impl :as impl]
-                    [metabase.test.initialize :as initialize]))
+            [metabase.test.initialize :as initialize]))
 
 (defonce ^{:doc (str "Set of names of drivers we should run tests against. By default, this only contains `:h2` but can"
                      " be overriden by setting env var `DRIVERS`.")}
