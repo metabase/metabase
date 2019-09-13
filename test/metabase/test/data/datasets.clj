@@ -60,9 +60,11 @@
   [drivers expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
   ;; speeds up loading of metabase.driver.query-processor-test significantly
-  `(t/deftest ~(symbol (str "expect-with-drivers-" (hash &form)))
-     (test-drivers ~drivers
-       (t/is (~'expect= ~expected ~actual)))))
+  (let [symb (symbol (str "expect-with-drivers-" (hash &form)))]
+    `(t/deftest ~symb
+       (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb)))
+         (test-drivers ~drivers
+           (t/is (~'expect= ~expected ~actual)))))))
 
 (defmacro test-all-drivers [& body]
   `(test-drivers tx.env/test-drivers ~@body))
