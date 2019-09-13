@@ -80,8 +80,8 @@ export default class ExpressionEditorTextfield extends Component {
     // we only refresh our state if we had no previous state OR if our expression or table has changed
     if (
       !this.state ||
-      this.props.expression != newProps.expression ||
-      this.props.tableMetadata != newProps.tableMetadata
+      this.props.expression !== newProps.expression ||
+      this.props.tableMetadata !== newProps.tableMetadata
     ) {
       const parserInfo = this._getParserInfo(newProps);
       const parsedExpression = newProps.expression;

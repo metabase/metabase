@@ -202,9 +202,7 @@ export default class DatabaseDetailsForm extends Component {
 
     if (field.name === "tunnel-enabled") {
       const on =
-        details["tunnel-enabled"] == undefined
-          ? false
-          : details["tunnel-enabled"];
+        details["tunnel-enabled"] == null ? false : details["tunnel-enabled"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center">
@@ -230,7 +228,7 @@ export default class DatabaseDetailsForm extends Component {
       return null;
     } else if (field.name === "use-jvm-timezone") {
       const on =
-        details["use-jvm-timezone"] == undefined
+        details["use-jvm-timezone"] == null
           ? false
           : details["use-jvm-timezone"];
       return (

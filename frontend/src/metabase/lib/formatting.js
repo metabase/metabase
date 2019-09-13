@@ -681,7 +681,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     // TODO: get rid of one of these two code paths?
   }
 
-  if (value == undefined) {
+  if (value == null) {
     return null;
   } else if (column && isa(column.special_type, TYPE.URL)) {
     return formatUrl(value, options);

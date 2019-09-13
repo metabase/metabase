@@ -1,47 +1,45 @@
 {
-    "rules": {
-        "strict": [2, "never"],
-        "no-undef": 2,
-        "no-var": 1,
-        "no-unused-vars": [1, {"vars": "all", "args": "none"}],
-        "no-empty": [1, { "allowEmptyCatch": true }],
-        "curly": [1, "all"],
-        "import/no-commonjs": 1,
-        "no-console": 0,
-        "react/no-is-mounted": 2,
-        "react/prefer-es6-class": 2,
-        "react/display-name": 1,
-        "react/prop-types": 0,
-        "react/no-did-mount-set-state": 0,
-        "react/no-did-update-set-state": 0,
-        "react/no-find-dom-node": 0,
-        "flowtype/define-flow-type": 1,
-        "flowtype/use-flow-type": 1,
-        "no-color-literals": 1,
-        "prefer-const": [1, {"destructuring": "all"}],
-    },
-    "globals": {
-        "pending": false
-    },
-    "env": {
-        "browser": true,
-        "es6": true,
-        "commonjs": true,
-        "jest": true
-    },
-    "parser": "babel-eslint",
-    "plugins": [
-        "react",
-        "flowtype"
-    ],
-    "extends": [
-      "eslint:recommended",
-      "plugin:react/recommended",
-      "plugin:import/errors",
-      "plugin:import/warnings"
-    ],
-    "settings": {
-      "import/resolver": "webpack",
-      "import/ignore": ["\\.css$"]
-    }
+  "rules": {
+    "strict": [2, "never"],
+    "no-undef": 2,
+    "no-var": 1,
+    "no-unused-vars": [1, { "vars": "all", "args": "none" }],
+    "no-empty": [1, { "allowEmptyCatch": true }],
+    "curly": [1, "all"],
+    "eqeqeq": [1, "smart"],
+    "import/no-commonjs": 1,
+    "no-console": 0,
+    "react/no-is-mounted": 2,
+    "react/prefer-es6-class": 2,
+    "react/display-name": 1,
+    "react/prop-types": 0,
+    "react/no-did-mount-set-state": 0,
+    "react/no-did-update-set-state": 0,
+    "react/no-find-dom-node": 0,
+    "flowtype/define-flow-type": 1,
+    "flowtype/use-flow-type": 1,
+    "no-color-literals": 1,
+    "prefer-const": [1, { "destructuring": "all" }]
+  },
+  "globals": {
+    "pending": false
+  },
+  "env": {
+    "browser": true,
+    "es6": true,
+    "commonjs": true,
+    "jest": true
+  },
+  "parser": "babel-eslint",
+  "plugins": ["react", "flowtype"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:import/errors",
+    "plugin:import/warnings"
+  ],
+  "settings": {
+    "import/resolver": "webpack",
+    "import/ignore": ["\\.css$"]
+  }
 }
