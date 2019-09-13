@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 import ActionButton from "metabase/components/ActionButton";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
 import ArchiveDashboardModal from "./ArchiveDashboardModal";
@@ -36,6 +37,11 @@ import type {
 } from "metabase/meta/types/Dashboard";
 import { Link } from "react-router";
 
+const isEditingType = PropTypes.oneOfType([
+  PropTypes.bool,
+  PropTypes.object,
+]);
+
 type Props = {
   location: LocationDescriptor,
 
@@ -44,7 +50,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: boolean,
+  isEditing: isEditingType,
   isFullscreen: boolean,
   isNightMode: boolean,
 
@@ -64,7 +70,7 @@ type Props = {
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   setEditingParameter: (parameterId: ?ParameterId) => void,
 
-  onEditingChange: (isEditing: boolean) => void,
+  onEditingChange: (isEditing: isEditingType) => void,
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
   onFullscreenChange: boolean => void,
@@ -85,7 +91,7 @@ export default class DashboardHeader extends Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: isEditingType.isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
@@ -106,8 +112,8 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
   };
 
-  onEdit() {
-    this.props.onEditingChange(true);
+  onEdit(dashboard) {
+    this.props.onEditingChange(dashboard);
   }
 
   onAddTextBox() {
@@ -140,6 +146,19 @@ export default class DashboardHeader extends Component {
     // TODO - this should use entity action
     await this.props.archiveDashboard(dashboard.id);
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
+  }
+
+  editWarning(dashboard) {
+    const originalSlugs = _.keys(this.props.isEditing.embedding_params);
+    const currentSlugs = _.keys(dashboard.embedding_params);
+    if (
+      this.props.isEditing &&
+      !_.every(originalSlugs, slug => {
+        return _.contains(currentSlugs, slug);
+      })
+    ) {
+      return "You've updated embedded params and will need to update your embed code.";
+    }
   }
 
   getEditingButtons() {
@@ -294,7 +313,7 @@ export default class DashboardHeader extends Component {
             key="edit"
             title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
-            onClick={() => this.onEdit()}
+            onClick={() => this.onEdit(dashboard)}
           >
             <Icon name="pencil" size={16} />
           </a>
@@ -355,7 +374,7 @@ export default class DashboardHeader extends Component {
         showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
-        editWarning={dashboard.editWarning}
+        editWarning={this.editWarning(dashboard)}
         editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}

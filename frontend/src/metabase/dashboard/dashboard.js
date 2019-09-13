@@ -935,21 +935,29 @@ const cardList = handleActions(
   null,
 );
 
-// can do more here to
-function newDashboard(before, after) {
-  const dashboard = { ...before, ...after, isDirty: true };
-  const newParamSlugs = after.parameters && _.pluck(after.parameters, "slug");
-  if (
-    newParamSlugs &&
-    !_.every(_.keys(before.embedding_params), embedId => {
-      return _.contains(newParamSlugs, embedId);
-    })
-  ) {
-    dashboard.editWarning = dashboard.editWarning =
-      "You've updated embedded params and will need to update your embed code.";
+function syncParametersAndEmbeddingParams (before, after) {
+  if (after.parameters) {
+    return _.reduce(_.keys(before.embedding_params),
+                    (memo, embedSlug) => {
+                      const slugParam = _.find(before.parameters, (param) => { return param.slug == embedSlug });
+                      if (slugParam) {
+                        const slugParamId = slugParam && slugParam.id 
+                        const newParam = _.find(after.parameters, (param) => { return param.id == slugParamId });
+                        if (newParam) {
+                          memo[newParam.slug] = before.embedding_params[embedSlug]
+                        }
+                      }
+                      return memo;
+                    },
+                    {});
   } else {
-    dashboard.editWarning = null;
+    return before.embedding_params
   }
+}
+
+function newDashboard(before, after){
+  const dashboard = { ...before, ...after, isDirty: true };
+  dashboard.embedding_params = syncParametersAndEmbeddingParams(before, after);
   return dashboard;
 }
 
