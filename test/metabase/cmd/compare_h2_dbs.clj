@@ -57,7 +57,7 @@
   (u/jdbc-clob->str v))
 
 (def ^:private ignored-keys
-  #{:created_at :updated_at :timestamp})
+  #{:created_at :updated_at :timestamp :last_login :date_joined})
 
 (defn- normalize-values [row]
   (into {} (for [[k v] row
