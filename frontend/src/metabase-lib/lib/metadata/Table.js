@@ -14,6 +14,8 @@ import { titleize, humanize } from "metabase/lib/formatting";
 
 import Dimension from "../Dimension";
 
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 type EntityType = string; // TODO: move somewhere central
 
 import _ from "underscore";
@@ -53,9 +55,12 @@ export default class Table extends Base {
   }
 
   query(query = {}): StructuredQuery {
-    return this.question()
-      .query()
-      .updateQuery(q => ({ ...q, ...query }));
+    return (
+      this.question()
+        .query()
+        // $FlowFixMe: we know question returns a StructuredQuery but flow doesn't
+        .updateQuery(q => ({ ...q, ...query }))
+    );
   }
 
   dimensions(): Dimension[] {

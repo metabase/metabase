@@ -539,7 +539,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns alias for addJoin
    */
-  join(join: Join) {
+  join(join) {
     return this.addJoin(join);
   }
 
