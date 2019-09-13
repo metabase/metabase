@@ -1,6 +1,8 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
@@ -24,6 +26,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.test
              [data :as data]
+             [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data
              [env :as tx.env]
@@ -33,6 +36,8 @@
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :plugins))
 
 ;; HELPER FNS
 
