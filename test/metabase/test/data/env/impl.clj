@@ -4,9 +4,7 @@
             [metabase.test.initialize :as initialize]
             [metabase.util :as u]))
 
-(defn- get-drivers-from-env
-  "Return a set of drivers to test against from the env var `DRIVERS`."
-  []
+(defn- get-drivers-from-env []
   (when (seq (env :engines))
     (println
      (u/format-color 'red
@@ -16,7 +14,9 @@
                :when engine]
            (keyword engine)))))
 
-(defn- get-test-drivers []
+(defn get-test-drivers
+  "Return a set of drivers to test against from the env var `DRIVERS`."
+  []
   (if-let [drivers (get-drivers-from-env)]
     (do
       (initialize/initialize-if-needed! :plugins)
