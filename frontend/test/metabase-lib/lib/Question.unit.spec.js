@@ -3,12 +3,6 @@ import {
   SAMPLE_DATASET,
   ORDERS,
   PRODUCTS,
-  card,
-  orders_raw_card,
-  orders_count_card,
-  orders_count_by_id_card,
-  native_orders_count_card,
-  invalid_orders_count_card,
 } from "__support__/sample_dataset_fixture";
 
 import { assoc, dissoc } from "icepick";
@@ -16,6 +10,93 @@ import { assoc, dissoc } from "icepick";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+
+const card = {
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": ORDERS.id,
+    },
+  },
+};
+
+const orders_raw_card = {
+  id: 1,
+  name: "Raw orders data",
+  display: "table",
+  visualization_settings: {},
+  can_write: true,
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": ORDERS.id,
+    },
+  },
+};
+
+const orders_count_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["count"]],
+    },
+  },
+};
+
+const native_orders_count_card = {
+  id: 3,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "native",
+    database: SAMPLE_DATASET.id,
+    native: {
+      query: "SELECT count(*) FROM orders",
+    },
+  },
+};
+
+const invalid_orders_count_card = {
+  id: 2,
+  name: "# orders data",
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "nosuchqueryprocessor",
+    database: SAMPLE_DATASET.id,
+    query: {
+      query: "SELECT count(*) FROM orders",
+    },
+  },
+};
+
+const orders_count_by_id_card = {
+  id: 2,
+  name: "# orders data",
+  can_write: false,
+  display: "table",
+  visualization_settings: {},
+  dataset_query: {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": ORDERS.id,
+      aggregation: [["count"]],
+      breakout: [["field-id", ORDERS.ID.id]],
+    },
+  },
+};
 
 describe("Question", () => {
   describe("CREATED WITH", () => {

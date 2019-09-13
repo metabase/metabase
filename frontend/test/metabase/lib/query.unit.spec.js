@@ -1,7 +1,7 @@
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
-import { question, ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 import Utils from "metabase/lib/utils";
 
 const mockTableMetadata = {
@@ -56,9 +56,8 @@ describe("Legacy Q_DEPRECATED library", () => {
 
   describe("cleanQuery", () => {
     it("should pass for a query created with metabase-lib", () => {
-      const datasetQuery = question
-        .query()
-        .addAggregation(["count"])
+      const datasetQuery = ORDERS.query()
+        .aggregate(["count"])
         .datasetQuery();
 
       // We have to take a copy because the original object isn't extensible

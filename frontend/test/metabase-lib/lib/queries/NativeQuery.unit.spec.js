@@ -1,5 +1,4 @@
 import {
-  question,
   SAMPLE_DATASET,
   MONGO_DATABASE,
 } from "__support__/sample_dataset_fixture";
@@ -19,14 +18,14 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags) {
   return new NativeQuery(
-    question,
+    SAMPLE_DATASET.question(),
     makeDatasetQuery(query, templateTags, SAMPLE_DATASET.id),
   );
 }
 
 function makeMongoQuery(query, templateTags) {
   return new NativeQuery(
-    question,
+    SAMPLE_DATASET.question(),
     makeDatasetQuery(query, templateTags, MONGO_DATABASE.id),
   );
 }

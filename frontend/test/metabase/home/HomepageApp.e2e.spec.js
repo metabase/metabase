@@ -8,10 +8,7 @@ import { click } from "__support__/enzyme_utils";
 
 import React from "react";
 import { mount } from "enzyme";
-import {
-  unsavedOrderCountQuestion,
-  vendor_count_metric,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 import { delay } from "metabase/lib/promise";
 
 import HomepageApp from "metabase/home/containers/HomepageApp";
@@ -24,6 +21,21 @@ import ActivityItem from "metabase/home/components/ActivityItem";
 import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import { MetricApi, SegmentApi } from "metabase/services";
+
+const unsavedOrderCountQuestion = ORDERS.query()
+  .aggregate(["count"])
+  .question();
+
+const vendor_count_metric = {
+  id: null,
+  name: "Vendor count",
+  description: "Tells how many vendors we have",
+  table_id: 3,
+  definition: {
+    aggregation: [["distinct", ["field-id", 28]]],
+    "source-table": 3,
+  },
+};
 
 describe("HomepageApp", () => {
   beforeAll(async () => {

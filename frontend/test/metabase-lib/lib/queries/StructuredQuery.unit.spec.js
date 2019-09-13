@@ -1,18 +1,27 @@
 import {
-  question,
   SAMPLE_DATASET,
   ANOTHER_DATABASE,
   ORDERS,
   PRODUCTS,
   MAIN_METRIC_ID,
-  makeDatasetQuery,
 } from "__support__/sample_dataset_fixture";
 
 import Segment from "metabase-lib/lib/metadata/Segment";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+function makeDatasetQuery(query = {}) {
+  return {
+    type: "query",
+    database: SAMPLE_DATASET.id,
+    query: {
+      "source-table": query["source-query"] ? undefined : ORDERS.id,
+      ...query,
+    },
+  };
+}
+
 function makeQuery(query) {
-  return new StructuredQuery(question, makeDatasetQuery(query));
+  return new StructuredQuery(ORDERS.question(), makeDatasetQuery(query));
 }
 
 function makeQueryWithAggregation(agg) {

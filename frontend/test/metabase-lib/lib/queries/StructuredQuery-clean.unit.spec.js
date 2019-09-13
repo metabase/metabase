@@ -1,8 +1,4 @@
-import {
-  ORDERS,
-  PRODUCTS,
-  makeStructuredQuery,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 const JOIN = {
   "source-table": PRODUCTS.id,
@@ -30,11 +26,11 @@ describe("StructuredQuery", () => {
       });
 
       xit("should remove join referencing invalid source-table", () => {
-        const q = makeStructuredQuery({
-          "source-table": 1245,
-          joins: [JOIN],
-        });
-        expect(q.clean().query()).toEqual({ "source-table": ORDERS.id });
+        const q = ORDERS.query()
+          .setTableId(12345)
+          .join([JOIN]);
+        expect(q.query()).toEqual({ "source-table": 12345, join: [JOIN] });
+        expect(q.clean().query()).toEqual({ "source-table": 12345 });
       });
 
       xit("should remove join referencing invalid source field", () => {
