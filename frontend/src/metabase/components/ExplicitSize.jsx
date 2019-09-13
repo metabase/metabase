@@ -32,7 +32,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
       this._initMediaQueryListener();
       this._initResizeObserver();
       this._updateResizeObserver();
-      this._updateSize();
+      setTimeout(this._updateSize, 0);
     }
 
     componentDidUpdate() {
