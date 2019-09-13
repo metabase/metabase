@@ -146,11 +146,12 @@ export default class DashboardHeader extends Component {
   }
 
   editWarning(dashboard) {
-    const originalSlugs = _.keys(this.props.isEditing.embedding_params);
     const currentSlugs = _.keys(dashboard.embedding_params);
+    // are all of the original embedding params keys in the current
+    // embedding params keys?
     if (
       this.props.isEditing &&
-      !_.every(originalSlugs, slug => {
+      !_.every(_.keys(this.props.isEditing.embedding_params), slug => {
         return _.contains(currentSlugs, slug);
       })
     ) {
