@@ -3,7 +3,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import _ from "underscore";
 import ActionButton from "metabase/components/ActionButton";
 import AddToDashSelectQuestionModal from "./AddToDashSelectQuestionModal";
 import ArchiveDashboardModal from "./ArchiveDashboardModal";
@@ -108,7 +107,7 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
   };
 
-  onEdit(dashboard: DashboardWithCards) {
+  handleEdit(dashboard: DashboardWithCards) {
     this.props.onEditingChange(dashboard);
   }
 
@@ -144,15 +143,13 @@ export default class DashboardHeader extends Component {
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
   }
 
-  editWarning(dashboard: DashboardWithCards) {
+  getEditWarning(dashboard: DashboardWithCards) {
     const currentSlugs = Object.keys(dashboard.embedding_params);
     // are all of the original embedding params keys in the current
     // embedding params keys?
     if (
       this.props.isEditing &&
-      !_.every(Object.keys(this.props.isEditing.embedding_params), slug => {
-        return currentSlugs.includes(slug);
-      })
+      !(Object.keys(this.props.isEditing.embedding_params).every(slug => currentSlugs.includes(slug)))
     ) {
       return "You've updated embedded params and will need to update your embed code.";
     }
@@ -310,7 +307,7 @@ export default class DashboardHeader extends Component {
             key="edit"
             title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
-            onClick={() => this.onEdit(dashboard)}
+            onClick={() => this.handleEdit(dashboard)}
           >
             <Icon name="pencil" size={16} />
           </a>
@@ -371,7 +368,7 @@ export default class DashboardHeader extends Component {
         showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
-        editWarning={this.editWarning(dashboard)}
+        editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}

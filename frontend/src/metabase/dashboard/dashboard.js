@@ -943,9 +943,7 @@ function syncParametersAndEmbeddingParams(before, after) {
       });
       if (slugParam) {
         const slugParamId = slugParam && slugParam.id;
-        const newParam = _.find(after.parameters, param => {
-          return param.id == slugParamId;
-        });
+        const newParam = _.findWhere(after.parameters, {id: slugParamId});
         if (newParam) {
           memo[newParam.slug] = before.embedding_params[embedSlug];
         }
@@ -958,9 +956,12 @@ function syncParametersAndEmbeddingParams(before, after) {
 }
 
 function newDashboard(before, after) {
-  const dashboard = { ...before, ...after, isDirty: true };
-  dashboard.embedding_params = syncParametersAndEmbeddingParams(before, after);
-  return dashboard;
+  return {
+    ...before,
+    ...after,
+    embedding_params: syncParametersAndEmbeddingParams(before, after),
+    isDirty: true
+  };
 }
 
 const dashboards = handleActions(
