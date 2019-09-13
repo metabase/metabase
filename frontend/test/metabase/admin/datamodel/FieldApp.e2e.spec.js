@@ -150,7 +150,7 @@ describe("FieldApp", () => {
       const { fieldApp } = await initFieldApp({ fieldId: CREATED_AT_ID });
 
       const picker = fieldApp.find(FieldVisibilityPicker);
-      expect(picker.text()).toMatch(/Only in Detail Views/);
+      expect(picker.text()).toMatch(/Only in detail views/);
     });
 
     afterAll(async () => {
