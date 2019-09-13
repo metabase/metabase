@@ -1,8 +1,8 @@
 (ns metabase.test.util.timezone
   (:require [clj-time.core :as time]
             [metabase.driver :as driver]
-            [metabase.util.date :as du]
-            [metabase.test.initialize :as initialize])
+            [metabase.test.initialize :as initialize]
+            [metabase.util.date :as du])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 

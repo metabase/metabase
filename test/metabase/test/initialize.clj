@@ -45,10 +45,6 @@
   (require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
 
-(define-initialization :scheduler
-  (require 'metabase.test.initialize.scheduler)
-  ((resolve 'metabase.test.initialize.scheduler/init!)))
-
 (define-initialization :db
   (require 'metabase.test.initialize.db)
   ((resolve 'metabase.test.initialize.db/init!)))
