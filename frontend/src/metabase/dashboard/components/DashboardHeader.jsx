@@ -31,13 +31,12 @@ import type {
   ParameterOption,
 } from "metabase/meta/types/Parameter";
 import type {
+  Dashboard,
   DashboardWithCards,
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
 import { Link } from "react-router";
-
-const isEditingType = PropTypes.oneOfType([PropTypes.bool, PropTypes.object]);
 
 type Props = {
   location: LocationDescriptor,
@@ -47,7 +46,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: isEditingType,
+  isEditing: false | Dashboard,
   isFullscreen: boolean,
   isNightMode: boolean,
 
@@ -67,7 +66,7 @@ type Props = {
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   setEditingParameter: (parameterId: ?ParameterId) => void,
 
-  onEditingChange: (isEditing: isEditingType) => void,
+  onEditingChange: (isEditing: false | Dashboard) => void,
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
   onFullscreenChange: boolean => void,
@@ -88,7 +87,7 @@ export default class DashboardHeader extends Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
-    isEditing: isEditingType.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object]).isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
