@@ -6,8 +6,7 @@
   (:require [clojure.test :as t]
             [expectations :refer [expect]]
             [metabase.driver :as driver]
-            [metabase.test.data.env :as tx.env]
-            [metabase.test.initialize :as initialize]))
+            [metabase.test.data.env :as tx.env]))
 
 ;; # Helper Macros
 
@@ -43,12 +42,8 @@
   [driver expected actual]
   `(when-testing-driver ~driver
      (expect
-       (do
-         (initialize/initialize-if-needed! :plugins)
-         (driver/with-driver ~driver ~expected))
-       (do
-         (initialize/initialize-if-needed! :plugins)
-         (driver/with-driver ~driver ~actual)))))
+       (driver/with-driver ~driver ~expected)
+       (driver/with-driver ~driver ~actual))))
 
 (defmacro test-drivers {:style/indent 1} [drivers & body]
   `(doseq [driver# ~drivers]

@@ -13,6 +13,7 @@
             [clojure.tools.logging :as log]
             [colorize.core :as color]
             [environ.core :refer [env]]
+            [metabase.test.initialize :as initialize]
             [metabase.util :as u]))
 
 (defn- get-drivers-from-env
@@ -27,10 +28,16 @@
                :when engine]
            (keyword engine)))))
 
+(defn- get-test-drivers []
+  (if-let [drivers (get-drivers-from-env)]
+    (do
+      (initialize/initialize-if-needed! :plugins)
+      drivers)
+    #{:h2}))
+
 (defonce ^{:doc (str "Set of names of drivers we should run tests against. By default, this only contains `:h2` but can"
                      " be overriden by setting env var `DRIVERS`.")}
   test-drivers
-  (let [drivers (or (get-drivers-from-env)
-                    #{:h2})]
+  (let [drivers (get-test-drivers)]
     (log/info (color/cyan "Running QP tests against these drivers: " drivers))
     drivers))

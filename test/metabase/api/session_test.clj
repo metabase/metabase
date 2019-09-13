@@ -13,19 +13,13 @@
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
+            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.util.UUID))
-
-;; plugins have to be initialized or `public-settings` won't work properly since it won't be able to fetch details
-;; about all DBs
-(use-fixtures :once (fixtures/initialize :plugins))
 
 ;; ## POST /api/session
 ;; Test that we can login
