@@ -1,11 +1,18 @@
 (ns metabase.driver.sql-jdbc.sync-test
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase.driver :as driver]
+            [expectations :refer [expect]]
+            [metabase
+             [driver :as driver]
+             [sync :as sync]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
+            [metabase.models.table :refer [Table]]
             [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets])
+            [metabase.test.data
+             [datasets :as datasets]
+             [one-off-dbs :as one-off-dbs]]
+            [toucan.db :as db])
   (:import java.sql.ResultSet))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
@@ -42,3 +49,58 @@
 (datasets/expect-with-drivers (sql-jdbc-drivers-with-default-describe-database-impl)
   0
   (describe-database-with-open-resultset-count driver/*driver* (data/db)))
+
+
+;; Do we correctly determine SELECT privilege
+(expect
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["create user if not exists GUEST password 'guest';"
+                       "set db_close_delay -1;"
+                       "drop table if exists \"birds\";"
+                       "create table \"birds\" ();"
+                       "grant all on \"birds\" to GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (jdbc/with-db-metadata [metadata (#'sql-jdbc.sync/->spec (data/id))]
+      (#'sql-jdbc.sync/has-select-privilege? metadata "GUEST" nil nil "birds"))))
+
+(expect
+  nil
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["create user if not exists GUEST password 'guest';"
+                       "set db_close_delay -1;"
+                       "drop table if exists \"birds\";"
+                       "create table \"birds\" ();"
+                       "revoke all on \"birds\" from GUEST;"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (jdbc/with-db-metadata [metadata (#'sql-jdbc.sync/->spec (data/id))]
+      (#'sql-jdbc.sync/has-select-privilege? metadata "GUEST" nil nil "birds"))))
+
+
+(defn- count-active-tables-in-db
+  [db-id]
+  (db/count Table
+    :db_id  db-id
+    :active true))
+
+;; Do we sync only tables for which we have SELECT privilege
+(expect
+  1
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["set db_close_delay -1;"
+                       "drop table if exists \"birds\";"
+                       "create table \"birds\" ();"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    (sync/sync-database! (data/db))
+    (count-active-tables-in-db (data/id))))
+
+(expect
+  0
+  (one-off-dbs/with-blank-db
+    (doseq [statement ["set db_close_delay -1;"
+                       "drop table if exists \"birds\";"
+                       "create table \"birds\" ();"]]
+      (jdbc/execute! one-off-dbs/*conn* [statement]))
+    ;; We have to mock this as H2 doesn't have a notion of a user connecting to it
+    (with-redefs [sql-jdbc.sync/has-select-privilege? (constantly false)]
+      (sync/sync-database! (data/db)))
+    (count-active-tables-in-db (data/id))))

@@ -88,13 +88,25 @@
 ;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
 ;; filtering/transforming in Clojure-land
 
+(defn- has-select-privilege?
+  "Does the user `user` have (SELECT) access to a given table?"
+  [^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil, ^String table]
+  (or (str/blank? user) ; DBs such as H2 and Druid don't require a username when connecting.
+                        ; In that case assume all tables are visible.
+      (with-open [rs (.getTablePrivileges metadata db-name-or-nil schema-or-nil table)]
+        (some (comp #{[table user "SELECT"]} (juxt :table_name :grantee :privilege))
+              (jdbc/metadata-result rs)))))
+
 (defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
+  "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given schema."
   [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
-    (vec (jdbc/metadata-result rs))))
+    (let [user (.getUserName metadata)]
+      (vec (for [{:keys [table_name table_schem] :as table} (jdbc/metadata-result rs)
+                 :when (has-select-privilege? metadata user db-name-or-nil table_schem table_name)]
+             table)))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
