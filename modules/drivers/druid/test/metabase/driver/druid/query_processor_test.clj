@@ -120,8 +120,8 @@
 
 ;; `distinct` when used in post aggregations should have type `:finalizingFieldAccess`
 (datasets/expect-with-driver :druid
-  {:projections [:distinct_0 :expression]
-   :query       {:queryType        :total
+  {:projections [:__distinct_0 :expression]
+   :query       {:queryType        :timeseries
                  :threshold        1000
                  :granularity      :all
                  :dataSource       "checkins"
@@ -141,4 +141,4 @@
    :query-type  ::druid.qp/total
    :mbql?       true}
   (query->native
-   {:aggregation [[:+ 1 [:aggregation-options [:distinct $venue_name] {:name "__distinct_0"}]]]}))
+   {:aggregation [[:+ 1 [:aggregation-options [:distinct $checkins.venue_name] {:name "__distinct_0"}]]]}))
