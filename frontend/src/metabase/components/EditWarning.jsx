@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-function EditWarning({ title }) {
+export default function EditWarning({ title }) {
   if (title) {
     return (
       <div className="EditHeader wrapper py1 flex align-center">
@@ -16,5 +16,3 @@ function EditWarning({ title }) {
 EditWarning.propTypes = {
   title: PropTypes.string.isRequired,
 };
-
-export default EditWarning;
