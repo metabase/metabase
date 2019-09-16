@@ -122,7 +122,6 @@
 (datasets/expect-with-driver :druid
   {:projections [:__distinct_0 :expression]
    :query       {:queryType        :timeseries
-                 :threshold        1000
                  :granularity      :all
                  :dataSource       "checkins"
                  :context          {:timeout 60000, :queryId "<Query ID>"}
