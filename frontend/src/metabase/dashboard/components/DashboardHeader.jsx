@@ -144,16 +144,18 @@ export default class DashboardHeader extends Component {
   }
 
   getEditWarning(dashboard: DashboardWithCards) {
-    const currentSlugs = Object.keys(dashboard.embedding_params);
-    // are all of the original embedding params keys in the current
-    // embedding params keys?
-    if (
-      this.props.isEditing &&
-      !Object.keys(this.props.isEditing.embedding_params).every(slug =>
-        currentSlugs.includes(slug),
-      )
-    ) {
-      return "You've updated embedded params and will need to update your embed code.";
+    if (dashboard.embedding_params) {
+      const currentSlugs = Object.keys(dashboard.embedding_params);
+      // are all of the original embedding params keys in the current
+      // embedding params keys?
+      if (
+        this.props.isEditing &&
+          !Object.keys(this.props.isEditing.embedding_params).every(slug =>
+                                                                    currentSlugs.includes(slug),
+                                                                   )
+      ) {
+        return "You've updated embedded params and will need to update your embed code.";
+      }
     }
   }
 
