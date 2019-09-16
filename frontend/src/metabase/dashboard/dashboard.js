@@ -939,7 +939,7 @@ function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, param => {
-        return param.slug == embedSlug;
+        return param.slug === embedSlug;
       });
       if (slugParam) {
         const slugParamId = slugParam && slugParam.id;
