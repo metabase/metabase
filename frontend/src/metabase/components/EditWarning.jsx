@@ -4,9 +4,7 @@ import PropTypes from "prop-types";
 function EditWarning({ title }) {
   if (title) {
     return (
-      <div
-        className="EditHeader wrapper py1 flex align-center"
-      >
+      <div className="EditHeader wrapper py1 flex align-center">
         <span className="EditHeader-title">{title}</span>
       </div>
     );
