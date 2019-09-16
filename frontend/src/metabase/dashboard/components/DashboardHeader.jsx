@@ -239,7 +239,6 @@ export default class DashboardHeader extends Component {
             cards={this.props.cards}
             fetchCards={this.props.fetchCards}
             addCardToDashboard={this.props.addCardToDashboard}
-            onEditingChange={this.props.onEditingChange}
             onClose={() => this.refs.addQuestionModal.toggle()}
           />
         </ModalWithTrigger>,
