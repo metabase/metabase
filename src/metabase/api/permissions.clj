@@ -42,8 +42,9 @@
 
 (defn- dejsonify-dbs [dbs]
   (into {} (for [[db-id {:keys [native schemas]}] dbs]
-             {(->int db-id) {:native  (keyword native)
-                             :schemas (dejsonify-schemas schemas)}})))
+             {(->int db-id) (cond-> {}
+                              native (assoc :native (keyword native))
+                              schemas (assoc :schemas (dejsonify-schemas schemas)))})))
 
 (defn- dejsonify-groups [groups]
   (into {} (for [[group-id dbs] groups]
@@ -77,6 +78,7 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
+  (prn "PRE GRAPH" body)
   (perms/update-graph! (dejsonify-graph body))
   (perms/graph))
 
