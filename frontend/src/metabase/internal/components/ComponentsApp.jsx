@@ -6,10 +6,7 @@ import { Link, Route } from "react-router";
 import { slugify } from "metabase/lib/formatting";
 import cx from "classnames";
 
-// $FlowFixMe: react-virtualized ignored
-import reactElementToJSXString from "react-element-to-jsx-string";
-import prettier from "prettier/standalone";
-import prettierParserBabylon from "prettier/parser-babylon";
+import { sourceToScratchUrl, reactToSource } from "../lib/scratch";
 
 import COMPONENTS from "../lib/components-webpack";
 
@@ -146,20 +143,8 @@ class SourcePane extends React.Component {
   render() {
     const { element } = this.props;
     const { isOpen } = this.state;
-    let source = reactElementToJSXString(element, {
-      showFunctions: true,
-      showDefaultProps: false,
-    });
-    try {
-      source = prettier.format(source, {
-        parser: "babel",
-        plugins: [prettierParserBabylon],
-      });
-    } catch (e) {
-      console.log(e);
-    }
-
-    const scratchUrl = "/_internal/scratch#" + btoa(source);
+    const source = reactToSource(element);
+    const scratchUrl = sourceToScratchUrl(source);
     return (
       <div
         className={cx("relative", {

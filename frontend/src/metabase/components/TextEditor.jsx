@@ -19,11 +19,13 @@ export default class TextEditor extends Component {
     value: PropTypes.string,
     defaultValue: PropTypes.string,
     onChange: PropTypes.func,
+    maxHeight: PropTypes.number,
   };
 
   static defaultProps = {
     mode: "ace/mode/plain_text",
     theme: null,
+    maxHeight: Infinity,
   };
 
   componentWillReceiveProps(nextProps) {
@@ -62,7 +64,10 @@ export default class TextEditor extends Component {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this);
     element.style.height =
-      2 * SCROLL_MARGIN + LINE_HEIGHT * doc.getLength() + "px";
+      Math.min(
+        this.props.maxHeight,
+        2 * SCROLL_MARGIN + LINE_HEIGHT * doc.getLength(),
+      ) + "px";
     this._editor.resize();
   }
 

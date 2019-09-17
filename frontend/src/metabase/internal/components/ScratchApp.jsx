@@ -12,13 +12,15 @@ const BABEL_CONFIG = {
 import AceEditor from "metabase/components/TextEditor";
 
 import context from "../lib/scratch-context";
+import { sourceToScratchUrl } from "../lib/scratch";
+import { b64_to_utf8 } from "metabase/lib/card";
 
 export default class ScratchApp extends React.Component {
   constructor(props) {
     super(props);
     const hash = window.location.hash.replace(/^#/, "");
     this.state = {
-      code: hash ? atob(hash) : `<Button>Hello World</Button>`,
+      code: hash ? b64_to_utf8(hash) : `<Button>Hello World</Button>`,
       error: null,
       centered: true,
     };
@@ -26,7 +28,7 @@ export default class ScratchApp extends React.Component {
 
   handleChange = code => {
     this.setState({ code });
-    history.replaceState({}, null, "/_internal/scratch#" + btoa(code));
+    history.replaceState({}, null, sourceToScratchUrl(code));
   };
 
   async _update() {
@@ -101,6 +103,7 @@ export default class ScratchApp extends React.Component {
           }}
           value={this.state.code}
           onChange={this.handleChange}
+          maxHeight={window.innerHeight / 3}
         />
         <div className="absolute bottom right flex align-center p1">
           <span className="mr1">Centered:</span>

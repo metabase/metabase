@@ -7,6 +7,7 @@ import { Flex } from "grid-styled";
 import { color, darken } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import Link from "metabase/components/Link";
 
 import ButtonBar from "metabase/components/ButtonBar";
 
@@ -171,6 +172,25 @@ const ViewFooter = ({
               className="mx1 hide sm-show"
               card={question.card()}
             />
+          ),
+          // eslint-disable-next-line no-undef
+          process.env.NODE_ENV !== "production" && (
+            <Link
+              to={
+                "/_internal" +
+                window.location.pathname +
+                "?scratch=true" +
+                window.location.hash
+              }
+            >
+              <Icon
+                name="beaker"
+                size={16}
+                className="mx1 cursor-pointer text-brand-hover"
+                style={{ opacity: 0.5 }}
+                tooltip="Open in scratchpad"
+              />
+            </Link>
           ),
         ]}
       />
