@@ -105,7 +105,7 @@
            :breakout    [$category_id]
            :limit       5})))))
 
-(deftest breakout-order-by-test
+(deftest order-by-test
   (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
     (data/with-temp-objects
       (fn []
@@ -113,11 +113,13 @@
                                 :name                    "Foo"
                                 :type                    :external
                                 :human_readable_field_id (data/id :categories :name)})])
-      (are [exected sort-order] (->> (data/run-mbql-query venues
-                                       {:order-by [[sort-order $category_id]]
-                                        :limit    10})
-                                     qp.test/rows
-                                     (map last))
+      (are [expected sort-order] (testing (format "sort order = %s" sort-order)
+                                   (is (= expected
+                                          (->> (data/run-mbql-query venues
+                                                 {:order-by [[sort-order $category_id]]
+                                                  :limit    10})
+                                               qp.test/rows
+                                               (map last)))))
         ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
         :desc
 

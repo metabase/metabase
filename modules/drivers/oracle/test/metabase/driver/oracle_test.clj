@@ -133,49 +133,48 @@
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
 (deftest honeysql-test
   (datasets/test-driver :oracle
-    (is (=
-         {:select [:*]
-          :from   [{:select
-                    [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id")
-                      (hx/identifier :field-alias "id")]
-                     [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "name")
-                      (hx/identifier :field-alias "name")]
-                     [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
-                      (hx/identifier :field-alias "category_id")]
-                     [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "latitude")
-                      (hx/identifier :field-alias "latitude")]
-                     [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "longitude")
-                      (hx/identifier :field-alias "longitude")]
-                     [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "price")
-                      (hx/identifier :field-alias "price")]]
-                    :from      [(hx/identifier :table oracle.tx/session-schema "test_data_venues")]
-                    :left-join [[(hx/identifier :table oracle.tx/session-schema "test_data_categories")
-                                 (hx/identifier :table-alias "test_data_categories__via__cat")]
-                                [:=
-                                 (hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
-                                 (hx/identifier :field "test_data_categories__via__cat" "id")]]
-                    :where     [:=
-                                (hx/identifier :field "test_data_categories__via__cat" "name")
-                                "BBQ"]
-                    :order-by  [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id") :asc]]}]
-          :where  [:<= {:s "rownum"} 100]}
-         (qp.test-util/with-everything-store
-           (#'sql.qp/mbql->honeysql
-            :oracle
-            (data/mbql-query venues
-              {:source-table $$venues
-               :order-by     [[:asc $id]]
-               :filter       [:=
-                              [:joined-field "test_data_categories__via__cat" $categories.name]
-                              [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
-               :fields       [$id $name $category_id $latitude $longitude $price]
-               :limit        100
-               :joins        [{:source-table $$categories
-                               :alias        "test_data_categories__via__cat",
-                               :strategy     :left-join
-                               :condition    [:=
-                                              $category_id
-                                              [:joined-field "test_data_categories__via__cat" $categories.id]]
-                               :fk-field-id  (data/id :venues :category_id)
-                               :fields       :none}]}))))
+    (is (= {:select [:*]
+            :from   [{:select
+                      [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id")
+                        (hx/identifier :field-alias "id")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "name")
+                        (hx/identifier :field-alias "name")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
+                        (hx/identifier :field-alias "category_id")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "latitude")
+                        (hx/identifier :field-alias "latitude")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "longitude")
+                        (hx/identifier :field-alias "longitude")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "price")
+                        (hx/identifier :field-alias "price")]]
+                      :from      [(hx/identifier :table oracle.tx/session-schema "test_data_venues")]
+                      :left-join [[(hx/identifier :table oracle.tx/session-schema "test_data_categories")
+                                   (hx/identifier :table-alias "test_data_categories__via__cat")]
+                                  [:=
+                                   (hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
+                                   (hx/identifier :field "test_data_categories__via__cat" "id")]]
+                      :where     [:=
+                                  (hx/identifier :field "test_data_categories__via__cat" "name")
+                                  "BBQ"]
+                      :order-by  [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id") :asc]]}]
+            :where  [:<= {:s "rownum"} 100]}
+           (qp.test-util/with-everything-store
+             (#'sql.qp/mbql->honeysql
+              :oracle
+              (data/mbql-query venues
+                {:source-table $$venues
+                 :order-by     [[:asc $id]]
+                 :filter       [:=
+                                [:joined-field "test_data_categories__via__cat" $categories.name]
+                                [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
+                 :fields       [$id $name $category_id $latitude $longitude $price]
+                 :limit        100
+                 :joins        [{:source-table $$categories
+                                 :alias        "test_data_categories__via__cat",
+                                 :strategy     :left-join
+                                 :condition    [:=
+                                                $category_id
+                                                [:joined-field "test_data_categories__via__cat" $categories.id]]
+                                 :fk-field-id  (data/id :venues :category_id)
+                                 :fields       :none}]}))))
         "Correct HoneySQL form should be generated")))

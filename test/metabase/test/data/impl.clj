@@ -111,7 +111,9 @@
      (locking (driver->create-database-lock driver)
        (or
         (tx/metabase-instance dbdef driver)
-        (create-database! driver dbdef))))))
+        (let [one-minute-ms (* 1000 60)]
+          (u/with-timeout (* 5 one-minute-ms)
+            (create-database! driver dbdef))))))))
 
 (defn- get-or-create-test-data-db!
   "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."
