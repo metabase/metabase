@@ -1,8 +1,8 @@
 (ns metabase.test.initialize
   "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
-            [metabase.plugins.classloader :as classloader]
-            [colorize.core :as colorize]))
+            [colorize.core :as colorize]
+            [metabase.plugins.classloader :as classloader]))
 
 (defmulti initialize-if-needed!
   "Initialize one or more components.

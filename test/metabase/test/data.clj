@@ -248,12 +248,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn fks-supported?
-  "Does the current engine support foreign keys?"
+  "Does the current driver support foreign keys?"
   []
-  (contains? (driver.u/features (or (tx/driver))) :foreign-keys))
+  (contains? (driver.u/features (tx/driver)) :foreign-keys))
 
 (defn binning-supported?
-  "Does the current engine support binning?"
+  "Does the current driver support binning?"
   []
   (contains? (driver.u/features (tx/driver)) :binning))
 

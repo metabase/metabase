@@ -45,7 +45,10 @@
        (driver/with-driver ~driver ~expected)
        (driver/with-driver ~driver ~actual))))
 
-(defmacro test-drivers {:style/indent 1} [drivers & body]
+(defmacro test-drivers
+  "Execute body (presumably containing tests) against `drivers`."
+  {:style/indent 1}
+  [drivers & body]
   `(doseq [driver# ~drivers]
      (with-driver-when-testing driver#
        (t/testing driver#
