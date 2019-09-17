@@ -119,7 +119,7 @@
                                                  {:order-by [[sort-order $category_id]]
                                                   :limit    10})
                                                qp.test/rows
-                                               (map last)))))
+                                               (mapv last)))))
         ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
         :desc
 
