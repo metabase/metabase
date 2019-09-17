@@ -211,6 +211,9 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
+          name: Update apt
+          command: sudo apt-get update
+      - run:
           name: Install gettext
           command: sudo apt-get install gettext
       - run:
