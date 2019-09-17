@@ -341,7 +341,6 @@ describe("LineAreaBarRenderer", () => {
 
       const {
         groups,
-        dimension,
         yExtents,
       } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
@@ -360,7 +359,6 @@ describe("LineAreaBarRenderer", () => {
 
       const {
         groups,
-        dimension,
         yExtents,
       } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
 
