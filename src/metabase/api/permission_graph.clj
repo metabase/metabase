@@ -1,7 +1,8 @@
 (ns metabase.api.permission-graph
+  "Tools for converting the permission graph's naive json conversion into the correct types"
   (:require [clojure.spec.alpha :as s]
-            [clojure.walk :as walk]
-            [clojure.spec.gen.alpha :as gen]))
+            [clojure.spec.gen.alpha :as gen]
+            [clojure.walk :as walk]))
 
 (defmulti convert first)
 
@@ -57,14 +58,33 @@
 (s/def ::db-graph (s/map-of ::id ::db-perms
                             :conform-keys true))
 
-(s/def ::groups (s/map-of ::id ::db-graph
-                          :conform-keys true))
 
-(s/def ::data-permissions-graph (s/keys :req-un [::groups]))
+(s/def :metabase.api.permission-graph.data/groups
+  (s/map-of ::id ::db-graph
+            :conform-keys true))
+
+(s/def ::data-permissions-graph
+  (s/keys :req-un [:metabase.api.permission-graph.data/groups]))
+
+
+(s/def ::collections
+  (s/map-of (s/or :identity ::id
+                  :str->kw  #{"root"})
+            (s/or :str->kw #{"read" "write" "none"})))
+
+(s/def ::collection-graph
+  (s/map-of ::id ::collections))
+
+(s/def :metabase.api.permission-graph.collection/groups
+  (s/map-of ::id ::collection-graph
+            :conform-keys true))
+
+(s/def ::collection-permissions-graph
+  (s/keys :req-un [:metabase.api.permission-graph.collection/groups]))
 
 (defn keywordized-json->graph
-  [kwj]
-  (->> (s/conform ::graph kwj)
+  [spec kwj]
+  (->> (s/conform spec kwj)
        (walk/postwalk (fn [x]
                         (if (and (vector? x) (get-method convert (first x)))
                           (convert x)
