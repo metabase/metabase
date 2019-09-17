@@ -1,6 +1,7 @@
 (ns metabase.test.initialize
   "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
+            [metabase.plugins.classloader :as classloader]
             [colorize.core :as colorize]))
 
 (defmulti initialize-if-needed!
@@ -42,14 +43,14 @@
          @~delay-symb))))
 
 (define-initialization :plugins
-  (require 'metabase.test.initialize.plugins)
+  (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
 
 (define-initialization :db
-  (require 'metabase.test.initialize.db)
+  (classloader/require 'metabase.test.initialize.db)
   ((resolve 'metabase.test.initialize.db/init!)))
 
 (define-initialization :web-server
   (initialize-if-needed! :db)
-  (require 'metabase.test.initialize.web-server)
+  (classloader/require 'metabase.test.initialize.web-server)
   ((resolve 'metabase.test.initialize.web-server/init!)))
