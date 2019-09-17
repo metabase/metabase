@@ -12,7 +12,6 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.sync.interface :as sync.i]
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
@@ -95,14 +94,13 @@
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
       (u/with-timeout sync-timeout
-        (binding [sync.i/*enable-parallel-sync* true]
-          (du/profile (format "Sync %s Database %s" driver database-name)
-            (sync/sync-database! db)
-            ;; add extra metadata for fields
-            (try
-              (add-extra-metadata! database-definition db)
-              (catch Throwable e
-                (println "Error adding extra metadata:" e))))))
+        (du/profile (format "Sync %s Database %s" driver database-name)
+          (sync/sync-database! db)
+          ;; add extra metadata for fields
+          (try
+            (add-extra-metadata! database-definition db)
+            (catch Throwable e
+              (println "Error adding extra metadata:" e)))))
       ;; make sure we're returing an up-to-date copy of the DB
       (Database (u/get-id db)))
     (catch Throwable e
