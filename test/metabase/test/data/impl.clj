@@ -12,10 +12,12 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.sync.interface :as sync.i]
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util.date :as du]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -74,6 +76,10 @@
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
   (* 4 60 1000)) ; 4 minutes
 
+(def ^:private sync-timeout
+  "Max amount of time to wait for sync to complete."
+  (* 5 60 1000)) ; five minutes
+
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
@@ -88,12 +94,15 @@
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
-      (sync/sync-database! db)
-      ;; add extra metadata for fields
-      (try
-        (add-extra-metadata! database-definition db)
-        (catch Throwable e
-          (println "Error adding extra metadata:" e)))
+      (u/with-timeout sync-timeout
+        (binding [sync.i/*enable-parallel-sync* true]
+          (du/profile (format "Sync %s Database %s" driver database-name)
+            (sync/sync-database! db)
+            ;; add extra metadata for fields
+            (try
+              (add-extra-metadata! database-definition db)
+              (catch Throwable e
+                (println "Error adding extra metadata:" e))))))
       ;; make sure we're returing an up-to-date copy of the DB
       (Database (u/get-id db)))
     (catch Throwable e
@@ -111,9 +120,7 @@
      (locking (driver->create-database-lock driver)
        (or
         (tx/metabase-instance dbdef driver)
-        (let [one-minute-ms (* 1000 60)]
-          (u/with-timeout (* 5 one-minute-ms)
-            (create-database! driver dbdef))))))))
+        (create-database! driver dbdef))))))
 
 (defn- get-or-create-test-data-db!
   "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."

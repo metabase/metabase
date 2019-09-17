@@ -90,13 +90,11 @@
 
 (deftest can-connect-test
   (datasets/test-driver :snowflake
-    (are [message expected details] (is (= expected
-                                           (driver/can-connect? :snowflake details))
-                                        message)
-      "can-connect? should return true for normal Snowflake DB details"
-      true
-      (:details (data/db))
-
-      "can-connect? should return false for Snowflake databases that don't exist (#9041)"
-      false
-      (assoc (:details (data/db)) :db (tu/random-name)))))
+    (let [can-connect? (fn [details]
+                         (driver/can-connect? :snowflake details))]
+      (is (= true
+             (can-connect? (:details (data/db))))
+          "can-connect? should return true for normal Snowflake DB details")
+      (is (= false
+             (can-connect? (assoc (:details (data/db)) :db (tu/random-name))))
+          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
