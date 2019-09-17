@@ -23,19 +23,27 @@
   to (such as a typo in the translated version of the string), log the failure but return the original (untranslated)
   string. This is a workaround for translations that, due to a typo, will fail to parse using Java's message
   formatter."
-  [locale-fn ns-str msg args]
+  [locale ns-str msg args]
   (try
-    (apply i18n/translate ns-str (locale-fn) msg args)
+    (apply i18n/translate ns-str (locale) msg args)
     (catch IllegalArgumentException e
       ;; Not translating this string to prevent an unfortunate stack overflow. If this string happened to be the one
       ;; that had the typo, we'd just recur endlessly without logging an error.
       (log/errorf e "Unable to translate string '%s'" msg)
       msg)))
 
+(def ^{:arglists '([ns-str msg args])} translate-system-locale
+  "Translate a string with the System locale."
+  (partial translate i18n/system-locale))
+
+(def ^{:arglists '([ns-str msg args])} translate-user-locale
+  "Translate a string with the current User's locale."
+  (partial translate i18n/user-locale))
+
 (p.types/defrecord+ UserLocalizedString [ns-str msg args]
   Object
   (toString [_]
-    (translate i18n/user-locale ns-str msg args))
+    (translate-user-locale ns-str msg args))
   schema.core.Schema
   (explain [this]
     (str this)))
@@ -43,7 +51,7 @@
 (p.types/defrecord+ SystemLocalizedString [ns-str msg args]
   Object
   (toString [_]
-    (translate i18n/system-locale ns-str msg args))
+    (translate-system-locale ns-str msg args))
   s/Schema
   (explain [this]
     (str this)))
