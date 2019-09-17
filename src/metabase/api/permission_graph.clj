@@ -1,10 +1,15 @@
 (ns metabase.api.permission-graph
-  "Tools for converting the permission graph's naive json conversion into the correct types"
+  "Convert the permission graph's naive json conversion into the correct types.
+  
+  The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
+  then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
             [clojure.walk :as walk]))
 
-(defmulti convert first)
+(defmulti convert
+  "convert values from the naively converted json to what we REALLY WANT"
+  first)
 
 (defmethod convert :kw->int
   [[_ k]]
@@ -26,17 +31,21 @@
   [[_ x]]
   x)
 
-(s/def ::revision pos-int?)
+;;; --------------------------------------------------- Common ----------------------------------------------------
 
-;; ids can be represented as nums or kws
-;; TODO create generator s/with-gen
+;; ids come in asa keywordized numbers
 (s/def ::id (s/with-gen (s/or :kw->int (s/and keyword? #(re-find #"^\d+$" (name %))))
               #(gen/fmap (comp keyword str) (s/gen pos-int?))))
+
 (s/def ::native (s/or :str->kw #{"write" "none"}
                       :nil->none nil?))
 
+;;; --------------------------------------------------- Data Permissions ----------------------------------------------------
+
 (s/def ::schema-name (s/or :kw->str keyword?))
 
+;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms-granular}}}} =>
+;; {:groups {1 {:schemas {"PUBLIC" {1 :all}}}}}
 (s/def ::schema-perm-granular (s/map-of ::id (s/or :str->kw #{"all" "segmented" "none"})
                                         :conform-keys true))
 
@@ -52,7 +61,6 @@
                        :nil->none nil?
                        :identity  ::schema-graph))
 
-;; TODO how to enforce that missing key should be :none? a conformer?
 (s/def ::db-perms (s/keys :opt-un [::native ::schemas]))
 
 (s/def ::db-graph (s/map-of ::id ::db-perms
@@ -66,6 +74,8 @@
 (s/def ::data-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.data/groups]))
 
+
+;;; --------------------------------------------------- Collection Permissions ----------------------------------------------------
 
 (s/def ::collections
   (s/map-of (s/or :identity ::id
@@ -82,7 +92,9 @@
 (s/def ::collection-permissions-graph
   (s/keys :req-un [:metabase.api.permission-graph.collection/groups]))
 
-(defn keywordized-json->graph
+(defn converted-json->graph
+  "The permissions graph is received as JSON. That JSON is naively converted. This performs a further conversion to
+  convert graph keys and values to the types we want to work with."
   [spec kwj]
   (->> (s/conform spec kwj)
        (walk/postwalk (fn [x]
