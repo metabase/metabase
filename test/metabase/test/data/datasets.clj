@@ -4,7 +4,6 @@
 
   TODO - rename this to `metabase.driver.test-extensions.expect` or `metabase.driver.test` or something like that"
   (:require [clojure.test :as t]
-            [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.test.data.env :as tx.env]))
 
@@ -35,18 +34,9 @@
        (driver/with-driver driver#
          ~@body))))
 
-(defmacro ^:deprecated expect-with-driver
-  "Generate a unit test that only runs if we're currently testing against `driver`, and that binds `*driver*` when it
-  runs."
-  {:style/indent 1}
-  [driver expected actual]
-  `(when-testing-driver ~driver
-     (expect
-       (driver/with-driver ~driver ~expected)
-       (driver/with-driver ~driver ~actual))))
-
 (defmacro test-drivers
-  "Execute body (presumably containing tests) against `drivers`."
+  "Execute body (presumably containing tests) against the drivers in `drivers` that  we're currently testing against
+  (i.e., if they're listed in the env var `DRIVERS`)."
   {:style/indent 1}
   [drivers & body]
   `(doseq [driver# ~drivers]
@@ -58,7 +48,7 @@
   "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
   corresponding driver. `*driver*` is bound to the current driver inside each test.
 
-  DEPRECATED: use `test-drivers` instead."
+  DEPRECATED: use `deftest` with `test-drivers` instead."
   {:style/indent 1}
   [drivers expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
@@ -69,7 +59,18 @@
          (test-drivers ~drivers
            (t/is (~'expect= ~expected ~actual)))))))
 
-(defmacro test-all-drivers [& body]
+(defmacro ^:deprecated expect-with-driver
+  "Generate a unit test that only runs if we're currently testing against `driver`, and that binds `*driver*` when it
+  runs.
+
+  DEPRECATED: Use `deftest` with `test-drivers` instead."
+  {:style/indent 1}
+  [driver expected actual]
+  `(expect-with-drivers [~driver] ~expected ~actual))
+
+(defmacro test-all-drivers
+  "Execute body (presumably containing tests) against all drivers we're currently testing against."
+  [& body]
   `(test-drivers tx.env/test-drivers ~@body))
 
 (defmacro ^:deprecated expect-with-all-drivers

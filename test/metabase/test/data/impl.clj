@@ -143,18 +143,23 @@
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
-        (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
-                                   (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
+        (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
+          (throw
+           (Exception. (format "No Table '%s' found for %s Database %d '%s'.\nFound: %s"
+                               table-name driver db-id db-name
+                               (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   {:pre [((some-fn keyword? string?) field-name)]}
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (throw (Exception.
-              (format "Couldn't find Field %s for Table %d.\nFound: %s"
-                      (str \' field-name \' (when parent-id
-                                              (format " (parent: %d)" parent-id)))
-                      table-id
-                      (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id)))))))
+      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name] :id table-id)
+            {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
+            field-name                       (str \' field-name \' (when parent-id
+                                                                     (format " (parent: %d)" parent-id)))]
+        (throw
+         (Exception. (format "Couldn't find Field %s for Table %d '%s' (%s Database %d '%s') .\nFound: %s"
+                             field-name table-id table-name driver db-id db-name
+                             (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id))))))))
 
 (defn the-field-id
   "Internal impl of `(data/id table field)`."

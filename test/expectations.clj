@@ -4,8 +4,6 @@
              [test :as t]]
             [methodical.core :as m]))
 
-(def compare-expr* nil) ; NOCOMMIT
-
 ;; Basically a Chain of Responibility pattern: we try each impl in turn until one of them accepts the args and returns
 ;; a report
 (m/defmulti ^:private compare-expr*
