@@ -36,9 +36,10 @@
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [engine non-timeseries-drivers
-               :when  (set/subset? features (driver.u/features engine))]
-           engine))))
+    (set (for [driver non-timeseries-drivers
+               :let   [driver (tx/the-driver-with-test-extensions driver)]
+               :when  (set/subset? features (driver.u/features driver))]
+           driver))))
 
 (defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."

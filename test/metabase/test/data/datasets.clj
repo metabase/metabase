@@ -5,7 +5,9 @@
   TODO - rename this to `metabase.driver.test-extensions.expect` or `metabase.driver.test` or something like that"
   (:require [clojure.test :as t]
             [metabase.driver :as driver]
-            [metabase.test.data.env :as tx.env]))
+            [metabase.test.data
+             [env :as tx.env]
+             [interface :as tx]]))
 
 ;; # Helper Macros
 
@@ -31,7 +33,7 @@
   [driver & body]
   `(let [driver# ~driver]
      (when-testing-driver driver#
-       (driver/with-driver driver#
+       (driver/with-driver (tx/the-driver-with-test-extensions driver#)
          ~@body))))
 
 (defmacro test-drivers
@@ -43,6 +45,12 @@
      (with-driver-when-testing driver#
        (t/testing driver#
          ~@body))))
+
+(defmacro test-driver
+  "Like `test-drivers`, but for a single driver."
+  {:style/indent 1}
+  [driver & body]
+  `(test-drivers [~driver] ~@body))
 
 (defmacro ^:deprecated expect-with-drivers
   "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
@@ -63,7 +71,7 @@
   "Generate a unit test that only runs if we're currently testing against `driver`, and that binds `*driver*` when it
   runs.
 
-  DEPRECATED: Use `deftest` with `test-drivers` instead."
+  DEPRECATED: Use `deftest` with `test-driver` instead."
   {:style/indent 1}
   [driver expected actual]
   `(expect-with-drivers [~driver] ~expected ~actual))

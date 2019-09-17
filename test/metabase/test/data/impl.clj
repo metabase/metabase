@@ -152,7 +152,7 @@
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   {:pre [((some-fn keyword? string?) field-name)]}
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name] :id table-id)
+      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
             {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
             field-name                       (str \' field-name \' (when parent-id
                                                                      (format " (parent: %d)" parent-id)))]
