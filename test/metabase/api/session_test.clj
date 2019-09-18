@@ -18,8 +18,11 @@
             [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
+            [metabase.test.fixtures :as fixtures]
             [toucan.util.test :as tt])
   (:import java.util.UUID))
+
+(use-fixtures :once (fixtures/initialize :web-server))
 
 ;; ## POST /api/session
 ;; Test that we can login
