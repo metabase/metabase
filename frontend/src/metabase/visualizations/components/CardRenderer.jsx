@@ -85,8 +85,8 @@ export default class CardRenderer extends Component {
       // content to prevent interaction with the chart. The !isSettings
       // exception is to handle modals that appear above a dashboard.
       const mouseBlocker = document.createElement("div");
-      mouseBlocker.classList = "spread";
-      mouseBlocker.style = "pointer-events: all;";
+      mouseBlocker.classList.add("spread");
+      mouseBlocker.style.setProperty("pointer-events", "all");
       parent.appendChild(mouseBlocker);
     }
 
