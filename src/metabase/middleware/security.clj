@@ -18,7 +18,6 @@
 
 (def ^:private ^:const index-bootstrap-js-hash (file-hash "frontend_client/inline_js/index_bootstrap.js"))
 (def ^:private ^:const index-ganalytics-js-hash (file-hash "frontend_client/inline_js/index_ganalytics.js"))
-(def ^:private ^:const index-webfontconfig-js-hash (file-hash "frontend_client/inline_js/index_webfontconfig.js"))
 (def ^:private ^:const init-js-hash (file-hash "frontend_client/inline_js/init.js"))
 
 (defonce ^:private ^:const inline-js-hashes
@@ -30,8 +29,6 @@
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in index.html that loads Google Analytics
                      "frontend_client/inline_js/index_ganalytics.js"
-                     ;; Web Font Loader font configuration (WebFontConfig) in index.html
-                     "frontend_client/inline_js/index_webfontconfig.js"
                      ;; inline script in init.html
                      "frontend_client/inline_js/init.js"])))
 
