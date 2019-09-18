@@ -1,9 +1,10 @@
 (ns metabase.models.dependency-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.dependency :as dep :refer [Dependency]]
-            [clojure.test :refer :all]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.util.date :as du]
             [toucan
              [db :as db]

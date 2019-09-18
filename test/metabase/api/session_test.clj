@@ -13,12 +13,13 @@
             [metabase.models
              [session :refer [Session]]
              [user :refer [User]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
-            [metabase.test.fixtures :as fixtures]
             [toucan.util.test :as tt])
   (:import java.util.UUID))
 
