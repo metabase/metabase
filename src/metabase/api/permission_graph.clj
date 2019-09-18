@@ -1,6 +1,6 @@
 (ns metabase.api.permission-graph
   "Convert the permission graph's naive json conversion into the correct types.
-  
+
   The strategy here is to use s/conform to tag every value that needs to be converted with the conversion strategy,
   then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
