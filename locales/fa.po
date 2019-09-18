@@ -1061,8 +1061,8 @@ msgid "We couldn’t send them an email invitation,\n"
 "so make sure to tell them to log in using {0}\n"
 "and this password we’ve generated for them:"
 msgstr "ما نمی توانیم آنها را دعوت نامه ای بفرستیم\n"
-"بنابراین اطمینان حاصل کنید که آنها را وارد کنید با استفاده از {0}\n"
-"و این رمز عبور که برای آنها ایجاد کردیم:"
+"{بنابراین اطمینان حاصل کنید که آنها را وارد کنید با استفاده از {0"
+":و این رمز عبور که برای آنها ایجاد کردیم\n"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:73
 msgid "If you want to be able to send email invites, just go to the {0} page."
@@ -1086,7 +1086,7 @@ msgstr "هر گونه دعوتنامه ایمیل قبلی آنها دیگر ک�
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:31
 msgid "Deactivate {0}?"
-msgstr "غیر فعال کردن {0}"
+msgstr "{غیر فعال کردن {0"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:34
 msgid "{0} won't be able to log in anymore."
@@ -1410,7 +1410,7 @@ msgstr "این یک عدد صحیح معتبر نیست"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:223
 msgid "Changes saved!"
-msgstr "تغییرات ذخیره شد!"
+msgstr "!تغییرات ذخیره شد"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:157
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:132
@@ -1423,11 +1423,11 @@ msgstr "ارسال ایمیل آزمایشی"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:13
 msgid "Sending..."
-msgstr "درحال ارسال..."
+msgstr "… درحال ارسال"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:14
 msgid "Sent!"
-msgstr "ارسال شد!"
+msgstr "!ارسال شد"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:82
 msgid "Clear"
@@ -1465,7 +1465,7 @@ msgstr "راه اندازی"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
 msgid "A few things you can do to get the most out of Metabase."
-msgstr "چند چیز که می توانید انجام دهید برای به دست آوردن بیشتر از Metabase."
+msgstr "Metabase چند چیز که می توانید انجام دهید برای به دست آوردن بیشتر از"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
 msgid "Recommended next step"
@@ -1505,7 +1505,7 @@ msgstr "شما Metabase {0} را اجرا می کنید که آخرین و بز�
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:100
 msgid "Metabase {0} is available.  You're running {1}"
-msgstr "Metabase {0} در دسترس است شما در حال اجرا {1}"
+msgstr "{در دسترس است. شما در حال اجرا {1 Metabase {0}"
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm.jsx:113
 #: frontend/src/metabase/components/form/StandardForm.jsx:69
@@ -1545,11 +1545,11 @@ msgstr "پاک کردن"
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:148
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:189
 msgid "Select…"
-msgstr "اتخاب..."
+msgstr "…اتخاب"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:243
 msgid "Sample values:"
-msgstr "متغیر نمونه"
+msgstr ":متغیر نمونه"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:281
 msgid "Add a new map"
@@ -1740,7 +1740,7 @@ msgstr "غیرفعال سازی"
 
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:120
 msgid "Unknown setting {0}"
-msgstr "تنظیم ناشناخته {0}"
+msgstr "{تنظیم ناشناخته {0"
 
 #: frontend/src/metabase/admin/settings/selectors.js:23
 msgid "Setup"
@@ -12991,15 +12991,15 @@ msgstr "می توانید زمینه binned را به روز نکنید: پرس 
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr “''{زمینه بنه به روزرسانی نمی شود: یافت نشد. منبع داده منطبق با فیلد ''{0”
+msgstr "''{زمینه بنه به روزرسانی نمی شود: یافت نشد. منبع داده منطبق با فیلد ''{0"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Using query processor cache backend: {0}"
-msgstr "با استفاده از پس زمینه حافظه نهان پردازنده پرس و جو: {0}"
+msgstr "{با استفاده از پس زمینه حافظه نهان پردازنده پرس و جو: {0"
 
 #: src/metabase/query_processor/middleware/expand_macros.clj
 msgid "Invalid metric: {0} reason: {1}"
-msgstr "اندازه گیری نامعتبر: {0} دلیل: {1}"
+msgstr "{اندازه گیری نامعتبر: {0} دلیل: {1"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Unknown error"
