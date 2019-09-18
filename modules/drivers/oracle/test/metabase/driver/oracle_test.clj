@@ -3,6 +3,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -157,7 +158,7 @@
                                   (hx/identifier :field "test_data_categories__via__cat" "name")
                                   "BBQ"]
                       :order-by  [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id") :asc]]}]
-            :where  [:<= {:s "rownum"} 100]}
+            :where  [:<= (hsql/raw "rownum") 100]}
            (qp.test-util/with-everything-store
              (#'sql.qp/mbql->honeysql
               :oracle
