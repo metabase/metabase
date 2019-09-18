@@ -258,7 +258,7 @@
                            ;; disabled (yet)
                            ;;
                            ;; For example see https://github.com/jonase/eastwood/issues/193
-                                                                      ;
+                           ;;
                            ;; It's still useful to re-enable them and run them every once in a while because they catch
                            ;; a lot of actual errors too. Keep an eye on the issue above and re-enable them if we can
                            ;; get them to work

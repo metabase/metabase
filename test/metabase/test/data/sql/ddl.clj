@@ -73,9 +73,7 @@
 
 (defmethod insert-rows-honeysql-form :sql/test-extensions
   [driver table-identifier row-or-rows]
-  (let [rows    (if (sequential? row-or-rows)
-                  row-or-rows
-                  [row-or-rows])
+  (let [rows    (u/one-or-many row-or-rows)
         columns (keys (first rows))
         values  (for [row rows]
                   (for [value (map row columns)]
