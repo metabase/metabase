@@ -46,18 +46,26 @@
 
 ;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms-granular}}}} =>
 ;; {:groups {1 {:schemas {"PUBLIC" {1 :all}}}}}
-(s/def ::schema-perm-granular (s/map-of ::id (s/or :str->kw #{"all" "segmented" "none"})
-                                        :conform-keys true))
+(s/def ::read (s/or :str->kw #{"all" "none"}))
+(s/def ::query (s/or :str->kw #{"all" "none" "segmented"}))
 
-(s/def ::schema-perms (s/or :str->kw #{"all" "none"}
-                            :identity ::schema-perm-granular))
+(s/def ::table-perms-granular (s/keys :opt-un [::read ::query]))
+
+(s/def ::table-perms (s/or :str->kw #{"all" "segmented" "none"}
+                           :identity ::table-perms-granular))
+
+(s/def ::table-graph (s/map-of ::id ::table-perms
+                               :conform-keys true))
+
+(s/def ::schema-perms (s/or :str->kw #{"all" "segmented" "none"}
+                            :identity ::table-graph))
 
 ;; {:groups {1 {:schemas {"PUBLIC" ::schema-perms}}}}
 (s/def ::schema-graph (s/map-of ::schema-name ::schema-perms
                                 :conform-keys true))
 
 ;; {:groups {1 {:schemas ::schemas}}}
-(s/def ::schemas (s/or :str->kw   #{"all" "none"}
+(s/def ::schemas (s/or :str->kw   #{"all" "segmented" "none"}
                        :nil->none nil?
                        :identity  ::schema-graph))
 
