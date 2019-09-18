@@ -25,6 +25,8 @@ export default class CardRenderer extends Component {
     series: PropTypes.array.isRequired,
     renderer: PropTypes.func.isRequired,
     onRenderError: PropTypes.func.isRequired,
+    isEditing: PropTypes.bool,
+    isDashboard: PropTypes.bool,
   };
 
   _deregister: ?DeregisterFunction;
@@ -69,14 +71,22 @@ export default class CardRenderer extends Component {
     this._deregisterChart();
 
     // reset the DOM:
-    let element = parent.firstChild;
-    if (element) {
-      parent.removeChild(element);
+    for (const child of parent.children) {
+      parent.removeChild(child);
     }
 
     // create a new container element
-    element = document.createElement("div");
+    const element = document.createElement("div");
     parent.appendChild(element);
+
+    if (this.props.isDashboard && this.props.isEditing) {
+      // If this card is a dashboard that's currently being edited, we cover the
+      // content to prevent interaction with the chart.
+      const mouseBlocker = document.createElement("div");
+      mouseBlocker.classList = "spread";
+      mouseBlocker.style = "pointer-events: all;";
+      parent.appendChild(mouseBlocker);
+    }
 
     try {
       this._deregister = this.props.renderer(element, this.props);
