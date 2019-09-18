@@ -215,7 +215,7 @@ jobs:
           command: sudo apt-get update
       - run:
           name: Install gettext
-          command: sudo apt-get update && sudo apt-get install gettext
+          command: sudo apt-get install gettext
       - run:
           name: Verify i18n .po files
           command: ./bin/i18n/build-translation-resources
