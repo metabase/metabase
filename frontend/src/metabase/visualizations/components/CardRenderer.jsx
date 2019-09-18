@@ -61,7 +61,8 @@ export default class CardRenderer extends Component {
   }
 
   renderChart() {
-    if (this.props.width == null || this.props.height == null) {
+    const { width, height, isDashboard, isEditing, isSettings } = this.props;
+    if (width == null || height == null) {
       return;
     }
 
@@ -79,9 +80,10 @@ export default class CardRenderer extends Component {
     const element = document.createElement("div");
     parent.appendChild(element);
 
-    if (this.props.isDashboard && this.props.isEditing) {
+    if (isDashboard && isEditing && !isSettings) {
       // If this card is a dashboard that's currently being edited, we cover the
-      // content to prevent interaction with the chart.
+      // content to prevent interaction with the chart. The !isSettings
+      // exception is to handle modals that appear above a dashboard.
       const mouseBlocker = document.createElement("div");
       mouseBlocker.classList = "spread";
       mouseBlocker.style = "pointer-events: all;";
