@@ -272,9 +272,7 @@ msgstr "بررسی انجام نگرفت"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Scan triggered!"
-msgstr "اسکن شروع شد\n"
-"\n"
-""
+msgstr "اسکن شروع شد"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:218
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
@@ -9530,13 +9528,11 @@ msgstr "HH:MM"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:240
 msgid "HH:MM:SS"
-msgstr "HH:MM:SS\n"
-""
+msgstr "HH:MM:SS"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:243
 msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS\n"
-""
+msgstr "HH:MM:SS.MS"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:254
 msgid "Time style"
@@ -9809,8 +9805,7 @@ msgstr "فقط یک بخش Google Analytics به طور همزمان مجاز ا
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr "MONGO AGGREGATION PIPELINE:\n"
-""
+msgstr ":خط لوله مونگو"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
@@ -10184,8 +10179,7 @@ msgstr "رویدادها در هر ساعت از روز"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Singleton]]"
-msgstr "[[Singleton]]\n"
-""
+msgstr "[[Singleton]]"
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
@@ -10686,8 +10680,7 @@ msgstr "10 کشور برتر با فروش"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Timestamp]]"
-msgstr "[[Timestamp]]\n"
-""
+msgstr "[[Timestamp]]"
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Where these transactions happened"
@@ -11353,8 +11346,7 @@ msgstr "کلاس"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 msgid "Triggers"
-msgstr "ماشه ها\n"
-""
+msgstr "ماشه ها"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
 msgid "View triggers"
@@ -11722,8 +11714,7 @@ msgstr "بانک اطلاعاتی نمی توانند در دایرکتوری م
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.\n"
-""
+msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -12033,8 +12024,7 @@ msgstr "[[CreateTimestamp]] تا چهارم سال"
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
-msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی\n"
-""
+msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at your [[this]] by products"
@@ -12207,8 +12197,7 @@ msgstr "{0} به اتمام رسید به {1}"
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
-msgstr "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id.\n"
-""
+msgstr "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
 
 #: src/metabase/api/segment.clj
 msgid "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
@@ -12544,8 +12533,7 @@ msgstr "تجمیع"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:68
 msgid "Breakout"
-msgstr "Breakout\n"
-""
+msgstr "برک آوت"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:18
 msgid "Pick the metric you want to see"
@@ -12696,8 +12684,7 @@ msgstr "این معمولاً خیلی سریع است اما به نظر می �
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Combo"
-msgstr "Combo\n"
-""
+msgstr "ترکیب"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:13
 msgid "Row"
@@ -12709,7 +12696,7 @@ msgstr "روند"
 
 #: frontend/src/metabase-lib/lib/DimensionOptions.js:129
 msgid "Boolean"
-msgstr "Boolean"
+msgstr "بول"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:59
 msgid "Unknown Segment"
@@ -12927,37 +12914,36 @@ msgstr "ستون {0} پیش بینی شده است ، اما ردیف اول ا�
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "No expression named {0} found. Found: {1}"
-msgstr "هیچ عبارتی به نام {0} یافت نشد. یافت شده: {1}"
+msgstr "{هیچ عبارتی به نام {0} یافت نشد. یافت شده: {1"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Distinct values of {0}"
-msgstr "مقادیر مشخص {0}"
+msgstr "{مقادیر مشخص {0"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Average of {0}"
-msgstr "میانگین {0}"
+msgstr "{میانگین {0"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Sum of {0}"
-msgstr "جمع {0}"
+msgstr "{جمع {0"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "SD of {0}"
-msgstr "SD of {0}"
+msgstr "{0} انحراف استاندارد از"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Min of {0}"
-msgstr "Min of {0}\n"
-""
+msgstr "{0} حداقل از"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Max of {0}"
-msgstr "Max of {0}"
+msgstr "{0} حداکثر از"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Sum of {0} matching condition"
-msgstr "مجموع شرط تطبیق {0}"
+msgstr "{مجموع شرط تطبیق {0"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Share of rows matching condition"
@@ -12977,7 +12963,7 @@ msgstr "به طور غیر منتظره پاسخ 'nil' پردازنده Query ر
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Got InterruptedException. Canceling query."
-msgstr "InterpreException در حال لغو پرس و جو"
+msgstr "InterruptedException در حال لغو پرس و جو"
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, exepected `catch-exceptions` middleware to handle it."
@@ -12989,11 +12975,11 @@ msgstr "زمان پرس و جو بعد از %s پایان یافت"
 
 #: src/metabase/query_processor/middleware/async_wait.clj
 msgid "Creating new query thread pool for Database {0}"
-msgstr "ایجاد استخر جدید برای جستجوی موضوعات برای پایگاه داده {0}"
+msgstr "{ایجاد استخر جدید برای جستجوی موضوعات برای پایگاه داده {0"
 
 #: src/metabase/query_processor/middleware/async_wait.clj
 msgid "Destroying query thread pool for Database {0}"
-msgstr "از بین بردن استخر موضوع جستجو برای بانک اطلاعات {0}"
+msgstr "{از بین بردن استخر موضوع جستجو برای بانک اطلاعات {0"
 
 #: src/metabase/query_processor/middleware/async_wait.clj
 msgid "Request canceled, canceling pending query"
@@ -13005,7 +12991,7 @@ msgstr "می توانید زمینه binned را به روز نکنید: پرس 
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr "زمینه بنه به روزرسانی نمی شود: یافت نشد. منبع داده منطبق با فیلد '' {0}''"
+msgstr “''{زمینه بنه به روزرسانی نمی شود: یافت نشد. منبع داده منطبق با فیلد ''{0”
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Using query processor cache backend: {0}"
@@ -13041,11 +13027,11 @@ msgstr "استفاده از فیلدها امکان پذیر نیست: زمین�
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
-msgstr "بد: بند پیوستن به فیلد: پیوستن به نام مستعار '' {0} '' وجود ندارد. یافت شده: {1}"
+msgstr "{بد: بند پیوستن به فیلد: پیوستن به نام مستعار ''{0}'' وجود ندارد. یافت شده: {1"
 
 #: src/metabase/query_processor/middleware/resolve_source_table.clj
 msgid "Invalid :source-table ''{0}'': should be resolved to a Table ID by now."
-msgstr "نامعتبر: جدول مبدأ '' {0} '' ': اکنون باید به شناسه جدول حل شود."
+msgstr "نامعتبر: جدول مبدأ ''{0}'' ': اکنون باید به شناسه جدول حل شود."
 
 #: src/metabase/query_processor/store.clj
 msgid "Cannot store Tables or Fields before Database is stored."
@@ -13065,11 +13051,11 @@ msgstr "واگذاری زمینه {0} انجام نشد: فیلد وجود ند�
 
 #: src/metabase/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
-msgstr "الگوی '' {0} '' بارگیری نشد. یادتان هست که جبهه Metabase را بسازید؟"
+msgstr "الگوی ''{0}'' بارگیری نشد. یادتان هست که جبهه Metabase را بسازید؟"
 
 #: src/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
-msgstr "نمونه پرونده داده {DB '' {0'' یافت نشد."
+msgstr "نمونه پرونده داده DB ''{0}'' یافت نشد."
 
 #: src/metabase/sample_data.clj
 msgid "Loading sample dataset..."
@@ -13081,19 +13067,19 @@ msgstr "بارگیری مجموعه داده نمونه انجام نشد"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
-msgstr "جداول جدید یافت:"
+msgstr ":جداول جدید یافت"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Marking tables as inactive:"
-msgstr "علامت گذاری جداول به عنوان غیرفعال:"
+msgstr ":علامت گذاری جداول به عنوان غیرفعال"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Updating description for tables:"
-msgstr "به روزرسانی توضیحات برای جداول:"
+msgstr ":به روزرسانی توضیحات برای جداول"
 
 #: src/metabase/task.clj
 msgid "Rescheduling job {0}"
-msgstr "تنظیم مجدد کار {0}"
+msgstr "{تنظیم مجدد کار {0"
 
 #: src/metabase/task.clj
 msgid "Error rescheduling job"
@@ -13101,11 +13087,11 @@ msgstr "خطا در تنظیم مجدد کار"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Starting Pulse Execution: {0}"
-msgstr "شروع اجرای پالس: {0}"
+msgstr "{شروع اجرای پالس: {0"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Finished Pulse Execution: {0}"
-msgstr "اجرای پالس به پایان رسید: {0}"
+msgstr "{اجرای پالس به پایان رسید: {0"
 
 #: src/metabase/task/sync_databases.clj
 msgid "Failed to schedule tasks for Database {0}"
@@ -13113,9 +13099,9 @@ msgstr "برنامه ریزی وظایف برای بانک اطلاعات {0} ا
 
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
-msgstr "همه عناصر باید مشخص باشند."
+msgstr ".همه عناصر باید مشخص باشند"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "ستون هایی را که می خواهید گنجانید انتخاب کنید"
@@ -13134,13 +13120,13 @@ msgstr "نمی دانید چگونه شناسه {0} ، انتظار می رود 
 
 #: src/metabase/integrations/common.clj
 msgid "Error adding User {0} to Group {1}"
-msgstr "خطا در افزودن کاربر {0} به گروه {1}"
+msgstr "{خطا در افزودن کاربر {0} به گروه {1"
 
 #. now rehumanize all the Tables and Fields using the new strategy.
 #. TODO: Should we do this in a background thread because it is potentially slow?
 #: src/metabase/models/humanization.clj
 msgid "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
-msgstr "تغییر استراتژی انسان سازی جدول و زمینه از '' {0} ''به ''{1}''"
+msgstr "''{تغییر استراتژی انسان سازی جدول و زمینه از ''{0}'' به ''{1"
 
 #: src/metabase/query_processor.clj
 msgid "Infinite loop detected: recursively preprocessed query {0} times."
@@ -13157,4 +13143,3 @@ msgstr "خطا در تعیین ستون های مورد انتظار برای پ
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "استثناء نامحدود ، انتظار می رود واسطه میانجی \"گرفتن استثناء\" برای رسیدگی به آن."
-
