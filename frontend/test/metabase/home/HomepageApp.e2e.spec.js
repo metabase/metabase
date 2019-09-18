@@ -44,7 +44,11 @@ describe("HomepageApp", () => {
     // Create some entities that will show up in the top of activity feed
     // This test doesn't care if there already are existing items in the feed or not
     // Delays are required for having separable creation times for each entity
-    cleanup.question(await createSavedQuestion(unsavedOrderCountQuestion));
+    cleanup.question(
+      await createSavedQuestion(
+        unsavedOrderCountQuestion.setDisplayName("# orders data"),
+      ),
+    );
     await delay(100);
     cleanup.segment(
       await SegmentApi.create({
