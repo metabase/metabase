@@ -1061,8 +1061,8 @@ msgid "We couldn’t send them an email invitation,\n"
 "so make sure to tell them to log in using {0}\n"
 "and this password we’ve generated for them:"
 msgstr "ما نمی توانیم آنها را دعوت نامه ای بفرستیم\n"
-"{بنابراین اطمینان حاصل کنید که آنها را وارد کنید با استفاده از {0"
-":و این رمز عبور که برای آنها ایجاد کردیم\n"
+"{بنابراین اطمینان حاصل کنید که آنها را وارد کنید با استفاده از {0\n"
+":و این رمز عبور که برای آنها ایجاد کردیم"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:73
 msgid "If you want to be able to send email invites, just go to the {0} page."
