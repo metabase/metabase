@@ -70,3 +70,17 @@
               [:groups (u/get-id group) (data/id) :schemas]
               {"PUBLIC" {(data/id :venues) {:read :all, :query :segmented}}}))
    (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))
+
+;; permissions for new dba
+(expect
+  :all
+  (let [new-id (inc (data/id))]
+    (tt/with-temp PermissionsGroup [group]
+      (test-users/create-users-if-needed!)
+      ((test-users/user->client :crowberto) :put 200 "permissions/graph"
+       (assoc-in (perms/graph)
+                 [:groups (u/get-id group) new-id :schemas]
+                 :all))
+      (get-in (perms/graph) [:groups (u/get-id group) new-id :schemas]))))
+
+;; figure out failing case for when old doesn't exist
