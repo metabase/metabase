@@ -4,9 +4,7 @@
             [metabase
              [metabot :as metabot]
              [util :as u]]
-            [metabase.api
-             [common :as api]
-             [permission-graph :as pg]]
+            [metabase.api.common :as api]
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]
@@ -56,8 +54,6 @@
   "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
   parsing object keys as integers."
   [graph]
-  ;; Another approach to performing this conversion
-  ;; (pg/converted-json->graph ::pg/data-permissions-graph graph)
   (update graph :groups dejsonify-groups))
 
 
