@@ -2,10 +2,10 @@
   "Tests for `/api/permissions` endpoints."
   (:require [expectations :refer :all]
             [metabase.models
-             [table :refer [Table]]
              [database :refer [Database]]
              [permissions :as perms]
-             [permissions-group :as group :refer [PermissionsGroup]]]
+             [permissions-group :as group :refer [PermissionsGroup]]
+             [table :refer [Table]]]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
