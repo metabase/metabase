@@ -113,7 +113,6 @@
                                 :name                    "Foo"
                                 :type                    :external
                                 :human_readable_field_id (data/id :categories :name)})])
-      (println "(data/$ids $venues.category_id->categories.name):" (data/$ids $venues.category_id->categories.name)) ; NOCOMMIT
       (are [expected sort-order] (testing (format "sort order = %s" sort-order)
                                    (is (= expected
                                           (->> (data/run-mbql-query venues

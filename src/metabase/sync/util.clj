@@ -118,8 +118,7 @@
 (defn with-start-and-finish-debug-logging
   "Similar to `with-start-and-finish-logging except invokes `f` and returns its result and logs at the debug level"
   [message f]
-  ;; NOCOMMIT
-  (with-start-and-finish-logging* #(log/error %) message f))
+  (with-start-and-finish-logging* #(log/info %) message f))
 
 (defn- with-db-logging-disabled
   "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid
