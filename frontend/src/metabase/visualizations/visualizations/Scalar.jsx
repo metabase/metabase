@@ -33,6 +33,10 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .value();
 }
 
+// used below to determine whether we show compact formatting
+const COMPACT_MAX_WIDTH = 250;
+const COMPACT_MIN_LENGTH = 6;
+
 // Scalar visualization shows a single number
 // Multiseries Scalar is transformed to a Funnel
 export default class Scalar extends Component {
@@ -176,10 +180,10 @@ export default class Scalar extends Component {
       ],
       isDashboard,
       onChangeCardAndRun,
-      gridSize,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
+      width,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -198,8 +202,10 @@ export default class Scalar extends Component {
       compact: true,
     });
 
+    // use the compact version of formatting if the component is narrower than
+    // the cutoff and the formatted value is longer than the cutoff
     const displayCompact =
-      fullScalarValue.length > 6 && gridSize && gridSize.width < 4;
+      fullScalarValue.length > COMPACT_MIN_LENGTH && width < COMPACT_MAX_WIDTH;
     const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = { value, column };
