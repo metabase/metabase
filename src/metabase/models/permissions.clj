@@ -417,6 +417,7 @@
                 ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
                 {(str schema) (schema-graph permissions-set tables)})))})
 
+;; TODO it's because we call map-vals on tables that dbs with no tables don't show up
 (s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
   (m/map-vals (partial db-graph permissions-set)
               tables))
@@ -428,12 +429,11 @@
   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
         tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
     {:revision (perms-revision/latest-id)
-     :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup, :id [:not= (:id (group/metabot))])]
-                          (let [group-permissions-set (set (for [perms permissions
-                                                                 :when (= (:group_id perms) group-id)]
-                                                             (:object perms)))]
-                            {group-id (group-graph group-permissions-set tables)})))}))
-
+     :groups   (->> permissions
+                    (group-by :group_id)
+                    (m/map-vals (fn [group-permissions]
+                                  (group-graph (->> group-permissions (map :object) (set))
+                                               tables))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
