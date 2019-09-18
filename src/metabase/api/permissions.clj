@@ -82,7 +82,6 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (prn "PRE GRAPH" body)
   (perms/update-graph! (dejsonify-graph body))
   (perms/graph))
 

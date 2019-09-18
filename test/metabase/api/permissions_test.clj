@@ -2,6 +2,8 @@
   "Tests for `/api/permissions` endpoints."
   (:require [expectations :refer :all]
             [metabase.models
+             [table :refer [Table]]
+             [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as group :refer [PermissionsGroup]]]
             [metabase.test.data :as data]
@@ -75,12 +77,14 @@
 (expect
   :all
   (let [new-id (inc (data/id))]
-    (tt/with-temp PermissionsGroup [group]
+    (tt/with-temp* [PermissionsGroup [group]
+                    Database         [{db-id :id}]
+                    Table            [_ {:db_id db-id}]]
       (test-users/create-users-if-needed!)
       ((test-users/user->client :crowberto) :put 200 "permissions/graph"
        (assoc-in (perms/graph)
-                 [:groups (u/get-id group) new-id :schemas]
+                 [:groups (u/get-id group) db-id :schemas]
                  :all))
-      (get-in (perms/graph) [:groups (u/get-id group) new-id :schemas]))))
+      (get-in (perms/graph) [:groups (u/get-id group) db-id :schemas]))))
 
 ;; figure out failing case for when old doesn't exist
