@@ -43,18 +43,17 @@
 
 (def ^:private details
   (delay
-   (datasets/when-testing-driver :bigquery
-     (reduce
-      (fn [acc env-var]
-        (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
-      {}
-      [:project-id :client-id :client-secret :access-token :refresh-token]))))
+    (reduce
+     (fn [acc env-var]
+       (assoc acc env-var (tx/db-test-env-var-or-throw :bigquery env-var)))
+     {}
+     [:project-id :client-id :client-secret :access-token :refresh-token])))
 
 (def ^:private ^String project-id (:project-id @details))
 
-(def ^:private ^Bigquery bigquery
-  (datasets/when-testing-driver :bigquery
-    (#'bigquery/database->client {:details @details})))
+(let [bigquery* (delay (#'bigquery/database->client {:details @details}))]
+  (defn- bigquery ^Bigquery []
+    @bigquery*))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
   (assoc @details :dataset-id (normalize-name database-name)))
@@ -64,15 +63,15 @@
 
 (defn- create-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (google/execute (.insert (.datasets bigquery) project-id (doto (Dataset.)
-                                                             (.setLocation "US")
-                                                             (.setDatasetReference (doto (DatasetReference.)
-                                                                                     (.setDatasetId dataset-id))))))
+  (google/execute (.insert (.datasets (bigquery)) project-id (doto (Dataset.)
+                                                               (.setLocation "US")
+                                                               (.setDatasetReference (doto (DatasetReference.)
+                                                                                       (.setDatasetId dataset-id))))))
   (println (u/format-color 'blue "Created BigQuery dataset '%s'." dataset-id)))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
-  (google/execute-no-auto-retry (doto (.delete (.datasets bigquery) project-id dataset-id)
+  (google/execute-no-auto-retry (doto (.delete (.datasets (bigquery)) project-id dataset-id)
                                   (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
 
@@ -84,7 +83,7 @@
    table-id         :- su/NonBlankString,
    field-name->type :- {su/KeywordOrString (apply s/enum valid-field-types)}]
   (google/execute
-   (.insert (.tables bigquery)
+   (.insert (.tables (bigquery))
             project-id
             dataset-id
             (doto (Table.)
@@ -103,7 +102,7 @@
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (ffirst (:rows (#'bigquery/post-process-native
                   (google/execute
-                   (.query (.jobs bigquery) project-id
+                   (.query (.jobs (bigquery)) project-id
                            (doto (QueryRequest.)
                              (.setQuery (format "SELECT COUNT(*) FROM [%s.%s]" dataset-id table-id)))))))))
 
@@ -117,7 +116,7 @@
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
   {:pre [(seq dataset-id) (seq table-id) (sequential? row-maps) (seq row-maps) (every? map? row-maps)]}
-  (google/execute (.insertAll (.tabledata bigquery) project-id dataset-id table-id
+  (google/execute (.insertAll (.tabledata (bigquery)) project-id dataset-id table-id
                               (doto (TableDataInsertAllRequest.)
                                 (.setRows (for [row-map row-maps]
                                             (let [data (TableRow.)]
@@ -205,7 +204,7 @@
 (defn- existing-dataset-names
   "Fetch a list of *all* dataset names that currently exist in the BQ test project."
   []
-  (for [dataset (get (google/execute (doto (.list (.datasets bigquery) project-id)
+  (for [dataset (get (google/execute (doto (.list (.datasets (bigquery)) project-id)
                                        ;; Long/MAX_VALUE barfs but it has to be a Long
                                        (.setMaxResults (long Integer/MAX_VALUE))))
                      "datasets")]

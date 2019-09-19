@@ -316,8 +316,13 @@
       reference)))
 
 (defmethod ->reference [:string (type Field)]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
+  [_ {:keys [display_name full-name link table_id]}]
+  (cond
+    full-name full-name
+    link      (format "%s → %s"
+                      (-> link Field :display_name (str/replace #"(?i)\sid$" ""))
+                      display_name)
+    :else     display_name))
 
 (defmethod ->reference [:string (type Table)]
   [_ {:keys [display_name full-name]}]

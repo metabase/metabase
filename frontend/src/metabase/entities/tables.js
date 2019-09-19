@@ -9,7 +9,7 @@ import {
 import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { createSelector } from "reselect";
 
@@ -172,7 +172,7 @@ const Tables = createEntity({
     getUrl: table =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
     getIcon: table => "table",
-    getColor: table => colors["accent2"],
+    getColor: table => color("accent2"),
   },
 
   selectors: {

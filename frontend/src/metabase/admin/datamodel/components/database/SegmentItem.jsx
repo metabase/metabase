@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ObjectActionSelect from "../ObjectActionSelect.jsx";
+import ObjectActionSelect from "../ObjectActionSelect";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 

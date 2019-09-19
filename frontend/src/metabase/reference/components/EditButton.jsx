@@ -5,7 +5,7 @@ import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./EditButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const EditButton = ({ className, startEditing }) => (
   <button

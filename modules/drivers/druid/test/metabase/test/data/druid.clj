@@ -73,10 +73,13 @@
                                                                                    "user_name"
                                                                                    "user_password"
                                                                                    "venue_category_name"
-                                                                                   "venue_latitude"
-                                                                                   "venue_longitude"
+                                                                                   {:name "venue_latitude"
+                                                                                    :type "double"}
+                                                                                   {:name "venue_longitude"
+                                                                                    :type "double"}
                                                                                    "venue_name"
-                                                                                   "venue_price"]}}}
+                                                                                   {:name "venue_price"
+                                                                                    :type "float"}]}}}
                        :metricsSpec     [{:type :count
                                           :name :count}]
                        :granularitySpec {:type               :uniform

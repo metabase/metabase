@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
 
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";

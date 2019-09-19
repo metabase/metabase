@@ -4,14 +4,14 @@ import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
-import NewsletterForm from "metabase/components/NewsletterForm.jsx";
+import LogoIcon from "metabase/components/LogoIcon";
+import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
-import UserStep from "./UserStep.jsx";
-import DatabaseConnectionStep from "./DatabaseConnectionStep.jsx";
-import PreferencesStep from "./PreferencesStep.jsx";
+import UserStep from "./UserStep";
+import DatabaseConnectionStep from "./DatabaseConnectionStep";
+import PreferencesStep from "./PreferencesStep";
 import DatabaseSchedulingStep from "metabase/setup/components/DatabaseSchedulingStep";
 
 const WELCOME_STEP_NUMBER = 0;

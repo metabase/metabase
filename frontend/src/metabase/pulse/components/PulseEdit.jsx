@@ -3,19 +3,19 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt, ngettext, msgid } from "ttag";
 
-import PulseEditName from "./PulseEditName.jsx";
+import PulseEditName from "./PulseEditName";
 import PulseEditCollection from "./PulseEditCollection";
-import PulseEditCards from "./PulseEditCards.jsx";
-import PulseEditChannels from "./PulseEditChannels.jsx";
-import PulseEditSkip from "./PulseEditSkip.jsx";
-import WhatsAPulse from "./WhatsAPulse.jsx";
+import PulseEditCards from "./PulseEditCards";
+import PulseEditChannels from "./PulseEditChannels";
+import PulseEditSkip from "./PulseEditSkip";
+import WhatsAPulse from "./WhatsAPulse";
 
-import ActionButton from "metabase/components/ActionButton.jsx";
+import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/components/Button";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ModalContent from "metabase/components/ModalContent";
+import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
 
 import { pulseIsValid, cleanPulse, emailIsEnabled } from "metabase/lib/pulse";
 import * as Urls from "metabase/lib/urls";

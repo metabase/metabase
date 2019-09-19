@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import { t } from "ttag";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { isString } from "metabase/lib/schema_metadata";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
@@ -10,9 +10,9 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import ChartWithLegend from "./ChartWithLegend.jsx";
-import LegacyChoropleth from "./LegacyChoropleth.jsx";
-import LeafletChoropleth from "./LeafletChoropleth.jsx";
+import ChartWithLegend from "./ChartWithLegend";
+import LegacyChoropleth from "./LegacyChoropleth";
+import LeafletChoropleth from "./LeafletChoropleth";
 
 import {
   computeMinimalBounds,
