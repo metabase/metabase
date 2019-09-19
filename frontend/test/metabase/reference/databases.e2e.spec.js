@@ -4,7 +4,7 @@ import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 import React from "react";
 import { mount } from "enzyme";
 
-import { CardApi } from "metabase/services";
+import { CardApi, MetabaseApi } from "metabase/services";
 
 import {
   FETCH_DATABASE_METADATA,
@@ -106,9 +106,13 @@ describe("The Reference Section", () => {
       store.pushPath("/reference/databases/1");
       const app = mount(store.connectContainer(<DatabaseDetailContainer />));
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
+
+      // switch to edit view
       const editButton = app.find(EditButton);
       expect(editButton.text()).toBe("Edit");
       click(editButton);
+
+      // update "caveats" and save
       const textarea = app
         .find(Detail)
         .at(2)
@@ -121,6 +125,8 @@ describe("The Reference Section", () => {
           .at(1),
       );
       await store.waitForActions(END_LOADING);
+
+      // check that the field was updated
       const savedText = app
         .find(Detail)
         .at(2)
@@ -128,6 +134,10 @@ describe("The Reference Section", () => {
         .at(1)
         .text();
       expect(savedText).toBe("v important thing");
+
+      // clean up
+      const database = await MetabaseApi.db_get({ dbId: 1 });
+      await MetabaseApi.db_update({ ...database, caveats: null });
     });
 
     // table list
