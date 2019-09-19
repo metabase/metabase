@@ -424,7 +424,7 @@
               tables))
 
 ;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
-;; keeping this because the refactoring was nice
+;; keeping this because the refactoring was nice and I want to use it if the parse approach gets the thumbs down
 #_(s/defn graph :- PermissionsGraph
     "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
     []
