@@ -23,12 +23,15 @@ table-perm  = ('read'|'query'|'query/segmented')")
 
 (def grammar
   "A little less easy for hooman to read but easier to work with parse tree to create paths"
-  "permission = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
+  "permission = ( db | collection )
+db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
 native      = <'native/'>
 schemas     = <'schema/'> schema?
 schema      = #'[^/]*' <'/'> table?
 table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
-table-perm  = ('read'|'query'|'query/segmented')")
+table-perm  = ('read'|'query'|'query/segmented')
+
+collection  = <'/collection/'> #'[^/]*' <'/'> ('read/')?")
 
 (def parser
   "Function that parses permission strings"
@@ -38,12 +41,16 @@ table-perm  = ('read'|'query'|'query/segmented')")
   first)
 
 (defmethod path :permission
+  [[_ tree]]
+  (path tree))
+
+(defmethod path :db
   [[_ db-id db-node :as tree]]
   (let [db-id (Integer/parseInt db-id)]
     (case (count tree)
-      2 [[db-id :native :write]
-         [db-id :schemas :all]]
-      3 (into [db-id] (path db-node)))))
+      2 [[:db db-id :native :write]
+         [:db db-id :schemas :all]]
+      3 (into [:db db-id] (path db-node)))))
 
 (defmethod path :schemas
   [[_ schema :as tree]]
@@ -68,6 +75,13 @@ table-perm  = ('read'|'query'|'query/segmented')")
   [_]
   [:native :write])
 
+(defmethod path :collection
+  [[_ id read?]]
+  (let [id (if (= id "root") :root (Integer/parseInt id))]
+    (if (and id read?)
+      [:collection id :read]
+      [:collection id :write])))
+
 (defmethod path :table-perm
   [[_ perm]]
   (case perm
@@ -88,7 +102,13 @@ table-perm  = ('read'|'query'|'query/segmented')")
   Then converting that to
   {3 {:schemas :all}}"
   [paths]
+  ()
   (->> paths
+       (reduce (fn [paths path]
+                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
+                   (into paths path)
+                   (conj paths path)))
+               [])
        (clojure.walk/prewalk (fn [x]
                                (if (and (sequential? x)
                                         (sequential? (first x))
@@ -101,8 +121,10 @@ table-perm  = ('read'|'query'|'query/segmented')")
                                                  {}))
                                  x)))
        (clojure.walk/prewalk (fn [x]
-                               (if (and (map? x) (seq (filter x [:all :some :write])))
-                                 (first (filter x [:all :some :write]))
+                               (if-let [terminal (and (map? x)
+                                                      (some #(and (= (% x) '()) %)
+                                                            [:all :some :write :read]))]
+                                 terminal
                                  x)))))
 
 (defn permissions->graph
@@ -110,9 +132,4 @@ table-perm  = ('read'|'query'|'query/segmented')")
   [permissions]
   (->> permissions
        (map (comp path parser))
-       (reduce (fn [paths path]
-                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
-                   (into paths path)
-                   (conj paths path)))
-               [])
        (graph)))

@@ -446,7 +446,7 @@
                     (filter (comp #(re-find #"^/db" %) :object))
                     (group-by :group_id)
                     (m/map-vals (fn [group-permissions]
-                                  (perms-parse/permissions->graph (map :object group-permissions)))))}))
+                                  (:db (perms-parse/permissions->graph (map :object group-permissions))))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -4,15 +4,15 @@
 
 (deftest test-permissions->graph
   (testing "Parses each permission string to the correct graph"
-    (doseq [[permission graph] {"/db/3/"                                       {3 {:native  :write
-                                                                                   :schemas :all}}
-                                "/db/3/native/"                                {3 {:native :write}}
-                                "/db/3/schema/"                                {3 {:schemas :all}}
-                                "/db/3/schema/PUBLIC/"                         {3 {:schemas {"PUBLIC" :all}}}
-                                "/db/3/schema/PUBLIC/table/4/"                 {3 {:schemas {"PUBLIC" {4 :all}}}}
-                                "/db/3/schema/PUBLIC/table/4/read/"            {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}
-                                "/db/3/schema/PUBLIC/table/4/query/"           {3 {:schemas {"PUBLIC" {4 {:query :all}}}}}
-                                "/db/3/schema/PUBLIC/table/4/query/segmented/" {3 {:schemas {"PUBLIC" {4 {:query :some}}}}}}]
+    (doseq [[permission graph] {"/db/3/"                                       {:db {3 {:native  :write
+                                                                                        :schemas :all}}}
+                                "/db/3/native/"                                {:db {3 {:native :write}}}
+                                "/db/3/schema/"                                {:db {3 {:schemas :all}}}
+                                "/db/3/schema/PUBLIC/"                         {:db {3 {:schemas {"PUBLIC" :all}}}}
+                                "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:schemas {"PUBLIC" {4 :all}}}}}
+                                "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}
+                                "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:query :all}}}}}}
+                                "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:query :some}}}}}}}]
       (is (= graph (parse/permissions->graph [permission]))))))
 
 
@@ -33,17 +33,17 @@
     ;;
     ;; Visually, the map is structured to mean "When the permission set includes only this key and the ones below it,
     ;; the permission graph for this key should be returned"
-    (doseq [group (let [groups (->> {"/db/3/"                                       {3 {:native  :write
-                                                                                        :schemas :all}}
+    (doseq [group (let [groups (->> {"/db/3/"                                       {:db {3 {:native  :write
+                                                                                             :schemas :all}}}
 
-                                     "/db/3/schema/"                                {3 {:schemas :all}}
-                                     "/db/3/schema/PUBLIC/"                         {3 {:schemas {"PUBLIC" :all}}}
-                                     "/db/3/schema/PUBLIC/table/4/"                 {3 {:schemas {"PUBLIC" {4 :all}}}}
-                                     "/db/3/schema/PUBLIC/table/4/query/"           {3 {:schemas {"PUBLIC" {4 {:read  :all
-                                                                                                               :query :all}}}}}
-                                     "/db/3/schema/PUBLIC/table/4/query/segmented/" {3 {:schemas {"PUBLIC" {4 {:read  :all
-                                                                                                               :query :some}}}}}
-                                     "/db/3/schema/PUBLIC/table/4/read/"            {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}
+                                     "/db/3/schema/"                                {:db {3 {:schemas :all}}}
+                                     "/db/3/schema/PUBLIC/"                         {:db {3 {:schemas {"PUBLIC" :all}}}}
+                                     "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:schemas {"PUBLIC" {4 :all}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
+                                                                                                                    :query :all}}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
+                                                                                                                    :query :some}}}}}}
+                                     "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
                                     (into [])
                                     (sort-by first))]
                     (->> groups
@@ -54,8 +54,8 @@
 
 (deftest combines-permissions-for-multiple-dbs
   (testing "Permision graph includes broadest permissions for all dbs in permission set"
-    (is (= {3 {:native :write
-               :schemas :all}
-            5 {:schemas {"PUBLIC" {10 {:read :all}}}}}
+    (is (= {:db {3 {:native :write
+                    :schemas :all}
+                 5 {:schemas {"PUBLIC" {10 {:read :all}}}}}}
            (parse/permissions->graph #{"/db/3/"
                                        "/db/5/schema/PUBLIC/table/10/read/"})))))
