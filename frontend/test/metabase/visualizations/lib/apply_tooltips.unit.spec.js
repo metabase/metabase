@@ -151,6 +151,21 @@ describe("getClickHoverObject", () => {
     expect(dimValue).toBe(true);
     expect(dValue).toBe(true);
   });
+
+  it("should show correct tooltip for nulls", () => {
+    const d = { data: { key: "(empty)", value: "true" } };
+    const cols = [StringColumn(), NumberColumn()];
+    const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
+    const otherArgs = {
+      ...seriesAndData({ cols, rows }),
+      seriesIndex: 0,
+      classList: [],
+      event: {},
+    };
+
+    const obj = getClickHoverObject(d, otherArgs);
+    expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+  });
 });
 
 function seriesAndData({ cols, rows }) {
