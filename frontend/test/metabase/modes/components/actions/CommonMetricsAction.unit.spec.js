@@ -1,52 +1,40 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import {
-  makeQuestion,
-  ORDERS_TABLE_ID,
+  ORDERS,
   MAIN_METRIC_ID,
+  createMetadata,
 } from "__support__/sample_dataset_fixture";
+import _ from "underscore";
 
 import CommonMetricsAction from "metabase/modes/components/actions/CommonMetricsAction";
 
-import { assocIn } from "icepick";
-
-const question0Metrics = makeQuestion((card, state) => ({
-  card,
-  state: assocIn(state, ["entities", "tables", ORDERS_TABLE_ID, "metrics"], []),
-}));
-const question1Metrics = makeQuestion();
-const question6Metrics = makeQuestion((card, state) => ({
-  card,
-  state: assocIn(
-    state,
-    ["entities", "tables", ORDERS_TABLE_ID, "metrics"],
-    [
-      MAIN_METRIC_ID,
-      MAIN_METRIC_ID,
-      MAIN_METRIC_ID,
-      MAIN_METRIC_ID,
-      MAIN_METRIC_ID,
-      MAIN_METRIC_ID,
-    ],
-  ),
-}));
+function questionWithMetrics(count) {
+  const metadata = createMetadata(state =>
+    state.assocIn(
+      ["entities", "tables", ORDERS.id, "metrics"],
+      _.range(count).map(() => MAIN_METRIC_ID),
+    ),
+  );
+  return metadata.table(ORDERS.id).question();
+}
 
 describe("CommonMetricsAction", () => {
   it("should not be valid if the table has no metrics", () => {
     expect(
       CommonMetricsAction({
-        question: question0Metrics,
+        question: questionWithMetrics(0),
       }),
     ).toHaveLength(0);
   });
   it("should return a scalar card for the metric", () => {
     const actions = CommonMetricsAction({
-      question: question1Metrics,
+      question: questionWithMetrics(1),
     });
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       aggregation: [["metric", MAIN_METRIC_ID]],
     });
     expect(newCard.display).toEqual("scalar");
@@ -54,7 +42,7 @@ describe("CommonMetricsAction", () => {
   it("should only return up to 5 actions", () => {
     expect(
       CommonMetricsAction({
-        question: question6Metrics,
+        question: questionWithMetrics(6),
       }),
     ).toHaveLength(5);
   });

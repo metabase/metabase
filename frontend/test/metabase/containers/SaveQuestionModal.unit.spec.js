@@ -5,11 +5,10 @@ import SaveQuestionModal from "metabase/containers/SaveQuestionModal";
 import Question from "metabase-lib/lib/Question";
 
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
-  PEOPLE_TABLE_ID,
+  SAMPLE_DATASET,
+  ORDERS,
+  PEOPLE,
   metadata,
-  ORDERS_TOTAL_FIELD_ID,
 } from "__support__/sample_dataset_fixture";
 
 const createFnMock = jest.fn(() => Promise.resolve());
@@ -35,8 +34,8 @@ describe("SaveQuestionModal", () => {
 
   it("should call createFn correctly for a new question", async () => {
     const newQuestion = Question.create({
-      databaseId: DATABASE_ID,
-      tableId: ORDERS_TABLE_ID,
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
       metadata,
     })
       .query()
@@ -50,8 +49,8 @@ describe("SaveQuestionModal", () => {
   });
   it("should call saveFn correctly for a dirty, saved question", async () => {
     const originalQuestion = Question.create({
-      databaseId: DATABASE_ID,
-      tableId: ORDERS_TABLE_ID,
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
       metadata,
     })
       .query()
@@ -62,7 +61,7 @@ describe("SaveQuestionModal", () => {
 
     const dirtyQuestion = originalQuestion
       .query()
-      .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
+      .addBreakout(["field-id", ORDERS.TOTAL.id])
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
@@ -75,8 +74,8 @@ describe("SaveQuestionModal", () => {
 
   it("should preserve the collection_id of a question in overwrite mode", async () => {
     let originalQuestion = Question.create({
-      databaseId: DATABASE_ID,
-      tableId: PEOPLE_TABLE_ID,
+      databaseId: SAMPLE_DATASET.id,
+      tableId: PEOPLE.id,
       metadata,
     })
       .query()
@@ -91,7 +90,7 @@ describe("SaveQuestionModal", () => {
 
     const dirtyQuestion = originalQuestion
       .query()
-      .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID])
+      .addBreakout(["field-id", ORDERS.TOTAL.id])
       .question();
 
     const component = shallow(

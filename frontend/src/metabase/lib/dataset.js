@@ -46,6 +46,7 @@ export function fieldRefForColumnWithLegacyFallback(
   column: any,
   fieldRefForColumn_LEGACY: any,
   debugName: any,
+  whitelist?: string[],
 ): any {
   // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
   const fieldRef =
@@ -70,8 +71,8 @@ export function fieldRefForColumnWithLegacyFallback(
     }
   }
 
-  // NOTE: whitelisting known correct field_ref types for now while we make sure the rest are correct
-  if (fieldRef && fieldRef[0] === "field-literal") {
+  // NOTE: whitelisting known correct clauses for now while we make sure the rest are correct
+  if (!whitelist || (fieldRef && whitelist.includes(fieldRef[0]))) {
     return fieldRef;
   }
   return fieldRef_LEGACY;
@@ -92,6 +93,7 @@ export function fieldRefForColumn(
     column,
     c => fieldRefForColumn_LEGACY(c, columns),
     "dataset::fieldRefForColumn",
+    ["field-literal"],
   );
 }
 
