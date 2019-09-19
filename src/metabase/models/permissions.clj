@@ -417,12 +417,14 @@
                 ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
                 {(str schema) (schema-graph permissions-set tables)})))})
 
-;; TODO it's because we call map-vals on tables that dbs with no tables don't show up
+;; TODO it's because we call map-vals on tables that dbs with no tables don't show 
 (s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
   (m/map-vals (partial db-graph permissions-set)
               tables))
 
 ;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
+;; TODO possible approach: parse with instaparse or reitit, sort by count, reduce into map by ignoring all with longer counts
+;; do a postwalk to construct path, with reduce as above
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []

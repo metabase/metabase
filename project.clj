@@ -123,7 +123,9 @@
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
-   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
+   [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
+   [instaparse "1.4.10"]                                              ; Make your own grammar
+   ]
 
   :main ^:skip-aot metabase.core
 
