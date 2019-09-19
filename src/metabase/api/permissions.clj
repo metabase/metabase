@@ -20,6 +20,47 @@
 ;;; |                                          PERMISSIONS GRAPH ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+<<<<<<< HEAD
+=======
+;;; ------------------------------------------------- DeJSONifaction -------------------------------------------------
+
+(defn- ->int [id] (Integer/parseInt (name id)))
+
+(defn- dejsonify-table-perms [table-perms]
+  (if-not (map? table-perms)
+    (keyword table-perms)
+    (into {} (for [[k v] table-perms]
+               [(keyword k) (keyword v)]))))
+
+(defn- dejsonify-tables [tables]
+  (if (string? tables)
+    (keyword tables)
+    (into {} (for [[table-id perms] tables]
+               {(->int table-id) (dejsonify-table-perms perms)}))))
+
+(defn- dejsonify-schemas [schemas]
+  (if (string? schemas)
+    (keyword schemas)
+    (into {} (for [[schema tables] schemas]
+               {(name schema) (dejsonify-tables tables)}))))
+
+(defn- dejsonify-dbs [dbs]
+  (into {} (for [[db-id {:keys [native schemas]}] dbs]
+             {(->int db-id) (cond-> {}
+                              native (assoc :native (keyword native))
+                              schemas (assoc :schemas (dejsonify-schemas schemas)))})))
+
+(defn- dejsonify-groups [groups]
+  (into {} (for [[group-id dbs] groups]
+             {(->int group-id) (dejsonify-dbs dbs)})))
+
+(defn- dejsonify-graph
+  "Fix the types in the graph when it comes in from the API, e.g. converting things like `\"none\"` to `:none` and
+  parsing object keys as integers."
+  [graph]
+  (update graph :groups dejsonify-groups))
+
+>>>>>>> release-0.33.x
 
 ;;; --------------------------------------------------- Endpoints ----------------------------------------------------
 
