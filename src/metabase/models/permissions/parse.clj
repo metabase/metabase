@@ -8,7 +8,7 @@
             [instaparse.core :as insta]))
 
 (def ^:private grammar
-  "A little less easy for hooman to read but easier to work with parse tree to create paths"
+  "Describes permission strings like /db/3/ or /collection/root/read/"
   "permission = ( db | collection )
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
