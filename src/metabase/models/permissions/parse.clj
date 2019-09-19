@@ -4,8 +4,8 @@
   - Convert strings to parse tree
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
-  (:require [instaparse.core :as insta]
-            [clojure.core.match :as match]))
+  (:require [clojure.core.match :as match]
+            [instaparse.core :as insta]))
 
 (def ^:private grammar
   "A little less easy for hooman to read but easier to work with parse tree to create paths"
