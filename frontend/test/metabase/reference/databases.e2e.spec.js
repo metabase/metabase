@@ -10,7 +10,6 @@ import {
   FETCH_DATABASE_METADATA,
   FETCH_REAL_DATABASES,
 } from "metabase/redux/metadata";
-import Databases from "metabase/entities/databases";
 
 import { END_LOADING } from "metabase/reference/reference";
 
