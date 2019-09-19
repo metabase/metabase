@@ -29,17 +29,20 @@ schemas     = <'schema/'> (#'[^/]*' <'/'> table?)?
 table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
 table-perm  = ('read'|'query'|'query/segmented')")
 
-(def parser (insta/parser grammar))
+(def parser
+  "Function that parses permission strings"
+  (insta/parser grammar))
 
-(defmulti path "returns a path for each node in the permission parse tree" first)
+(defmulti path "recursively builds path from parse tree"
+  first)
 
 (defmethod path :permission
-  [[_ db-id :as tree]]
+  [[_ db-id db-node :as tree]]
   (let [db-id (Integer/parseInt db-id)]
     (case (count tree)
       2 [[db-id :native :write]
          [db-id :schemas :all]]
-      3 (into [db-id] (path (last tree))))))
+      3 (into [db-id] (path db-node)))))
 
 (defmethod path :schemas
   [[_ schema-name table :as tree]]
@@ -68,7 +71,7 @@ table-perm  = ('read'|'query'|'query/segmented')")
 
 (defn graph
   "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
-  
+
   Works by first doing a conversion like
   [[3 :schemas :all]
    [3 :schemas \"PUBLIC\" :all]

@@ -1,6 +1,6 @@
 (ns metabase.models.permissions.parse-test
-  (:require [metabase.models.permissions.parse :as parse]
-            [clojure.test :refer :all]))
+  (:require [clojure.test :refer :all]
+            [metabase.models.permissions.parse :as parse]))
 
 (deftest test-permissions->graph
   (testing "Parses each permission string to the correct graph"
@@ -35,7 +35,7 @@
     ;; the permission graph for this key should be returned"
     (doseq [group (let [groups (->> {"/db/3/"                                       {3 {:native  :write
                                                                                         :schemas :all}}
-                                     
+
                                      "/db/3/schema/"                                {3 {:schemas :all}}
                                      "/db/3/schema/PUBLIC/"                         {3 {:schemas {"PUBLIC" :all}}}
                                      "/db/3/schema/PUBLIC/table/4/"                 {3 {:schemas {"PUBLIC" {4 :all}}}}

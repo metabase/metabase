@@ -418,7 +418,7 @@
                 ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
                 {(str schema) (schema-graph permissions-set tables)})))})
 
-;; TODO it's because we call map-vals on tables that dbs with no tables don't show 
+;; TODO it's because we call map-vals on tables that dbs with no tables don't show
 (s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
   (m/map-vals (partial db-graph permissions-set)
               tables))
