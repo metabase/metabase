@@ -48,7 +48,7 @@
                                    "query"           [:query :all]
                                    "query/segmented" [:query :some])
     [:native]                    [:native :write]
-    
+
     [:collection id]             [:collection (collection-id id) :write]
     [:collection id "read"]      [:collection (collection-id id) :read]))
 
