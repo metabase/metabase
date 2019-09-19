@@ -13,6 +13,7 @@
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
+            [metabase.models.permissions.parse :as perms-parse]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -423,8 +424,18 @@
               tables))
 
 ;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
-;; TODO possible approach: parse with instaparse or reitit, sort by count, reduce into map by ignoring all with longer counts
-;; do a postwalk to construct path, with reduce as above
+;; keeping this because the refactoring was nice
+#_(s/defn graph :- PermissionsGraph
+    "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
+    []
+    (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
+          tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
+      {:revision (perms-revision/latest-id)
+       :groups   (->> permissions
+                      (group-by :group_id)
+                      (m/map-vals (fn [group-permissions]
+                                    (group-graph (->> group-permissions (map :object) (set))
+                                                 tables))))}))
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []
@@ -432,10 +443,10 @@
         tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
     {:revision (perms-revision/latest-id)
      :groups   (->> permissions
+                    (filter (comp #(re-find #"^/db" %) :object))
                     (group-by :group_id)
                     (m/map-vals (fn [group-permissions]
-                                  (group-graph (->> group-permissions (map :object) (set))
-                                               tables))))}))
+                                  (perms-parse/permissions->graph (map :object group-permissions)))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

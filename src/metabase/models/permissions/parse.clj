@@ -3,14 +3,13 @@
 
   - Convert strings to parse tree
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
-
-  Convert set of paths to a map, the permission graph"
+  - Convert set of paths to a map, the permission graph"
   (:require [instaparse.core :as insta]))
 
-
-(def expanded-grammar
-  "Not used - splits grammar up into more parts so that it's maybe easier for hooman to read. Experimental"
-  "permission = <'/db/'> db-id <'/'> ( native | schemas )?
+(comment
+  (def expanded-grammar
+    "Not used - splits grammar up into more parts so that it's maybe easier for hooman to read. Experimental"
+    "permission = <'/db/'> db-id <'/'> ( native | schemas )?
 db-id       = #'\\d+'
 native      = <'native/'>
 schemas     = <'schema/'> schema?
@@ -20,6 +19,8 @@ table       = <'table/'> table-id <'/'> (table-perm <'/'>)?
 table-id    = #'\\d+'
 table-perm  = ('read'|'query'|'query/segmented')")
 
+  (def exp-parser (insta/parser expanded-grammar)))
+
 (def grammar
   "A little less easy for hooman to read but easier to work with prse tree to create paths"
   "permission = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
@@ -28,18 +29,17 @@ schemas     = <'schema/'> (#'[^/]*' <'/'> table?)?
 table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
 table-perm  = ('read'|'query'|'query/segmented')")
 
-(def exp-parser (insta/parser expanded-grammar))
 (def parser (insta/parser grammar))
 
-
-(defmulti path first)
+(defmulti path "returns a path for each node in the permission parse tree" first)
 
 (defmethod path :permission
   [[_ db-id :as tree]]
-  (case (count tree)
-    2 [[db-id :native :all]
-       [db-id :schemas :all]]
-    3 (into [db-id] (path (last tree)))))
+  (let [db-id (Integer/parseInt db-id)]
+    (case (count tree)
+      2 [[db-id :native :write]
+         [db-id :schemas :all]]
+      3 (into [db-id] (path (last tree))))))
 
 (defmethod path :schemas
   [[_ schema-name table :as tree]]
@@ -50,13 +50,14 @@ table-perm  = ('read'|'query'|'query/segmented')")
 
 (defmethod path :table
   [[_ table-id table-perm :as tree]]
-  (case (count tree)
-    2 [table-id :all]
-    3 (into [table-id] (path table-perm))))
+  (let [table-id (Integer/parseInt table-id)]
+    (case (count tree)
+      2 [table-id :all]
+      3 (into [table-id] (path table-perm)))))
 
 (defmethod path :native
   [_]
-  [:native :all])
+  [:native :write])
 
 (defmethod path :table-perm
   [[_ perm]]
@@ -66,12 +67,23 @@ table-perm  = ('read'|'query'|'query/segmented')")
     "query/segmented" [:query :some]))
 
 (defn graph
+  "Given a set of permission paths, return a graph that expresses the most permissions possible for the set
+  
+  Works by first doing a conversion like
+  [[3 :schemas :all]
+   [3 :schemas \"PUBLIC\" :all]
+  ->
+  {3 {:schemas {:all ()
+                :public {:all ()}}}}
+
+  Then converting that to
+  {3 {:schemas :all}}"
   [paths]
   (->> paths
        (clojure.walk/prewalk (fn [x]
                                (if (and (sequential? x)
                                         (sequential? (first x))
-                                        (not (empty? (first x))))
+                                        (seq (first x)))
                                  (->> x
                                       (group-by first)
                                       (reduce-kv (fn [m k v]
@@ -80,12 +92,12 @@ table-perm  = ('read'|'query'|'query/segmented')")
                                                  {}))
                                  x)))
        (clojure.walk/prewalk (fn [x]
-                               (if (and (map? x) (seq (filter x [:all :some])))
-                                 (first (filter x [:all :some]))
+                               (if (and (map? x) (seq (filter x [:all :some :write])))
+                                 (first (filter x [:all :some :write]))
                                  x)))))
 
-
 (defn permissions->graph
+  "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"
   [permissions]
   (->> permissions
        (map (comp path parser))
@@ -95,23 +107,3 @@ table-perm  = ('read'|'query'|'query/segmented')")
                    (conj paths path)))
                [])
        (graph)))
-
-;; The key should get transformed to the value
-(def graphs
-  {"/db/3/"                                       {3 {:native  :all
-                                                      :schemas :all}}
-   "/db/3/schema/"                                {3 {:schemas :all}}
-   "/db/3/schema/PUBLIC/"                         {3 {:schemas {"PUBLIC" :all}}}
-   "/db/3/schema/PUBLIC/table/3/"                 {3 {:schemas {"PUBLIC" {3 :all}}}}
-   "/db/3/schema/PUBLIC/table/3/read/"            {3 {:schemas {"PUBLIC" {3 {:read :all}}}}}
-   "/db/3/schema/PUBLIC/table/3/query/"           {3 {:schemas {"PUBLIC" {3 {:query :all}}}}}
-   "/db/3/schema/PUBLIC/table/3/query/segmented/" {3 {:schemas {"PUBLIC" {3 {:query :some}}}}}
-   "/db/3/schema/PUBLIC/table/4/query/segmented/" {3 {:schemas {"PUBLIC" {4 {:query :some}}}}}
-   "/db/5/schema/PUBLIC/table/4/query/segmented/" {5 {:schemas {"PUBLIC" {4 {:query :some}}}}}})
-
-;; try it out
-(->> graphs
-     keys
-     (sort-by count)
-     (drop 0)
-     permissions->graph)
