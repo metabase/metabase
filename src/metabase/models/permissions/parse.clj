@@ -37,7 +37,8 @@ table-perm  = ('read'|'query'|'query/segmented')")
 (defmethod path :permission
   [[_ db-id :as tree]]
   (case (count tree)
-    2 [db-id :all]
+    2 [[db-id :native :all]
+       [db-id :schemas :all]]
     3 (into [db-id] (path (last tree)))))
 
 (defmethod path :schemas
@@ -88,4 +89,29 @@ table-perm  = ('read'|'query'|'query/segmented')")
   [permissions]
   (->> permissions
        (map (comp path parser))
+       (reduce (fn [paths path]
+                 (if (every? vector? path) ;; handle case wher /db/x/ returns two vectors
+                   (into paths path)
+                   (conj paths path)))
+               [])
        (graph)))
+
+;; The key should get transformed to the value
+(def graphs
+  {"/db/3/"                                       {3 {:native  :all
+                                                      :schemas :all}}
+   "/db/3/schema/"                                {3 {:schemas :all}}
+   "/db/3/schema/PUBLIC/"                         {3 {:schemas {"PUBLIC" :all}}}
+   "/db/3/schema/PUBLIC/table/3/"                 {3 {:schemas {"PUBLIC" {3 :all}}}}
+   "/db/3/schema/PUBLIC/table/3/read/"            {3 {:schemas {"PUBLIC" {3 {:read :all}}}}}
+   "/db/3/schema/PUBLIC/table/3/query/"           {3 {:schemas {"PUBLIC" {3 {:query :all}}}}}
+   "/db/3/schema/PUBLIC/table/3/query/segmented/" {3 {:schemas {"PUBLIC" {3 {:query :some}}}}}
+   "/db/3/schema/PUBLIC/table/4/query/segmented/" {3 {:schemas {"PUBLIC" {4 {:query :some}}}}}
+   "/db/5/schema/PUBLIC/table/4/query/segmented/" {5 {:schemas {"PUBLIC" {4 {:query :some}}}}}})
+
+;; try it out
+(->> graphs
+     keys
+     (sort-by count)
+     (drop 0)
+     permissions->graph)
