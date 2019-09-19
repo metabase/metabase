@@ -1,5 +1,5 @@
 import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
-import { click } from "__support__/enzyme_utils";
+import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -10,6 +10,7 @@ import {
   FETCH_DATABASE_METADATA,
   FETCH_REAL_DATABASES,
 } from "metabase/redux/metadata";
+import Databases from "metabase/entities/databases";
 
 import { END_LOADING } from "metabase/reference/reference";
 
@@ -27,6 +28,9 @@ import ListItem from "metabase/components/ListItem";
 import ReferenceHeader from "metabase/reference/components/ReferenceHeader";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Detail from "metabase/reference/components/Detail";
+import EditButton from "metabase/reference/components/EditButton";
+import EditHeader from "metabase/reference/components/EditHeader";
 import QueryButton from "metabase/components/QueryButton";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -95,6 +99,36 @@ describe("The Reference Section", () => {
       store.pushPath("/reference/databases/1");
       mount(store.connectContainer(<DatabaseDetailContainer />));
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
+    });
+
+    // database update
+    it("should see a the detail view for the sample database", async () => {
+      const store = await createTestStore();
+      store.pushPath("/reference/databases/1");
+      const app = mount(store.connectContainer(<DatabaseDetailContainer />));
+      await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
+      const editButton = app.find(EditButton);
+      expect(editButton.text()).toBe("Edit");
+      click(editButton);
+      const textarea = app
+        .find(Detail)
+        .at(2)
+        .find("textarea");
+      setInputValue(textarea, "v important thing");
+      clickButton(
+        app
+          .find(EditHeader)
+          .find("button")
+          .at(1),
+      );
+      await store.waitForActions(END_LOADING);
+      const savedText = app
+        .find(Detail)
+        .at(2)
+        .find("span")
+        .at(1)
+        .text();
+      expect(savedText).toBe("v important thing");
     });
 
     // table list
