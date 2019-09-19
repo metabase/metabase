@@ -22,10 +22,11 @@ table-perm  = ('read'|'query'|'query/segmented')")
   (def exp-parser (insta/parser expanded-grammar)))
 
 (def grammar
-  "A little less easy for hooman to read but easier to work with prse tree to create paths"
+  "A little less easy for hooman to read but easier to work with parse tree to create paths"
   "permission = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
 native      = <'native/'>
-schemas     = <'schema/'> (#'[^/]*' <'/'> table?)?
+schemas     = <'schema/'> schema?
+schema      = #'[^/]*' <'/'> table?
 table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
 table-perm  = ('read'|'query'|'query/segmented')")
 
@@ -45,11 +46,16 @@ table-perm  = ('read'|'query'|'query/segmented')")
       3 (into [db-id] (path db-node)))))
 
 (defmethod path :schemas
-  [[_ schema-name table :as tree]]
+  [[_ schema :as tree]]
   (case (count tree)
     1 [:schemas :all]
-    2 [:schemas schema-name :all]
-    3 (into [:schemas schema-name] (path table))))
+    2 (into [:schemas] (path schema))))
+
+(defmethod path :schema
+  [[_ schema-name table :as tree]]
+  (case (count tree)
+    2 [schema-name :all]
+    3 (into [schema-name] (path table))))
 
 (defmethod path :table
   [[_ table-id table-perm :as tree]]
