@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.permissions.parse :as parse]))
 
-(deftest test-permissions->graph
+(deftest permissions->graph
   (testing "Parses each permission string to the correct graph"
     (doseq [[permission graph] {"/db/3/"                                       {:db {3 {:native  :write
                                                                                         :schemas :all}}}
@@ -52,10 +52,21 @@
       (is (= (get-in group [0 1])
              (parse/permissions->graph (map first group)))))))
 
-(deftest combines-permissions-for-multiple-dbs
+(deftest permissions->graph-collections
+  (doseq [[permission graph] {"/collection/root/"      {:collection {:root :write}}
+                              "/collection/root/read/" {:collection {:root :read}}
+                              "/collection/1/"         {:collection {1 :write}}
+                              "/collection/1/read/"    {:collection {1 :read}}}]
+    (is (= graph (parse/permissions->graph [permission])))))
+
+(deftest combines-all-permissions
   (testing "Permision graph includes broadest permissions for all dbs in permission set"
-    (is (= {:db {3 {:native :write
-                    :schemas :all}
-                 5 {:schemas {"PUBLIC" {10 {:read :all}}}}}}
+    (is (= {:db         {3 {:native  :write
+                            :schemas :all}
+                         5 {:schemas {"PUBLIC" {10 {:read :all}}}}}
+            :collection {:root :write
+                         1     :read}}
            (parse/permissions->graph #{"/db/3/"
-                                       "/db/5/schema/PUBLIC/table/10/read/"})))))
+                                       "/db/5/schema/PUBLIC/table/10/read/"
+                                       "/collection/root/"
+                                       "/collection/1/read/"})))))
