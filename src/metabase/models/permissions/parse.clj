@@ -9,7 +9,8 @@
 
 (def ^:private grammar
   "Describes permission strings like /db/3/ or /collection/root/read/"
-  "permission = ( db | collection )
+  "permission = ( all | db | collection )
+  all         = <'/'>
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
@@ -32,6 +33,7 @@
   [tree]
   (match/match tree
     [:permission t]              (path t)
+    [:all]                       [:all] ;; admin permissions
     [:db db-id]                  (let [db-id (Integer/parseInt db-id)]
                                    [[:db db-id :native :write]
                                     [:db db-id :schemas :all]])

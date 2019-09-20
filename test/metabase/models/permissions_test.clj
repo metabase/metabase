@@ -613,6 +613,15 @@
                            {:read :all, :query :segmented}}})
     (test-data-graph group)))
 
+;; A "/" permission grants all dataset permissions
+(tt/expect-with-temp [Database [{db_id :id}]]
+  {db_id {:native  :write
+          :schemas :all}}
+  (let [{:keys [group_id]} (db/select-one 'Permissions {:object "/"})]
+    (-> (perms/graph)
+        (get-in [:groups group_id])
+        (select-keys [db_id]))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -623,8 +632,8 @@
   (do
     (collection-test/force-create-personal-collections!)
     (perms/revoke-collection-permissions!
-     (group/all-users)
-     (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+      (group/all-users)
+      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
 
 ;; (should apply to descendants as well)
 (expect

@@ -436,17 +436,30 @@
                       (m/map-vals (fn [group-permissions]
                                     (group-graph (->> group-permissions (map :object) (set))
                                                  tables))))}))
+
+(defn all-permissions
+  "Handle '/' permission"
+  [db-ids]
+  (reduce (fn [g db-id]
+            (assoc g db-id {:native  :write
+                            :schemas :all}))
+          {}
+          db-ids))
+
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []
   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
-        tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
+        db-ids      (db/select-ids 'Database)]
     {:revision (perms-revision/latest-id)
      :groups   (->> permissions
-                    (filter (comp #(re-find #"^/db" %) :object))
+                    (filter (comp #(re-find #"(^/db|^/$)" %) :object))
                     (group-by :group_id)
                     (m/map-vals (fn [group-permissions]
-                                  (:db (perms-parse/permissions->graph (map :object group-permissions))))))}))
+                                  (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
+                                    (if (= :all permissions-graph)
+                                      (all-permissions db-ids)
+                                      (:db permissions-graph))))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
