@@ -6,7 +6,7 @@ export const NULL_DIMENSION_WARNING = "NULL_DIMENSION_WARNING";
 export function nullDimensionWarning() {
   return {
     key: NULL_DIMENSION_WARNING,
-    text: "Data includes missing dimension values.",
+    text: t`Data includes missing dimension values.`,
   };
 }
 
@@ -14,7 +14,7 @@ export const INVALID_DATE_WARNING = "INVALID_DATE_WARNING";
 export function invalidDateWarning(value) {
   return {
     key: INVALID_DATE_WARNING,
-    text: `We encountered an invalid date: "${value}"`,
+    text: t`We encountered an invalid date: "${value}"`,
   };
 }
 

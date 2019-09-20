@@ -69,7 +69,7 @@ import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
-const PEOPLE_ID_FIELD_ID = 13;
+const PEOPLE_PK_FIELD_ID = 13;
 
 async function setQueryText(store, queryText) {
   // We don't have Ace editor so we have to trigger the Redux action manually
@@ -463,7 +463,7 @@ describe("public/embedded", () => {
             parameter_mappings: [
               {
                 card_id: mbqlCard.id,
-                target: ["dimension", ["field-id", PEOPLE_ID_FIELD_ID]],
+                target: ["dimension", ["field-id", PEOPLE_PK_FIELD_ID]],
                 parameter_id: "22486e00",
               },
             ],

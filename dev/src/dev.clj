@@ -9,7 +9,9 @@
              [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.models.interface :as mi]
-            [toucan.db :as tdb]))
+            [metabase.test.util] ;; extensions
+            [toucan.db :as tdb]
+            [toucan.util.test :as tt]))
 
 (defn init!
   []
@@ -31,10 +33,14 @@
   (stop!)
   (start!))
 
-(defn run-tests
+(defn reload-run-tests
   [& ns-names]
   (doseq [ns-name ns-names]
     (require ns-name :reload))
+  (expectations/run-tests ns-names))
+
+(defn run-tests
+  [& ns-names]
   (expectations/run-tests ns-names))
 
 (defmacro require-model

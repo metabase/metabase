@@ -1,6 +1,6 @@
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
+  SAMPLE_DATASET,
+  ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
@@ -20,12 +20,12 @@ describe("Question", () => {
       const templateTagName = "orderid";
       const templateTagId = "f1cb12ed3-8727-41b6-bbb4-b7ba31884c30";
       const question = Question.create({
-        databaseId: DATABASE_ID,
-        tableId: ORDERS_TABLE_ID,
+        databaseId: SAMPLE_DATASET.id,
+        tableId: ORDERS.id,
         metadata,
       }).setDatasetQuery({
         ...NATIVE_QUERY_TEMPLATE,
-        database: DATABASE_ID,
+        database: SAMPLE_DATASET.id,
         native: {
           query: `SELECT SUBTOTAL FROM ORDERS WHERE id = {{${templateTagName}}}`,
           "template-tags": {
@@ -53,12 +53,12 @@ describe("Question", () => {
       const templateTagName = "orderid";
       const templateTagId = "f1cb12ed3-8727-41b6-bbb4-b7ba31884c30";
       const question = Question.create({
-        databaseId: DATABASE_ID,
-        tableId: ORDERS_TABLE_ID,
+        databaseId: SAMPLE_DATASET.id,
+        tableId: ORDERS.id,
         metadata,
       }).setDatasetQuery({
         ...NATIVE_QUERY_TEMPLATE,
-        database: DATABASE_ID,
+        database: SAMPLE_DATASET.id,
         native: {
           query: `SELECT SUBTOTAL FROM ORDERS [[WHERE id = {{${templateTagName}}}]]`,
           "template-tags": {
