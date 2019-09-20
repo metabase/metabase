@@ -252,23 +252,25 @@ export default class DatabaseDetailsForm extends Component {
           </div>
         </FormField>
       );
-    } else if (field.name === "add-comment") {
+    } else if (field.name === "include-user-id-and-hash") {
       const on =
-        details["add-comment"] == undefined ? true : details["add-comment"];
+        details["include-user-id-and-hash"] == undefined ? true : details["include-user-id-and-hash"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">
             <div className="Grid-cell--top">
               <Toggle
                 value={on}
-                onChange={val => this.onChange("add-comment", val)}
+                onChange={val => this.onChange("include-user-id-and-hash", val)}
               />
             </div>
             <div className="px2">
-              <h3>{t`Add comment to queries`}</h3>
+              <h3>{t`Include User ID and query hash in queries`}</h3>
               <div style={{ maxWidth: "40rem" }} className="pt1">
-                {t`This should append Metabase User ID and query hash to the query.
-                    Useful for debugging. Keep this off to save money.`}
+                {t`When on, this appends the Metabase User ID and query hash to queries
+                   on this database, which can be useful for auditing and debugging.
+                   However, this causes each query to look distinct, preventing BigQuery
+                   from returning cached results, which may increase your costs.`}
               </div>
             </div>
           </div>

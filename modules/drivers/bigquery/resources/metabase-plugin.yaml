@@ -36,8 +36,8 @@ driver:
       display-name: Use JVM Time Zone
       default: false
       type: boolean
-    - name: add-comment
-      display-name: Add SQL comment from queries
+    - name: include-user-id-and-hash
+      display-name: Include User ID and query hash in queries
       default: true
       type: boolean
 init:
