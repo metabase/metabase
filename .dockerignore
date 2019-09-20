@@ -1,4 +1,5 @@
 .babel_cache/*
+.git/*
 docs/*
 OSX/*
 target/*

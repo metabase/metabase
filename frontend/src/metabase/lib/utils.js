@@ -195,9 +195,9 @@ const MetabaseUtils = {
     for (let i = 0; i < Math.max(aComponents.length, bComponents.length); i++) {
       const a = aComponents[i];
       const b = bComponents[i];
-      if (b == undefined || a < b) {
+      if (b == null || a < b) {
         return -1;
-      } else if (a == undefined || b < a) {
+      } else if (a == null || b < a) {
         return 1;
       }
     }

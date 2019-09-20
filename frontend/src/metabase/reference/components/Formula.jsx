@@ -6,9 +6,9 @@ import { CSSTransitionGroup } from "react-transition-group";
 
 import S from "./Formula.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition.jsx";
+import QueryDefinition from "metabase/query_builder/components/dataref/QueryDefinition";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 

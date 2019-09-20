@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 type Props = {
   // ...IconProps,

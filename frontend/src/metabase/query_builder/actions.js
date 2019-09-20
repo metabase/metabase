@@ -218,7 +218,7 @@ export const updateUrl = createThunkAction(
     } else {
       question = new Question(getMetadata(getState()), card);
     }
-    if (dirty == undefined) {
+    if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
@@ -264,7 +264,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    if (replaceState == undefined) {
+    if (replaceState == null) {
       // if the serialized card is identical replace the previous state instead of adding a new one
       // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
       replaceState = isSameCard && isSameMode;
@@ -413,16 +413,16 @@ export const initializeQB = (location, params) => {
 
       // initialize parts of the query based on optional parameters supplied
       if (card.dataset_query.query) {
-        if (options.table != undefined) {
+        if (options.table != null) {
           card.dataset_query.query["source-table"] = parseInt(options.table);
         }
-        if (options.segment != undefined) {
+        if (options.segment != null) {
           card.dataset_query.query.filter = [
             "segment",
             parseInt(options.segment),
           ];
         }
-        if (options.metric != undefined) {
+        if (options.metric != null) {
           // show the summarize sidebar for metrics
           uiControls.isShowingSummarySidebar = true;
           card.dataset_query.query.aggregation = [
@@ -534,11 +534,11 @@ export const loadMetadataForCard = createThunkAction(
       const query = new Question(getMetadata(getState()), card).query();
       if (query instanceof StructuredQuery) {
         try {
-          const sourceTable = query.sourceTable();
-          if (sourceTable) {
+          const rootTable = query.rootTable();
+          if (rootTable) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(sourceTable)),
-              dispatch(Tables.actions.fetchForeignKeys(sourceTable)),
+              dispatch(Tables.actions.fetchTableMetadata(rootTable)),
+              dispatch(Tables.actions.fetchForeignKeys(rootTable)),
             ]);
           }
           await Promise.all(
@@ -761,13 +761,26 @@ export const updateQuestion = (
       dispatch(setIsShowingTemplateTagsEditor(false));
     }
 
-    if (
-      !_.isEqual(
-        oldQuestion.query().dependentTableIds(),
-        newQuestion.query().dependentTableIds(),
-      )
-    ) {
-      dispatch(loadMetadataForCard(newQuestion.card()));
+    try {
+      if (
+        !_.isEqual(
+          oldQuestion.query().dependentTableIds(),
+          newQuestion.query().dependentTableIds(),
+        )
+      ) {
+        await dispatch(loadMetadataForCard(newQuestion.card()));
+      }
+
+      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
+      const question = getQuestion(getState());
+      const questionWithDefaultQuery = question.setDefaultQuery();
+      if (!questionWithDefaultQuery.isEqual(question)) {
+        await dispatch.action(UPDATE_QUESTION, {
+          card: questionWithDefaultQuery.setDefaultDisplay().card(),
+        });
+      }
+    } catch (e) {
+      // this will fail if user doesn't have data permissions but thats ok
     }
 
     // run updated query
@@ -1068,6 +1081,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   () => {
     return async (dispatch, getState) => {
+      dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
       const {
         qb: { card },
@@ -1128,10 +1142,23 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkReferences[fk.origin.id] = info;
       }
 
+      // It's possible that while we were running those queries, the object
+      // detail id changed. If so, these fk reference are stale and we shouldn't
+      // put them in state.
+      const updatedQueryResult = getFirstQueryResult(getState());
+      if (
+        getObjectDetailIdValue(queryResult.data) !==
+        getObjectDetailIdValue(updatedQueryResult.data)
+      ) {
+        return null;
+      }
       return fkReferences;
     };
   },
 );
+
+export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";

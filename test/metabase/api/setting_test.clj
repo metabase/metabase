@@ -1,16 +1,20 @@
 (ns metabase.api.setting-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2]]
-            [metabase.test.data.users :refer [user->client]]))
+            [metabase.test.data.users :as test-users]
+            [metabase.test.fixtures :as fixtures]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; ## Helper Fns
 (defn- fetch-test-settings  []
-  (for [setting ((user->client :crowberto) :get 200 "setting")
+  (for [setting ((test-users/user->client :crowberto) :get 200 "setting")
         :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
     setting))
 
 (defn- fetch-setting [setting-name]
-  ((user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
+  ((test-users/user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
 
 ;; ## GET /api/setting
 ;; Check that we can fetch all Settings for Org
@@ -34,7 +38,7 @@
 
 ;; Check that non-superusers are denied access
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :get 403 "setting"))
+  ((test-users/user->client :rasta) :get 403 "setting"))
 
 
 ;; ## GET /api/setting/:key
@@ -44,18 +48,20 @@
  (do (test-setting-2 "OK!")
      (fetch-setting :test-setting-2)))
 
+(deftest update-settings-test
+  (testing "PUT /api/setting/:key"
+    ((test-users/user->client :crowberto) :put 200 "setting/test-setting-1" {:value "NICE!"})
+    (is (= "NICE!"
+           (test-setting-1))
+        "Updated setting should be visible from setting getter")
 
-;; ## PUT /api/setting/:key
-(expect
- ["NICE!"
-  "NICE!"]
- (do ((user->client :crowberto) :put 200 "setting/test-setting-1" {:value "NICE!"})
-     [(test-setting-1)
-      (fetch-setting :test-setting-1)]))
+    (is (= "NICE!"
+           (fetch-setting :test-setting-1))
+        "Updated setting should be visible from API endpoint")))
 
 ;; ## Check non-superuser can't set a Setting
 (expect "You don't have permissions to do that."
-  ((user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"}))
+  ((test-users/user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"}))
 
 
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
@@ -82,14 +88,14 @@
     (some (fn [{setting-name :key, :as setting}]
             (when (= setting-name "test-sensitive-setting")
               setting))
-          ((user->client :crowberto) :get 200 "setting"))))
+          ((test-users/user->client :crowberto) :get 200 "setting"))))
 
 ;; Setting the Setting via an endpoint should still work as expected; the normal getter functions should *not*
 ;; obfuscate sensitive Setting values -- that should be done by the API
 (expect
   "123456"
   (do
-    ((user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "123456"})
+    ((test-users/user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "123456"})
     (test-sensitive-setting)))
 
 ;; Attempts to set the Setting to an obfuscated value should be ignored
@@ -97,11 +103,11 @@
   "123456"
   (do
     (test-sensitive-setting "123456")
-    ((user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "**********56"})
+    ((test-users/user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "**********56"})
     (test-sensitive-setting)))
 
 (expect
   (do
     (test-sensitive-setting "123456")
-    ((user->client :crowberto) :put 200 "setting" {:test-sensitive-setting "**********56"})
+    ((test-users/user->client :crowberto) :put 200 "setting" {:test-sensitive-setting "**********56"})
     (test-sensitive-setting)))

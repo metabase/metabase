@@ -8,7 +8,7 @@ import { getScrollX, getScrollY } from "metabase/lib/dom";
 import { CSSTransitionGroup } from "react-transition-group";
 import { Motion, spring } from "react-motion";
 
-import OnClickOutsideWrapper from "./OnClickOutsideWrapper.jsx";
+import OnClickOutsideWrapper from "./OnClickOutsideWrapper";
 import ModalContent from "./ModalContent";
 
 import _ from "underscore";

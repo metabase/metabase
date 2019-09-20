@@ -25,7 +25,7 @@ export default class FormField extends Component {
   };
 
   render() {
-    const { displayName, offset, formError, children, hidden } = this.props;
+    const { displayName, formError, children, hidden } = this.props;
     const name = this.props.name || this.props.fieldName;
 
     let error = this.props.error || getIn(formError, ["data", "errors", name]);
@@ -42,12 +42,9 @@ export default class FormField extends Component {
         })}
       >
         {displayName && (
-          <label
-            className={cx("Form-label", { "Form-offset": offset })}
-            htmlFor={name}
-          >
+          <label className="Form-label" htmlFor={name}>
             {displayName}{" "}
-            {error && <span className="text-error mx1">{error}</span>}
+            {error && <span className="text-error">: {error}</span>}
           </label>
         )}
         {children}

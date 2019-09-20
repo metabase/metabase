@@ -71,7 +71,7 @@ const mockPublicDashboardResponse = {
         {
           parameter_id: "598ab323",
           card_id: 25,
-          target: ["dimension", ["fk->", 3, 21]],
+          target: ["dimension", ["fk->", ["field-id", 3], ["field-id", 21]]],
         },
       ],
       card_id: 25,

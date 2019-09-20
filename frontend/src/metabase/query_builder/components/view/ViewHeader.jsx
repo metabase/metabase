@@ -1,13 +1,12 @@
 import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
+import { Box } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import Button from "metabase/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import Tooltip from "metabase/components/Tooltip.jsx";
 
 import ViewSection, { ViewHeading, ViewSubHeading } from "./ViewSection";
 
@@ -16,6 +15,7 @@ import QuestionDescription from "./QuestionDescription";
 import QuestionEntityMenu from "./QuestionEntityMenu";
 import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
+import QuestionNotebookButton from "./QuestionNotebookButton";
 
 import QuestionFilters, { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
@@ -101,7 +101,7 @@ export class ViewTitleHeader extends React.Component {
         py={[1]}
       >
         {isSaved ? (
-          <div className="mb1">
+          <div>
             <div className="flex align-center">
               <ViewHeading className="mr1">
                 {question.displayName()}
@@ -119,13 +119,27 @@ export class ViewTitleHeader extends React.Component {
                 onOpenModal={onOpenModal}
               />
             </div>
-            <ViewSubHeading className="flex align-center">
-              <CollectionBadge collectionId={question.collectionId()} />
-              <span className="mx2 text-light text-smaller">•</span>
+            <ViewSubHeading className="flex align-center flex-wrap">
+              <CollectionBadge
+                className="mb1"
+                collectionId={question.collectionId()}
+              />
 
-              <QuestionDataSource question={question} subHead />
+              {QuestionDataSource.shouldRender({ question }) && (
+                <span className="mb1 mx2 text-light text-smaller">•</span>
+              )}
+
+              {QuestionDataSource.shouldRender({ question }) && (
+                <QuestionDataSource
+                  className="mb1"
+                  question={question}
+                  subHead
+                />
+              )}
+
               {QuestionFilters.shouldRender(this.props) && (
                 <QuestionFilters
+                  className="mb1"
                   question={question}
                   expanded={isFiltersExpanded}
                   onExpand={this.expandFilters}
@@ -135,9 +149,9 @@ export class ViewTitleHeader extends React.Component {
             </ViewSubHeading>
           </div>
         ) : (
-          <div className="mb1">
-            <div className="flex align-baseline">
-              <ViewHeading className="mt1" style={{ marginBottom: 4 }}>
+          <div>
+            <div className="flex align-baseline flex-wrap">
+              <ViewHeading className="mt1 mr2 mb1">
                 {isNative ? (
                   t`New question`
                 ) : (
@@ -147,6 +161,7 @@ export class ViewTitleHeader extends React.Component {
               {showFiltersInHeading &&
                 QuestionFilters.shouldRender(this.props) && (
                   <QuestionFilters
+                    className="mr2 mb1"
                     question={question}
                     expanded={isFiltersExpanded}
                     onExpand={this.expandFilters}
@@ -154,22 +169,26 @@ export class ViewTitleHeader extends React.Component {
                   />
                 )}
               {QuestionLineage.shouldRender(this.props) && (
-                <ViewSubHeading>
-                  <QuestionLineage
-                    className={isSummarized ? "ml2" : isNative ? "ml2" : ""}
-                    question={question}
-                    originalQuestion={originalQuestion}
-                  />
-                </ViewSubHeading>
+                <QuestionLineage
+                  className="mr2 mb1"
+                  question={question}
+                  originalQuestion={originalQuestion}
+                />
               )}
             </div>
-            <div className="flex align-center">
+            <div className="flex align-center flex-wrap">
               {isSummarized && (
-                <QuestionDataSource question={question} subHead />
+                <QuestionDataSource
+                  className="mb1"
+                  question={question}
+                  subHead
+                  data-metabase-event={`Question Data Source Click`}
+                />
               )}
               {!showFiltersInHeading &&
                 QuestionFilters.shouldRender(this.props) && (
                   <QuestionFilters
+                    className="mb1"
                     question={question}
                     expanded={isFiltersExpanded}
                     onExpand={this.expandFilters}
@@ -180,13 +199,14 @@ export class ViewTitleHeader extends React.Component {
           </div>
         )}
         <div className="ml-auto flex align-center">
-          {NativeQueryButton.shouldRender(this.props) && (
-            <NativeQueryButton size={20} question={question} />
-          )}
           {isDirty ? (
             <Link
               className="text-brand text-bold py1 px2 rounded bg-white bg-light-hover"
-              mx={1}
+              data-metabase-event={
+                isShowingNotebook
+                  ? `Notebook Mode; Click Save`
+                  : `View Mode; Click Save`
+              }
               onClick={() => onOpenModal("save")}
             >
               {t`Save`}
@@ -194,41 +214,57 @@ export class ViewTitleHeader extends React.Component {
           ) : null}
           {QuestionFilterWidget.shouldRender(this.props) && (
             <QuestionFilterWidget
+              className="hide sm-show"
               ml={1}
-              query={question.query()}
               isShowingFilterSidebar={isShowingFilterSidebar}
               onAddFilter={onAddFilter}
               onCloseFilter={onCloseFilter}
+              data-metabase-event={`View Mode; Open Filter Widget`}
             />
           )}
           {QuestionSummarizeWidget.shouldRender(this.props) && (
             <QuestionSummarizeWidget
+              className="hide sm-show"
               ml={1}
-              question={question}
               isShowingSummarySidebar={isShowingSummarySidebar}
               onEditSummary={onEditSummary}
               onCloseSummary={onCloseSummary}
+              data-metabase-event={`View Mode; Open Summary Widget`}
             />
           )}
-          {question.isStructured() && (
-            <Tooltip
-              tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
+          {QuestionNotebookButton.shouldRender({ question }) && (
+            <QuestionNotebookButton
+              className="hide sm-show"
+              ml={2}
+              question={question}
+              isShowingNotebook={isShowingNotebook}
+              setQueryBuilderMode={setQueryBuilderMode}
+              data-metabase-event={
+                isShowingNotebook
+                  ? `Notebook Mode;Go to View Mode`
+                  : `View Mode; Go to Notebook Mode`
+              }
+            />
+          )}
+          {NativeQueryButton.shouldRender(this.props) && (
+            <Box
+              ml={2}
+              p={1}
+              className="text-medium text-brand-hover cursor-pointer"
             >
-              <Button
-                borderless={!isShowingNotebook}
-                primary={isShowingNotebook}
-                medium
-                icon="notebook"
-                ml={2}
-                onClick={() =>
-                  setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
-                }
+              <NativeQueryButton
+                size={16}
+                question={question}
+                data-metabase-event={`Notebook Mode; Convert to SQL Click`}
               />
-            </Tooltip>
+            </Box>
           )}
           {isRunnable && (
             <RunButtonWithTooltip
-              className={cx({ hidden: isShowingNotebook })}
+              className={cx("text-brand-hover hide", {
+                "sm-show": !isShowingNotebook || isNative,
+                "text-white-hover": isResultDirty && isRunnable,
+              })}
               medium
               borderless
               ml={1}

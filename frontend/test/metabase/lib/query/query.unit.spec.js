@@ -2,29 +2,36 @@ import * as Query from "metabase/lib/query/query";
 
 describe("Query", () => {
   describe("isBareRowsAggregation", () => {
-    it("should return true for all bare rows variation", () => {
+    it("should return true for no aggregation", () => {
       expect(Query.isBareRows({})).toBe(true);
+    });
+    it("should return true for no aggregation deprecated form", () => {
       expect(Query.isBareRows({ aggregation: null })).toBe(true); // deprecated
       expect(Query.isBareRows({ aggregation: [] })).toBe(true); // deprecated
     });
     it("should return false for other aggregations", () => {
       expect(Query.isBareRows({ aggregation: [["count"]] })).toBe(false);
+    });
+    it("should return false for other aggregations deprecated form", () => {
       expect(Query.isBareRows({ aggregation: ["count"] })).toBe(false); // deprecated
     });
   });
   describe("getAggregations", () => {
     it("should return an empty list for bare rows", () => {
       expect(Query.getAggregations({})).toEqual([]);
-      expect(Query.getAggregations({ aggregation: [["rows"]] })).toEqual([]);
+    });
+    it("should return an empty list for bare rows for deprecated form", () => {
+      expect(Query.getAggregations({ aggregation: [["rows"]] })).toEqual([]); // deprecated
       expect(Query.getAggregations({ aggregation: ["rows"] })).toEqual([]); // deprecated
     });
     it("should return a single aggregation", () => {
       expect(Query.getAggregations({ aggregation: [["count"]] })).toEqual([
         ["count"],
       ]);
-      expect(Query.getAggregations({ aggregation: ["count"] })).toEqual([
-        ["count"],
-      ]); // deprecated
+    });
+    it("should return a single aggregation for deprecated form", () => {
+      expect(Query.getAggregations({ aggregation: ["count"] })) // deprecated
+        .toEqual([["count"]]);
     });
     it("should return multiple aggregations", () => {
       expect(
@@ -80,9 +87,10 @@ describe("Query", () => {
       expect(Query.removeAggregation({ aggregation: [["count"]] }, 0)).toEqual(
         {},
       );
-      expect(Query.removeAggregation({ aggregation: ["count"] }, 0)).toEqual(
-        {},
-      ); // deprecated
+    });
+    it("should remove the last aggregations for deprecated form", () => {
+      expect(Query.removeAggregation({ aggregation: ["count"] }, 0)) // deprecated
+        .toEqual({});
     });
   });
   describe("clearAggregations", () => {
@@ -93,7 +101,10 @@ describe("Query", () => {
           aggregation: [["count"], ["sum", ["field-id", 1]]],
         }),
       ).toEqual({});
-      expect(Query.clearAggregations({ aggregation: ["count"] })).toEqual({}); // deprecated
+    });
+    it("should remove all aggregations for deprecated form", () => {
+      expect(Query.clearAggregations({ aggregation: ["count"] })) // deprecated
+        .toEqual({});
     });
   });
 

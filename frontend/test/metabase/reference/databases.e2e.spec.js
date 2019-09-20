@@ -22,10 +22,10 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import DatabaseList from "metabase/reference/databases/DatabaseList";
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import QueryButton from "metabase/components/QueryButton";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
@@ -39,7 +39,7 @@ describe("The Reference Section", () => {
     dataset_query: {
       database: 1,
       type: "query",
-      query: { "source-table": 1, aggregation: ["count"] },
+      query: { "source-table": 1, aggregation: [["count"]] },
     },
     visualization_settings: {},
   };

@@ -72,7 +72,7 @@
 (defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
 (defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :year (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
 
 (defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr]
   (hx/->integer (date-format "u"

@@ -3,7 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import colors, { normal } from "metabase/lib/colors";
+import { color, normal } from "metabase/lib/colors";
 
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/components/Button";
@@ -98,11 +98,11 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
-    colors["error"],
-    colors["warning"],
-    colors["success"],
+    color("error"),
+    color("warning"),
+    color("success"),
     ...Object.values(normal).slice(0, 9),
-    colors["bg-medium"],
+    color("bg-medium"),
   ];
 }
 

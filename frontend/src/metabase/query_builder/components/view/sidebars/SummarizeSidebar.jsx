@@ -21,7 +21,7 @@ import Icon from "metabase/components/Icon";
 function updateAndRun(query) {
   query
     .question()
-    .setDisplayDefault()
+    .setDefaultDisplay()
     .update(null, { run: true });
 }
 
@@ -80,7 +80,7 @@ export default class SummarizeSidebar extends React.Component {
         </div>
         {query.hasAggregations() && (
           <div className="border-top mt3 pt3 mx1">
-            <h3 className="text-heavy mb2 ml2">Group by</h3>
+            <h3 className="text-heavy mb2 ml2">{t`Group by`}</h3>
             <SummarizeBreakouts className="mx2" query={query} />
           </div>
         )}
@@ -164,7 +164,7 @@ const SummarizeAggregationAdd = ({ className, query }) => {
           className="flex-full align-center rounded bg-light bg-medium-hover text-green text-bold transition-all"
         >
           <Icon className="ml2 mr1" name="add" size="10" />
-          <span className="text-small">Add a metric</span>
+          <span className="text-small">{t`Add a metric`}</span>
         </Flex>
       }
       isInitiallyOpen={!query.hasAggregations()}

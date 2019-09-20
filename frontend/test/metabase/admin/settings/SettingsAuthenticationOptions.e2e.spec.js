@@ -5,8 +5,8 @@ import { mount } from "enzyme";
 
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
 import SettingsAuthenticationOptions from "metabase/admin/settings/components/SettingsAuthenticationOptions";
-import SettingsSingleSignOnForm from "metabase/admin/settings/components/SettingsSingleSignOnForm.jsx";
-import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm.jsx";
+import SettingsSingleSignOnForm from "metabase/admin/settings/components/SettingsSingleSignOnForm";
+import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
 
 import { INITIALIZE_SETTINGS } from "metabase/admin/settings/settings";
 

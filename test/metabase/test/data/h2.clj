@@ -1,6 +1,7 @@
 (ns metabase.test.data.h2
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require [clojure.string :as str]
+            [metabase.db :as mdb]
             [metabase.db.spec :as dbspec]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.database :refer [Database]]
@@ -28,6 +29,7 @@
     ;; don't think we need to bother making this super-threadsafe because REPL usage and tests are more or less
     ;; single-threaded
     (when (not (contains? @h2-test-dbs-created-by-this-instance database-name))
+      (mdb/setup-db!) ; if not already setup
       (db/delete! Database :engine "h2", :name database-name)
       (swap! h2-test-dbs-created-by-this-instance conj database-name))
     ((get-method data.impl/get-or-create-database! :default) driver dbdef)))

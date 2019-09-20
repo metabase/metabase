@@ -17,7 +17,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
   if (!query.isBareRows()) {
     return [];
   }
-  if (query.filters().length == 0) {
+  if (query.filters().length === 0) {
     return [];
   }
 

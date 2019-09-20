@@ -3,7 +3,7 @@
 import React from "react";
 import cx from "classnames";
 
-import FieldList from "metabase/query_builder/components/FieldList.jsx";
+import FieldList from "metabase/query_builder/components/FieldList";
 
 import type { Breakout } from "metabase/meta/types/Query";
 import type { FieldOptions } from "metabase/meta/types/Metadata";

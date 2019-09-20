@@ -156,7 +156,7 @@
 (generate/add-encoder
  SampleNastyClass
  (fn [obj, ^JsonGenerator json-generator]
-   (.writeString json-generator (:v obj))))
+   (.writeString json-generator (str (:v obj)))))
 
 (defrecord ^:private AnotherNastyClass [^String v])
 
@@ -237,7 +237,9 @@
                            :query    {:source-table (str "card__" (u/get-id card))}}))]
       (count (csv/read-csv result)))))
 
-;; POST /api/dataset/:format Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
+;; POST /api/dataset/:format
+;;
+;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
 ;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
 ;; from one that had it -- see #9831)
 (expect

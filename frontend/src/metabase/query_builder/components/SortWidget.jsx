@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-import FieldWidget from "./FieldWidget.jsx";
-import SelectionModule from "./SelectionModule.jsx";
+import Icon from "metabase/components/Icon";
+import FieldWidget from "./FieldWidget";
+import SelectionModule from "./SelectionModule";
 
 import _ from "underscore";
 

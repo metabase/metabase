@@ -9,16 +9,14 @@ import cx from "classnames";
 import { t } from "ttag";
 import { Flex } from "grid-styled";
 import styled from "styled-components";
-import { space, width } from "styled-system";
-import color from "color";
+import { space } from "styled-system";
 
 import * as Urls from "metabase/lib/urls";
-import colors, { darken } from "metabase/lib/colors";
+import { color, darken, lighten } from "metabase/lib/colors";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import Tooltip from "metabase/components/Tooltip";
 import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
@@ -28,21 +26,20 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
 import { getPath, getContext, getUser } from "../selectors";
-import Database from "metabase/entities/databases";
-
 import {
-  getCurrentQuery,
-  getNewQueryOptions,
+  getHasDataAccess,
+  getHasNativeWrite,
   getPlainNativeQuery,
 } from "metabase/new_query/selectors";
+import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
-  query: getCurrentQuery(state),
-  plainNativeQuery: getPlainNativeQuery(state),
-  newQueryOptions: getNewQueryOptions(state),
   path: getPath(state, props),
   context: getContext(state, props),
   user: getUser(state),
+  plainNativeQuery: getPlainNativeQuery(state),
+  hasDataAccess: getHasDataAccess(state),
+  hasNativeWrite: getHasNativeWrite(state),
 });
 
 const mapDispatchToProps = {
@@ -63,20 +60,20 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = color(colors.brand)
-  .lighten(0.07)
-  .string();
-const ActiveSearchColor = color(colors.brand)
-  .lighten(0.1)
-  .string();
+const DefaultSearchColor = lighten("brand", 0.07);
+const ActiveSearchColor = lighten("brand", 0.1);
+
+const NavHover = {
+  backgroundColor: darken(color("brand")),
+  color: "white",
+};
 
 const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
   border-radius: 6px;
+  flex: 1 1 auto;
   max-width: 50em;
-  min-width: 25em;
-  width: 100%;
   align-items: center;
   color: white;
   transition: background 300ms ease-in;
@@ -86,7 +83,8 @@ const SearchWrapper = Flex.extend`
 `;
 
 const SearchInput = styled.input`
-  ${space} ${width} background-color: transparent;
+  ${space} background-color: transparent;
+  width: 100%;
   border: none;
   color: white;
   font-size: 1em;
@@ -95,7 +93,7 @@ const SearchInput = styled.input`
     outline: none;
   }
   &::placeholder {
-    color: ${colors["text-white"]};
+    color: ${color("text-white")};
   }
 `;
 
@@ -147,11 +145,10 @@ class SearchBar extends React.Component {
           onClick={() => this.setState({ active: true })}
           active={active}
         >
-          <Icon name="search" ml={2} />
+          <Icon name="search" ml={["10px", 2]} />
           <SearchInput
-            w={1}
             py={2}
-            pr={2}
+            pr={[0, 2]}
             pl={1}
             ref={ref => (this.searchInput = ref)}
             value={searchText}
@@ -287,8 +284,8 @@ export default class Navbar extends Component {
   }
 
   renderMainNav() {
-    const hasDataAccess =
-      this.props.databases && this.props.databases.length > 0;
+    const { hasDataAccess, hasNativeWrite } = this.props;
+
     return (
       <Flex
         // NOTE: DO NOT REMOVE `Nav` CLASS FOR NOW, USED BY MODALS, FULLSCREEN DASHBOARD, ETC
@@ -319,13 +316,13 @@ export default class Navbar extends Component {
               to={Urls.newQuestionFlow()}
               p={1}
               hover={{
-                backgroundColor: darken(colors["brand"]),
+                backgroundColor: darken(color("brand")),
               }}
-              className="flex align-center rounded flex-no-shrink transition-background"
+              className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;New Question`}
             >
-              <Icon name="insight" mr={1} size={18} />
-              <h4 className="hide sm-show">{t`Ask a question`}</h4>
+              <Icon name="insight" size={18} />
+              <h4 className="hide sm-show ml1 text-nowrap">{t`Ask a question`}</h4>
             </Link>
           )}
           {hasDataAccess && (
@@ -333,29 +330,22 @@ export default class Navbar extends Component {
               mr={[1, 2]}
               to="browse"
               p={1}
-              className="flex align-center rounded flex-no-shrink transition-background"
+              className="flex align-center rounded transition-background"
               data-metabase-event={`NavBar;Data Browse`}
               hover={{
-                backgroundColor: darken(colors["brand"]),
+                backgroundColor: darken(color("brand")),
               }}
             >
-              <Icon name="table_spaced" mr={1} size={14} />
-              <h4 className="hide sm-show">{t`Browse Data`}</h4>
+              <Icon name="table_spaced" size={14} />
+              <h4 className="hide md-show ml1 text-nowrap">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
             tooltip={t`Create`}
-            className="hide sm-show mx1"
+            className="hide sm-show mr1"
             triggerIcon="add"
+            triggerProps={{ hover: NavHover }}
             items={[
-              /*
-              {
-                title: t`New notebook`,
-                icon: `notebook`,
-                link: hasDataAccess && this.props.query.question().getUrl(),
-                event: `NavBar;New Custom Question;`,
-              },
-              */
               {
                 title: t`New dashboard`,
                 icon: `dashboard`,
@@ -370,17 +360,18 @@ export default class Navbar extends Component {
               },
             ]}
           />
-          {hasDataAccess && (
-            <IconWrapper mx={1}>
-              <Tooltip tooltip={t`Write SQL`}>
-                <Link
-                  to={this.props.plainNativeQuery.question().getUrl()}
-                  className="hide sm-show flex-no-shrink"
-                  data-metabase-event={`NavBar;SQL`}
-                >
-                  <Icon size={19} name="sql" />
-                </Link>
-              </Tooltip>
+          {hasNativeWrite && (
+            <IconWrapper
+              className="relative hide sm-show mr1 overflow-hidden"
+              hover={NavHover}
+            >
+              <Link
+                to={this.props.plainNativeQuery.question().getUrl()}
+                className="flex align-center"
+                data-metabase-event={`NavBar;SQL`}
+              >
+                <Icon size={18} p={"11px"} name="sql" tooltip={t`Write SQL`} />
+              </Link>
             </IconWrapper>
           )}
           <ProfileLink {...this.props} />

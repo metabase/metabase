@@ -70,7 +70,7 @@ describe("admin/datamodel", () => {
         .find(ColumnarSelector)
         .find(".ColumnarSelector-row")
         .at(1);
-      expect(onlyInDetailViewsRow.text()).toMatch(/Only in Detail Views/);
+      expect(onlyInDetailViewsRow.text()).toMatch(/Only in detail views/);
       click(onlyInDetailViewsRow);
       await store.waitForActions([Fields.actions.update]);
 
@@ -81,7 +81,7 @@ describe("admin/datamodel", () => {
         .find(ColumnarSelector)
         .find(".ColumnarSelector-row")
         .at(2);
-      expect(doNotIncludeRow.text()).toMatch(/Do Not Include/);
+      expect(doNotIncludeRow.text()).toMatch(/Do not include/);
       click(doNotIncludeRow);
 
       await store.waitForActions([Fields.actions.update]);

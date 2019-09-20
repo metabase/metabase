@@ -105,7 +105,7 @@
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
-(defmethod sql.qp/date [:oracle :year]           [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :year]           [_ _ v] (trunc :year v))
 
 (defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
@@ -242,39 +242,42 @@
 (defmethod driver/current-db-time :oracle [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  #{"ANONYMOUS"
-     ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
-     "APEX_040200"
-     "APPQOSSYS"
-     "AUDSYS"
-     "CTXSYS"
-     "DBSNMP"
-     "DIP"
-     "GSMADMIN_INTERNAL"
-     "GSMCATUSER"
-     "GSMUSER"
-     "LBACSYS"
-     "MDSYS"
-     "OLAPSYS"
-     "ORDDATA"
-     "ORDSYS"
-     "OUTLN"
-     "RDSADMIN"
-     "SYS"
-     "SYSBACKUP"
-     "SYSDG"
-     "SYSKM"
-     "SYSTEM"
-     "WMSYS"
-     "XDB"
-     "XS$NULL"})
+;; don't redef if already definied -- test extensions override this impl
+(when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
+    #{"ANONYMOUS"
+      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+      "APEX_040200"
+      "APPQOSSYS"
+      "AUDSYS"
+      "CTXSYS"
+      "DBSNMP"
+      "DIP"
+      "GSMADMIN_INTERNAL"
+      "GSMCATUSER"
+      "GSMUSER"
+      "LBACSYS"
+      "MDSYS"
+      "OLAPSYS"
+      "ORDDATA"
+      "ORDSYS"
+      "OUTLN"
+      "RDSADMIN"
+      "SYS"
+      "SYSBACKUP"
+      "SYSDG"
+      "SYSKM"
+      "SYSTEM"
+      "WMSYS"
+      "XDB"
+      "XS$NULL"}))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
   "ALTER session SET time_zone = %s")
 
 ;; instead of returning a CLOB object, return the String. (#9026)
-(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB] [_ _, ^ResultSet resultset, _, ^Integer i]
+(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getString resultset i))
 
 (defmethod unprepare/unprepare-value [:oracle Date] [_ value]

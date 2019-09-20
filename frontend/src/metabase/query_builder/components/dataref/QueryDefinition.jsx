@@ -1,7 +1,7 @@
 import React from "react";
 
-import FilterList from "../FilterList.jsx";
-import AggregationName from "../AggregationName.jsx";
+import FilterList from "../FilterList";
+import AggregationName from "../AggregationName";
 
 import Question from "metabase-lib/lib/Question";
 

@@ -9,24 +9,28 @@ export function nyi(target, key, descriptor) {
   return descriptor;
 }
 
-const memoized = new WeakMap();
-
 function getWithFallback(map, key, fallback) {
-  if (!map.has(key)) {
-    map.set(key, fallback());
+  if (map.has(key)) {
+    return map.get(key);
+  } else {
+    const value = fallback();
+    map.set(key, value);
+    return value;
   }
-  return map.get(key);
 }
 
+const memoized = new WeakMap();
 export function memoize(target, name, descriptor) {
   const method = target[name];
   descriptor.value = function(...args) {
     const path = [this, method, ...args];
     const last = path.pop();
     const map = path.reduce(
-      (map, key) => getWithFallback(map, key, () => new Map()),
+      (map, key) => getWithFallback(map, key, createMap),
       memoized,
     );
     return getWithFallback(map, last, () => method.apply(this, args));
   };
 }
+
+const createMap = () => new Map();

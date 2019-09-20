@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import styles from "./ChartWithLegend.css";
 
-import LegendVertical from "./LegendVertical.jsx";
-import LegendHorizontal from "./LegendHorizontal.jsx";
+import LegendVertical from "./LegendVertical";
+import LegendHorizontal from "./LegendHorizontal";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import cx from "classnames";
 
@@ -95,6 +95,16 @@ export default class ChartWithLegend extends Component {
       type = "small";
     }
 
+    const legend = LegendComponent ? (
+      <LegendComponent
+        className={styles.Legend}
+        titles={legendTitles}
+        colors={legendColors}
+        hovered={hovered}
+        onHoverChange={onHoverChange}
+      />
+    ) : null;
+
     return (
       <div
         className={cx(
@@ -111,21 +121,15 @@ export default class ChartWithLegend extends Component {
           paddingRight: PADDING,
         }}
       >
-        {LegendComponent ? (
-          <LegendComponent
-            className={styles.Legend}
-            titles={legendTitles}
-            colors={legendColors}
-            hovered={hovered}
-            onHoverChange={onHoverChange}
-          />
-        ) : null}
+        {legend && <div className={cx(styles.LegendWrapper)}>{legend}</div>}
         <div
           className={cx(styles.Chart)}
           style={{ width: chartWidth, height: chartHeight }}
         >
           {children}
         </div>
+        {/* spacer div to balance legend */}
+        {legend && <div className={cx(styles.LegendSpacer)}>{legend}</div>}
       </div>
     );
   }

@@ -28,7 +28,7 @@
              [pulse-channel :as pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -54,7 +54,7 @@
    ;; can only have one Card
    (-> (hydrate alert :cards) :cards first)
    ;; if there's still not a Card, throw an Exception!
-   (throw (Exception. (str (tru "Invalid Alert: Alert does not have a Card assoicated with it"))))))
+   (throw (Exception. (tru "Invalid Alert: Alert does not have a Card assoicated with it")))))
 
 (defn- perms-objects-set
   "Permissions to read or write a *Pulse* are the same as those of its parent Collection.
@@ -94,7 +94,7 @@
   (su/with-api-error-message {:id          su/IntGreaterThanZero
                               :include_csv s/Bool
                               :include_xls s/Bool}
-    (tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "id" "include_csv" "include_xls")))
+    (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "id" "include_csv" "include_xls")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
@@ -106,7 +106,7 @@
               :description   (s/maybe s/Str)
               :display       (s/maybe su/KeywordOrString)
               :collection_id (s/maybe su/IntGreaterThanZero)})
-    (tru "value must be a map with the following keys `({0})`"
+    (deferred-tru "value must be a map with the following keys `({0})`"
          (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"]))))
 
 (def CoercibleToCardRef

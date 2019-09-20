@@ -20,26 +20,24 @@ describe("pie chart", () => {
 
   it("should render correct percentages in legend", () => {
     const rows = [["foo", 1], ["bar", 2], ["baz", 2]];
-    const { getByText, getAllByText } = render(
-      <Visualization rawSeries={series(rows)} />,
-    );
-    getByText("20%");
-    expect(getAllByText("40%").length).toBe(2);
+    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    getAllByText("20%");
+    getAllByText("40%");
   });
 
   it("should use a consistent number of decimals", () => {
     const rows = [["foo", 0.5], ["bar", 0.499], ["baz", 0.001]];
-    const { getByText } = render(<Visualization rawSeries={series(rows)} />);
-    getByText("50.0%");
-    getByText("49.9%");
-    getByText("0.1%");
+    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    getAllByText("50.0%");
+    getAllByText("49.9%");
+    getAllByText("0.1%");
   });
 
   it("should squash small slices into 'Other'", () => {
     const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002], ["qux", 0.008]];
-    const { getByText } = render(<Visualization rawSeries={series(rows)} />);
-    getByText("50%");
-    getByText("49%");
-    getByText("1%");
+    const { getAllByText } = render(<Visualization rawSeries={series(rows)} />);
+    getAllByText("50%");
+    getAllByText("49%");
+    getAllByText("1%");
   });
 });

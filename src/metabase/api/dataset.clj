@@ -65,7 +65,7 @@
     (export-format->context :json) ;-> :json-download"
   [export-format]
   (or (get-in ex/export-formats [export-format :context])
-      (throw (Exception. (str (tru "Invalid export format: {0}" export-format))))))
+      (throw (Exception. (tru "Invalid export format: {0}" export-format)))))
 
 (defn- datetime-str->date
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since

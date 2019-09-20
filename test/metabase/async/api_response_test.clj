@@ -189,7 +189,7 @@
 ;; If we write a bad API endpoint and return a channel but never write to it, the request should be canceled after
 ;; `absolute-max-keepalive-ms`
 (expect
-  {:message    "No response after waiting 500 ms. Canceling request."
+  {:message    "No response after waiting 500.0 ms. Canceling request."
    :type       "class java.util.concurrent.TimeoutException"
    :stacktrace true}
   (with-redefs [async-response/absolute-max-keepalive-ms 500]

@@ -48,7 +48,7 @@ describe("StructuredQuery nesting", () => {
     it("should return a table with correct dimensions", () => {
       const q = makeStructuredQuery({
         "source-table": ORDERS_TABLE_ID,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         breakout: [["field-id", ORDERS_PRODUCT_FK_FIELD_ID]],
       });
       expect(

@@ -114,8 +114,8 @@
     ;; Cards with queries they wouldn't be allowed to run!
     (when *current-user-id*
       (when-not (query-perms/can-run-query? query)
-        (throw (Exception. (str (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
-                                     (:database query)))))))
+        (throw (Exception. (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
+                                (:database query))))))
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)))
 
@@ -153,6 +153,7 @@
     (when (:dataset_query card)
       (check-for-circular-source-query-references card))))
 
+;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'PulseCard :card_id id)
   (db/delete! 'Revision :model "Card", :model_id id)

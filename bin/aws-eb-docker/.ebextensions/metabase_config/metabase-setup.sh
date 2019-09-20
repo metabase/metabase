@@ -31,21 +31,6 @@ pt_local_host () {
     sed -i "s/.*hostname:.*/hostname: $PAPERTRAIL_HOSTNAME/" /etc/log_files.yml
 }
 
-# nginx server name
-server_name () {
-    [[ "$NGINX_SERVER_NAME" ]] && cp_default_server
-    cd /etc/nginx/sites-available/
-    if [[ "$NGINX_SERVER_NAME" ]] ; then
-        if ! grep -q server_name elasticbeanstalk-nginx-docker-proxy.conf ; then
-            sed -i "s|listen 80\;|listen 80\;\n        server_name $NGINX_SERVER_NAME \*\.$NGINX_SERVER_NAME\;\n|" elasticbeanstalk-nginx-docker-proxy.conf
-        fi
-    else
-        # no hostname passed, disable default_server
-        sed -i '/server_name/d' elasticbeanstalk-nginx-docker-proxy.conf
-        [[ -e /etc/nginx/sites-enabled/default_server ]] && rm /etc/nginx/sites-enabled/default_server
-    fi
-}
-
 # enable https redirect
 server_https () {
     cd /etc/nginx/sites-available/
@@ -82,6 +67,11 @@ server {
         proxy_set_header    Host                $host;
         proxy_set_header    X-Real-IP            $remote_addr;
         proxy_set_header    X-Forwarded-For        $proxy_add_x_forwarded_for;
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        send_timeout 600;
+
     }
 
 
@@ -98,6 +88,10 @@ server {
         proxy_set_header    Host                $host;
         proxy_set_header    X-Real-IP            $remote_addr;
         proxy_set_header    X-Forwarded-For        $proxy_add_x_forwarded_for;
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        send_timeout 600;
     }
 }
 EOF
@@ -156,13 +150,6 @@ install_papertrail () {
     [[ "$PAPERTRAIL_HOSTNAME" ]] && pt_local_host
 }
 
-# enable default_server to drop DNS poisoning
-cp_default_server () {
-    cp .ebextensions/metabase_config/nginx/default_server /etc/nginx/sites-available/default_server
-    [[ ! -e /etc/nginx/sites-enabled/default_server ]] &&
-        ln -s /etc/nginx/sites-available/default_server /etc/nginx/sites-enabled/default_server
-}
-
 # update nginx logging to include x_real_ip
 log_x_real_ip () {
     cp .ebextensions/metabase_config/nginx/log_x_real_ip.conf /etc/nginx/conf.d/log_x_real_ip.conf
@@ -173,9 +160,6 @@ log_x_real_ip () {
 }
 
 case $1 in
-server_name)
-    server_name
-    ;;
 server_https)
     server_https
     ;;

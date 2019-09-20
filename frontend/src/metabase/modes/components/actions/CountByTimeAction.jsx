@@ -31,12 +31,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
       question: () =>
         question
           .summarize(["count"])
-          .breakout([
-            "datetime-field",
-            ["field-id", dateField.id],
-            "as",
-            "day",
-          ]),
+          .breakout(["datetime-field", ["field-id", dateField.id], "day"]),
     },
   ];
 };

@@ -20,7 +20,7 @@
              [setting :as setting]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [set-locale trs]]
+            [metabase.util.i18n :refer [deferred-trs set-locale trs]]
             [toucan.db :as db]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -36,7 +36,7 @@
                          (when-not (= 80 port) (str ":" port))
                          "/setup/")]
     (log/info (u/format-color 'green
-                  (str (trs "Please use the following URL to setup your Metabase installation:")
+                  (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
                        "\n\n"
                        setup-url
                        "\n\n")))))

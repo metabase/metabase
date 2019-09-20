@@ -13,7 +13,7 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [infer-spaces :refer [infer-spaces]]]
             [toucan.db :as db]))
 
@@ -99,21 +99,21 @@
     ;; check to make sure `new-strategy` is a valid strategy, or throw an Exception it is it not.
     (when-not (get-method name->human-readable-name (keyword new-strategy))
       (throw (IllegalArgumentException.
-              (str (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
-                        new-strategy (keys (methods name->human-readable-name)))))))
+               (tru "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
+                    new-strategy (keys (methods name->human-readable-name))))))
     (let [old-strategy (setting/get-string :humanization-strategy)]
       ;; ok, now set the new value
       (setting/set-string! :humanization-strategy (some-> new-value name))
       ;; now rehumanize all the Tables and Fields using the new strategy.
       ;; TODO: Should we do this in a background thread because it is potentially slow?
-      (log/info (trs "Chaning Table & Field names humanization strategy from ''{0}'' to ''{1}''" old-strategy new-strategy))
+      (log/info (trs "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''" old-strategy new-strategy))
       (re-humanize-table-and-field-names! old-strategy))))
 
 (defsetting ^{:added "0.28.0"} humanization-strategy
-  (str (tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".")
+  (str (deferred-tru "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\".")
        " "
-       (tru "This doesn’t work all that well if the names are in a language other than English, however.")
+       (deferred-tru "This doesn’t work all that well if the names are in a language other than English, however.")
        " "
-       (tru "Do you want us to take a guess?"))
+       (deferred-tru "Do you want us to take a guess?"))
   :default "advanced"
   :setter  set-humanization-strategy!)

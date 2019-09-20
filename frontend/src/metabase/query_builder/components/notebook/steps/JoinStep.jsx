@@ -3,6 +3,7 @@ import React from "react";
 import { Flex } from "grid-styled";
 import cx from "classnames";
 import _ from "underscore";
+import { t } from "ttag";
 
 import {
   NotebookCell,
@@ -93,6 +94,7 @@ class JoinClause extends React.Component {
           triggerElement={
             strategyOption ? (
               <Icon
+                tooltip={t`Change join type`}
                 className="text-brand mr1"
                 name={strategyOption.icon}
                 size={32}
@@ -122,15 +124,15 @@ class JoinClause extends React.Component {
         <DatabaseSchemaAndTableDataSelector
           databases={[
             query.database(),
-            ...query
-              .metadata()
-              .databasesList()
-              .filter(db => db.is_saved_questions),
-          ]}
+            query.database().savedQuestionsDatabase(),
+          ].filter(d => d)}
           selectedDatabaseId={query.databaseId()}
           selectedTableId={join.joinSourceTableId()}
           setSourceTableFn={tableId => {
-            const newJoin = join.setJoinSourceTableId(tableId);
+            const newJoin = join
+              .setJoinSourceTableId(tableId)
+              .setDefaultCondition()
+              .setDefaultAlias();
             newJoin.parent().update(updateQuery);
             // _parentDimensionPicker won't be rendered until next update
             if (!newJoin.parentDimension()) {
@@ -146,7 +148,7 @@ class JoinClause extends React.Component {
               icon="table2"
               inactive={!joinedTable}
             >
-              {joinedTable ? joinedTable.displayName() : `Pick a table...`}
+              {joinedTable ? joinedTable.displayName() : t`Pick a table...`}
             </NotebookCellItem>
           }
         />
@@ -163,6 +165,7 @@ class JoinClause extends React.Component {
               onChange={fieldRef => {
                 join
                   .setParentDimension(fieldRef)
+                  .setDefaultAlias()
                   .parent()
                   .update(updateQuery);
                 if (!join.joinDimension()) {
@@ -192,7 +195,7 @@ class JoinClause extends React.Component {
 
         {join.isValid() && (
           <JoinFieldsPicker
-            className="mb1 ml-auto"
+            className="mb1 ml-auto text-bold"
             join={join}
             updateQuery={updateQuery}
           />

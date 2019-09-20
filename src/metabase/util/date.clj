@@ -8,7 +8,7 @@
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [deferred-trs]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
@@ -60,19 +60,19 @@
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID data-timezone))
                          " "
-                         (trs "Configure a report timezone to ensure proper date and time conversions."))))
+                         (deferred-trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone)))))))))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID data-timezone)))))))))
 
 (defn call-with-effective-timezone
   "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
@@ -380,11 +380,12 @@
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
   ^String [nanoseconds]
-  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours 24]
+                                                 [:days 7] [:weeks Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
       (recur (/ n divisor) more)
-      (format "%.0f %s" (double n) (name unit)))))
+      (format "%.1f %s" (double n) (name unit)))))
 
 (defn format-microseconds
   "Format a time interval in microseconds into something more readable."

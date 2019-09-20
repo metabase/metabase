@@ -100,6 +100,10 @@ export default class Query {
     return [];
   }
 
+  setDefaultQuery(): Query {
+    return this;
+  }
+
   /**
    * Helper for updating with functions that expect a DatasetQuery object, or proxy to parent question
    */

@@ -2,6 +2,16 @@ import React from "react";
 
 import { Flex } from "grid-styled";
 
+function normalizeArray(array) {
+  if (Array.isArray(array)) {
+    array = array.filter(a => a);
+    if (array.length === 0) {
+      array = null;
+    }
+  }
+  return array;
+}
+
 export default function ButtonBar({
   children,
   left = children,
@@ -9,15 +19,9 @@ export default function ButtonBar({
   right,
   ...props
 }) {
-  if (Array.isArray(left) && left.length === 0) {
-    left = null;
-  }
-  if (Array.isArray(center) && center.length === 0) {
-    center = null;
-  }
-  if (Array.isArray(right) && right.length === 0) {
-    right = null;
-  }
+  left = normalizeArray(left);
+  center = normalizeArray(center);
+  right = normalizeArray(right);
   return (
     <Flex align="center" {...props}>
       <Flex

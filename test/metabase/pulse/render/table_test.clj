@@ -56,8 +56,8 @@
 ;; we should find some similar basic values that can rely on. The goal isn't to test out the javascript choosing in
 ;; the color (that should be done in javascript) but to verify that the pieces are all connecting correctly
 (expect
-  {"1" "",                     "2" "",                     "3" "rgba(0, 255, 0, 0.75)"
-   "4" "",                     "5" "",                     "6" "rgba(0, 128, 128, 0.75)"
+  {"1" nil,                    "2" nil,                    "3" "rgba(0, 255, 0, 0.75)"
+   "4" nil,                    "5" nil,                    "6" "rgba(0, 128, 128, 0.75)"
    "7" "rgba(255, 0, 0, 0.65)" "8" "rgba(255, 0, 0, 0.2)"  "9" "rgba(0, 0, 255, 0.75)"}
   (let [query-results {:cols [{:name "a"} {:name "b"} {:name "c"}]
                        :rows [[1 2 3]

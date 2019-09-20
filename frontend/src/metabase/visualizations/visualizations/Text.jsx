@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import styles from "./Text.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 import { t } from "ttag";

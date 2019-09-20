@@ -113,7 +113,12 @@ export default class View extends React.Component {
     const isStructured = query instanceof StructuredQuery;
     const isNative = query instanceof NativeQuery;
 
-    if (isStructured && queryBuilderMode === "view" && !query.table()) {
+    const isNewQuestion =
+      query instanceof StructuredQuery &&
+      !query.sourceTableId() &&
+      !query.sourceQuery();
+
+    if (isNewQuestion && queryBuilderMode === "view") {
       return (
         <div className={fitClassNames}>
           <div className="p4 mx2">
@@ -169,7 +174,7 @@ export default class View extends React.Component {
         />
       ) : null;
 
-    const isNewQuestion = query instanceof StructuredQuery && !query.table();
+    const isSidebarOpen = leftSideBar || rightSideBar;
 
     return (
       <div className={fitClassNames}>
@@ -239,7 +244,11 @@ export default class View extends React.Component {
               {leftSideBar}
             </ViewSidebar>
 
-            <div className="flex-full flex flex-column flex-basis-none">
+            <div
+              className={cx("flex-full flex flex-column flex-basis-none", {
+                "hide sm-show": isSidebarOpen,
+              })}
+            >
               {query instanceof NativeQuery && (
                 <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor

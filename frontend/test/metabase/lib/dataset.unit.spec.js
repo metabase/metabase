@@ -7,6 +7,8 @@ import {
 import {
   makeStructuredQuery,
   ORDERS_TOTAL_FIELD_ID,
+  PRODUCT_PRICE_FIELD_ID,
+  PRODUCT_TABLE_ID,
 } from "__support__/sample_dataset_fixture";
 
 const FIELD_COLUMN = { id: 1 };
@@ -19,7 +21,7 @@ describe("metabase/util/dataset", () => {
     it('should return `["field-id", 1]` for a normal column', () => {
       expect(fieldRefForColumn(FIELD_COLUMN)).toEqual(["field-id", 1]);
     });
-    it('should return `["fk->", 2, 1]` for a fk column', () => {
+    it('should return `["fk->", ["field-id", 2], ["field-id", 1]]` for a fk column', () => {
       expect(fieldRefForColumn(FK_COLUMN)).toEqual([
         "fk->",
         ["field-id", 2],
@@ -124,6 +126,93 @@ describe("metabase/util/dataset", () => {
         "source-table": 1,
       });
     });
+
+    describe("with joins", () => {
+      it("should sync included `table.columns` by name to join clauses", () => {
+        const question = syncTableColumnsToQuery(
+          makeStructuredQuery()
+            .addJoin({
+              alias: "products",
+              fields: "all",
+              "source-table": PRODUCT_TABLE_ID,
+            })
+            .question()
+            .setSettings({
+              "table.columns": [
+                {
+                  name: "TOTAL",
+                  enabled: true,
+                },
+                {
+                  name: "PRICE",
+                  enabled: true,
+                },
+              ],
+            }),
+        );
+        expect(question.query().query()).toEqual({
+          "source-table": 1,
+          joins: [
+            {
+              alias: "products",
+              "source-table": PRODUCT_TABLE_ID,
+              fields: [
+                [
+                  "joined-field",
+                  "products",
+                  ["field-id", PRODUCT_PRICE_FIELD_ID],
+                ],
+              ],
+            },
+          ],
+          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        });
+      });
+      it("should sync included `table.columns` by fieldRef to join clauses", () => {
+        const question = syncTableColumnsToQuery(
+          makeStructuredQuery()
+            .addJoin({
+              alias: "products",
+              fields: "all",
+              "source-table": PRODUCT_TABLE_ID,
+            })
+            .question()
+            .setSettings({
+              "table.columns": [
+                {
+                  fieldRef: ["field-id", ORDERS_TOTAL_FIELD_ID],
+                  enabled: true,
+                },
+                {
+                  fieldRef: [
+                    "joined-field",
+                    "products",
+                    ["field-id", PRODUCT_PRICE_FIELD_ID],
+                  ],
+                  enabled: true,
+                },
+              ],
+            }),
+        );
+        expect(question.query().query()).toEqual({
+          "source-table": 1,
+          joins: [
+            {
+              alias: "products",
+              "source-table": PRODUCT_TABLE_ID,
+              fields: [
+                [
+                  "joined-field",
+                  "products",
+                  ["field-id", PRODUCT_PRICE_FIELD_ID],
+                ],
+              ],
+            },
+          ],
+          fields: [["field-id", ORDERS_TOTAL_FIELD_ID]],
+        });
+      });
+    });
   });
 
   describe("findColumnForColumnSetting", () => {
@@ -144,7 +233,7 @@ describe("metabase/util/dataset", () => {
     });
     it("should find column with non-normalized fieldRef", () => {
       const column = findColumnForColumnSetting(columns, {
-        fieldRef: ["fk->", 2, 1],
+        fieldRef: ["fk->", 2, 1], // deprecated
       });
       expect(column).toBe(columns[1]);
     });

@@ -17,14 +17,16 @@ Also open up your server logs, and see if there are any errors related to authen
 #### How to fix this:
 Remove the old token from the Google Auth SSO tab in the Admin Panel and create a new one. If the root cause was an invalid auth token, this should fix the problem.
 
+### Forgotten Password
+
+[This FAQ](../faq/how-do-i-reset-my-password.md) will tell you what to do in the event of a forgotten password.
+
 
 
 ## Helpful tidbits
 
 ### Accessing the Metabase server logs
-While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, you can also access them from the drop down menu in the upper right hand corner.
-
-![Logs Screenshot](images/ServerLogs.png)
+While you can always look for the logs Metabase leaves on your server file system (or however you collect logs), if you are logged into Metabase with an admin account, you can view the server logs as well as task and job logs in the Admin Panel by clicking the Troubleshooting tab in the nav bar.
 
 ### Checking for JavaScript errors in your web browser
 Metabase will print debugging information and errors to your browser's JavaScript Console.

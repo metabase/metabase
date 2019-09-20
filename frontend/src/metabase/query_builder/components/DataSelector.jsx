@@ -3,9 +3,10 @@ import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import AccordionList from "metabase/components/AccordionList.jsx";
+
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import AccordionList from "metabase/components/AccordionList";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import { isQueryable } from "metabase/lib/table";
@@ -250,7 +251,7 @@ export default class DataSelector extends Component {
       this.props.databases.length === 1 &&
       !this.props.segments;
     if (useOnlyAvailableDatabase) {
-      setTimeout(() => this.onChangeDatabase(0));
+      setTimeout(() => this.onChangeDatabase(0, true));
     }
 
     this.hydrateActiveStep();
@@ -737,26 +738,24 @@ export const DatabaseSchemaPicker = ({
   }
 
   return (
-    <div className="scroll-y">
-      <AccordionList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
-        className="text-brand"
-        sections={sections}
-        onChange={onChangeSchema}
-        onChangeSection={(section, sectionIndex) =>
-          onChangeDatabase(sectionIndex, true)
-        }
-        itemIsSelected={schema => schema === selectedSchema}
-        renderSectionIcon={item => (
-          <Icon className="Icon text-default" name={item.icon} size={18} />
-        )}
-        renderItemIcon={() => <Icon name="folder" size={16} />}
-        initiallyOpenSection={openSection}
-        alwaysTogglable={true}
-        showItemArrows={hasAdjacentStep}
-      />
-    </div>
+    <AccordionList
+      id="DatabaseSchemaPicker"
+      key="databaseSchemaPicker"
+      className="text-brand"
+      sections={sections}
+      onChange={onChangeSchema}
+      onChangeSection={(section, sectionIndex) =>
+        onChangeDatabase(sectionIndex, true)
+      }
+      itemIsSelected={schema => schema === selectedSchema}
+      renderSectionIcon={item => (
+        <Icon className="Icon text-default" name={item.icon} size={18} />
+      )}
+      renderItemIcon={() => <Icon name="folder" size={16} />}
+      initiallyOpenSection={openSection}
+      alwaysTogglable={true}
+      showItemArrows={hasAdjacentStep}
+    />
   );
 };
 
@@ -825,7 +824,7 @@ export const TablePicker = ({
       },
     ];
     return (
-      <div style={{ width: 300 }} className="scroll-y">
+      <div>
         <AccordionList
           id="TablePicker"
           key="tablePicker"
