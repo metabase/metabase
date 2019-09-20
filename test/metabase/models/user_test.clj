@@ -182,6 +182,18 @@
   (tt/with-temp User [user {:is_superuser true}]
     (db/exists? PermissionsGroupMembership :user_id (u/get-id user), :group_id (u/get-id (group/admin)))))
 
+;; You should be able to create a new LDAP user if some `login_attributes` are vectors (#10291)
+(expect
+  {"local_birds" ["Steller's Jay" "Mountain Chickadee"]}
+  (try
+    (user/create-new-ldap-auth-user! {:email            "ldaptest@metabase.com"
+                                      :first_name       "Test"
+                                      :last_name        "SomeLdapStuff"
+                                      :login_attributes {:local_birds ["Steller's Jay" "Mountain Chickadee"]}})
+    (db/select-one-field :login_attributes User :email "ldaptest@metabase.com")
+    (finally
+      (db/delete! User :email "ldaptest@metabase.com"))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            New Group IDs Functions                                             |

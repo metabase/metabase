@@ -47,7 +47,7 @@ msgstr "Speichern"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:122
 msgid "To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below."
-msgstr "Damit Metabase etwas seiner Magie entfalten kann, muss deine Datenbank untersucht werden. Alsdann werden wir sie periodisch prüfen, um die Metadaten aktuell zu halten. Du kannst den Zeitpunkt dieses Scans unten festlegen."
+msgstr "Damit Metabase etwas seiner Magie entfalten kann, muss deine Datenbank untersucht werden. Als dann werden wir sie periodisch prüfen, um die Metadaten aktuell zu halten. Du kannst den Zeitpunkt dieses Scans unten festlegen."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:127
 msgid "Database syncing"
@@ -12850,11 +12850,11 @@ msgstr ""
 
 #: src/metabase/driver/sql_jdbc/execute.clj
 msgid "Client closed connection, canceling query"
-msgstr ""
+msgstr "Client-Verbindung geschlossen. Breche die Abfrage ab."
 
 #: src/metabase/integrations/ldap.clj
 msgid "{0} is not a valid DN."
-msgstr ""
+msgstr "{0} ist keine gültige DN."
 
 #: src/metabase/middleware/log.clj
 msgid "Error logging API request"
@@ -12896,7 +12896,7 @@ msgstr ""
 
 #: src/metabase/plugins/files.clj
 msgid "Failed to copy file"
-msgstr ""
+msgstr "Fehler beim Kopieren der Datei."
 
 #: src/metabase/public_settings.clj
 msgid "Invalid site URL: {0}"

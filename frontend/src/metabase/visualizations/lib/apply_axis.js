@@ -122,6 +122,7 @@ export function applyChartTimeseriesXAxis(
 
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
+    let tickFormatUnit = dimensionColumn.unit;
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
@@ -133,8 +134,8 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.interval !== tickInterval.interval ||
         newTickInterval.count !== tickInterval.count
       ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
+        tickFormatUnit = "month";
+        tickInterval = { interval: "month", count: 1 };
       }
     }
 
@@ -144,8 +145,10 @@ export function applyChartTimeseriesXAxis(
       const timestampFixed = moment(timestamp)
         .utcOffset(dataOffset)
         .format();
+      const { column, columnSettings } = chart.settings.column(dimensionColumn);
       return formatValue(timestampFixed, {
-        ...chart.settings.column(dimensionColumn),
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });

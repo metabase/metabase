@@ -13038,7 +13038,7 @@ msgstr "Incapable de mettre à jour le champ binné: la requête manque de méta
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ \"{0}\""
+msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ ''{0}''"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Using query processor cache backend: {0}"
