@@ -100,7 +100,7 @@ const config = (module.exports = {
     ],
   },
   resolve: {
-    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css"],
+    extensions: [".webpack.js", ".web.js", ".js", ".jsx", ".css", ".svg"],
     alias: {
       assets: ASSETS_PATH,
       fonts: FONTS_PATH,
