@@ -303,8 +303,10 @@
 (def ^:private TablePermissionsGraph
   (s/named
     (s/cond-pre (s/enum :none :all)
-                {(s/optional-key :read)  (s/enum :all :none)
-                 (s/optional-key :query) (s/enum :all :segmented :none)})
+                (s/constrained
+                  {(s/optional-key :read)  (s/enum :all :none)
+                   (s/optional-key :query) (s/enum :all :segmented :none)}
+                  not-empty))
     "Valid perms graph for a Table"))
 
 (def ^:private SchemaPermissionsGraph
