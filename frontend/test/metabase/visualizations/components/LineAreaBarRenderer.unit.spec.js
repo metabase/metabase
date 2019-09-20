@@ -14,7 +14,9 @@ import {
 } from "../__support__/visualizations";
 
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
+import lineAreaBarRenderer, {
+  getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
+} from "metabase/visualizations/lib/LineAreaBarRenderer";
 
 const formatTz = offset =>
   (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
@@ -314,6 +316,57 @@ describe("LineAreaBarRenderer", () => {
     });
   });
 
+  describe("getDimensionsAndGroupsAndUpdateSeriesDisplayNames", () => {
+    it("should group a single row", () => {
+      const props = { settings: {}, chartType: "bar" };
+      const data = [[["a", 1]]];
+      const warn = jest.fn();
+
+      const {
+        groups,
+        dimension,
+        yExtents,
+      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+
+      expect(warn).not.toBeCalled();
+      expect(groups[0][0].all()[0]).toEqual({ key: "a", value: 1 });
+      expect(dimension.top(1)).toEqual([["a", 1]]);
+      expect(yExtents).toEqual([[1, 1]]);
+    });
+
+    it("should group multiple series", () => {
+      const props = { settings: {}, chartType: "bar" };
+      const data = [[["a", 1], ["b", 2]], [["a", 2], ["b", 3]]];
+      const warn = jest.fn();
+
+      const {
+        groups,
+        yExtents,
+      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+
+      expect(warn).not.toBeCalled();
+      expect(groups.length).toEqual(2);
+      expect(yExtents).toEqual([[1, 2], [2, 3]]);
+    });
+
+    it("should group stacked series", () => {
+      const props = {
+        settings: { "stackable.stack_type": "stacked" },
+        chartType: "bar",
+      };
+      const data = [[["a", 1], ["b", 2]], [["a", 2], ["b", 3]]];
+      const warn = jest.fn();
+
+      const {
+        groups,
+        yExtents,
+      } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, data, warn);
+
+      expect(warn).not.toBeCalled();
+      expect(groups.length).toEqual(1);
+      expect(yExtents).toEqual([[3, 5]]);
+    });
+  });
   // querySelector shortcut
   const qs = selector => element.querySelector(selector);
 

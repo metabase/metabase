@@ -233,20 +233,41 @@ function getDimensionsAndGroupsForOther({ series }, datas, warn) {
   return { dimension, groups };
 }
 
+function getYExtentsForGroups(groups) {
+  return groups.map(group => {
+    const sums = new Map();
+    for (const g of group) {
+      for (const { key, value } of g.all()) {
+        const prevValue = sums.get(key) || 0;
+        sums.set(key, prevValue + value);
+      }
+    }
+    return d3.extent(Array.from(sums.values()));
+  });
+}
+
 /// Return an object containing the `dimension` and `groups` for the chart(s).
 /// For normalized stacked charts, this also updates the dispaly names to add a percent in front of the name (e.g. 'Sum' becomes '% Sum')
-function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn) {
+/// This is only exported for testing.
+export function getDimensionsAndGroupsAndUpdateSeriesDisplayNames(
+  props,
+  datas,
+  warn,
+) {
   const { settings, chartType } = props;
 
-  return chartType === "scatter"
-    ? getDimensionsAndGroupsForScatterChart(datas)
-    : isStacked(settings, datas)
-    ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
-        props,
-        datas,
-        warn,
-      )
-    : getDimensionsAndGroupsForOther(props, datas, warn);
+  const { groups, dimension } =
+    chartType === "scatter"
+      ? getDimensionsAndGroupsForScatterChart(datas)
+      : isStacked(settings, datas)
+      ? getDimensionsAndGroupsAndUpdateSeriesDisplayNamesForStackedChart(
+          props,
+          datas,
+          warn,
+        )
+      : getDimensionsAndGroupsForOther(props, datas, warn);
+  const yExtents = getYExtentsForGroups(groups);
+  return { groups, dimension, yExtents };
 }
 
 ///------------------------------------------------------------ Y AXIS PROPS ------------------------------------------------------------///
@@ -308,8 +329,7 @@ function getIsSplitYAxis(left, right) {
   return right && right.series.length && (left && left.series.length > 0);
 }
 
-function getYAxisProps(props, groups, datas) {
-  const yExtents = groups.map(group => d3.extent(group[0].all(), d => d.value));
+function getYAxisProps(props, yExtents, datas) {
   const yAxisSplit = getYAxisSplit(props, datas, yExtents);
 
   const [yLeftSplit, yRightSplit] = getYAxisSplitLeftAndRight(
@@ -788,9 +808,10 @@ export default function lineAreaBar(
   const {
     dimension,
     groups,
+    yExtents,
   } = getDimensionsAndGroupsAndUpdateSeriesDisplayNames(props, datas, warn);
 
-  const yAxisProps = getYAxisProps(props, groups, datas);
+  const yAxisProps = getYAxisProps(props, yExtents, datas);
 
   // Don't apply to linear or timeseries X-axis since the points are always plotted in order
   if (!isTimeseries(settings) && !isQuantitative(settings)) {
