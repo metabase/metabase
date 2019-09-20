@@ -77,13 +77,18 @@ const TooltipRow = ({ name, value, column, settings }) => (
     <td className="text-bold text-left">
       {React.isValidElement(value)
         ? value
-        : formatValue(value, {
-            ...(settings && settings.column && column
-              ? settings.column(column)
-              : { column }),
-            type: "tooltip",
-            majorWidth: 0,
-          })}
+        : formatValueForTooltip({ value, column, settings })}
     </td>
   </tr>
 );
+
+// only exported for testing, so leaving this here rather than a formatting file
+export function formatValueForTooltip({ value, column, settings }) {
+  return formatValue(value, {
+    ...(settings && settings.column && column
+      ? settings.column(column)
+      : { column }),
+    type: "tooltip",
+    majorWidth: 0,
+  });
+}

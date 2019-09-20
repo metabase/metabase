@@ -59,6 +59,7 @@ export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
+// TODO: do this lazily using ES6 Proxies
 export const getMetadata = createSelector(
   [
     getNormalizedDatabases,

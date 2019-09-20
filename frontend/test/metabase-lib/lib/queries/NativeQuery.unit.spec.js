@@ -1,7 +1,6 @@
 import {
-  question,
-  DATABASE_ID,
-  MONGO_DATABASE_ID,
+  SAMPLE_DATASET,
+  MONGO_DATABASE,
 } from "__support__/sample_dataset_fixture";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -19,15 +18,15 @@ function makeDatasetQuery(queryText, templateTags, databaseId) {
 
 function makeQuery(query, templateTags) {
   return new NativeQuery(
-    question,
-    makeDatasetQuery(query, templateTags, DATABASE_ID),
+    SAMPLE_DATASET.question(),
+    makeDatasetQuery(query, templateTags, SAMPLE_DATASET.id),
   );
 }
 
 function makeMongoQuery(query, templateTags) {
   return new NativeQuery(
-    question,
-    makeDatasetQuery(query, templateTags, MONGO_DATABASE_ID),
+    SAMPLE_DATASET.question(),
+    makeDatasetQuery(query, templateTags, MONGO_DATABASE.id),
   );
 }
 
@@ -45,12 +44,12 @@ describe("NativeQuery", () => {
     });
     describe("databaseId()", () => {
       it("returns the Database ID of the wrapped query ", () => {
-        expect(query.databaseId()).toBe(DATABASE_ID);
+        expect(query.databaseId()).toBe(SAMPLE_DATASET.id);
       });
     });
     describe("database()", () => {
       it("returns a dictionary with the underlying database of the wrapped query", () => {
-        expect(query.database().id).toBe(DATABASE_ID);
+        expect(query.database().id).toBe(SAMPLE_DATASET.id);
       });
     });
 
