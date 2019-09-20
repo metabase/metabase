@@ -68,7 +68,7 @@
 
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
-(s/defn ^:private default-value-for-field-filter :- (s/maybe ParsedParamValue)
+(s/defn ^:private default-value-for-field-filter
   "Return the default value for a FieldFilter (`:type` = `:dimension`) param defined by the map `tag`, if one is set."
   [tag :- TagParam]
   (when (and (:required tag) (not (:default tag)))
