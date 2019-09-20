@@ -31,6 +31,21 @@
 ;;; |                                          DB FILE & CONNECTION DETAILS                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn get-db-file
+  "Takes a filename and converts it to H2-compatible filename."
+  [db-file-name]
+  (let [
+        ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
+        ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
+        ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
+        ;;
+        ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
+        options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+    ;; H2 wants file path to always be absolute
+    (str "file:"
+         (.getAbsolutePath (io/file db-file-name))
+         options)))
+
 (def db-file
   "Path to our H2 DB file from env var or app config."
   ;; see https://h2database.com/html/features.html for explanation of options
@@ -40,36 +55,33 @@
      ;; DB_CLOSE_DELAY=-1 = don't close the Database until the JVM shuts down
      "mem:metabase;DB_CLOSE_DELAY=-1"
      ;; File-based DB
-     (let [db-file-name (config/config-str :mb-db-file)
-           ;; we need to enable MVCC for Quartz JDBC backend to work! Quartz depends on row-level locking, which
-           ;; means without MVCC we "will experience dead-locks". MVCC is the default for everyone using the
-           ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
-           ;;
-           ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
-           options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
-       ;; H2 wants file path to always be absolute
-       (str "file:"
-            (.getAbsolutePath (io/file db-file-name))
-             options)))))
+     (let [db-file-name (config/config-str :mb-db-file)]
+       (get-db-file db-file-name)))))
 
 (def ^:private jdbc-connection-regex
   #"^(jdbc:)?([^:/@]+)://(?:([^:/@]+)(?::([^:@]+))?@)?([^:@]+)(?::(\d+))?/([^/?]+)(?:\?(.*))?$")
 
-(defn- parse-connection-string
+;;TODO don't make this public
+(defn parse-connection-string
   "Parse a DB connection URI like
   `postgres://cam@localhost.com:5432/cams_cool_db?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory` and
   return a broken-out map."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
+    (println "Parsed: " protocol user pass host port db query)
     (u/prog1 (merge {:type     (case (keyword protocol)
                                  :postgres   :postgres
                                  :postgresql :postgres
-                                 :mysql      :mysql)
-                     :user     user
-                     :password pass
-                     :host     host
-                     :port     port
-                     :dbname   db}
+                                 :mysql      :mysql
+                                 :h2         :h2)}
+
+                    (case (keyword protocol)
+                      :h2 {:db db}
+                      {:user     user
+                       :password pass
+                       :host     host
+                       :port     port
+                       :dbname   db})
                     (some-> query
                             codec/form-decode
                             walk/keywordize-keys))
@@ -265,10 +277,10 @@
 
   see https://github.com/metabase/metabase/issues/3715"
   [conn]
-  (let [liquibase-table-name (if (#{:h2 :mysql} (db-type))
+  (let [liquibase-table-name (if (#{:h2 :mysql} (:type conn))
                                "DATABASECHANGELOG"
                                "databasechangelog")
-        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details)] ;; don't migrate on fresh install
+        fresh-install?       (jdbc/with-db-metadata [meta (jdbc-details conn)] ;; don't migrate on fresh install
                                (empty? (jdbc/metadata-query
                                         (.getTables meta nil nil liquibase-table-name (u/varargs String ["TABLE"])))))
         statement            (format "UPDATE %s SET FILENAME = ?" liquibase-table-name)]
@@ -460,22 +472,28 @@
     ((resolve 'metabase.db.migrations/run-all!))))
 
 
-(defn- setup-db!* []
+(defn setup-db!*
+  "Connects to db and runs migrations."
+  [db-details auto-migrate]
+  (du/profile (trs "Database setup")
+              (u/with-us-locale
+                (verify-db-connection db-details)
+                (run-schema-migrations! auto-migrate db-details)
+                (create-connection-pool! (jdbc-details db-details))
+                (run-data-migrations!)))
+  nil)
+
+(defn- setup-db-from-env!* []
   (let [db-details   @db-connection-details
         auto-migrate (config/config-bool :mb-db-automigrate)]
-    (du/profile (trs "Application database setup")
-      (u/with-us-locale
-        (verify-db-connection db-details)
-        (run-schema-migrations! auto-migrate db-details)
-        (create-connection-pool! (jdbc-details db-details))
-        (run-data-migrations!)
-        (reset! db-setup-finished? true))))
+    (setup-db!* db-details auto-migrate)
+    (reset! db-setup-finished? true))
   nil)
 
 (defonce ^{:arglists '([]), :doc "Do general preparation of database by validating that we can connect. Caller can
   specify if we should run any pending database migrations. If DB is already set up, this function will no-op."}
-  setup-db!
-  (partial deref (delay (setup-db!*))))
+         setup-db!
+         (partial deref (delay (setup-db-from-env!*))))
 
 
 ;;; Various convenience fns (experiMENTAL)

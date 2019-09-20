@@ -17,7 +17,9 @@
    "run"                               ["with-profile" "+run" "run"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+expectations" "expectations"]
-   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
+   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
+                                        "--max-line-length" "205"
+                                        "--exclude-profiles" "compare-h2-dbs"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -25,7 +27,9 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
+   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
+   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
+
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -98,6 +102,7 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
+   [me.raynes/fs "1.4.6"]                                   ; FS tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.5"]                                            ; MBQL language schema & util fns
@@ -132,7 +137,7 @@
   ;; TODO - WHAT DOES THIS DO?
   :manifest
   {"Liquibase-Package"
-   #=(eval
+   #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
@@ -161,7 +166,7 @@
      [ring/ring-mock "0.3.2"]]
 
     :plugins
-    [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
+    [[lein-environ "1.1.0"]] ; easy access to environment variables
 
     :env      {:mb-run-mode "dev"}
     :jvm-opts ["-Dlogfile.path=target/log"]}
@@ -243,7 +248,8 @@
 
    :bikeshed
    [:include-all-drivers
-    {:plugins [[lein-bikeshed "0.4.1"]]}]
+    {:plugins
+     [[lein-bikeshed "0.4.1"]]}]
 
    :eastwood
    [:include-all-drivers
@@ -259,7 +265,7 @@
                            ;; disabled (yet)
                            ;;
                            ;; For example see https://github.com/jonase/eastwood/issues/193
-                                                                      ;
+                           ;;
                            ;; It's still useful to re-enable them and run them every once in a while because they catch
                            ;; a lot of actual errors too. Keep an eye on the issue above and re-enable them if we can
                            ;; get them to work
@@ -314,11 +320,15 @@
    ;; Profile Metabase start time with `lein profile`
    :profile
    {:jvm-opts ["-XX:+CITime"                                          ; print time spent in JIT compiler
-               "-XX:+PrintGC"]}                                       ; print a message when garbage collection takes place
+               "-XX:+PrintGC"]} ; print a message when garbage collection takes place
 
    ;; get the H2 shell with 'lein h2'
    :h2-shell
    {:main org.h2.tools.Shell}
 
    :generate-automagic-dashboards-pot
-   {:main metabase.automagic-dashboards.rules}})
+   {:main metabase.automagic-dashboards.rules}
+
+   :compare-h2-dbs
+   {:main ^:skip-aot metabase.cmd.compare-h2-dbs
+    :source-paths ["test"]}})
