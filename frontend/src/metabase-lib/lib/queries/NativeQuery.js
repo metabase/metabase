@@ -63,7 +63,11 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   canRun() {
-    return this.hasData() && this.queryText().length > 0;
+    return (
+      this.hasData() &&
+      this.queryText().length > 0 &&
+      this.allTemplateTagsAreValid()
+    );
   }
 
   isEmpty() {
@@ -225,6 +229,12 @@ export default class NativeQuery extends AtomicQuery {
   }
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
+  }
+  allTemplateTagsAreValid(): boolean {
+    return this.templateTags().every(
+      // field filters require a field
+      t => !(t.type === "dimension" && t.dimension == null),
+    );
   }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {

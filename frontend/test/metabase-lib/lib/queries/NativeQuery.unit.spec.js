@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+
 import {
   SAMPLE_DATASET,
   MONGO_DATABASE,
@@ -169,6 +171,30 @@ describe("NativeQuery", () => {
         expect(tagMaps["max_price"].name).toEqual("max_price");
         expect(tagMaps["max_price"].display_name).toEqual("Max price");
       });
+    });
+    describe("Invalid template tags prevent the query from running", () => {
+      let q = makeQuery().setQueryText("SELECT * from ORDERS where {{foo}}");
+      expect(q.canRun()).toBe(true);
+
+      // set template tag's type to dimension without setting field id
+      q = q.setDatasetQuery(
+        assocIn(
+          q.datasetQuery(),
+          ["native", "template-tags", "foo", "type"],
+          "dimension",
+        ),
+      );
+      expect(q.canRun()).toBe(false);
+
+      // now set the field
+      q = q.setDatasetQuery(
+        assocIn(
+          q.datasetQuery(),
+          ["native", "template-tags", "foo", "dimension"],
+          ["field-id", 123],
+        ),
+      );
+      expect(q.canRun()).toBe(true);
     });
   });
 });
