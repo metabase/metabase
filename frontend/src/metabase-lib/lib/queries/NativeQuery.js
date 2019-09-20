@@ -292,7 +292,7 @@ export default class NativeQuery extends AtomicQuery {
               id: Utils.uuid(),
               name: tagName,
               display_name: humanize(tagName),
-              type: null,
+              type: "text",
             };
           }
         }

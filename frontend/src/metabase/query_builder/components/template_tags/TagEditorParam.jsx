@@ -121,9 +121,6 @@ export default class TagEditorParam extends Component {
       }
     }
 
-    // default to a text parameter
-    tag.type = tag.type || "text";
-
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
