@@ -697,7 +697,8 @@
    returns the newly created `PermissionsRevision` entry."
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (graph)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))]
+         [old new] (data/diff (:groups old-graph) (:groups new-graph))
+         old       (or old {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)

@@ -12893,7 +12893,7 @@ msgstr "Cannot resolve :field-literal inside :fk-> unless inside join with expli
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Cannot find Table ID for {0}"
-msgstr "Cannot find Table ID for {0}"
+msgstr "Kan tabel-ID niet vinden voor {0}"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "No matching info found."
@@ -12901,23 +12901,23 @@ msgstr "Geen overeenkomende info gevonden."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Could not resolve {0}"
-msgstr "Could not resolve {0}"
+msgstr "Kan {0} niet oplossen"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Invalid fk-> clause: nowhere to add corresponding join."
-msgstr "Invalid fk-> clause: nowhere to add corresponding join."
+msgstr "Ongeldige fk-> -clausule: nergens om overeenkomstige join toe te voegen."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "{0} driver does not support foreign keys."
-msgstr "driver {0} ondersteund geen foreign keys."
+msgstr "Driver {0} ondersteund geen foreign keys."
 
 #: src/metabase/query_processor/middleware/add_source_metadata.clj
 msgid "Cannot infer `:source-metadata` for source query with native source query without source metadata."
-msgstr "Cannot infer `:source-metadata` for source query with native source query without source metadata."
+msgstr "Kan `: bron-metagegevens` voor bronquery met native bronquery zonder bronmetagegevens niet afleiden."
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Query processor error: number of columns returned by driver does not match results."
-msgstr "Query processor error: number of columns returned by driver does not match results."
+msgstr "Fout in queryprocessor: aantal kolommen dat door het stuurprogramma is geretourneerd, komt niet overeen met de resultaten."
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Expected {0} columns, but first row of resuls has {1} columns."
@@ -13034,7 +13034,7 @@ msgstr "Unable to resolve driver for query: Database {0} does not exist."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Cannot use :fields :all in join against source query unless it has :source-metadata."
-msgstr "Cannot use :fields :all in join against source query unless it has :source-metadata."
+msgstr "Kan niet :fields :all alles in join tegen bronquery tenzij deze beschikt over :source-metadata."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found: {1}"
@@ -13042,7 +13042,7 @@ msgstr "Bad :joined-field clause: join with alias ''{0}'' does not exist. Found:
 
 #: src/metabase/query_processor/middleware/resolve_source_table.clj
 msgid "Invalid :source-table ''{0}'': should be resolved to a Table ID by now."
-msgstr "Invalid :source-table ''{0}'': should be resolved to a Table ID by now."
+msgstr "Ongeldig: brontabel ''{0}'': zou nu moeten zijn opgelost in een tabel-ID."
 
 #: src/metabase/query_processor/store.clj
 msgid "Cannot store Tables or Fields before Database is stored."
@@ -13062,15 +13062,15 @@ msgstr "Kan veld {0} niet ophalen: veld bestaat niet of behoort tot een andere d
 
 #: src/metabase/routes/index.clj
 msgid "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?"
-msgstr "Kan template '' {0} '' niet laden. Heb je eraan gedacht om de Metabase-frontend te bouwen?"
+msgstr "Kan template ''{0}'' niet laden. Heb je eraan gedacht om de Metabase-frontend te bouwen?"
 
 #: src/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
-msgstr "Voorbeelddataset DB-bestand '' {0} '' kan niet worden gevonden."
+msgstr "Voorbeelddataset DB-bestand ''{0}'' kan niet worden gevonden."
 
 #: src/metabase/sample_data.clj
 msgid "Loading sample dataset..."
-msgstr "Voorbeeldgegevensset laden ..."
+msgstr "Voorbeeldgegevensset laden..."
 
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
