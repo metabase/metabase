@@ -4,9 +4,8 @@ import { shallow } from "enzyme";
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import Question from "metabase-lib/lib/Question";
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
+  SAMPLE_DATASET,
+  ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 
@@ -27,8 +26,8 @@ const getGuiQueryEditor = query => (
 describe("GuiQueryEditor", () => {
   it("should allow adding the first breakout", () => {
     const query: StructuredQuery = Question.create({
-      databaseId: DATABASE_ID,
-      tableId: ORDERS_TABLE_ID,
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
       metadata,
     })
       .query()
@@ -41,13 +40,13 @@ describe("GuiQueryEditor", () => {
   });
   it("should allow adding more than one breakout", () => {
     const query: StructuredQuery = Question.create({
-      databaseId: DATABASE_ID,
-      tableId: ORDERS_TABLE_ID,
+      databaseId: SAMPLE_DATASET.id,
+      tableId: ORDERS.id,
       metadata,
     })
       .query()
       .addAggregation(["count"])
-      .addBreakout(["field-id", ORDERS_TOTAL_FIELD_ID]);
+      .addBreakout(["field-id", ORDERS.TOTAL.id]);
 
     const component = shallow(getGuiQueryEditor(query));
 

@@ -1,34 +1,28 @@
-import {
-  ORDERS_TABLE_ID,
-  PRODUCT_TABLE_ID,
-  makeStructuredQuery,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import Join from "metabase-lib/lib/queries/structured/Join";
 
 describe("Join", () => {
   describe("setJoinSourceTableId", () => {
     it("should pick an alias based on the source table name by default", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
-      });
-      const j = new Join({}, 0, q).setJoinSourceTableId(PRODUCT_TABLE_ID);
+      const q = ORDERS.query();
+      const j = new Join({}, 0, q).setJoinSourceTableId(PRODUCTS.id);
       expect(j.alias).toEqual("Products");
     });
     it("should deduplicate aliases", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
-        joins: [{ alias: "Products", "source-table": PRODUCT_TABLE_ID }],
+      const q = ORDERS.query().join({
+        alias: "Products",
+        "source-table": PRODUCTS.id,
       });
-      const j = new Join({}, 1, q).setJoinSourceTableId(PRODUCT_TABLE_ID);
+      const j = new Join({}, 1, q).setJoinSourceTableId(PRODUCTS.id);
       expect(j.alias).toEqual("Products_2");
     });
   });
   describe("setDefaultCondition", () => {
     it("should set default condition to be fk relationship", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
-        joins: [{ alias: "x", "source-table": PRODUCT_TABLE_ID }],
+      const q = ORDERS.query().join({
+        alias: "x",
+        "source-table": PRODUCTS.id,
       });
       const j = q.joins()[0].setDefaultCondition();
       expect(j).toEqual({
@@ -44,9 +38,9 @@ describe("Join", () => {
   });
   describe("setDefaultAlias", () => {
     it("should set default alias to be fk field name and update join condition", () => {
-      const q = makeStructuredQuery({
-        "source-table": ORDERS_TABLE_ID,
-        joins: [{ alias: "x", "source-table": PRODUCT_TABLE_ID }],
+      const q = ORDERS.query().join({
+        alias: "x",
+        "source-table": PRODUCTS.id,
       });
       const j = q
         .joins()[0]

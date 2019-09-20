@@ -1,11 +1,8 @@
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import {
-  question,
-  ORDERS_TOTAL_FIELD_ID,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
-const query = question.query();
+const query = ORDERS.query();
 
 function aggregationForMBQL(mbql) {
   return new Aggregation(mbql, 0, query);
@@ -22,7 +19,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           42,
         ]).displayName(),
       ).toEqual("Sum(Total) + 42");
@@ -31,7 +28,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field-id", ORDERS_TOTAL_FIELD_ID], 42],
+          ["+", ["field-id", ORDERS.TOTAL.id], 42],
         ]).displayName(),
       ).toEqual("Sum(Total + 42)");
     });
@@ -39,7 +36,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           { "display-name": "named" },
         ]).displayName(),
       ).toEqual("named");
@@ -53,7 +50,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           {},
         ]).displayName(),
       ).toEqual("Sum of Total");
@@ -67,7 +64,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "+",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           42,
         ]).isValid(),
       ).toBe(true);
@@ -76,7 +73,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "sum",
-          ["+", ["field-id", ORDERS_TOTAL_FIELD_ID], 42],
+          ["+", ["field-id", ORDERS.TOTAL.id], 42],
         ]).isValid(),
       ).toBe(true);
     });
@@ -84,7 +81,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           { "display-name": "named" },
         ]).isValid(),
       ).toBe(true);
@@ -96,7 +93,7 @@ describe("Aggregation", () => {
       expect(
         aggregationForMBQL([
           "aggregation-options",
-          ["sum", ["field-id", ORDERS_TOTAL_FIELD_ID]],
+          ["sum", ["field-id", ORDERS.TOTAL.id]],
           {},
         ]).isValid(),
       ).toBe(true);

@@ -1,7 +1,7 @@
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip";
 
 export function makeCard(card) {
   return {
@@ -185,7 +185,7 @@ export function renderLineAreaBar(...args) {
 }
 
 // mirrors logic in ChartTooltip
-export function getFormattedTooltips(hover) {
+export function getFormattedTooltips(hover, settings) {
   let data;
   if (hover.data) {
     data = hover.data;
@@ -200,7 +200,9 @@ export function getFormattedTooltips(hover) {
       data.push({ value: hover.value, col: hover.column });
     }
   }
-  return data.map(d => formatValue(d.value, { column: d.col }));
+  return data.map(({ value, col: column }) =>
+    formatValueForTooltip({ value, column, settings }),
+  );
 }
 
 export function createFixture() {

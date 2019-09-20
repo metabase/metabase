@@ -89,11 +89,12 @@ const Users = createEntity({
         ...result,
       };
     },
-    update: thunkCreator => (...args) => async (dispatch, getState) => {
-      const result = await thunkCreator(...args)(dispatch, getState);
-      // HACK: reload memberships when updating a user
-      // TODO: only do this if group_ids changes
-      dispatch(loadMemberships());
+    update: thunkCreator => user => async (dispatch, getState) => {
+      const result = await thunkCreator(user)(dispatch, getState);
+      if (user.group_ids) {
+        // group ids were just updated
+        dispatch(loadMemberships());
+      }
       return result;
     },
   },

@@ -256,6 +256,22 @@ describe("LineAreaBarRenderer-bar", () => {
     const tick = element.querySelector(".axis.x .tick text");
     expect(tick.textContent).toEqual("(empty)");
   });
+
+  it(`should render a stacked chart on a logarithmic y scale`, async () => {
+    const settings = {
+      "stackable.stack_type": "stacked",
+      "graph.y_axis.scale": "log",
+    };
+    renderLineAreaBar(element, [
+      MainSeries("bar", settings, { value: 100 }),
+      ExtraSeries(1000),
+    ]);
+    const ticks = qsa(".axis.y .tick text").map(n => n.textContent);
+    const lastTickValue = parseInt(ticks[ticks.length - 1]);
+    // if there are no ticks above 500, we're incorrectly using only the
+    // first series to determine the y axis domain
+    expect(lastTickValue > 500).toBe(true);
+  });
 });
 
 function getDataKeyValues(hover) {
