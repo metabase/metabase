@@ -555,8 +555,8 @@
 
 ;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
 (expect
-  [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
-   {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
+  [{(data/id :venues) :all}
+   {(data/id :categories) :all, (data/id :venues) :all}]
   (tt/with-temp PermissionsGroup [group]
     ;; first, graph permissions only for VENUES
     (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
@@ -592,31 +592,20 @@
 
 ;; Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :all
-                          :query :none}}
+  {(data/id :venues) {:read :all}}
   (tt/with-temp PermissionsGroup [group]
     (perms/grant-permissions! group (perms/table-read-path (Table (data/id :venues))))
     (test-data-graph group)))
 
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :none
-                          :query :segmented}}
+  {(data/id :venues) {:query :segmented}}
   (tt/with-temp PermissionsGroup [group]
     (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id :venues))))
     (test-data-graph group)))
 
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :all
-                          :query :segmented}}
+  {(data/id :venues) {:read  :all
+                      :query :segmented}}
   (tt/with-temp PermissionsGroup [group]
     (perms/update-graph! [(u/get-id group) (data/id) :schemas]
                          {"PUBLIC"

@@ -46,7 +46,7 @@
     [:table-perm perm]           (case perm
                                    "read"            [:read :all]
                                    "query"           [:query :all]
-                                   "query/segmented" [:query :some])
+                                   "query/segmented" [:query :segmented])
     [:native]                    [:native :write]
 
     [:collection id]             [:collection (collection-id id) :write]
@@ -85,7 +85,7 @@
        (clojure.walk/prewalk (fn [x]
                                (if-let [terminal (and (map? x)
                                                       (some #(and (= (% x) '()) %)
-                                                            [:all :some :write :read]))]
+                                                            [:all :some :write :read :segmented]))]
                                  terminal
                                  x)))))
 

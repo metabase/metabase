@@ -13,7 +13,7 @@
       "/db/3/schema/PUBLIC/table/4/"                 {:db {3 {:schemas {"PUBLIC" {4 :all}}}}}
       "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}
       "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:query :all}}}}}}
-      "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:query :some}}}}}})))
+      "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:query :segmented}}}}}})))
 
 
 (deftest combines-permissions-for-graph
@@ -42,7 +42,7 @@
                                      "/db/3/schema/PUBLIC/table/4/query/"           {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
                                                                                                                     :query :all}}}}}}
                                      "/db/3/schema/PUBLIC/table/4/query/segmented/" {:db {3 {:schemas {"PUBLIC" {4 {:read  :all
-                                                                                                                    :query :some}}}}}}
+                                                                                                                    :query :segmented}}}}}}
                                      "/db/3/schema/PUBLIC/table/4/read/"            {:db {3 {:schemas {"PUBLIC" {4 {:read :all}}}}}}}
                                     (into [])
                                     (sort-by first))]
