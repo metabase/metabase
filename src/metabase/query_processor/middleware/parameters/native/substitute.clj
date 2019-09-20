@@ -1,24 +1,15 @@
 (ns metabase.query-processor.middleware.parameters.native.substitute
-  (:require [metabase.query-processor.middleware.parameters.native
+  (:require [clojure.string :as str]
+            [metabase.query-processor.middleware.parameters.native
              [interface :as i]
              [substitution :as substitution]]
-            [metabase.util.i18n :refer [tru]]
-            [clojure.string :as str]))
-
-(defn- has-all-params? [param->value required-params]
-  (every?
-   (partial contains? param->value)
-   required-params))
+            [metabase.util.i18n :refer [tru]]))
 
 (defn- substitute-field-filter [param->value [sql args missing] in-optional? k {:keys [field value], :as v}]
-  (cond
-    (and (= i/no-value value) in-optional?)
-    [sql args missing]
-
-    (= i/no-value value)
+  (if (and (= i/no-value value) in-optional?)
+    ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
-
-    :else
+    ;; otherwise no values get replaced with `1 = 1` and other values get replaced normally
     (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 

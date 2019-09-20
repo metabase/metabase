@@ -1,37 +1,46 @@
 (ns metabase.query-processor.middleware.parameters.native.interface
   "Various record types below are used as a convenience for differentiating the different param types."
   (:require [metabase.util.schema :as su]
+            [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
-            [schema
-             [core :as s]
-             [potemkin :as s.p]])
-  (:import metabase.models.field.FieldInstance))
+            [schema.core :as s]))
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
-(s.p/defrecord+ FieldFilter [field :- FieldInstance
-                             ;; value is either single value or a vector of values (or `NoValue`)
-                             value]
+;;
+;; `field` is a Field Toucan instance
+;;
+;; `value`" is either:
+;; * `no-value`
+;; *  A map contianing the value and type info for the value, e.g.
+;;
+;;    {:type   :date/single
+;;     :value  #inst "2019-09-20T19:52:00.000-07:00"}
+;;
+;; *  A vector of maps like the one above (for multiple values)
+(p.types/defrecord+ FieldFilter [field value]
   PrettyPrintable
-  (pretty [_]
-    (list 'FieldFilter. field value)))
+  (pretty [this]
+    (list 'map->FieldFilter (into {} this))))
 
 (defn field-filter? [x]
   (instance? FieldFilter x))
 
 ;; as in a literal date, defined by date-string S
-(s.p/defrecord+ Date [s :- s/Str]
+;; `s` is a String
+(p.types/defrecord+ Date [s]
   PrettyPrintable
   (pretty [_]
     (list 'Date. s)))
 
-(s.p/defrecord+ DateRange [start end]
+(p.types/defrecord+ DateRange [start end]
   PrettyPrintable
   (pretty [_]
     (list 'DateRange. start end)))
 
 ;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number`
 ;; for more details.
-(s.p/defrecord+ CommaSeparatedNumbers [numbers :- [s/Num]]
+;; `numbers` are a sequence of `[java.lang.Number]`
+(p.types/defrecord+ CommaSeparatedNumbers [numbers]
   PrettyPrintable
   (pretty [_]
     (list 'CommaSeperatedNumbers. numbers)))
@@ -43,7 +52,7 @@
 
 (def SingleValue
   "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
-  (s/cond-pre NoValue
+  (s/cond-pre (s/eq no-value)
               CommaSeparatedNumbers
               FieldFilter
               Date
@@ -52,9 +61,10 @@
               s/Bool))
 
 (def ParamValue
-  "Schema for a parameter *value*, passed in as part of the `:parameters` list."
-  {:type                     s/Keyword  ; TODO - what types are allowed? :text, ...?
-   :target                   s/Any
+  "Schema for a parameter *value* during parsing by the `values` namespace, and also (confusingly) for the `:value` part
+  of a `FieldFilter`, which gets passed along to `substitution`. TODO - this is horribly confusing"
+  {:type                     s/Keyword ; TODO - what types are allowed? :text, ...?
+   (s/optional-key :target)  s/Any
    ;; not specified if the param has no value. TODO - make this stricter
    (s/optional-key :value)   s/Any
    ;; The following are not used by the code in this namespace but may or may not be specified depending on what the
@@ -65,17 +75,18 @@
    (s/optional-key :id)      s/Any}) ; used internally by the frontend
 
 ;; Sequence of multiple values for generating a SQL IN() clause. vales
-(s.p/defrecord+ MultipleValues [values :- [SingleValue]]
+;; `values` are a sequence of `[SingleValue]`
+(p.types/defrecord+ MultipleValues [values]
   PrettyPrintable
   (pretty [_]
-          (list 'MultipleValues. values)))
+    (list 'MultipleValues. values)))
 
-(s.p/defrecord+ Param [k]
+(p.types/defrecord+ Param [k]
   PrettyPrintable
   (pretty [_]
           (list 'param k)))
 
-(s.p/defrecord+ Optional [args]
+(p.types/defrecord+ Optional [args]
   PrettyPrintable
   (pretty [_]
           (cons 'optional args)))

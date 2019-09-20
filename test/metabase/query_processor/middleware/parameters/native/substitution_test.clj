@@ -5,7 +5,7 @@
 
 ;; make sure we handle quotes inside names correctly!
 (expect
-  {:replacement-snippet     "\"test-data\".\"PUBLIC\".\"checkins\".\"date\"",
+  {:replacement-snippet     "\"test-data\".\"PUBLIC\".\"checkins\".\"date\""
    :prepared-statement-args nil}
-  (driver/with-driver :postgres
-    (#'substitution/honeysql->replacement-snippet-info :test-data.PUBLIC.checkins.date nil)))
+  (driver/with-driver :h2
+    (#'substitution/honeysql->replacement-snippet-info :test-data.PUBLIC.checkins.date)))

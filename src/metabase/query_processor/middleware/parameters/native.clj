@@ -31,8 +31,10 @@
              [substitute :as substitute]
              [values :as values]]))
 
-(defn- expand-inner [{:keys [parameters query] :as inner-query}]
-  (println "(values/query->params-map inner-query):" (values/query->params-map inner-query)) ; NOCOMMIT
+(defn expand-inner
+  "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
+  the `middleware.parameters` functions that invoke this function."
+  [{:keys [parameters query] :as inner-query}]
   (merge
    (dissoc inner-query :parameters :template-tags)
    (let [[query params] (-> query
@@ -41,8 +43,8 @@
      {:query  query
       :params params})))
 
-(defn expand
-  "Expand parameters inside a native `query`."
+(defn ^:deprecated expand
+  "Expand parameters inside a top-level native `query`. Not recursive. "
   [{:keys [parameters], inner :native, :as query}]
   (if-not (driver/supports? driver/*driver* :native-parameters)
     query

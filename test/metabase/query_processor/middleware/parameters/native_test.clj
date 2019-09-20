@@ -384,7 +384,7 @@
    :params []}
   (expand-with-field-filter-param nil))
 
-;; dimension -- number
+;; dimension -- number -- should get parsed to Number
 (expect
   {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
    :params []}

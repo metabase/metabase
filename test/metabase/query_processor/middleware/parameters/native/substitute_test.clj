@@ -2,10 +2,10 @@
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.models.field :refer [Field]]
-            [metabase.test.data :as data]
             [metabase.query-processor.middleware.parameters.native
              [interface :as i]
-             [substitute :as substitute]]))
+             [substitute :as substitute]]
+            [metabase.test.data :as data]))
 
 (defn- optional [& args] (i/->Optional args))
 (defn- param [param-name] (i/->Param param-name))
@@ -81,10 +81,42 @@
                                        (optional " AND color = " (param "bird_color")))]
    {"bird_type" "Steller's Jay"}))
 
+;;; ------------------------------------------------- Field Filters --------------------------------------------------
+
+(defn- date-field-filter-value
+  "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain information about"
+  []
+  (i/map->FieldFilter
+   {:field (Field (data/id :checkins :date))
+    :value {:type  :date/single
+            :value #inst "2019-09-20T19:52:00.000-07:00"}}))
+
 ;; field filter -- non-optional + present
+(expect
+  ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+   [#inst "2019-09-20T19:52:00.000-07:00"]]
+  (substitute
+   ["select * from checkins where " (param "date")]
+   {"date" (date-field-filter-value)}))
 
 ;; field filter -- non-optional + missing -- should be replaced with 1 = 1
+(expect
+  ["select * from checkins where 1 = 1" []]
+  (substitute
+   ["select * from checkins where " (param "date")]
+   {"date" (assoc (date-field-filter-value) :value i/no-value)}))
 
 ;; field filter -- optional + present
+(expect
+  ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+   [#inst "2019-09-20T19:52:00.000-07:00"]]
+  (substitute
+   ["select * from checkins " (optional "where " (param "date"))]
+   {"date" (date-field-filter-value)}))
 
 ;; field filter -- optional + missing -- should be omitted entirely
+(expect
+  ["select * from checkins" nil]
+  (substitute
+   ["select * from checkins " (optional "where " (param "date"))]
+   {"date" (assoc (date-field-filter-value) :value i/no-value)}))

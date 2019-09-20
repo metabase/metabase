@@ -9,7 +9,7 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
-            [metabase.models.field :as field :refer [Field]]
+            [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.parameters.native.interface :as i]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
@@ -82,23 +82,33 @@
   [field-filter]
   (second field-filter))
 
-(s/defn ^:private field-filter-value-for-tag :- (s/maybe (s/cond-pre FieldFilter NoValue))
+(s/defn ^:private field-filter-value-for-tag :- (s/maybe (s/cond-pre FieldFilter (s/eq i/no-value)))
   "Return the `FieldFilter` value of a param, if applicable. Field filters are referred to internally as `:dimension`s
   for historic reasons."
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (when-let [field-filter (:dimension tag)]
-    (i/strict-map->FieldFilter
+    (i/map->FieldFilter
      ;; TODO - shouldn't this use the QP Store?
      {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
                    :id (field-filter->field-id field-filter))
                  (throw (Exception. (tru "Can't find field with ID: {0}"
                                          (field-filter->field-id field-filter)))))
-      :value (or
-              ;; look in the sequence of params we were passed to see if there's anything that matches
-              (param-with-target params [:dimension [:template-tag (:name tag)]])
-              ;; if not, check and see if we have a default param
-              (default-value-for-field-filter tag)
-              i/no-value)})))
+      :value (if-let [value-info-or-infos (or
+                                           ;; look in the sequence of params we were passed to see if there's anything
+                                           ;; that matches
+                                           (param-with-target params [:dimension [:template-tag (:name tag)]])
+                                           ;; if not, check and see if we have a default param
+                                           (default-value-for-field-filter tag))]
+               ;; `value-info` will look something like after we remove `:target` which is not needed after this point
+               ;;
+               ;;    {:type   :date/single
+               ;;     :value  #inst "2019-09-20T19:52:00.000-07:00"}
+               ;;
+               ;; (or it will be a vector of these maps for multiple values)
+               (cond
+                 (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
+                 (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
+               i/no-value)})))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -144,7 +154,7 @@
                   (parse-number part))]
       (if (> (count parts) 1)
         ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-        (i/strict-map->CommaSeparatedNumbers {:numbers parts})
+        (i/map->CommaSeparatedNumbers {:numbers parts})
         ;; otherwise just return the single number
         (first parts)))))
 
@@ -175,9 +185,10 @@
     (= param-type :date)
     (i/map->Date {:s value})
 
+    ;; Field Filters
     (and (= param-type :dimension)
-         (= (get-in value [:param :type]) :number))
-    (update-in value [:param :value] value->number)
+         (= (get-in value [:value :type]) :number))
+    (update-in value [:value :value] value->number)
 
     (sequential? value)
     (i/map->MultipleValues {:values (for [v value]
@@ -185,8 +196,8 @@
 
     (and (= param-type :dimension)
          (get-in value [:field :base_type])
-         (string? (get-in value [:param :value])))
-    (update-in value [:param :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+         (string? (get-in value [:value :value])))
+    (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
 
     :else
     value))
@@ -204,8 +215,8 @@
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-query)
-     ->
-     {:checkin_date #inst \"2019-09-19T23:30:42.233-07:00\"}"
+    ->
+    {:checkin_date #inst \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]

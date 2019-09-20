@@ -57,11 +57,11 @@
 
 (declare parse-tokens)
 
-(s/defn ^:private parse-tokens :- [(s/one [ParsedToken] "parsed tokens") (s/one [Token] "remaining tokens")]
-  ([tokens :- [Token]]
+(s/defn ^:private parse-tokens :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
+  ([tokens :- [StringOrToken]]
    (parse-tokens tokens 0))
 
-  ([tokens :- [Token], level]
+  ([tokens :- [StringOrToken], level]
    (loop [acc [], [token & more] tokens]
      (condp = token
        nil

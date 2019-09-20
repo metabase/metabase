@@ -21,7 +21,7 @@
            honeysql.types.SqlCall
            java.util.UUID
            [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange
-            FieldFilter MultipleValues NoValue]))
+            FieldFilter MultipleValues]))
 
 (def ^:private ParamSnippetInfo
   {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
@@ -58,7 +58,9 @@
 
 (defmethod ->replacement-snippet-info Keyword
   [this]
-  (create-replacement-snippet this))
+  (if (= this i/no-value)
+    {:replacement-snippet ""}
+    (create-replacement-snippet this)))
 
 (defmethod ->replacement-snippet-info SqlCall
   [this]
@@ -67,10 +69,6 @@
 (defmethod ->replacement-snippet-info UUID
   [this]
   {:replacement-snippet (format "CAST('%s' AS uuid)" (str this))})
-
-(defmethod ->replacement-snippet-info NoValue
-  [_]
-  {:replacement-snippet ""})
 
 (defmethod ->replacement-snippet-info CommaSeparatedNumbers
   [{:keys [numbers]}]
