@@ -18,7 +18,7 @@
     [sql args (conj missing k)]
     (let [v (get param->value k)]
       (cond
-        (i/field-filter? v)
+        (i/FieldFilter? v)
         (substitute-field-filter param->value [sql args missing] in-optional? k v)
 
         (= i/no-value v)

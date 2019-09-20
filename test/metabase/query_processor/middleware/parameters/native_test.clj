@@ -202,10 +202,16 @@
                                 :id       1}
      ~@body))
 
+(defn- expand**
+  "Expand parameters inside a top-level native `query`. Not recursive. "
+  [{:keys [parameters], inner :native, :as query}]
+  (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
+    (assoc query :native inner')))
+
 (defn- expand* [query]
   (-> (with-h2-db-timezone
         (driver/with-driver :h2
-          (native/expand (normalize/normalize query))))
+          (expand** (normalize/normalize query))))
       :native
       (select-keys [:query :params :template-tags])
       (update :params vec)))
@@ -221,9 +227,9 @@
 ;; unspecified *required* param
 (expect
   Exception
-  (native/expand {:native  {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
-                            :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true}}}
-                  :parameters []}))
+  (expand** {:native  {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
+                       :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true}}}
+             :parameters []}))
 
 ;; default value
 (expect

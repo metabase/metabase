@@ -22,7 +22,9 @@
   (pretty [this]
     (list 'map->FieldFilter (into {} this))))
 
-(defn field-filter? [x]
+(defn FieldFilter?
+  "Is `x` an instance of the `FieldFilter` record type?"
+  [x]
   (instance? FieldFilter x))
 
 ;; as in a literal date, defined by date-string S
@@ -91,24 +93,14 @@
   (pretty [_]
           (cons 'optional args)))
 
-(defn Param? [x]
+;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
+;; cause problems if the ns isn't loaded first
+(defn Param?
+  "Is `x` an instance of the `Param` record type?"
+  [x]
   (instance? Param x))
 
-(defn Optional? [x]
+(defn Optional?
+  "Is `x` an instance of the `Optional` record type?"
+  [x]
   (instance? Optional x))
-
-(defmulti required-params
-  {:arglists '([x])}
-  class)
-
-(defmethod required-params :default
-  [_]
-  nil)
-
-(defmethod required-params Param
-  [param]
-  #{(:k param)})
-
-(defmethod required-params Optional
-  [optional]
-  (set (mapcat required-params (:args optional))))

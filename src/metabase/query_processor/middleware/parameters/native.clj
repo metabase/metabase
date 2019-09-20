@@ -34,21 +34,23 @@
 (defn expand-inner
   "Expand parameters inside an *inner* native `query`. Not recursive -- recursive transformations are handled in
   the `middleware.parameters` functions that invoke this function."
-  [{:keys [parameters query] :as inner-query}]
-  (merge
-   (dissoc inner-query :parameters :template-tags)
-   (let [[query params] (-> query
-                            parse/parse
-                            (substitute/substitute (values/query->params-map inner-query)))]
-     {:query  query
-      :params params})))
-
-(defn ^:deprecated expand
-  "Expand parameters inside a top-level native `query`. Not recursive. "
-  [{:keys [parameters], inner :native, :as query}]
+  [{:keys [parameters query native] :as inner-query}]
   (if-not (driver/supports? driver/*driver* :native-parameters)
-    query
-    ;; sometimes `:parameters` are specified at the top level (not sure if this is still true IRL, but it is in
-    ;; tests), instead of at the same level; merge those in first if that is indeed the case
-    (let [inner' (expand-inner (update inner :parameters #(concat parameters %)))]
-      (assoc query :native inner'))))
+    inner-query
+    ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
+    ;; source queries use `:native`. So we need to handle either case.
+    (let [query (or query native)]
+      ;; only SQL is officially supported rn! We can change this in the future. But we will probably want separate
+      ;; implementations of `parse` for other drivers, such as ones with JSON-based query languages. I think?
+      (if-not (string? query)
+        inner-query
+        (merge
+         (dissoc inner-query :parameters :template-tags)
+         (let [[query params] (-> query
+                                  parse/parse
+                                  (substitute/substitute (values/query->params-map inner-query)))]
+           (merge
+            (if (:query inner-query)
+              {:query query}
+              {:native query})
+            {:params params})))))))

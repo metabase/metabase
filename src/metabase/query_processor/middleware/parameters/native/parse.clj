@@ -42,15 +42,15 @@
 (defn- param [& [k & more]]
   (when (or (seq more)
             (not (string? k)))
-    (throw (Exception. "Invalid {{...}} clause: expected a param name")))
+    (throw (Exception. (tru "Invalid '{{...}}' clause: expected a param name"))))
   (let [k (str/trim k)]
     (when (empty? k)
-      (throw (Exception. "{{...}} clauses cannot be empty.")))
+      (throw (Exception. (tru "'{{...}}' clauses cannot be empty."))))
     (i/->Param k)))
 
 (defn- optional [& parsed]
   (when-not (some i/Param? parsed)
-    (throw (Exception. "[[...]] clauses must contain at least one {{...}} clause.")))
+    (throw (Exception. (tru "'[[...]]' clauses must contain at least one '{{...}}' clause."))))
   (i/->Optional parsed))
 
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
@@ -67,7 +67,7 @@
        nil
        (if (pos? level)
          (throw
-          (IllegalArgumentException. (tru "Invalid query: found ''[['' or ''{{'' with no matching '']]'' or ''}}''")))
+          (IllegalArgumentException. (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")))
          [acc nil])
 
        :optional-begin
@@ -81,7 +81,7 @@
        :end
        (if (zero? level)
          (throw
-          (IllegalArgumentException. (tru "Invalid query: found '']]'' or ''}}'' with no matching ''[['' or '{{''")))
+          (IllegalArgumentException. (tru "Invalid query: found ']]' or '}}' with no matching '[[' or '{{'")))
          [acc more])
 
        (recur (conj acc token) more)))))
