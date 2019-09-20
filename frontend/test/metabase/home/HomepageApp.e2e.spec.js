@@ -8,11 +8,7 @@ import { click } from "__support__/enzyme_utils";
 
 import React from "react";
 import { mount } from "enzyme";
-import {
-  orders_past_300_days_segment,
-  unsavedOrderCountQuestion,
-  vendor_count_metric,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 import { delay } from "metabase/lib/promise";
 
 import HomepageApp from "metabase/home/containers/HomepageApp";
@@ -26,6 +22,21 @@ import ActivityStory from "metabase/home/components/ActivityStory";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import { MetricApi, SegmentApi } from "metabase/services";
 
+const unsavedOrderCountQuestion = ORDERS.query()
+  .aggregate(["count"])
+  .question();
+
+const vendor_count_metric = {
+  id: null,
+  name: "Vendor count",
+  description: "Tells how many vendors we have",
+  table_id: 3,
+  definition: {
+    aggregation: [["distinct", ["field-id", 28]]],
+    "source-table": 3,
+  },
+};
+
 describe("HomepageApp", () => {
   beforeAll(async () => {
     useSharedAdminLogin();
@@ -33,9 +44,24 @@ describe("HomepageApp", () => {
     // Create some entities that will show up in the top of activity feed
     // This test doesn't care if there already are existing items in the feed or not
     // Delays are required for having separable creation times for each entity
-    cleanup.question(await createSavedQuestion(unsavedOrderCountQuestion));
+    cleanup.question(
+      await createSavedQuestion(
+        unsavedOrderCountQuestion.setDisplayName("# orders data"),
+      ),
+    );
     await delay(100);
-    cleanup.segment(await SegmentApi.create(orders_past_300_days_segment));
+    cleanup.segment(
+      await SegmentApi.create({
+        id: null,
+        name: "Past 300 days",
+        description: "Past 300 days created at",
+        table_id: 1,
+        definition: {
+          "source-table": 1,
+          filter: ["time-interval", ["field-id", 1], -300, "day"],
+        },
+      }),
+    );
     await delay(100);
     cleanup.metric(await MetricApi.create(vendor_count_metric));
     await delay(100);

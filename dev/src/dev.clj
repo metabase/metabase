@@ -9,7 +9,9 @@
              [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.models.interface :as mi]
-            [toucan.db :as tdb]))
+            [metabase.test.util] ;; extensions
+            [toucan.db :as tdb]
+            [toucan.util.test :as tt]))
 
 (defn init!
   []

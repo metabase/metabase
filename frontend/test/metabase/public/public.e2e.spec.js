@@ -37,6 +37,7 @@ import {
   UPDATE_EMBEDDING_PARAMS,
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_TEMPLATE_TAG,
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
 } from "metabase/query_builder/actions";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { delay } from "metabase/lib/promise";
@@ -69,7 +70,7 @@ import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
 const PEOPLE_TABLE_ID = 2;
-const PEOPLE_ID_FIELD_ID = 13;
+const PEOPLE_PK_FIELD_ID = 13;
 
 async function setQueryText(store, queryText) {
   // We don't have Ace editor so we have to trigger the Redux action manually
@@ -157,7 +158,10 @@ describe("public/embedded", () => {
         "select count(*) from products where {{category}}",
       );
 
+      await store.waitForActions([SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]);
       const tagEditorSidebar = app.find(TagEditorSidebar);
+
+      click(tagEditorSidebar.find("SelectButton"));
 
       const fieldFilterVarType = tagEditorSidebar
         .find(".ColumnarSelector-row")
@@ -463,7 +467,7 @@ describe("public/embedded", () => {
             parameter_mappings: [
               {
                 card_id: mbqlCard.id,
-                target: ["dimension", ["field-id", PEOPLE_ID_FIELD_ID]],
+                target: ["dimension", ["field-id", PEOPLE_PK_FIELD_ID]],
                 parameter_id: "22486e00",
               },
             ],
