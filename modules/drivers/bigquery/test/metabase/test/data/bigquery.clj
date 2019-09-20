@@ -57,7 +57,7 @@
     (#'bigquery/database->client {:details @details})))
 
 (defmethod tx/dbdef->connection-details :bigquery [_ _ {:keys [database-name]}]
-  (assoc @details :dataset-id (normalize-name database-name)))
+  (assoc @details :dataset-id (normalize-name database-name) :include-user-id-and-hash true))
 
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------

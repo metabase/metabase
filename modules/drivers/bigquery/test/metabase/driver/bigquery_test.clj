@@ -174,12 +174,7 @@
     (with-redefs [bigquery/process-native* (fn [_ sql]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
-      (qp/process-query {:database (data/id)
-                         :type     :query
-                         :query    {:source-table (data/id :venues)
-                                    :limit        1}
-                         :info     {:executed-by 1000
-                                    :query-hash  (byte-array [1 2 3 4])}})
+      (qp/process-query query)
       @native-query)))
 
 (datasets/expect-with-driver :bigquery
@@ -200,6 +195,31 @@
                :limit        1}
     :info     {:executed-by 1000
                :query-hash  (byte-array [1 2 3 4])}}))
+
+;; if I run a BigQuery query with include-user-id-and-hash disabled, does it get a remark added to it?
+(datasets/expect-with-driver :bigquery
+  (str 
+   "SELECT `test_data.venues`.`id` AS `id`,"
+   " `test_data.venues`.`name` AS `name` "
+   "FROM `test_data.venues` "
+   "LIMIT 1")
+  (tt/with-temp* [Database [db {:engine :bigquery
+                                :details (assoc (:details (data/db))
+                                                :include-user-id-and-hash false)}]
+                  Table    [table {:name "venues" :db_id (u/get-id db)}]
+                  Field    [_     {:table_id (u/get-id table)
+                                   :name "id"
+                                   :base_type "type/Integer"}]
+                  Field    [_     {:table_id (u/get-id table)
+                                   :name "name"
+                                   :base_type "type/Text"}]]
+    (query->native
+      {:database (u/get-id db)
+       :type     :query
+       :query    {:source-table (u/get-id table)
+                  :limit        1}
+       :info     {:executed-by 1000
+                  :query-hash  (byte-array [1 2 3 4])}})))
 
 ;; let's make sure we're generating correct HoneySQL + SQL for aggregations
 (datasets/expect-with-driver :bigquery
