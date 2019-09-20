@@ -101,9 +101,14 @@ describe("The Reference Section", () => {
     });
 
     // database update
-    it("should see a the detail view for the sample database", async () => {
+    it("should update the sample database", async () => {
+      // create a new db by cloning #1
+      const d1 = await MetabaseApi.db_get({ dbId: 1 });
+      const { id } = await MetabaseApi.db_create(d1);
+
+      // go to that db's reference page
       const store = await createTestStore();
-      store.pushPath("/reference/databases/1");
+      store.pushPath(`/reference/databases/${id}`);
       const app = mount(store.connectContainer(<DatabaseDetailContainer />));
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
 
@@ -136,8 +141,7 @@ describe("The Reference Section", () => {
       expect(savedText).toBe("v important thing");
 
       // clean up
-      const database = await MetabaseApi.db_get({ dbId: 1 });
-      await MetabaseApi.db_update({ ...database, caveats: null });
+      await MetabaseApi.db_delete({ dbId: id });
     });
 
     // table list
