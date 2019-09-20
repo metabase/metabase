@@ -48,10 +48,7 @@
 
 ;; make sure we can update the perms graph from the API
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     :all}
+  {(data/id :venues) :all}
   (tt/with-temp PermissionsGroup [group]
     ((test-users/user->client :crowberto) :put 200 "permissions/graph"
      (assoc-in (perms/graph)
@@ -60,20 +57,17 @@
     (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))
 
 (expect
- {(data/id :categories) :none
-  (data/id :checkins)   :none
-  (data/id :users)      :none
-  (data/id :venues)     {:read  :all
-                         :query :segmented}}
- (tt/with-temp PermissionsGroup [group]
-   (test-users/create-users-if-needed!)
-   ((test-users/user->client :crowberto) :put 200 "permissions/graph"
-    (assoc-in (perms/graph)
-              [:groups (u/get-id group) (data/id) :schemas]
-              {"PUBLIC" {(data/id :venues) {:read :all, :query :segmented}}}))
-   (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))
+  {(data/id :venues) {:read  :all
+                      :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (test-users/create-users-if-needed!)
+    ((test-users/user->client :crowberto) :put 200 "permissions/graph"
+     (assoc-in (perms/graph)
+               [:groups (u/get-id group) (data/id) :schemas]
+               {"PUBLIC" {(data/id :venues) {:read :all, :query :segmented}}}))
+    (get-in (perms/graph) [:groups (u/get-id group) (data/id) :schemas "PUBLIC"])))
 
-;; permissions for new dba
+;; permissions for new db
 (expect
   :all
   (let [new-id (inc (data/id))]
@@ -87,4 +81,15 @@
                  :all))
       (get-in (perms/graph) [:groups (u/get-id group) db-id :schemas]))))
 
-;; figure out failing case for when old doesn't exist
+;; permissions for new db with no tables
+(expect
+  :all
+  (let [new-id (inc (data/id))]
+    (tt/with-temp* [PermissionsGroup [group]
+                    Database         [{db-id :id}]]
+      (test-users/create-users-if-needed!)
+      ((test-users/user->client :crowberto) :put 200 "permissions/graph"
+       (assoc-in (perms/graph)
+                 [:groups (u/get-id group) db-id :schemas]
+                 :all))
+      (get-in (perms/graph) [:groups (u/get-id group) db-id :schemas]))))

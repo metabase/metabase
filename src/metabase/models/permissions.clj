@@ -13,6 +13,7 @@
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
+            [metabase.models.permissions.parse :as perms-parse]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -301,10 +302,12 @@
 
 (def ^:private TablePermissionsGraph
   (s/named
-   (s/cond-pre (s/enum :none :all)
-               {:read  (s/enum :all :none)
-                :query (s/enum :all :segmented :none)})
-   "Valid perms graph for a Table"))
+    (s/cond-pre (s/enum :none :all)
+                (s/constrained
+                  {(s/optional-key :read)  (s/enum :all :none)
+                   (s/optional-key :query) (s/enum :all :segmented :none)}
+                  not-empty))
+    "Valid perms graph for a Table"))
 
 (def ^:private SchemaPermissionsGraph
   (s/named
@@ -368,72 +371,29 @@
 ;;; |                                                  GRAPH FETCH                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- permissions-for-path
-  "Given a `permissions-set` of all allowed permissions paths for a Group, return the corresponding permissions status
-   for an object with PATH."
-  [permissions-set path]
-  (u/prog1 (cond
-             (set-has-full-permissions? permissions-set path)    :all
-             (set-has-partial-permissions? permissions-set path) :some
-             :else                                               :none)))
+(defn all-permissions
+  "Handle '/' permission"
+  [db-ids]
+  (reduce (fn [g db-id]
+            (assoc g db-id {:native  :write
+                            :schemas :all}))
+          {}
+          db-ids))
 
-(defn- table->adhoc-native-query-path [table] (adhoc-native-query-path (:db_id table)))
-(defn- table->schema-object-path      [table] (object-path (:db_id table) (:schema table)))
-(defn- table->table-object-path       [table] (object-path (:db_id table) (:schema table) (:id table)))
-(defn- table->all-schemas-path        [table] (all-schemas-path (:db_id table)))
-
-(s/defn ^:private table-graph :- TablePermissionsGraph [permissions-set table]
-  (case (permissions-for-path permissions-set (table->table-object-path table))
-    :all  :all
-    :none :none
-    :some {:read  (permissions-for-path permissions-set (table-read-path table))
-           :query (case (permissions-for-path permissions-set (table-query-path table))
-                    :all  :all
-                    :none :none
-                    :some (case (permissions-for-path permissions-set (table-segmented-query-path table))
-                            :all  :segmented
-                            :none :none))}))
-
-
-(s/defn ^:private schema-graph :- SchemaPermissionsGraph [permissions-set tables]
-  (case (permissions-for-path permissions-set (table->schema-object-path (first tables)))
-    :all  :all
-    :none :none
-    :some (into {} (for [table tables]
-                     {(u/get-id table) (table-graph permissions-set table)}))))
-
-(s/defn ^:private db-graph :- DBPermissionsGraph [permissions-set tables]
-  {:native
-   (case (permissions-for-path permissions-set (table->adhoc-native-query-path (first tables)))
-     :all  :write
-     :some :read
-     :none :none)
-
-   :schemas
-   (case (permissions-for-path permissions-set (table->all-schemas-path (first tables)))
-     :all  :all
-     :none :none
-     (into {} (for [[schema tables] (group-by :schema tables)]
-                ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
-                {(str schema) (schema-graph permissions-set tables)})))})
-
-(s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
-  (m/map-vals (partial db-graph permissions-set)
-              tables))
-
-;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []
   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
-        tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
+        db-ids      (db/select-ids 'Database)]
     {:revision (perms-revision/latest-id)
-     :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup, :id [:not= (:id (group/metabot))])]
-                          (let [group-permissions-set (set (for [perms permissions
-                                                                 :when (= (:group_id perms) group-id)]
-                                                             (:object perms)))]
-                            {group-id (group-graph group-permissions-set tables)})))}))
-
+     :groups   (->> permissions
+                    (filter (comp #(re-find #"(^/db|^/$)" %) :object))
+                    (group-by :group_id)
+                    (m/map-vals (fn [group-permissions]
+                                  (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
+                                    (if (= :all permissions-graph)
+                                      (all-permissions db-ids)
+                                      (:db permissions-graph))))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

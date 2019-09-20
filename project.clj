@@ -91,6 +91,7 @@
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
                  org.yaml/snakeyaml]]
+   [instaparse "1.4.10"]                                              ; Make your own parser
    [kixi/stats "0.4.4" :exclusions [org.clojure/data.avl]]            ; Various statistic measures implemented as transducers
    [log4j/log4j "1.2.17"                                              ; logging framework. TODO - consider upgrading to Log4j 2 -- see https://logging.apache.org/log4j/log4j-2.6.1/manual/migration.html
     :exclusions [javax.mail/mail
@@ -123,7 +124,8 @@
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
-   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
+   [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
+   ]
 
   :main ^:skip-aot metabase.core
 
