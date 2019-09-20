@@ -7,7 +7,7 @@
 
 (def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :end)))
 
-(defn- split-on-token [s token-str token]
+(defn- split-on-token [^String s token-str token]
   (when-let [index (str/index-of s token-str)]
     (let [before (.substring s 0 index)
           after  (.substring s (+ index (count token-str)) (count s))]
