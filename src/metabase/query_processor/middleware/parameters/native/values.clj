@@ -19,7 +19,7 @@
   (:import java.text.NumberFormat
            java.util.UUID
            [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter
-            MultipleValues NoValue]))
+            MultipleValues]))
 
 (def ^:private ParamType
   (s/enum :number
@@ -50,9 +50,6 @@
   "Schema for valid param value(s). Params can have one or more values."
   (s/named (s/maybe (s/cond-pre i/SingleValue MultipleValues))
            "Valid param value(s)"))
-
-(def ^:private ParsedParamValues
-  {su/NonBlankString ParsedParamValue})
 
 (s/defn ^:private param-with-target
   "Return the param in `params` with a matching `target`. `target` is something like:
@@ -90,19 +87,18 @@
   for historic reasons."
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (when-let [field-filter (:dimension tag)]
-    (if-let [param (or
-                    ;; look in the sequence of params we were passed to see if there's anything that matches
-                    (param-with-target params [:dimension [:template-tag (:name tag)]])
-                    ;; if not, check and see if we have a default param
-                    (default-value-for-field-filter tag))]
-      (i/map->FieldFilter
-       ;; TODO - shouldn't this use the QP Store?
-       {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
-                     :id (field-filter->field-id field-filter))
-                   (throw (Exception. (tru "Can't find field with ID: {0}"
-                                           (field-filter->field-id field-filter)))))
-        :param param})
-      (i/->NoValue))))
+    (i/strict-map->FieldFilter
+     ;; TODO - shouldn't this use the QP Store?
+     {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
+                   :id (field-filter->field-id field-filter))
+                 (throw (Exception. (tru "Can't find field with ID: {0}"
+                                         (field-filter->field-id field-filter)))))
+      :value (or
+              ;; look in the sequence of params we were passed to see if there's anything that matches
+              (param-with-target params [:dimension [:template-tag (:name tag)]])
+              ;; if not, check and see if we have a default param
+              (default-value-for-field-filter tag)
+              i/no-value)})))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -170,7 +166,7 @@
   base type Fields as UUIDs."
   [param-type :- ParamType, value]
   (cond
-    (i/no-value? value)
+    (= value i/no-value)
     value
 
     (= param-type :number)
@@ -202,18 +198,14 @@
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
                                         (default-value-for-tag tag)
-                                        ;; TODO - what if value is specified but is `nil`?
-                                        (NoValue.))))
+                                        i/no-value)))
 
-(s/defn query->params-map :- ParsedParamValues
+(s/defn query->params-map :- {su/NonBlankString ParsedParamValue}
   "Extract parameters info from `query`. Return a map of parameter name -> value.
 
     (query->params-map some-query)
      ->
-     {:checkin_date {:field {:name \"date\", :parent_id nil, :table_id 1375}
-                     :param {:type   :date/range
-                             :target [:dimension [:template-tag \"checkin_date\"]]
-                             :value  \"2015-01-01~2016-09-01\"}}}"
+     {:checkin_date #inst \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]

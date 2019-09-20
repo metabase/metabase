@@ -1,26 +1,43 @@
 (ns metabase.query-processor.middleware.parameters.native.parse
   (:require [clojure.string :as str]
             [metabase.query-processor.middleware.parameters.native.interface :as i]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
   (:import [metabase.query_processor.middleware.parameters.native.interface Optional Param]))
 
-(def ^:private Token (s/cond-pre s/Str (s/enum :optional-begin :param-begin :end)))
+(def ^:private StringOrToken  (s/cond-pre s/Str (s/enum :optional-begin :param-begin :end)))
 
-(s/defn ^:private tokenize :- [Token]
+(defn- split-on-token [s token-str token]
+  (when-let [index (str/index-of s token-str)]
+    (let [before (.substring s 0 index)
+          after  (.substring s (+ index (count token-str)) (count s))]
+      [before token after])))
+
+(defn- tokenize-one [s token-str token]
+  (loop [acc [], s s]
+    (if (empty? s)
+      acc
+      (if-let [[before token after] (split-on-token s token-str token)]
+        (recur (into acc [before token]) after)
+        (conj acc s)))))
+
+(s/defn ^:private tokenize :- [StringOrToken]
   [s :- s/Str]
   (reduce
-   (fn [strs [regex token]]
-     (mapcat
-      (fn [s]
-        (if-not (string? s)
-          [s]
-          (interpose token (str/split s regex))))
-      strs))
-   [s #_(format " %s " s)]
-   [[#"\[\[" :optional-begin]
-    [#"\]\]" :end]
-    [#"\{\{" :param-begin]
-    [#"\}\}" :end]]))
+   (fn [strs [token-str token]]
+     (filter
+      (some-fn keyword? seq)
+      (mapcat
+       (fn [s]
+         (if-not (string? s)
+           [s]
+           (tokenize-one s token-str token)))
+       strs)))
+   [s]
+   [["[[" :optional-begin]
+    ["]]" :end]
+    ["{{" :param-begin]
+    ["}}" :end]]))
 
 (defn- param [& [k & more]]
   (when (or (seq more)
@@ -41,24 +58,33 @@
 (declare parse-tokens)
 
 (s/defn ^:private parse-tokens :- [(s/one [ParsedToken] "parsed tokens") (s/one [Token] "remaining tokens")]
-  [tokens :- [Token]]
-  (loop [acc [], [token & more] tokens]
-    (condp = token
-      nil
-      [acc nil]
+  ([tokens :- [Token]]
+   (parse-tokens tokens 0))
 
-      :optional-begin
-      (let [[parsed more] (parse-tokens more)]
-        (recur (conj acc (apply optional parsed)) more))
+  ([tokens :- [Token], level]
+   (loop [acc [], [token & more] tokens]
+     (condp = token
+       nil
+       (if (pos? level)
+         (throw
+          (IllegalArgumentException. (tru "Invalid query: found ''[['' or ''{{'' with no matching '']]'' or ''}}''")))
+         [acc nil])
 
-      :param-begin
-      (let [[parsed more] (parse-tokens more)]
-        (recur (conj acc (apply param parsed)) more))
+       :optional-begin
+       (let [[parsed more] (parse-tokens more (inc level))]
+         (recur (conj acc (apply optional parsed)) more))
 
-      :end
-      [acc more]
+       :param-begin
+       (let [[parsed more] (parse-tokens more (inc level))]
+         (recur (conj acc (apply param parsed)) more))
 
-      (recur (conj acc token) more))))
+       :end
+       (if (zero? level)
+         (throw
+          (IllegalArgumentException. (tru "Invalid query: found '']]'' or ''}}'' with no matching ''[['' or '{{''")))
+         [acc more])
+
+       (recur (conj acc token) more)))))
 
 (s/defn parse :- [(s/cond-pre s/Str Param Optional)]
   "Attempts to parse SQL string `s`. Parses any optional clauses or parameters found, and returns a sequence of SQL

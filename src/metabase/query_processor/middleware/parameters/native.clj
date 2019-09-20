@@ -32,8 +32,9 @@
              [values :as values]]))
 
 (defn- expand-inner [{:keys [parameters query] :as inner-query}]
+  (println "(values/query->params-map inner-query):" (values/query->params-map inner-query)) ; NOCOMMIT
   (merge
-   (dissoc inner-query :parameters)
+   (dissoc inner-query :parameters :template-tags)
    (let [[query params] (-> query
                             parse/parse
                             (substitute/substitute (values/query->params-map inner-query)))]
@@ -42,7 +43,10 @@
 
 (defn expand
   "Expand parameters inside a native `query`."
-  [query]
-  (if (driver/supports? driver/*driver* :native-parameters)
-    (update query :native expand-inner)
-    query))
+  [{:keys [parameters], inner :native, :as query}]
+  (if-not (driver/supports? driver/*driver* :native-parameters)
+    query
+    ;; sometimes `:parameters` are specified at the top level (not sure if this is still true IRL, but it is in
+    ;; tests), instead of at the same level; merge those in first if that is indeed the case
+    (let [inner' (expand-inner (update inner :parameters #(concat parameters %)))]
+      (assoc query :native inner'))))

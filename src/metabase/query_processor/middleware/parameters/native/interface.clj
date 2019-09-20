@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.parameters.native.interface
   "Various record types below are used as a convenience for differentiating the different param types."
-  (:require [pretty.core :refer [PrettyPrintable]]
+  (:require [metabase.util.schema :as su]
+            [pretty.core :refer [PrettyPrintable]]
             [schema
              [core :as s]
              [potemkin :as s.p]])
@@ -8,11 +9,14 @@
 
 ;; "FieldFilter" is something that expands to a clause like "some_field BETWEEN 1 AND 10"
 (s.p/defrecord+ FieldFilter [field :- FieldInstance
-                             ;; param is either single param or a vector of params
-                             param]
+                             ;; value is either single value or a vector of values (or `NoValue`)
+                             value]
   PrettyPrintable
   (pretty [_]
-    (list 'FieldFilter. field param)))
+    (list 'FieldFilter. field value)))
+
+(defn field-filter? [x]
+  (instance? FieldFilter x))
 
 ;; as in a literal date, defined by date-string S
 (s.p/defrecord+ Date [s :- s/Str]
@@ -32,18 +36,10 @@
   (pretty [_]
     (list 'CommaSeperatedNumbers. numbers)))
 
-;; convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
-;; values.
-(s.p/defrecord+ NoValue []
-  PrettyPrintable
-  (pretty [_]
-    '(NoValue.)))
-
-(defn no-value?
-  "Is `x` an instance of `NoValue` -- does it represent an optional parameter present in the query whose value is
-  unspecified?"
-  [x]
-  (instance? NoValue x))
+(def no-value
+  "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
+  values."
+  ::no-value)
 
 (def SingleValue
   "Schema for a valid *single* value for a param. As of 0.28.0 params can either be single-value or multiple value."
@@ -104,4 +100,4 @@
 
 (defmethod required-params Optional
   [optional]
-  (set (mapcat required-params (:strs-and-params optional))))
+  (set (mapcat required-params (:args optional))))

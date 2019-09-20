@@ -172,18 +172,19 @@
         identifier)))))
 
 (defmethod ->replacement-snippet-info FieldFilter
-  [{:keys [field param], :as field-filter}]
+  [{:keys [field value], :as field-filter}]
   (cond
-    ;; otherwise if the param is `nil` just put in something that will always be true, such as `1` (e.g. `WHERE 1 = 1`)
-    (nil? param) {:replacement-snippet "1 = 1"}
-    ;; if we have a vector of multiple params recursively convert them to SQL and combine into an `AND` clause
-    ;; (This is multiple params in the sense that the frontend provided multiple maps with param values for the same
+    ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
+    ;; = 1`). This is only used for field filters outside of optional clauses
+    (= value i/no-value) {:replacement-snippet "1 = 1"}
+    ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
+    ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
     ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)
-    (vector? param)
-    (combine-replacement-snippet-maps (for [p param]
-                                        (->replacement-snippet-info (assoc field-filter :param p))))
-    ;; otherwise convert single param to SQL.
+    (vector? value)
+    (combine-replacement-snippet-maps (for [v value]
+                                        (->replacement-snippet-info (assoc field-filter :value v))))
+    ;; otherwise convert single value to SQL.
     ;; Convert the value to a replacement snippet info map and then tack on the field identifier to the front
     :else
-    (update (field-filter->replacement-snippet-info param)
-            :replacement-snippet (partial str (field->identifier field (:type param)) " "))))
+    (update (field-filter->replacement-snippet-info value)
+            :replacement-snippet (partial str (field->identifier field (:type value)) " "))))
