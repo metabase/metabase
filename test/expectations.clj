@@ -4,8 +4,6 @@
              [test :as t]]
             [methodical.core :as m]))
 
-(def compare-expr* nil) ; NOCOMMIT
-
 ;; Basically a Chain of Responibility pattern: we try each impl in turn until one of them accepts the args and returns
 ;; a report
 (m/defmulti ^:private compare-expr*
@@ -118,13 +116,15 @@
 
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
-  {:arglists '([actual] [actual expected])}
+  {:arglists '([actual] [actual expected] [test-name actual expected])}
   ([actual]
    `(expect ::truthy ~actual))
 
   ([expected actual]
-   (let [test-name (symbol (format "expect-%d" (hash &form)))]
-     `(t/deftest ~test-name
-        (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
-          (t/is
-           (~'expect= ~expected ~actual)))))))
+   `(expect ~(symbol (format "expect-%d" (hash &form))) ~expected ~actual))
+
+  ([test-name expected actual]
+   `(t/deftest ~test-name
+      (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
+        (t/is
+         (~'expect= ~expected ~actual))))))

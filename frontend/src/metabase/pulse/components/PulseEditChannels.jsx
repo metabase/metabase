@@ -138,11 +138,7 @@ export default class PulseEditChannels extends Component {
   willPulseSkip = () => {
     const cards = _.pluck(this.props.pulse.cards, "id");
     const cardPreviews = this.props.cardPreviews;
-    const previews = _.map(cards, function(id) {
-      return _.find(cardPreviews, function(card) {
-        return id == card.id;
-      });
-    });
+    const previews = _.map(cards, id => _.findWhere(cardPreviews, { id }));
     const types = _.pluck(previews, "pulse_card_type");
     const empty = _.isEqual(_.uniq(types), ["empty"]);
     return empty && this.props.pulse.skip_if_empty;

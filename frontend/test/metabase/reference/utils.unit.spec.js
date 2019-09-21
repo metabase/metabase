@@ -110,13 +110,13 @@ describe("Reference utils.js", () => {
           },
         },
       };
-      if (aggregation != undefined) {
+      if (aggregation != null) {
         card.dataset_query.query.aggregation = aggregation;
       }
-      if (breakout != undefined) {
+      if (breakout != null) {
         card.dataset_query.query.breakout = breakout;
       }
-      if (filter != undefined) {
+      if (filter != null) {
         card.dataset_query.query.filter = filter;
       }
       return card;

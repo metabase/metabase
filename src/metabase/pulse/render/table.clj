@@ -1,6 +1,7 @@
 (ns metabase.pulse.render.table
   (:require [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase.plugins.classloader :as classloader]
             [metabase.pulse.render
              [color :as color]
              [style :as style]])
@@ -8,25 +9,29 @@
 
 ;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so
 ;; NumericWrapper exists in the first place.
-(require 'metabase.pulse.render.common)
+(classloader/require 'metabase.pulse.render.common)
 (import 'metabase.pulse.render.common.NumericWrapper)
 
 (defn- bar-th-style []
-  (merge (style/font-style) {:font-size :14.22px
-                             :font-weight     700
-                             :color           style/color-gray-4
-                             :border-bottom   (str "1px solid " style/color-row-border)
-                             :padding-top     :20px
-                             :padding-bottom  :5px}))
+  (merge
+   (style/font-style)
+   {:font-size :14.22px
+    :font-weight     700
+    :color           style/color-gray-4
+    :border-bottom   (str "1px solid " style/color-row-border)
+    :padding-top     :20px
+    :padding-bottom  :5px}))
 
 (defn- bar-td-style []
-  (merge (style/font-style) {:font-size      :14.22px
-                       :font-weight    400
-                       :text-align     :left
-                       :padding-right  :0.5em
-                       :padding-left   :0.5em
-                       :padding-top    :4px
-                       :padding-bottom :4px}))
+  (merge
+   (style/font-style)
+   {:font-size      :14.22px
+    :font-weight    400
+    :text-align     :left
+    :padding-right  :0.5em
+    :padding-left   :0.5em
+    :padding-top    :4px
+    :padding-bottom :4px}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))

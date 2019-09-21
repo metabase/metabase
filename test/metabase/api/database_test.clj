@@ -210,7 +210,7 @@
   (for [driver (conj tx.env/test-drivers :h2)
         ;; GA has no test extensions impl and thus data/db doesn't work with it
         ;; Also it doesn't work for Druid either because DB must be flattened
-        :when  (not= driver :googleanalytics :druid)]
+        :when  (not (#{:googleanalytics :druid} driver))]
     (merge
      default-db-details
      (select-keys (driver/with-driver driver (data/db)) [:created_at :id :updated_at :timezone])
