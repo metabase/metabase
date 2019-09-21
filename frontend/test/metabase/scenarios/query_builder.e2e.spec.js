@@ -22,6 +22,8 @@ describe("query builder", () => {
       store.pushPath("/");
       const app = mount(store.getAppContainer());
       await app.async.findByText("Browse Data").click();
+      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
+
       await app.async.findByText("Sample Dataset").click();
       await app.async.findByText("Orders").click();
       await app.async.findByText("37.65");
@@ -33,8 +35,9 @@ describe("query builder", () => {
 
       const app = mount(store.getAppContainer());
       await app.async.findByText("Ask a question").click();
-      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       await app.async.findByText("Simple question").click();
+
+      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       // await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
       await app.async.findByText("Orders").click();
       await app.async.findByText("37.65");
@@ -47,8 +50,9 @@ describe("query builder", () => {
       const app = mount(store.getAppContainer());
 
       await app.async.findByText("Ask a question").click();
-      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       await app.async.findByText("Custom question").click();
+
+      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       // await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
       await app.async.findByText("Orders").click();
       await app.async.findByText("Visualize").click();
@@ -60,19 +64,18 @@ describe("query builder", () => {
       const app = mount(store.getAppContainer());
 
       await app.async.findByText("Ask a question").click();
-      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       await app.async.findByText("Custom question").click();
+
+      await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
       // await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
       await app.async.findByText("Orders").click();
       await app.async.findByText("Pick the metric you want to see").click();
       await app.async.findByText("Count of rows").click();
-      await app.async.findByText("Orders").click();
       await app.async.findByText("Pick a column to group by").click();
       await app.async.findByText("User").click();
       await app.async.findByText("State").click();
-      await app.async.findByText("Orders").click();
       await app.async.findByText("Visualize").click();
-      await app.async.findByText("1,342 +").click();
+      await app.async.find("ChoroplethMap");
     });
   });
 

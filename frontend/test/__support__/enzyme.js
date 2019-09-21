@@ -164,7 +164,7 @@ addReactWrapperMethod("setInputValue", setInputValue);
 
 // creates the magic "async" namespace for `find` methods
 Object.defineProperty(ReactWrapper.prototype, "async", {
-  get: function() {
+  get() {
     if (!this.__async) {
       this.__async = {
         find: asyncFind(this, "find"),

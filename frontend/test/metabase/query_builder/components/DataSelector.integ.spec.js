@@ -1,7 +1,7 @@
 import React from "react";
 import { delay } from "metabase/lib/promise";
 
-import { mountWithStore } from "__support__/integration_tests";
+import { mountWithStore } from "__support__/integration";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector.jsx";
 
