@@ -254,7 +254,9 @@ export default class DatabaseDetailsForm extends Component {
       );
     } else if (field.name === "include-user-id-and-hash") {
       const on =
-        details["include-user-id-and-hash"] == undefined ? true : details["include-user-id-and-hash"];
+        details["include-user-id-and-hash"] == undefined
+          ? true
+          : details["include-user-id-and-hash"];
       return (
         <FormField key={field.name} fieldName={field.name}>
           <div className="flex align-center Form-offset">
