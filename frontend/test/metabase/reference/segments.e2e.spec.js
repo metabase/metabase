@@ -56,7 +56,7 @@ describe("The Reference Section", () => {
       type: "query",
       query: {
         "source-table": 1,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         filter: ["segment", 1],
       },
     },

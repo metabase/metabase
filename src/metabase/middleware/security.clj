@@ -7,7 +7,7 @@
             [metabase.models.setting :refer [defsetting]]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]]
+             [i18n :as ui18n :refer [deferred-tru]]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
 
@@ -91,9 +91,9 @@
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (defsetting ssl-certificate-public-key
-  (str (tru "Base-64 encoded public key for this site's SSL certificate.")
-       (tru "Specify this to enable HTTP Public Key Pinning.")
-       (tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
+  (str (deferred-tru "Base-64 encoded public key for this site's SSL certificate.")
+       (deferred-tru "Specify this to enable HTTP Public Key Pinning.")
+       (deferred-tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn security-headers

@@ -84,7 +84,8 @@
     :distinct___count
 
     (= ag-type :aggregation-options)
-    (recur (second ag))
+    (let [[_ wrapped-ag options] ag]
+      (or (:name options) (recur wrapped-ag)))
 
     ag-type
     ag-type
@@ -514,13 +515,23 @@
 
 (defn- ag:distinct
   [field output-name]
-  (if (isa? (:base-type field) :type/DruidHyperUnique)
+  (cond
+    (mbql.u/is-clause? #{:+} field)
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames (mapv ->rvalue (rest field))
+     :byRow      true
+     :round      true}
+    (isa? (:base-type field) :type/DruidHyperUnique)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
+    :else
     {:type       :cardinality
      :name       output-name
-     :fieldNames [(->rvalue field)]}))
+     :fieldNames [(->rvalue field)]
+     :byRow      true
+     :round      true}))
 
 (defn- ag:count
   ([output-name]
@@ -649,7 +660,7 @@
 
                       ;; we should never get here unless our code is B U S T E D
                       _
-                      (throw (ex-info (str (tru "Expected :aggregation-options, constant, or expression."))
+                      (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
                                {:type :bug, :input arg})))))}))
 
 
@@ -734,7 +745,7 @@
     :minute-of-hour  (extract:timeFormat "mm")
     :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (extract:timeFormat "yyyy-MM-ddZZ")
+    :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  "  return date.getDay() + 1;"
@@ -761,7 +772,7 @@
                                  "  var date = new Date(timestamp);"
                                  "  return Math.floor((date.getMonth() + 3) / 3);"
                                  "}")
-    :year            (extract:timeFormat "yyyy")))
+    :year            (extract:timeFormat "yyyy-01-01")))
 
 (defn- unit->granularity
   [unit]
@@ -795,8 +806,7 @@
     :day-of-year
     :week-of-year
     :month-of-year
-    :quarter-of-year
-    :year})
+    :quarter-of-year})
 
 (defmethod ->dimension-rvalue nil
   [_]
@@ -888,6 +898,9 @@
         ag-field          (mbql.u/match-one ag
                             :distinct
                             :distinct___count
+
+                            [:aggregation-options _ (options :guard :name)]
+                            (:name options)
 
                             [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
@@ -1008,7 +1021,8 @@
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} updated-query]
   (if-not limit
-    updated-query
+    (-> updated-query
+        (assoc-in [:query :limitSpec :type]  :default))
     (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))

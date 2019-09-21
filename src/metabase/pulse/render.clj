@@ -94,7 +94,7 @@
   [render-type timezone card {:keys [data error], :as results}]
   (try
     (when error
-      (let [^String msg (str (tru "Card has errors: {0}" error))]
+      (let [^String msg (tru "Card has errors: {0}" error)]
         (throw (ex-info msg results))))
     (let [chart-type (or (detect-pulse-card-type card data)
                           (when (is-attached? card)

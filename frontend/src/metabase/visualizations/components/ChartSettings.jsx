@@ -3,12 +3,12 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings.jsx";
+import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -236,38 +236,36 @@ class ChartSettings extends Component {
             {widgetList}
           </div>
         ) : (
-          <div className="full-height relative">
-            <div className="Grid spread">
-              <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-                {widgetList}
-              </div>
-              <div className="Grid-cell flex flex-column pt2">
-                <div className="mx4 flex flex-column">
-                  <Warnings
-                    className="mx2 align-self-end text-gold"
-                    warnings={this.state.warnings}
-                    size={20}
-                  />
-                </div>
-                <div className="mx4 flex-full relative">
-                  <Visualization
-                    className="spread"
-                    rawSeries={rawSeries}
-                    showTitle
-                    isEditing
-                    isDashboard
-                    isSettings
-                    showWarnings
-                    onUpdateVisualizationSettings={this.handleChangeSettings}
-                    onUpdateWarnings={warnings => this.setState({ warnings })}
-                  />
-                </div>
-                <ChartSettingsFooter
-                  onDone={this.handleDone}
-                  onCancel={this.handleCancel}
-                  onReset={onReset}
+          <div className="Grid">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+              {widgetList}
+            </div>
+            <div className="Grid-cell flex flex-column pt2">
+              <div className="mx4 flex flex-column">
+                <Warnings
+                  className="mx2 align-self-end text-gold"
+                  warnings={this.state.warnings}
+                  size={20}
                 />
               </div>
+              <div className="mx4 flex-full relative">
+                <Visualization
+                  className="spread"
+                  rawSeries={rawSeries}
+                  showTitle
+                  isEditing
+                  isDashboard
+                  isSettings
+                  showWarnings
+                  onUpdateVisualizationSettings={this.handleChangeSettings}
+                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                />
+              </div>
+              <ChartSettingsFooter
+                onDone={this.handleDone}
+                onCancel={this.handleCancel}
+                onReset={onReset}
+              />
             </div>
           </div>
         )}

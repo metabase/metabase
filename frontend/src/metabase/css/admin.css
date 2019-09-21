@@ -47,12 +47,6 @@
   color: var(--color-text-white);
 }
 
-.Actions {
-  background-color: color(var(--color-bg-light) alpha(-54%));
-  border: 1px solid var(--color-border);
-  padding: 2em;
-}
-
 .Actions-group {
   margin-bottom: 2em;
 }

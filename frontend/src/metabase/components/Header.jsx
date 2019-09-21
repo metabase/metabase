@@ -2,10 +2,10 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import HeaderModal from "metabase/components/HeaderModal.jsx";
-import TitleAndDescription from "metabase/components/TitleAndDescription.jsx";
-import EditBar from "metabase/components/EditBar.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import HeaderModal from "metabase/components/HeaderModal";
+import TitleAndDescription from "metabase/components/TitleAndDescription";
+import EditBar from "metabase/components/EditBar";
 import { t } from "ttag";
 import { getScrollY } from "metabase/lib/dom";
 

@@ -17,7 +17,7 @@
              [permissions :refer [Permissions]]
              [permissions-group :as perms-group]]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [urls :as urls]]
             [toucan.db :as db]))
 
@@ -125,7 +125,7 @@
 
 (defmethod command :list [& _]
   (let [cards (list-cards)]
-    (str (tru "Here''s your {0} most recent cards:" (count cards))
+    (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
          "\n"
           (format-cards-list cards))))
 
@@ -145,7 +145,7 @@
       (throw
        (Exception.
         (str
-         (tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
+         (deferred-tru "Could you be a little more specific, or use the ID? I found these cards with names that matched:")
          "\n"
          (format-cards-list cards)))))
     first-card))
@@ -160,16 +160,16 @@
     (card-with-name card-id-or-name)
 
     :else
-    (throw (Exception. (str (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name))))))
+    (throw (Exception. (tru "I don''t know what Card `{0}` is. Give me a Card ID or name." card-id-or-name)))))
 
 (defmethod command :show
   ([_]
-   (str (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`.")))
+   (tru "Show which card? Give me a part of a card name or its ID and I can show it to you. If you don''t know which card you want, try `metabot list`."))
 
   ([_ card-id-or-name]
    (let [{card-id :id} (id-or-name->card card-id-or-name)]
      (when-not card-id
-       (throw (Exception. (str (tru "Card {0} not found." card-id-or-name)))))
+       (throw (Exception. (tru "Card {0} not found." card-id-or-name))))
      (with-metabot-permissions
        (read-check Card card-id))
      (metabot.slack/async
@@ -177,7 +177,7 @@
                           (pulse/create-slack-attachment-data
                            [(pulse/execute-card card-id, :context :metabot)]))]
          (metabot.slack/post-chat-message! nil attachments)))
-     (str (tru "Ok, just a second..."))))
+     (tru "Ok, just a second...")))
 
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my
   ;; wacky card")
@@ -195,7 +195,7 @@
 
 (defmethod command :help [& _]
   (str
-   (tru "Here''s what I can do: ")
+   (deferred-tru "Here''s what I can do: ")
    (str/join ", " (for [cmd (listed-commands)]
                     (str \` (name cmd) \`)))))
 

@@ -18,9 +18,9 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
-import Popover from "metabase/components/Popover.jsx";
+import Popover from "metabase/components/Popover";
 
-import TokenizedInput from "./TokenizedInput.jsx";
+import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 
@@ -65,6 +65,7 @@ export default class ExpressionEditorTextfield extends Component {
 
   _getParserInfo(props = this.props) {
     return {
+      query: props.query,
       tableMetadata: props.tableMetadata,
       customFields: props.customFields || {},
       startRule: props.startRule,
@@ -79,8 +80,8 @@ export default class ExpressionEditorTextfield extends Component {
     // we only refresh our state if we had no previous state OR if our expression or table has changed
     if (
       !this.state ||
-      this.props.expression != newProps.expression ||
-      this.props.tableMetadata != newProps.tableMetadata
+      this.props.expression !== newProps.expression ||
+      this.props.tableMetadata !== newProps.tableMetadata
     ) {
       const parserInfo = this._getParserInfo(newProps);
       const parsedExpression = newProps.expression;

@@ -32,7 +32,9 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
       this._initMediaQueryListener();
       this._initResizeObserver();
       this._updateResizeObserver();
-      this._updateSize();
+      // Set the size on the next tick. We had issues with wrapped components
+      // not adjusting if the size was fixed during mounting.
+      setTimeout(this._updateSize, 0);
     }
 
     componentDidUpdate() {

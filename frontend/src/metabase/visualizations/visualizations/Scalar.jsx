@@ -82,7 +82,12 @@ export default class Scalar extends Component {
         },
         data: {
           cols: [
-            { base_type: TYPE.Text, display_name: t`Name`, name: "name" },
+            {
+              base_type: TYPE.Text,
+              display_name: t`Name`,
+              name: "name",
+              source: "query-transform",
+            },
             { ...s.data.cols[0] },
           ],
           rows: [[s.card.name, s.data.rows[0][0]]],

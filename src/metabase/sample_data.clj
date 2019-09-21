@@ -13,8 +13,8 @@
 (defn- db-details []
   (let [resource (io/resource sample-dataset-filename)]
     (when-not resource
-      (throw (Exception. (str (trs "Sample dataset DB file ''{0}'' cannot be found."
-                                   sample-dataset-filename)))))
+      (throw (Exception. (trs "Sample dataset DB file ''{0}'' cannot be found."
+                              sample-dataset-filename))))
     {:db (-> (.getPath resource)
              (str/replace #"^file:" "zip:") ; to connect to an H2 DB inside a JAR just replace file: with zip: (this doesn't do anything when running from `lein`, which has no `file:` prefix)
              (str/replace #"\.mv\.db$" "")  ; strip the .mv.db suffix from the path

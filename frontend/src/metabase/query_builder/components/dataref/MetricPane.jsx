@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import DetailPane from "./DetailPane.jsx";
-import QueryButton from "metabase/components/QueryButton.jsx";
-import QueryDefinition from "./QueryDefinition.jsx";
+import DetailPane from "./DetailPane";
+import QueryButton from "metabase/components/QueryButton";
+import QueryDefinition from "./QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
 import * as Q_DEPRECATED from "metabase/lib/query";

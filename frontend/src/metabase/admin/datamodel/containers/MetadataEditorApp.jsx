@@ -6,11 +6,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import AdminEmptyText from "metabase/components/AdminEmptyText.jsx";
-import MetadataHeader from "../components/database/MetadataHeader.jsx";
-import MetadataTablePicker from "../components/database/MetadataTablePicker.jsx";
-import MetadataTable from "../components/database/MetadataTable.jsx";
-import MetadataSchema from "../components/database/MetadataSchema.jsx";
+import AdminEmptyText from "metabase/components/AdminEmptyText";
+import MetadataHeader from "../components/database/MetadataHeader";
+import MetadataTablePicker from "../components/database/MetadataTablePicker";
+import MetadataTable from "../components/database/MetadataTable";
+import MetadataSchema from "../components/database/MetadataSchema";
 import {
   metrics as Metrics,
   segments as Segments,

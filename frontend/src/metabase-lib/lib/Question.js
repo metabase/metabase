@@ -276,7 +276,7 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  setDisplayDefault(): Question {
+  setDefaultDisplay(): Question {
     const query = this.query();
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -339,6 +339,12 @@ export default class Question {
       }
     }
     return this.setDisplay("table");
+  }
+
+  setDefaultQuery() {
+    return this.query()
+      .setDefaultQuery()
+      .question();
   }
 
   settings(): VisualizationSettings {
@@ -636,6 +642,10 @@ export default class Question {
     return this._card && this._card.id;
   }
 
+  setId(id: number): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   description(): ?string {
     return this._card && this._card.description;
   }
@@ -742,7 +752,7 @@ export default class Question {
   isEqual(other) {
     if (!other) {
       return false;
-    } else if (this.id() != other.id()) {
+    } else if (this.id() !== other.id()) {
       return false;
     } else if (!_.isEqual(this.card(), other.card())) {
       return false;

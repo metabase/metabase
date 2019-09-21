@@ -229,8 +229,8 @@
   ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
   ;; how we need to enable the API
   (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
-    (str (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
-              enable-api-url))
+    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+         enable-api-url)
     message))
 
 (defmethod driver/mbql->native :googleanalytics [_ query]

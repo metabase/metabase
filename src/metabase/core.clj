@@ -13,6 +13,7 @@
              [server :as server]
              [setup :as setup]
              [task :as task]
+             [troubleshooting :as troubleshooting]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
             [metabase.driver.util :as driver.u]
@@ -20,7 +21,7 @@
              [setting :as setting]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util.i18n :refer [set-locale trs]]
+            [metabase.util.i18n :refer [deferred-trs set-locale trs]]
             [toucan.db :as db]))
 
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
@@ -36,7 +37,7 @@
                          (when-not (= 80 port) (str ":" port))
                          "/setup/")]
     (log/info (u/format-color 'green
-                  (str (trs "Please use the following URL to setup your Metabase installation:")
+                  (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
                        "\n\n"
                        setup-url
                        "\n\n")))))
@@ -56,7 +57,7 @@
   "General application initialization function which should be run once at application startup."
   []
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
-  (log/info (trs "System timezone is ''{0}'' ..." (System/getProperty "user.timezone")))
+  (log/info (trs "System info:\n {0}" (u/pprint-to-str (troubleshooting/system-info))))
   (init-status/set-progress! 0.1)
 
   ;; First of all, lets register a shutdown hook that will tidy things up for us on app exit

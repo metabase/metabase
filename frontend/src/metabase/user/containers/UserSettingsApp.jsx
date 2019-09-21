@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import UserSettings from "../components/UserSettings.jsx";
+import UserSettings from "../components/UserSettings";
 import { selectors } from "../selectors";
 
 import { setTab, updatePassword, updateUser } from "../actions";

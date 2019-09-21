@@ -6,7 +6,7 @@ import { Flex } from "grid-styled";
 
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ModalContent from "metabase/components/ModalContent";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 
 import * as Urls from "metabase/lib/urls";

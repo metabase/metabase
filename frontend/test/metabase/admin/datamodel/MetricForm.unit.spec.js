@@ -7,11 +7,12 @@ import normalReducers from "metabase/reducers-main";
 
 import MetricForm from "metabase/admin/datamodel/containers/MetricForm";
 
+import { metadata } from "__support__/sample_dataset_fixture";
+
 function renderForm(props) {
   const store = getStore(normalReducers);
-  return render(
-    <MetricForm store={store} table={{ aggregation_options: [] }} {...props} />,
-  );
+  const [table] = metadata.tablesList();
+  return render(<MetricForm store={store} table={table} {...props} />);
 }
 
 describe("MetricForm", () => {
@@ -32,5 +33,13 @@ describe("MetricForm", () => {
     getByText(/^Make changes to your metric/);
     getByText("Reason For Changes");
     getByText("Save changes");
+  });
+
+  it("should render count as the default aggregation", () => {
+    const updatePreviewSummary = jest.fn();
+    const { getByText } = renderForm({ metadata, updatePreviewSummary });
+    getByText("Count of rows");
+    const [{ query }] = updatePreviewSummary.mock.calls[1];
+    expect(query.aggregation).toEqual([["count"]]);
   });
 });

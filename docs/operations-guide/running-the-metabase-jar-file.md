@@ -40,9 +40,9 @@ It's that simple.  This will start the Metabase application using all of the def
     2015-10-14 22:17:51,049 [INFO ] org.eclipse.jetty.server.ServerConnector :: Started ServerConnector@30aba609{HTTP/1.1}{localhost:3000}
     2015-10-14 22:17:51,050 [INFO ] org.eclipse.jetty.server.Server :: Started @35910ms
 
-At this point your ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
+At this point you're ready to go!  You can access your new Metabase server on port 3000, most likely at [localhost:3000](http://localhost:3000)
 
-You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar
+You can use another port than 3000 by setting the `MB_JETTY_PORT` environment variable before running the jar.
 
 Note that in the default configuration Metabase will use a local H2 database for storing all its own application data.  This is meant for simple evaluations or personal use, so if you want to run Metabase for a team we recommend you upgrade to a more robust SQL server such as Postgres.  See below for details on how to do that.
 

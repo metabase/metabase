@@ -1,5 +1,5 @@
 ## Authenticating with SAML
-The open source edition of Metabase includes the option to [set up SSO with Google Sign-in or LDAP](https://metabase.com/docs/latest/administration-guide/10-single-sign-on.html), but the Enterprise edition of Metabase additionally lets you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to [set up SSO with Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the Enterprise edition of Metabase additionally lets you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
 
 * automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 * let your users access Metabase without re-authenticating.
@@ -173,6 +173,12 @@ Here are a few things to double check if you're experiencing issues setting up y
 * Read all field labels and tooltips carefully - since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
 * Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
 * Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at ``https://metabase.mycompany.com``, the full url should be ``https://metabase.mycompany.com/auth/sso``
+
+### Disabling Password Log-in
+
+Once you have configured your SAML authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
+
+![Password disable](images/password-disable.png)
 
 ---
 

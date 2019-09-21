@@ -6,10 +6,10 @@ import { t } from "ttag";
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import DetailPane from "./DetailPane.jsx";
-import QueryButton from "metabase/components/QueryButton.jsx";
-import UseForButton from "./UseForButton.jsx";
-import QueryDefinition from "./QueryDefinition.jsx";
+import DetailPane from "./DetailPane";
+import QueryButton from "metabase/components/QueryButton";
+import UseForButton from "./UseForButton";
+import QueryDefinition from "./QueryDefinition";
 
 import { createCard } from "metabase/lib/card";
 import * as Q_DEPRECATED from "metabase/lib/query";

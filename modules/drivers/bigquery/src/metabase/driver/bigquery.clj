@@ -25,7 +25,6 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -287,7 +286,7 @@
 (defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
 (defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
 (defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (extract :year      expr))
+(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:bigquery :seconds] [_ _ expr]
   (hsql/call :timestamp_seconds expr))
@@ -332,11 +331,11 @@
                                 more)))))
 
 (s/defn ^:private honeysql-form->sql :- s/Str
-  [honeysql-form :- su/Map]
-  (let [[sql & args] (sql.qp/honeysql-form->sql+args :bigquery honeysql-form)]
-    (when (seq args)
-      (throw (Exception. (str (tru "BigQuery statements can''t be parameterized!")))))
-    sql))
+  [driver, honeysql-form :- su/Map]
+  (let [[sql & args :as sql+args] (sql.qp/format-honeysql driver honeysql-form)]
+    (if (seq args)
+      (unprepare/unprepare driver sql+args)
+      sql)))
 
 ;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
 ;; at most 128 characters long.
@@ -420,8 +419,8 @@
     (assert (seq dataset-id))
     (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
       {:query      (->> outer-query
-                        (sql.qp/build-honeysql-form :bigquery)
-                        honeysql-form->sql)
+                        (sql.qp/build-honeysql-form driver)
+                        (honeysql-form->sql driver))
        :table-name (or table-name
                        (when source-query
                          sql.qp/source-query-alias))
@@ -433,8 +432,8 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
-                                                   :as                                                    outer-query}]
+(defmethod driver/execute-query :bigquery
+  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
       (let [remark (str "-- " (qputil/query->remark outer-query) "\n")

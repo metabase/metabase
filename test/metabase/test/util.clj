@@ -4,10 +4,10 @@
             [clj-time.core :as time]
             [clojure
              [string :as str]
+             [test :as t]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [expectations :as expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [task :as task]
@@ -33,9 +33,10 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.util.date :as du]
-            [potemkin.types :as p.types]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -43,27 +44,26 @@
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-;; record type for testing that results match a Schema
-(p.types/defrecord+ SchemaExpectation [schema]
-  expectations/CustomPred
-  (expect-fn [_ actual]
-    (nil? (s/check schema actual)))
-  (expected-message [_ _ _ _]
-    (str "Result did not match schema:\n"
-         (u/pprint-to-str 'green (s/explain schema))))
-  (actual-message [_ actual _ _]
-    (str "Was:\n"
-         (u/pprint-to-str 'red actual)))
-  (message [_ actual _ _]
-    (u/pprint-to-str (s/check schema actual))))
+(defmethod t/assert-expr 'schema=
+  [message form]
+  (let [[_ schema actual] form]
+    `(let [schema# ~schema
+           actual# ~actual
+           pass?#  (nil? (s/check schema# actual#))]
+       (t/do-report
+        {:type     (if pass?# :pass :fail)
+         :message  ~message
+         :expected (s/explain schema#)
+         :actual   actual#
+         :diffs    (when-not pass?#
+                     [(s/check schema# actual#)])}))))
 
-(defmacro expect-schema
+(defmacro ^:deprecated expect-schema
   "Like `expect`, but checks that results match a schema."
   {:style/indent 0}
   [expected actual]
-  `(expect
-     (SchemaExpectation. ~expected)
-     ~actual))
+  `(t/deftest ~(symbol (format "expect-schema-%d" (hash &form)))
+     (t/is (~'schema= ~expected ~actual))))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -258,6 +258,7 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
+  (initialize/initialize-if-needed! :db)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
@@ -275,7 +276,8 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
   [[setting-k value & more] & body]
-  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
+                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))

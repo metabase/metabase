@@ -2,7 +2,7 @@ import React from "react";
 
 import Select, { Option } from "metabase/components/Select";
 
-const FormSelectWidget = ({ placeholder, options = [], field, offset }) => (
+const FormSelectWidget = ({ placeholder, options = [], field }) => (
   <Select
     placeholder={placeholder}
     {...field}

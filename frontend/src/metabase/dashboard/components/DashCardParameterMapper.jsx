@@ -1,9 +1,9 @@
 import React from "react";
 import { t } from "ttag";
 
-import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper.jsx";
+import DashCardCardParameterMapper from "../containers/DashCardCardParameterMapper";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const DashCardParameterMapper = ({ dashcard }) => (
   <div className="relative flex-full flex flex-column layout-centered">
@@ -11,8 +11,8 @@ const DashCardParameterMapper = ({ dashcard }) => (
       <div
         className="mx4 my1 p1 rounded"
         style={{
-          backgroundColor: colors["bg-light"],
-          color: colors["text-medium"],
+          backgroundColor: color("bg-light"),
+          color: color("text-medium"),
           marginTop: -10,
         }}
       >

@@ -122,6 +122,7 @@ export function applyChartTimeseriesXAxis(
 
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
+    let tickFormatUnit = dimensionColumn.unit;
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
@@ -133,8 +134,8 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.interval !== tickInterval.interval ||
         newTickInterval.count !== tickInterval.count
       ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
+        tickFormatUnit = "month";
+        tickInterval = { interval: "month", count: 1 };
       }
     }
 
@@ -144,8 +145,10 @@ export function applyChartTimeseriesXAxis(
       const timestampFixed = moment(timestamp)
         .utcOffset(dataOffset)
         .format();
+      const { column, columnSettings } = chart.settings.column(dimensionColumn);
       return formatValue(timestampFixed, {
-        ...chart.settings.column(dimensionColumn),
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
@@ -398,15 +401,22 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       // TODO: right axis?
       chart.elasticY(true);
     } else {
-      if (
-        !(
-          (yExtent[0] < 0 && yExtent[1] < 0) ||
-          (yExtent[0] > 0 && yExtent[1] > 0)
-        )
-      ) {
+      const [min, max] = yExtent;
+      if (!((min < 0 && max < 0) || (min > 0 && max > 0))) {
         throw "Y-axis must not cross 0 when using log scale.";
       }
-      scale.domain(yExtent);
+
+      // With chart.elasticY, the y axis adjusts to show the beginning of the
+      // bars. If there are any bar series, we try to do the same with the log
+      // scale. We start at ±1 because things get wacky in (0, ±1].
+      const noBarSeries = series.every(s => s.card.display !== "bar");
+      if (noBarSeries) {
+        scale.domain([min, max]);
+      } else if (min < 0) {
+        scale.domain([min, -1]);
+      } else {
+        scale.domain([1, max]);
+      }
     }
     axis.scale(scale);
   } else {

@@ -2,11 +2,12 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
+import { Link } from "react-router";
 
-import Toggle from "metabase/components/Toggle.jsx";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
-import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget.jsx";
+import Toggle from "metabase/components/Toggle";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Select, { Option } from "metabase/components/Select";
+import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 
 import { parameterOptionsForField } from "metabase/meta/Dashboard";
 import type { TemplateTag } from "metabase/meta/types/Query";
@@ -17,6 +18,7 @@ import { fetchField } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import MetabaseSettings from "metabase/lib/settings";
 import type { FieldId } from "metabase/meta/types/Field";
 
 type Props = {
@@ -106,7 +108,7 @@ export default class TagEditorParam extends Component {
   render() {
     const { tag, database, databases, metadata } = this.props;
 
-    let widgetOptions,
+    let widgetOptions = [],
       table,
       fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
@@ -122,6 +124,7 @@ export default class TagEditorParam extends Component {
     const isDimension = tag.type === "dimension";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
+    const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     return (
       <div className="pb2 mb2 border-bottom border-dark">
         <h3 className="pb2">{tag.name}</h3>
@@ -157,7 +160,12 @@ export default class TagEditorParam extends Component {
 
         {tag.type === "dimension" && (
           <div className="pb1">
-            <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
+            <h5 className="pb1 text-normal">
+              {t`Field to map to`}
+              {tag.dimension == null && (
+                <span className="text-error mx1">(required)</span>
+              )}
+            </h5>
 
             {(!hasSelectedDimensionField ||
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
@@ -176,16 +184,16 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        {widgetOptions && widgetOptions.length > 0 && (
+        {hasSelectedDimensionField && (
           <div className="pb1">
             <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
             <Select
-              className="border-medium bg-white block"
+              className="border-med bg-white block"
               value={tag["widget-type"]}
               onChange={e =>
                 this.setParameterAttribute("widget-type", e.target.value)
               }
-              isInitiallyOpen={!tag["widget-type"]}
+              isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
               placeholder={t`Select…`}
             >
               {[{ name: "None", type: undefined }]
@@ -196,6 +204,21 @@ export default class TagEditorParam extends Component {
                   </Option>
                 ))}
             </Select>
+            {!hasWidgetOptions && (
+              <p className="pb1">
+                {t`There aren't any filter widgets for this type of field yet.`}{" "}
+                <Link
+                  to={MetabaseSettings.docsUrl(
+                    "users-guide/13-sql-parameters",
+                    "the-field-filter-variable-type",
+                  )}
+                  target="_blank"
+                  className="link"
+                >
+                  {t`Learn more`}
+                </Link>
+              </p>
+            )}
           </div>
         )}
 

@@ -62,7 +62,7 @@
   (try
     (stencil/render-file path variables)
     (catch IllegalArgumentException e
-      (let [message (str (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path))]
+      (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
         (log/error e message)
         (throw (Exception. message e))))))
 

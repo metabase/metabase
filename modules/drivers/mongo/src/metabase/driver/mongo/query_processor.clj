@@ -21,7 +21,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [monger
              [collection :as mc]
@@ -90,7 +90,7 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green (str "\n" (tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
+    (log/debug (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
                  (->> form
                       ;; strip namespace qualifiers from Monger form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
@@ -218,7 +218,7 @@
                                                    {$mod [{$add [month 2]}
                                                           3]}]}
                                        3]})
-          :year            {$year column})))))
+          :year            (stringify "%Y"))))))
 
 
 (defmethod ->rvalue :datetime-field [this]
@@ -242,7 +242,7 @@
                      (stringify format-string value))
                     ([format-string v]
                      {:___date (du/format-date format-string v)}))
-        extract   (u/rpartial du/date-extract value)]
+        extract   #(du/date-extract % value)]
     (case (or unit :default)
       :default         value
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
@@ -256,10 +256,10 @@
       :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
       :week-of-year    (extract :week-of-year)
       :month           (stringify "yyyy-MM")
-      :month-of-year   (extract :month)
+      :month-of-year   (extract :month-of-year)
       :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (extract :year))))
+      :year            (stringify "yyyy"))))
 
 
 ;; TODO - where's the part where we handle include-current?
@@ -428,7 +428,7 @@
 
     :else
     (throw
-     (ex-info (str (tru "Don't know how to handle aggregation {0}" ag))
+     (ex-info (tru "Don't know how to handle aggregation {0}" ag)
        {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
@@ -736,7 +736,7 @@
           actual-cols     (set (keys (first results)))
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
-        (throw (Exception. (str (tru "Unexpected columns in results: {0}" (sort not-in-expected)))))))))
+        (throw (Exception. (tru "Unexpected columns in results: {0}" (sort not-in-expected))))))))
 
 (defn execute-query
   "Process and run a native MongoDB query."

@@ -328,8 +328,8 @@ export default class NativeQueryEditor extends Component {
     if (isNativeEditorOpen && databases.length > 0) {
       // we only render a db selector if there are actually multiple to choose from
       if (
-        databases.length > 1 &&
-        (database == null || _.any(databases, db => db.id === database.id))
+        database == null ||
+        (databases.length > 1 && databases.some(db => db.id === database.id))
       ) {
         dataSelectors.push(
           <div

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import TokenizedExpression from "./TokenizedExpression.jsx";
+import TokenizedExpression from "./TokenizedExpression";
 
 import {
   getCaretPosition,
@@ -27,7 +27,7 @@ export default class TokenizedInput extends Component {
   };
 
   _getValue() {
-    if (this.props.value != undefined) {
+    if (this.props.value != null) {
       return this.props.value;
     } else {
       return this.state.value;

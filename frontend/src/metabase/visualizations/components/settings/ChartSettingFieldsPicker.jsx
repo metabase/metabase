@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import ChartSettingFieldPicker from "./ChartSettingFieldPicker.jsx";
+import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
 
 const ChartSettingFieldsPicker = ({
   value = [],

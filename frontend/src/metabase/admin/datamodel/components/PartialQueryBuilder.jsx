@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor.jsx";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
@@ -57,15 +57,7 @@ export default class PartialQueryBuilder extends Component {
     }).query();
 
     const previewCard = {
-      dataset_query: {
-        ...datasetQuery,
-        query: {
-          aggregation: ["rows"],
-          breakout: [],
-          filter: [],
-          ...datasetQuery.query,
-        },
-      },
+      dataset_query: datasetQuery,
     };
     const previewUrl = Urls.question(null, previewCard);
 
