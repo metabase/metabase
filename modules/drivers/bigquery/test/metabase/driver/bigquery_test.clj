@@ -198,7 +198,7 @@
 
 ;; if I run a BigQuery query with include-user-id-and-hash disabled, does it get a remark added to it?
 (datasets/expect-with-driver :bigquery
-  (str 
+  (str
    "SELECT `test_data.venues`.`id` AS `id`,"
    " `test_data.venues`.`name` AS `name` "
    "FROM `test_data.venues` "
