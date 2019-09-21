@@ -244,7 +244,8 @@
     {:include-drivers :all}]
 
    :repl
-   [:include-all-drivers]
+   [:include-all-drivers
+    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
 
    :bikeshed
    [:include-all-drivers
