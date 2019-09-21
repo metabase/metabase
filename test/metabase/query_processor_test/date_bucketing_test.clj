@@ -17,9 +17,7 @@
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+            [clojure.test :refer :all]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
@@ -970,30 +968,25 @@
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (datasets/test-drivers qp.test/non-timeseries-drivers
-      (are [expected-count unit filter-value]
-          (let [allowed-counts (if (integer? expected-count)
-                                 #{expected-count}
-                                 (set expected-count))]
-            (testing unit
-              (let [result (ffirst
-                            (qp.test/format-rows-by [int]
-                              (qp.test/rows
-                                (data/run-mbql-query checkins
-                                  {:aggregation [[:count]]
-                                   :filter      [:= [:datetime-field $date unit] filter-value]}))))]
-                (is (contains? allowed-counts result)
-                    (format "count of rows where (= (%s date) %s) should be one of: %s"
-                            (name unit) filter-value (str/join ", " (sort allowed-counts)))))))
+      (are [expected-count unit filter-value] (is (= expected-count
+                                                     (ffirst
+                                                      (qp.test/format-rows-by [int]
+                                                        (qp.test/rows
+                                                          (data/run-mbql-query checkins
+                                                            {:aggregation [[:count]]
+                                                             :filter      [:= [:datetime-field $date unit] filter-value]})))))
+                                                  (format "count of rows where (= (%s date) %s) should be %d"
+                                                          (name unit) filter-value expected-count))
         ;; for whatever reason some of these return different values for different drivers. They're close enough so
         ;; we'll consider them acceptable.
-        3          :day             "2014-03-03"
-        #{136 143} :day-of-week     "1"
-        42         :day-of-month    "1"
-        2          :day-of-year     "1"
-        11         :week            "2014-03-03"
-        #{8 9}     :week-of-year    "1"
-        48         :month           "2014-03"
-        38         :month-of-year   "1"
-        107        :quarter         "2014-01"
-        200        :quarter-of-year "1"
-        498        :year            "2014"))))
+        3   :day             "2014-03-03"
+        135 :day-of-week     1
+        36  :day-of-month    1
+        9   :day-of-year     214
+        11  :week            "2014-03-03"
+        8   :week-of-year    2
+        48  :month           "2014-03"
+        38  :month-of-year   1
+        107 :quarter         "2014-01"
+        200 :quarter-of-year 1
+        498 :year            "2014"))))
