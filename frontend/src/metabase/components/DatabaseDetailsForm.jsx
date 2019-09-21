@@ -252,7 +252,7 @@ export default class DatabaseDetailsForm extends Component {
       );
     } else if (field.name === "include-user-id-and-hash") {
       const on =
-        details["include-user-id-and-hash"] == undefined
+        details["include-user-id-and-hash"] == null
           ? true
           : details["include-user-id-and-hash"];
       return (
