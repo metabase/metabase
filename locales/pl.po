@@ -134,7 +134,7 @@ msgstr "Jeśli jesteś pewny, proszę wpisać"
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:52
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
 msgid "DELETE"
-msgstr "Usuń"
+msgstr "DELETE"
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:66
 msgid "in this box:"
@@ -12530,7 +12530,7 @@ msgstr "Przeglądaj Dane"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:376
 msgid "Write SQL"
-msgstr "Napis SQL"
+msgstr "Napisz SQL"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:147
 msgid "Simple question"

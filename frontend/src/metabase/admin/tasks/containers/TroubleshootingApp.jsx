@@ -19,6 +19,10 @@ export default class TroubleshootingApp extends Component {
         sidebar={
           <LeftNavPane>
             <LeftNavPaneItem
+              name={t`Help`}
+              path="/admin/troubleshooting/help"
+            />
+            <LeftNavPaneItem
               name={t`Tasks`}
               path="/admin/troubleshooting/tasks"
               index
