@@ -17,7 +17,9 @@
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
@@ -968,25 +970,29 @@
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (datasets/test-drivers qp.test/non-timeseries-drivers
-      (are [expected-count unit filter-value] (is (= expected-count
-                                                     (ffirst
-                                                      (qp.test/format-rows-by [int]
-                                                        (qp.test/rows
-                                                          (data/run-mbql-query checkins
-                                                            {:aggregation [[:count]]
-                                                             :filter      [:= [:datetime-field $date unit] filter-value]})))))
-                                                  (format "count of rows where (= (%s date) %s) should be %d"
-                                                          (name unit) filter-value expected-count))
-        ;; for whatever reason some of these return different values for different drivers. They're close enough so
-        ;; we'll consider them acceptable.
-        3   :day             "2014-03-03"
-        135 :day-of-week     1
-        36  :day-of-month    1
-        9   :day-of-year     214
-        11  :week            "2014-03-03"
-        8   :week-of-year    2
-        48  :month           "2014-03"
-        38  :month-of-year   1
-        107 :quarter         "2014-01"
-        200 :quarter-of-year 1
-        498 :year            "2014"))))
+      (let [count-with-unit (fn [unit filter-value]
+                              (ffirst
+                               (qp.test/format-rows-by [int]
+                                 (qp.test/rows
+                                   (data/run-mbql-query checkins
+                                     {:aggregation [[:count]]
+                                      :filter      [:= [:datetime-field $date unit] filter-value]})))))]
+        (doseq [[expected-count unit filter-value] [[3        :day             "2014-03-03"]
+                                                    [135      :day-of-week     1]
+                                                    [36       :day-of-month    1]
+                                                    [9        :day-of-year     214]
+                                                    [11       :week            "2014-03-03"]
+                                                    [#{7 8 9} :week-of-year    2]
+                                                    [48       :month           "2014-03"]
+                                                    [38       :month-of-year   1]
+                                                    [107      :quarter         "2014-01"]
+                                                    [200      :quarter-of-year 1]
+                                                    [498      :year            "2014"]]]
+          (testing unit
+            (if (integer? expected-count)
+              (is (= expected-count
+                     (count-with-unit unit filter-value))
+                  (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count))
+              (is (contains? expected-count (count-with-unit unit filter-value))
+                  (format "count of rows where (= (%s date) %s) should be one of: %s"
+                          (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
