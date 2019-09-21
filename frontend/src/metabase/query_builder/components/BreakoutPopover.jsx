@@ -1,31 +1,37 @@
 /* @flow */
 
 import React from "react";
+import cx from "classnames";
 
-import FieldList from "metabase/query_builder/components/FieldList.jsx";
+import FieldList from "metabase/query_builder/components/FieldList";
 
 import type { Breakout } from "metabase/meta/types/Query";
 import type { FieldOptions } from "metabase/meta/types/Metadata";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type Props = {
+  className?: string,
   breakout?: Breakout,
-  onCommitBreakout: (breakout: Breakout) => void,
+  onChangeBreakout: (breakout: Breakout) => void,
   query: StructuredQuery,
   breakoutOptions?: FieldOptions,
   onClose?: () => void,
   maxHeight?: number,
   alwaysExpanded?: boolean,
+  searchable?: boolean,
+  width?: number,
 };
 
 const BreakoutPopover = ({
+  className,
   breakout,
-  onCommitBreakout,
+  onChangeBreakout,
   query,
   breakoutOptions,
   onClose,
   maxHeight,
   alwaysExpanded,
+  width = 400,
 }: Props) => {
   const table = query.table();
   // FieldList requires table
@@ -34,19 +40,21 @@ const BreakoutPopover = ({
   }
   return (
     <FieldList
-      className="text-green"
-      maxHeight={maxHeight}
+      className={cx(className, "text-green")}
+      width={width}
       field={breakout}
-      fieldOptions={breakoutOptions || query.breakoutOptions()}
+      fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
       onFieldChange={field => {
-        onCommitBreakout(field);
+        onChangeBreakout(field);
         if (onClose) {
           onClose();
         }
       }}
       table={table}
       enableSubDimensions
+      maxHeight={maxHeight}
       alwaysExpanded={alwaysExpanded}
+      searchable={false}
     />
   );
 };

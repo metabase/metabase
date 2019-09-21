@@ -110,13 +110,13 @@ describe("Reference utils.js", () => {
           },
         },
       };
-      if (aggregation != undefined) {
+      if (aggregation != null) {
         card.dataset_query.query.aggregation = aggregation;
       }
-      if (breakout != undefined) {
+      if (breakout != null) {
         card.dataset_query.query.breakout = breakout;
       }
-      if (filter != undefined) {
+      if (filter != null) {
         card.dataset_query.query.filter = filter;
       }
       return card;
@@ -147,7 +147,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          aggregation: ["count"],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -163,7 +163,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 3,
           table: 4,
-          breakout: [5],
+          breakout: [["field-id", 5]],
         }),
       );
     });
@@ -182,8 +182,8 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "bar",
-          breakout: [5],
-          aggregation: ["count"],
+          breakout: [["field-id", 5]],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -202,8 +202,8 @@ describe("Reference utils.js", () => {
           database: 3,
           table: 4,
           display: "pie",
-          breakout: [5],
-          aggregation: ["count"],
+          breakout: [["field-id", 5]],
+          aggregation: [["count"]],
         }),
       );
     });
@@ -217,7 +217,7 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
+          aggregation: [["metric", 3]],
         }),
       );
     });
@@ -232,8 +232,8 @@ describe("Reference utils.js", () => {
 
       expect(question).toEqual(
         getNewQuestion({
-          aggregation: ["metric", 3],
-          breakout: [4],
+          aggregation: [["metric", 3]],
+          breakout: [["field-id", 4]],
         }),
       );
     });
@@ -249,7 +249,7 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          filter: ["and", ["segment", 4]],
+          filter: ["segment", 4],
         }),
       );
     });
@@ -266,8 +266,8 @@ describe("Reference utils.js", () => {
         getNewQuestion({
           database: 2,
           table: 3,
-          aggregation: ["count"],
-          filter: ["and", ["segment", 4]],
+          aggregation: [["count"]],
+          filter: ["segment", 4],
         }),
       );
     });

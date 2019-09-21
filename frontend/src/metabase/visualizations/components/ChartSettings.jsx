@@ -3,12 +3,12 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings.jsx";
+import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -136,7 +136,7 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const { question, addField, children } = this.props;
+    const { question, addField, noPreview, children } = this.props;
     const { currentWidget } = this.state;
 
     const settings = this._getSettings();
@@ -199,7 +199,7 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        underlined
+        bubble
       />
     );
 
@@ -227,14 +227,16 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
+      <div>
         {sectionNames.length > 1 && (
-          <div className="border-bottom flex flex-no-shrink pl4">
-            {sectionPicker}
-          </div>
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
-        <div className="full-height relative">
-          <div className="Grid spread">
+        {noPreview ? (
+          <div className="full-height relative scroll-y scroll-show py4">
+            {widgetList}
+          </div>
+        ) : (
+          <div className="Grid">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
               {widgetList}
             </div>
@@ -266,7 +268,7 @@ class ChartSettings extends Component {
               />
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }

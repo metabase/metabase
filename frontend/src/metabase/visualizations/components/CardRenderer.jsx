@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
@@ -16,7 +16,7 @@ type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
 };
 
-@ExplicitSize()
+@ExplicitSize({ wrapped: true })
 export default class CardRenderer extends Component {
   props: Props;
 
@@ -87,6 +87,6 @@ export default class CardRenderer extends Component {
   }
 
   render() {
-    return <div className={this.props.className} />;
+    return <div className={this.props.className} style={this.props.style} />;
   }
 }

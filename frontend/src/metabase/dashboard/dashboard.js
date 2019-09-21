@@ -45,7 +45,6 @@ import { push } from "react-router-redux";
 import {
   DashboardApi,
   CardApi,
-  RevisionApi,
   PublicApi,
   EmbedApi,
   AutoApi,
@@ -102,9 +101,6 @@ export const CANCEL_FETCH_CARD_DATA =
 
 export const MARK_CARD_AS_SLOW = "metabase/dashboard/MARK_CARD_AS_SLOW";
 export const CLEAR_CARD_DATA = "metabase/dashboard/CLEAR_CARD_DATA";
-
-export const FETCH_REVISIONS = "metabase/dashboard/FETCH_REVISIONS";
-export const REVERT_TO_REVISION = "metabase/dashboard/REVERT_TO_REVISION";
 
 export const MARK_NEW_CARD_SEEN = "metabase/dashboard/MARK_NEW_CARD_SEEN";
 
@@ -188,6 +184,11 @@ export const addCardToDashboard = function({
     };
     dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
     dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
+
+    // guard in case card was filtered
+    if (card.dataset_query && card.dataset_query.database) {
+      dispatch(fetchDatabaseMetadata(card.dataset_query.database));
+    }
   };
 };
 
@@ -443,7 +444,7 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
   card,
   dashcard,
-  { reload, clear } = {},
+  { reload, clear, ignoreCache } = {},
 ) {
   return async function(dispatch, getState) {
     // If the dataset_query was filtered then we don't have permisison to view this card, so
@@ -528,6 +529,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             parameters: datasetQuery.parameters
               ? JSON.stringify(datasetQuery.parameters)
               : undefined,
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
@@ -540,18 +542,26 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             dashcardId: dashcard.id,
             cardId: card.id,
             ...getParametersBySlug(dashboard.parameters, parameterValues),
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
       );
     } else if (dashboardType === "transient") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(datasetQuery, queryOptions),
+        MetabaseApi.dataset(
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          queryOptions,
+        ),
       );
     } else {
       result = await fetchDataOrError(
         CardApi.query(
-          { cardId: card.id, parameters: datasetQuery.parameters },
+          {
+            cardId: card.id,
+            parameters: datasetQuery.parameters,
+            ignore_cache: ignoreCache,
+          },
           queryOptions,
         ),
       );
@@ -679,26 +689,6 @@ export const updateEmbeddingParams = createAction(
   UPDATE_EMBEDDING_PARAMS,
   ({ id }, embedding_params) => DashboardApi.update({ id, embedding_params }),
 );
-
-export const fetchRevisions = createThunkAction(FETCH_REVISIONS, function({
-  entity,
-  id,
-}) {
-  return async function(dispatch, getState) {
-    const revisions = await RevisionApi.list({ entity, id });
-    return { entity, id, revisions };
-  };
-});
-
-export const revertToRevision = createThunkAction(REVERT_TO_REVISION, function({
-  entity,
-  id,
-  revision_id,
-}) {
-  return async function(dispatch, getState) {
-    await RevisionApi.revert({ entity, id, revision_id });
-  };
-});
 
 export const onUpdateDashCardVisualizationSettings = createAction(
   UPDATE_DASHCARD_VISUALIZATION_SETTINGS,
@@ -1052,18 +1042,6 @@ const editingParameterId = handleActions(
   null,
 );
 
-const revisions = handleActions(
-  {
-    [FETCH_REVISIONS]: {
-      next: (state, { payload: { entity, id, revisions } }) => ({
-        ...state,
-        [entity + "-" + id]: revisions,
-      }),
-    },
-  },
-  {},
-);
-
 const dashcardData = handleActions(
   {
     // clear existing dashboard data when loading a dashboard
@@ -1123,7 +1101,6 @@ export default combineReducers({
   dashboards,
   dashcards,
   editingParameterId,
-  revisions,
   dashcardData,
   slowCards,
   parameterValues,

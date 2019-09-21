@@ -21,6 +21,7 @@
              [driver :as driver]
              [query-processor-test :as qp.test :refer :all]
              [util :as u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -28,7 +29,8 @@
              [datasets :as datasets]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util.date :as du])
+            [metabase.util.date :as du]
+            [potemkin.types :as p.types])
   (:import [org.joda.time DateTime DateTimeZone]))
 
 (defn- ->long-if-number [x]
@@ -767,7 +769,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (qp.test/expect-with-non-timeseries-dbs
-  [[2015 200]]
+  [[(cond
+      (= :sqlite driver/*driver*)
+      "2015-01-01"
+
+      (supports-report-timezone? driver/*driver*)
+      "2015-01-01T00:00:00.000-08:00"
+      :else
+      "2015-01-01T00:00:00.000Z")
+    200]]
   (sad-toucan-incidents-with-bucketing :year pacific-tz))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -777,7 +787,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; RELATIVE DATES
-(deftype ^:private TimestampDatasetDef [intervalSeconds])
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds])
 
 (defmethod tx/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
@@ -790,7 +800,12 @@
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
               ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
-              [(u/prog1 (driver/date-interval driver/*driver* :second (* i interval-seconds))
+              [(u/prog1 (if (isa? driver/hierarchy driver/*driver* :sql)
+                          (driver/date-add driver/*driver*
+                                           (sql.qp/current-datetime-fn driver/*driver*)
+                                           (* i interval-seconds)
+                                           :second)
+                          (du/relative-date :second (* i interval-seconds)))
                  (assert <>))]))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]

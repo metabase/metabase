@@ -11,7 +11,8 @@
      (style {:font-weight 400, :color \"white\"}) -> \"font-weight: 400; color: white;\""
   [& style-maps]
   (str/join " " (for [[k v] (into {} style-maps)
-                      :let  [v (if (keyword? v) (name v) v)]]
+                      :let  [v (if (keyword? v) (name v) (str v))]
+                      :when (seq v)]
                   (str (name k) ": " v ";"))))
 
 (def ^:const color-brand
@@ -50,8 +51,11 @@
   "Used as color for the bottom border of table headers for charts with `:table` vizualization."
   "#EDF0F1")
 
-
-(defn- primary-color []
+;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
+;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
+(defn primary-color
+  "Primary color to use in Pulses. For CE, this is always the classic Metabase blue."
+  []
   color-brand)
 
 (defn font-style

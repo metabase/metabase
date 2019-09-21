@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Revision from "./Revision.jsx";
+import Revision from "./Revision";
 import { t } from "ttag";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Tables from "metabase/entities/tables";
 
 import { assignUserColors } from "metabase/lib/formatting";

@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
 
 import Icon from "metabase/components/Icon";
@@ -11,13 +11,13 @@ import Text from "metabase/components/Text";
 function colorForType(type) {
   switch (type) {
     case "csv":
-      return colors["accent7"];
+      return color("accent7");
     case "xlsx":
-      return colors["accent1"];
+      return color("accent1");
     case "json":
-      return colors["bg-dark"];
+      return color("bg-dark");
     default:
-      return colors["brand"];
+      return color("brand");
   }
 }
 

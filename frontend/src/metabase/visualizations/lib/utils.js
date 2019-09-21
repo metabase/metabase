@@ -5,6 +5,10 @@ import d3 from "d3";
 import { t } from "ttag";
 import crossfilter from "crossfilter";
 
+import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";
+
+export const MAX_SERIES = 20;
+
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
 
@@ -23,8 +27,7 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   }
   return colNames.reduce(
     (acc, name) =>
-      acc &&
-      (name == undefined || (colsByName[name] && filter(colsByName[name]))),
+      acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
 }
@@ -142,36 +145,6 @@ export function getFriendlyName(column) {
   return column.display_name;
 }
 
-export function getXValues(datas) {
-  let xValues = _.chain(datas)
-    .map(data => _.pluck(data, "0"))
-    .flatten(true)
-    .uniq()
-    .value();
-
-  // detect if every series' dimension is strictly ascending or descending and use that to sort xValues
-  let isAscending = true;
-  let isDescending = true;
-  outer: for (const rows of datas) {
-    for (let i = 1; i < rows.length; i++) {
-      isAscending = isAscending && rows[i - 1][0] <= rows[i][0];
-      isDescending = isDescending && rows[i - 1][0] >= rows[i][0];
-      if (!isAscending && !isDescending) {
-        break outer;
-      }
-    }
-  }
-  if (isDescending) {
-    // JavaScript's .sort() sorts lexicographically by default (e.x. 1, 10, 2)
-    // We could implement a comparator but _.sortBy handles strings, numbers, and dates correctly
-    xValues = _.sortBy(xValues, x => x).reverse();
-  } else if (isAscending) {
-    // default line/area charts to ascending since otherwise lines could be wonky
-    xValues = _.sortBy(xValues, x => x);
-  }
-  return xValues;
-}
-
 export function isSameSeries(seriesA, seriesB) {
   return (
     (seriesA && seriesA.length) === (seriesB && seriesB.length) &&
@@ -212,29 +185,6 @@ export function colorShade(hex, shade = 0) {
   );
 }
 
-import { isDimension, isMetric } from "metabase/lib/schema_metadata";
-
-export const DIMENSION_METRIC = "DIMENSION_METRIC";
-export const DIMENSION_METRIC_METRIC = "DIMENSION_METRIC_METRIC";
-export const DIMENSION_DIMENSION_METRIC = "DIMENSION_DIMENSION_METRIC";
-
-// NOTE Atte Keinänen 7/31/17 Commented MAX_SERIES out as it wasn't being used
-// const MAX_SERIES = 10;
-
-export const isDimensionMetric = (cols, strict = true) =>
-  (!strict || cols.length === 2) && isDimension(cols[0]) && isMetric(cols[1]);
-
-export const isDimensionDimensionMetric = (cols, strict = true) =>
-  (!strict || cols.length === 3) &&
-  isDimension(cols[0]) &&
-  isDimension(cols[1]) &&
-  isMetric(cols[2]);
-
-export const isDimensionMetricMetric = (cols, strict = true) =>
-  cols.length >= 3 &&
-  isDimension(cols[0]) &&
-  cols.slice(1).reduce((acc, col) => acc && isMetric(col), true);
-
 // cache computed cardinalities in a weak map since they are computationally expensive
 const cardinalityCache = new WeakMap();
 
@@ -261,20 +211,6 @@ export function getColumnExtent(cols, rows, index) {
     extentCache.set(col, d3.extent(rows, row => row[index]));
   }
   return extentCache.get(col);
-}
-
-export function getChartTypeFromData(cols, rows, strict = true) {
-  // this should take precendence for backwards compatibilty
-  if (isDimensionMetricMetric(cols, strict)) {
-    return DIMENSION_METRIC_METRIC;
-  } else if (isDimensionDimensionMetric(cols, strict)) {
-    // if (getColumnCardinality(cols, rows, 0) < MAX_SERIES || getColumnCardinality(cols, rows, 1) < MAX_SERIES) {
-    return DIMENSION_DIMENSION_METRIC;
-    // }
-  } else if (isDimensionMetric(cols, strict)) {
-    return DIMENSION_METRIC;
-  }
-  return null;
 }
 
 // TODO Atte Keinänen 5/30/17 Extract to metabase-lib card/question logic
@@ -309,24 +245,75 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
   }
 }
 
-export function getDefaultDimensionAndMetric([{ data }]) {
-  const type = data && getChartTypeFromData(data.cols, data.rows, false);
-  if (type === DIMENSION_METRIC) {
+export function getDefaultDimensionAndMetric(series) {
+  const columns = getDefaultDimensionsAndMetrics(series, 1, 1);
+  return {
+    dimension: columns.dimensions[0],
+    metric: columns.metrics[0],
+  };
+}
+
+export function getDefaultDimensionsAndMetrics(
+  [{ data }],
+  maxDimensions = 2,
+  maxMetrics = Infinity,
+) {
+  if (!data) {
     return {
-      dimension: data.cols[0].name,
-      metric: data.cols[1].name,
-    };
-  } else if (type === DIMENSION_DIMENSION_METRIC) {
-    return {
-      dimension: null,
-      metric: data.cols[2].name,
-    };
-  } else {
-    return {
-      dimension: null,
-      metric: null,
+      dimensions: [null],
+      metrics: [null],
     };
   }
+
+  const { cols, rows } = data;
+
+  let dimensions = [];
+  let metrics = [];
+
+  // in MBQL queries that are broken out, metrics and dimensions are mutually exclusive
+  // in SQL queries and raw MBQL queries metrics are numeric, summable, non-PK/FK and dimensions can be anything
+  const metricColumns = cols.filter(col => isMetric(col));
+  const dimensionNotMetricColumns = cols.filter(
+    col => isDimension(col) && !isMetric(col),
+  );
+  if (
+    dimensionNotMetricColumns.length <= maxDimensions &&
+    metricColumns.length === 1
+  ) {
+    dimensions = dimensionNotMetricColumns;
+    metrics = metricColumns;
+  } else if (
+    dimensionNotMetricColumns.length === 1 &&
+    metricColumns.length <= maxMetrics
+  ) {
+    dimensions = dimensionNotMetricColumns;
+    metrics = metricColumns;
+  }
+
+  if (dimensions.length === 2) {
+    if (isDate(dimensions[1]) && !isDate(dimensions[0])) {
+      // if the series dimension is a date but the axis dimension is not then swap them
+      dimensions.reverse();
+    } else if (
+      getColumnCardinality(cols, rows, cols.indexOf(dimensions[0])) <
+      getColumnCardinality(cols, rows, cols.indexOf(dimensions[1]))
+    ) {
+      // if the series dimension is higher cardinality than the axis dimension then swap them
+      dimensions.reverse();
+    }
+  }
+
+  if (
+    dimensions.length > 1 &&
+    getColumnCardinality(cols, rows, cols.indexOf(dimensions[1])) > MAX_SERIES
+  ) {
+    dimensions.pop();
+  }
+
+  return {
+    dimensions: dimensions.length > 0 ? dimensions.map(c => c.name) : [null],
+    metrics: metrics.length > 0 ? metrics.map(c => c.name) : [null],
+  };
 }
 
 // Figure out how many decimal places are needed to represent the smallest

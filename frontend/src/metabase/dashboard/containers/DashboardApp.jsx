@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
 
-import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
+import Dashboard from "metabase/dashboard/components/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
@@ -16,7 +16,6 @@ import {
   getIsDirty,
   getDashboardComplete,
   getCardList,
-  getRevisions,
   getCardData,
   getSlowCards,
   getEditingParameter,
@@ -41,7 +40,6 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state, props),
     dashboard: getDashboardComplete(state, props),
     cards: getCardList(state, props),
-    revisions: getRevisions(state, props),
     dashcardData: getCardData(state, props),
     slowCards: getSlowCards(state, props),
     databases: getDatabases(state, props),

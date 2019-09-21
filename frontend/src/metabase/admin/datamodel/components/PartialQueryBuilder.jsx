@@ -1,13 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor.jsx";
+import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";
 
-import * as Query from "metabase/lib/query/query";
 import Question from "metabase-lib/lib/Question";
 
 export default class PartialQueryBuilder extends Component {
@@ -58,55 +57,21 @@ export default class PartialQueryBuilder extends Component {
     }).query();
 
     const previewCard = {
-      dataset_query: {
-        ...datasetQuery,
-        query: {
-          aggregation: ["rows"],
-          breakout: [],
-          filter: [],
-          ...datasetQuery.query,
-        },
-      },
+      dataset_query: datasetQuery,
     };
     const previewUrl = Urls.question(null, previewCard);
-
-    const onChange = query => {
-      this.props.onChange(query);
-      this.props.updatePreviewSummary({ ...datasetQuery, query });
-    };
 
     return (
       <div className="py1">
         <GuiQueryEditor
           features={features}
           query={query}
-          datasetQuery={datasetQuery}
           databases={tableMetadata && [tableMetadata.db]}
+          setDatabaseFn={null}
+          setSourceTableFn={null}
           setDatasetQuery={this.setDatasetQuery}
           isShowingDataReference={false}
           supportMultipleAggregations={false}
-          setDatabaseFn={null}
-          setSourceTableFn={null}
-          addQueryFilter={filter =>
-            onChange(Query.addFilter(datasetQuery.query, filter))
-          }
-          updateQueryFilter={(index, filter) =>
-            onChange(Query.updateFilter(datasetQuery.query, index, filter))
-          }
-          removeQueryFilter={index =>
-            onChange(Query.removeFilter(datasetQuery.query, index))
-          }
-          addQueryAggregation={aggregation =>
-            onChange(Query.addAggregation(datasetQuery.query, aggregation))
-          }
-          updateQueryAggregation={(index, aggregation) =>
-            onChange(
-              Query.updateAggregation(datasetQuery.query, index, aggregation),
-            )
-          }
-          removeQueryAggregation={index =>
-            onChange(Query.removeAggregation(datasetQuery.query, index))
-          }
         >
           <div className="flex align-center mx2 my2">
             <span className="text-bold px3">{previewSummary}</span>

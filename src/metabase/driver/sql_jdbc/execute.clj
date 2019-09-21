@@ -47,7 +47,7 @@
   (let [date-string (.getString rs i)]
     (if-let [parsed-date (du/str->date-time date-string (.getTimeZone cal))]
       parsed-date
-      (throw (Exception. (str (tru "Unable to parse date ''{0}''" date-string)))))))
+      (throw (Exception. (tru "Unable to parse date ''{0}''" date-string))))))
 
 (defmulti read-column
   "Read a single value from a single column in a single row from the JDBC ResultSet of a Metabase query. Normal
@@ -195,7 +195,7 @@
                            :set-parameters (set-parameters-with-timezone timezone)
                            :max-rows       max-rows})]
     {:rows    (or rows [])
-     :columns (map u/keyword->qualified-name columns)}))
+     :columns (map u/qualified-name columns)}))
 
 
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------

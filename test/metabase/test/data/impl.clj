@@ -3,6 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
+             [db :as mdb]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -15,6 +16,7 @@
              [dataset-definitions :as defs]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
+            [metabase.util.date :as du]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -67,11 +69,15 @@
             (db/update! Field (:id @field) :visibility_type (name visibility-type)))
           (when special-type
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
-            (db/update! Field (:id @field) :special_type (u/keyword->qualified-name special-type))))))))
+            (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
 (def ^:private create-database-timeout
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
   (* 4 60 1000)) ; 4 minutes
+
+(def ^:private sync-timeout
+  "Max amount of time to wait for sync to complete."
+  (* 5 60 1000)) ; five minutes
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -87,12 +93,14 @@
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
-      (sync/sync-database! db)
-      ;; add extra metadata for fields
-      (try
-        (add-extra-metadata! database-definition db)
-        (catch Throwable e
-          (println "Error adding extra metadata:" e)))
+      (u/with-timeout sync-timeout
+        (du/profile (format "Sync %s Database %s" driver database-name)
+          (sync/sync-database! db)
+          ;; add extra metadata for fields
+          (try
+            (add-extra-metadata! database-definition db)
+            (catch Throwable e
+              (println "Error adding extra metadata:" e)))))
       ;; make sure we're returing an up-to-date copy of the DB
       (Database (u/get-id db)))
     (catch Throwable e
@@ -103,6 +111,7 @@
 
 
 (defmethod get-or-create-database! :default [driver dbdef]
+  (mdb/setup-db!) ; if not already setup
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)
@@ -141,18 +150,23 @@
     (or (table-id-for-name table-name)
         (table-id-for-name (let [db-name (db/select-one-field :name Database :id db-id)]
                              (tx/db-qualified-table-name db-name table-name)))
-        (throw (Exception. (format "No Table '%s' found for Database %d.\nFound: %s" table-name db-id
-                                   (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true))))))))
+        (let [{driver :engine, db-name :name} (db/select-one [Database :engine :name] :id db-id)]
+          (throw
+           (Exception. (format "No Table '%s' found for %s Database %d '%s'.\nFound: %s"
+                               table-name driver db-id db-name
+                               (u/pprint-to-str (db/select-id->field :name Table, :db_id db-id, :active true)))))))))
 
 (defn- the-field-id* [table-id field-name & {:keys [parent-id]}]
   {:pre [((some-fn keyword? string?) field-name)]}
   (or (db/select-one-id Field, :active true, :table_id table-id, :name field-name, :parent_id parent-id)
-      (throw (Exception.
-              (format "Couldn't find Field %s for Table %d.\nFound: %s"
-                      (str \' field-name \' (when parent-id
-                                              (format " (parent: %d)" parent-id)))
-                      table-id
-                      (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id)))))))
+      (let [{db-id :db_id, table-name :name} (db/select-one [Table :name :db_id] :id table-id)
+            {driver :engine, db-name :name}  (db/select-one [Database :engine :name] :id db-id)
+            field-name                       (str \' field-name \' (when parent-id
+                                                                     (format " (parent: %d)" parent-id)))]
+        (throw
+         (Exception. (format "Couldn't find Field %s for Table %d '%s' (%s Database %d '%s') .\nFound: %s"
+                             field-name table-id table-name driver db-id db-name
+                             (u/pprint-to-str (db/select-id->field :name Field, :active true, :table_id table-id))))))))
 
 (defn the-field-id
   "Internal impl of `(data/id table field)`."
@@ -207,13 +221,12 @@
   standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db}                            (*get-db*)
-        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])
-        copy-name                                              (format "%s___COPY" original-name)]
-    (try
-      (let [{new-db-id :id, :as new-db} (db/insert! Database (assoc original-db :name copy-name))]
+        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
+    (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
+      (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
-        (do-with-db new-db f))
-      (finally (db/delete! Database :engine (name engine), :name copy-name)))))
+        (do-with-db new-db f)
+        (finally (db/delete! Database :id new-db-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

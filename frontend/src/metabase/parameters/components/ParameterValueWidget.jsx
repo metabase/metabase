@@ -5,16 +5,16 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
-import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
-import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget.jsx";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
-import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
-import CategoryWidget from "./widgets/CategoryWidget.jsx";
-import TextWidget from "./widgets/TextWidget.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import DateSingleWidget from "./widgets/DateSingleWidget";
+import DateRangeWidget from "./widgets/DateRangeWidget";
+import DateRelativeWidget from "./widgets/DateRelativeWidget";
+import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
+import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
+import CategoryWidget from "./widgets/CategoryWidget";
+import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
@@ -84,7 +84,8 @@ export default class ParameterValueWidget extends Component {
     className: "",
   };
 
-  getField() {
+  // this method assumes the parameter is associated with only one field
+  getSingleField() {
     const { parameter, metadata } = this.props;
     return parameter.field_id != null
       ? metadata.fields[parameter.field_id]
@@ -95,7 +96,7 @@ export default class ParameterValueWidget extends Component {
     const { parameter, values } = this.props;
     if (DATE_WIDGETS[parameter.type]) {
       return DATE_WIDGETS[parameter.type];
-    } else if (this.getField()) {
+    } else if (this.getSingleField()) {
       return ParameterFieldWidget;
     } else if (values && values.length > 0) {
       return CategoryWidget;
@@ -114,19 +115,20 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
+  fieldIds({ parameter: { field_id, field_ids = [] } }) {
+    return field_id ? [field_id] : field_ids;
+  }
+
   componentWillReceiveProps(nextProps) {
-    if (
-      nextProps.parameter.field_id != null &&
-      nextProps.parameter.field_id !== this.props.parameter.field_id
-    ) {
+    if (!_.isEqual(this.fieldIds(this.props), this.fieldIds(nextProps))) {
       this.updateFieldValues(nextProps);
     }
   }
 
   updateFieldValues(props) {
-    if (props.parameter.field_id != null) {
-      props.fetchField(props.parameter.field_id);
-      props.fetchFieldValues(props.parameter.field_id);
+    for (const id of this.fieldIds(props)) {
+      props.fetchField(id);
+      props.fetchFieldValues(id);
     }
   }
 
@@ -192,7 +194,7 @@ export default class ParameterValueWidget extends Component {
       } else if (Widget.noPopover && this.state.isFocused) {
         return (
           <Icon
-            name="enterorreturn"
+            name="enter_or_return"
             className="flex-align-right flex-no-shrink"
             size={12}
           />
@@ -229,7 +231,7 @@ export default class ParameterValueWidget extends Component {
             placeholder={placeholder}
             value={value}
             values={values}
-            field={this.getField()}
+            field={this.getSingleField()}
             setValue={setValue}
             isEditing={isEditing}
             commitImmediately={commitImmediately}

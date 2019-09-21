@@ -38,7 +38,7 @@ modal.default = modal.TestModal;
 import * as tooltip from "metabase/components/Tooltip";
 tooltip.default = tooltip.TestTooltip;
 
-jest.mock("metabase/components/Popover.jsx");
+jest.mock("metabase/components/Popover");
 
 import * as bodyComponent from "metabase/components/BodyComponent";
 bodyComponent.default = bodyComponent.TestBodyComponent;

@@ -22,10 +22,10 @@
   (cond
     (string? prop)
     (or (driver.common/default-options (keyword prop))
-        (throw (Exception. (str (trs "Default connection property {0} does not exist." prop)))))
+        (throw (Exception. (trs "Default connection property {0} does not exist." prop))))
 
     (not (map? prop))
-    (throw (Exception. (str (trs "Invalid connection property {0}: not a string or map." prop))))
+    (throw (Exception. (trs "Invalid connection property {0}: not a string or map." prop)))
 
     (:merge prop)
     (reduce merge (map parse-connection-property (:merge prop)))
@@ -72,7 +72,7 @@
         connection-props (parse-connection-properties driver-info)]
     ;; Make sure the driver has required properties like driver-name
     (when-not (seq driver-name)
-      (throw (ex-info (str (trs "Cannot initialize plugin: missing required property `driver-name`"))
+      (throw (ex-info (trs "Cannot initialize plugin: missing required property `driver-name`")
                driver-info)))
     ;; if someone forgot to include connection properties for a non-abstract driver throw them a bone and warn them
     ;; about it

@@ -3,13 +3,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import CheckBox from "metabase/components/CheckBox";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import GroupSelect from "./GroupSelect.jsx";
-import GroupSummary from "./GroupSummary.jsx";
+import GroupSelect from "./GroupSelect";
+import GroupSummary from "./GroupSummary";
 
 const GroupOption = ({ name, color, selected, disabled, onChange }) => (
   <div

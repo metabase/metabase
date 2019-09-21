@@ -425,9 +425,9 @@
   (assoc result :attachments (for [attachment-info attachments]
                                (update attachment-info :attachment-bytes-thunk fn?))))
 
-(defprotocol WrappedFunction
-  (input [_])
-  (output [_]))
+(defprotocol ^:private WrappedFunction
+  (^:private input [_])
+  (^:private output [_]))
 
 (defn- invoke-with-wrapping
   "Apply `args` to `func`, capturing the arguments of the invocation and the result of the invocation. Store the arguments in

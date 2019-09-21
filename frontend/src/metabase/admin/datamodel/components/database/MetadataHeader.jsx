@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
-import SaveStatus from "metabase/components/SaveStatus.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import SaveStatus from "metabase/components/SaveStatus";
+import Toggle from "metabase/components/Toggle";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import ColumnarSelector from "metabase/components/ColumnarSelector";
+import Icon from "metabase/components/Icon";
 import Databases from "metabase/entities/databases";
 
 @withRouter
@@ -64,7 +64,7 @@ export default class MetadataHeader extends Component {
         },
       ];
       const triggerElement = (
-        <span className="text-bold cursor-pointer text-default">
+        <span className="text-bold cursor-pointer text-default text-wrap mr2">
           {database.name}
           <Icon className="ml1" name="chevrondown" size={8} />
         </span>

@@ -23,8 +23,8 @@ describe("Icon", () => {
       const { width, height, viewBox } = def.attrs;
       const [parsedWidth, parsedHeight] = parseViewBox(viewBox);
 
-      expect(width).toEqual(`${parsedWidth / 2}px`);
-      expect(height).toEqual(`${parsedHeight / 2}px`);
+      expect(width).toEqual(parsedWidth / 2);
+      expect(height).toEqual(parsedHeight / 2);
     });
   });
 });

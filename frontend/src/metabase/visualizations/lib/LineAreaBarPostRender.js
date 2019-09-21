@@ -3,7 +3,7 @@
 import d3 from "d3";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
@@ -88,18 +88,25 @@ function onRenderSetDotStyle(chart) {
   }
 }
 
-function onRenderSetLineWidth(chart) {
-  const min = getMinElementSpacing(chart.svg().selectAll(".dot")[0]);
-  if (min > 150) {
-    chart.svg().classed("line--heavy", true);
-  } else if (min > 75) {
-    chart.svg().classed("line--medium", true);
-  }
-}
+// more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map or figuring out if we should adjust the line width
+const MAX_DOTS_FOR_VORONOI = 500;
+const MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT = 500;
 
 const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
+
+function onRenderSetLineWidth(chart) {
+  const dots = chart.svg()[0][0].getElementsByClassName("dot");
+  if (dots.length < MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT) {
+    const min = getMinElementSpacing(dots);
+    if (min > 150) {
+      chart.svg().classed("line--heavy", true);
+    } else if (min > 75) {
+      chart.svg().classed("line--medium", true);
+    }
+  }
+}
 
 function onRenderEnableDots(chart) {
   const markerEnabledByIndex = chart.series.map(
@@ -118,8 +125,7 @@ function onRenderEnableDots(chart) {
           : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
       ),
     );
-    if (dots.length > 500) {
-      // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+    if (dots.length > MAX_DOTS_FOR_VORONOI) {
       enableDotsAuto = false;
     } else {
       const vertices = dots.map((e, index) => {
@@ -218,7 +224,7 @@ function onRenderVoronoiHover(chart) {
     .data(voronoi(vertices), d => d && d.join(","))
     .enter()
     .append("svg:path")
-    .filter(d => d != undefined)
+    .filter(d => d != null)
     .attr("d", d => "M" + d.join("L") + "Z")
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked
@@ -278,7 +284,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: colors["text-medium"],
+        fill: color("text-medium"),
       })
       .on("mouseenter", function() {
         onGoalHover(this);
@@ -360,6 +366,17 @@ function onRenderRotateAxis(chart) {
   }
 }
 
+function onRenderAddExtraClickHandlers(chart) {
+  const { onEditBreakout } = chart.props;
+  if (onEditBreakout) {
+    chart
+      .svg()
+      .select(".x-axis-label")
+      .classed("cursor-pointer", true)
+      .on("click", () => onEditBreakout(d3.event, 0));
+  }
+}
+
 // the various steps that get called
 function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderRemoveClipPath(chart);
@@ -377,6 +394,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
+  onRenderAddExtraClickHandlers(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+

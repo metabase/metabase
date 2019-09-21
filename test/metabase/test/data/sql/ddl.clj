@@ -73,16 +73,14 @@
 
 (defmethod insert-rows-honeysql-form :sql/test-extensions
   [driver table-identifier row-or-rows]
-  (let [rows    (if (sequential? row-or-rows)
-                  row-or-rows
-                  [row-or-rows])
+  (let [rows    (u/one-or-many row-or-rows)
         columns (keys (first rows))
         values  (for [row rows]
                   (for [value (map row columns)]
                     (sql.qp/->honeysql driver value)))]
     (-> (apply h/columns (for [column columns]
                            (sql.qp/->honeysql driver
-                             (hx/identifier :field (tx/format-name driver (u/keyword->qualified-name column))))))
+                             (hx/identifier :field (tx/format-name driver (u/qualified-name column))))))
         (h/insert-into table-identifier)
         (h/values values))))
 

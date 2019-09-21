@@ -1,5 +1,5 @@
 :root {
-  --default-button-border-radius: 4px;
+  --default-button-border-radius: 6px;
 }
 
 .Button {
@@ -7,8 +7,8 @@
   box-sizing: border-box;
   text-decoration: none;
   padding: 0.5rem 0.75rem;
-  background: var(--color-bg-light);
-  border: 1px solid var(--color-border);
+  background: transparent;
+  border: 1px solid color(var(--color-border) blackness(+ 5%));
   color: var(--color-text-dark);
   cursor: pointer;
   text-decoration: none;
@@ -16,8 +16,12 @@
   font-family: "Lato", sans-serif;
   border-radius: var(--default-button-border-radius);
 }
+
 .Button:hover {
   color: var(--color-brand);
+  border-color: color(var(--color-border) blackness(+ 12%));
+  background: var(--color-bg-light);
+  transition: all 200ms linear;
 }
 
 @media screen and (--breakpoint-min-lg) {
@@ -26,23 +30,13 @@
   }
 }
 
-@media screen and (--breakpoint-min-xl) {
-  .Button {
-    padding: 1rem 1.5rem;
-  }
-}
-
-.Button:hover {
-  transition: border 0.3s linear;
-}
-
 .Button--small {
   padding: 0.45rem 1rem;
   font-size: 0.6rem;
 }
 
 .Button--medium {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
 }
 
@@ -68,7 +62,7 @@
 .Button--primary:hover {
   color: var(--color-text-white);
   border-color: var(--color-brand);
-  background-color: var(--color-brand);
+  background-color: color(var(--color-brand) alpha(-12%));
 }
 
 .Button--warning {
@@ -89,28 +83,29 @@
 
 .Button--white {
   background-color: white;
-  color: var(--color-text-medium);
+  color: var(--color-text-dark);
   border-color: var(--color-border);
 }
 
 .Button--purple {
   color: white;
-  background-color: var(--color-accent2);
-  border: 1px solid var(--color-accent2);
+  background-color: var(--color-accent7);
+  border: 1px solid var(--color-accent7);
 }
 
 .Button--purple:hover {
   color: white;
-  background-color: var(--color-accent2);
-  border-color: var(--color-accent2);
+  background-color: color(var(--color-accent7) alpha(-12%));
+  border-color: color(var(--color-accent7) alpha(-12%));
 }
 
 .Button--borderless {
-  border: none;
+  border-color: transparent;
   background: transparent;
   color: var(--color-text-medium);
 }
 .Button--borderless:hover {
+  border-color: transparent;
   color: var(--color-text-medium);
 }
 

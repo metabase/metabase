@@ -44,7 +44,7 @@
     ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
     {:order-by (default-sort-rules)}))
 
-(s/defn sorted-implicit-fields-for-table :- [mbql.s/Field]
+(s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
@@ -55,7 +55,7 @@
       [:datetime-field [:field-id (u/get-id field)] :default]
       [:field-id (u/get-id field)])))
 
-(s/defn ^:private source-metadata->fields :- [mbql.s/Field]
+(s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
   (for [{field-name :name, base-type :base_type} source-metadata]
@@ -76,7 +76,7 @@
   (when (and source-query (empty? source-metadata))
     (when-not qp.i/*disable-qp-logging*
       (log/warn
-       (trs "Warining: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))))
+       (trs "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."))))
   ;; Determine whether we can add the implicit `:fields`
   (and (or source-table
            (and source-query (seq source-metadata)))
@@ -93,13 +93,13 @@
                         (source-metadata->fields source-metadata))
           ;; generate a new expression ref clause for each expression defined in the query.
           expressions (for [[expression-name] expressions]
-                        ;; TODO - we need to wrap this in `u/keyword->qualified-name` because `:expressions` uses
+                        ;; TODO - we need to wrap this in `u/qualified-name` because `:expressions` uses
                         ;; keywords as keys. We can remove this call once we fix that.
-                        [:expression (u/keyword->qualified-name expression-name)])]
+                        [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (throw (Exception. (str (tru "Table ''{0}'' has no Fields associated with it."
-                                     (:name (qp.store/table source-table-id)))))))
+        (throw (Exception. (tru "Table ''{0}'' has no Fields associated with it."
+                                (:name (qp.store/table source-table-id))))))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 

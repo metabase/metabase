@@ -39,7 +39,7 @@
     [:or
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
-    [:not= :visibility_type "retired"]
+    [:not-in :visibility_type ["retired" "sensitive"]]
     [:or
      [:and
       [:< :fingerprint_version 1]
@@ -54,7 +54,7 @@
     [:or
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
-    [:not= :visibility_type "retired"]
+    [:not-in :visibility_type ["retired" "sensitive"]]
     [:or
      [:and
       [:< :fingerprint_version 2]
@@ -76,7 +76,7 @@
     [:or
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
-    [:not= :visibility_type "retired"]
+    [:not-in :visibility_type ["retired" "sensitive"]]
     [:or
      [:and
       [:< :fingerprint_version 2]
@@ -98,7 +98,7 @@
     [:or
      [:not (mdb/isa :special_type :type/PK)]
      [:= :special_type nil]]
-    [:not= :visibility_type "retired"]
+    [:not-in :visibility_type ["retired" "sensitive"]]
     [:or
      [:and
       [:< :fingerprint_version 4]
@@ -199,6 +199,13 @@
     {2 #{:type/Text}
      3 #{:type/Float}}
     {:base_type :type/Decimal, :fingerprint_version 1}))
+
+;; field is sensitive
+(expect
+  [default-stat-map false]
+  (field-was-fingerprinted?
+    {1 #{:type/Text}}
+    {:base_type :type/Text, :fingerprint_version 1, :visibility_type :sensitive}))
 
 
 ;; Make sure the `fingerprint!` function is correctly updating the correct columns of Field

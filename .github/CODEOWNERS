@@ -1,5 +1,11 @@
 
 *.clj @camsaul
+/src/metabase/automagic_dashboards/ @sbelak
+/test/metabase/automagic_dashboards/ @sbelak
+/src/metabase/transform/ @sbelak
+/test/metabase/transform/ @sbelak
+/src/metabase/sync/ @camsaul @sbelak
+/test/metabase/sync/ @camsaul @sbelak
 *.css @kdoh
 /frontend/src @tlrobinson @kdoh
 /frontend/src/metabase/components/ @kdoh

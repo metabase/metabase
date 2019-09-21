@@ -111,7 +111,7 @@
   described above."
   [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
-                           (tx/format-name driver (u/keyword->qualified-name component)))
+                           (tx/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
     (partial do-insert! driver conn table-identifier)))
 
@@ -159,7 +159,7 @@
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do
 ;; some profiling in order to pick the appropriate implementation
 
-;; Default imp
+;; Default impl
 
 (defmethod load-data! :sql-jdbc/test-extensions [driver dbdef tabledef]
   (load-data-chunked! driver dbdef tabledef))

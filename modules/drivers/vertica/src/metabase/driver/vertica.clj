@@ -84,15 +84,15 @@
 (defmethod sql.qp/date [:vertica :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:vertica :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:vertica :week] [_ _ expr]
   (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
                                 one-day))
         one-day))
 
-(defmethod driver/date-interval :vertica [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+(defmethod driver/date-add :vertica [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica DATABASE.

@@ -6,11 +6,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import DashboardHeader from "../components/DashboardHeader.jsx";
-import DashboardGrid from "../components/DashboardGrid.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import DashboardHeader from "../components/DashboardHeader";
+import DashboardGrid from "../components/DashboardGrid";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -34,7 +34,7 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { Revision, RevisionId } from "metabase/meta/types/Revision";
+import type { Revision } from "metabase/meta/types/Revision";
 import type {
   Parameter,
   ParameterId,
@@ -66,12 +66,6 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttributes: ({ [attribute: string]: any }) => void,
   fetchDashboardCardData: (options: {
@@ -96,7 +90,7 @@ type Props = {
   editingParameter: ?Parameter,
 
   refreshPeriod: number,
-  refreshElapsed: number,
+  setRefreshElapsedHook: Function,
   isFullscreen: boolean,
   isNightMode: boolean,
   hideParameters: ?string,
@@ -145,8 +139,6 @@ export default class Dashboard extends Component {
     archiveDashboard: PropTypes.func.isRequired,
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
     setEditingDashboard: PropTypes.func.isRequired,

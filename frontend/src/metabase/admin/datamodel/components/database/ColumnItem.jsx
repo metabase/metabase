@@ -2,8 +2,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
@@ -52,7 +52,7 @@ export default class Column extends Component {
 
     return (
       <li className="mt1 mb3 flex">
-        <div className="flex flex-column flex-full">
+        <div className="flex flex-column flex-auto">
           <div>
             <InputBlurChange
               style={{ minWidth: 420 }}
@@ -62,15 +62,15 @@ export default class Column extends Component {
               onBlurChange={this.onNameChange}
             />
             <div className="clearfix">
-              <div className="flex flex-full">
-                <div className="flex-full px1">
+              <div className="flex flex-auto">
+                <div className="flex-auto pl1">
                   <FieldVisibilityPicker
                     className="block"
                     field={field}
                     updateField={this.updateField}
                   />
                 </div>
-                <div className="flex-full px1">
+                <div className="flex-auto px1">
                   <SpecialTypeAndTargetPicker
                     className="block"
                     field={field}
@@ -119,7 +119,7 @@ export class FieldVisibilityPicker extends Component {
 
     return (
       <Select
-        className={cx("TableEditor-field-visibility block", className)}
+        className={cx("TableEditor-field-visibility", className)}
         placeholder={t`Select a field visibility`}
         value={MetabaseCore.field_visibility_types.find(
           type => type.id === field.visibility_type,
@@ -216,7 +216,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     return (
       <div>
         <Select
-          className={cx("TableEditor-field-special-type", className)}
+          className={cx("TableEditor-field-special-type", "mt0", className)}
           placeholder={t`Select a special type`}
           value={MetabaseCore.field_special_types.find(
             type => type.id === field.special_type,
@@ -260,7 +260,7 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target", className)}
+            className={cx("TableEditor-field-target", "text-wrap", className)}
             triggerClasses={this.props.triggerClasses}
             placeholder={t`Select a target`}
             value={idfields.find(

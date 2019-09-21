@@ -21,12 +21,7 @@ function getActionPropsForTimeseriesClick(unit, value) {
         "source-table": ORDERS_TABLE_ID,
         aggregation: [["count"]],
         breakout: [
-          [
-            "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-            "as",
-            unit,
-          ],
+          ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], unit],
         ],
       })
       .question(),
@@ -57,12 +52,7 @@ describe("UnderlyingRecordsDrill", () => {
       "source-table": ORDERS_TABLE_ID,
       filter: [
         "=",
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
-          "month",
-        ],
+        ["datetime-field", ["field-id", ORDERS_CREATED_DATE_FIELD_ID], "month"],
         value,
       ],
     });
@@ -93,7 +83,6 @@ describe("UnderlyingRecordsDrill", () => {
         [
           "datetime-field",
           ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
           "day-of-week",
         ],
         null,

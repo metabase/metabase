@@ -82,7 +82,12 @@ export default class Scalar extends Component {
         },
         data: {
           cols: [
-            { base_type: TYPE.Text, display_name: t`Name`, name: "name" },
+            {
+              base_type: TYPE.Text,
+              display_name: t`Name`,
+              name: "name",
+              source: "query-transform",
+            },
             { ...s.data.cols[0] },
           ],
           rows: [[s.card.name, s.data.rows[0][0]]],
@@ -177,8 +182,6 @@ export default class Scalar extends Component {
       onVisualizationClick,
     } = this.props;
 
-    const isSmall = gridSize && gridSize.width < 4;
-
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
     const column = cols[columnIndex];
@@ -190,9 +193,14 @@ export default class Scalar extends Component {
     };
 
     const fullScalarValue = formatValue(value, formatOptions);
-    const compactScalarValue = isSmall
-      ? formatValue(value, { ...formatOptions, compact: true })
-      : fullScalarValue;
+    const compactScalarValue = formatValue(value, {
+      ...formatOptions,
+      compact: true,
+    });
+
+    const displayCompact =
+      fullScalarValue.length > 6 && gridSize && gridSize.width < 4;
+    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = { value, column };
     const isClickable = visualizationIsClickable(clicked);
@@ -207,7 +215,7 @@ export default class Scalar extends Component {
             "text-brand-hover cursor-pointer": isClickable,
           })}
           tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== compactScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
           style={{ maxWidth: "100%" }}
         >
           <span
@@ -219,7 +227,7 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={compactScalarValue} />
+            <ScalarValue value={displayValue} />
           </span>
         </Ellipsified>
         {isDashboard && (

@@ -10,7 +10,7 @@ import { ngettext, msgid } from "ttag";
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/components/ExternalLink.jsx";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import {
   isDate,
@@ -89,6 +89,8 @@ export type FormattingOptions = {
 };
 
 type FormattedString = string | React$Element<any>;
+
+export const FK_SYMBOL = "→";
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
@@ -381,8 +383,20 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  // The startOf/endOf transition needs to happen in "en" rather than the
+  // current locale. Other locales define week boundaries differently, and they
+  // don't line up with the server's grouping logic.
+  const start = m
+    .clone()
+    .locale("en")
+    .startOf(unit)
+    .locale(false);
+  const end = m
+    .clone()
+    .locale("en")
+    .endOf(unit)
+    .locale(false);
+
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
       // January 1, 2018 - January 2, 2019
@@ -549,16 +563,10 @@ function isDefaultLinkProtocol(protocol) {
 
 export function formatUrl(
   value: Value,
-  {
-    jsx,
-    rich,
-    view_as = "auto",
-    link_text,
-    column: { special_type } = {},
-  }: FormattingOptions = {},
+  { jsx, rich, view_as = "auto", link_text, column }: FormattingOptions = {},
 ) {
   const url = String(value);
-  const urlSpecialType = isa(special_type, TYPE.URL);
+  const urlSpecialType = column && isa(column.special_type, TYPE.URL);
   const protocol = getUrlProtocol(url);
   if (
     jsx &&
@@ -673,7 +681,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     // TODO: get rid of one of these two code paths?
   }
 
-  if (value == undefined) {
+  if (value == null) {
     return null;
   } else if (column && isa(column.special_type, TYPE.URL)) {
     return formatUrl(value, options);

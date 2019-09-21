@@ -72,7 +72,7 @@
 (defmethod sql.qp/date [:hive-like :month]           [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :MM)))
 (defmethod sql.qp/date [:hive-like :month-of-year]   [_ _ expr] (hsql/call :month (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
-(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :year (hx/->timestamp expr)))
+(defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
 
 (defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr]
   (hx/->integer (date-format "u"
@@ -94,8 +94,8 @@
                 1)
           3)))
 
-(defmethod driver/date-interval :hive-like [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d' %s)" (int amount) (name unit))))
+(defmethod driver/date-add :hive-like [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
@@ -125,7 +125,7 @@
         (let [statement        (into [statement] params)
               [columns & rows] (jdbc/query connection statement options)]
           {:rows    (or rows [])
-           :columns (map u/keyword->qualified-name columns)})))))
+           :columns (map u/qualified-name columns)})))))
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"

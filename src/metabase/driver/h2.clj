@@ -16,7 +16,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]])
+             [i18n :refer [deferred-tru tru]]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -31,7 +31,7 @@
 (defmethod driver/connection-properties :h2 [_]
   [{:name         "db"
     :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (tru "Users/camsaul/bird_sightings/toucans"))
+    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
 (defn- connection-string->file+options
@@ -64,16 +64,16 @@
                   (= user "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
-            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
+            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
 
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))
 
 
-(defmethod driver/date-interval :h2 [driver unit amount]
+(defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
-    (recur driver :month (hx/* amount 3))
-    (hsql/call :dateadd (hx/literal unit) amount :%now)))
+    (recur driver dt (hx/* amount 3) :month)
+    (hsql/call :dateadd (hx/literal unit) amount dt)))
 
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]
@@ -139,7 +139,7 @@
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
 (defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;

@@ -34,7 +34,6 @@ import type {
   DashboardId,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { RevisionId } from "metabase/meta/types/Revision";
 import { Link } from "react-router";
 
 type Props = {
@@ -50,7 +49,7 @@ type Props = {
   isNightMode: boolean,
 
   refreshPeriod: ?number,
-  refreshElapsed: ?number,
+  setRefreshElapsedHook: Function,
 
   parametersWidget: React$Element<*>,
 
@@ -59,12 +58,6 @@ type Props = {
   archiveDashboard: (dashboardId: DashboardId) => void,
   fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
-  fetchRevisions: ({ entity: string, id: number }) => void,
-  revertToRevision: ({
-    entity: string,
-    id: number,
-    revision_id: RevisionId,
-  }) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttribute: (attribute: string, value: any) => void,
 
@@ -97,15 +90,13 @@ export default class DashboardHeader extends Component {
     isNightMode: PropTypes.bool.isRequired,
 
     refreshPeriod: PropTypes.number,
-    refreshElapsed: PropTypes.number,
+    setRefreshElapsedHook: PropTypes.func.isRequired,
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
     archiveDashboard: PropTypes.func.isRequired,
     fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
-    fetchRevisions: PropTypes.func.isRequired,
-    revertToRevision: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
 
@@ -168,9 +159,8 @@ export default class DashboardHeader extends Component {
         triggerElement="Archive"
       >
         <ArchiveDashboardModal
-          dashboard={this.props.dashboard}
+          onArchive={() => this.onArchive(this.props.dashboard)}
           onClose={() => this.refs.archiveDashboardModal.toggle()}
-          onArchive={() => this.onArchive()}
         />
       </ModalWithTrigger>,
       <ActionButton
@@ -249,12 +239,12 @@ export default class DashboardHeader extends Component {
             <a
               key="parameters"
               className={cx("text-brand-hover", {
-                "text-brand": this.state.modal == "parameters",
+                "text-brand": this.state.modal === "parameters",
               })}
               title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}
             >
-              <Icon name="funneladd" size={16} />
+              <Icon name="funnel_add" size={16} />
             </a>
           </Tooltip>
 

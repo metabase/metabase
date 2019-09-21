@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import ReactMarkdown from "react-markdown";
 import styles from "./Text.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 import { t } from "ttag";
@@ -224,7 +224,7 @@ const TextActionButtons = ({
           <span className="flex align-center">
             <span className="flex">
               <Icon
-                name="editdocument"
+                name="edit_document"
                 style={{ top: 0, left: 0 }}
                 size={HEADER_ICON_SIZE}
               />

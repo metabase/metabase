@@ -22,8 +22,9 @@
              [automagic-dashboards :refer :all]
              [data :as data]
              [util :as tu]]
-            [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [metabase.util
+             [date :as date]
+             [i18n :refer [tru]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

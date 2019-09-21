@@ -13,20 +13,20 @@ import EditUserModal from "metabase/admin/people/containers/EditUserModal";
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
 // Settings
-import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp.jsx";
+import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
 
 //  DB Add / list
-import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp.jsx";
-import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp.jsx";
+import DatabaseListApp from "metabase/admin/databases/containers/DatabaseListApp";
+import DatabaseEditApp from "metabase/admin/databases/containers/DatabaseEditApp";
 
 // Metadata / Data model
-import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp.jsx";
-import MetricApp from "metabase/admin/datamodel/containers/MetricApp.jsx";
-import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp.jsx";
-import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp.jsx";
-import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp.jsx";
-import FieldApp from "metabase/admin/datamodel/containers/FieldApp.jsx";
-import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp.jsx";
+import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
+import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
+import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
+import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
+import AdminPeopleApp from "metabase/admin/people/containers/AdminPeopleApp";
+import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
+import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
 
 import TroubleshootingApp from "metabase/admin/tasks/containers/TroubleshootingApp";
 import TasksApp from "metabase/admin/tasks/containers/TasksApp";
@@ -36,11 +36,11 @@ import JobTriggersModal from "metabase/admin/tasks/containers/JobTriggersModal";
 import Logs from "metabase/admin/tasks/containers/Logs";
 
 // People
-import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp.jsx";
-import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp.jsx";
-import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp.jsx";
+import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp";
+import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
+import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
-import getAdminPermissionsRoutes from "metabase/admin/permissions/routes.jsx";
+import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
 const getRoutes = (store, IsAdmin) => (
   <Route

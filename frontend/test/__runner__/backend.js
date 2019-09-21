@@ -43,7 +43,7 @@ export const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
+        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
       const javaOpts = [
         "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
@@ -58,15 +58,20 @@ export const BackendResource = createSharedResource("BackendResource", {
         ...process.env,
         MB_DB_TYPE: "h2",
         MB_DB_FILE: server.dbFile,
+        MB_JETTY_HOST: "0.0.0.0",
         MB_JETTY_PORT: server.port,
       };
+      const stdio =
+        process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_BACKEND"]
+          ? "ignore"
+          : "inherit";
       if (process.env["METABASE_JAR"]) {
         server.process = spawn(
           "java",
           [...javaOpts, "-jar", process.env["METABASE_JAR"]],
           {
             env: env,
-            stdio: "inherit",
+            stdio: stdio,
           },
         );
       } else {
@@ -75,7 +80,7 @@ export const BackendResource = createSharedResource("BackendResource", {
             ...env,
             JAVA_OPTS: javaOpts.join(" "),
           },
-          stdio: "inherit",
+          stdio: stdio,
         });
       }
     }
@@ -109,7 +114,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.h2.db`);
+        await fs.unlink(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },

@@ -28,7 +28,7 @@ type State = {
   widgetWidth: ?number,
 };
 
-const BORDER_WIDTH = 2;
+const BORDER_WIDTH = 1;
 
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
@@ -142,6 +142,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 ? this.state.widgetWidth + BORDER_WIDTH * 2
                 : null,
             }}
+            className="border-bottom"
             minWidth={400}
             maxWidth={400}
           />

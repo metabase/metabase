@@ -7,12 +7,12 @@ import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getDatabases, getError, getLoading } from "../selectors";
 

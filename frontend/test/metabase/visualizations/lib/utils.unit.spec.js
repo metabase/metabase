@@ -3,8 +3,8 @@ import {
   computeMaxDecimalsForValues,
   getCardAfterVisualizationClick,
   getColumnCardinality,
-  getXValues,
   getFriendlyName,
+  getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
@@ -32,7 +32,10 @@ const breakoutMultiseriesQuery = {
   ...baseQuery,
   query: {
     ...baseQuery.query,
-    breakout: [...baseQuery.query.breakout, ["fk->", 1, 10]],
+    breakout: [
+      ...baseQuery.query.breakout,
+      ["fk->", ["field-id", 1], ["field-id", 10]],
+    ],
   },
 };
 const derivedBreakoutMultiseriesQuery = {
@@ -159,45 +162,6 @@ describe("metabase/visualization/lib/utils", () => {
     });
   });
 
-  describe("getXValues", () => {
-    it("should not change the order of a single series of ascending numbers", () => {
-      expect(getXValues([[[1], [2], [11]]])).toEqual([1, 2, 11]);
-    });
-    it("should not change the order of a single series of descending numbers", () => {
-      expect(getXValues([[[1], [2], [11]]])).toEqual([1, 2, 11]);
-    });
-    it("should not change the order of a single series of non-ordered numbers", () => {
-      expect(getXValues([[[2], [1], [11]]])).toEqual([2, 1, 11]);
-    });
-
-    it("should not change the order of a single series of ascending strings", () => {
-      expect(getXValues([[["1"], ["2"], ["11"]]])).toEqual(["1", "2", "11"]);
-    });
-    it("should not change the order of a single series of descending strings", () => {
-      expect(getXValues([[["1"], ["2"], ["11"]]])).toEqual(["1", "2", "11"]);
-    });
-    it("should not change the order of a single series of non-ordered strings", () => {
-      expect(getXValues([[["2"], ["1"], ["11"]]])).toEqual(["2", "1", "11"]);
-    });
-
-    it("should correctly merge multiple series of ascending numbers", () => {
-      expect(getXValues([[[2], [11], [12]], [[1], [2], [11]]])).toEqual([
-        1,
-        2,
-        11,
-        12,
-      ]);
-    });
-    it("should correctly merge multiple series of descending numbers", () => {
-      expect(getXValues([[[12], [11], [2]], [[11], [2], [1]]])).toEqual([
-        12,
-        11,
-        2,
-        1,
-      ]);
-    });
-  });
-
   describe("getColumnCardinality", () => {
     it("should get column cardinality", () => {
       const cols = [{}];
@@ -250,6 +214,93 @@ describe("metabase/visualization/lib/utils", () => {
       testCases.forEach(([values, decimals]) =>
         expect(computeMaxDecimalsForValues(values, options)).toBe(decimals),
       );
+    });
+  });
+
+  describe("getDefaultDimensionsAndMetrics", () => {
+    it("should pick the lower cardinality dimension for second dimension", () => {
+      expect(
+        getDefaultDimensionsAndMetrics([
+          {
+            data: {
+              rows: _.range(0, 100).map(v => [0, 0, v]),
+              cols: [
+                {
+                  name: "count",
+                  base_type: "type/Number",
+                  source: "aggregation",
+                },
+                {
+                  name: "low",
+                  base_type: "type/Number",
+                  source: "breakout",
+                },
+                {
+                  name: "high",
+                  base_type: "type/Number",
+                  source: "breakout",
+                },
+              ],
+            },
+          },
+        ]),
+      ).toEqual({ dimensions: ["high", "low"], metrics: ["count"] });
+    });
+    it("should pick a high cardinality dimension for the second dimension", () => {
+      expect(
+        getDefaultDimensionsAndMetrics([
+          {
+            data: {
+              rows: _.range(0, 100).map(v => [0, v, v]),
+              cols: [
+                {
+                  name: "count",
+                  base_type: "type/Number",
+                  source: "aggregation",
+                },
+                {
+                  name: "high1",
+                  base_type: "type/Number",
+                  source: "breakout",
+                },
+                {
+                  name: "high2",
+                  base_type: "type/Number",
+                  source: "breakout",
+                },
+              ],
+            },
+          },
+        ]),
+      ).toEqual({ dimensions: ["high1"], metrics: ["count"] });
+    });
+    it("should pick date for the first dimension", () => {
+      expect(
+        getDefaultDimensionsAndMetrics([
+          {
+            data: {
+              rows: [[0, 0, 0]],
+              cols: [
+                {
+                  name: "count",
+                  base_type: "type/Number",
+                  source: "aggregation",
+                },
+                {
+                  name: "date",
+                  base_type: "type/DateTime",
+                  source: "breakout",
+                },
+                {
+                  name: "category",
+                  base_type: "type/Text",
+                  source: "breakout",
+                },
+              ],
+            },
+          },
+        ]),
+      ).toEqual({ dimensions: ["date", "category"], metrics: ["count"] });
     });
   });
 });

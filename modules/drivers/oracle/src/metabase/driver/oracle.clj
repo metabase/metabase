@@ -105,7 +105,7 @@
 (defmethod sql.qp/date [:oracle :month]          [_ _ v] (trunc :month v))
 (defmethod sql.qp/date [:oracle :month-of-year]  [_ _ v] (hsql/call :extract :month v))
 (defmethod sql.qp/date [:oracle :quarter]        [_ _ v] (trunc :q v))
-(defmethod sql.qp/date [:oracle :year]           [_ _ v] (hsql/call :extract :year v))
+(defmethod sql.qp/date [:oracle :year]           [_ _ v] (trunc :year v))
 
 (defmethod sql.qp/date [:oracle :day-of-year] [driver _ v]
   (hx/inc (hx/- (sql.qp/date driver :day v) (trunc :year v))))
@@ -134,18 +134,17 @@
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
-;; e.g. (SYSDATE + NUMTODSINTERVAL(?, 'second'))
-(defmethod driver/date-interval :oracle [_ unit amount]
-  (hx/+ now (case unit
-              :second  (num-to-ds-interval :second amount)
-              :minute  (num-to-ds-interval :minute amount)
-              :hour    (num-to-ds-interval :hour   amount)
-              :day     (num-to-ds-interval :day    amount)
-              :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
-              :month   (num-to-ym-interval :month  amount)
-              :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
-              :year    (num-to-ym-interval :year   amount))))
-
+(defmethod driver/date-add :oracle
+  [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (case unit
+                              :second  (num-to-ds-interval :second amount)
+                              :minute  (num-to-ds-interval :minute amount)
+                              :hour    (num-to-ds-interval :hour   amount)
+                              :day     (num-to-ds-interval :day    amount)
+                              :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
+                              :month   (num-to-ym-interval :month  amount)
+                              :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
+                              :year    (num-to-ym-interval :year   amount))))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds] [_ _ field-or-value]
   (hx/+ date-1970-01-01 (num-to-ds-interval :second field-or-value)))
@@ -243,39 +242,42 @@
 (defmethod driver/current-db-time :oracle [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
-  #{"ANONYMOUS"
-     ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
-     "APEX_040200"
-     "APPQOSSYS"
-     "AUDSYS"
-     "CTXSYS"
-     "DBSNMP"
-     "DIP"
-     "GSMADMIN_INTERNAL"
-     "GSMCATUSER"
-     "GSMUSER"
-     "LBACSYS"
-     "MDSYS"
-     "OLAPSYS"
-     "ORDDATA"
-     "ORDSYS"
-     "OUTLN"
-     "RDSADMIN"
-     "SYS"
-     "SYSBACKUP"
-     "SYSDG"
-     "SYSKM"
-     "SYSTEM"
-     "WMSYS"
-     "XDB"
-     "XS$NULL"})
+;; don't redef if already definied -- test extensions override this impl
+(when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
+    #{"ANONYMOUS"
+      ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
+      "APEX_040200"
+      "APPQOSSYS"
+      "AUDSYS"
+      "CTXSYS"
+      "DBSNMP"
+      "DIP"
+      "GSMADMIN_INTERNAL"
+      "GSMCATUSER"
+      "GSMUSER"
+      "LBACSYS"
+      "MDSYS"
+      "OLAPSYS"
+      "ORDDATA"
+      "ORDSYS"
+      "OUTLN"
+      "RDSADMIN"
+      "SYS"
+      "SYSBACKUP"
+      "SYSDG"
+      "SYSKM"
+      "SYSTEM"
+      "WMSYS"
+      "XDB"
+      "XS$NULL"}))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
   "ALTER session SET time_zone = %s")
 
 ;; instead of returning a CLOB object, return the String. (#9026)
-(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB] [_ _, ^ResultSet resultset, _, ^Integer i]
+(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getString resultset i))
 
 (defmethod unprepare/unprepare-value [:oracle Date] [_ value]

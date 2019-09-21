@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import FieldName from "./FieldName.jsx";
+import FieldName from "./FieldName";
 import Value from "metabase/components/Value";
 
 import Dimension from "metabase-lib/lib/Dimension";
@@ -13,9 +13,10 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
 
-import type { Filter as FilterT } from "metabase/meta/types/Query";
+import type { Filter as FilterObject } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 export type FilterRenderer = ({
   field?: ?React$Element<any>,
@@ -24,7 +25,7 @@ export type FilterRenderer = ({
 }) => React$Element<any>;
 
 type Props = {
-  filter: FilterT,
+  filter: FilterObject | FilterWrapper,
   metadata: Metadata,
   maxDisplayValues?: number,
   children?: FilterRenderer,

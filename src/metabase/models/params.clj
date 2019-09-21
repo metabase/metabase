@@ -7,7 +7,7 @@
              [util :as u]]
             [metabase.mbql.util :as mbql.u]
             [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -19,9 +19,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (s/defn field-form->id :- su/IntGreaterThanZero
-  "Expand a `field-id` or `fk->` FORM and return the ID of the Field it references. Also handles unwrapped integers.
+  "Expand a `field-id` or `fk->` `form` and return the ID of the Field it references. Also handles unwrapped integers.
 
-      (field-form->id [:field-id 100])  ; -> 100"
+    (field-form->id [:field-id 100]) ; -> 100"
   [field-form]
   (if (integer? field-form)
     field-form
@@ -39,25 +39,25 @@
     [:field-id field-id-or-form]
 
     :else
-    (throw (IllegalArgumentException. (str (trs "Don't know how to wrap:") " " field-id-or-form)))))
+    (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
 
 (defn- field-ids->param-field-values
-  "Given a collection of PARAM-FIELD-IDS return a map of FieldValues for the Fields they reference.
-   This map is returned by various endpoints as `:param_values`."
+  "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
+  returned by various endpoints as `:param_values`."
   [param-field-ids]
   (when (seq param-field-ids)
     (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
                           :field_id [:in param-field-ids]))))
 
 (defn- template-tag->field-form
-  "Fetch the `field-id` or `fk->` form from DASHCARD referenced by TEMPLATE-TAG.
+  "Fetch the `field-id` or `fk->` form from `dashcard` referenced by `template-tag`.
 
-     (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
+    (template-tag->field-form [:template-tag :company] some-dashcard) ; -> [:field-id 100]"
   [[_ tag] dashcard]
-  (get-in dashcard [:card :dataset_query :native :template-tags (u/keyword->qualified-name tag) :dimension]))
+  (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
 (defn- param-target->field-id
-  "Parse a Card parameter TARGET form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
+  "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
   (when (mbql.u/is-clause? :dimension target)

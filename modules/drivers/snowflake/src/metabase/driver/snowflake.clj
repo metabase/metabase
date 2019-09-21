@@ -97,11 +97,14 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
 
-(defmethod driver/date-interval :snowflake [_ unit amount]
+(defmethod sql.qp/current-datetime-fn :snowflake [_]
+  :%current_timestamp)
+
+(defmethod driver/date-add :snowflake [_ dt amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    :%current_timestamp))
+    (hx/->timestamp dt)))
 
 (defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
@@ -121,7 +124,7 @@
 (defmethod sql.qp/date [:snowflake :month-of-year]   [_ _ expr] (extract :month expr))
 (defmethod sql.qp/date [:snowflake :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
-(defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (extract :year expr))
+(defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
@@ -131,7 +134,7 @@
   [{details :details}]
   (or (:db details)
       (:dbname details)
-      (throw (Exception. (str (tru "Invalid Snowflake connection details: missing DB name."))))))
+      (throw (Exception. (tru "Invalid Snowflake connection details: missing DB name.")))))
 
 (defn- query-db-name []
   ;; the store is always initialized when running QP queries; for some stuff like the test extensions DDL statements

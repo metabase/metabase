@@ -35,7 +35,7 @@ export function channelIsValid(channel, channelSpec) {
         field.required &&
         channel.details &&
         (channel.details[field.name] == null ||
-          channel.details[field.name] == "")
+          channel.details[field.name] === "")
       ) {
         return false;
       }

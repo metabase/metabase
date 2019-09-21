@@ -3,14 +3,17 @@
 import moment from "moment";
 import _ from "underscore";
 
-import Q from "metabase/lib/query"; // legacy query lib
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
 import { fieldIdsEq } from "metabase/lib/query/util";
 import * as Card from "metabase/meta/Card";
 import * as Query from "metabase/lib/query/query";
-import * as Field from "metabase/lib/query/field";
+import * as FieldRef from "metabase/lib/query/field_ref";
 import * as Filter from "metabase/lib/query/filter";
 import { startNewCard } from "metabase/lib/card";
-import { rangeForValue } from "metabase/lib/dataset";
+import {
+  rangeForValue,
+  fieldRefForColumnWithLegacyFallback,
+} from "metabase/lib/dataset";
 import {
   isDate,
   isState,
@@ -22,7 +25,6 @@ import Utils from "metabase/lib/utils";
 
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { Card as CardObject } from "metabase/meta/types/Card";
-import type { FieldId } from "metabase/meta/types/Field";
 import type {
   StructuredQuery,
   FieldFilter,
@@ -60,22 +62,33 @@ export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
 
 export const getFieldRefFromColumn = (
   column: Column,
-  fieldId?: ?(FieldId | FieldLiteral) = column.id,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
+  return fieldRefForColumnWithLegacyFallback(
+    column,
+    c => getFieldRefFromColumn_LEGACY(c),
+    "actions::getFieldRefFromColumn",
+  );
+};
+
+const getFieldRefFromColumn_LEGACY = (
+  column: Column,
 ): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
   if (column.expression_name) {
     return ["expression", column.expression_name];
   }
 
+  const fieldId = column.id;
   if (fieldId == null) {
-    throw new Error(
-      "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
-    );
+    return null;
+    // throw new Error(
+    //   "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
+    // );
   }
   if (Array.isArray(fieldId)) {
     // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
     return fieldId;
   } else if (column.fk_field_id != null) {
-    return ["fk->", column.fk_field_id, fieldId];
+    return ["fk->", ["field-id", column.fk_field_id], ["field-id", fieldId]];
   } else {
     return ["field-id", fieldId];
   }
@@ -114,7 +127,7 @@ export const drillFilter = (card, value, column) => {
   if (isDate(column)) {
     filter = [
       "=",
-      ["datetime-field", getFieldRefFromColumn(column), "as", column.unit],
+      ["datetime-field", getFieldRefFromColumn(column), column.unit],
       parseTimestamp(value, column.unit).format(),
     ];
   } else {
@@ -136,8 +149,8 @@ export const addOrUpdateFilter = (card, filter) => {
   for (let index = 0; index < filters.length; index++) {
     if (
       Filter.isFieldFilter(filters[index]) &&
-      Field.getFieldTargetId(filters[index][1]) ===
-        Field.getFieldTargetId(filter[1])
+      FieldRef.getFieldTargetId(filters[index][1]) ===
+        FieldRef.getFieldTargetId(filter[1])
     ) {
       newCard.dataset_query.query = Query.updateFilter(
         newCard.dataset_query.query,
@@ -163,8 +176,8 @@ export const addOrUpdateBreakout = (card, breakout) => {
   for (let index = 0; index < breakouts.length; index++) {
     if (
       fieldIdsEq(
-        Field.getFieldTargetId(breakouts[index]),
-        Field.getFieldTargetId(breakout),
+        FieldRef.getFieldTargetId(breakouts[index]),
+        FieldRef.getFieldTargetId(breakout),
       )
     ) {
       newCard.dataset_query.query = Query.updateBreakout(
@@ -280,12 +293,7 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
 
     // update the breakout
-    newCard = addOrUpdateBreakout(newCard, [
-      "datetime-field",
-      fieldRef,
-      "as",
-      unit,
-    ]);
+    newCard = addOrUpdateBreakout(newCard, ["datetime-field", fieldRef, unit]);
 
     // round to start of the original unit
     start = start.startOf(column.unit);
@@ -298,14 +306,14 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
       // is the start and end are the same (in whatever the original unit was) then just do an "="
       return addOrUpdateFilter(newCard, [
         "=",
-        ["datetime-field", fieldRef, "as", column.unit],
+        ["datetime-field", fieldRef, column.unit],
         start.format(),
       ]);
     } else {
       // otherwise do a between
       return addOrUpdateFilter(newCard, [
         "between",
-        ["datetime-field", fieldRef, "as", column.unit],
+        ["datetime-field", fieldRef, column.unit],
         start.format(),
         end.format(),
       ]);
@@ -401,18 +409,20 @@ const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
     ? existingDisplay
     : defaultDisplay;
 
-const guessVisualization = (
+// DEPRECATED: use question.setDefaultDisplay()
+export function guessVisualization(
   card: CardObject,
   tableMetadata: Table,
   existingDisplay: ?string = null,
-) => {
+) {
   const query = Card.getQuery(card);
   if (!query) {
     return;
   }
   const aggregations = Query.getAggregations(query);
   const breakoutFields = Query.getBreakouts(query).map(
-    breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field,
+    breakout =>
+      (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
   );
   if (aggregations.length === 0 && breakoutFields.length === 0) {
     card.display = "table";
@@ -447,4 +457,4 @@ const guessVisualization = (
     console.warn("Couldn't guess visualization", card);
     card.display = "table";
   }
-};
+}

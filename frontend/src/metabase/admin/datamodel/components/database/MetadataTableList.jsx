@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import { t, ngettext, msgid } from "ttag";
 
@@ -49,9 +49,12 @@ export default class MetadataTableList extends Component {
         const row = (
           <li key={table.id}>
             <a
-              className={cx("AdminList-item flex align-center no-decoration", {
-                selected,
-              })}
+              className={cx(
+                "AdminList-item flex align-center no-decoration text-wrap",
+                {
+                  selected,
+                },
+              )}
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}

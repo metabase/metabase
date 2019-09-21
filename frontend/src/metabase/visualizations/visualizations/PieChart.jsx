@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip.jsx";
-import ChartWithLegend from "../components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -23,12 +23,14 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import colors, { getColorsForValues } from "metabase/lib/colors";
+import { color, getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
 import d3 from "d3";
 import _ from "underscore";
+
+const MAX_PIE_SIZE = 550;
 
 const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
@@ -73,6 +75,28 @@ export default class PieChart extends Component {
       });
     }
   }
+
+  static placeholderSeries = [
+    {
+      card: {
+        display: "pie",
+        visualization_settings: { "pie.show_legend": false },
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: [
+          ["Doohickey", 3976],
+          ["Gadget", 4939],
+          ["Gizmo", 4784],
+          ["Widget", 5061],
+        ],
+        cols: [
+          { name: "Category", base_type: "type/Category" },
+          { name: "Count", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
 
   static settings = {
     ...columnSettings({ hidden: true }),
@@ -173,7 +197,7 @@ export default class PieChart extends Component {
   componentDidUpdate() {
     const groupElement = ReactDOM.findDOMNode(this.refs.group);
     const detailElement = ReactDOM.findDOMNode(this.refs.detail);
-    if (groupElement.getBoundingClientRect().width < 100) {
+    if (groupElement.getBoundingClientRect().width < 120) {
       detailElement.classList.add("hide");
     } else {
       detailElement.classList.remove("hide");
@@ -214,19 +238,6 @@ export default class PieChart extends Component {
       });
 
     const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
-    const decimals = computeMaxDecimalsForValues(
-      rows.map(row => row[metricIndex] / total),
-      { style: "percent", maximumSignificantDigits: 3 },
-    );
-    const formatPercent = (percent, jsx = true) =>
-      formatValue(percent, {
-        ...settings.column(cols[metricIndex]),
-        jsx,
-        majorWidth: 0,
-        number_style: "percent",
-        _numberFormatter: undefined, // remove the passed formatter
-        decimals,
-      });
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
@@ -256,7 +267,7 @@ export default class PieChart extends Component {
             key: "Other",
             value: otherTotal,
             percentage: otherTotal / total,
-            color: colors["text-light"],
+            color: color("text-light"),
           };
     if (otherSlice.value > 0) {
       // increase "other" slice so it's barely visible
@@ -265,6 +276,20 @@ export default class PieChart extends Component {
       }
       slices.push(otherSlice);
     }
+
+    const decimals = computeMaxDecimalsForValues(
+      slices.map(s => s.percentage),
+      { style: "percent", maximumSignificantDigits: 3 },
+    );
+    const formatPercent = (percent, jsx = true) =>
+      formatValue(percent, {
+        ...settings.column(cols[metricIndex]),
+        jsx,
+        majorWidth: 0,
+        number_style: "percent",
+        _numberFormatter: undefined, // remove the passed formatter
+        decimals,
+      });
 
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
@@ -278,7 +303,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors["text-light"],
+        color: color("text-light"),
         noHover: true,
       };
       slices.push(otherSlice);
@@ -388,8 +413,12 @@ export default class PieChart extends Component {
             </div>
             <div className={styles.Title}>{title}</div>
           </div>
-          <div className={styles.Chart}>
-            <svg className={styles.Donut + " m1"} viewBox="0 0 100 100">
+          <div className={cx(styles.Chart, "layout-centered")}>
+            <svg
+              className={cx(styles.Donut, "m1")}
+              viewBox="0 0 100 100"
+              style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
+            >
               <g ref="group" transform={`translate(50,50)`}>
                 {pie(slices).map((slice, index) => (
                   <path

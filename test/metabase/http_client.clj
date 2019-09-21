@@ -8,6 +8,7 @@
              [config :as config]
              [util :as u]]
             [metabase.middleware.session :as mw.session]
+            [metabase.test.initialize :as initialize]
             [metabase.util.date :as du]
             [schema.core :as s]))
 
@@ -120,6 +121,7 @@
          (string? url)
          (u/maybe? map? http-body)
          (u/maybe? map? url-param-kwargs)]}
+  (initialize/initialize-if-needed! :db :web-server)
   (let [request-map (merge (build-request-map credentials http-body) request-options)
         request-fn  (method->request-fn method)
         url         (build-url url url-param-kwargs)

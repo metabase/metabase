@@ -16,11 +16,11 @@
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
   (when-not (mi/can-read? (or (db/select-one [Card :collection_id] :id card-id)
-                              (throw (Exception. (str (tru "Card {0} does not exist." card-id))))))
-    (throw (Exception. (str (tru "You do not have permissions to view Card {0}." card-id))))))
+                              (throw (Exception. (tru "Card {0} does not exist." card-id)))))
+    (throw (Exception. (tru "You do not have permissions to view Card {0}." card-id)))))
 
 (defn- perms-exception [required-perms]
-  (ex-info (str (tru "You do not have permissions to run this query."))
+  (ex-info (tru "You do not have permissions to run this query.")
     {:required-permissions required-perms
      :actual-permissions   @*current-user-permissions-set*
      :permissions-error?   true}))

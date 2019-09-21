@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
 import { t } from "ttag";
 
 export default class DatabaseEditForms extends Component {
@@ -30,10 +30,10 @@ export default class DatabaseEditForms extends Component {
         <div
           className={cx("Form-field", { "Form--fieldError": errors["engine"] })}
         >
-          <label className="Form-label Form-offset">
+          <label className="Form-label">
             Database type: <span>{errors["engine"]}</span>
           </label>
-          <label className="Select Form-offset mt1">
+          <label className="Select mt1">
             <select
               className="Select"
               defaultValue={database.engine}
@@ -56,6 +56,7 @@ export default class DatabaseEditForms extends Component {
               ...details,
               name: database.name,
               is_full_sync: database.is_full_sync,
+              auto_run_queries: database.auto_run_queries,
             }}
             engine={database.engine}
             engines={engines}

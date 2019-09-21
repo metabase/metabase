@@ -2,14 +2,14 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
-} from "./components/widgets/PublicLinksListing.jsx";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+} from "./components/widgets/PublicLinksListing";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";
@@ -51,7 +51,6 @@ const SECTIONS = [
           { name: t`Database Default`, value: "" },
           ...MetabaseSettings.get("timezones"),
         ],
-        placeholder: t`Select a timezone`,
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
       },
@@ -62,7 +61,7 @@ const SECTIONS = [
         options: (MetabaseSettings.get("available_locales") || []).map(
           ([value, name]) => ({ name, value }),
         ),
-        placeholder: t`Select a language`,
+        defaultValue: "en",
         getHidden: () => MetabaseSettings.get("available_locales").length < 2,
       },
       {
@@ -82,9 +81,7 @@ const SECTIONS = [
           },
           { value: "none", name: t`Disabled` },
         ],
-        // this needs to be here because 'advanced' is the default value, so if you select 'advanced' the
-        // widget will always show the placeholder instead of the 'name' defined above :(
-        placeholder: t`Enabled`,
+        defaultValue: "advanced",
       },
       {
         key: "enable-nested-queries",

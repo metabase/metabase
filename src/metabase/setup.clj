@@ -1,6 +1,8 @@
 (ns metabase.setup
-  (:require [metabase.models.setting :refer [defsetting Setting]]
-            [toucan.db :as db]))
+  (:require [environ.core :refer [env]]
+            [metabase.models.setting :refer [defsetting Setting]]
+            [toucan.db :as db])
+  (:import java.util.UUID))
 
 (defsetting ^:private setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
@@ -24,8 +26,10 @@
   []
   ;; fetch the value directly from the DB; *do not* rely on cached value, in case a different instance came along and
   ;; already created it
-  (or (db/select-one-field :value Setting :key "setup-token")
-      (setup-token (str (java.util.UUID/randomUUID)))))
+  (let [mb-setup-token (env :mb-setup-token)]
+    (or (when mb-setup-token (setup-token mb-setup-token))
+        (db/select-one-field :value Setting :key "setup-token")
+        (setup-token (str (UUID/randomUUID))))))
 
 (defn clear-token!
   "Clear the setup token if it exists and reset it to `nil`."

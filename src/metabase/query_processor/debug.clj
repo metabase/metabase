@@ -12,10 +12,6 @@
             [metabase.util :as u]
             [schema.core :as s]))
 
-(def ^:private ^:dynamic *timeout*
-  "Timeout (in milliseconds) for async middleware to return a response."
-  5000)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Generic Middleware Debugging Utils                                       |
@@ -65,44 +61,42 @@
           e exception)))))
 
 (defn- debug-async
-  [{:keys [pre post exception]} qp middleware before-query respond raise & args]
-  (let [after-query        (promise)
-        before-result      (promise)
-        middleware-qp-args (promise)
+  [{:keys [pre post exception]} orig-qp middleware before-query orig-respond orig-raise & args]
+  (let [ex-context
+        {:query {:before before-query, :after (promise)}, :result (promise)}
+
+        ;; the basic idea is to pass `identity` to the middleware instead of `orig-respond`, then we can separate out
+        ;; the changes the middleware makes to the response. `mw-respond` is the `respond` function the middleware
+        ;; returns
+        wrapped-respond
+        (fn [mw-respond]
+          (fn [before-result]
+            (let [after-result (try
+                                 (mw-respond before-result)
+                                 (catch Throwable e
+                                   (rethrow "Middleware threw Exception during post-processing." ex-context e exception)))]
+              (deliver (:result ex-context) after-result)
+              (when post
+                (try
+                  (post before-result after-result)
+                  (catch Throwable e
+                    (rethrow "Error in debugging 'post' fn" ex-context e exception))))
+              (orig-respond after-result))))
+
+        wrapped-qp
+        (fn [after-query mw-respond mw-raise & args]
+          (deliver (get-in ex-context [:query :after]) after-query)
+          (when pre
+            (try
+              (pre before-query after-query)
+              (catch Throwable e
+                (rethrow "Error in debugging 'pre' fn" ex-context e exception))))
+          (apply orig-qp after-query (wrapped-respond mw-respond) mw-raise args))
 
         wrapped-raise
         (fn [e]
-          (rethrow "Middleware raised Exception."
-            {:query {:before before-query, :after after-query}, :result before-result}
-            e exception raise))
-
-        placeholder-qp
-        (fn [& args] (deliver middleware-qp-args args))
-
-        _
-        (try
-          (apply (middleware placeholder-qp) before-query identity wrapped-raise args)
-          (catch Throwable e
-            (rethrow "Middleware threw Exception during preprocessing."
-              {:query {:before before-query}}
-              e exception)))
-
-        [query mw-respond mw-raise & args] (u/deref-with-timeout middleware-qp-args *timeout*)
-
-        wrapped-respond
-        (fn [result]
-          (deliver before-result result)
-          (let [after-result (try
-                               (mw-respond result)
-                               (catch Throwable e
-                                 (rethrow "Middleware threw Exception during post-processing."
-                                   {:query {:before before-query, :after after-query}, :result result}
-                                   e exception)))]
-            (when post (post result after-result))
-            (respond after-result)))]
-    (deliver after-query query)
-    (when pre (pre before-query query))
-    (apply qp query wrapped-respond wrapped-raise args)))
+          (rethrow "Middleware raised Exception." ex-context e exception orig-raise))]
+    (apply (middleware wrapped-qp) before-query identity wrapped-raise args)))
 
 (defn- debug-with-fns
   "Wrap a `middleware` fn for debugging. `fns` is a map of functions called at various points before and after the

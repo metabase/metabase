@@ -61,5 +61,11 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       ...action,
       question: () =>
         question.summarize([aggregator.short, getFieldRefFromColumn(column)]),
+      action: () => dispatch => {
+        // HACK: drill through closes sidebars, so open sidebar asynchronously
+        setTimeout(() => {
+          dispatch({ type: "metabase/qb/EDIT_SUMMARY" });
+        });
+      },
     }));
 };

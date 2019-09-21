@@ -1,15 +1,20 @@
 (ns metabase.models.setting-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test.util :refer :all]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :refer :all]]
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
              [encryption-test :as encryption-test]
-             [i18n :refer [tru]]]
+             [i18n :refer [deferred-tru]]]
             [puppetlabs.i18n.core :as i18n]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched
@@ -246,7 +251,7 @@
         setting)))
 
 (defsetting ^:private test-i18n-setting
-  (tru "Test setting - with i18n"))
+  (deferred-tru "Test setting - with i18n"))
 
 ;; Validate setting description with i18n string
 (expect
@@ -497,7 +502,7 @@
 ;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
 
 (defsetting test-sensitive-setting
-  (tru "This is a sample sensitive Setting.")
+  (deferred-tru "This is a sample sensitive Setting.")
   :sensitive? true)
 
 ;; `user-facing-value` should obfuscate sensitive settings

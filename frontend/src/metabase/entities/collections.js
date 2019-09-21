@@ -1,7 +1,10 @@
 /* @flow */
 
 import { createEntity, undo } from "metabase/lib/entities";
-import colors from "metabase/lib/colors";
+
+import { color } from "metabase/lib/colors";
+import * as Urls from "metabase/lib/urls";
+
 import { CollectionSchema } from "metabase/schema";
 import { createSelector } from "reselect";
 
@@ -43,9 +46,7 @@ const Collections = createEntity({
 
   objectSelectors: {
     getName: collection => collection && collection.name,
-    getUrl: collection =>
-      collection &&
-      (collection.id === "root" ? `/` : `/collection/${collection.id}`),
+    getUrl: collection => Urls.collection(collection.id),
     getIcon: collection => "all",
   },
 
@@ -85,7 +86,7 @@ const Collections = createEntity({
   form: {
     fields: (
       values = {
-        color: colors.brand,
+        color: color("brand"),
       },
     ) => [
       {
@@ -107,7 +108,7 @@ const Collections = createEntity({
         name: "color",
         title: t`Color`,
         type: "hidden",
-        initial: () => colors.brand,
+        initial: () => color("brand"),
         validate: color => !color && t`Color is required`,
       },
       {

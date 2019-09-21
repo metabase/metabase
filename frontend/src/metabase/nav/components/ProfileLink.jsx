@@ -5,6 +5,7 @@ import { Box } from "grid-styled";
 import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
+import { color, darken } from "metabase/lib/colors";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -55,6 +56,12 @@ export default class ProfileLink extends Component {
         },
       ]),
       {
+        title: t`Activity`,
+        icon: null,
+        link: "/activity",
+        event: `Navbar;Profile Dropdown;Activity ${tag}`,
+      },
+      {
         title: t`Help`,
         icon: null,
         link: MetabaseSettings.docsUrl(),
@@ -85,6 +92,12 @@ export default class ProfileLink extends Component {
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
+          triggerProps={{
+            hover: {
+              backgroundColor: darken(color("brand")),
+              color: "white",
+            },
+          }}
         />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>

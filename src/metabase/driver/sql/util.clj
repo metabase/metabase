@@ -54,7 +54,7 @@
    (fn [components]
      (conj
       (vec (butlast components))
-      (increment-identifier-string (u/keyword->qualified-name (last components)))))))
+      (increment-identifier-string (u/qualified-name (last components)))))))
 
 (defn select-clause-alias-everything
   "Make sure all the columns in `select-clause` are alias forms, e.g. `[:table.col :col]` instead of `:table.col`.
@@ -75,7 +75,7 @@
 
       :else
       (do
-        (log/error (trs "Don't know how to alias {0}, expected an Identifer." col))
+        (log/error (trs "Don't know how to alias {0}, expected an Identifier." col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases

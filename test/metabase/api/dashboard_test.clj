@@ -45,17 +45,8 @@
                    [k (boolean v)]
                    [k (f v)]))))))
 
-(defn user-details [user]
-  (tu/match-$ user
-    {:id           $
-     :email        $
-     :date_joined  $
-     :first_name   $
-     :last_name    $
-     :last_login   $
-     :is_superuser $
-     :is_qbnewb    $
-     :common_name  $}))
+(defn- user-details [user]
+  (select-keys user [:common_name :date_joined :email :first_name :id :is_qbnewb :is_superuser :last_login :last_name]))
 
 (defn- dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
   (-> (into {} dashcard)

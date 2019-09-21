@@ -4,10 +4,10 @@
             [clj-time.core :as time]
             [clojure
              [string :as str]
+             [test :as t]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [expectations :as expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [task :as task]
@@ -33,92 +33,45 @@
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.util.test :as test])
+            [toucan.util.test :as tt])
   (:import java.util.concurrent.TimeoutException
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-;; record type for testing that results match a Schema
-(defrecord SchemaExpectation [schema]
-  expectations/CustomPred
-  (expect-fn [_ actual]
-    (nil? (s/check schema actual)))
-  (expected-message [_ _ _ _]
-    (str "Result did not match schema:\n"
-         (u/pprint-to-str 'green (s/explain schema))))
-  (actual-message [_ actual _ _]
-    (str "Was:\n"
-         (u/pprint-to-str 'red actual)))
-  (message [_ actual _ _]
-    (u/pprint-to-str (s/check schema actual))))
+(defmethod t/assert-expr 'schema=
+  [message form]
+  (let [[_ schema actual] form]
+    `(let [schema# ~schema
+           actual# ~actual
+           pass?#  (nil? (s/check schema# actual#))]
+       (t/do-report
+        {:type     (if pass?# :pass :fail)
+         :message  ~message
+         :expected (s/explain schema#)
+         :actual   actual#
+         :diffs    (when-not pass?#
+                     [(s/check schema# actual#)])}))))
 
-(defmacro expect-schema
+(defmacro ^:deprecated expect-schema
   "Like `expect`, but checks that results match a schema."
   {:style/indent 0}
   [expected actual]
-  `(expect
-     (SchemaExpectation. ~expected)
-     ~actual))
+  `(t/deftest ~(symbol (format "expect-schema-%d" (hash &form)))
+     (t/is (~'schema= ~expected ~actual))))
 
-
-;;; ---------------------------------------------------- match-$ -----------------------------------------------------
-
-(defn- $->prop
-  "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
-
-    ($->prop my-obj 'fish)  -> 'fish
-    ($->prop my-obj '$fish) -> '(:fish my-obj)"
-  [source-obj form]
-  (or (when (and (symbol? form)
-                 (= (first (name form)) \$)
-                 (not= form '$))
-        (if (= form '$$)
-          source-obj
-          `(~(keyword (apply str (rest (name form)))) ~source-obj)))
-      form))
-
-(defmacro ^:deprecated match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
-  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
-  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
-  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
-  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their
-  ;; presence see the `boolean-ids-and-timestamps` function below
-  {:style/indent 1}
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                    v)}))]
-    `(let [~source## ~source-obj]
-       ~(walk/prewalk (partial $->prop source##)
-                      dest-object))))
-
-
-;;; random-name
-(def ^:private ^{:arglists '([])} random-uppercase-letter
-  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+(defn- random-uppercase-letter []
+  (char (+ (int \A) (rand-int 26))))
 
 (defn random-name
   "Generate a random string of 20 uppercase letters."
   []
-  (apply str (repeatedly 20 random-uppercase-letter)))
+  (str/join (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."
@@ -155,7 +108,7 @@
 (defn- rasta-id [] (user-id :rasta))
 
 (u/strict-extend (class Card)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
@@ -163,33 +116,33 @@
                                 :visualization_settings {}})})
 
 (u/strict-extend (class Collection)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name  (random-name)
                                 :color "#ABCDEF"})})
 
 (u/strict-extend (class Dashboard)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)})})
 
 (u/strict-extend (class DashboardCardSeries)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (constantly {:position 0})})
 
 (u/strict-extend (class Database)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
                                 :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
 
 (u/strict-extend (class Dimension)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)
                                 :type "internal"})})
 
 (u/strict-extend (class Field)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
                                 :base_type     :type/Text
                                 :name          (random-name)
@@ -197,7 +150,7 @@
                                 :table_id      (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -205,35 +158,35 @@
                                 :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)})})
 
 (u/strict-extend (class Pulse)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseCard)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:position    0
                                 :include_csv false
                                 :include_xls false})})
 
 (u/strict-extend (class PulseChannel)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (constantly {:channel_type  :email
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
 
 (u/strict-extend (class Revision)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -243,13 +196,13 @@
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
 (u/strict-extend (class Table)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class TaskHistory)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_]
                          (let [started (time/now)
                                ended   (time/plus started (time/millis 10))]
@@ -260,7 +213,7 @@
                             :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
                                 :email      (random-email)
@@ -305,6 +258,7 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
+  (initialize/initialize-if-needed! :db)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
@@ -322,10 +276,22 @@
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
   [[setting-k value & more] & body]
-  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
+                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
     (if (seq more)
       `(with-temporary-setting-values ~more ~body)
       body)))
+
+(defmacro discard-setting-changes
+  "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
+  conclusion.
+
+    (discard-setting-changes [site-name]
+      ...)"
+  {:style/indent 1}
+  [settings & body]
+  `(with-temporary-setting-values ~(vec (mapcat (juxt identity #(list `setting/get (keyword %))) settings))
+     ~@body))
 
 
 (defn do-with-temp-vals-in-db
@@ -337,9 +303,11 @@
         [original-column->value] (db/query {:select (keys column->temp-value)
                                             :from   [model]
                                             :where  [:= :id (u/get-id object-or-id)]})]
+    (assert original-column->value
+      (format "%s %d not found." (name model) (u/get-id object-or-id)))
     (try
       (db/update! model (u/get-id object-or-id)
-        column->temp-value)
+                  column->temp-value)
       (f)
       (finally
         (db/execute!
@@ -433,7 +401,7 @@
 (defn ^:deprecated round-fingerprint
   "Rounds the numerical fields of a fingerprint to 2 decimal places
 
-  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
   column instead."
   [field]
   (-> field
@@ -446,7 +414,7 @@
 (defn ^:deprecated round-fingerprint-cols
   "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
 
-  DEPRECATED -- this should no longer be needed; use `qp.test/col` to get the actual real-life fingerprint of the
+  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
   column instead."
   ([query-results]
    (if (map? query-results)

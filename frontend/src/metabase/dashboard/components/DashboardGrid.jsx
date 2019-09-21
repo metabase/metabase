@@ -1,13 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import GridLayout from "./grid/GridLayout.jsx";
-import DashCard from "./DashCard.jsx";
+import GridLayout from "./grid/GridLayout";
+import DashCard from "./DashCard";
 
-import Modal from "metabase/components/Modal.jsx";
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
-import AddSeriesModal from "./AddSeriesModal.jsx";
+import Modal from "metabase/components/Modal";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
+import AddSeriesModal from "./AddSeriesModal";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -116,11 +116,9 @@ export default class DashboardGrid extends Component {
   }
 
   getLayoutForDashCard(dashcard) {
-    const { CardVisualization } = getVisualizationRaw([
-      { card: dashcard.card },
-    ]);
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
     const initialSize = DEFAULT_CARD_SIZE;
-    const minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
+    const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,

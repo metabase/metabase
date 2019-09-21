@@ -1,28 +1,15 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [metabase.api.common :as api]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
              [interface :as qp.i]
              [store :as qp.store]]
-            [metabase.query-processor.middleware
-             [add-implicit-clauses :as add-implicit-clauses]
-             [annotate :as annotate]
-             [pre-alias-aggregations :as pre-alias-ags]]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
-
-(s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
-  [{breakouts    :breakout
-    aggregations :aggregation
-    fields       :fields
-    :as          source-query} :- mbql.s/SourceQuery]
-  (let [field-ids (mbql.u/match (concat breakouts aggregations fields) [:field-id id] id)]
-    (qp.store/fetch-and-store-fields! field-ids))
-  (for [col (annotate/cols-for-mbql-query source-query)]
-    (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
 
 (defn- has-same-fields-as-nested-source?
   "Whether this source query itself has a nested source query, and will have the exact same fields in the results as its
@@ -39,39 +26,17 @@
              (and (= (count fields) (count nested-source-metadata))
                   (every? #(mbql.u/is-clause? :field-literal (mbql.u/unwrap-field-clause %)) fields))))))
 
-(defn- can-determine-fields?
-  "Whether we can determine the Fields that will come back in the results because at least one of `:breakout`,
-  `:aggregation`, and/or `:fields` is present.
-
-  When one or more of these is present, the QP will always return `breakouts + aggreagtions + fields`; if none are
-  present, QP implementations fall back to the equivalent of `SELECT *`. Because we're calling
-  `add-implicit-clauses/add-implicit-mbql-clauses` on the source query below, `:fields` should get added automatically
-  to any MBQL source query or to any native source query with source metadata. Thus this should be true for every case
-  except for native source queries with no source metadata, e.g.
-
-    {:source-query {:native \"SELECT *\"}}"
-  [{breakouts :breakout, aggregations :aggregation, fields :fields}]
-  (some seq [breakouts aggregations fields]))
-
-(s/defn ^:private source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
+(s/defn ^:private native-source-query->metadata :- (s/maybe [mbql.s/SourceQueryMetadata])
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
   [{nested-source-metadata :source-metadata, :as source-query} :- mbql.s/SourceQuery]
-  (cond
-    ;; If the source query has a nested source with metadata and does not change the fields that come back, return
-    ;; metadata as-is
-    (has-same-fields-as-nested-source? source-query)
+  ;; If the source query has a nested source with metadata and does not change the fields that come back, return
+  ;; metadata as-is
+  (if (has-same-fields-as-nested-source? source-query)
     nested-source-metadata
-    ;;
-    ;; otherwise if this query has at least one of `:breakout`, `:aggregation`, or `:fields`, the results are
-    ;; determinate and we can generate appropriate metadata about the Fields that we can expect in the results
-    (can-determine-fields? source-query)
-    (mbql-source-query->metadata source-query)
-    ;;
-    ;; Otherwise we cannot determine the metadata automatically; usually, this is because the source query itself
-    ;; has a native source query
-    :else
+    ;; Otherwise we cannot determine the metadata automatically; usually, this is because the source query itself has
+    ;; a native source query
     (do
       (when-not qp.i/*disable-qp-logging*
         (log/warn
@@ -79,23 +44,25 @@
          {:source-query source-query}))
       nil)))
 
-(defn- partially-preprocess-source-query
-  "Unfortunately there are a few middleware transformations that would normally come later but need to be done here for
-  nested source queries before proceeding. This middleware applies those transformations.
-
-  TODO - in a nicer world there would be no need to do such things. It defeats the purpose of having distinct
-  middleware stages."
+(s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
+  "Preprocess a `source-query` so we can determine the result columns."
   [source-query]
-  (-> source-query
-      pre-alias-ags/pre-alias-aggregations-in-inner-query
-      add-implicit-clauses/add-implicit-mbql-clauses))
+  (try
+    (let [cols (binding [api/*current-user-id* nil]
+                 ((resolve 'metabase.query-processor/query->expected-cols) {:database (:id (qp.store/database))
+                                                                            :type     :query
+                                                                            :query    source-query}))]
+      (for [col cols]
+        (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (catch Throwable e
+      (log/error #_e (str (trs "Error determining expected columns for query")))
+      nil)))
 
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]
-  (let [source-query (if native-source-query?
-                       source-query
-                       (partially-preprocess-source-query source-query))
-        metadata     (source-query->metadata source-query)]
+  (let [metadata ((if native-source-query?
+                     native-source-query->metadata
+                     mbql-source-query->metadata) source-query)]
     (assoc inner-query :source-metadata metadata)))
 
 (defn- can-add-source-metadata?
@@ -112,12 +79,13 @@
        (or (not native-source-query?)
            source-query-has-source-metadata?)))
 
+(defn- maybe-add-source-metadata [x]
+  (if (and (map? x) (can-add-source-metadata? x))
+    (add-source-metadata x)
+    x))
+
 (defn- add-source-metadata-at-all-levels [inner-query]
-  (walk/postwalk
-   #(if-not ((every-pred map? can-add-source-metadata?) %)
-      %
-      (add-source-metadata %))
-   inner-query))
+  (walk/postwalk maybe-add-source-metadata inner-query))
 
 (defn- add-source-metadata-for-source-queries* [{query-type :type, :as query}]
   (if-not (= query-type :query)

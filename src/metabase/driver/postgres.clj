@@ -32,8 +32,9 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 
-(defmethod driver/date-interval :postgres [_ unit amount]
-  (hsql/raw (format "(NOW() + INTERVAL '%d %s')" (int amount) (name unit))))
+(defmethod driver/date-add :postgres [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt)
+        (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres [_ message]
   (condp re-matches message
@@ -135,7 +136,7 @@
 (defmethod sql.qp/date [:postgres :month-of-year]   [_ _ expr] (extract-integer :month expr))
 (defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
-(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (extract-integer :year expr))
+(defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 
 (defmethod sql.qp/->honeysql [:postgres :value] [driver value]

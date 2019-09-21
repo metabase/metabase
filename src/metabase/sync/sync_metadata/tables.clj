@@ -71,7 +71,9 @@
     #"^databasechangelog$"
     #"^databasechangeloglock$"
     ;; Lobos
-    #"^lobos_migrations$"})
+    #"^lobos_migrations$"
+    ;; MSSQL
+    #"^syncobj_0x.*"})
 
 (s/defn ^:private is-crufty-table? :- s/Bool
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
@@ -154,7 +156,7 @@
               :active true))))
 
 (s/defn sync-tables!
-  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling DATABASE's driver's
+  "Sync the Tables recorded in the Metabase application database with the ones obtained by calling `database`'s driver's
   implementation of `describe-database`."
   [database :- i/DatabaseInstance]
   ;; determine what's changed between what info we have and what's in the DB

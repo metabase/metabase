@@ -1,10 +1,10 @@
 (ns metabase.test.data.interface
   "`Definition` types for databases, tables, fields; related protocols, helper functions.
 
-   Objects that implement `IDriverTestExtensions` know how to load a `DatabaseDefinition` into an
-   actual physical RDMS database. This functionality allows us to easily test with multiple datasets.
+  Drivers with test extensions know how to load a `DatabaseDefinition` into an actual physical database. This
+  functionality allows us to easily test with multiple datasets.
 
-   TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
+  TODO - We should rename this namespace to `metabase.driver.test-extensions` or something like that."
   (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
             [environ.core :refer [env]]
@@ -20,11 +20,11 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
-            [metabase.test.data.env :as tx.env]
             [metabase.util
              [date :as du]
-             [pretty :as pretty]
              [schema :as su]]
+            [potemkin.types :as p.types]
+            [pretty.core :as pretty]
             [schema.core :as s]
             [toucan.db :as db])
   (:import clojure.lang.Keyword))
@@ -33,35 +33,45 @@
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti get-dataset-definition
+(p.types/defrecord+ FieldDefinition [field-name base-type special-type visibility-type fk field-comment])
+
+(p.types/defrecord+ TableDefinition [table-name field-definitions rows table-comment])
+
+(p.types/defrecord+ DatabaseDefinition [database-name table-definitions])
+
+(def ^:private FieldDefinitionSchema
+  {:field-name                       su/NonBlankString
+   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
+   (s/optional-key :special-type)    (s/maybe su/FieldType)
+   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
+   (s/optional-key :fk)              (s/maybe s/Keyword)
+   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
+
+(def ^:private ValidFieldDefinition
+  (s/constrained FieldDefinitionSchema (partial instance? FieldDefinition)))
+
+(def ^:private ValidTableDefinition
+  (s/constrained
+   {:table-name                     su/NonBlankString
+    :field-definitions              [ValidFieldDefinition]
+    :rows                           [[s/Any]]
+    (s/optional-key :table-comment) (s/maybe su/NonBlankString)}
+   (partial instance? TableDefinition)))
+
+(def ^:private ValidDatabaseDefinition
+  (s/constrained
+   {:database-name     su/NonBlankString
+    :table-definitions [ValidTableDefinition]}
+   (partial instance? DatabaseDefinition)))
+
+(defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
   {:arglists '([this])}
   class)
 
-
-(s/defrecord FieldDefinition [field-name      :- su/NonBlankString
-                              base-type       :- (s/cond-pre {:native su/NonBlankString}
-                                                             su/FieldType)
-                              special-type    :- (s/maybe su/FieldType)
-                              visibility-type :- (s/maybe (apply s/enum field/visibility-types))
-                              fk              :- (s/maybe s/Keyword)
-                              field-comment   :- (s/maybe su/NonBlankString)]
-  nil
-  :load-ns true)
-
-(s/defrecord TableDefinition [table-name        :- su/NonBlankString
-                              field-definitions :- [FieldDefinition]
-                              rows              :- [[s/Any]]
-                              table-comment     :- (s/maybe su/NonBlankString)]
-  nil
-  :load-ns true)
-
-(s/defrecord DatabaseDefinition [database-name     :- su/NonBlankString
-                                 table-definitions :- [TableDefinition]]
-  nil
-  :load-ns true)
-
-(defmethod get-dataset-definition DatabaseDefinition [this] this)
+(defmethod get-dataset-definition DatabaseDefinition
+  [this]
+  this)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -87,27 +97,18 @@
 (declare before-run after-run)
 
 (defonce ^:private has-done-before-run (atom #{}))
-(defonce ^:private do-before-run-lock (Object.))
 
 ;; this gets called below by `load-test-extensions-namespace-if-needed`
 (defn- do-before-run-if-needed [driver]
   (when-not (@has-done-before-run driver)
-    (locking do-before-run-lock
+    (locking has-done-before-run
       (when-not (@has-done-before-run driver)
-        (swap! has-done-before-run conj driver)
-        (when-not (= (get-method before-run driver) (get-method before-run ::test-extensions))
+        (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
           (println "doing before-run for" driver))
-        (before-run driver)))))
-
-;; after finishing all the tests, call each drivers' `after-run` implementation to do any cleanup needed
-(defn- do-after-run
-  {:expectations-options :after-run}
-  []
-  (doseq [driver (descendants driver/hierarchy ::test-extensions)
-          :when (tx.env/test-drivers driver)]
-    (when-not (= (get-method after-run driver) (get-method after-run ::test-extensions))
-      (println "doing after-run for" driver))
-    (after-run driver)))
+        ;; avoid using the dispatch fn here because it dispatches on driver with test extensions which would result in
+        ;; a circular call back to this function
+        ((get-method before-run driver) driver)
+        (swap! has-done-before-run conj driver)))))
 
 
 (defonce ^:private require-lock (Object.))
@@ -122,26 +123,31 @@
                        (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
       (apply classloader/require expected-ns require-options))))
 
+(defonce ^:private has-loaded-extensions (atom #{}))
+
 (defn- load-test-extensions-namespace-if-needed [driver]
-  (when-not (has-test-extensions? driver)
-    (du/profile (format "Load %s test extensions" driver)
-      (require-driver-test-extensions-ns driver)
-      ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
-      ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
-      (when-not (has-test-extensions? driver)
-        (doseq [parent (parents driver/hierarchy driver)
-                ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
-                :when  (not= (namespace parent) "metabase.driver")]
-          (u/ignore-exceptions
-            (load-test-extensions-namespace-if-needed parent)))
-        ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
-        (when-not (has-test-extensions? driver)
-          (require-driver-test-extensions-ns driver :reload)
-          ;; if it *still* does not test extensions, throw an Exception
+  (when-not (contains? @has-loaded-extensions driver)
+    (locking has-loaded-extensions
+      (when-not (contains? @has-loaded-extensions driver)
+        (du/profile (format "Load %s test extensions" driver)
+          (require-driver-test-extensions-ns driver)
+          ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
+          ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
           (when-not (has-test-extensions? driver)
-            (throw (Exception. (str "No test extensions found for " driver))))))))
-  ;; do before-run if needed as well
-  (do-before-run-if-needed driver))
+            (doseq [parent (parents driver/hierarchy driver)
+                    ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
+                    :when  (not= (namespace parent) "metabase.driver")]
+              (u/ignore-exceptions
+                (load-test-extensions-namespace-if-needed parent)))
+            ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
+            (when-not (has-test-extensions? driver)
+              (require-driver-test-extensions-ns driver :reload)
+              ;; if it *still* does not test extensions, throw an Exception
+              (when-not (has-test-extensions? driver)
+                (throw (Exception. (str "No test extensions found for " driver))))))
+          ;; do before-run if needed as well
+          (do-before-run-if-needed driver))
+        (swap! has-loaded-extensions conj driver)))))
 
 (defn the-driver-with-test-extensions
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
@@ -201,16 +207,18 @@
 
 
 (defmulti metabase-instance
-  "Return the Metabase object associated with this definition, if applicable. CONTEXT should be the parent object (the
+  "Return the Metabase object associated with this definition, if applicable. `context` should be the parent object (the
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
   `FieldDefintion`). For a `DatabaseDefinition`, pass the driver keyword."
   {:arglists '([db-or-table-or-field-def context])}
   (fn [db-or-table-or-field-def context] (class db-or-table-or-field-def)))
 
-(defmethod metabase-instance FieldDefinition [this table]
+(defmethod metabase-instance FieldDefinition
+  [this table]
   (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
 
-(defmethod metabase-instance TableDefinition [this database]
+(defmethod metabase-instance TableDefinition
+  [this database]
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
   (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
@@ -243,7 +251,7 @@
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
 
-(defmulti after-run
+(defmulti ^:deprecated after-run
   "Do any cleanup needed after tests are finished running, such as deleting test databases. Use this
   in place of writing expectations `:after-run` functions, since the driver namespaces are lazily loaded and might
   not be loaded in time to register those functions with expectations.
@@ -251,7 +259,11 @@
   Will only be called once for a given driver; only called when running tests against that driver. This method does
   not need to call the implementation for any parent drivers; that is done automatically.
 
-  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE."
+  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE.
+
+  DEPRECATED - this is no longer called automatically when tests conclude due to our switch to `clojure.test`. You
+  should not rely on it for performing cleanup when tests are complete. This may be fixed in the future (PRs
+  welcome)."
   {:arglists '([driver])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -339,7 +351,7 @@
    {:base_type    :type/Integer
     :special_type :type/Number
     :name         "count"
-    :display_name "count"
+    :display_name "Count"
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
@@ -363,12 +375,9 @@
 
 (def ^:private DatasetFieldDefinition
   "Schema for a Field in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
-  {:field-name                       su/NonBlankString
-   :base-type                        (s/cond-pre {:native su/NonBlankString} su/FieldType)
-   (s/optional-key :special-type)    (s/maybe su/FieldType)
-   (s/optional-key :visibility-type) (s/maybe (apply s/enum field/visibility-types))
-   (s/optional-key :fk)              (s/maybe s/Keyword)
-   (s/optional-key :field-comment)   (s/maybe su/NonBlankString)})
+  ;; this is acutally the same schema as the one for `FieldDefinition`, i.e. the format in EDN files is the same as
+  ;; the one we use elsewhere
+  FieldDefinitionSchema)
 
 (def ^:private DatasetTableDefinition
   "Schema for a Table in a test dataset defined by a `defdataset` form or in a dataset defnition EDN file."
@@ -378,27 +387,25 @@
 
 ;; TODO - not sure everything below belongs in this namespace
 
-(s/defn ^:private dataset-field-definition :- FieldDefinition
+(s/defn ^:private dataset-field-definition :- ValidFieldDefinition
   [field-definition-map :- DatasetFieldDefinition]
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
-  (s/validate FieldDefinition (map->FieldDefinition field-definition-map)))
+  (map->FieldDefinition field-definition-map))
 
-(s/defn ^:private dataset-table-definition :- TableDefinition
+(s/defn ^:private dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
   comsumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
    (apply dataset-table-definition tabledef))
 
   ([table-name :- su/NonBlankString, field-definition-maps, rows]
-   (s/validate
-    TableDefinition
-    (map->TableDefinition
-     {:table-name        table-name
-      :rows              rows
-      :field-definitions (mapv dataset-field-definition field-definition-maps)}))))
+   (map->TableDefinition
+    {:table-name        table-name
+     :rows              rows
+     :field-definitions (mapv dataset-field-definition field-definition-maps)})))
 
-(s/defn dataset-definition :- DatabaseDefinition
+(s/defn dataset-definition :- ValidDatabaseDefinition
   "Parse a dataset definition (from a `defdatset` form or EDN file) and return a DatabaseDefinition instance for
   comsumption by various test-data-loading methods."
   {:style/indent 1}
@@ -427,7 +434,7 @@
 
 (def ^:private edn-definitions-dir "./test/metabase/test/data/dataset_definitions/")
 
-(deftype ^:private EDNDatasetDefinition [dataset-name def]
+(p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
     (list 'edn-dataset-definition dataset-name)))
@@ -441,12 +448,8 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- su/NonBlankString]
   (let [get-def (delay
-                 (apply
-                  dataset-definition
-                  dataset-name
-                  (edn/read-string
-                   (slurp
-                    (str edn-definitions-dir dataset-name ".edn")))))]
+                  (let [file-contents (edn/read-string (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                    (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
 (defmacro defdataset-edn
@@ -461,7 +464,7 @@
 ;;; |                                        Transformed Dataset Definitions                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftype ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
+(p.types/deftype+ ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
   pretty/PrettyPrintable
   (pretty [_]
     (list 'transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
@@ -517,7 +520,7 @@
 
 ;; TODO - maybe this should go in a different namespace
 
-(s/defn ^:private tabledef-with-name :- TableDefinition
+(s/defn ^:private tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
   [{:keys [table-definitions]} :- DatabaseDefinition, table-name :- su/NonBlankString]
   (some
@@ -526,7 +529,7 @@
        tabledef))
    table-definitions))
 
-(s/defn ^:private fielddefs-for-table-with-name :- [FieldDefinition]
+(s/defn ^:private fielddefs-for-table-with-name :- [ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
   [dbdef :- DatabaseDefinition, table-name :- su/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
