@@ -85,7 +85,7 @@
     (apply mbql-field strategy clause-type source-table-symb args)))
 
 (defn- token->sigil [token]
-  (when-let [[_ sigil] (re-matches #"^([$%*!&]{1,2}).*[\w/]$" (str token))]
+  (when-let [[_ sigil] (re-matches #"^((?:[trljd]\$)|(?:[$%*!&])|(?:\$\$)).*[\w/]$" (str token))]
     sigil))
 
 (defmulti ^:private parse-token-by-sigil
@@ -95,6 +95,15 @@
       (token->sigil token))))
 
 (defmethod parse-token-by-sigil :default [_ token] token)
+
+(defn- replace-sigil [orig alias token]
+  (let [s (str token)]
+    (symbol (str orig (.substring s (count alias) (count s))))))
+
+(defmacro ^:private defalias [orig alias]
+  `(defmethod parse-token-by-sigil ~alias
+     [~'source-table ~'token]
+     (parse-token-by-sigil ~'source-table (replace-sigil ~orig ~alias ~'token))))
 
 ;; $ = wrapped Field ID
 (defmethod parse-token-by-sigil "$"
@@ -106,10 +115,14 @@
   [source-table-symb token]
   (mbql-field-with-strategy :raw source-table-symb (.substring (str token) 1)))
 
+(defalias "%" "r$")
+
 ;; * = Field Literal
 (defmethod parse-token-by-sigil "*"
   [source-table-symb token]
   (mbql-field-with-strategy :literal source-table-symb (.substring (str token) 1)))
+
+(defalias "*" "l$")
 
 ;; & = Field qualified by JOIN ALIAS
 (defmethod parse-token-by-sigil "&"
@@ -120,6 +133,8 @@
                                                                         (symbol (str \$ token))))]
     (throw (ex-info "Error parsing token starting with '&'"
              {:token token}))))
+
+(defalias "&" "j$")
 
 ;; `!unit.<field> = datetime field
 (defmethod parse-token-by-sigil "!"
@@ -133,11 +148,14 @@
     (throw (ex-info "Error parsing token starting with '!!'"
              {:token token}))))
 
+(defalias "!" "d$")
+
 ;; $$ = table ID.
 (defmethod parse-token-by-sigil "$$"
   [_ token]
   (list 'metabase.test.data/id (keyword (.substring (str token) 2))))
 
+(defalias "$$" "t$")
 
 (defn parse-tokens
   "Internal impl fn of `$ids` and `mbql-query` macros. Walk `body` and replace `$field` (and related) tokens with calls
@@ -147,7 +165,6 @@
   something like a function call or dynamic variable."
   [source-table-symb-or-nil body]
   (walk/postwalk (partial parse-token-by-sigil source-table-symb-or-nil) body))
-
 
 (defn wrap-inner-query
   "Internal impl fn of `data/mbql-query` macro."

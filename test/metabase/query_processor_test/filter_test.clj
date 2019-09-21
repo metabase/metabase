@@ -99,7 +99,7 @@
       (qp.test/format-rows-by [int]
         (data/run-mbql-query checkins
           {:aggregation [[:count]]
-           :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]})))))
+           :filter      [:between d$day.date "2015-04-01" "2015-05-01"]})))))
 
 ;;; FILTER -- "OR", "<=", "="
 (qp.test/expect-with-non-timeseries-dbs

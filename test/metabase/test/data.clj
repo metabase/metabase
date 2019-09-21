@@ -124,11 +124,22 @@
   Cheatsheet:
 
   *  `$`  = wrapped Field ID
-  *  `$$` = table ID
-  *  `%`  = raw Field ID
-  *  `*`  = field-literal for Field in app DB; `*field/type` for others
-  *  `&`  = wrap in `joined-field`
-  *  `!`  = wrap in `:datetime-field`
+  *  `$$` or `t$` = _T_able ID
+  *  `%`  or `r$` = _R_aw field ID
+  *  `*`  or `l$` = field _L_iteral for field in app DB; `*field/type` for others
+  *  `&`  or `j$` = wrap in _J_oined field clause
+  *  `!`  or `d$` = wrap in _D_atetime field clause
+
+  Examples:
+
+    $field         = [:field-id (data/id <table> :field)]
+    $$table        = (data/id :table)
+    r$field        = (data/id <table> :field)
+    l$field        = [:field-literal (db/select-one-field :name Field :id (data/id <table> :field))
+                                     (data/select-one-field :base_type Field :id (data/id <table> :field))]
+    l$field/Number = [:field-literal (db/select-one-field :name Field :id (data/id <table> :field)) :type/Number]
+    j$cat.field    = [:joined-field \"cat\" [:field-id (data/id <table> :field)]]
+    d$month.field  = [:datetime-field [:field-id (data/id <table> :field)] :month]
 
   (The 'cheatsheet' above is listed first so I can easily look at it with `autocomplete-mode` in Emacs.) This macro
   does the following:
@@ -136,7 +147,11 @@
   *  Expands symbols like `$field` into calls to `id`, and wraps them in `:field-id`. See the dox for `$ids` for
      complete details.
   *  Wraps 'inner' query with the standard `{:database (data/id), :type :query, :query {...}}` boilerplate
-  *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present"
+  *  Adds `:source-table` clause if `:source-table` or `:source-query` is not already present.
+
+  For the sigils that offer either `symbol` or `char$` options, the `char$` sigil should be preferred; the former
+  should be considered deprecated. The former sigils were added first, but have proven absolutely impossible to
+  remember. You don't even need a cheatsheet for the new sigils! Use those instead."
   {:style/indent 1}
   ([table-name]
    `(mbql-query ~table-name {}))
