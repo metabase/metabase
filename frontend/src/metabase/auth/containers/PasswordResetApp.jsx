@@ -120,8 +120,8 @@ export default class PasswordResetApp extends Component {
                   />
                 </div>
                 <div className="Grid-cell bordered rounded shadowed">
-                  <h3 className="Login-header Form-offset mt4">{t`Whoops, that's an expired link`}</h3>
-                  <p className="Form-offset mb4 mr4">
+                  <h3 className="Login-header mt4">{t`Whoops, that's an expired link`}</h3>
+                  <p className="mb4 mr4">
                     {jt`For security reasons, password reset links expire after a little while. If you still need
                                         to reset your password, you can ${requestLink}.`}
                   </p>
@@ -147,9 +147,9 @@ export default class PasswordResetApp extends Component {
                   onSubmit={e => this.formSubmitted(e)}
                   noValidate
                 >
-                  <h3 className="Login-header Form-offset">{t`New password`}</h3>
+                  <h3 className="Login-header-offset">{t`New password`}</h3>
 
-                  <p className="Form-offset text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
+                  <p className="text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
 
                   <FormMessage
                     formError={
@@ -168,14 +168,13 @@ export default class PasswordResetApp extends Component {
                       formError={resetError}
                     />
                     <input
-                      className="Form-input Form-offset full"
+                      className="Form-input full"
                       name="password"
                       placeholder={t`Make sure its secure like the instructions above`}
                       type="password"
                       onChange={e => this.onChange("password", e.target.value)}
                       autoFocus
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <FormField
@@ -189,13 +188,12 @@ export default class PasswordResetApp extends Component {
                       formError={resetError}
                     />
                     <input
-                      className="Form-input Form-offset full"
+                      className="Form-input full"
                       name="password2"
                       placeholder={t`Make sure it matches the one you just entered`}
                       type="password"
                       onChange={e => this.onChange("password2", e.target.value)}
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <div className="Form-actions">

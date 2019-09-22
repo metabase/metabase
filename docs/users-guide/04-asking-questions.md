@@ -24,44 +24,11 @@ To ask a question about a table of data, we usually do some **filtering** and/or
 
 Filtering just means narrowing things down based on certain criteria. You're probably already familiar with filtering when looking for something online, like when shopping. Maybe you only want to see olive-colored pants, or books where the author's last name is "Steinbeck," or pictures of people wearing olive-colored pants reading John Steinbeck.
 
-### Using the Question Builder interface
-
-Metabase has a simple graphical question builder that looks like this:
-
-![queryinterfacebar](images/QueryInterfaceBar.png)
-
-The question builder is made up of four distinct sections, from left to right:
-- **Data**, where you pick the source data you want to ask a question about
-- **Filters**, where you can optionally add one or more filters to narrow down your source data
-- **View**, where you choose what you want to see — raw table data, a basic metric, or a "common" metric that an administrator has defined
-- **Groupings**, where you can group or break out your metric by time, location, or other categories
-
-#### Source data
----
-All of the data in databases are in tables. Typically, tables will be named for the thing that each row in the table contains. For example, in a Customers table, each row in the table would represent a single customer. This means that when you’re thinking about how to phrase your question, you’ll need to decide what your question is about, and which table has that information in it.
-
-The first dropdown menu in the question builder is where you’ll choose the database and table you want.
-
-##### Using saved questions as source data
-
-If you've [saved some questions](06-sharing-answers.md), in the Data menu you'll see the option to use one of your saved questions as source data. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used in a question just like any other table in your database.
-
-You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.md) to view that question. You can even use questions that were saved as a chart rather than a table.
-
-**Note:** there are some kinds of saved questions that can't be used as source data:
-- Druid questions
-- Google Analytics questions
-- Mongo questions
-- questions that use `Cumulative Sum` or `Cumulative Count` aggregations
-- questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
-
-#### Filters
----
-Filtering your data lets you exclude information that you don’t want. You can filter by any field in the table you're working with, or by any tables that are connected through a foreign key. Filters narrow down the source data to an interesting subset, like "active users" or "bookings after June 15th, 2015."
+You can do the same kind of thing with data in Metabase. Just click the Filter button in the top-right of the screen to open the filter sidebar. You'll see a list of all of the columns in this table, as well as columns from tables that are related to the one you're looking at. Depending on the column you pick, you'll see slightly different options for your filter.
 
 Broadly speaking, there are three types of columns, each with their own set of filtering options:
 
-1. **Numerics columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
+1. **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 2. With **text or category columns**, you can specify that you only want to include data where this column is or isn't a specific option, or you can exclude rows that don't have a value for this column.
 3. **Date** columns give you a calendar or input box so that you can select specific time ranges, or choose all days before or after a certain date.
 

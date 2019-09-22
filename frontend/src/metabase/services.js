@@ -121,6 +121,12 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
+// adds a flag to google analytics provided segments and metrics
+// we use this when we just want to filter out our own segments/metrics
+function addGoogleAnalyticsFlag(segmentOrMetric) {
+  return { ...segmentOrMetric, googleAnalyics: true };
+}
+
 export const MetabaseApi = {
   db_list: GET("/api/database"),
   db_list_with_tables: GET(
@@ -158,8 +164,8 @@ export const MetabaseApi = {
       if (table && table.db && table.db.engine === "googleanalytics") {
         const GA = await getGAMetadata();
         table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-        table.metrics.push(...GA.metrics);
-        table.segments.push(...GA.segments);
+        table.metrics.push(...GA.metrics.map(addGoogleAnalyticsFlag));
+        table.segments.push(...GA.segments.map(addGoogleAnalyticsFlag));
       }
 
       if (table && table.fields) {
@@ -303,6 +309,7 @@ export const UtilApi = {
   password_check: POST("/api/util/password_check"),
   random_token: GET("/api/util/random_token"),
   logs: GET("/api/util/logs"),
+  bug_report_details: GET("/api/util/bug_report_details"),
 };
 
 export const GeoJSONApi = {

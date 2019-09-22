@@ -9,28 +9,16 @@
 
     # just test against :h2 (default)
     DRIVERS=h2"
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [colorize.core :as color]
-            [environ.core :refer [env]]
-            [metabase.util :as u]))
-
-(defn- get-drivers-from-env
-  "Return a set of drivers to test against from the env var `DRIVERS`."
-  []
-  (when (seq (env :engines))
-    (println
-     (u/format-color 'red
-         "The env var ENGINES is no longer supported. Please specify drivers to run tests against with DRIVERS instead.")))
-  (when-let [env-drivers (some-> (env :drivers) str/lower-case)]
-    (set (for [engine (str/split env-drivers #",")
-               :when engine]
-           (keyword engine)))))
+            [metabase.test.data.env.impl :as impl]
+            [metabase.test.initialize :as initialize]))
 
 (defonce ^{:doc (str "Set of names of drivers we should run tests against. By default, this only contains `:h2` but can"
                      " be overriden by setting env var `DRIVERS`.")}
   test-drivers
-  (let [drivers (or (get-drivers-from-env)
-                    #{:h2})]
+  (let [drivers (impl/get-test-drivers)]
     (log/info (color/cyan "Running QP tests against these drivers: " drivers))
+    (when-not (= drivers #{:h2})
+      (initialize/initialize-if-needed! :plugins))
     drivers))

@@ -32,10 +32,12 @@
       (log/errorf e "Unable to translate string '%s'" msg)
       msg)))
 
-(def ^:private translate-system-locale
+(def ^{:arglists '([ns-str msg args])} translate-system-locale
+  "Translate a string with the System locale."
   (partial translate i18n/system-locale))
 
-(def ^:private translate-user-locale
+(def ^{:arglists '([ns-str msg args])} translate-user-locale
+  "Translate a string with the current User's locale."
   (partial translate i18n/user-locale))
 
 (p.types/defrecord+ UserLocalizedString [ns-str msg args]

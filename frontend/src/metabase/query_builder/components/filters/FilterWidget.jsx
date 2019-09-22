@@ -72,7 +72,7 @@ export default class FilterWidget extends Component {
     super(props);
 
     this.state = {
-      isOpen: this.props.filter[0] == undefined,
+      isOpen: this.props.filter[0] == null,
     };
   }
 

@@ -63,6 +63,11 @@ const AdminNavItem = ({ name, path, currentPath }) => (
 const DefaultSearchColor = lighten("brand", 0.07);
 const ActiveSearchColor = lighten("brand", 0.1);
 
+const NavHover = {
+  backgroundColor: darken(color("brand")),
+  color: "white",
+};
+
 const SearchWrapper = Flex.extend`
   background-color: ${props =>
     props.active ? ActiveSearchColor : DefaultSearchColor};
@@ -339,6 +344,7 @@ export default class Navbar extends Component {
             tooltip={t`Create`}
             className="hide sm-show mr1"
             triggerIcon="add"
+            triggerProps={{ hover: NavHover }}
             items={[
               {
                 title: t`New dashboard`,
@@ -355,7 +361,10 @@ export default class Navbar extends Component {
             ]}
           />
           {hasNativeWrite && (
-            <IconWrapper className="relative hide sm-show mr1 overflow-hidden">
+            <IconWrapper
+              className="relative hide sm-show mr1 overflow-hidden"
+              hover={NavHover}
+            >
               <Link
                 to={this.props.plainNativeQuery.question().getUrl()}
                 className="flex align-center"

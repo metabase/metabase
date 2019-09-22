@@ -280,7 +280,7 @@
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
-        (cache/restore-cache-if-needed!)
+        (cache/restore-cache!)
         ;; write to DB
         (cond
           (nil? new-value)
@@ -334,6 +334,7 @@
 
 (defn set-json!
   "Serialize `new-value` for `setting-or-name` as a JSON string and save it."
+  {:style/indent 1}
   [setting-or-name new-value]
   (set-string! setting-or-name (some-> new-value json/generate-string)))
 

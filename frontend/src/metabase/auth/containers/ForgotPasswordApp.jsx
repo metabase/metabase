@@ -62,11 +62,11 @@ export default class ForgotPasswordApp extends Component {
               {!sentNotification ? (
                 <div>
                   <form
-                    className="ForgotForm bg-white Form-new bordered rounded shadowed"
+                    className="ForgotForm bg-white bordered rounded shadowed"
                     name="form"
                     noValidate
                   >
-                    <h3 className="Login-header Form-offset mb3">{t`Forgot password`}</h3>
+                    <h3 className="Login-header mb3">{t`Forgot password`}</h3>
 
                     <FormMessage
                       message={error && error.data && error.data.message}
@@ -79,7 +79,7 @@ export default class ForgotPasswordApp extends Component {
                         formError={error}
                       />
                       <input
-                        className="Form-input Form-offset full"
+                        className="Form-input full"
                         name="email"
                         placeholder={t`The email you use for your Metabase account`}
                         type="text"
@@ -87,7 +87,6 @@ export default class ForgotPasswordApp extends Component {
                         defaultValue={this.state.email}
                         autoFocus
                       />
-                      <span className="Form-charm" />
                     </FormField>
 
                     <div className="Form-actions">

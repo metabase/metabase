@@ -33,7 +33,7 @@ export default class ModalContent extends Component {
       <div
         id={this.props.id}
         className={cx(
-          "ModalContent NewForm flex-full flex flex-column relative",
+          "ModalContent flex-full flex flex-column relative",
           className,
           { "full-height": fullPageModal && !formModal },
           // add bottom padding if this is a standard "form modal" with no footer

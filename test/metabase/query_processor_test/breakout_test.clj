@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
   (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
              [query-processor-test :as qp.test]
@@ -104,31 +105,26 @@
            :breakout    [$category_id]
            :limit       5})))))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
-  {:descending-categories
-   ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+(deftest order-by-test
+  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
+    (data/with-temp-objects
+      (fn []
+        [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
+                                :name                    "Foo"
+                                :type                    :external
+                                :human_readable_field_id (data/id :categories :name)})])
+      (are [expected sort-order] (testing (format "sort order = %s" sort-order)
+                                   (is (= expected
+                                          (->> (data/run-mbql-query venues
+                                                 {:order-by [[sort-order $category_id]]
+                                                  :limit    10})
+                                               qp.test/rows
+                                               (mapv last)))))
+        ["Wine Bar" "Thai" "Thai" "Thai" "Thai" "Steakhouse" "Steakhouse" "Steakhouse" "Steakhouse" "Southern"]
+        :desc
 
-   :ascending-categories
-   ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]}
-  (data/with-temp-objects
-    (fn []
-      [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
-                              :name                    "Foo"
-                              :type                    :external
-                              :human_readable_field_id (data/id :categories :name)})])
-    {:descending-categories
-     (->> (data/run-mbql-query venues
-            {:order-by [[:desc $category_id]]
-             :limit    10})
-          qp.test/rows
-          (map last))
-
-     :ascending-categories
-     (->> (data/run-mbql-query venues
-            {:order-by [[:asc $category_id]]
-             :limit    10})
-          qp.test/rows
-          (map last))}))
+        ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]
+        :asc))))
 
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]

@@ -227,3 +227,15 @@
   (qp/query->native
     (data/mbql-query venues
       {:aggregation [[:avg $category_id]], :breakout [$price], :order-by [[:asc [:aggregation 0]]]})))
+
+;; Do we properly unprepare, and can we execute, queries that still have parameters for one reason or another? (EE #277)
+(datasets/expect-with-driver :bigquery
+  [["Red Medicine"]]
+  (qp.test/rows
+    (qp/process-query
+      {:database (data/id)
+       :type     :native
+       :native   {:query  (str "SELECT `test_data.venues`.`name` AS `name` "
+                               "FROM `test_data.venues` "
+                               "WHERE `test_data.venues`.`name` = ?")
+                  :params ["Red Medicine"]}})))

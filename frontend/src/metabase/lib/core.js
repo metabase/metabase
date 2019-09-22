@@ -266,12 +266,12 @@ export const field_visibility_types = [
   },
   {
     id: "details-only",
-    name: t`Only in Detail Views`,
+    name: t`Only in detail views`,
     description: t`This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart.`,
   },
   {
     id: "sensitive",
-    name: t`Do Not Include`,
-    description: t`Metabase will never retrieve this field. Use this for sensitive or irrelevant information.`,
+    name: t`Do not include`,
+    description: t`This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries.`,
   },
 ];

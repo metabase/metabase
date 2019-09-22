@@ -27,7 +27,7 @@ export default class TokenizedInput extends Component {
   };
 
   _getValue() {
-    if (this.props.value != undefined) {
+    if (this.props.value != null) {
       return this.props.value;
     } else {
       return this.state.value;

@@ -196,6 +196,15 @@
 
 (def ^:private short-timezone-name (memoize short-timezone-name*))
 
+(defn- resolve-setting [ns-symb setting-symb]
+  (classloader/require ns-symb)
+  (let [varr (or (ns-resolve ns-symb setting-symb)
+                 (throw (Exception. (tru "Could not resolve Setting {0}/{1}" ns-symb setting-symb))))
+        f    (var-get varr)]
+    (assert (ifn? f)
+      (tru "Invalid Setting: {0)/{1}" ns-symb setting-symb))
+    (f)))
+
 ;; TODO - it seems like it would be a nice performance win to cache this a little bit
 (defn public-settings
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
@@ -203,35 +212,31 @@
   []
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
-   :custom_geojson        (setting/get :custom-geojson)
-   :custom_formatting     (setting/get :custom-formatting)
-   :email_configured      (do (classloader/require 'metabase.email)
-                              ((resolve 'metabase.email/email-configured?)))
+   :available_locales     (available-locales-with-names)
+   :custom_formatting     (custom-formatting)
+   :custom_geojson        (resolve-setting 'metabase.api.geojson 'custom-geojson)
+   :email_configured      (resolve-setting 'metabase.email 'email-configured?)
    :embedding             (enable-embedding)
-   :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
+   :enable_query_caching  (enable-query-caching)
    :enable_xrays          (enable-xrays)
    :engines               (driver.u/available-drivers-info)
+   :entities              (types/types->parents :entity/*)
    :ga_code               "UA-60817802-1"
-   :google_auth_client_id (setting/get :google-auth-client-id)
+   :google_auth_client_id (resolve-setting 'metabase.api.session 'google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (do (classloader/require 'metabase.integrations.ldap)
-                              ((resolve 'metabase.integrations.ldap/ldap-configured?)))
-   :available_locales     (available-locales-with-names)
+   :ldap_configured       (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)
    :map_tile_server_url   (map-tile-server-url)
    :metastore_url         metastore/store-url
    :password_complexity   password/active-password-complexity
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
-   :report_timezone       (setting/get :report-timezone)
-   :setup_token           (do
-                            (classloader/require 'metabase.setup)
-                            ((resolve 'metabase.setup/token-value)))
+   :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
+   :setup_token           (resolve-setting 'metabase.setup 'token-value)
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents :type/*)
-   :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info})

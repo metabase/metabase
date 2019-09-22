@@ -3,7 +3,6 @@ import {
   computeMaxDecimalsForValues,
   getCardAfterVisualizationClick,
   getColumnCardinality,
-  getXValues,
   getFriendlyName,
   getDefaultDimensionsAndMetrics,
 } from "metabase/visualizations/lib/utils";
@@ -160,45 +159,6 @@ describe("metabase/visualization/lib/utils", () => {
       expect(
         getCardAfterVisualizationClick(clonedSavedCard, savedCard),
       ).toMatchObject({ original_card_id: savedCard.id });
-    });
-  });
-
-  describe("getXValues", () => {
-    it("should not change the order of a single series of ascending numbers", () => {
-      expect(getXValues([[[1], [2], [11]]])).toEqual([1, 2, 11]);
-    });
-    it("should not change the order of a single series of descending numbers", () => {
-      expect(getXValues([[[11], [2], [1]]])).toEqual([11, 2, 1]);
-    });
-    it("should not change the order of a single series of non-ordered numbers", () => {
-      expect(getXValues([[[2], [1], [11]]])).toEqual([2, 1, 11]);
-    });
-
-    it("should not change the order of a single series of ascending strings", () => {
-      expect(getXValues([[["1"], ["2"], ["11"]]])).toEqual(["1", "2", "11"]);
-    });
-    it("should not change the order of a single series of descending strings", () => {
-      expect(getXValues([[["1"], ["2"], ["11"]]])).toEqual(["1", "2", "11"]);
-    });
-    it("should not change the order of a single series of non-ordered strings", () => {
-      expect(getXValues([[["2"], ["1"], ["11"]]])).toEqual(["2", "1", "11"]);
-    });
-
-    it("should correctly merge multiple series of ascending numbers", () => {
-      expect(getXValues([[[2], [11], [12]], [[1], [2], [11]]])).toEqual([
-        1,
-        2,
-        11,
-        12,
-      ]);
-    });
-    it("should correctly merge multiple series of descending numbers", () => {
-      expect(getXValues([[[12], [11], [2]], [[11], [2], [1]]])).toEqual([
-        12,
-        11,
-        2,
-        1,
-      ]);
     });
   });
 

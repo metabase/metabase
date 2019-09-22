@@ -14,6 +14,7 @@ import { reduxForm } from "redux-form";
 import * as Q_DEPRECATED from "metabase/lib/query";
 
 import cx from "classnames";
+import Question from "metabase-lib/lib/Question";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Table from "metabase-lib/lib/metadata/Table";
 
@@ -53,16 +54,6 @@ import Table from "metabase-lib/lib/metadata/Table";
   (state, { metric }) => ({ initialValues: metric }),
 )
 export default class MetricForm extends Component {
-  updatePreviewSummary(datasetQuery) {
-    this.props.updatePreviewSummary({
-      ...datasetQuery,
-      query: {
-        aggregation: [["count"]],
-        ...datasetQuery.query,
-      },
-    });
-  }
-
   renderActionButtons() {
     const {
       invalid,
@@ -86,6 +77,52 @@ export default class MetricForm extends Component {
     );
   }
 
+  componentDidMount() {
+    if (!this.props.fields.definition.value) {
+      this.setDefaultQuery();
+    }
+  }
+  componentDidUpdate() {
+    if (!this.props.fields.definition.value) {
+      this.setDefaultQuery();
+    }
+  }
+
+  setDefaultQuery() {
+    const {
+      fields: {
+        definition: { onChange },
+      },
+      metadata,
+      table: { id: tableId, db_id: databaseId },
+      updatePreviewSummary,
+    } = this.props;
+
+    if (!metadata) {
+      // we need metadata to generate a default question
+      return;
+    }
+
+    const query = Question.create({ databaseId, tableId, metadata }).query();
+    const table = query.table();
+    let queryWithFilters;
+    if (table.entity_type === "entity/GoogleAnalyticsTable") {
+      const dateField = table.fields.find(f => f.name === "ga:date");
+      if (dateField) {
+        queryWithFilters = query
+          .addFilter(["time-interval", ["field-id", dateField.id], -365, "day"])
+          .addAggregation(["metric", "ga:users"]);
+      }
+    } else {
+      queryWithFilters = query.addAggregation(["count"]);
+    }
+
+    if (queryWithFilters) {
+      onChange(queryWithFilters.query());
+      updatePreviewSummary(queryWithFilters.datasetQuery());
+    }
+  }
+
   render() {
     const {
       fields: { id, name, description, definition, revision_message },
@@ -93,6 +130,7 @@ export default class MetricForm extends Component {
       table,
       handleSubmit,
       previewSummary,
+      updatePreviewSummary,
     } = this.props;
 
     const isNewRecord = id.value === "";
@@ -127,7 +165,9 @@ export default class MetricForm extends Component {
                           aggregation_options: (
                             table.aggregation_options || []
                           ).filter(a => a.short !== "rows"),
-                          metrics: [],
+                          metrics: (table.metrics || []).filter(
+                            m => m.googleAnalyics,
+                          ),
                         },
                       ),
                     },
@@ -139,7 +179,7 @@ export default class MetricForm extends Component {
                     ? ""
                     : t`Result: ` + formatValue(previewSummary)
                 }
-                updatePreviewSummary={this.updatePreviewSummary.bind(this)}
+                updatePreviewSummary={updatePreviewSummary}
                 {...definition}
               />
             )}

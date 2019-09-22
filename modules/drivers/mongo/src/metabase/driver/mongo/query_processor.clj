@@ -242,7 +242,7 @@
                      (stringify format-string value))
                     ([format-string v]
                      {:___date (du/format-date format-string v)}))
-        extract   (u/rpartial du/date-extract value)]
+        extract   #(du/date-extract % value)]
     (case (or unit :default)
       :default         value
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
@@ -256,10 +256,10 @@
       :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
       :week-of-year    (extract :week-of-year)
       :month           (stringify "yyyy-MM")
-      :month-of-year   (extract :month)
+      :month-of-year   (extract :month-of-year)
       :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (stringify "yyyy-01-01"))))
+      :year            (stringify "yyyy"))))
 
 
 ;; TODO - where's the part where we handle include-current?

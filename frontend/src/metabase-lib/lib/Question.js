@@ -642,6 +642,10 @@ export default class Question {
     return this._card && this._card.id;
   }
 
+  setId(id: number): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   description(): ?string {
     return this._card && this._card.description;
   }
@@ -748,7 +752,7 @@ export default class Question {
   isEqual(other) {
     if (!other) {
       return false;
-    } else if (this.id() != other.id()) {
+    } else if (this.id() !== other.id()) {
       return false;
     } else if (!_.isEqual(this.card(), other.card())) {
       return false;
