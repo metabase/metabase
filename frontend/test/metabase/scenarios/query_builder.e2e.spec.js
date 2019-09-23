@@ -1,9 +1,8 @@
 jest.mock("metabase/components/Popover");
 
-import { mount } from "__support__/enzyme";
 import {
   useSharedAdminLogin,
-  createTestStore,
+  mountApp,
   waitForAllRequestsToComplete,
 } from "__support__/e2e";
 
@@ -12,15 +11,10 @@ import Question from "metabase-lib/lib/Question";
 const ORDERS_QUESTION = Question.create({ databaseId: 1, tableId: 1 });
 
 describe("query builder", () => {
-  let store;
   beforeAll(() => useSharedAdminLogin());
-  beforeEach(async () => {
-    store = await createTestStore();
-  });
   describe("browse data", () => {
     it("should load orders table and summarize", async () => {
-      store.pushPath("/");
-      const app = mount(store.getAppContainer());
+      const { app } = await mountApp("/");
       await app.async.findByText("Browse Data").click();
       await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
 
@@ -31,9 +25,8 @@ describe("query builder", () => {
   });
   describe("ask a (simple) question", () => {
     it("should load orders table", async () => {
-      store.pushPath("/");
+      const { app } = await mountApp("/");
 
-      const app = mount(store.getAppContainer());
       await app.async.findByText("Ask a question").click();
       await app.async.findByText("Simple question").click();
 
@@ -46,8 +39,7 @@ describe("query builder", () => {
 
   describe("ask a (custom) question", () => {
     it("should load orders table", async () => {
-      store.pushPath("/");
-      const app = mount(store.getAppContainer());
+      const { app } = await mountApp("/");
 
       await app.async.findByText("Ask a question").click();
       await app.async.findByText("Custom question").click();
@@ -60,8 +52,7 @@ describe("query builder", () => {
     });
 
     it("should summarize and break out and show a map", async () => {
-      store.pushPath("/");
-      const app = mount(store.getAppContainer());
+      const { app } = await mountApp("/");
 
       await app.async.findByText("Ask a question").click();
       await app.async.findByText("Custom question").click();
@@ -82,8 +73,7 @@ describe("query builder", () => {
   describe("view mode", () => {
     describe("summarize sidebar", () => {
       it("should summarize by category and show a bar chart", async () => {
-        store.pushPath(ORDERS_QUESTION.getUrl());
-        const app = mount(store.getAppContainer());
+        const { app } = await mountApp(ORDERS_QUESTION.getUrl());
         await app.async.findByText("Summarize").click();
         await app.async.findByText("Category").click();
         await app.async.findByText("Done").click();
@@ -93,8 +83,7 @@ describe("query builder", () => {
 
     describe("filter sidebar", () => {
       it("should filter a table", async () => {
-        store.pushPath(ORDERS_QUESTION.getUrl());
-        const app = mount(store.getAppContainer());
+        const { app } = await mountApp(ORDERS_QUESTION.getUrl());
         await app.async.findByText("Filter").click();
         await app.async.findByText("Vendor").click();
 
