@@ -347,11 +347,14 @@
      ;; -> #inst \"2015-11-01T00:00:00\""
   (^java.sql.Timestamp [unit]
    (date-trunc unit (System/currentTimeMillis) "UTC"))
+
   (^java.sql.Timestamp [unit date]
    (date-trunc unit date "UTC"))
+
   (^java.sql.Timestamp [unit date timezone-id]
    (case unit
      ;; For minute and hour truncation timezone should not be taken into account
+     :second  (trunc-with-floor date 1000)
      :minute  (trunc-with-floor date (* 60 1000))
      :hour    (trunc-with-floor date (* 60 60 1000))
      :day     (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
