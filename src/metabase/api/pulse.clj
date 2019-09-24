@@ -195,7 +195,7 @@
   (p/send-pulse! body)
   {:ok true})
 
-(api/defendpoint DELETE "/:id/email-subscription"
+(api/defendpoint DELETE "/:id/subscription/email"
   "Unfavorite a Card."
   [id]
   (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
