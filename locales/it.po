@@ -946,7 +946,8 @@ msgstr "Rimuovere questo gruppo?"
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:60
 msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso. Operazione irreversibile."
+msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso.\n"
+"Operazione irreversibile."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:71
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:43
@@ -6583,7 +6584,8 @@ msgstr "Formattazione condizionale"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:193
 msgid "You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore se soddisfano determinate condizioni."
+msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore\n"
+"se soddisfano determinate condizioni."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:203
 msgid "Add a rule"
@@ -12768,7 +12770,7 @@ msgstr "Richiesta annullata, annullamento futuro."
 
 #: src/metabase/cmd/load_from_h2.clj
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
-msgstr "2 "
+msgstr "Metabase può trasferire dati solo da database H2 a database Postgres o MySQL/MariaDB."
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
@@ -13076,6 +13078,7 @@ msgstr "Caricamento database di esempio..."
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
 msgstr "Caricamento del database di esempio fallito"
+""
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
@@ -13112,6 +13115,7 @@ msgstr ""
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
 msgstr "All elements must be distinct."
+""
 
 #:
 msgctxt "Modal for selecting columns in source data or when doing a join."

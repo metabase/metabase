@@ -136,7 +136,11 @@ export default class QueryModals extends React.Component {
           initialCollectionId={question.collectionId()}
           onClose={onCloseModal}
           onMove={collection => {
-            question.setCollectionId(collection && collection.id).update();
+            const card = question
+              .setCollectionId(collection && collection.id)
+              .card();
+
+            this.props.onSave(card);
             onCloseModal();
           }}
         />

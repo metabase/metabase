@@ -555,8 +555,8 @@
 
 ;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
 (expect
-  [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
-   {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
+  [{(data/id :venues) :all}
+   {(data/id :categories) :all, (data/id :venues) :all}]
   (tt/with-temp PermissionsGroup [group]
     ;; first, graph permissions only for VENUES
     (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
@@ -592,37 +592,35 @@
 
 ;; Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :all
-                          :query :none}}
+  {(data/id :venues) {:read :all}}
   (tt/with-temp PermissionsGroup [group]
     (perms/grant-permissions! group (perms/table-read-path (Table (data/id :venues))))
     (test-data-graph group)))
 
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :none
-                          :query :segmented}}
+  {(data/id :venues) {:query :segmented}}
   (tt/with-temp PermissionsGroup [group]
     (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id :venues))))
     (test-data-graph group)))
 
 (expect
-  {(data/id :categories) :none
-   (data/id :checkins)   :none
-   (data/id :users)      :none
-   (data/id :venues)     {:read  :all
-                          :query :segmented}}
+  {(data/id :venues) {:read  :all
+                      :query :segmented}}
   (tt/with-temp PermissionsGroup [group]
     (perms/update-graph! [(u/get-id group) (data/id) :schemas]
                          {"PUBLIC"
                           {(data/id :venues)
                            {:read :all, :query :segmented}}})
     (test-data-graph group)))
+
+;; A "/" permission grants all dataset permissions
+(tt/expect-with-temp [Database [{db_id :id}]]
+  {db_id {:native  :write
+          :schemas :all}}
+  (let [{:keys [group_id]} (db/select-one 'Permissions {:object "/"})]
+    (-> (perms/graph)
+        (get-in [:groups group_id])
+        (select-keys [db_id]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
@@ -634,8 +632,8 @@
   (do
     (collection-test/force-create-personal-collections!)
     (perms/revoke-collection-permissions!
-     (group/all-users)
-     (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+      (group/all-users)
+      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
 
 ;; (should apply to descendants as well)
 (expect
