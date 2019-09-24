@@ -437,10 +437,11 @@
   (let [database (qp.store/database)]
     (binding [*bigquery-timezone* (effective-query-timezone database)]
       (let [remark (str "-- " (qputil/query->remark outer-query) "\n")
+            include-user-id-and-hash (get-in database [:details :include-user-id-and-hash])
             sql (cond->> (str (if (seq params)
                                 (unprepare/unprepare driver (cons sql params))
                                 sql))
-                        (get-in database [:details :include-user-id-and-hash]) (str remark))]
+                  (if (nil? include-user-id-and-hash) true include-user-id-and-hash) (str remark))]
           (process-native* database sql)))))
 
 (defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
