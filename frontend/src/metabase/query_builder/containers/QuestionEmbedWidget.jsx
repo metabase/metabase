@@ -3,10 +3,13 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
+import Icon from "metabase/components/Icon";
+
+import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { getParameters } from "metabase/meta/Card";
 import {
@@ -39,7 +42,7 @@ export default class QuestionEmbedWidget extends Component {
       ...props
     } = this.props;
     return (
-      <EmbedWidget
+      <EmbedModalContent
         {...props}
         className={className}
         resource={card}
@@ -56,7 +59,6 @@ export default class QuestionEmbedWidget extends Component {
         getPublicUrl={({ public_uuid }, extension) =>
           Urls.publicQuestion(public_uuid, extension)
         }
-        extensions={["csv", "xlsx", "json"]}
       />
     );
   }
@@ -69,9 +71,29 @@ export default class QuestionEmbedWidget extends Component {
     isEmbeddingEnabled = MetabaseSettings.get("embedding"),
   }) {
     return (
-      question.isSaved() &&
-      ((isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
-        (isEmbeddingEnabled && isAdmin))
+      (isPublicLinksEnabled && (isAdmin || question.publicUUID())) ||
+      (isEmbeddingEnabled && isAdmin)
     );
   }
+}
+
+export function QuestionEmbedWidgetTrigger({
+  onClick,
+}: {
+  onClick: () => void,
+}) {
+  return (
+    <Icon
+      name="share"
+      className="mx1 hide sm-show text-brand-hover cursor-pointer"
+      onClick={() => {
+        MetabaseAnalytics.trackEvent(
+          "Sharing / Embedding",
+          "question",
+          "Sharing Link Clicked",
+        );
+        onClick();
+      }}
+    />
+  );
 }

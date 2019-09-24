@@ -15,7 +15,9 @@ import ViewButton from "./ViewButton";
 
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
+import QuestionEmbedWidget, {
+  QuestionEmbedWidgetTrigger,
+} from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import { QuestionFilterWidget } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
@@ -166,10 +168,12 @@ const ViewFooter = ({
             />
           ),
           QuestionEmbedWidget.shouldRender({ question, isAdmin }) && (
-            <QuestionEmbedWidget
-              key="embed"
-              className="mx1 hide sm-show"
-              card={question.card()}
+            <QuestionEmbedWidgetTrigger
+              onClick={() =>
+                question.isSaved()
+                  ? onOpenModal("embed")
+                  : onOpenModal("save-question-before-embed")
+              }
             />
           ),
         ]}
