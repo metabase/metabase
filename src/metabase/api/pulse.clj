@@ -16,7 +16,7 @@
              [collection :as collection]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]
-             [pulse-channel :refer [PulseChannel channel-types]]
+             [pulse-channel :refer [channel-types PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.pulse.render :as render]
             [metabase.util
