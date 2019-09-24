@@ -962,7 +962,7 @@
                   PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
     ((user->client :rasta) :delete 204 (str "pulse/" pulse-id "/subscription/email"))))
 
-;; Users can't delete someone else's pulse channel recipient
+;; Users can't delete someone else's pulse subscription
 (expect
   "Not found."
   (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
