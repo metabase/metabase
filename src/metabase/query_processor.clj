@@ -38,6 +38,7 @@
              [log :as log-query]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
+             [optimize-datetime-filters :as optimize-datetime-filters]
              [parameters :as parameters]
              [permissions :as perms]
              [pre-alias-aggregations :as pre-alias-ags]
@@ -107,6 +108,7 @@
   [#'mbql-to-native/mbql->native
    #'annotate/result-rows-maps->vectors
    #'check-features/check-features
+   #'optimize-datetime-filters/optimize-datetime-filters
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
