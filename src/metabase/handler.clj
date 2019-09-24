@@ -24,13 +24,14 @@
 
 (def app
   "The primary entry point to the Ring HTTP server."
-  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
   (->
-   ;; when running TESTS use the var so we can redefine routes as needed. No need to waste time with repetitive var
-   ;; lookups when running normally
-   (if config/is-test?
-     #'routes/routes
-     routes/routes)
+   ;; in production, dereference routes now because they will not change at runtime, so we don't need to waste time
+   ;; dereferencing the var on every request. For dev & test, use the var instead so it can be tweaked without having
+   ;; to restart the web server
+   (if config/is-prod?
+     routes/routes
+     #'routes/routes)
+   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
    mw.exceptions/catch-uncaught-exceptions ; catch any Exceptions that weren't passed to `raise`
    mw.exceptions/catch-api-exceptions      ; catch exceptions and return them in our expected format
    mw.log/log-api-call
