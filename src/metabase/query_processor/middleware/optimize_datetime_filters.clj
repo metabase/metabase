@@ -54,7 +54,7 @@
       (let [field' (change-datetime-field-unit-to-default field)]
         [:and
          [:>= field' [:absolute-datetime (lower-bound unit inst) :default]]
-         [:< field' [:absolute-datetime (upper-bound unit inst) :default]]]))))
+         [:< field'  [:absolute-datetime (upper-bound unit inst) :default]]]))))
 
 (defmethod optimize-filter :!=
   [filter-clause]
@@ -71,10 +71,10 @@
 
 (defmethod optimize-filter :between
   [[_ field [_ lower unit] [_ upper]]]
-  [:between
-   (change-datetime-field-unit-to-default field)
-   [:absolute-datetime (lower-bound unit lower) :default]
-   [:absolute-datetime (upper-bound unit upper) :default]])
+  (let [field' (change-datetime-field-unit-to-default field)]
+    [:and
+     [:>= field' [:absolute-datetime (lower-bound unit lower) :default]]
+     [:< field'  [:absolute-datetime (upper-bound unit upper) :default]]]))
 
 (defn- optimize-datetime-filters* [{query-type :type, :as query}]
   (if (not= query-type :query)

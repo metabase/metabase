@@ -82,8 +82,10 @@
                     [filter-type
                      [:datetime-field [:field-id 1] unit]
                      [:absolute-datetime filter-value unit]])))))
-        (testing :between
-          (is (= [:between [:datetime-field [:field-id 1] :default] lower upper]
+        (testing :betweenn
+          (is (= [:and
+                  [:>= [:datetime-field [:field-id 1] :default] lower]
+                  [:< [:datetime-field [:field-id 1] :default] upper]]
                  (optimize-datetime-filters
                   [:between
                    [:datetime-field [:field-id 1] unit]
@@ -102,9 +104,9 @@
                  (data/mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      filter-clause}))]
-    (update result :query  #(-> (last (re-matches #"^.*(WHERE .*$)" %))
-                                (str/replace #"\"" "")
-                                (str/replace #"PUBLIC\." "")))))
+    (update result :query #(-> (last (re-matches #"^.*(WHERE .*$)" %))
+                               (str/replace #"\"" "")
+                               (str/replace #"PUBLIC\." "")))))
 
 (deftest e2e-test
   (testing :=
@@ -119,7 +121,7 @@
            (data/$ids checkins
              (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :between
-    (is (= {:query  "WHERE CHECKINS.DATE BETWEEN ? AND ?"
+    (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
             :params [#inst "2019-09-01T00:00:00.000000000-00:00"
                      #inst "2019-11-01T00:00:00.000000000-00:00"]}
            (data/$ids checkins
