@@ -441,18 +441,21 @@ export const initializeQB = (location, params) => {
 
     /**** All actions are dispatched here ****/
 
+    // Fetch alerts for the current question if the question is saved
+    if (card && card.id != null) {
+      dispatch(fetchAlertsForQuestion(card.id));
+    }
+    // Fetch the question metadata (blocking)
+    if (card) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
     });
-
-    // Fetch alerts for the current question if the question is saved
-    card && card.id && dispatch(fetchAlertsForQuestion(card.id));
-
-    // Fetch the question metadata
-    card && dispatch(loadMetadataForCard(card));
 
     const question = card && new Question(getMetadata(getState()), card);
 
