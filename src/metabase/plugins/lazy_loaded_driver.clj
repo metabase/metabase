@@ -88,5 +88,5 @@
       (when f
         (.addMethod multifn driver f)))
     ;; finally, register the Metabase driver
-    (log/info (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
+    (log/debug (u/format-color 'magenta (trs "Registering lazy loading driver {0}..." driver)))
     (driver/register! driver, :parent (set (map keyword (u/one-or-many parent))), :abstract? abstract)))

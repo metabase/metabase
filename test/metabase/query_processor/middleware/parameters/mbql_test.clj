@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.parameters.mbql-test
   "Tests for *MBQL* parameter substitution."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -246,7 +247,7 @@
 ;; (NOTE: We're only testing this with H2 because the SQL generated is simply too different between various SQL drivers.
 ;; we know the features are still working correctly because we're actually checking that we get the right result from
 ;; running the query above these tests are more of a sanity check to make sure the SQL generated is sane.)
-(datasets/expect-with-driver :h2
+(expect
   {:query  (str "SELECT count(*) AS \"count\" "
                 "FROM \"PUBLIC\".\"VENUES\" "
                 "WHERE (\"PUBLIC\".\"VENUES\".\"PRICE\" = 3 OR \"PUBLIC\".\"VENUES\".\"PRICE\" = 4)")
@@ -261,39 +262,35 @@
 
 ;; try it with date params as well. Even though there's no way to do this in the frontend AFAIK there's no reason we
 ;; can't handle it on the backend
-;;
-;; TODO - If we actually wanted to generate efficient queries we should be doing something like
-;;
-;;    WHERE (cast(DATE as date) IN ((cast(? AS date), cast(? AS date)))
-;;
-;; instead of all these BETWEENs
-(datasets/expect-with-driver :h2
-  {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
-                "WHERE (CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date)"
-                " OR CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN CAST(? AS date) AND CAST(? AS date))")
-   :params [(du/->Timestamp #inst "2014-06-01")
-            (du/->Timestamp #inst "2014-06-30")
-            (du/->Timestamp #inst "2015-06-01")
-            (du/->Timestamp #inst "2015-06-30")]}
-  (qp/query->native
-    (data/query checkins
-      {:query      {:aggregation [[:count]]}
-       :parameters [{:name   "date"
-                     :type   "date/month"
-                     :target $date
-                     :value  ["2014-06" "2015-06"]}]})))
+(deftest date-params-test
+  (is (= {:query  (str "SELECT count(*) AS \"count\" FROM \"PUBLIC\".\"CHECKINS\" "
+                       "WHERE ("
+                       "(\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
+                       " OR (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= ? AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < ?)"
+                       ")")
+          :params [(du/->Timestamp #inst "2014-06-01")
+                   (du/->Timestamp #inst "2014-07-01")
+                   (du/->Timestamp #inst "2015-06-01")
+                   (du/->Timestamp #inst "2015-07-01")]}
+         (qp/query->native
+           (data/query checkins
+             {:query      {:aggregation [[:count]]}
+              :parameters [{:name   "date"
+                            :type   "date/month"
+                            :target $date
+                            :value  ["2014-06" "2015-06"]}]})))))
 
-;; make sure that "ID" type params get converted to numbers when appropriate
-(expect
-  (data/$ids venues
-    [:= $id 1])
-  (#'mbql-params/build-filter-clause
-   (data/$ids venues
-     {:type   :id
-      :target [:dimension $id]
-      :slug   "venue_id"
-      :value  "1"
-      :name   "Venue ID"})))
+(deftest convert-ids-to-numbers-test
+  (is (= (data/$ids venues
+           [:= $id 1])
+         (#'mbql-params/build-filter-clause
+          (data/$ids venues
+            {:type   :id
+             :target [:dimension $id]
+             :slug   "venue_id"
+             :value  "1"
+             :name   "Venue ID"})))
+      "make sure that :id type params get converted to numbers when appropriate"))
 
 ;; Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)
 (datasets/expect-with-drivers (filter #(driver/supports? % :foreign-keys) params-test-drivers)
