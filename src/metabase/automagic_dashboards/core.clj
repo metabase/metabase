@@ -1085,6 +1085,7 @@
                                   (t.format/formatter formatter (t/time-zone-for-id tz))
                                   dt))]
     (case unit
+      :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))

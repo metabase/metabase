@@ -3,6 +3,7 @@
              [core :as t]
              [format :as t.format]]
             [clojure.core.async :as a]
+            [clojure.test :refer :all]
             [expectations :refer :all]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
@@ -515,15 +516,17 @@
                                                               :day-of-month
                                                               :week-of-year]))))
 
-(expect
-  (map str [(tru "{0}st" 1)
-            (tru "{0}nd" 22)
-            (tru "{0}rd" 303)
-            (tru "{0}th" 0)
-            (tru "{0}th" 8)])
-  (map (comp str #'magic/pluralize) [1 22 303 0 8]))
+(deftest pluralize-test
+  (are [expected n] (= (str expected)
+                       (str (#'magic/pluralize n)))
+    (tru "{0}st" 1)   1
+    (tru "{0}nd" 22)  22
+    (tru "{0}rd" 303) 303
+    (tru "{0}th" 0)   0
+    (tru "{0}th" 8)   8))
 
-;; Make sure we have handlers for all the units available
-(expect
-  (every? (partial #'magic/humanize-datetime "1990-09-09T12:30:00")
-          (concat (var-get #'date/date-extract-units) (var-get #'date/date-trunc-units))))
+(deftest handlers-test
+  (testing "Make sure we have handlers for all the units available"
+    (doseq [unit (concat date/date-extract-units date/date-trunc-units)]
+      (testing unit
+        (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))
