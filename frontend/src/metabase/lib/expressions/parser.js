@@ -136,7 +136,7 @@ class ExpressionsParser extends Parser {
 
       const dimension = this.getDimensionForName(this._toString(dimensionName));
       if (dimension != null) {
-        return dimension.mbql();
+        return this._dimensionReference(dimensionName, dimension);
       }
       return this._unknownField(dimensionName);
     });
@@ -228,11 +228,8 @@ class ExpressionsParserMBQL extends ExpressionsParser {
   _metricReference(metricName, metricId) {
     return ["metric", metricId];
   }
-  _fieldReference(fieldName, fieldId) {
-    return Array.isArray(fieldId) ? fieldId : ["field-id", fieldId];
-  }
-  _expressionReference(fieldName) {
-    return ["expression", fieldName];
+  _dimensionReference(dimensionName, dimension) {
+    return dimension.mbql();
   }
   _unknownField(fieldName) {
     throw new Error('Unknown field "' + fieldName + '"');
@@ -289,11 +286,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
   _metricReference(metricName, metricId) {
     return syntax("metric", metricName);
   }
-  _fieldReference(fieldName, fieldId) {
-    return syntax("field", fieldName);
-  }
-  _expressionReference(fieldName) {
-    return syntax("expression-reference", token(fieldName));
+  _dimensionReference(dimensionName, dimension) {
+    return syntax("field", dimensionName);
   }
   _unknownField(fieldName) {
     return syntax("unknown", fieldName);

@@ -10,7 +10,7 @@ describe("databasesList", () => {
       name: "Saved Questions",
       is_saved_questions: true,
     };
-    metadata.database(savedQuestionDb.id) = savedQuestionDb;
+    metadata.databases[savedQuestionDb.id] = savedQuestionDb;
 
     expect(
       metadata.databasesList().find(d => d.name === "Saved Questions"),
