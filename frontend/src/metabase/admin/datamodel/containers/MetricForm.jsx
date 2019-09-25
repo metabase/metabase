@@ -154,13 +154,13 @@ export default class MetricForm extends Component {
                 }}
                 metadata={
                   metadata.tables &&
-                  metadata.table(table.id).fields &&
+                  metadata.tables[table.id].fields &&
                   Object.assign(new Metadata(), metadata, {
                     tables: {
                       ...metadata.tables,
                       [table.id]: Object.assign(
                         new Table(),
-                        metadata.table(table.id),
+                        metadata.tables[table.id],
                         {
                           aggregation_options: (
                             table.aggregation_options || []

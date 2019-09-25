@@ -209,7 +209,7 @@ export default class DataSelector extends Component {
       ? props.segments.find(segment => segment.id === selectedSegmentId)
       : null;
     const selectedField = props.selectedFieldId
-      ? props.metadata.field(props.selectedFieldId)
+      ? props.metadata.fields[props.selectedFieldId]
       : null;
 
     return {
@@ -897,7 +897,7 @@ export class FieldPicker extends Component {
       return <DataSelectorLoading header={header} />;
     }
 
-    const table = metadata.table(selectedTable.id);
+    const table = metadata.tables[selectedTable.id];
     const fields = (table && table.fields) || [];
     const sections = [
       {

@@ -147,7 +147,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   database(): ?Database {
     const databaseId = this.databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this._metadata.databases[databaseId] : null;
   }
 
   /**

@@ -30,7 +30,7 @@ describe("getMetadata", () => {
 
   describe("connected database", () => {
     it("should have the proper number of tables", () => {
-      const database = metadata.database(SAMPLE_DATASET.id);
+      const database = metadata.databases[SAMPLE_DATASET.id];
       expect(database.tables.length).toEqual(NUM_TABLES);
     });
   });
@@ -43,7 +43,7 @@ describe("getMetadata", () => {
     });
 
     it("should have a parent database", () => {
-      expect(table.database).toEqual(metadata.database(SAMPLE_DATASET.id));
+      expect(table.database).toEqual(metadata.databases[SAMPLE_DATASET.id]);
     });
   });
 

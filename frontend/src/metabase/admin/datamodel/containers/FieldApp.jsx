@@ -146,7 +146,7 @@ export default class FieldApp extends React.Component {
 
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { metadata, fieldId } = this.props;
-    const field = metadata.field(fieldId);
+    const field = metadata.fields[fieldId];
 
     if (field) {
       // `table` and `target` propertes is part of the fully connected metadata graph; drop it because it
@@ -188,9 +188,9 @@ export default class FieldApp extends React.Component {
       params: { section },
     } = this.props;
 
-    const db = metadata.database(databaseId);
-    const field = metadata.field(fieldId);
-    const table = metadata.table(tableId);
+    const db = metadata.databases[databaseId];
+    const field = metadata.fields[fieldId];
+    const table = metadata.tables[tableId];
 
     const isLoading = !field || !table || !idfields;
 
