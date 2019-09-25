@@ -76,7 +76,7 @@ export default class SegmentPane extends Component {
 
   newCard() {
     const { segment, metadata } = this.props;
-    const table = metadata && metadata.tables[segment.table_id];
+    const table = metadata && metadata.table(segment.table_id);
 
     if (table) {
       const card = createCard();

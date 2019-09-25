@@ -88,7 +88,7 @@ export default class ParameterValueWidget extends Component {
   getSingleField() {
     const { parameter, metadata } = this.props;
     return parameter.field_id != null
-      ? metadata.fields[parameter.field_id]
+      ? metadata.field(parameter.field_id)
       : null;
   }
 

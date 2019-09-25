@@ -176,7 +176,7 @@ export function getCardDimensions(
   if (card.dataset_query.type === "query") {
     const table =
       card.dataset_query.query["source-table"] != null
-        ? metadata.tables[card.dataset_query.query["source-table"]]
+        ? metadata.table(card.dataset_query.query["source-table"])
         : null;
     if (table) {
       return getTableDimensions(table, 1, filter);
@@ -189,7 +189,7 @@ export function getCardDimensions(
         Array.isArray(tag.dimension) &&
         tag.dimension[0] === "field-id"
       ) {
-        const field = metadata.fields[tag.dimension[1]];
+        const field = metadata.field(tag.dimension[1]);
         if (field && filter(field)) {
           const fieldDimension = getFieldDimension(field);
           dimensions.push(getTagDimension(tag, fieldDimension));
@@ -332,7 +332,7 @@ export function getParameterMappingOptions(
       card,
       fieldFilterForParameter(parameter),
     ).map((dimension: Dimension) => {
-      const field = metadata.fields[dimension.field_id];
+      const field = metadata.field(dimension.field_id);
       return {
         name: dimension.name,
         target: ["dimension", dimension.target],

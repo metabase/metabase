@@ -212,7 +212,7 @@ export function parameterToMBQLFilter(
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else {
     const fieldId = Q_DEPRECATED.getFieldTargetId(fieldRef);
-    const field = metadata.fields[fieldId];
+    const field = metadata.field(fieldId);
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {
       return numberParameterValueToMBQL(parameter.value, fieldRef);
