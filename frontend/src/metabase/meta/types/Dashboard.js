@@ -2,6 +2,7 @@
 
 import type { Card, CardId, VisualizationSettings } from "./Card";
 import type { Parameter, ParameterMapping } from "./Parameter";
+import type { EmbeddingParams } from "metabase/public/lib/types";
 
 export type DashboardId = number;
 
@@ -27,6 +28,7 @@ export type DashboardWithCards = {
   name: string,
   description: ?string,
   ordered_cards: Array<DashCard>,
+  embedding_params: EmbeddingParams,
   // incomplete
   parameters: Array<Parameter>,
   collection_id: ?number,
