@@ -27,9 +27,8 @@ export default class ChartNestedSettingSeries extends React.Component {
     const objectKey = object && getObjectKey(object);
     const isSelected = single => objectKey === getObjectKey(single);
 
-    const isLineAreaBar = ["line", "area", "bar", "combo"].includes(
-      object.card.display,
-    );
+    const display = object && object.card.display;
+    const isLineAreaBar = ["line", "area", "bar", "combo"].includes(display);
     const isStacked = settings["stackable.stack_type"] != null;
 
     return (
