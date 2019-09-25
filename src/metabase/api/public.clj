@@ -25,6 +25,7 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [params :as params]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [embed :as embed]
@@ -38,7 +39,6 @@
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
 
-(def ^:private ^:const error-whitelist #"You'll need to pick a value for '.*' before this query can run\.")
 
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
@@ -67,13 +67,24 @@
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defn- transform-results [results]
-  (if (and (= (:status results) :failed) (not (re-matches error-whitelist (:error results))))
-    ;; if the query failed instead of returning anything about the query just return a generic error message
-    (ex-info "An error occurred while running the query." {:status-code 400})
-    (u/select-nested-keys
-     results
-     [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
+(defmulti ^:private transform-results
+  {:arglists '([results])}
+  :status)
+
+(defmethod transform-results :default
+  [results]
+  (u/select-nested-keys
+   results
+   [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status]))
+
+(defmethod transform-results :failed
+  [{:keys [error error-type], :as results}]
+  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
+  ;; instead of returning anything about the query just return a generic error message
+  (let [message (if (qp.error-type/show-in-embeds? error-type)
+                  error
+                  (tru "An error occurred while running the query."))]
+    (ex-info message {:status-code 400})))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
