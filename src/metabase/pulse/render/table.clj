@@ -24,13 +24,11 @@
                        :font-weight    700
                        :text-align     :left
                        :color          style/color-text-dark
-                       :border-bottom   (str "1px solid " style/color-body-row-border)
+                       :border-bottom  (str "1px solid " style/color-body-row-border)
                        :height         :36px
                        :width          :106px
                        :padding-right  :0.5em
-                       :padding-left   :0.5em
-                       :padding-top    :4px
-                       :padding-bottom :4px}))
+                       :padding-left   :0.5em}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
