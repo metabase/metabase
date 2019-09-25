@@ -308,7 +308,7 @@ export const initializeQB = (location, params) => {
 
     // always start the QB by loading up the databases for the application
     try {
-      await dispatch(
+      dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,

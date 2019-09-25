@@ -37,6 +37,7 @@ import {
   UPDATE_EMBEDDING_PARAMS,
   UPDATE_ENABLE_EMBEDDING,
   UPDATE_TEMPLATE_TAG,
+  SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
 } from "metabase/query_builder/actions";
 import NativeQueryEditor from "metabase/query_builder/components/NativeQueryEditor";
 import { delay } from "metabase/lib/promise";
@@ -157,7 +158,10 @@ describe("public/embedded", () => {
         "select count(*) from products where {{category}}",
       );
 
+      await store.waitForActions([SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]);
       const tagEditorSidebar = app.find(TagEditorSidebar);
+
+      click(tagEditorSidebar.find("SelectButton"));
 
       const fieldFilterVarType = tagEditorSidebar
         .find(".ColumnarSelector-row")
