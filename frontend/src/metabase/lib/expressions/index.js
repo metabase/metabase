@@ -17,6 +17,13 @@ export function getAggregationFromName(name) {
   return AGG_NAMES_MAP.get(name.toLowerCase());
 }
 
+export function getDimensionFromName(name, query) {
+  return query
+    .dimensionOptions()
+    .all()
+    .find(d => getDimensionName(d) === name);
+}
+
 export function isReservedWord(word) {
   return !!getAggregationFromName(word);
 }
@@ -35,12 +42,12 @@ export function formatMetricName(metric) {
   return formatIdentifier(metric.name);
 }
 
-export function formatFieldName(field) {
-  return formatIdentifier(field.display_name);
+export function formatDimensionName(dimension) {
+  return formatIdentifier(getDimensionName(dimension));
 }
 
-export function formatExpressionName(name) {
-  return formatIdentifier(name);
+export function getDimensionName(dimension) {
+  return dimension.render();
 }
 
 // move to query lib

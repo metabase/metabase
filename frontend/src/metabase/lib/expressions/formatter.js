@@ -8,7 +8,7 @@ import {
   isMetric,
   isAggregation,
   formatMetricName,
-  formatIdentifier,
+  formatDimensionName,
 } from "../expressions";
 
 // convert a MBQL expression back into an expression string
@@ -52,7 +52,8 @@ function formatLiteral(expr) {
 
 function formatFieldReference(fieldRef, { query }) {
   if (query) {
-    return formatIdentifier(query.parseFieldReference(fieldRef).displayName());
+    const dimension = query.parseFieldReference(fieldRef);
+    return formatDimensionName(dimension);
   } else {
     throw new Error("`query` is a required parameter to format expressions");
   }
