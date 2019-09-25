@@ -33,8 +33,14 @@
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
     (= (datetime-field-unit field) unit-1 unit-2)))
 
+(defn- timezone-id []
+  (let [^java.util.TimeZone tz (or du/*data-timezone*
+                                   du/*report-timezone*
+                                   @du/jvm-timezone)]
+    (.getID tz)))
+
 (defn- lower-bound [unit inst]
-  (du/date-trunc unit inst))
+  (du/date-trunc unit inst (timezone-id)))
 
 (defn- upper-bound [unit inst]
   (du/relative-date unit 1 (lower-bound unit inst)))

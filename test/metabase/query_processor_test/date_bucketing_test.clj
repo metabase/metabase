@@ -979,22 +979,23 @@
    [200      :quarter-of-year 1]
    [498      :year            "2014"]])
 
+(defn- count-of-checkins [unit filter-value]
+  (ffirst
+   (qp.test/format-rows-by [int]
+     (qp.test/rows
+       (data/run-mbql-query checkins
+         {:aggregation [[:count]]
+          :filter      [:= [:datetime-field $date unit] filter-value]})))))
+
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (datasets/test-drivers qp.test/non-timeseries-drivers
-      (let [count-with-unit (fn [unit filter-value]
-                              (ffirst
-                               (qp.test/format-rows-by [int]
-                                 (qp.test/rows
-                                   (data/run-mbql-query checkins
-                                     {:aggregation [[:count]]
-                                      :filter      [:= [:datetime-field $date unit] filter-value]})))))]
-        (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-          (testing unit
+      (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
+        (testing unit
+          (let [result (count-of-checkins unit filter-value)]
             (if (integer? expected-count)
-              (is (= expected-count
-                     (count-with-unit unit filter-value))
+              (is (= expected-count result)
                   (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count))
-              (is (contains? expected-count (count-with-unit unit filter-value))
+              (is (contains? expected-count result)
                   (format "count of rows where (= (%s date) %s) should be one of: %s"
                           (name unit) filter-value (str/join ", " (sort expected-count)))))))))))

@@ -9,8 +9,13 @@
 ;;; |                                                Various Datasets                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; You can get the values inside these dataset definitions like this:
+;;
+;;    (tx/get-dataset-definition test-data)
+
 (tx/defdataset-edn test-data
-  "The O.G. \"Test Database\" dataset.")
+  "The default \"Test Data\" dataset. Used in ~95% of tests. See `test-data.edn` for a overview of the tables and
+  fields in this dataset.")
 
  (tx/defdataset-edn sad-toucan-incidents
    "Times when the Toucan cried")

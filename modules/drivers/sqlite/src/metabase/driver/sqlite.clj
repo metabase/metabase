@@ -71,8 +71,9 @@
 (defn- ts->str
   "Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly"
   [expr]
+  ;; See https://github.com/xerial/sqlite-jdbc/issues/88 for more context
   (if (instance? Timestamp expr)
-    (hx/literal (du/date->iso-8601 expr))
+    (hx/literal (du/format-date "yyyy-MM-dd HH:mm:ss" expr))
     expr))
 
 (defmethod sql.qp/date [:sqlite :default]        [_ _ expr] (ts->str expr))

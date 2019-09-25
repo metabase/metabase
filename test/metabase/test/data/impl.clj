@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [db :as mdb]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -15,6 +14,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]))
@@ -111,7 +111,7 @@
 
 
 (defmethod get-or-create-database! :default [driver dbdef]
-  (mdb/setup-db!) ; if not already setup
+  (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)
