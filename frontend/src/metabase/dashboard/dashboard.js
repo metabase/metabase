@@ -935,7 +935,7 @@ const cardList = handleActions(
   null,
 );
 
-function syncParametersAndEmbeddingParams(before, after) {
+export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
       const slugParam = _.find(before.parameters, param => {
