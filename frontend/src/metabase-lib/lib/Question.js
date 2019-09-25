@@ -464,14 +464,12 @@ export default class Question {
   }
 
   composeThisQuery(): ?Question {
-    const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
-
     if (this.id()) {
       const card = {
         display: "table",
         dataset_query: {
           type: "query",
-          database: SAVED_QUESTIONS_FAUX_DATABASE,
+          database: this.databaseId(),
           query: {
             "source-table": "card__" + this.id(),
           },
