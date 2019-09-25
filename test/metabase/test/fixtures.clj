@@ -2,7 +2,7 @@
   (:require [metabase.test.initialize :as initialize]))
 
 (defn initialize
-  {:arglists (list (vec (cons '& (disj (set (keys (methods initialize/initialize-if-needed!))) :many))))}
+  {:arglists (:arglists (meta #'initialize/initialize-if-needed!))}
   [& what]
   (fn [f]
     (apply initialize/initialize-if-needed! what)

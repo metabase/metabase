@@ -46,6 +46,8 @@
   (classloader/require 'metabase.test.initialize.plugins)
   ((resolve 'metabase.test.initialize.plugins/init!)))
 
+;; initializing the DB also does setup needed so the scheduler will work correctly. (Remember that the scheduler uses
+;; a JDBC backend!)
 (define-initialization :db
   (classloader/require 'metabase.test.initialize.db)
   ((resolve 'metabase.test.initialize.db/init!)))
@@ -54,3 +56,6 @@
   (initialize-if-needed! :db)
   (classloader/require 'metabase.test.initialize.web-server)
   ((resolve 'metabase.test.initialize.web-server/init!)))
+
+(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (disj (set (keys (methods initialize-if-needed!)))
+                                                                            :many))))
