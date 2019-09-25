@@ -105,7 +105,7 @@ export const fetchDatabaseMetadata = (dbId, reload = false) => {
 export const updateDatabase = database => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  return database.actions.update(slimDatabase);
+  return Databases.actions.update(slimDatabase);
 };
 
 export const updateTable = table => {
