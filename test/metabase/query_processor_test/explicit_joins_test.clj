@@ -249,10 +249,9 @@
         (is (= (mapv data/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
         ;; not sure why only Oracle seems to do this
-        (is (= (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
-                 [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 (str "2014-04-07T" tz) 5 12]
-                  [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 (str "2014-09-18T" tz) 1 31]
-                  [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 (str "2014-09-15T" tz) 8 56]])
+        (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 "2014-04-07T00:00:00.000Z" 5 12]
+                [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 "2014-09-18T00:00:00.000Z" 1 31]
+                [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 "2014-09-15T00:00:00.000Z" 8 56]]
                rows))))))
 
 (deftest select-*-source-query-test
@@ -418,14 +417,12 @@
               "id_2"   "name"   "last_login"                                   ; users
               "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
    :rows
-   ;; again, not sure why Oracle is the only driver giving us wrong answers here
-   (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
-     [[1 (str "2014-04-07T" tz) 5 12
-       5 "Quentin Sören" "2014-10-03T17:30:00.000Z"
-       5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
-      [2 (str "2014-09-18T" tz) 1 31
-       1 "Plato Yeshua" "2014-04-01T08:30:00.000Z"
-       1 "Red Medicine" 4 10.065 -165.374 3]])}
+   [[1 "2014-04-07T00:00:00.000Z" 5 12
+     5 "Quentin Sören" "2014-10-03T17:30:00.000Z"
+     5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
+    [2 "2014-09-18T00:00:00.000Z" 1 31
+     1 "Plato Yeshua" "2014-04-01T08:30:00.000Z"
+     1 "Red Medicine" 4 10.065 -165.374 3]]}
   (qp.test/rows+column-names
     (qp.test/format-rows-by [int    ; checkins.id
                              str    ; checkins.date
@@ -456,10 +453,8 @@
 
 ;; we should be able to use a SQL question as a source query in a Join
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :left-join)
-  ;; again, Oracle is wack, not sure why :/
-  (let [tz (if (= driver/*driver* :oracle) "07:00:00.000Z"  "00:00:00.000Z")]
-    [[1 (str "2014-04-07T" tz) 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
-     [2 (str "2014-09-18T" tz) 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]])
+  [[1 "2014-04-07T00:00:00.000Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
+   [2 "2014-09-18T00:00:00.000Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
   (tt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
                                                (data/native-query (qp/query->native (data/mbql-query venues))))]
     (qp.test/formatted-rows [int identity int int int identity int 4.0 4.0 int]
