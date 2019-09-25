@@ -317,7 +317,7 @@
 
 (def ^:const date-trunc-units
   "Valid date bucketing units"
-  #{:minute :hour :day :week :month :quarter :year})
+  #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
   (->Timestamp (format-date (time/with-zone (time/formatter format-string)

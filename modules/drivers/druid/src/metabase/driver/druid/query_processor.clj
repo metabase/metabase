@@ -107,7 +107,9 @@
 
 (defmethod ->rvalue :absolute-datetime
   [[_ timestamp unit]]
-  (du/date->iso-8601 (du/date-trunc unit timestamp (get-timezone-id))))
+  (du/date->iso-8601 (if (= unit :default)
+                       timestamp
+                       (du/date-trunc unit timestamp (get-timezone-id)))))
 
 ;; TODO - not 100% sure how to handle times here, just treating it exactly like a date will have to do for now
 (defmethod ->rvalue :time
@@ -316,11 +318,15 @@
 
 (defmethod parse-filter :and
   [[_ & args]]
-  {:type :and, :fields (filterv identity (map parse-filter args))})
+  (let [fields (filterv identity (map parse-filter args))]
+    (when (seq fields)
+      {:type :and, :fields fields})))
 
 (defmethod parse-filter :or
   [[_ & args]]
-  {:type :or, :fields (filterv identity (map parse-filter args))})
+  (let [fields (filterv identity (map parse-filter args))]
+    (when (seq fields)
+      {:type :or, :fields fields})))
 
 (defmethod parse-filter :not
   [[_ subclause]]
