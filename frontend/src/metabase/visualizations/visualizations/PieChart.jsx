@@ -323,7 +323,7 @@ export default class PieChart extends Component {
       const slice = slices[index];
       if (!slice || slice.noHover) {
         return null;
-      } else if (slice === otherSlice) {
+      } else if (slice === otherSlice && others.length > 1) {
         return {
           index,
           event: event && event.nativeEvent,
