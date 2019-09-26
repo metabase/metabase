@@ -10,6 +10,7 @@ export default function SidebarContent({
   className,
   icon,
   title,
+  isTitleHidden = false,
   color,
   onBack,
   onClose,
@@ -25,7 +26,7 @@ export default function SidebarContent({
   return (
     <div className={cx(className, "flex flex-column justify-between")}>
       <div className="scroll-y">
-        {(title || onBack || icon) && (
+        {!isTitleHidden && (title || onBack || icon) && (
           <SidebarHeader
             className="mx3 my2 pt1"
             title={title}
