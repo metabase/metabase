@@ -103,4 +103,43 @@ describe("ChartSettings", () => {
     expect(getByText("Widget1", { exact: false })).toBeInTheDocument();
     expect(queryByText("Widget2", { exact: false })).toBe(null);
   });
+
+  it("should show the section picker if there are multiple sections", () => {
+    const { getByText } = render(
+      <ChartSettings
+        {...DEFAULT_PROPS}
+        widgets={[
+          widget({ title: "Widget1", section: "Foo" }),
+          widget({ title: "Widget2", section: "Bar" }),
+        ]}
+      />,
+    );
+    expect(getByText("Foo")).toBeInTheDocument();
+  });
+
+  it("should not show the section picker if there's only one section", () => {
+    const { queryByText } = render(
+      <ChartSettings
+        {...DEFAULT_PROPS}
+        widgets={[
+          widget({ title: "Something", section: "Foo" }),
+          widget({ title: "Other Thing", section: "Foo" }),
+        ]}
+      />,
+    );
+    expect(queryByText("Foo")).toBe(null);
+  });
+
+  it("should not show the section picker if showing a column setting", () => {
+    const { queryByText } = render(
+      <ChartSettings
+        {...DEFAULT_PROPS}
+        widgets={[
+          widget({ title: "Something", section: "Foo", id: "column_settings" }),
+          widget({ title: "Other Thing", section: "Bar", id: "other_thing" }),
+        ]}
+      />,
+    );
+    expect(queryByText("Foo")).toBe(null);
+  });
 });
