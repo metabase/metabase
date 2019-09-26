@@ -55,7 +55,7 @@ export default class AddToDashSelectDashModal extends Component {
           title={t`Add this question to a dashboard`}
           onClose={this.props.onClose}
         >
-          <DashboardPicker onChange={this.addToDashboard} />
+          <DashboardPicker onChange={this.addToDashboard} writeable={true} />
           <Link
             mt={1}
             onClick={() => this.setState({ shouldCreateDashboard: true })}

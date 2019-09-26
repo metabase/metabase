@@ -46,9 +46,10 @@
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
 
 (def ^:private CollectionChildrenOptions
-  {:archived? s/Bool
+  {:archived?  s/Bool
    ;; when specified, only return results of this type.
-   :model     (s/maybe (s/enum :card :dashboard :pulse :collection))})
+   :model      (s/maybe (s/enum :card :dashboard :pulse :collection))
+   :writeable? s/Bool})
 
 (defmulti ^:private fetch-collection-children
   "Functions for fetching the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -62,20 +63,20 @@
 
 (defmethod fetch-collection-children :card
   [_ collection {:keys [archived?]}]
-  (-> (db/select [Card :id :name :description :collection_position :display]
+  (-> (db/select [Card :id :name :description :collection_position :display :collection_id]
         :collection_id (:id collection)
         :archived      archived?)
       (hydrate :favorite)))
 
 (defmethod fetch-collection-children :dashboard
   [_ collection {:keys [archived?]}]
-  (db/select [Dashboard :id :name :description :collection_position]
+  (db/select [Dashboard :id :name :description :collection_position :collection_id]
     :collection_id (:id collection)
     :archived      archived?))
 
 (defmethod fetch-collection-children :pulse
   [_ collection {:keys [archived?]}]
-  (db/select [Pulse :id :name :collection_position]
+  (db/select [Pulse :id :name :collection_position :collection_id]
     :collection_id   (:id collection)
     :archived        archived?
     ;; exclude Alerts
@@ -89,12 +90,12 @@
 
 (s/defn ^:private collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
-  [collection                                     :- collection/CollectionWithLocationAndIDOrRoot
-   {:keys [model collections-only?], :as options} :- CollectionChildrenOptions]
+  [collection                  :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [model] :as options} :- CollectionChildrenOptions]
   (->> (for [model-kw [:collection :card :dashboard :pulse]
-            ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
-            :when    (or (not model) (= model model-kw))
-            item     (fetch-collection-children model-kw collection options)]
+             ;; only fetch models that are specified by the `model` param; or everything if it's `nil`
+             :when    (or (not model) (= model model-kw))
+             item     (fetch-collection-children model-kw collection options)]
          (assoc item :model model-kw))
        ;; sorting by name should be fine for now.
        (sort-by (comp str/lower-case :name))))
@@ -109,8 +110,11 @@
 (s/defn ^:private collection-items
   "Return items in the Collection, restricted by `children-options`.
   Works for either a normal Collection or the Root Collection."
-  [collection :- collection/CollectionWithLocationAndIDOrRoot, children-options :- CollectionChildrenOptions]
-  (collection-children collection children-options))
+  [collection :- collection/CollectionWithLocationAndIDOrRoot
+   {:keys [writeable?] :as children-options} :- CollectionChildrenOptions]
+  (cond->> (collection-children collection children-options)
+    writeable? (filter mi/can-write?)
+    true       (map #(dissoc % :collection_id))))
 
 (api/defendpoint GET "/:id"
   "Fetch a specific Collection with standard details added"
@@ -120,15 +124,18 @@
 (api/defendpoint GET "/:id/items"
   "Fetch a specific Collection's items with the following options:
 
-  *  `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
-  *  `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`."
-  [id model archived]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
-   archived (s/maybe su/BooleanString)}
+  * `model` - only include objects of a specific `model`. If unspecified, returns objects of all models
+  * `archived` - when `true`, return archived objects *instead* of unarchived ones. Defaults to `false`.
+  * `writeable` - when `true`, objects must be writeable"
+  [id model archived writeable]
+  {model     (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+   archived  (s/maybe su/BooleanString)
+   writeable (s/maybe su/BooleanString)}
   (collection-items
     (api/read-check Collection id)
-    {:model     (keyword model)
-     :archived? (Boolean/parseBoolean archived)}))
+    {:model      (keyword model)
+     :archived?  (Boolean/parseBoolean archived)
+     :writeable? (Boolean/parseBoolean writeable)}))
 
 
 ;;; -------------------------------------------- GET /api/collection/root --------------------------------------------
@@ -152,17 +159,19 @@
 
   This endpoint is intended to power a 'Root Folder View' for the Current User, so regardless you'll see all the
   top-level objects you're allowed to access."
-  [model archived]
-  {model    (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
-   archived (s/maybe su/BooleanString)}
+  [model archived writeable]
+  {model     (s/maybe (s/enum "card" "dashboard" "pulse" "collection"))
+   archived  (s/maybe su/BooleanString)
+   writeable (s/maybe su/BooleanString)}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (collection-items
     collection/root-collection
-    {:model     (if (mi/can-read? collection/root-collection)
-                  (keyword model)
-                  :collection)
-     :archived? (Boolean/parseBoolean archived)}))
+    {:model      (if (mi/can-read? collection/root-collection)
+                   (keyword model)
+                   :collection)
+     :archived?  (Boolean/parseBoolean archived)
+     :writeable? (Boolean/parseBoolean writeable)}))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------

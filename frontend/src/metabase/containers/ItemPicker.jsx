@@ -69,7 +69,14 @@ export default class ItemPicker extends React.Component {
   }
 
   render() {
-    const { value, onChange, collectionsById, style, className } = this.props;
+    const {
+      value,
+      onChange,
+      collectionsById,
+      style,
+      className,
+      writeable,
+    } = this.props;
     const { parentId, searchMode, searchString } = this.state;
 
     const models = new Set(this.props.models);
@@ -172,7 +179,7 @@ export default class ItemPicker extends React.Component {
                   ) : null;
                 })
               : null}
-            {(modelsIncludeNonCollections || searchString) && (
+            {(modelsIncludeNonCollections || searchString || writeable) && (
               <EntityListLoader
                 entityType="search"
                 entityQuery={{
@@ -182,6 +189,7 @@ export default class ItemPicker extends React.Component {
                   ...(models.size === 1
                     ? { model: Array.from(models)[0] }
                     : {}),
+                  ...(writeable ? { writeable: true } : {}),
                 }}
                 wrapped
               >

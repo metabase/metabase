@@ -156,29 +156,42 @@
                      {:name "Dine & Dashboard", :description nil, :model "dashboard"}
                      {:name "Electro-Magnetic Pulse", :model "pulse"}])
   (tt/with-temp Collection [collection {:name "Debt Collection"}]
+    (perms/revoke-collection-permissions! (group/all-users) collection)
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
       (tu/boolean-ids-and-timestamps
-       ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items"))))))
+        ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items"))))))
 
 ;; ...and that you can also filter so that you only see the children you want to see
 (expect
   [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
   (tt/with-temp Collection [collection {:name "Art Collection"}]
+    (perms/revoke-collection-permissions! (group/all-users) collection)
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
       (tu/boolean-ids-and-timestamps
-       ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?model=dashboard"))))))
+        ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?model=dashboard"))))))
 
 ;; Let's make sure the `archived` option works.
 (expect
   [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
   (tt/with-temp Collection [collection {:name "Art Collection"}]
+    (perms/revoke-collection-permissions! (group/all-users) collection)
     (perms/grant-collection-read-permissions! (group/all-users) collection)
     (with-some-children-of-collection collection
       (db/update-where! Dashboard {:collection_id (u/get-id collection)} :archived true)
       (tu/boolean-ids-and-timestamps
-       ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?archived=true"))))))
+        ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?archived=true"))))))
+
+;; Does not not return items if they're not writeable when writeable=true
+(expect
+  []
+  (tt/with-temp Collection [collection {:name "Debt Collection"}]
+    (perms/revoke-collection-permissions! (group/all-users) collection)
+    (perms/grant-collection-read-permissions! (group/all-users) collection)
+    (with-some-children-of-collection collection
+      (tu/boolean-ids-and-timestamps
+        ((user->client :rasta) :get 200 (str "collection/" (u/get-id collection) "/items?writeable=true"))))))
 
 ;;; --------------------------------- Fetching Personal Collections (Ours & Others') ---------------------------------
 
