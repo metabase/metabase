@@ -6,7 +6,6 @@ import { render, cleanup, fireEvent } from "@testing-library/react";
 import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
 import Visualization from "metabase/visualizations/components/Visualization";
-import PieChart from "metabase/visualizations/visualizations/PieChart";
 
 const series = rows => {
   const cols = [
@@ -61,7 +60,7 @@ describe("pie chart", () => {
 
   it("shouldn't show a condensed tooltip for just one squashed slice", () => {
     const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002]];
-    const { container, getAllByText, queryAllByText } = render(
+    const { container, queryAllByText } = render(
       <Visualization rawSeries={series(rows)} />,
     );
     const paths = container.querySelectorAll("path");
