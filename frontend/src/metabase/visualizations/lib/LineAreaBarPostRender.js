@@ -97,7 +97,7 @@ const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
 function onRenderSetLineWidth(chart) {
-  const dots = chart.svg()[0][0].getElementsByClassName("dot");
+  const dots = chart.svg()[0][0].querySelectorAll(".dot");
   if (dots.length < MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT) {
     const min = getMinElementSpacing(dots);
     if (min > 150) {

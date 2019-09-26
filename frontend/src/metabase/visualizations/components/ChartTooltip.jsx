@@ -43,7 +43,7 @@ export default class ChartTooltip extends Component {
     const rows = this._getRows();
     const hasEventOrElement =
       hovered &&
-      ((hovered.element && document.contains(hovered.element)) ||
+      ((hovered.element && document.body.contains(hovered.element)) ||
         hovered.event);
     const isOpen = rows.length > 0 && !!hasEventOrElement;
     return (
