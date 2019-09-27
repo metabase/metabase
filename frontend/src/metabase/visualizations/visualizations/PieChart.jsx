@@ -251,7 +251,10 @@ export default class PieChart extends Component {
     const [slices, others] = _.chain(rows)
       .map((row, index) => ({
         key: row[dimensionIndex],
+        // Value is used to determine arc size and is modified for very small
+        // other slices. We save displayValue for use in tooltips.
         value: row[metricIndex],
+        displayValue: row[metricIndex],
         percentage: row[metricIndex] / total,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
@@ -323,13 +326,13 @@ export default class PieChart extends Component {
       const slice = slices[index];
       if (!slice || slice.noHover) {
         return null;
-      } else if (slice === otherSlice) {
+      } else if (slice === otherSlice && others.length > 1) {
         return {
           index,
           event: event && event.nativeEvent,
           data: others.map(o => ({
             key: formatDimension(o.key, false),
-            value: formatMetric(o.value, false),
+            value: formatMetric(o.displayValue, false),
           })),
         };
       } else {
@@ -343,7 +346,7 @@ export default class PieChart extends Component {
             },
             {
               key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(slice.value),
+              value: formatMetric(slice.displayValue),
             },
           ].concat(
             showPercentInTooltip && slice.percentage != null
