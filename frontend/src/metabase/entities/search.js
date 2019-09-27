@@ -43,7 +43,6 @@ export default createEntity({
         })).map(item => ({
           collection_id: canonicalCollectionId(collection),
           archived: archived || false,
-          writeable: writeable || false,
           ...item,
         }));
       } else {
