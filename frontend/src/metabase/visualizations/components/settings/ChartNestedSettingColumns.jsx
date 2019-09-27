@@ -26,18 +26,15 @@ export default class ChartNestedSettingColumns extends React.Component {
     if (object) {
       return (
         <div>
-          {/* only show the back button if we have more than one column */}
-          {objects.length > 1 && (
-            <div
-              className="flex align-center mb2 cursor-pointer"
-              onClick={() => onChangeEditingObject()}
-            >
-              <Icon name="chevronleft" className="text-light" />
-              <span className="ml1 text-bold text-brand text-wrap">
-                {displayNameForColumn(object)}
-              </span>
-            </div>
-          )}
+          <div
+            className="flex align-center mb2 cursor-pointer"
+            onClick={() => onChangeEditingObject()}
+          >
+            <Icon name="chevronleft" className="text-light" />
+            <span className="ml1 text-bold text-brand text-wrap">
+              {displayNameForColumn(object)}
+            </span>
+          </div>
           {objectSettingsWidgets}
         </div>
       );
