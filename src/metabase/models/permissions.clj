@@ -21,7 +21,8 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [models :as models]]))
+             [models :as models]]
+            [clojure.core.match :as match]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    UTIL FNS                                                    |
@@ -236,6 +237,42 @@
   [permissions-set :- #{UserPath}, object-paths-set :- #{ObjectPath}]
   (every? (partial set-has-partial-permissions? permissions-set)
           object-paths-set))
+
+(defn assoc-db-description
+  [path db-id]
+  (assoc path 1 {:db-id   db-id
+                 :db-name (:name (db/select-one 'Database :id db-id))}))
+
+(defn assoc-table-description
+  [path table-id]
+  (assoc path 4 {:table-id table-id
+                 :table-name  (:name (db/select-one 'Table :id table-id))}))
+
+(defn assoc-collection-description
+  [path coll-id]
+  (assoc path 1 {:collection-id   coll-id
+                 :collection-name (:name (db/select-one 'Collection :id coll-id))}))
+
+(defn describe-permission
+  [permission]
+  {:permission-string  permission
+   :permission-details (->> (let [path (perms-parse/path (perms-parse/parser permission))]
+                              (match/match path
+                                [:db db-id]                         (assoc-db-description path db-id)
+                                [:db db-id :schemas]                (assoc-db-description path db-id)
+                                [:db db-id :schemas _]              (assoc-db-description path db-id)
+                                [:db db-id :schemas _ table-id & _] (-> path
+                                                                        (assoc-db-description db-id)
+                                                                        (assoc-table-description table-id))
+                                [:collection coll-id & _] (assoc-collection-description path coll-id)))
+                            rest
+                            vec)})
+
+(defn missing-permissions
+  [permissions-set object-paths-set]
+  (->> object-paths-set
+       (remove (partial set-has-partial-permissions? permissions-set))
+       (map describe-permission)))
 
 (s/defn perms-objects-set-for-parent-collection :- #{ObjectPath}
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.

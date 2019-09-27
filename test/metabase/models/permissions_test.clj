@@ -683,3 +683,16 @@
     (perms/grant-collection-readwrite-permissions!
      (group/all-users)
      collection)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                 Describe permissions                                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(tt/expect-with-temp [Database         [{db_id :id}    {:name "the_db"}]
+                      Table            [{table_id :id} {:db_id db_id :name "the_table"}]]
+  [{:permission-string  (format "/db/%d/schema/PUBLIC/table/%d/" db_id table_id),
+    :permission-details [{:db-id db_id :db-name "the_db"}
+                         :schemas
+                         "PUBLIC"
+                         {:table-id table_id :table-name "the_table"}]}]
+  (perms/missing-permissions #{} #{(format "/db/%d/schema/PUBLIC/table/%d/" db_id table_id)}))

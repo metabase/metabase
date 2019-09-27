@@ -20,7 +20,7 @@
 
   collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
 
-(def ^:private parser
+(def parser
   "Function thqat parses permission strings"
   (insta/parser grammar))
 
@@ -28,7 +28,7 @@
   [id]
   (if (= id "root") :root (Integer/parseInt id)))
 
-(defn- path
+(defn path
   "Recursively build permission path from parse tree"
   [tree]
   (match/match tree
