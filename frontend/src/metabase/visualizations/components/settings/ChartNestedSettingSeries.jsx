@@ -27,6 +27,8 @@ export default class ChartNestedSettingSeries extends React.Component {
     const objectKey = object && getObjectKey(object);
     const isSelected = single => objectKey === getObjectKey(single);
 
+    const display = object && object.card.display;
+    const isLineAreaBar = ["line", "area", "bar", "combo"].includes(display);
     const isStacked = settings["stackable.stack_type"] != null;
 
     return (
@@ -58,7 +60,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />
-                  {!isStacked ? (
+                  {isLineAreaBar && !isStacked ? (
                     <ButtonGroup
                       className="ml1 align-self-stretch"
                       value={settings.display}
