@@ -36,21 +36,21 @@
        (driver/with-driver (tx/the-driver-with-test-extensions driver#)
          ~@body))))
 
+(defmacro test-driver
+  "Like `test-drivers`, but for a single driver."
+  {:style/indent 1}
+  [driver & body]
+  `(with-driver-when-testing ~driver
+     (t/testing ~driver
+       ~@body)))
+
 (defmacro test-drivers
   "Execute body (presumably containing tests) against the drivers in `drivers` that  we're currently testing against
   (i.e., if they're listed in the env var `DRIVERS`)."
   {:style/indent 1}
   [drivers & body]
   `(doseq [driver# ~drivers]
-     (with-driver-when-testing driver#
-       (t/testing driver#
-         ~@body))))
-
-(defmacro test-driver
-  "Like `test-drivers`, but for a single driver."
-  {:style/indent 1}
-  [driver & body]
-  `(test-drivers [~driver] ~@body))
+     (test-driver driver#)))
 
 (defmacro ^:deprecated expect-with-drivers
   "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
