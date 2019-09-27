@@ -10,7 +10,7 @@ export default function SidebarContent({
   className,
   icon,
   title,
-  isTitleHidden = false,
+  titleOverride,
   color,
   onBack,
   onClose,
@@ -23,10 +23,13 @@ export default function SidebarContent({
   ) : null,
   children,
 }) {
+  if (titleOverride) {
+    ({ title, onBack } = titleOverride);
+  }
   return (
     <div className={cx(className, "flex flex-column justify-between")}>
       <div className="scroll-y">
-        {!isTitleHidden && (title || onBack || icon) && (
+        {(title || onBack || icon) && (
           <SidebarHeader
             className="mx3 my2 pt1"
             title={title}

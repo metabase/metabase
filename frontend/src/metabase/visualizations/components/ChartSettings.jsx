@@ -63,14 +63,6 @@ class ChartSettings extends Component {
     };
   }
 
-  componentDidUpdate() {
-    const { setIsSidebarTitleHidden, isSidebarTitleHidden } = this.props;
-    const shouldHideTitle = this._viewingColumnSettings();
-    if (setIsSidebarTitleHidden && isSidebarTitleHidden !== shouldHideTitle) {
-      setIsSidebarTitleHidden(shouldHideTitle);
-    }
-  }
-
   handleShowSection = section => {
     this.setState({ currentSection: section, currentWidget: null });
   };
@@ -143,8 +135,19 @@ class ChartSettings extends Component {
     return transformedSeries;
   }
 
-  _getWidgetsAndSections() {
+  render() {
+    const {
+      question,
+      addField,
+      noPreview,
+      children,
+      setSidebarTitleOverride,
+    } = this.props;
+
+    const settings = this._getSettings();
+    const rawSeries = this._getRawSeries();
     const widgets = this._getWidgets();
+
     const widgetsById = {};
     const sections = {};
 
@@ -187,28 +190,6 @@ class ChartSettings extends Component {
       visibleWidgets = sections[currentSection] || [];
     }
 
-    return { visibleWidgets, currentSection, sectionNames };
-  }
-
-  _viewingColumnSettings() {
-    const { visibleWidgets } = this._getWidgetsAndSections();
-    return (
-      visibleWidgets.length === 1 && visibleWidgets[0].id === "column_settings"
-    );
-  }
-
-  render() {
-    const { question, addField, noPreview, children } = this.props;
-
-    const settings = this._getSettings();
-    const rawSeries = this._getRawSeries();
-
-    const {
-      visibleWidgets,
-      currentSection,
-      sectionNames,
-    } = this._getWidgetsAndSections();
-
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
       question: question,
@@ -233,6 +214,7 @@ class ChartSettings extends Component {
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
+        setSidebarTitleOverride={setSidebarTitleOverride}
       />
     ));
 
@@ -254,7 +236,10 @@ class ChartSettings extends Component {
       // don't show section tabs for a single section
       sectionNames.length > 1 &&
       // hide the section picker if the only widget is column_settings
-      !this._viewingColumnSettings();
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings"
+      );
 
     // default layout with visualization
     return (
