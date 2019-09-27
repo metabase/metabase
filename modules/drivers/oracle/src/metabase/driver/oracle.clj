@@ -281,4 +281,4 @@
   (.getString resultset i))
 
 (defmethod unprepare/unprepare-value [:oracle Date] [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd hh:mm:ss.SSS ZZ" value)))
+  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" value)))

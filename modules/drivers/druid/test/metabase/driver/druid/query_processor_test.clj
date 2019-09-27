@@ -53,13 +53,13 @@
               [:and
                [:= [:field-id 1] "toucan"] [:= dt-field (str->absolute-dt "2015-10-04T00:00:00.000Z")]]))
           ":and clause with no temporal filters should be compiled to `nil` interval")
-      (is (= nil
+      (is (= ["2015-10-04T00:00:00.000Z/2015-10-04T00:00:00.001Z"]
              (filter-clause->intervals
               [:and
                [:= dt-field (str->absolute-dt "2015-10-04T00:00:00.000Z")]
                [:or
-                [:= dt-field (str->absolute-dt "2015-10-05T00:00:00.000Z")]
-                [:= dt-field (str->absolute-dt "2015-10-06T00:00:00.000Z")]]]))
+                [:>= dt-field (str->absolute-dt "2015-10-03T00:00:00.000Z")]
+                [:<  dt-field (str->absolute-dt "2015-10-11T00:00:00.000Z")]]]))
           ":and clause should ignore nested `:or` filters, since they can't be combined into a signle filter"))
     (testing :or
       (is (= ["2015-10-04T00:00:00.000Z/5000" "-5000/2015-10-11T00:00:00.000Z"]
@@ -67,7 +67,19 @@
               [:or
                [:>= dt-field (str->absolute-dt "2015-10-04T00:00:00.000Z")]
                [:<  dt-field (str->absolute-dt "2015-10-11T00:00:00.000Z")]]))
-          ":or filters should be combined into multiple intervals"))))
+          ":or filters should be combined into multiple intervals")
+      (is (= ["2015-10-04T00:00:00.000Z/5000"]
+             (filter-clause->intervals
+              [:or
+               [:>= dt-field (str->absolute-dt "2015-10-04T00:00:00.000Z")]
+               [:= [:field-id 1] "toucan"]]))
+          ":or clauses should ignore non-temporal filters")
+      (is (= nil
+             (filter-clause->intervals
+              [:or
+               [:= [:field-id 1] "toucan"]
+               [:= [:field-id 2] "threecan"]]))
+          ":or filters with no temporal filters should return nil"))))
 
 (defn- do-query->native [query]
   (driver/with-driver :druid
