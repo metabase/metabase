@@ -163,7 +163,7 @@
     {:query  "SELECT * FROM birds;"
      :params []}))
 
-(defn- run-spliced-count-query [table filter-clause]
+(defn- spliced-count-of [table filter-clause]
   (let [query        {:database (data/id)
                       :type     :query
                       :query    {:source-table (data/id table)
@@ -184,32 +184,32 @@
     (data/$ids venues
       (testing "splicing a string"
         (is (= 3
-               (run-spliced-count-query :venues [:starts-with $name "Sushi"])))
+               (spliced-count-of :venues [:starts-with $name "Sushi"])))
         (testing "containing single quotes -- this is done differently from driver to driver"
           (is (= 1
-                 (run-spliced-count-query :venues [:= $name "Barney's Beanery"])))))
+                 (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
       (testing "splicing an integer"
         (is (= 13
-               (run-spliced-count-query :venues [:= $price 3]))))
+               (spliced-count-of :venues [:= $price 3]))))
       (testing "splicing floating-point numbers"
         (is (= 13
-               (run-spliced-count-query :venues [:between $price 2.9 3.1]))))
+               (spliced-count-of :venues [:between $price 2.9 3.1]))))
       (testing "splicing nil"
         (is (= 0
-               (run-spliced-count-query :venues [:is-null $price])))))
+               (spliced-count-of :venues [:is-null $price])))))
     (data/dataset places-cam-likes
       (data/$ids places
         (testing "splicing a boolean"
           (is (= 2
-                 (run-spliced-count-query :places [:= $liked true]))))))
+                 (spliced-count-of :places [:= $liked true]))))))
     (data/$ids checkins
       (testing "splicing a `Date`"
         (is (= 3
-               (run-spliced-count-query :checkins [:= $date "2014-03-05"]))))))
+               (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
   ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
   (datasets/test-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
     (testing "splicing a `Timestamp`"
       (is (= 2
              (data/dataset test-data-with-time
                (data/$ids users
-                 (run-spliced-count-query :users [:= $last_login_time (Time. 9 30 0)]))))))))
+                 (spliced-count-of :users [:= $last_login_time (Time. 9 30 0)]))))))))
