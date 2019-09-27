@@ -17,7 +17,7 @@ import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import NoResults from "assets/img/no_results";
+import NoResults from "assets/img/no_results.svg";
 
 const PAGE_PADDING = [1, 2, 4];
 

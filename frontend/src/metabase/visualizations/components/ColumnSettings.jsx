@@ -13,7 +13,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
-import NoResults from "assets/img/no_results";
+import NoResults from "assets/img/no_results.svg";
 
 type SettingId = string;
 type Settings = { [id: SettingId]: any };

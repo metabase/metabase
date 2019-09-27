@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails";
 
-import NoResults from "assets/img/no_results";
+import NoResults from "assets/img/no_results.svg";
 
 const ErrorPageWrapper = fitViewport(({ fitClassNames, children }) => (
   <Flex

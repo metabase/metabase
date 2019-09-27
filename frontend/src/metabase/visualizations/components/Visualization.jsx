@@ -29,7 +29,7 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
-import NoResults from "assets/img/no_results";
+import NoResults from "assets/img/no_results.svg";
 
 import { assoc, setIn } from "icepick";
 import _ from "underscore";
