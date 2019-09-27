@@ -143,10 +143,11 @@ class ChartSettings extends Component {
       children,
       setSidebarTitleOverride,
     } = this.props;
+    const { currentWidget } = this.state;
 
     const settings = this._getSettings();
-    const rawSeries = this._getRawSeries();
     const widgets = this._getWidgets();
+    const rawSeries = this._getRawSeries();
 
     const widgetsById = {};
     const sections = {};
@@ -174,7 +175,6 @@ class ChartSettings extends Component {
           sectionNames[0];
 
     let visibleWidgets;
-    const { currentWidget } = this.state;
     let widget = currentWidget && widgetsById[currentWidget.id];
     if (widget) {
       widget = {
