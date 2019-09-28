@@ -1,13 +1,13 @@
 (ns metabase.util.ssh-test
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [expectations :refer :all]
+            [expectations :refer :all :as et]
             [metabase.util.ssh :as sshu :refer :all]))
 
 (def ^:private ssh-password "supersecret")
-(def ^:private ssh-publickey "ssh_test.pub")
-(def ^:private ssh-key "ssh_test")
-(def ^:private ssh-key-invalid "ssh_test_invalid")
+(def ^:private ssh-publickey "ssh/ssh_test.pub")
+(def ^:private ssh-key "ssh/ssh_test")
+(def ^:private ssh-key-invalid "ssh/ssh_test_invalid")
 (def ^:private ssh-mock-server-with-password-port 12221)
 (def ^:private ssh-mock-server-with-publickey-port 12222)
 (def ^:private ssh-mock-servers-atom (atom ()))
@@ -64,7 +64,7 @@
 
 ;; incorrect password
 (expect
-  (more-of ex
+  (et/more-of ex
            com.jcraft.jsch.JSchException ex
            "Auth fail" (.getMessage ex))
   (start-ssh-tunnel
@@ -85,7 +85,7 @@
 
 ;; incorrect ssh key
 (expect
-  (more-of ex
+  (et/more-of ex
            com.jcraft.jsch.JSchException ex
            "Auth fail" (.getMessage ex))
   (start-ssh-tunnel
