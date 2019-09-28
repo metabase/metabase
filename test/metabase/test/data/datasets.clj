@@ -50,7 +50,8 @@
   {:style/indent 1}
   [drivers & body]
   `(doseq [driver# ~drivers]
-     (test-driver driver#)))
+     (test-driver driver#
+       ~@body)))
 
 (defmacro ^:deprecated expect-with-drivers
   "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
