@@ -1,6 +1,7 @@
 (ns metabase.test.data.vertica
   "Code for creating / destroying a Vertica database from a `DatabaseDefinition`."
   (:require [clojure.java.jdbc :as jdbc]
+            [colorize.core :as colorize]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.test.data
              [interface :as tx]
@@ -8,8 +9,7 @@
              [sql-jdbc :as sql-jdbc.tx]]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]]
-            [metabase.util :as u]))
+             [load-data :as load-data]]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -69,3 +69,12 @@
   (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
   ;; Increase the connection limit; the default is 5 or so which causes tests to fail when too many connections are made
   (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))
+
+(defmethod tx/create-db! :vertica [driver dbdef & options]
+  (let [m (get-method tx/create-db! :sql-jdbc/test-extensions)]
+    (try
+      (apply m driver dbdef options)
+      (catch Throwable e
+        (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
+        (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
+        (apply m driver dbdef options)))))
