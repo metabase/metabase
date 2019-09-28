@@ -60,7 +60,7 @@
                [:or
                 [:>= dt-field (str->absolute-dt "2015-10-03T00:00:00.000Z")]
                 [:<  dt-field (str->absolute-dt "2015-10-11T00:00:00.000Z")]]]))
-          ":and clause should ignore nested `:or` filters, since they can't be combined into a signle filter"))
+          ":and clause should ignore nested `:or` filters, since they can't be combined into a single filter"))
     (testing :or
       (is (= ["2015-10-04T00:00:00.000Z/5000" "-5000/2015-10-11T00:00:00.000Z"]
              (filter-clause->intervals

@@ -105,7 +105,7 @@
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id}]
-  [(db/select-one-field Table :name, :id table-id) field-name])
+  [(db/select-one-field :name Table, :id table-id) field-name])
 
 (defmethod sql.qp/field->identifier :hive-like
   [_ field]

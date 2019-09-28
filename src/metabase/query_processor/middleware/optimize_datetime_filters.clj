@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.optimize-datetime-filters
-  "Middlware that optimizes `=` and `not=` datetime filters that use bucketing. Rewrites those filters as `between`
-  filters that do not use bucketing, so the data warehouses can better utilize indexes."
+  "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
+  bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
   (:require [metabase.mbql.util :as mbql.u]
             [metabase.util.date :as du]))
 
@@ -86,8 +86,26 @@
         &match))))
 
 (defn optimize-datetime-filters
-  "Middlware that optimizes `=` and `not=` datetime filters that use bucketing. Rewrites those filters as `between`
-  filters that do not use bucketing, so the data warehouses can better utilize indexes.
+  "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
+  bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
+  bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
+
+    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #inst \"2019-09-01\" :month]]
+    ->
+    [:and
+     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-09-01\" :month]]
+     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-10-01\" :month]]]
+
+  The equivalent SQL, before and after, looks like:
+
+    -- before
+    SELECT ... WHERE date_trunc('month', my_field) = date_trunc('month', timestamp '2019-09-01 00:00:00')
+
+    -- after
+    SELECT ... WHERE my_field >= timestamp '2019-09-01 00:00:00' AND my_field < timestamp '2019-10-01 00:00:00'
+
+  The idea here is that by avoiding casts/extraction/truncation operations, databases will be able to make better use
+  of indexes on these columns.
 
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."

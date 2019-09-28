@@ -319,15 +319,13 @@
 
 (defmethod parse-filter :and
   [[_ & args]]
-  (let [fields (filterv identity (map parse-filter args))]
-    (when (seq fields)
-      {:type :and, :fields fields})))
+  (when-let [fields (seq (keep identity (map parse-filter args)))]
+    {:type :and, :fields (vec fields)}))
 
 (defmethod parse-filter :or
   [[_ & args]]
-  (let [fields (filterv identity (map parse-filter args))]
-    (when (seq fields)
-      {:type :or, :fields fields})))
+  (when-let [fields (seq (keep identity (map parse-filter args)))]
+    {:type :or, :fields (vec fields)}))
 
 (defmethod parse-filter :not
   [[_ subclause]]
