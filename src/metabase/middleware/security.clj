@@ -70,11 +70,8 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'unsafe-inline'" ; needed for Google Fonts
-                                 "fonts.googleapis.com"]
+                                 "'unsafe-inline'"]
                   :font-src     ["'self'"
-                                 "fonts.gstatic.com"
-                                 "themes.googleusercontent.com"
                                  (when config/is-dev?
                                    "localhost:8080")]
                   :img-src      ["*"
