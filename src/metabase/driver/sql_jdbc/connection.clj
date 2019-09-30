@@ -85,7 +85,6 @@
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
-    (println "properties:" properties) ; NOCOMMIT
     (assoc (connection-pool/connection-pool-spec spec properties)
            :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
