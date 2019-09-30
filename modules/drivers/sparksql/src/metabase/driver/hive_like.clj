@@ -5,7 +5,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
@@ -17,6 +19,14 @@
            java.util.Date))
 
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
+
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
+  [driver]
+  ;; The Hive JDBC driver doesn't support `Connection.isValid()`, so we need to supply a test query for c3p0 to use to
+  ;; validate connections upon checkout.
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver)
+   {"preferredTestQuery" "SELECT 1"}))
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
   [_ database-type]

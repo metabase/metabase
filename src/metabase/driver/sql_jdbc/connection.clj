@@ -9,7 +9,7 @@
              [util :as u]]
             [metabase.models.database :refer [Database]]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [trs]]
              [ssh :as ssh]]
             [toucan.db :as db]))
 
@@ -28,16 +28,23 @@
 ;;; |                                           Creating Connection Pools                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private data-warehouse-connection-pool-properties
+(defmulti data-warehouse-connection-pool-properties
   "c3p0 connection pool properties for connected data warehouse DBs. See
   https://www.mchange.com/projects/c3p0/#configuration_properties for descriptions of properties.
 
   The c3p0 dox linked above do a good job of explaining the purpose of these properties and why you might set them.
   Generally, I have tried to choose configuration options for the data warehouse connection pools that minimize memory
   usage and maximize reliability, even when it comes with some added performance overhead. These pools are used for
-  powering Cards and the sync process, which are less sensitive to overhead than something like the application DB."
-  {
-   ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  powering Cards and the sync process, which are less sensitive to overhead than something like the application DB.
+
+  Drivers that need to override the default properties below can provide custom implementations of this method."
+  {:arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod data-warehouse-connection-pool-properties :default
+  [_]
+  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
@@ -72,18 +79,20 @@
 
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
-  [{:keys [id engine details], :as database}]
+  [{:keys [id details], driver :engine, :as database}]
   {:pre [(map? database)]}
-  (log/debug (u/format-color 'cyan "Creating new connection pool for database %d ..." id))
+  (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ...") driver id))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
-        spec                (connection-details->spec engine details-with-tunnel)]
-    (assoc (connection-pool/connection-pool-spec spec data-warehouse-connection-pool-properties)
+        spec                (connection-details->spec driver details-with-tunnel)
+        properties          (data-warehouse-connection-pool-properties driver)]
+    (println "properties:" properties) ; NOCOMMIT
+    (assoc (connection-pool/connection-pool-spec spec properties)
            :ssh-tunnel (:tunnel-connection details-with-tunnel))))
 
-(defn- destroy-pool! [database-id pool-spec]
-  (log/debug (u/format-color 'red (tru "Closing old connection pool for database {0} ..." database-id)))
+(defn- destroy-pool! [database-id {:keys [ssh-tunnel], :as pool-spec}]
+  (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
   (connection-pool/destroy-connection-pool! pool-spec)
-  (when-let [ssh-tunnel (:ssh-tunnel pool-spec)]
+  (when ssh-tunnel
     (.disconnect ^com.jcraft.jsch.Session ssh-tunnel)))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
