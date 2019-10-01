@@ -53,7 +53,7 @@
            (bigquery.tx/project-id))
           (f view-name)
           (finally
-            (execute! "DROP VIEW IF EXISTS `test_data.%s`" view-name)))))))
+            (bigquery.tx/execute! "DROP VIEW IF EXISTS `test_data.%s`" view-name)))))))
 
 (defmacro ^:private with-view [[view-name-binding] & body]
   `(do-with-view (fn [~(or view-name-binding '_)] ~@body)))
