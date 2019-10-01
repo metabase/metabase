@@ -72,16 +72,16 @@ type QuestionUpdateFn = (q: Question) => ?Promise<void>;
  */
 export default class Question {
   /**
-   * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery))
-   * need metadata for accessing databases, tables and metrics.
-   */
-  _metadata: Metadata;
-
-  /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
   _card: CardObject;
+
+  /**
+   * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
+   * need metadata for accessing databases, tables and metrics.
+   */
+  _metadata: Metadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
@@ -98,21 +98,21 @@ export default class Question {
    * Question constructor
    */
   constructor(
-    metadata: Metadata,
     card: CardObject,
+    metadata: Metadata,
     parameterValues?: ParameterValues,
     update?: ?QuestionUpdateFn,
   ) {
-    this._metadata = metadata;
     this._card = card;
+    this._metadata = metadata;
     this._parameterValues = parameterValues || {};
     this._update = update;
   }
 
   clone() {
     return new Question(
-      this._metadata,
       this._card,
+      this._metadata,
       this._parameterValues,
       this._update,
     );
@@ -159,7 +159,7 @@ export default class Question {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
 
-    return new Question(metadata, card, parameterValues);
+    return new Question(card, metadata, parameterValues);
   }
 
   metadata(): Metadata {
