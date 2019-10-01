@@ -34,10 +34,10 @@ import * as Urls from "metabase/lib/urls";
 import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
-  summarize,
-  pivot,
-  filter,
+  aggregate,
   breakout,
+  filter,
+  pivot,
   distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
@@ -430,37 +430,29 @@ export default class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  summarize(aggregation) {
-    const tableMetadata = this.tableMetadata();
-    return this.setCard(summarize(this.card(), aggregation, tableMetadata));
+  aggregate(a): Question {
+    return aggregate(this, a) || this;
   }
-  breakout(b) {
-    return this.setCard(breakout(this.card(), b));
+  breakout(b): ?Question {
+    return breakout(this, b) || this;
   }
-  pivot(breakouts = [], dimensions = []) {
-    const tableMetadata = this.tableMetadata();
-    return this.setCard(
-      // $FlowFixMe: tableMetadata could be null
-      pivot(this.card(), tableMetadata, breakouts, dimensions),
-    );
+  filter(operator, column, value): Question {
+    return filter(this, operator, column, value) || this;
   }
-  filter(operator, column, value) {
-    return this.setCard(filter(this.card(), operator, column, value));
+  pivot(breakouts = [], dimensions = []): Question {
+    return pivot(this, breakouts, dimensions) || this;
   }
-  drillUnderlyingRecords(dimensions) {
-    return this.setCard(drillUnderlyingRecords(this.card(), dimensions));
+  drillUnderlyingRecords(dimensions): Question {
+    return drillUnderlyingRecords(this, dimensions) || this;
   }
-  toUnderlyingRecords(): ?Question {
-    const newCard = toUnderlyingRecords(this.card());
-    if (newCard) {
-      return this.setCard(newCard);
-    }
+  toUnderlyingRecords(): Question {
+    return toUnderlyingRecords(this) || this;
   }
   toUnderlyingData(): Question {
     return this.setDisplay("table");
   }
-  distribution(column) {
-    return this.setCard(distribution(this.card(), column));
+  distribution(column): Question {
+    return distribution(this, column) || this;
   }
 
   composeThisQuery(): ?Question {
