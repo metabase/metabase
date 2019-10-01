@@ -131,7 +131,7 @@ export default class LeafletMap extends Component {
         },
       ],
       settings,
-      setCardAndRun,
+      onChangeCardAndRun,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -141,9 +141,13 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    setCardAndRun(
-      updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds),
+    const nextCard = updateLatLonFilter(
+      card,
+      latitudeColumn,
+      longitudeColumn,
+      bounds,
     );
+    onChangeCardAndRun({ nextCard });
 
     this.props.onFiltering(false);
   };

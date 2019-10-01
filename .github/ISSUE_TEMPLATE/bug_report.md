@@ -27,6 +27,9 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Information about your Metabase Installation:**
+
+You can get this information by going to Admin -> Troubleshooting.
+
 - Your browser and the version: (e.x. Chrome 52.1, Firefox 48.0, Safari 11.1, …)
 - Your operating system: (e.x. OS X 10.10, Windows 10.1809, Ubuntu 16.04, …)
 - Your databases: (e.x. MySQL, Postgres, MongoDB, …)

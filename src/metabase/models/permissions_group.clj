@@ -9,6 +9,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [toucan
@@ -82,6 +83,7 @@
   (db/delete! 'Permissions                 :group_id id)
   (db/delete! 'PermissionsGroupMembership  :group_id id)
   ;; Remove from LDAP mappings
+  (classloader/require 'metabase.integrations.ldap)
   (setting/set-json! :ldap-group-mappings
     (when-let [mappings (setting/get-json :ldap-group-mappings)]
       (zipmap (keys mappings)

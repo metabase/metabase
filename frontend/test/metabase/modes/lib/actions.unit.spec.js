@@ -1,6 +1,7 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
 import { drillFilter } from "metabase/modes/lib/actions";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
 describe("actions", () => {
   describe("drillFilter", () => {
@@ -13,16 +14,14 @@ describe("actions", () => {
           },
         },
         "2018-04-27T00:00:00.000+02:00",
-        {
-          base_type: "type/DateTime",
-          id: 123,
+        ORDERS.CREATED_AT.column({
           unit: "day",
-        },
+        }),
       );
       expect(newCard.dataset_query.query).toEqual({
         filter: [
           "=",
-          ["datetime-field", ["field-id", 123], "day"],
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"],
           "2018-04-27T00:00:00+02:00",
         ],
       });

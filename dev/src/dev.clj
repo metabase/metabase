@@ -5,12 +5,8 @@
              [db :as mdb]
              [handler :as handler]
              [plugins :as pluguns]
-             [server :as server]
-             [util :as u]]
-            [metabase.api.common :as api-common]
-            [metabase.models.interface :as mi]
-            [toucan.db :as tdb]))
-
+             [server :as server]]
+            [metabase.api.common :as api-common]))
 
 (defn init!
   []
@@ -32,11 +28,14 @@
   (stop!)
   (start!))
 
-(defn run-tests
-  [& ns-names]
-  (doseq [ns-name ns-names]
-    (require ns-name :reload))
-  (expectations/run-tests ns-names))
+(defn ns-unmap-all
+  "Unmap all interned vars in a namespace. Reset the namespace to a blank slate! Perfect for when you rename everything
+  and want to make sure you didn't miss a reference or when you redefine a multimethod.
+
+    (ns-unmap-all *ns*)"
+  [a-namespace]
+  (doseq [[symb] (ns-interns a-namespace)]
+    (ns-unmap a-namespace symb)))
 
 (defmacro require-model
   "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current session"

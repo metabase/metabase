@@ -52,7 +52,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: boolean,
+  isEditing: false | DashboardWithCards,
   isEditingParameter: boolean,
 
   parameters: Parameter[],
@@ -75,7 +75,7 @@ type Props = {
   cancelFetchDashboardCardData: () => Promise<void>,
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
-  setEditingDashboard: (isEditing: boolean) => void,
+  setEditingDashboard: (isEditing: false | DashboardWithCards) => void,
 
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   removeParameter: (parameterId: ParameterId) => void,
@@ -128,7 +128,8 @@ export default class Dashboard extends Component {
 
   static propTypes = {
     isEditable: PropTypes.bool,
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
@@ -191,7 +192,7 @@ export default class Dashboard extends Component {
       if (addCardOnLoad != null) {
         // we have to load our cards before we can add one
         await fetchCards();
-        this.setEditing(true);
+        this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
     } catch (error) {
@@ -204,7 +205,7 @@ export default class Dashboard extends Component {
     }
   }
 
-  setEditing = (isEditing: boolean) => {
+  setEditing = (isEditing: false | DashboardWithCards) => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
   };

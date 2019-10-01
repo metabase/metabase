@@ -8,6 +8,8 @@ import {
   cleanupFixture,
 } from "../__support__/visualizations";
 
+import { delay } from "metabase/lib/promise";
+
 import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -17,11 +19,14 @@ describe("Visualization", () => {
   const qs = s => element.querySelector(s);
   const qsa = s => [...element.querySelectorAll(s)];
 
-  const renderViz = series => {
+  const renderViz = async series => {
     ReactDOM.render(
       <Visualization ref={ref => (viz = ref)} rawSeries={series} />,
       element,
     );
+    // The chart isn't rendered until the next tick. This is due to ExplicitSize
+    // not setting the dimensions until after mounting.
+    await delay(0);
   };
 
   beforeEach(() => {
@@ -33,8 +38,8 @@ describe("Visualization", () => {
   });
 
   describe("scalar", () => {
-    it("should render", () => {
-      renderViz([
+    it("should render", async () => {
+      await renderViz([
         {
           card: { display: "scalar" },
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
@@ -47,8 +52,8 @@ describe("Visualization", () => {
   describe("bar", () => {
     const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
     describe("single series", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -67,8 +72,8 @@ describe("Visualization", () => {
       });
     });
     describe("multiseries: multiple metrics", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -90,8 +95,8 @@ describe("Visualization", () => {
       });
     });
     describe("multiseries: multiple breakouts", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -118,8 +123,8 @@ describe("Visualization", () => {
       });
     });
     describe("multiseries: dashcard", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card1", display: "bar" },
             data: {

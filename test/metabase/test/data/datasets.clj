@@ -36,27 +36,32 @@
        (driver/with-driver (tx/the-driver-with-test-extensions driver#)
          ~@body))))
 
+(defmacro test-driver
+  "Like `test-drivers`, but for a single driver."
+  {:style/indent 1}
+  [driver & body]
+  `(with-driver-when-testing ~driver
+     (t/testing ~driver
+       ~@body)))
+
 (defmacro test-drivers
   "Execute body (presumably containing tests) against the drivers in `drivers` that  we're currently testing against
   (i.e., if they're listed in the env var `DRIVERS`)."
   {:style/indent 1}
   [drivers & body]
   `(doseq [driver# ~drivers]
-     (with-driver-when-testing driver#
-       (t/testing driver#
-         ~@body))))
-
-(defmacro test-driver
-  "Like `test-drivers`, but for a single driver."
-  {:style/indent 1}
-  [driver & body]
-  `(test-drivers [~driver] ~@body))
+     (test-driver driver#
+       ~@body)))
 
 (defmacro ^:deprecated expect-with-drivers
   "Generate unit tests for all drivers in env var `DRIVERS`; each test will only run if we're currently testing the
   corresponding driver. `*driver*` is bound to the current driver inside each test.
 
-  DEPRECATED: use `deftest` with `test-drivers` instead."
+  DEPRECATED: use `deftest` with `test-drivers` instead.
+
+    (deftest my-test
+      (datasets/test-drivers #{:h2 :postgres}
+        (is (= ...))))"
   {:style/indent 1}
   [drivers expected actual]
   ;; Make functions to get expected/actual so the code is only compiled one time instead of for every single driver
@@ -71,19 +76,30 @@
   "Generate a unit test that only runs if we're currently testing against `driver`, and that binds `*driver*` when it
   runs.
 
-  DEPRECATED: Use `deftest` with `test-driver` instead."
+  DEPRECATED: Use `deftest` with `test-driver` instead.
+
+    (deftest my-test
+      (datasets/test-driver :mysql
+        (is (= ...))))"
   {:style/indent 1}
   [driver expected actual]
   `(expect-with-drivers [~driver] ~expected ~actual))
 
 (defmacro test-all-drivers
   "Execute body (presumably containing tests) against all drivers we're currently testing against."
+  {:style/indent 0}
   [& body]
   `(test-drivers tx.env/test-drivers ~@body))
 
 (defmacro ^:deprecated expect-with-all-drivers
   "Generate unit tests for all drivers specified in env var `DRIVERS`. `*driver*` is bound to the current driver inside
-  each test. DEPRECATED: Use `test-all-drivers` instead."
+  each test.
+
+  DEPRECATED: Use `test-all-drivers` instead.
+
+    (deftest my-test
+      (datasets/test-all-drivers
+        (is (= ...))))"
   {:style/indent 0}
   [expected actual]
   `(expect-with-drivers tx.env/test-drivers ~expected ~actual))

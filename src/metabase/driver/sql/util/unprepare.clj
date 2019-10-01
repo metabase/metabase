@@ -63,15 +63,14 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod unprepare :sql [driver [sql & args]]
-  (loop [sql sql, [arg & more-args, :as args] args]
-    (if-not (seq args)
-      sql
-      ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
-      ;; JSON operators amongst other things.
-      ;;
-      ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
-      ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
-      ;; order to handle those situations.
-      (recur
-       (str/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-value driver arg))
-       more-args))))
+  (reduce
+   (fn [sql arg]
+     ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
+     ;; JSON operators amongst other things.
+     ;;
+     ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
+     ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
+     ;; order to handle those situations.
+     (str/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-value driver arg)))
+   sql
+   args))

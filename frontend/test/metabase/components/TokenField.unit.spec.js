@@ -11,7 +11,7 @@ import {
   KEYCODE_DOWN,
   KEYCODE_TAB,
   KEYCODE_ENTER,
-  KEYCODE_COMMA,
+  KEY_COMMA,
 } from "metabase/lib/keyboard";
 
 const DEFAULT_OPTIONS = ["Doohickey", "Gadget", "Gizmo", "Widget"];
@@ -166,6 +166,19 @@ describe("TokenField", () => {
     type("ba");
     clickOption(0);
     expect(value()).toEqual(["bar"]);
+  });
+
+  it("should type a character that's on the comma key", () => {
+    component = mount(
+      <TokenFieldWithStateAndDefaults value={[]} options={["fooбar"]} />,
+    );
+
+    focus();
+    type("foo");
+    // 188 is comma on most layouts
+    input().simulate("keydown", { keyCode: 188, key: "б" });
+    // if that keydown was interpreted as a comma, the value would be "fooбar"
+    expect(input().props().value).toEqual("foo");
   });
 
   describe("when updateOnInputChange is provided", () => {
@@ -340,8 +353,12 @@ describe("TokenField", () => {
   });
 
   describe("key selection", () => {
-    [KEYCODE_TAB, KEYCODE_ENTER, KEYCODE_COMMA].map(key =>
-      it(`should allow the user to use arrow keys and then ${key} to select a recipient`, () => {
+    [
+      ["keyCode", KEYCODE_TAB],
+      ["keyCode", KEYCODE_ENTER],
+      ["key", KEY_COMMA],
+    ].map(([keyType, keyValue]) =>
+      it(`should allow the user to use arrow keys and then ${keyType}: ${keyValue} to select a recipient`, () => {
         const spy = jest.fn();
 
         component = mount(
@@ -367,7 +384,7 @@ describe("TokenField", () => {
         expect(component.state().selectedOptionValue).toBe(DEFAULT_OPTIONS[2]);
 
         input().simulate("keydown", {
-          keyCode: key,
+          [keyType]: keyValue,
           preventDefalut: jest.fn(),
         });
 

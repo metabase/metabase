@@ -15,13 +15,17 @@
              [permissions-group :as group :refer [PermissionsGroup]]
              [pulse :refer [Pulse]]
              [user :refer [User]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn force-create-personal-collections!
   "Force the creation of the Personal Collections for our various test users. They are eventually going to get

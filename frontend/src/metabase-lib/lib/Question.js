@@ -642,6 +642,10 @@ export default class Question {
     return this._card && this._card.id;
   }
 
+  setId(id: number): Question {
+    return this.setCard(assoc(this.card(), "id", id));
+  }
+
   description(): ?string {
     return this._card && this._card.description;
   }

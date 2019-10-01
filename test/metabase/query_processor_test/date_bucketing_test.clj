@@ -17,9 +17,13 @@
   (:require [clj-time
              [core :as time]
              [format :as tformat]]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [driver :as driver]
-             [query-processor-test :as qp.test :refer :all]
+             [query-processor :as qp]
+             [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test
@@ -46,7 +50,8 @@
             {:aggregation [[:count]]
              :breakout    [[:datetime-field $timestamp unit]]
              :limit       10}))
-        rows (qp.test/format-rows-by [->long-if-number int])))
+        qp.test/rows
+        (qp.test/format-rows-by [->long-if-number int])))
   ([unit, ^DateTimeZone tz]
    (tu/with-temporary-setting-values [report-timezone (.getID tz)]
      (sad-toucan-incidents-with-bucketing unit))))
@@ -127,7 +132,7 @@
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
     ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific timezone
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     ;; Databases that don't support report timezone will always return the time using the JVM's timezone setting Our
@@ -147,7 +152,7 @@
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
     ;; The change in report timezone has no affect on this group
@@ -171,7 +176,7 @@
     (sad-toucan-result (source-date-formatter eastern-tz) (result-date-formatter eastern-tz))
 
     ;; The JVM timezone should have no impact on a database that uses a report timezone
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter eastern-tz))
 
     :else
@@ -195,7 +200,7 @@
     (qp.test/tz-shifted-driver-bug? driver/*driver*)
     (sad-toucan-result (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (sad-toucan-result (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     :else
@@ -259,7 +264,7 @@
     (qp.test/tz-shifted-driver-bug? driver/*driver*)
     (results-by-hour (source-date-formatter pacific-tz) (result-date-formatter pacific-tz))
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-hour (source-date-formatter utc-tz) (result-date-formatter pacific-tz))
 
     :else
@@ -279,7 +284,7 @@
 ;; UTC results (i.e. pacific is 7 hours back of UTC at that time)
 (qp.test/expect-with-non-timeseries-dbs
   (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
-           (supports-report-timezone? driver/*driver*))
+           (qp.test/supports-report-timezone? driver/*driver*))
     [[0 8] [1 9] [2 7] [3 10] [4 10] [5 9] [6 6] [7 5] [8 7] [9 7]]
     [[0 13] [1 8] [2 4] [3 7] [4 5] [5 13] [6 10] [7 8] [8 9] [9 7]])
   (sad-toucan-incidents-with-bucketing :hour-of-day pacific-tz))
@@ -313,7 +318,7 @@
                          [:datetime-field $timestamp :default]
                          start-date-str
                          end-date-str]}))
-      rows
+      qp.test/rows
       first
       second
       (or 0)))
@@ -387,7 +392,7 @@
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [8 9 9 4 11 8 6 10 6 10])
@@ -420,7 +425,7 @@
                     (result-date-formatter eastern-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time eastern-tz)
                     (result-date-formatter eastern-tz)
                     [7 9 7 6 12 6 7 9 8 10])
@@ -453,7 +458,7 @@
                     (result-date-formatter pacific-tz)
                     [6 10 4 9 9 8 8 9 7 9])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-day (tformat/with-zone date-formatter-without-time pacific-tz)
                     (result-date-formatter pacific-tz)
                     [8 9 9 4 11 8 6 10 6 10])
@@ -474,7 +479,7 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
-           (supports-report-timezone? driver/*driver*))
+           (qp.test/supports-report-timezone? driver/*driver*))
     [[1 29] [2 36] [3 33] [4 29] [5 13] [6 38] [7 22]]
     [[1 28] [2 38] [3 29] [4 27] [5 24] [6 30] [7 24]])
   (sad-toucan-incidents-with-bucketing :day-of-week pacific-tz))
@@ -491,7 +496,7 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
-           (supports-report-timezone? driver/*driver*))
+           (qp.test/supports-report-timezone? driver/*driver*))
     [[1 8] [2 9] [3 9] [4 4] [5 11] [6 8] [7 6] [8 10] [9 6] [10 10]]
     [[1 6] [2 10] [3 4] [4 9] [5  9] [6 8] [7 8] [8  9] [9 7] [10  9]])
   (sad-toucan-incidents-with-bucketing :day-of-month pacific-tz))
@@ -508,7 +513,7 @@
 
 (qp.test/expect-with-non-timeseries-dbs
   (if (and (not (qp.test/tz-shifted-driver-bug? driver/*driver*))
-           (supports-report-timezone? driver/*driver*))
+           (qp.test/supports-report-timezone? driver/*driver*))
     [[152 8] [153 9] [154 9] [155 4] [156 11] [157 8] [158 6] [159 10] [160 6] [161 10]]
     [[152 6] [153 10] [154 4] [155 9] [156  9] [157  8] [158 8] [159  9] [160 7] [161  9]])
   (sad-toucan-incidents-with-bucketing :day-of-year pacific-tz))
@@ -582,7 +587,7 @@
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [49 47 39 58 7])
@@ -614,7 +619,7 @@
                      (result-date-formatter eastern-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time eastern-tz)
                      (result-date-formatter eastern-tz)
                      [47 48 39 59 7])
@@ -643,7 +648,7 @@
                      (result-date-formatter pacific-tz)
                      [46 47 40 60 7])
 
-    (supports-report-timezone? driver/*driver*)
+    (qp.test/supports-report-timezone? driver/*driver*)
     (results-by-week (tformat/with-zone date-formatter-without-time pacific-tz)
                      (result-date-formatter pacific-tz)
                      [49 47 39 58 7])
@@ -670,7 +675,7 @@
     (#{:sqlserver :sqlite :oracle :sparksql} driver/*driver*)
     [[23 54] [24 46] [25 39] [26 61]]
 
-    (and (supports-report-timezone? driver/*driver*)
+    (and (qp.test/supports-report-timezone? driver/*driver*)
          (not (= :redshift driver/*driver*)))
     [[23 49] [24 47] [25 39] [26 58] [27 7]]
 
@@ -691,7 +696,7 @@
       (= :sqlite driver/*driver*)
       "2015-06-01"
 
-      (supports-report-timezone? driver/*driver*)
+      (qp.test/supports-report-timezone? driver/*driver*)
       "2015-06-01T00:00:00.000-07:00"
 
       :else
@@ -704,7 +709,7 @@
       (= :sqlite driver/*driver*)
       "2015-06-01"
 
-      (supports-report-timezone? driver/*driver*)
+      (qp.test/supports-report-timezone? driver/*driver*)
       "2015-06-01T00:00:00.000-04:00"
 
       :else
@@ -732,7 +737,7 @@
   [[(cond (= :sqlite driver/*driver*)
           "2015-04-01"
 
-          (supports-report-timezone? driver/*driver*)
+          (qp.test/supports-report-timezone? driver/*driver*)
           "2015-04-01T00:00:00.000-07:00"
 
           :else
@@ -744,7 +749,7 @@
   [[(cond (= :sqlite driver/*driver*)
           "2015-04-01"
 
-          (supports-report-timezone? driver/*driver*)
+          (qp.test/supports-report-timezone? driver/*driver*)
           "2015-04-01T00:00:00.000-04:00"
 
           :else
@@ -762,7 +767,7 @@
   [[2 200]]
   (sad-toucan-incidents-with-bucketing :quarter-of-year pacific-tz))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;e
 ;;
 ;; Grouping by year tests
 ;;
@@ -773,7 +778,7 @@
       (= :sqlite driver/*driver*)
       "2015-01-01"
 
-      (supports-report-timezone? driver/*driver*)
+      (qp.test/supports-report-timezone? driver/*driver*)
       "2015-01-01T00:00:00.000-08:00"
       :else
       "2015-01-01T00:00:00.000Z")
@@ -961,3 +966,49 @@
           {:aggregation [[:count]]
            :filter      [:= [:field-id $timestamp] (str (du/format-date "yyyy-MM-dd" (du/date-trunc :day))
                                                         "T14:16:00.000Z")]})))))
+
+(def ^:private addition-unit-filtering-vals
+  [[3        :day             "2014-03-03"]
+   [135      :day-of-week     1]
+   [36       :day-of-month    1]
+   [9        :day-of-year     214]
+   [11       :week            "2014-03-03"]
+   [#{7 8 9} :week-of-year    2]
+   [48       :month           "2014-03"]
+   [38       :month-of-year   1]
+   [107      :quarter         "2014-01"]
+   [200      :quarter-of-year 1]
+   [498      :year            "2014"]])
+
+(defn- count-of-checkins [unit filter-value]
+  (ffirst
+   (qp.test/format-rows-by [int]
+     (qp.test/rows
+       (data/run-mbql-query checkins
+         {:aggregation [[:count]]
+          :filter      [:= [:datetime-field $date unit] filter-value]})))))
+
+(deftest additional-unit-filtering-tests
+  (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
+    (datasets/test-drivers qp.test/non-timeseries-drivers
+      (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
+        (testing unit
+          (let [result (count-of-checkins unit filter-value)]
+            (if (integer? expected-count)
+              (is (= expected-count result)
+                  (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count))
+              (is (contains? expected-count result)
+                  (format "count of rows where (= (%s date) %s) should be one of: %s"
+                          (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
+
+(deftest legacy-default-datetime-bucketing-test
+  (is (= (str "SELECT count(*) AS \"count\" "
+              "FROM \"PUBLIC\".\"CHECKINS\" "
+              "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+         (:query
+          (qp/query->native
+            (data/mbql-query checkins
+              {:aggregation [[:count]]
+               :filter      [:= $date [:relative-datetime :current]]}))))
+      (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for legacy "
+           "reasons. See #9014")))

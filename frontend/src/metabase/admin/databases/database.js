@@ -140,6 +140,7 @@ export const addSampleDataset = createThunkAction(
     return async function(dispatch, getState) {
       try {
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        dispatch(Databases.actions.fetchList(undefined, { reload: true }));
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {

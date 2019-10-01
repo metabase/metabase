@@ -512,7 +512,10 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns alias for addBreakout
    */
-  breakout(breakout: Breakout | Dimension): StructuredQuery {
+  breakout(breakout: Breakout | Dimension | Field): StructuredQuery {
+    if (breakout instanceof Field) {
+      breakout = breakout.dimension();
+    }
     if (breakout instanceof Dimension) {
       breakout = breakout.mbql();
     }
@@ -524,6 +527,20 @@ export default class StructuredQuery extends AtomicQuery {
    */
   filter(filter: Filter | FilterWrapper) {
     return this.addFilter(filter);
+  }
+
+  /**
+   * @returns alias for addSort
+   */
+  sort(sort: OrderBy) {
+    return this.addSort(sort);
+  }
+
+  /**
+   * @returns alias for addJoin
+   */
+  join(join) {
+    return this.addJoin(join);
   }
 
   // JOINS
@@ -1265,6 +1282,7 @@ export default class StructuredQuery extends AtomicQuery {
       column,
       c => this.fieldReferenceForColumn_LEGACY(c),
       "StructuredQuery::fieldReferenceForColumn",
+      ["field-literal"],
     );
   }
 

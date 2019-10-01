@@ -1,6 +1,7 @@
 import moment from "moment";
 
 import { getClickHoverObject } from "metabase/visualizations/lib/apply_tooltips";
+import { getDatas } from "metabase/visualizations/lib/renderer_utils";
 
 import {
   getFormattedTooltips,
@@ -16,7 +17,7 @@ describe("getClickHoverObject", () => {
     const cols = [StringColumn(), NumberColumn()];
     const rows = [["foobar", 123]];
     const otherArgs = {
-      series: [{ data: { cols, rows }, card: {} }],
+      ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
       event: {},
@@ -41,7 +42,28 @@ describe("getClickHoverObject", () => {
       ["2016-05-01T00:00:00.000Z", 3],
     ];
     const otherArgs = {
-      series: [{ data: { cols, rows }, card: {} }],
+      ...seriesAndData({ cols, rows }),
+      seriesIndex: 0,
+      classList: [],
+      event: {},
+    };
+
+    const obj = getClickHoverObject(d, otherArgs);
+
+    expect(getFormattedTooltips(obj)).toEqual(["April, 2016", "2"]);
+  });
+
+  it("should show the correct tooltip for months", () => {
+    const d = {
+      data: {
+        key: moment("2016-04-01T00:00:00.000Z", "YYYY-MM-DDTHH:mm:ss.SSSSZ"),
+        value: 123,
+      },
+    };
+    const cols = [DateTimeColumn({ unit: "month" }), NumberColumn()];
+    const rows = [["2016-03", 1], ["2016-04", 2], ["2016-05", 3]];
+    const otherArgs = {
+      ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
       event: {},
@@ -60,7 +82,7 @@ describe("getClickHoverObject", () => {
     const cols = [StringColumn(), NumberColumn()];
     const rows = [["foobar", 123]];
     const otherArgs = {
-      series: [{ data: { cols, rows }, card: {} }],
+      ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       element: "DOM element",
     };
@@ -97,7 +119,7 @@ describe("getClickHoverObject", () => {
     ];
     const rows = [["foobar", 123, "barfoo"]];
     const otherArgs = {
-      series: [{ data: { cols, rows }, card: {} }],
+      ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
       event: {},
@@ -114,7 +136,7 @@ describe("getClickHoverObject", () => {
     const cols = [StringColumn(), BooleanColumn()];
     const rows = [["foobar", "true"]];
     const otherArgs = {
-      series: [{ data: { cols, rows }, card: {} }],
+      ...seriesAndData({ cols, rows }),
       seriesIndex: 0,
       classList: [],
       event: {},
@@ -129,4 +151,25 @@ describe("getClickHoverObject", () => {
     expect(dimValue).toBe(true);
     expect(dValue).toBe(true);
   });
+
+  it("should show correct tooltip for nulls", () => {
+    const d = { data: { key: "(empty)", value: "true" } };
+    const cols = [StringColumn(), NumberColumn()];
+    const rows = [["foobar", 1], [null, 2], ["barfoo", 3]];
+    const otherArgs = {
+      ...seriesAndData({ cols, rows }),
+      seriesIndex: 0,
+      classList: [],
+      event: {},
+    };
+
+    const obj = getClickHoverObject(d, otherArgs);
+    expect(getFormattedTooltips(obj)).toEqual(["(empty)", "2"]);
+  });
 });
+
+function seriesAndData({ cols, rows }) {
+  const series = [{ data: { cols, rows }, card: {} }];
+  const datas = getDatas({ series, settings: {} });
+  return { series, datas };
+}

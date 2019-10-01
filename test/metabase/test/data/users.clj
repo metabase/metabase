@@ -24,7 +24,7 @@
 ;; *  lucky
 ;; *  trashbird - inactive
 
-(def ^:private ^:const user->info
+(def ^:private user->info
   {:rasta     {:email    "rasta@metabase.com"
                :first    "Rasta"
                :last     "Toucan"
@@ -52,6 +52,8 @@
 
 ;;; ------------------------------------------------- Test User Fns --------------------------------------------------
 
+(def ^:private create-user-lock (Object.))
+
 (defn- fetch-or-create-user!
   "Create User if they don't already exist and return User."
   [& {:keys [email first last password superuser active]
@@ -60,18 +62,20 @@
   {:pre [(string? email) (string? first) (string? last) (string? password) (m/boolean? superuser) (m/boolean? active)]}
   (initialize/initialize-if-needed! :db)
   (or (User :email email)
-      (db/insert! User
-        :email        email
-        :first_name   first
-        :last_name    last
-        :password     password
-        :is_superuser superuser
-        :is_qbnewb    true
-        :is_active    active)))
+      (locking create-user-lock
+        (or (User :email email)
+            (db/insert! User
+              :email        email
+              :first_name   first
+              :last_name    last
+              :password     password
+              :is_superuser superuser
+              :is_qbnewb    true
+              :is_active    active)))))
 
 
 (s/defn fetch-user :- UserInstance
-  "Fetch the User object associated with USERNAME. Creates user if needed.
+  "Fetch the User object associated with `username`. Creates user if needed.
 
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username :- TestUserName]
@@ -81,13 +85,14 @@
   "Force creation of the test users if they don't already exist."
   ([]
    (apply create-users-if-needed! usernames))
+
   ([& usernames :- [TestUserName]]
    (doseq [username usernames]
      ;; fetch-user will force creation of users
      (fetch-user username))))
 
 (def ^{:arglists '([username])} user->id
-  "Memoized fn that returns the ID of User associated with USERNAME. Creates user if needed.
+  "Memoized fn that returns the ID of User associated with `username`. Creates user if needed.
 
     (user->id :rasta) -> 4"
   (memoize
@@ -96,7 +101,7 @@
      (u/get-id (fetch-user username)))))
 
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
-  "Return a map with `:username` and `:password` for User with USERNAME.
+  "Return a map with `:username` and `:password` for User with `username`.
 
     (user->credentials :rasta) -> {:username \"rasta@metabase.com\", :password \"blueberries\"}"
   [username :- TestUserName]
@@ -119,8 +124,10 @@
   "Return cached session token for a test User, logging in first if needed."
   [username :- TestUserName]
   (or (@tokens username)
-      (u/prog1 (http/authenticate (user->credentials username))
-        (swap! tokens assoc username <>))
+      (locking tokens
+        (or (@tokens username)
+            (u/prog1 (http/authenticate (user->credentials username))
+              (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
 
@@ -128,7 +135,8 @@
   "Clear any cached session tokens, which may have expired or been removed. You should do this in the even you get a
   `401` unauthenticated response, and then retry the request."
   []
-  (reset! tokens {}))
+  (locking tokens
+    (reset! tokens {})))
 
 (defn- client-fn [username & args]
   (try
@@ -142,7 +150,7 @@
         (apply client-fn username args)))))
 
 (s/defn user->client :- (s/pred fn?)
-  "Returns a `metabase.http-client/client` partially bound with the credentials for User with USERNAME.
+  "Returns a `metabase.http-client/client` partially bound with the credentials for User with `username`.
    In addition, it forces lazy creation of the User if needed.
 
      ((user->client) :get 200 \"meta/table\")"

@@ -121,7 +121,7 @@ import routeless from "metabase/hoc/Routeless";
 export class FullPageModal extends Component {
   componentDidMount() {
     this._modalElement = document.createElement("div");
-    this._modalElement.className = "Modal--full";
+    this._modalElement.className = "ModalContainer";
     document.querySelector("body").appendChild(this._modalElement);
 
     // save the scroll position, scroll to the top left, and disable scrolling
@@ -172,12 +172,23 @@ export class FullPageModal extends Component {
         }
       >
         {motionStyle => (
-          <div className="full-height relative scroll-y" style={motionStyle}>
-            {getModalContent({
-              ...this.props,
-              fullPageModal: true,
-              formModal: !!this.props.form,
-            })}
+          <div className="Modal--full">
+            {/* Using an OnClickOutsideWrapper is weird since this modal
+              occupies the entire screen. We do this to put this modal on top of
+              the OnClickOutsideWrapper popover stack.  Otherwise, clicks within
+              this modal might be seen as clicks outside another popover. */}
+            <OnClickOutsideWrapper>
+              <div
+                className="full-height relative scroll-y"
+                style={motionStyle}
+              >
+                {getModalContent({
+                  ...this.props,
+                  fullPageModal: true,
+                  formModal: !!this.props.form,
+                })}
+              </div>
+            </OnClickOutsideWrapper>
           </div>
         )}
       </Motion>,

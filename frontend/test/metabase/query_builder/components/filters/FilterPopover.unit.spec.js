@@ -11,33 +11,25 @@ import OperatorSelector from "metabase/query_builder/components/filters/Operator
 import CheckBox from "metabase/components/CheckBox";
 
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
-  ORDERS_TOTAL_FIELD_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID,
-  PRODUCT_TILE_FIELD_ID,
+  SAMPLE_DATASET,
+  ORDERS,
+  PRODUCTS,
   metadata,
   StaticEntitiesProvider,
 } from "__support__/sample_dataset_fixture";
 
 const QUERY = Question.create({
-  databaseId: DATABASE_ID,
-  tableId: ORDERS_TABLE_ID,
+  databaseId: SAMPLE_DATASET.id,
+  tableId: ORDERS.id,
   metadata,
 })
   .query()
   .addAggregation(["count"])
-  .addFilter([
-    "time-interval",
-    ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-    -30,
-    "day",
-  ])
-  .addFilter(["=", ["field-id", ORDERS_TOTAL_FIELD_ID], 1234])
+  .addFilter(["time-interval", ["field-id", ORDERS.CREATED_AT.id], -30, "day"])
+  .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 1234])
   .addFilter([
     "contains",
-    ["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_TILE_FIELD_ID],
+    ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
     "asdf",
   ]);
 

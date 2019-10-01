@@ -12,8 +12,8 @@ import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
 
 import Question from "metabase-lib/lib/Question";
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
+  SAMPLE_DATASET,
+  ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
@@ -30,8 +30,8 @@ const getVisualization = (question, results, onChangeCardAndRun) =>
   );
 
 const question = Question.create({
-  databaseId: DATABASE_ID,
-  tableId: ORDERS_TABLE_ID,
+  databaseId: SAMPLE_DATASET.id,
+  tableId: ORDERS.id,
   metadata,
 })
   .query()

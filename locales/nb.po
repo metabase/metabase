@@ -11908,7 +11908,7 @@ msgstr ""
 
 #: src/metabase/sync/sync_metadata/fields/sync_instances.clj
 msgid "Error retiring {0}"
-msgstr ""
+msgstr "Feil ved arkivering av {0}"
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Database type of {0} has changed from ''{1}'' to ''{2}''."
@@ -11924,15 +11924,15 @@ msgstr ""
 
 #: src/metabase/sync/sync_metadata/fields/sync_metadata.clj
 msgid "Comment has been added for {0}."
-msgstr ""
+msgstr "Kommentar ble lagt til for {0}"
 
 #: src/metabase/task.clj
 msgid "Stopping Quartz Scheduler {0}"
-msgstr ""
+msgstr "Stopper Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Starting Quartz Scheduler {0}"
-msgstr ""
+msgstr "Starter Quartz Scheduler {0}"
 
 #: src/metabase/task.clj
 msgid "Error loading tasks namespace {0}"
@@ -11958,7 +11958,7 @@ msgstr "Sender anonym brukerstatistikk"
 
 #: src/metabase/task/send_anonymous_stats.clj
 msgid "Error sending anonymous usage stats"
-msgstr ""
+msgstr "Feil med å sende anonymt bruker statistikk"
 
 #: src/metabase/task/send_pulses.clj
 msgid "Error sending Pulse {0}"
@@ -12140,11 +12140,11 @@ msgstr "Nullstill passord"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:212
 msgid "Deactivate user"
-msgstr ""
+msgstr "Deaktiver bruker"
 
 #: frontend/src/metabase/admin/people/containers/UserActivationModal.jsx:47
 msgid "Reactivate {0}?"
-msgstr ""
+msgstr "Aktiver {0}?"
 
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:63
 msgid "We couldn’t send them an email invitation, so make sure to tell them to log in using {0} and this password we’ve generated for them:"
@@ -12152,19 +12152,19 @@ msgstr ""
 
 #: frontend/src/metabase/entities/collections.js:24
 msgid "collection"
-msgstr ""
+msgstr "kolleksjon"
 
 #: frontend/src/metabase/entities/collections.js:25
 msgid "collections"
-msgstr ""
+msgstr "kolleksjoner"
 
 #: frontend/src/metabase/entities/dashboards.js:32
 msgid "dashboard"
-msgstr ""
+msgstr "tavle"
 
 #: frontend/src/metabase/entities/dashboards.js:33
 msgid "dashboards"
-msgstr ""
+msgstr "tavler"
 
 #: frontend/src/metabase/entities/users.js:37
 msgid "First name is required"

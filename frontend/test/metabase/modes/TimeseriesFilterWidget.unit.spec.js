@@ -5,8 +5,8 @@ import { mount } from "enzyme";
 
 import Question from "metabase-lib/lib/Question";
 import {
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
+  SAMPLE_DATASET,
+  ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
 
@@ -21,8 +21,8 @@ const getTimeseriesFilterWidget = question => (
 
 describe("TimeseriesFilterWidget", () => {
   const questionWithoutFilter = Question.create({
-    databaseId: DATABASE_ID,
-    tableId: ORDERS_TABLE_ID,
+    databaseId: SAMPLE_DATASET.id,
+    tableId: ORDERS.id,
     metadata,
   })
     .query()

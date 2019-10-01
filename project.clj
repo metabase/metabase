@@ -17,7 +17,9 @@
    "run"                               ["with-profile" "+run" "run"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
-   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
+   "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
+                                        "--max-line-length" "205"
+                                        "--exclude-profiles" "compare-h2-dbs"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -25,7 +27,9 @@
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
    "repl"                              ["with-profile" "+repl" "repl"]
-   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]}
+   "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
+   "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
+
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -87,6 +91,7 @@
    [environ "1.1.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
+   [instaparse "1.4.10"]                                              ; Make your own parser
    [io.forward/yaml "1.0.9"                                           ; Clojure wrapper for YAML library SnakeYAML (which we already use for liquidbase)
     :exclusions [org.clojure/clojure
                  org.flatland/ordered
@@ -101,7 +106,7 @@
    [me.raynes/fs "1.4.6"]                                   ; FS tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.3.4"]                                            ; MBQL language schema & util fns
+   [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [methodical "0.9.4-alpha"]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -125,14 +130,15 @@
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
-   [weavejester/dependency "0.2.1"]]                                  ; Dependency graphs and topological sorting
+   [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
+   ]
 
   :main ^:skip-aot metabase.core
 
   ;; TODO - WHAT DOES THIS DO?
   :manifest
   {"Liquibase-Package"
-   #=(eval
+   #= (eval
        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
@@ -161,7 +167,7 @@
      [ring/ring-mock "0.3.2"]]
 
     :plugins
-    [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
+    [[lein-environ "1.1.0"]] ; easy access to environment variables
 
     :injections
     [(require 'pjstadig.humane-test-output)
@@ -238,11 +244,13 @@
     {:include-drivers :all}]
 
    :repl
-   [:include-all-drivers]
+   [:include-all-drivers
+    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
 
    :bikeshed
    [:include-all-drivers
-    {:plugins [[lein-bikeshed "0.4.1"]]}]
+    {:plugins
+     [[lein-bikeshed "0.4.1"]]}]
 
    :eastwood
    [:include-all-drivers
@@ -313,11 +321,15 @@
    ;; Profile Metabase start time with `lein profile`
    :profile
    {:jvm-opts ["-XX:+CITime"                                          ; print time spent in JIT compiler
-               "-XX:+PrintGC"]}                                       ; print a message when garbage collection takes place
+               "-XX:+PrintGC"]} ; print a message when garbage collection takes place
 
    ;; get the H2 shell with 'lein h2'
    :h2-shell
    {:main org.h2.tools.Shell}
 
    :generate-automagic-dashboards-pot
-   {:main metabase.automagic-dashboards.rules}})
+   {:main metabase.automagic-dashboards.rules}
+
+   :compare-h2-dbs
+   {:main ^:skip-aot metabase.cmd.compare-h2-dbs
+    :source-paths ["test"]}})

@@ -257,6 +257,24 @@ export default class Dimension {
     return this;
   }
 
+  foreign(dimension: Dimension): FKDimension {
+    return new FKDimension(
+      this,
+      [dimension.mbql()],
+      this._metadata,
+      this._query,
+    );
+  }
+
+  datetime(unit: DatetimeUnit): DatetimeFieldDimension {
+    return new DatetimeFieldDimension(
+      this,
+      [unit],
+      this._metadata,
+      this._query,
+    );
+  }
+
   /**
    * The underlying field for this dimension
    */
@@ -314,14 +332,16 @@ export default class Dimension {
     return "";
   }
 
-  column() {
+  column(extra = {}) {
+    const field = this.baseDimension().field();
     return {
+      id: field.id,
+      base_type: field.base_type,
+      special_type: field.special_type,
       name: this.columnName(),
       display_name: this.displayName(),
-      ...this.baseDimension()
-        .field()
-        .column(),
       field_ref: this.mbql(),
+      ...extra,
     };
   }
 
@@ -572,10 +592,11 @@ export class FKDimension extends FieldDimension {
     return this._dest;
   }
 
-  column() {
+  column(extra = {}) {
     return {
       ...super.column(),
       fk_field_id: this.fk().field().id,
+      ...extra,
     };
   }
 
@@ -676,10 +697,11 @@ export class DatetimeFieldDimension extends FieldDimension {
     return t`by ${formatBucketing(this._args[0]).toLowerCase()}`;
   }
 
-  column() {
+  column(extra = {}) {
     return {
       ...super.column(),
       unit: this.unit(),
+      ...extra,
     };
   }
 
@@ -772,10 +794,11 @@ export class ExpressionDimension extends Dimension {
       id: this.mbql(),
       name: this.name(),
       display_name: this.displayName(),
+      special_type: null,
       base_type: "type/Float",
       // HACK: need to thread the query through to this fake Field
       query: this._query,
-      table: this._query.table(),
+      table: this._query ? this._query.table() : null,
     });
   }
 
@@ -820,7 +843,7 @@ export class AggregationDimension extends Dimension {
     return null;
   }
 
-  column() {
+  column(extra = {}) {
     const [short] = this.aggregation() || [];
     return {
       ...super.column(),
@@ -830,6 +853,7 @@ export class AggregationDimension extends Dimension {
       display_name: short,
       name: short,
       source: "aggregation",
+      ...extra,
     };
   }
 

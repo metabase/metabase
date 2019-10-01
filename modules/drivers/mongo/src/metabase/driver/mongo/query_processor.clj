@@ -242,7 +242,7 @@
                      (stringify format-string value))
                     ([format-string v]
                      {:___date (du/format-date format-string v)}))
-        extract   (u/rpartial du/date-extract value)]
+        extract   #(du/date-extract % value)]
     (case (or unit :default)
       :default         value
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
@@ -256,10 +256,10 @@
       :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
       :week-of-year    (extract :week-of-year)
       :month           (stringify "yyyy-MM")
-      :month-of-year   (extract :month)
+      :month-of-year   (extract :month-of-year)
       :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
       :quarter-of-year (extract :quarter-of-year)
-      :year            (stringify "yyyy-01-01"))))
+      :year            (stringify "yyyy"))))
 
 
 ;; TODO - where's the part where we handle include-current?
@@ -318,21 +318,16 @@
 (defmethod parse-filter :or  [[_ & args]] {$or (mapv parse-filter args)})
 
 
-;; This is somewhat silly but MongoDB doesn't support `not` as a top-level so we have to go in and negate things
-;; ourselves. Ick. Maybe we could pull this logic up into `mbql.u` so other people could use it?
+;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
+;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
+;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
 (defmulti ^:private negate first)
 
-(defmethod negate :not [[_ subclause]]    subclause)
+(defmethod negate :default [clause]
+  (mbql.u/negate-filter-clause clause))
+
 (defmethod negate :and [[_ & subclauses]] (apply vector :or  (map negate subclauses)))
 (defmethod negate :or  [[_ & subclauses]] (apply vector :and (map negate subclauses)))
-(defmethod negate :=   [[_ field value]]  [:!= field value])
-(defmethod negate :!=  [[_ field value]]  [:=  field value])
-(defmethod negate :>   [[_ field value]]  [:<= field value])
-(defmethod negate :<   [[_ field value]]  [:>= field value])
-(defmethod negate :>=  [[_ field value]]  [:<  field value])
-(defmethod negate :<=  [[_ field value]]  [:>  field value])
-
-(defmethod negate :between [[_ field min max]] [:or [:< field min] [:> field max]])
 
 (defmethod negate :contains    [[_ field v opts]] [:contains field [::not v] opts])
 (defmethod negate :starts-with [[_ field v opts]] [:starts-with field [::not v] opts])
