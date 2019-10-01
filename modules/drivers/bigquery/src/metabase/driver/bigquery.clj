@@ -1,4 +1,4 @@
- (ns metabase.driver.bigquery
+(ns metabase.driver.bigquery
   (:require [clj-time.core :as time]
             [clojure
              [set :as set]
@@ -9,8 +9,9 @@
             [metabase.driver
              [common :as driver.common]
              [google :as google]]
-            [metabase.driver.bigquery.common :as bigquery.common]
-            [metabase.driver.bigquery.query-processor :as bigquery.qp]
+            [metabase.driver.bigquery
+             [common :as bigquery.common]
+             [query-processor :as bigquery.qp]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [store :as qp.store]
@@ -22,8 +23,8 @@
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
+            TableList TableList$Tables TableReference TableRow TableSchema]
            java.sql.Time
            [java.util Collections Date]))
 
@@ -128,46 +129,66 @@
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
 
+(defn do-with-finished-response
+  "Impl for `with-finished-response`."
+  {:style/indent 1}
+  [^QueryResponse response, f]
+  ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
+  ;; wait a few seconds for the job to finish.
+  (loop [remaining-timeout (double query-timeout-seconds)]
+    (cond
+      (.getJobComplete response)
+      (f response)
+
+      (pos? remaining-timeout)
+      (do
+        (Thread/sleep 250)
+        (recur (- remaining-timeout 0.25)))
+
+      :else
+      (throw (ex-info "Query timed out." (into {} response))))))
+
+(defmacro with-finished-response
+  "Exeecute `body` with after waiting for `response` to complete. Throws exception if response does not complete before
+  `query-timeout-seconds`.
+
+    (with-finished-response [response (execute-bigquery ...)]
+      ...)"
+  [[response-binding response] & body]
+  `(do-with-finished-response
+    ~response
+    (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.QueryResponse)]
+      ~@body)))
+
 (defn- post-process-native
   "Parse results of a BigQuery query."
-  ([^QueryResponse response]
-   (post-process-native response query-timeout-seconds))
+  [^QueryResponse resp]
+  (with-finished-response [response resp]
+    (let [^TableSchema schema
+          (.getSchema response)
 
-  ([^QueryResponse response, ^Integer timeout-seconds]
-   (if-not (.getJobComplete response)
-     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
-     ;; wait a few seconds for the job to finish.
-     (do
-       (when (zero? timeout-seconds)
-         (throw (ex-info "Query timed out." (into {} response))))
-       (Thread/sleep 1000)
-       (post-process-native response (dec timeout-seconds)))
-     ;; Otherwise the job *is* complete
-     (let [^TableSchema schema
-           (.getSchema response)
+          parsers
+          (doall
+           (for [^TableFieldSchema field (.getFields schema)
+                 :let                    [column-type (.getType field)
+                                          method (get-method bigquery.qp/parse-result-of-type column-type)]]
+             (partial method column-type bigquery.common/*bigquery-timezone*)))
 
-           parsers
-           (doall
-            (for [^TableFieldSchema field (.getFields schema)
-                  :let                    [column-type (.getType field)
-                                           method (get-method bigquery.qp/parse-result-of-type column-type)]]
-              (partial method column-type bigquery.common/*bigquery-timezone*)))
-
-           columns
-           (for [column (table-schema->metabase-field-info schema)]
-             (-> column
-                 (set/rename-keys {:base-type :base_type})
-                 (dissoc :database-type)))]
-       {:columns (map (comp u/qualified-name :name) columns)
-        :cols    columns
-        :rows    (for [^TableRow row (.getRows response)]
-                   (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                     (when-let [v (.getV cell)]
-                       ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-                       ;; See https://jira.talendforge.org/browse/TBD-1592
-                       ;; Everything else comes back as a String luckily so we can proceed normally.
-                       (when-not (= (class v) Object)
-                         (parser v)))))}))))
+          columns
+          (for [column (table-schema->metabase-field-info schema)]
+            (-> column
+                (set/rename-keys {:base-type :base_type})
+                (dissoc :database-type)))]
+      {:columns (map (comp u/qualified-name :name) columns)
+       :cols    columns
+       :rows    (for [^TableRow row (.getRows response)]
+                  (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+                    (when-let [v (.getV cell)]
+                      ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+                      ;; See https://jira.talendforge.org/browse/TBD-1592
+                      ;; Everything else comes back as a String luckily so we can proceed normally.
+                      (when-not (= (class v) Object)
+                        (parser v)))))})))
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
