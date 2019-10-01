@@ -1,7 +1,7 @@
 jest.mock("metabase/components/ExplicitSize");
 
 import React from "react";
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, fireEvent } from "@testing-library/react";
 
 import { NumberColumn, StringColumn } from "../__support__/visualizations";
 
@@ -39,5 +39,35 @@ describe("pie chart", () => {
     getAllByText("50%");
     getAllByText("49%");
     getAllByText("1%");
+  });
+
+  it("should show a condensed tooltip for squashed slices", () => {
+    const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002], ["qux", 0.008]];
+    const { container, getAllByText, queryAllByText } = render(
+      <Visualization rawSeries={series(rows)} />,
+    );
+    const paths = container.querySelectorAll("path");
+    const otherPath = paths[paths.length - 1];
+
+    // condensed tooltips display as "dimension: metric"
+    expect(queryAllByText("baz:").length).toBe(0);
+    expect(queryAllByText("qux:").length).toBe(0);
+    fireEvent.mouseMove(otherPath);
+    // these appear twice in the dom due to some popover weirdness
+    expect(getAllByText("baz:").length).toBe(2);
+    expect(getAllByText("qux:").length).toBe(2);
+  });
+
+  it("shouldn't show a condensed tooltip for just one squashed slice", () => {
+    const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002]];
+    const { container, queryAllByText } = render(
+      <Visualization rawSeries={series(rows)} />,
+    );
+    const paths = container.querySelectorAll("path");
+    const otherPath = paths[paths.length - 1];
+
+    fireEvent.mouseMove(otherPath);
+    // normal tooltips don't use this "dimension: metric" format
+    expect(queryAllByText("baz:").length).toBe(0);
   });
 });
