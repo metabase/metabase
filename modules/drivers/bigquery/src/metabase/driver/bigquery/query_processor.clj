@@ -83,7 +83,7 @@
 
 (defmethod parse-result-of-type "DATE"
   [_ timezone s]
-  (parse-timestamp-str s))
+  (parse-timestamp-str timezone s))
 
 (defmethod parse-result-of-type "DATETIME"
   [_ timezone s]

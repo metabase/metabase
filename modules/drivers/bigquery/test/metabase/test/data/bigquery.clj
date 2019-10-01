@@ -12,6 +12,7 @@
              [bigquery :as bigquery]
              [google :as google]]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
+            [metabase.test.data :as data]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
@@ -21,8 +22,9 @@
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest Table TableDataInsertAllRequest
-            TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
+            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+            TableSchema]
            java.sql.Time))
 
 (sql.tx/add-test-extensions! :bigquery)
@@ -49,7 +51,10 @@
      {}
      [:project-id :client-id :client-secret :access-token :refresh-token])))
 
-(defn- project-id ^String [] (:project-id @details))
+(defn project-id
+  "BigQuery project ID that we're using for tests, from the env var `MB_BIGQUERY_TEST_PROJECT_ID`."
+  ^String []
+  (:project-id @details))
 
 (let [bigquery* (delay (#'bigquery/database->client {:details @details}))]
   (defn- bigquery ^Bigquery []
@@ -78,6 +83,17 @@
   (google/execute-no-auto-retry (doto (.delete (.datasets (bigquery)) (project-id) dataset-id)
                                   (.setDeleteContents true)))
   (println (u/format-color 'red "Deleted BigQuery dataset '%s'." dataset-id)))
+
+(defn execute!
+  "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
+  an Exception if it fails."
+  ^QueryResponse [format-string & args]
+  (driver/with-driver :bigquery
+    (let [sql (apply format format-string args)]
+      (printf "[BigQuery] %s\n" sql)
+      (flush)
+      (bigquery/with-finished-response [response (#'bigquery/execute-bigquery (data/db) sql)]
+        response))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :FLOAT :INTEGER :RECORD :STRING :TIMESTAMP :TIME})
