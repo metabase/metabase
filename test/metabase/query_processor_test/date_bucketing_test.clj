@@ -22,6 +22,7 @@
              [test :refer :all]]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -999,3 +1000,15 @@
               (is (contains? expected-count result)
                   (format "count of rows where (= (%s date) %s) should be one of: %s"
                           (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
+
+(deftest legacy-default-datetime-bucketing-test
+  (is (= (str "SELECT count(*) AS \"count\" "
+              "FROM \"PUBLIC\".\"CHECKINS\" "
+              "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+         (:query
+          (qp/query->native
+            (data/mbql-query checkins
+              {:aggregation [[:count]]
+               :filter      [:= $date [:relative-datetime :current]]}))))
+      (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for legacy "
+           "reasons. See #9014")))
