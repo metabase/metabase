@@ -27,23 +27,23 @@ const DatabasePane = ({ database, show, ...props }) => {
         </div>
       </div>
 
-      {Object.entries(tablesBySchema).map(([schemaName, tables]) => (
-        <div>
-          {Object.keys(tablesBySchema).length > 1 && <span>{schemaName}</span>}
-          <ul>
-            {tables.map(table => (
-              <li key={table.id}>
-                <a
-                  className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-                  onClick={() => show("table", table)}
-                >
-                  {table.display_name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      <ul>
+        {Object.entries(tablesBySchema).flatMap(([schemaName, tables]) => [
+          ...(Object.keys(tablesBySchema).length > 1
+            ? [<li className="p1 text-bold text-light">{schemaName}</li>]
+            : []),
+          ...tables.map(table => (
+            <li key={table.id}>
+              <a
+                className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
+                onClick={() => show("table", table)}
+              >
+                {table.display_name}
+              </a>
+            </li>
+          )),
+        ])}
+      </ul>
     </div>
   );
 };
