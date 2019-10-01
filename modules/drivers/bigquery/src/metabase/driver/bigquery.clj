@@ -1,4 +1,4 @@
-(ns metabase.driver.bigquery
+ (ns metabase.driver.bigquery
   (:require [clj-time.core :as time]
             [clojure
              [set :as set]
@@ -9,6 +9,7 @@
             [metabase.driver
              [common :as driver.common]
              [google :as google]]
+            [metabase.driver.bigquery.common :as bigquery.common]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
@@ -194,7 +195,7 @@
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defn execute-query
+(defmethod driver/execute-query :bigquery
   [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone* (effective-query-timezone database)]
@@ -202,6 +203,7 @@
                                                                      (unprepare/unprepare driver (cons sql params))
                                                                      sql))]
         (process-native* database sql)))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |
