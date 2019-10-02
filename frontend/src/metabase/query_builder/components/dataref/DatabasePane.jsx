@@ -1,8 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React from "react";
 import PropTypes from "prop-types";
-import { isQueryable } from "metabase/lib/table";
-import Icon from "metabase/components/Icon";
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
 
