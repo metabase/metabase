@@ -219,7 +219,9 @@
 ;; if you're missing a required param, the error message should get passed thru, rather than the normal generic 'Query
 ;; Failed' message that we show for most embedding errors
 (expect
-  "You'll need to pick a value for 'Price' before this query can run."
+  {:status     "failed"
+   :error      "You'll need to pick a value for 'Price' before this query can run."
+   :error_type "missing-required-parameter"}
   (do-with-required-param-card
    (fn [uuid]
      (http/client :get 200 (str "public/card/" uuid "/query")))))
