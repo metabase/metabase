@@ -184,18 +184,26 @@ export default class PublicQuestion extends Component {
       />
     );
 
+    const parameters = card && getParametersWithExtras(card);
+
     return (
       <EmbedFrame
         name={card && card.name}
         description={card && card.description}
-        parameters={card && getParametersWithExtras(card)}
+        parameters={parameters}
         actionButtons={actionButtons}
         parameterValues={parameterValues}
         setParameterValue={this.setParameterValue}
       >
-        <LoadingAndErrorWrapper loading={!result} noWrapper>
+        <LoadingAndErrorWrapper
+          className="flex-full"
+          loading={!result}
+          error={typeof result === "string" ? result : null}
+          noWrapper
+        >
           {() => (
             <Visualization
+              error={result && result.error}
               rawSeries={[{ card: card, data: result && result.data }]}
               className="full flex-full z1"
               onUpdateVisualizationSettings={settings =>

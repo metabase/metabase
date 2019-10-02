@@ -2,7 +2,7 @@ import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import { TYPE } from "metabase/lib/types";
 
 import Field from "./metadata/Field";
 import Metadata from "./metadata/Metadata";
@@ -608,6 +608,7 @@ export class FKDimension extends FieldDimension {
 }
 
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
+import type Aggregation from "./queries/structured/Aggregation";
 
 const isFieldDimension = dimension =>
   dimension instanceof FieldIDDimension || dimension instanceof FKDimension;
@@ -808,8 +809,6 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
-const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
-
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
@@ -828,30 +827,11 @@ export class AggregationDimension extends Dimension {
     return this._args[0];
   }
 
-  displayName(): string {
-    const name = this.columnName();
-    return name
-      ? getFriendlyName({ name: name, display_name: name })
-      : `[${t`Unknown`}]`;
-  }
-
-  fieldDimension() {
-    const aggregation = this.aggregation();
-    if (aggregation.length === 2 && aggregation[1]) {
-      return this.parseMBQL(aggregation[1]);
-    }
-    return null;
-  }
-
   column(extra = {}) {
-    const [short] = this.aggregation() || [];
+    const aggregation = this.aggregation();
     return {
       ...super.column(),
-      base_type: INTEGER_AGGREGATIONS.has(short)
-        ? "type/Integer"
-        : "type/Float",
-      display_name: short,
-      name: short,
+      base_type: aggregation ? aggregation.baseType() : TYPE.Float,
       source: "aggregation",
       ...extra,
     };
@@ -859,36 +839,40 @@ export class AggregationDimension extends Dimension {
 
   field() {
     // FIXME: it isn't really correct to return the unaggregated field. return a fake Field object?
-    const dimension = this.fieldDimension();
+    const dimension = this.aggregation().dimension();
     return dimension ? dimension.field() : super.field();
   }
 
-  // MBQL of the underlying aggregation
+  /**
+   * Raw aggregation
+   */
+  _aggregation(): Aggregation {
+    return this._query && this._query.aggregations()[this.aggregationIndex()];
+  }
+
+  /**
+   * Underlying aggregation, with aggregation-options removed
+   */
   aggregation() {
-    const aggregation =
-      this._query && this._query.aggregations()[this.aggregationIndex()];
+    const aggregation = this._aggregation();
     if (aggregation) {
-      return aggregation[0] === "aggregation-options"
-        ? aggregation[1]
-        : aggregation;
+      return aggregation.aggregation();
+    }
+    return null;
+  }
+
+  displayName(): string {
+    const aggregation = this._aggregation();
+    if (aggregation) {
+      return aggregation.displayName();
     }
     return null;
   }
 
   columnName() {
-    const aggregation =
-      this._query && this._query.aggregations()[this.aggregationIndex()];
+    const aggregation = this._aggregation();
     if (aggregation) {
-      // FIXME: query lib
-      if (aggregation[0] === "aggregation-options") {
-        const { "display-name": displayName } = aggregation[2];
-        if (displayName) {
-          return displayName;
-        }
-      }
-      const short = aggregation[0];
-      // NOTE: special case for "distinct"
-      return short === "distinct" ? "count" : short;
+      return aggregation.columnName();
     }
     return null;
   }

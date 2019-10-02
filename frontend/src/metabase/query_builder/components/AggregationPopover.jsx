@@ -345,8 +345,6 @@ export default class AggregationPopover extends Component {
               startRule="aggregation"
               expression={aggregation}
               query={query}
-              tableMetadata={tableMetadata}
-              customFields={customFields}
               onChange={parsedExpression =>
                 this.setState({
                   aggregation: A_DEPRECATED.setContent(
