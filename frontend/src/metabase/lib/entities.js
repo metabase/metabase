@@ -479,8 +479,13 @@ export function createEntity(def: EntityDefinition): Entity {
   );
 
   const getList = createSelector(
-    [getEntities, getEntityIds],
-    (entities, entityIds) => denormalize(entityIds, [entity.schema], entities),
+    [state => state, getEntityIds],
+    // delegate to getObject
+    (state, entityIds) =>
+      entityIds &&
+      entityIds.map(entityId =>
+        entity.selectors.getObject(state, { entityId }),
+      ),
   );
 
   // REQUEST STATE SELECTORS
