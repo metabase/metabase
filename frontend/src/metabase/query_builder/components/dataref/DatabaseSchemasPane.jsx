@@ -4,7 +4,9 @@ import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 
 const DatabaseSchemasPane = ({ database, show, ...props }) => {
-  const schemaNames = Array.from(new Set(database.tables.map(t => t.schema)));
+  const schemaNames = Array.from(
+    new Set(database.tables.map(t => t.schema)),
+  ).sort((a, b) => a.localeCompare(b));
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">

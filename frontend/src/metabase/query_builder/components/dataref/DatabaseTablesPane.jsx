@@ -5,7 +5,9 @@ import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 
 const DatabaseTablesPane = ({ database, show, ...props }) => {
-  const tables = database.tables.filter(isQueryable);
+  const tables = database.tables
+    .filter(isQueryable)
+    .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">

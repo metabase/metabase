@@ -7,7 +7,8 @@ import Icon from "metabase/components/Icon";
 const SchemaPane = ({ schema: { database, schema }, show, ...props }) => {
   const tables = database.tables
     .filter(t => t.schema === schema)
-    .filter(isQueryable);
+    .filter(isQueryable)
+    .sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
