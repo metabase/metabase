@@ -6,12 +6,16 @@ import { t } from "ttag";
 
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
+import { TYPE } from "metabase/lib/types";
+
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
 import type { AggregationOption } from "metabase/meta/types/Metadata";
 import type { MetricId } from "metabase/meta/types/Metric";
 import type { FieldId } from "metabase/meta/types/Field";
+
+const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 
 export default class Aggregation extends MBQLClause {
   /**
@@ -50,20 +54,23 @@ export default class Aggregation extends MBQLClause {
    * Returns the display name for the aggregation
    */
   displayName() {
-    if (this.hasOptions()) {
-      return this.name() || this.aggregation().displayName();
-    } else if (this.isCustom()) {
-      return this._query.formatExpression(this);
-    } else if (this.isMetric()) {
-      const metric = this.metric();
+    const displayName = this.options()["display-name"];
+    if (displayName) {
+      return displayName;
+    }
+    const aggregation = this.aggregation();
+    if (aggregation.isCustom()) {
+      return aggregation._query.formatExpression(aggregation);
+    } else if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
       if (metric) {
         return metric.displayName();
       }
-    } else if (this.isStandard()) {
-      const option = this.getOption();
+    } else if (aggregation.isStandard()) {
+      const option = aggregation.getOption();
       if (option) {
         const aggregationName = option.name.replace(" of ...", "");
-        const dimension = this.dimension();
+        const dimension = aggregation.dimension();
         if (dimension) {
           return t`${aggregationName} of ${dimension.displayName()}`;
         } else {
@@ -72,6 +79,52 @@ export default class Aggregation extends MBQLClause {
       }
     }
     return null;
+  }
+
+  /**
+   * Returns the column name (non-deduplicated)
+   */
+  columnName() {
+    const displayName = this.options()["display-name"];
+    if (displayName) {
+      return displayName;
+    }
+    const aggregation = this.aggregation();
+    if (aggregation.isCustom()) {
+      return "expression";
+    } else if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
+      if (metric) {
+        // delegate to the metric's definition
+        return metric.aggregation().columnName();
+      }
+    } else if (aggregation.isStandard()) {
+      const short = this.short();
+      if (short) {
+        // NOTE: special case for "distinct"
+        return short === "distinct" ? "count" : short;
+      }
+    }
+    return null;
+  }
+
+  short() {
+    const aggregation = this.aggregation();
+    // FIXME: if metric, this should be the underlying metric's short name?
+    if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
+      if (metric) {
+        // delegate to the metric's definition
+        return metric.aggregation().short();
+      }
+    } else if (aggregation.isStandard()) {
+      return aggregation[0];
+    }
+  }
+
+  baseType() {
+    const short = this.short();
+    return INTEGER_AGGREGATIONS.has(short) ? TYPE.Integer : TYPE.Float;
   }
 
   /**
@@ -195,19 +248,6 @@ export default class Aggregation extends MBQLClause {
     } else {
       return {};
     }
-  }
-
-  // NAMED
-
-  /**
-   * Returns true if this a named aggregation
-   */
-  isNamed() {
-    return !!this.options()["display-name"];
-  }
-
-  name() {
-    return this.options()["display-name"];
   }
 
   /**
