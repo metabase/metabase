@@ -88,7 +88,7 @@
                                (explain-schema-validation-error error))]
        {:error error-msg})
      (when (qp.error-type/known-error-type? error-type)
-       {:error-type error-type})
+       {:error_type error-type})
      {:ex-data (dissoc data :schema)})))
 
 

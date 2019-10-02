@@ -29,7 +29,9 @@
   [error-type]
   (isa? hierarchy error-type :show-in-embeds?))
 
-(defmacro deferror {:style/indent 1} [error-name docstring & {:keys [parent show-in-embeds?]}]
+(defmacro ^:private deferror
+  {:style/indent 1}
+  [error-name docstring & {:keys [parent show-in-embeds?]}]
   {:pre [(some? parent)]}
   `(do
      (def ~error-name ~docstring ~(keyword error-name))
