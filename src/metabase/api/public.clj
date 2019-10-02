@@ -81,11 +81,10 @@
   [{:keys [error], error-type :error_type, :as results}]
   ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
   ;; instead of returning anything about the query just return a generic error message
-  (let [results (select-keys results [:status :error :error_type])]
-    (if (qp.error-type/show-in-embeds? error-type)
-      results
-      (assoc results
-             :error (tru "An error occurred while running the query.")))))
+  (merge
+   (select-keys results [:status :error :error_type])
+   (when-not (qp.error-type/show-in-embeds? error-type)
+     {:error (tru "An error occurred while running the query.")})))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).

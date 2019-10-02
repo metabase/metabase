@@ -45,6 +45,11 @@
   "Generic ancestor type for all errors with the query map itself. Equivalent of a HTTP 4xx status code."
   :parent :error)
 
+(defn client-error?
+  "Is `error-type` a client error type, the equivalent of an HTTP 4xx status code?"
+  [error-type]
+  (isa? hierarchy error-type :client))
+
 (deferror missing-required-permissions
   "The current user does not have required permissions to run the current query."
   :parent client)
@@ -63,6 +68,11 @@
 (deferror server
   "Generic ancestor type for all unexpected server-side errors. Equivalent of a HTTP 5xx status code."
   :parent :error)
+
+(defn server-error?
+  "Is `error-type` a server error type, the equivalent of an HTTP 5xx status code?"
+  [error-type]
+  (isa? hierarchy error-type :server))
 
 ;;;; #### QP Errors
 
