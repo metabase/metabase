@@ -5,7 +5,9 @@ import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 
 const SchemaPane = ({ schema: { database, schema }, show, ...props }) => {
-  const tables = database.tables.filter(t => t.schema === schema);
+  const tables = database.tables
+    .filter(t => t.schema === schema)
+    .filter(isQueryable);
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">

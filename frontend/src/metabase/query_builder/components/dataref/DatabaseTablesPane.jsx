@@ -5,6 +5,7 @@ import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 
 const DatabaseTablesPane = ({ database, show, ...props }) => {
+  const tables = database.tables.filter(isQueryable);
   return (
     <div>
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
@@ -14,12 +15,12 @@ const DatabaseTablesPane = ({ database, show, ...props }) => {
         </div>
         <div className="flex align-center">
           <Icon name="table2" className="text-light pr1" size={12} />
-          <span className="text-medium">{database.tables.length}</span>
+          <span className="text-medium">{tables.length}</span>
         </div>
       </div>
 
       <ul>
-        {database.tables.map(table => (
+        {tables.map(table => (
           <li key={table.id}>
             <a
               className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
