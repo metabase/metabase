@@ -541,7 +541,7 @@
      {:type      :hyperUnique
       :name      output-name
       :fieldName (->rvalue field)}
-     (ag:filtered (filter:not (filter:nil? field) (ag:count output-name)))))
+     (ag:filtered (filter:not (filter:nil? field) (ag:count output-name))))))
 
 (defn- ag:countWhere
   [pred output-name]
