@@ -462,11 +462,11 @@
 
 ;; Do we generate the correct count clause for HLL fields?
 (datasets/expect-with-driver :druid
-  [["Artisan" "Broen Olujimi" 1]
-   ["Artisan" "Dwight Gresham" 1]
-   ["Artisan" "Plato Yeshua" 1]
-   ["Artisan" "Quentin Sören" 1]
-   ["Artisan" "Rüstem Hebel" 1]]
+  [["Bar" "Szymon Theutrich" 13]
+   ["Mexican" "Dwight Gresham" 12]
+   ["American" "Spiros Teofil" 10]
+   ["Bar" "Felipinho Asklepios" 10]
+   ["Bar" "Kaneonuskatew Eiran" 10]]
   (druid-query-returning-rows
     {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "__count_0"}]]
      :breakout   [$venue_category_name $user_name]
