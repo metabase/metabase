@@ -6,8 +6,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
 import {
   isDate,
-  getAggregator,
-  isCompatibleAggregatorForField,
+  getAggregationOperator,
+  isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -37,8 +37,10 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
     : ["field-id", dateField.id];
 
   return ["sum"]
-    .map(getAggregator)
-    .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
+    .map(getAggregationOperator)
+    .filter(aggregator =>
+      isCompatibleAggregationOperatorForField(aggregator, column),
+    )
     .map(aggregator => ({
       name: "summarize-by-time",
       section: "distribution",

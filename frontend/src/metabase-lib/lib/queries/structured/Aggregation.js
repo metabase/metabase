@@ -11,7 +11,7 @@ import { TYPE } from "metabase/lib/types";
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-import type { AggregationOption } from "metabase/meta/types/Metadata";
+import type { AggregationOperator } from "metabase/meta/types/Metadata";
 import type { MetricId } from "metabase/meta/types/Metric";
 import type { FieldId } from "metabase/meta/types/Field";
 
@@ -67,12 +67,13 @@ export default class Aggregation extends MBQLClause {
         return metric.displayName();
       }
     } else if (aggregation.isStandard()) {
-      const option = aggregation.getOption();
+      const option = aggregation.option();
       if (option) {
-        const aggregationName = option.name.replace(" of ...", "");
+        const aggregationName =
+          option.columnName || option.name.replace(" of ...", "");
         const dimension = aggregation.dimension();
         if (dimension) {
-          return t`${aggregationName} of ${dimension.displayName()}`;
+          return t`${aggregationName} of ${dimension.render()}`;
         } else {
           return aggregationName;
         }
@@ -163,43 +164,48 @@ export default class Aggregation extends MBQLClause {
     return A_DEPRECATED.isStandard(this);
   }
 
-  dimension(): ?Dimension {
-    if (this.isStandard() && this.length > 1) {
-      return this._query.parseFieldReference(this.getFieldReference());
-    }
-  }
-
   /**
    * Gets the aggregation option matching this aggregation
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
-  getOption(): ?AggregationOption {
-    if (this._query == null) {
+  option(): ?AggregationOperator {
+    const operatorName = this.operatorName();
+    if (this._query == null || !operatorName) {
       return null;
     }
-
-    const operator = this.getOperator();
-    return operator
-      ? this._query
-          .aggregationOptions()
-          .find(option => option.short === operator)
-      : null;
+    return this._query
+      .aggregationOperators()
+      .find(option => option.short === operatorName);
   }
 
   /**
    * Get the operator from a standard aggregation clause
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
-  getOperator(): ?string {
-    return A_DEPRECATED.getOperator(this);
+  operatorName(): ?string {
+    if (this.isStandard()) {
+      return this[0];
+    }
   }
 
   /**
    * Get the fieldId from a standard aggregation clause
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
   getFieldReference(): ?FieldId {
-    return A_DEPRECATED.getField(this);
+    if (this.isStandard()) {
+      return this[1];
+    }
+  }
+
+  /**
+   * Gets the dimension for this this aggregation
+   * Returns `null` if the clause isn't a "standard" metric
+   */
+  dimension(): ?Dimension {
+    if (this.isStandard() && this.length > 1) {
+      return this._query.parseFieldReference(this.getFieldReference());
+    }
   }
 
   // METRIC AGGREGATION

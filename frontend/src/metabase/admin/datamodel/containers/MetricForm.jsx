@@ -162,8 +162,8 @@ export default class MetricForm extends Component {
                         new Table(),
                         metadata.tables[table.id],
                         {
-                          aggregation_options: (
-                            table.aggregation_options || []
+                          aggregation_operators: (
+                            table.aggregation_operators || []
                           ).filter(a => a.short !== "rows"),
                           metrics: (table.metrics || []).filter(
                             m => m.googleAnalyics,

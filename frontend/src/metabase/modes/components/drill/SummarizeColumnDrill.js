@@ -2,8 +2,8 @@
 
 import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
 import {
-  getAggregator,
-  isCompatibleAggregatorForField,
+  getAggregationOperator,
+  isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
 import type {
@@ -49,12 +49,12 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
 
   return Object.entries(AGGREGATIONS)
     .map(([aggregationShort, action]) => [
-      getAggregator(aggregationShort),
+      getAggregationOperator(aggregationShort),
       // $FlowFixMe
       action,
     ])
     .filter(([aggregator]) =>
-      isCompatibleAggregatorForField(aggregator, column),
+      isCompatibleAggregationOperatorForField(aggregator, column),
     )
     .map(([aggregator, action]: [any, { section: string, title: string }]) => ({
       name: action.title.toLowerCase(),

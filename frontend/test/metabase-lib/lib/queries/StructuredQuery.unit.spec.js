@@ -147,27 +147,27 @@ describe("StructuredQuery unit tests", () => {
         expect(query.aggregations().length).toBe(0);
       });
       it("should return a list of one item after adding an aggregation", () => {
-        expect(query.addAggregation(["count"]).aggregations().length).toBe(1);
+        expect(query.aggregate(["count"]).aggregations().length).toBe(1);
       });
       it("should return an actual count aggregation after trying to add it", () => {
-        expect(query.addAggregation(["count"]).aggregations()[0][0]).toEqual(
+        expect(query.aggregate(["count"]).aggregations()[0][0]).toEqual(
           "count",
         );
       });
     });
 
-    describe("aggregationOptions", () => {
+    describe("aggregationOperators", () => {
       // TODO Atte Keinänen 6/14/17: Add the mock metadata for aggregation options
       // (currently the fixture doesn't include them)
       it("should return a non-empty list of options", () => {
         pending();
-        expect(query.aggregationOptions().length).toBeGreaterThan(0);
+        expect(query.aggregationOperators().length).toBeGreaterThan(0);
       });
       it("should contain the count aggregation", () => {
         pending();
       });
     });
-    describe("aggregationOptionsWithoutRaw", () => {
+    describe("aggregationOperatorsWithoutRaw", () => {
       // Also waiting for the mock metadata
       pending();
     });
@@ -220,7 +220,7 @@ describe("StructuredQuery unit tests", () => {
       });
       it("returns a standard aggregation name", () => {
         expect(makeQueryWithAggregation(["count"]).aggregationName()).toBe(
-          "Count of rows",
+          "Count",
         );
       });
       it("returns a standard aggregation name with field", () => {
@@ -237,7 +237,7 @@ describe("StructuredQuery unit tests", () => {
             "sum",
             ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
           ]).aggregationName(),
-        ).toBe("Sum of Title");
+        ).toBe("Sum of Product → Title");
       });
       it("returns a custom expression description", () => {
         expect(

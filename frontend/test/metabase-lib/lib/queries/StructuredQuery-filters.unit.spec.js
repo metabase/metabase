@@ -42,12 +42,12 @@ describe("StructuredQuery", () => {
         expect(f.operator().name).toEqual("=");
       });
     });
-    describe("operatorOptions", () => {
+    describe("filterOperators", () => {
       it("should return the valid operators for number filter", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
-        expect(f.operatorOptions()).toHaveLength(9);
-        expect(f.operatorOptions()[0].name).toEqual("=");
+        expect(f.filterOperators()).toHaveLength(9);
+        expect(f.filterOperators()[0].name).toEqual("=");
       });
     });
     describe("isOperator", () => {
@@ -55,13 +55,13 @@ describe("StructuredQuery", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
         expect(f.isOperator("=")).toBe(true);
-        expect(f.isOperator(f.operatorOptions()[0])).toBe(true);
+        expect(f.isOperator(f.filterOperators()[0])).toBe(true);
       });
       it("should return false for different operators", () => {
         const q = ORDERS.query().filter(FILTER);
         const f = q.filters()[0];
         expect(f.isOperator("!=")).toBe(false);
-        expect(f.isOperator(f.operatorOptions()[1])).toBe(false);
+        expect(f.isOperator(f.filterOperators()[1])).toBe(false);
       });
     });
     describe("isDimension", () => {

@@ -29,7 +29,7 @@ import type {
 } from "metabase/meta/types/Card";
 import type {
   TableMetadata,
-  AggregationOption,
+  AggregationOperator,
 } from "metabase/meta/types/Metadata";
 
 import Dimension, {
@@ -584,22 +584,24 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns an array of aggregation options for the currently selected table
    */
-  aggregationOptions(): AggregationOption[] {
-    return this.table() && this.table().aggregations();
+  aggregationOperators(): AggregationOperator[] {
+    return (this.table() && this.table().aggregationOperators()) || [];
   }
 
   /**
    * @returns an array of aggregation options for the currently selected table
    */
-  aggregationOptionsWithoutRows(): AggregationOption[] {
-    return this.aggregationOptions().filter(option => option.short !== "rows");
+  aggregationOperatorsWithoutRows(): AggregationOperator[] {
+    return this.aggregationOperators().filter(
+      option => option.short !== "rows",
+    );
   }
 
   /**
    * @returns the field options for the provided aggregation
    */
-  aggregationFieldOptions(agg: string | AggregationOption): DimensionOptions {
-    const aggregation: AggregationOption =
+  aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
+    const aggregation: AggregationOperator =
       typeof agg === "string" ? this.table().aggregation(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {
