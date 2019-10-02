@@ -470,5 +470,5 @@
   (druid-query-returning-rows
     {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "__count_0"}]]
      :breakout   [$venue_category_name $user_name]
-     :order-by   [[:asc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
      :limit      5}))
