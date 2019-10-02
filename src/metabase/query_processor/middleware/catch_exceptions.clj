@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [metabase.query-processor.interface :as qp.i]
+  (:require [metabase.query-processor
+             [error-type :as qp.error-type]
+             [interface :as qp.i]]
             [metabase.util :as u]
             schema.utils)
   (:import clojure.lang.ExceptionInfo
@@ -85,6 +87,8 @@
      (when-let [error-msg (and (= error-type :schema.core/error)
                                (explain-schema-validation-error error))]
        {:error error-msg})
+     (when (qp.error-type/known-error-type? error-type)
+       {:error_type error-type})
      {:ex-data (dissoc data :schema)})))
 
 
