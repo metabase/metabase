@@ -104,7 +104,7 @@
          tabledef
          :field-definitions
          concat
-         [(tx/map->FieldDefinition {:field-name "null_only_date" :base-type :type/Date})]))
+         [(tx/map->FieldDefinition {:field-name "null_only_date", :base-type :type/Date})]))
       :rows
       (fn [rows]
         (for [row rows]
