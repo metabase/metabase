@@ -4,7 +4,10 @@
   (:require [metabase.util.date :as du]))
 
 (defn- format-rows* [{:keys [report-timezone]} rows]
+  (println "report-timezone:" report-timezone) ; NOCOMMIT
+  (println "du/*report-timezone*:" du/*report-timezone*) ; NOCOMMIT
   (let [timezone (or report-timezone (System/getProperty "user.timezone"))]
+    (printf "using %s\n" timezone) ; NOCOMMIT
     (for [row rows]
       (for [v row]
         ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
@@ -15,7 +18,9 @@
           (du/format-time v timezone)
 
           (du/is-temporal? v)
-          (du/->iso-8601-datetime v timezone)
+          (do
+            (println (list 'du/->iso-8601-datetime v timezone) "->" (du/->iso-8601-datetime v timezone)) ; NOCOMMIT
+            (du/->iso-8601-datetime v timezone))
 
           :else v)))))
 
