@@ -117,8 +117,8 @@ const MetabaseSettings = {
 
     const description =
       capitalize === false
-        ? t`must be` + " " + complexity.total + " " + t`characters long`
-        : t`Must be` + " " + complexity.total + " " + t`characters long`;
+        ? t`must be at least ${complexity.total} characters long`
+        : t`Must be at least ${complexity.total} characters long`;
     const clauses = [];
 
     ["lower", "upper", "digit", "special"].forEach(function(clause) {
