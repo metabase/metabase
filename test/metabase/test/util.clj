@@ -265,7 +265,8 @@
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (f)
+      (t/testing (format "Setting %s = %s" (keyword setting-k) value)
+        (f))
       (finally
         (setting/set! setting-k original-value)))))
 
@@ -278,8 +279,7 @@
   [[setting-k value & more :as bindings] & body]
   (if (empty? bindings)
     `(do ~@body)
-    (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
-                  (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
+    (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
       (if (seq more)
         `(with-temporary-setting-values ~more ~body)
         body))))
