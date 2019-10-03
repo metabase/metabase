@@ -41,7 +41,6 @@ describe("pie chart", () => {
     getAllByText("1%");
   });
 
-
   it("should not use column formatting in the legend", () => {
     const cols = [
       StringColumn({ name: "name" }),
