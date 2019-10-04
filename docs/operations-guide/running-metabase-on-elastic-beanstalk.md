@@ -118,10 +118,10 @@ Unless you have a custom VPC setup that you know how to configure, it's easiest 
 
 There are many ways to customize your Beanstalk deployment, but commonly modified settings include:
 
-- `Instance type` is for picking the size of AWS instance you want to run. Any size is fine but we recommend `t2.small` for most uses.
+- `Instance type` (`Instances` block) is for picking the size of AWS instance you want to run. Any size is fine but we recommend `t2.small` for most uses.
   - Remember that you cannot choose a `t2.*` instance type if you did not check the box to run in a VPC.
-- `EC2 key pair` is only needed if you want to SSH into your instance directly. We recommend leaving this out.
-- Enter an `Email address` to get notifications about your deployments and changes to your application. This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
+- `EC2 key pair` (`Security` block) is only needed if you want to SSH into your instance directly. We recommend leaving this out.
+- Enter an `Email address` (`Notifications` block) to get notifications about your deployments and changes to your application. This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
 - The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`.
 - The remainder of the options can all be safely left to their default values.
 
