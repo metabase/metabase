@@ -155,8 +155,7 @@ Upgrading to the next version of Metabase is a very simple process where you wil
 
 Here's each step:
 
-1. Go to Elastic Beanstalk and select your `Metabase` application
-
+- Go to Elastic Beanstalk and select your `Metabase` application.
 - Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page).
 - Download the latest Metabase Elastic Beanstalk deployment file:
   - [https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
@@ -216,8 +215,7 @@ This will create a new certificate inside your AWS environment which can be reus
 
 Before trying to enable HTTPS support you must upload a server certificate to your AWS account. Instructions above.
 
-1. Go to Elastic Beanstalk and select your `Metabase` application
-
+- Go to Elastic Beanstalk and select your `Metabase` application.
 - Click on Environment that you would like to update.
 - Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
