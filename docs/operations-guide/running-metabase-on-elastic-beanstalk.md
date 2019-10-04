@@ -171,20 +171,20 @@ Here's each step:
   - Click the `Deploy` button in the upper right side of the page.
   - Select the Environment you wish to deploy the version to using the dropdown list.
   - Click the `Deploy` button to begin the deployment.
-  - Wait until all deployment activities are completed, then verify the deployment by accessing the Metabase application url.
+  - Wait until all deployment activities are completed, then verify the deployment by accessing the Metabase application URL.
 
-Once a new version is deployed you can safely delete the old Application Version if desired. we recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
+Once a new version is deployed you can safely delete the old Application Version if desired. We recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
 
 # Retaining Metabase Logs
 
 If you want to retain the Metabase application logs you can do so by publishing then to an S3 bucket of your choice. Here's how:
 
-- On you Metabase Elastic Beanstalk environment, click on the `Configuration` link in the navigation bar on the left side. You will be taken to a page with a number of boxes containing different configuration options for your environment.
+- On your Metabase Elastic Beanstalk environment, click on the `Configuration` link in the navigation bar on the left side. You will be taken to a page with a number of boxes containing different configuration options for your environment.
 - Click on the box labeled `Software Configuration` under the heading `Web Tier`.
 - Scroll down and then check the box labeled `Enable log file rotation to Amazon S3`.
 - Click `Save` in the bottom right corner.
 
-After you click save your Environment will begin updating with your new change. you will have to wait a minute for this to complete and then you're good to go. Elastic Beanstalk will now periodically publish the application log files to S3 for you and you can download them and analyze them at your leisure.
+After you click save your Environment will begin updating with your new change. You will have to wait a minute for this to complete and then you're good to go. Elastic Beanstalk will now periodically publish the application log files to S3 for you and you can download them and analyze them at your leisure.
 
 # Running Metabase over HTTPS
 
@@ -206,15 +206,15 @@ This will create a new certificate inside your AWS environment which can be reus
 - Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header.
 - Click on **Hosted Zones** then click on the domain name you want to use for Metabase.
 - Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page).
-  - Enter in a **Name**: for your application. this should be the exact url you plan to access Metabase with (e.g. `metabase.mycompany.com`).
+  - Enter in a **Name**: for your application. This should be the exact URL you plan to access Metabase with (e.g. `metabase.mycompany.com`).
   - Under the dropdown for **Type**: select _CNAME - Canonical name_.
   - In the box labeled **Alias**: input the full path to your Elastic Beanstalk environment (e.g. `mycompany-metabase.elasticbeanstalk.com`).
   - Leave all other settings in their default values and click the **Create** button at the bottom of the page.
-  - NOTE: after the record is created you must wait for your change to propagate on the internet. this can take 5-10 minutes, sometimes longer.
+  - NOTE: After the record is created you must wait for your change to propagate on the internet. This can take 5-10 minutes, sometimes longer.
 
 ### Modify Metabase to enforce HTTPS
 
-Before trying to enable Https support you must upload a server certificate to your AWS account. Instructions above.
+Before trying to enable HTTPS support you must upload a server certificate to your AWS account. Instructions above.
 
 1. Go to Elastic Beanstalk and select your `Metabase` application
 
@@ -223,12 +223,12 @@ Before trying to enable Https support you must upload a server certificate to yo
 - Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
 - Set the value for `Secure listener port` to _443_.
 - Then, a little bit lower on the dropdown for `SSL certificate ID`, choose the name of the certificate that you uploaded to your account.
-  - NOTE: the certificate MUST match the domain you plan to use for your Metabase install
+  - NOTE: The certificate MUST match the domain you plan to use for your Metabase install.
 - Scroll to the bottom of the page and click `Save` in the lower right.
-  - NOTE: your Environment will begin updating with your new change. you will have to wait for this to complete before making additional updates.
-  - IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the \*.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname).
+  - NOTE: Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates.
+  - IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname).
 
-Once your application is working properly over HTTPS we recommend setting an additional property to force non-https clients to use the HTTPS endpoint.
+Once your application is working properly over HTTPS we recommend setting an additional property to force non-HTTPS clients to use the HTTPS endpoint.
 
 - Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
@@ -257,4 +257,4 @@ This provides a simple way to use the Papertrail logging service for collecting 
   - `PAPERTRAIL_HOSTNAME` - the name you want to see showing up in Papertrail for this server
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
-_NOTE:_ sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
+_NOTE:_ Sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
