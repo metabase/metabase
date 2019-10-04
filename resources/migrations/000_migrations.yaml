@@ -5303,4 +5303,4 @@ databaseChangeLog:
         - modifyDataType:
             tableName: metabase_field
             columnName: database_type
-            newDataType: text
+            newDataType: varchar
