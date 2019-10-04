@@ -79,17 +79,17 @@
 
 (deftest order-by-average-aggregation-test
   (datasets/test-drivers qp.test/non-timeseries-drivers
-    (let [{:keys [rows cols]} (qp.test/rows-and-cols
-                                (qp.test/format-rows-by [int 1.0]
-                                  (data/run-mbql-query venues
-                                    {:aggregation [[:avg $category_id]]
-                                     :breakout    [$price]
-                                     :order-by    [[:asc [:aggregation 0]]]})))]
-      ;; it appears to be the cast that H2 always floors the average it returns
+    (let [{:keys [rows cols]}    (qp.test/rows-and-cols
+                                   (qp.test/format-rows-by [int 1.0]
+                                     (data/run-mbql-query venues
+                                       {:aggregation [[:avg $category_id]]
+                                        :breakout    [$price]
+                                        :order-by    [[:asc [:aggregation 0]]]})))
+          driver-floors-average? (#{:h2 :redshift :sqlserver} driver/*driver*)]
       (is (= [[3 22.0]
-              [2 (if (= driver/*driver* :h2) 28.0 28.3)]
-              [1 (if (= driver/*driver* :h2) 32.0 32.8)]
-              [4 (if (= driver/*driver* :h2) 53.0 53.5)]]
+              [2 (if driver-floors-average? 28.0 28.3)]
+              [1 (if driver-floors-average? 32.0 32.8)]
+              [4 (if driver-floors-average? 53.0 53.5)]]
              rows))
       (is (= [(qp.test/breakout-col :venues :price)
               (qp.test/aggregate-col :avg :venues :category_id)]

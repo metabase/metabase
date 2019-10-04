@@ -71,10 +71,19 @@
   (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))
 
 (defmethod tx/create-db! :vertica [driver dbdef & options]
-  (let [m (get-method tx/create-db! :sql-jdbc/test-extensions)]
-    (try
-      (apply m driver dbdef options)
-      (catch Throwable e
-        (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
-        (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
-        (apply m driver dbdef options)))))
+  (letfn [(create-with-retries! [retries]
+            (let [results (try
+                            (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
+                            (catch Throwable e
+                              (if (pos? retries)
+                                ::retry
+                                (throw e))))]
+              (if (not= results ::retry)
+                results
+                (do
+                  (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
+                  (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
+                  (recur (dec retries))))))]
+    ;; try a few times to create the DB. Vertica is very fussy and sometimes you need to try a few times to get it to
+    ;; work correctly.
+    (create-with-retries! 5)))
