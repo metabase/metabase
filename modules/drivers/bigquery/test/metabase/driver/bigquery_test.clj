@@ -87,3 +87,15 @@
                   :query    {:source-table (data/id view-name)
                              :order-by     [[:asc (data/id view-name :id)]]}})))
           "We should be able to run queries against the view (#3414)"))))
+
+(deftest timezones-test
+  (datasets/test-driver :bigquery
+    (testing "BigQuery does not support report-timezone, so setting it should not affect results"
+      (doseq [timezone ["UTC" "US/Pacific"]]
+        (tu/with-temporary-setting-values [report-timezone timezone]
+          (is (= [[37 "2015-11-19T00:00:00.000Z"]]
+                 (qp.test/rows
+                   (data/run-mbql-query checkins
+                     {:fields   [$id $date]
+                      :filter   [:= $date "2015-11-19"]
+                      :order-by [[:asc $id]]})))))))))
