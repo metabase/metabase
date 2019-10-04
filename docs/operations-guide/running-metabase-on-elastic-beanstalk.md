@@ -40,24 +40,26 @@ As for the domain URL, Feel free to get creative — just remember that the URL 
 
 ### Tier
 
-If you see a "Tier" setting under "Base configuration," leave it set to "Web Server." Elastic Beanstalk provides two choices for environments within an application, but "Web Server" is what we want.
+If you see a `Tier` setting under `Base configuration`, leave it set to `Web Server`. Elastic Beanstalk provides two choices for environments within an application, but `Web Server` is what we want.
 
 ![ebnewenv](images/EBWebTier.png)
 
 ### Base Configuration
 
-While most of the fields here will be correctly pre-filled by following the launch URL above, you'll just need to do two things:
-
-- Make sure "Platform" is set to "Preconfigured platform," with the dropdown set to "Docker."
-- Change the "Application code" setting to "Upload your code." You don't need to click the "Upload" button below that if you used the launch URL above; the latest Metabase AWS EB ZIP file will be selected automatically.
-
-This will run our Metabase application using [Docker](https://www.docker.com) under the hood, using the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
-
 ![Elastic Beanstalk Base Configuration](images/EBBaseConfig.png)
 
-### Review and launch
+While most of the fields here will be correctly pre-filled by following the launch URL above, you'll just need to do two things:
 
-When your environment type settings look like the above then go ahead and click `Review and launch`.
+- First, make sure `Platform` is set to `Preconfigured platform`, with the dropdown set to `Docker`.
+- Next, change the `Application code` setting to `Upload your code`, then click the `Upload` button. You'll see a modal like this:
+
+![Elastic Beanstalk Base Configuration](images/EBUploadYourCode.png)
+
+The modal should be pre-populated with the correct settings if you used the quick launch URL at the top of these instructions. All you need to do is push the `Upload` button in this modal.
+
+These settings will run the Metabase application using [Docker](https://www.docker.com) under the hood, using the official Metabase Docker image which is [published on Dockerhub](https://hub.docker.com/r/metabase/metabase/).
+
+You can now go ahead and click `Review and launch`.
 
 #### Enabling enhanced health checks
 
@@ -75,9 +77,9 @@ Then make sure enhanced health checks are enabled. This is a free option, unless
 
 To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS. So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
 
-NOTE: it's possible to skip this step if you wish. However, this will force Metabase to use a local H2 database file on your application server, and **there will be no way to backup and maintain that database**. So when your instance is restarted for any reason you'll lose all your Metabase data. If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against it.
+NOTE: it's possible to skip this step if you wish. However, this will force Metabase to use a local H2 database file on your application server, and there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against it.
 
-To set the database password from the Beanstalk template, hit "Review and Launch", and then look for the Database configuration pane as below. It should have a red outline when you first see this page. Next, click on the "Modify" link.
+To set the database password from the Beanstalk template, after you've clicked `Review and Launch`, look for the Database configuration pane as below. It should have a red outline when you first see this page. Next, click on the `Modify` link.
 
 ![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
@@ -104,7 +106,7 @@ Newer AWS accounts are encouraging the use of Virtual Private Cloud (VPC) for de
 
 If you prefer not to use a VPC, that's fine. But one thing to note is that some EC2 instance types (t2.\* specifically) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
 
-If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets. Click "Modify" on this Network box to set things up.
+If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets. Click `Modify` on this Network box to set things up.
 
 ![Elastic Beanstalk VPC Entry](images/EBVPCEntry.png)
 
