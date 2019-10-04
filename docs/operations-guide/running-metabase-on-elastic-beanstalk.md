@@ -210,7 +210,7 @@ This will create a new certificate inside your AWS environment which can be reus
   - Under the dropdown for **Type**: select _CNAME - Canonical name_.
   - In the box labeled **Alias**: input the full path to your Elastic Beanstalk environment (e.g. `mycompany-metabase.elasticbeanstalk.com`).
   - Leave all other settings in their default values and click the **Create** button at the bottom of the page.
-  - NOTE: After the record is created you must wait for your change to propagate on the internet. This can take 5-10 minutes, sometimes longer.
+  - _NOTE: After the record is created you must wait for your change to propagate on the internet. This can take 5-10 minutes, sometimes longer._
 
 ### Modify Metabase to enforce HTTPS
 
@@ -223,10 +223,10 @@ Before trying to enable HTTPS support you must upload a server certificate to yo
 - Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
 - Set the value for `Secure listener port` to _443_.
 - Then, a little bit lower on the dropdown for `SSL certificate ID`, choose the name of the certificate that you uploaded to your account.
-  - NOTE: The certificate MUST match the domain you plan to use for your Metabase install.
+  - _NOTE: The certificate MUST match the domain you plan to use for your Metabase install._
 - Scroll to the bottom of the page and click `Save` in the lower right.
-  - NOTE: Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates.
-  - IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname).
+  - _NOTE: Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates._
+  - _IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)._
 
 Once your application is working properly over HTTPS we recommend setting an additional property to force non-HTTPS clients to use the HTTPS endpoint.
 
@@ -257,4 +257,4 @@ This provides a simple way to use the Papertrail logging service for collecting 
   - `PAPERTRAIL_HOSTNAME` - the name you want to see showing up in Papertrail for this server
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
-_NOTE:_ Sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
+_NOTE: Sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again._
