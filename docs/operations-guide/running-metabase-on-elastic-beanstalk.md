@@ -79,7 +79,7 @@ To run Metabase in a cloud environment of any kind we highly recommend using an 
 
 NOTE: it's possible to skip this step if you wish. However, this will force Metabase to use a local H2 database file on your application server, and there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against it.
 
-To set the database password from the Beanstalk template, after you've clicked `Review and Launch`, look for the Database configuration pane as below. It should have a red outline when you first see this page. Next, click on the `Modify` link.
+To set the database password from the Beanstalk template look for the Database configuration pane as below. It should have a red outline when you first see this page. Next, click on the `Modify` link.
 
 ![Elastic Beanstalk Database Configuration Options](images/EBDatabaseConfigurationOptions.png)
 
@@ -110,7 +110,7 @@ If you are launching your Metabase inside of a VPC you'll now need to check a fe
 
 ![Elastic Beanstalk VPC Entry](images/EBVPCEntry.png)
 
-Unless you have a custom VPC setup that you know how to configure, it's easiest to just check all the boxes and allow your infrastructure to exist on all subnets. Note that the Load Balancer cannot be in more than one subnet per availability zone, and the database requires subnets in at least two availability zones. Once you've finished your VPC config click `Save`.
+Unless you have a custom VPC setup that you know how to configure, it's easiest to just check all the boxes under `Load balancer settings` and `Instance settings` and allow your infrastructure to exist on all subnets. Note that the Load Balancer cannot be in more than one subnet per availability zone, and the database requires subnets in at least two availability zones. Once you've finished your VPC config click `Save`.
 
 ![Elastic Beanstalk VPC Settings](images/EBVPCSettings.png)
 
