@@ -915,22 +915,24 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
+    const queryStartTime = performance.now();
+
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults =>
-        dispatch(queryCompleted(question.card(), queryResults)),
-      )
+      .then(queryResults => {
+        MetabaseAnalytics.trackEvent(
+          "QueryBuilder",
+          "Run Query",
+          question.query().datasetQuery().type,
+          performance.now() - queryStartTime,
+        );
+        return dispatch(queryCompleted(question.card(), queryResults));
+      })
       .catch(error => dispatch(queryErrored(startTime, error)));
-
-    MetabaseAnalytics.trackEvent(
-      "QueryBuilder",
-      "Run Query",
-      question.query().datasetQuery().type,
-    );
 
     // TODO Move this out from Redux action asap
     // HACK: prevent SQL editor from losing focus
