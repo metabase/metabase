@@ -7,7 +7,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import startTimer from "metabase/lib/perfTimer";
+import { startTimer } from "metabase/lib/performance";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
@@ -101,9 +101,10 @@ export default class CardRenderer extends Component {
     try {
       const t = startTimer();
       this._deregister = this.props.renderer(element, this.props);
-      t(duration =>
-        trackEventThrottled("Visualization", "Render Card", "", duration),
-      );
+      t(duration => {
+        const { display } = this.props.card;
+        trackEventThrottled("Visualization", "Render Card", display, duration);
+      });
     } catch (err) {
       console.error(err);
       this.props.onRenderError(err.message || err);

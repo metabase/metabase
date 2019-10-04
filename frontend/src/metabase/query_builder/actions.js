@@ -14,7 +14,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import startTimer from "metabase/lib/perfTimer";
+import { startTimer } from "metabase/lib/performance";
 import {
   loadCard,
   startNewCard,
