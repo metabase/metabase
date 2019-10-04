@@ -14,6 +14,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import startTimer from "metabase/lib/perfTimer";
 import {
   loadCard,
   startNewCard,
@@ -915,7 +916,7 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
-    const queryStartTime = performance.now();
+    const queryTimer = startTimer();
 
     question
       .apiGetResults({
@@ -924,11 +925,13 @@ export const runQuestionQuery = ({
         isDirty: cardIsDirty,
       })
       .then(queryResults => {
-        MetabaseAnalytics.trackEvent(
-          "QueryBuilder",
-          "Run Query",
-          question.query().datasetQuery().type,
-          performance.now() - queryStartTime,
+        queryTimer(duration =>
+          MetabaseAnalytics.trackEvent(
+            "QueryBuilder",
+            "Run Query",
+            question.query().datasetQuery().type,
+            duration,
+          ),
         );
         return dispatch(queryCompleted(question.card(), queryResults));
       })

@@ -7,6 +7,7 @@ import _ from "underscore";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MetabaseAnalytics from "metabase/lib/analytics";
+import startTimer from "metabase/lib/perfTimer";
 
 import { isSameSeries } from "metabase/visualizations/lib/utils";
 
@@ -21,7 +22,7 @@ type Props = VisualizationProps & {
 // We track this as part of the render loop.
 // It's throttled to prevent pounding GA on every prop update.
 // $FlowFixMe
-const trackEventDebounced = _.throttle(MetabaseAnalytics.trackEvent, 10000);
+const trackEventThrottled = _.throttle(MetabaseAnalytics.trackEvent, 10000);
 
 @ExplicitSize({ wrapped: true })
 export default class CardRenderer extends Component {
@@ -98,13 +99,10 @@ export default class CardRenderer extends Component {
     }
 
     try {
-      const renderStartTime = performance.now();
+      const t = startTimer();
       this._deregister = this.props.renderer(element, this.props);
-      trackEventDebounced(
-        "Visualization",
-        "Render Card",
-        "",
-        performance.now() - renderStartTime,
+      t(duration =>
+        trackEventThrottled("Visualization", "Render Card", "", duration),
       );
     } catch (err) {
       console.error(err);
