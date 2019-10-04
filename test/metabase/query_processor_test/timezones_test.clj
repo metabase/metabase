@@ -142,19 +142,32 @@
         set)))
 
 (defn- rows-on-july-30 []
-  (data/dataset test-data-with-timezones
-    (qp.test/rows
-      (data/run-mbql-query users
-        {:fields   [$id $last_login]
-         :filter   [:= $last_login "2014-07-03"]
-         :order-by [[:asc $last_login]]}))))
+  (qp.test/rows
+    (data/run-mbql-query users
+      {:fields   [$id $last_login]
+       :filter   [:= $last_login "2014-07-03"]
+       :order-by [[:asc $last_login]]})))
 
 (deftest result-rows-test
   (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :set-timezone)
-    (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
-                                                    [10 "2014-07-03T19:30:00.000Z"]]
-                                      "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
-      (tu/with-temporary-setting-values [report-timezone timezone]
-        (is (= expected-rows
-               (rows-on-july-30))
-            (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone))))))
+    (println "metabase.driver/*driver*:" metabase.driver/*driver*) ; NOCOMMIT
+    (testing "timezone-aware columns\n"
+      (data/dataset test-data-with-timezones
+        (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
+                                                        [10 "2014-07-03T19:30:00.000Z"]]
+                                          "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
+          (tu/with-temporary-setting-values [report-timezone timezone]
+            (is (= expected-rows
+                   (rows-on-july-30))
+                (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone))))))
+    (testing "non-timezone-aware columns\n"
+      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
+                                                      [10 "2014-07-03T19:30:00.000Z"]]
+                                        ;; I think the results should be test same for any timezone??????? If the
+                                        ;; column is not timezone aware (?)
+                                        "US/Pacific" [[12 "2014-07-03T01:30:00.000Z"]
+                                                      [10 "2014-07-03T19:30:00.000Z"]]}]
+        (tu/with-temporary-setting-values [report-timezone timezone]
+          (is (= expected-rows
+                 (rows-on-july-30))
+              (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))
