@@ -77,7 +77,7 @@ Then make sure enhanced health checks are enabled. This is a free option, unless
 
 To run Metabase in a cloud environment of any kind we highly recommend using an independent database server with high availability such as Amazon RDS. So for standard deployments we will choose to create an RDS instance with our Elastic Beanstalk application.
 
-NOTE: it's possible to skip this step if you wish. However, this will force Metabase to use a local H2 database file on your application server, and there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against it.
+_NOTE: It's possible to skip this step if you wish. However, this will force Metabase to use a local H2 database file on your application server, and there will be no way to backup and maintain that database. **When your instance is restarted for any reason you'll lose all your Metabase data**. If you are just doing a quick trial of Metabase that may be okay, but otherwise we recommend against it._
 
 To set the database password from the Beanstalk template look for the Database configuration pane as below. It should have a red outline when you first see this page. Next, click on the `Modify` link.
 
@@ -91,8 +91,8 @@ The database settings screen will give you a number of options for your applicat
 - For `Instance class` you can choose any size, but we recommend `db.t2.small` or larger for production installs. Metabase is pretty efficient so there is no need to make this a big instance.
 - You can safely leave `Storage` to the default size.
 - Pick a `Username` and `Password` for your database. We suggest you hold onto these credentials in a password manager, as it can be useful for things like backups or troubleshooting. These settings will be automatically made available to your Metabase instance, so you will not need to put them in anywhere manually.
-- You can safely leave the `Retention setting` as `Create snapshot`
-- Under `Availability` we recommend the default value of `Single Availability Zone` for most circumstances.
+- You can safely leave the `Retention setting` as `Create snapshot`.
+- Under `Availability` we recommend the default value of `Low (one AZ)` for most circumstances.
 
 ![Elastic Beanstalk Database Settings](images/EBDatabaseSettings.png)
 
@@ -104,7 +104,7 @@ Once you've entered a password and clicked `Save`, the red outline on the Databa
 
 Newer AWS accounts are encouraging the use of Virtual Private Cloud (VPC) for deployments, and in general we think it's simplest to follow that best practice.
 
-If you prefer not to use a VPC, that's fine. But one thing to note is that some EC2 instance types (t2.\* specifically) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
+If you prefer not to use a VPC, that's fine. But one thing to note is that some EC2 instance types (`t2.*` specifically) are not available outside of a VPC, so if you choose to not use a VPC then make sure and pick appropriate instance types.
 
 If you are launching your Metabase inside of a VPC you'll now need to check a few boxes to enable your application to work inside your VPC subnets. Click `Modify` on this Network box to set things up.
 
@@ -118,11 +118,11 @@ Unless you have a custom VPC setup that you know how to configure, it's easiest 
 
 There are many ways to customize your Beanstalk deployment, but commonly modified settings include:
 
-- `Instance type` is for picking the size of AWS instance you want to run. Any size is fine but we recommend `t2.small` for most uses.
-  - Remember that you cannot choose a t2.\* instance type if you did not check the box to run in a VPC.
-- `EC2 key pair` is only needed if you want to SSH into your instance directly. We recommend leaving this out.
-- Enter an `Email address` to get notifications about your deployments and changes to your application. This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
-- The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`
+- `Instance type` (`Instances` block) is for picking the size of AWS instance you want to run. Any size is fine but we recommend `t2.small` for most uses.
+  - Remember that you cannot choose a `t2.*` instance type if you did not check the box to run in a VPC.
+- `EC2 key pair` (`Security` block) is only needed if you want to SSH into your instance directly. We recommend leaving this out.
+- Enter an `Email address` (`Notifications` block) to get notifications about your deployments and changes to your application. This is a very simple way to keep tabs on your Metabase environment, so we recommend putting a valid email in here.
+- The `Application health check URL` is how Elastic Beanstalk knows when the application is ready to run. You must set this to `/api/health`.
 - The remainder of the options can all be safely left to their default values.
 
 ### Permissions
@@ -155,35 +155,35 @@ Upgrading to the next version of Metabase is a very simple process where you wil
 
 Here's each step:
 
-1. Go to Elastic Beanstalk and select your `Metabase` application
-
-- Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page)
-- Download the latest Metabase Elastic Beanstalk deployment file
+- Go to Elastic Beanstalk and select your `Metabase` application.
+- Click on `Application Versions` on the left nav (you can also choose `Application Versions` from the dropdown at the top of the page).
+- Download the latest Metabase Elastic Beanstalk deployment file:
   - [https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip](https://downloads.metabase.com/{{ site.latest_version }}/metabase-aws-eb.zip)
-- Upload a new Application Version
-  _ Click the `Upload` button on the upper right side of the listing
-  _ Give the new version a name, ideally including the Metabase version number (e.g. {{ site.latest_version }})
-  _ Select `Choose File` and navigate to the file you just downloaded
-  _ Click the `Upload` button to upload the file \* After the upload completes make sure you see your new version in the Application Versions listing
-- Deploy the new Version
-  _ Click the checkbox next to the version you wish to deploy
-  _ Click the `Deploy` button in the upper right side of the page
-  _ Select the Environment you wish to deploy the version to using the dropdown list
-  _ Click the `Deploy` button to begin the deployment \* Wait until all deployment activities are completed, then verify the deployment by accessing the Metabase application url
+- Upload a new Application Version:
+  - Click the `Upload` button on the upper right side of the listing.
+  - Give the new version a name, ideally including the Metabase version number (e.g. {{ site.latest_version }}).
+  - Select `Choose File` and navigate to the file you just downloaded.
+  - Click the `Upload` button to upload the file.
+  - After the upload completes make sure you see your new version in the Application Versions listing.
+- Deploy the new Version:
+  - Click the checkbox next to the version you wish to deploy.
+  - Click the `Deploy` button in the upper right side of the page.
+  - Select the Environment you wish to deploy the version to using the dropdown list.
+  - Click the `Deploy` button to begin the deployment.
+  - Wait until all deployment activities are completed, then verify the deployment by accessing the Metabase application URL.
 
-Once a new version is deployed you can safely delete the old Application Version if desired. we recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
+Once a new version is deployed you can safely delete the old Application Version if desired. We recommend keeping at least one previous version available for a while in case you desire to revert for any reason.
 
 # Retaining Metabase Logs
 
 If you want to retain the Metabase application logs you can do so by publishing then to an S3 bucket of your choice. Here's how:
 
-1. On you Metabase Elastic Beanstalk environment, click on the `Configuration` link in the navigation bar on the left side. You will be taken to a page with a number of boxes containing different configuration options for your environment.
+- On your Metabase Elastic Beanstalk environment, click on the `Configuration` link in the navigation bar on the left side. You will be taken to a page with a number of boxes containing different configuration options for your environment.
+- Click on the box labeled `Software Configuration` under the heading `Web Tier`.
+- Scroll down and then check the box labeled `Enable log file rotation to Amazon S3`.
+- Click `Save` in the bottom right corner.
 
-- Click on the box labeled `Software Configuration` under the heading `Web Tier`
-- Scroll down and then check the box labeled `Enable log file rotation to Amazon S3`
-- Click `Save` in the bottom right corner
-
-After you click save your Environment will begin updating with your new change. you will have to wait a minute for this to complete and then you're good to go. Elastic Beanstalk will now periodically publish the application log files to S3 for you and you can download them and analyze them at your leisure.
+After you click save your Environment will begin updating with your new change. You will have to wait a minute for this to complete and then you're good to go. Elastic Beanstalk will now periodically publish the application log files to S3 for you and you can download them and analyze them at your leisure.
 
 # Running Metabase over HTTPS
 
@@ -202,60 +202,57 @@ This will create a new certificate inside your AWS environment which can be reus
 
 ### Setup DNS CNAME (using AWS)
 
-- Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header
-- Click on **Hosted Zones** then click on the domain name you want to use for Metabase
-- Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page)
-  _ Enter in a **Name**: for your application. this should be the exact url you plan to access Metabase with. (e.g. metabase.mycompany.com)
-  _ Under the dropdown for **Type**: select _CNAME - Canonical name_
-  _ In the box labeled **Alias**: input the full path to your Elastic Beanstalk environment (e.g. mycompany-metabase.elasticbeanstalk.com)
-  _ Leave all other settings in their default values and click the **Create** button at the bottom of the page \* NOTE: after the record is created you must wait for your change to propagate on the internet. this can take 5-10 minutes, sometimes longer.
+- Open up the AWS **Route 53** console by navigating to **Services > Networking > Route 53** in the AWS Console header.
+- Click on **Hosted Zones** then click on the domain name you want to use for Metabase.
+- Click on the blue button **Create Record Set** (a new panel will open up on the right side of the page).
+  - Enter in a **Name**: for your application. This should be the exact URL you plan to access Metabase with (e.g. `metabase.mycompany.com`).
+  - Under the dropdown for **Type**: select _CNAME - Canonical name_.
+  - In the box labeled **Alias**: input the full path to your Elastic Beanstalk environment (e.g. `mycompany-metabase.elasticbeanstalk.com`).
+  - Leave all other settings in their default values and click the **Create** button at the bottom of the page.
+  - _NOTE: After the record is created you must wait for your change to propagate on the internet. This can take 5-10 minutes, sometimes longer._
 
 ### Modify Metabase to enforce HTTPS
 
-Before trying to enable Https support you must upload a server certificate to your AWS account. Instructions above.
+Before trying to enable HTTPS support you must upload a server certificate to your AWS account. Instructions above.
 
-1. Go to Elastic Beanstalk and select your `Metabase` application
-
-- Click on Environment that you would like to update
-- Click on `Configuration` on the left hand sidebar
+- Go to Elastic Beanstalk and select your `Metabase` application.
+- Click on Environment that you would like to update.
+- Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Load Balancing` under the _Network Tier_ section and click the gear icon to edit those settings.
-- Set the value for `Secure listener port` to _443_
+- Set the value for `Secure listener port` to _443_.
 - Then, a little bit lower on the dropdown for `SSL certificate ID`, choose the name of the certificate that you uploaded to your account.
-  - NOTE: the certificate MUST match the domain you plan to use for your Metabase install
-- Scroll to the bottom of the page and click `Save` in the lower right
-  - NOTE: your Environment will begin updating with your new change. you will have to wait for this to complete before making additional updates
-  - IMPORTANT: once this change is made you will no longer be able to access your Metabase instance at the \*.elasticbeanstalk.com url provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)
+  - _NOTE: The certificate MUST match the domain you plan to use for your Metabase install._
+- Scroll to the bottom of the page and click `Save` in the lower right.
+  - _NOTE: Your Environment will begin updating with your new change. You will have to wait for this to complete before making additional updates._
+  - _IMPORTANT: Once this change is made you will no longer be able to access your Metabase instance at the `*.elasticbeanstalk.com` URL provided by Amazon because it will result in a certificate mismatch. To continue accessing your secure Metabase instance you must [Setup a DNS CNAME](#setup-dns-cname)._
 
-Once your application is working properly over HTTPS we recommend setting an additional property to force non-https clients to use the HTTPS endpoint
+Once your application is working properly over HTTPS we recommend setting an additional property to force non-HTTPS clients to use the HTTPS endpoint.
 
-1. Click on `Configuration` on the left hand sidebar
-
+- Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
-- Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`
+- Under `Environment Properties` add an entry for `NGINX_FORCE_SSL` with a value of `1`.
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
 # Setting the JVM Timezone
 
 It's best to set your JVM timezone to match the timezone you'd like all your reports to come in. You can do this by adding the `JAVA_TIMEZONE` environment variable.
 
-1. Click on `Configuration` on the left hand sidebar
-
+- Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
-- Under `Environment Properties` add the following
-  - `JAVA_TIMEZONE` with a value such as `US/Pacific`
+- Under `Environment Properties` add the following.
+  - `JAVA_TIMEZONE` with a value such as `US/Pacific`.
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
 # Using Papertrail for logging on AWS
 
 This provides a simple way to use the Papertrail logging service for collecting the logs for you Metabase instance in an easy to read location.
 
-1. Click on `Configuration` on the left hand sidebar
-
+- Click on `Configuration` on the left hand sidebar.
 - Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
-- Under `Environment Properties` add the following entries
+- Under `Environment Properties` add the following entries:
   - `PAPERTRAIL_HOST` - provided by Papertrail
   - `PAPERTRAIL_PORT` - provided by Papertrail
   - `PAPERTRAIL_HOSTNAME` - the name you want to see showing up in Papertrail for this server
 - Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
-_NOTE:_ sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
+_NOTE: Sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again._
