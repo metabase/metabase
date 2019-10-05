@@ -92,12 +92,12 @@
 
         (ids-already-seen source-card-id)
         (throw
-         (ui18n/ex-info (tru "Cannot save Question: source query has circular references.")
+         (ex-info (tru "Cannot save Question: source query has circular references.")
            {:status-code 400}))
 
         :else
         (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
-                   (throw (ui18n/ex-info (tru "Card {0} does not exist." source-card-id)
+                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                             {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
 

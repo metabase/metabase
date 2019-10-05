@@ -91,7 +91,7 @@
      ;; TODO - shouldn't this use the QP Store?
      {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
                    :id (field-filter->field-id field-filter))
-                 (throw (Exception. (tru "Can't find field with ID: {0}"
+                 (throw (Exception. (tru "Can''t find field with ID: {0}"
                                          (field-filter->field-id field-filter)))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything

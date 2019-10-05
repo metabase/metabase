@@ -275,7 +275,7 @@
       ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
       :exclude-linters    [:deprecations]}}]
 
-   ;; run `lein check-reflection-warnings` to check for reflection warnings
+   ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
    [:include-all-drivers
     {:global-vars {*warn-on-reflection* true}}]

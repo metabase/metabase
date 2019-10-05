@@ -423,7 +423,7 @@
 
     :else
     (throw
-     (ex-info (tru "Don't know how to handle aggregation {0}" ag)
+     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
        {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]
