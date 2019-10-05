@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-settings-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.add-settings :as add-settings]
             [metabase.test.util :as tu]))
@@ -39,3 +40,14 @@
   {}
   (tu/with-temporary-setting-values [report-timezone "US/Mountain"]
     (add-settings ::no-timezone-driver {})))
+
+(deftest settings-in-results-test
+  (is (= {:settings {:results? true
+                     :settings {:report-timezone "US/Pacific"}}}
+         (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
+           (driver/with-driver ::timezone-driver
+             (let [query        {:query? true}
+                   results      {:results? true}
+                   add-settings (add-settings/add-settings (constantly results))]
+               (add-settings query)))))
+      "`:settings` should get added to query results as well!"))
