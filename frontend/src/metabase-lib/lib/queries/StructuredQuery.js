@@ -273,15 +273,15 @@ export default class StructuredQuery extends AtomicQuery {
       // NOTE: shold we check that a
       const dateField = _.findWhere(table.fields, { name: "ga:date" });
       if (dateField) {
-        return this.addFilter([
+        return this.filter([
           "time-interval",
           ["field-id", dateField.id],
           -365,
           "day",
         ])
-          .addAggregation(["metric", "ga:users"])
-          .addAggregation(["metric", "ga:pageviews"])
-          .addBreakout(["datetime-field", ["field-id", dateField.id], "week"]);
+          .aggregate(["metric", "ga:users"])
+          .aggregate(["metric", "ga:pageviews"])
+          .breakout(["datetime-field", ["field-id", dateField.id], "week"]);
       }
     }
     return this;

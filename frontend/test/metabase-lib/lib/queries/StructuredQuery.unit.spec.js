@@ -39,7 +39,7 @@ describe("StructuredQuery behavioral tests", () => {
 
     expect(breakoutDimension).toBeDefined();
 
-    const queryWithBreakout = query.addBreakout(breakoutDimension.mbql());
+    const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
     const filterDimensionOptions = queryWithBreakout.filterFieldOptions()
       .dimensions;
@@ -186,15 +186,13 @@ describe("StructuredQuery unit tests", () => {
         expect(query.canRemoveAggregation()).toBe(false);
       });
       it("returns false for a single aggregation", () => {
-        expect(query.addAggregation(["count"]).canRemoveAggregation()).toBe(
-          false,
-        );
+        expect(query.aggregate(["count"]).canRemoveAggregation()).toBe(false);
       });
       it("returns true for two aggregations", () => {
         expect(
           query
-            .addAggregation(["count"])
-            .addAggregation(["sum", ["field-id", ORDERS.TOTAL.id]])
+            .aggregate(["count"])
+            .aggregate(["sum", ["field-id", ORDERS.TOTAL.id]])
             .canRemoveAggregation(),
         ).toBe(true);
       });
@@ -205,7 +203,7 @@ describe("StructuredQuery unit tests", () => {
         expect(query.isBareRows()).toBe(true);
       });
       it("is false for a count aggregation", () => {
-        expect(query.addAggregation(["count"]).isBareRows()).toBe(false);
+        expect(query.aggregate(["count"]).isBareRows()).toBe(false);
       });
     });
 
@@ -261,7 +259,7 @@ describe("StructuredQuery unit tests", () => {
 
     describe("addAggregation", () => {
       it("adds an aggregation", () => {
-        expect(query.addAggregation(["count"]).query()).toEqual({
+        expect(query.aggregate(["count"]).query()).toEqual({
           "source-table": ORDERS.id,
           aggregation: [["count"]],
         });
@@ -304,16 +302,13 @@ describe("StructuredQuery unit tests", () => {
       });
 
       it("excludes the already used breakouts", () => {
-        const queryWithBreakout = query.addBreakout([
-          "field-id",
-          ORDERS.TOTAL.id,
-        ]);
+        const queryWithBreakout = query.breakout(["field-id", ORDERS.TOTAL.id]);
         expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(6);
       });
 
       it("includes an explicitly provided breakout although it has already been used", () => {
         const breakout = ["field-id", ORDERS.TOTAL.id];
-        const queryWithBreakout = query.addBreakout(breakout);
+        const queryWithBreakout = query.breakout(breakout);
         expect(queryWithBreakout.breakoutOptions().dimensions.length).toBe(6);
         expect(
           queryWithBreakout.breakoutOptions(breakout).dimensions.length,
@@ -359,7 +354,7 @@ describe("StructuredQuery unit tests", () => {
 
     describe("segments", () => {
       it("should list any applied segments that are currently active filters", () => {
-        const queryWithSegmentFilter = query.addFilter(["segment", 1]);
+        const queryWithSegmentFilter = query.filter(["segment", 1]);
         // expect there to be segments
         expect(queryWithSegmentFilter.segments().length).toBe(1);
         // and they should actually be segments
@@ -413,7 +408,7 @@ describe("StructuredQuery unit tests", () => {
       });
 
       it("excludes the already used sorts", () => {
-        const queryWithBreakout = query.addSort([
+        const queryWithBreakout = query.sort([
           "asc",
           ["field-id", ORDERS.TOTAL.id],
         ]);
@@ -422,7 +417,7 @@ describe("StructuredQuery unit tests", () => {
 
       it("includes an explicitly provided sort although it has already been used", () => {
         const sort = ["asc", ["field-id", ORDERS.TOTAL.id]];
-        const queryWithBreakout = query.addSort(sort);
+        const queryWithBreakout = query.sort(sort);
         expect(queryWithBreakout.sortOptions().dimensions.length).toBe(6);
         expect(queryWithBreakout.sortOptions(sort).dimensions.length).toBe(7);
       });

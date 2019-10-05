@@ -40,7 +40,7 @@ export default class Filter extends MBQLClause {
    * Adds itself to the parent query and returns the new StructuredQuery
    */
   add(): StructuredQuery {
-    return this._query.addFilter(this);
+    return this._query.filter(this);
   }
 
   /**

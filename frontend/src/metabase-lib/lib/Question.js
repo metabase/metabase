@@ -477,7 +477,7 @@ export default class Question {
       return query
         .reset()
         .setTable(field.table)
-        .addFilter(["=", ["field-id", field.id], value])
+        .filter(["=", ["field-id", field.id], value])
         .question();
     }
   }

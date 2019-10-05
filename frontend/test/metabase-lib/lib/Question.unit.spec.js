@@ -280,8 +280,8 @@ describe("Question", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
-      .addBreakout(["datetime-field", ["field-id", 1], "day"])
+      .aggregate(["count"])
+      .breakout(["datetime-field", ["field-id", 1], "day"])
       .question()
       .setDisplay("table");
 

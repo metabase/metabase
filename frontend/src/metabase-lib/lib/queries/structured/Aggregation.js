@@ -34,7 +34,7 @@ export default class Aggregation extends MBQLClause {
    * Adds itself to the parent query and returns the new StructuredQuery
    */
   add(): StructuredQuery {
-    return this._query.addAggregation(this);
+    return this._query.aggregate(this);
   }
 
   /**

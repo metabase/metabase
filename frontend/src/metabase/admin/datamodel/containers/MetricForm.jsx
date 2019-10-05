@@ -110,11 +110,11 @@ export default class MetricForm extends Component {
       const dateField = table.fields.find(f => f.name === "ga:date");
       if (dateField) {
         queryWithFilters = query
-          .addFilter(["time-interval", ["field-id", dateField.id], -365, "day"])
-          .addAggregation(["metric", "ga:users"]);
+          .filter(["time-interval", ["field-id", dateField.id], -365, "day"])
+          .aggregate(["metric", "ga:users"]);
       }
     } else {
-      queryWithFilters = query.addAggregation(["count"]);
+      queryWithFilters = query.aggregate(["count"]);
     }
 
     if (queryWithFilters) {
