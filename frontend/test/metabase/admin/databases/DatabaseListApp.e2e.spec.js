@@ -38,7 +38,7 @@ import DatabaseSchedulingForm, {
 
 import Databases from "metabase/entities/databases";
 
-describe("dashboard list", () => {
+describe("database list", () => {
   beforeAll(async () => {
     useSharedAdminLogin();
   });

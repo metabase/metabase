@@ -11,12 +11,22 @@ import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 export type Props = {
-  entityType?: string,
+  // Optional entity query
   entityQuery?: ?{ [key: string]: any },
+  // Entity type name (e.x. "databases", "questions", etc)
+  entityType: string,
+  // Reload the object when the component is mounted (or entityId changes)
   reload?: boolean,
+  // Wrap the object in the a class that contains helper functions
   wrapped?: boolean,
+  // Wrap the children in LoadingAndErrorWrapper to display loading and error states
+  // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
-  selectorName?: string,
+  // objectSelector overrides the default getObject selector (default: objectSelector)
+  objectSelector?: Function,
+  // denormalized defaults objectSelector to getObjectNormalized
+  denormalized?: boolean,
+  // Children render prop
   children: (props: RenderProps) => ?React$Element<any>,
 };
 
@@ -35,7 +45,8 @@ const CONSUMED_PROPS: string[] = [
   // "reload", // Masked by `reload` function. Should we rename that?
   "wrapped",
   "loadingAndErrorWrapper",
-  "selectorName",
+  "denormalized",
+  "objectSelector",
 ];
 
 const getEntityQuery = (state, props) =>
@@ -64,7 +75,10 @@ const getMemoizedEntityQuery = createMemoizedSelector(
     allLoaded,
     allFetched,
     allError,
-    selectorName = "getList",
+    denormalized = false,
+    objectSelector = denormalized
+      ? entityDef.selectors.getObjectDenormalized
+      : entityDef.selectors.getObject,
   } = props;
   if (typeof entityQuery === "function") {
     entityQuery = entityQuery(state, props);
@@ -81,7 +95,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
 
   return {
     entityQuery,
-    list: entityDef.selectors[selectorName](state, { entityQuery }),
+    list: entityDef.selectors.getList(state, { entityQuery, objectSelector }),
     loading,
     loaded,
     fetched,

@@ -15,7 +15,7 @@ const ENTITIES_TYPES = Object.keys(ENTITIES_SCHEMA_MAP);
 const searchList = GET("/api/search");
 const collectionList = GET("/api/collection/:collection/items");
 
-export default createEntity({
+const Search = createEntity({
   name: "search",
   path: "/api/search",
 
@@ -67,3 +67,9 @@ export default createEntity({
     return false;
   },
 });
+
+// change the default getObject to getObjectDenormalized
+// WARNING: this could have performance issues
+Search.selectors.getObject = Search.selectors.getObjectDenormalized;
+
+export default Search;

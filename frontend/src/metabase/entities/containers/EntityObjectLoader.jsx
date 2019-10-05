@@ -23,8 +23,10 @@ export type Props = {
   // Wrap the children in LoadingAndErrorWrapper to display loading and error states
   // When true (default) the children render prop won't be called until loaded
   loadingAndErrorWrapper: boolean,
-  // selectorName overrides the default getObject selector
-  selectorName?: string,
+  // objectSelector overrides the default getObject selector (default: objectSelector)
+  objectSelector?: Function,
+  // denormalized defaults objectSelector to getObjectNormalized
+  denormalized?: boolean,
   // Children render prop
   children: (props: RenderProps) => ?React$Element<any>,
 };
@@ -51,19 +53,34 @@ const CONSUMED_PROPS: string[] = [
   "wrapped",
   "properties",
   "loadingAndErrorWrapper",
-  "selectorName",
+  "denormalized",
+  "objectSelector",
 ];
 
 @entityType()
 @connect(
-  (state, { entityDef, entityId, selectorName = "getObject", ...props }) => {
+  (
+    state,
+    {
+      entityDef,
+      entityId,
+      denormalized,
+      objectSelector = denormalized
+        ? entityDef.selectors.getObjectDenormalized
+        : entityDef.selectors.getObject,
+      ...props
+    },
+  ) => {
     if (typeof entityId === "function") {
       entityId = entityId(state, props);
     }
 
     return {
       entityId,
-      object: entityDef.selectors[selectorName](state, { entityId }),
+      object: entityDef.selectors.getObject(state, {
+        entityId,
+        objectSelector,
+      }),
       fetched: entityDef.selectors.getFetched(state, { entityId }),
       loading: entityDef.selectors.getLoading(state, { entityId }),
       error: entityDef.selectors.getError(state, { entityId }),

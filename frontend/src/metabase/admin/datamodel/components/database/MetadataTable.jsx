@@ -17,7 +17,6 @@ import cx from "classnames";
 @Tables.load({
   id: (state, { tableId }) => tableId,
   wrapped: true,
-  selectorName: "getTable",
 })
 @withTableMetadataLoaded
 export default class MetadataTable extends Component {

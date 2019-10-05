@@ -459,7 +459,12 @@ export function createEntity(def: EntityDefinition): Entity {
   const getEntityId = (state, props) =>
     (props.params && props.params.entityId) || props.entityId;
 
-  const getObject = createCachedSelector(
+  const getObject = createSelector(
+    [state => state, getEntityId],
+    (state, entityId) => state.entities[entity.name][entityId], // default implementation
+  );
+
+  const getObjectDenormalized = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
   )((state, { entityId }) =>
@@ -468,8 +473,8 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // LIST SELECTORS
 
-  const getEntityQueryId = (state, props) =>
-    getIdForQuery(props && props.entityQuery);
+  const getEntityQueryId = (state, { entityQuery } = {}) =>
+    getIdForQuery(entityQuery);
 
   const getEntityLists = createSelector(
     [getEntities],
@@ -481,15 +486,24 @@ export function createEntity(def: EntityDefinition): Entity {
     (entityQueryId, lists) => lists[entityQueryId],
   );
 
+  const getObjectSelector = (
+    state,
+    { objectSelector = entity.selectors.getObject } = {},
+  ) => objectSelector;
+
   const getList = createSelector(
-    [state => state, getEntityIds],
+    [state => state, getEntityIds, getObjectSelector],
     // delegate to getObject
-    (state, entityIds) =>
+    (state, entityIds, objectSelector) =>
       entityIds &&
-      entityIds.map(entityId =>
-        entity.selectors.getObject(state, { entityId }),
-      ),
+      entityIds.map(entityId => objectSelector(state, { entityId })),
   );
+
+  const getListDenormalized = (state, props = {}) =>
+    getList(state, {
+      objectSelector: entity.selectors.getObjectDenormalized,
+      ...props,
+    });
 
   // REQUEST STATE SELECTORS
 
@@ -522,8 +536,10 @@ export function createEntity(def: EntityDefinition): Entity {
   );
 
   entity.selectors = {
-    getList,
     getObject,
+    getObjectDenormalized,
+    getList,
+    getListDenormalized,
     getFetched,
     getLoading,
     getLoaded,
