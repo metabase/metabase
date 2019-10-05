@@ -63,6 +63,9 @@ import { TYPE } from "metabase/lib/types";
 import { isSegmentFilter } from "metabase/lib/query/filter";
 import { fieldRefForColumnWithLegacyFallback } from "metabase/lib/dataset";
 
+type DimensionFilter = (dimension: Dimension) => boolean;
+type FieldFilter = (filter: Field) => boolean;
+
 export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
   type: "query",
@@ -699,7 +702,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Breakout}s.
    */
-  breakouts(): Breakout[] {
+  breakouts(): BreakoutWrapper[] {
     return Q.getBreakouts(this.query()).map(
       (breakout, index) => new BreakoutWrapper(breakout, index, this),
     );
@@ -1065,7 +1068,9 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns dimension options that can appear in the `fields` clause
    */
-  fieldsOptions(dimensionFilter = () => true): DimensionOptions {
+  fieldsOptions(
+    dimensionFilter: DimensionFilter = dimension => true,
+  ): DimensionOptions {
     if (this.isBareRows() && !this.hasBreakouts()) {
       return this.dimensionOptions(dimensionFilter);
     }
@@ -1077,7 +1082,9 @@ export default class StructuredQuery extends AtomicQuery {
 
   // TODO Atte Keinänen 6/18/17: Refactor to dimensionOptions which takes a dimensionFilter
   // See aggregationFieldOptions for an explanation why that covers more use cases
-  dimensionOptions(dimensionFilter = () => true): DimensionOptions {
+  dimensionOptions(
+    dimensionFilter: DimensionFilter = dimension => true,
+  ): DimensionOptions {
     const dimensionOptions = {
       count: 0,
       fks: [],
@@ -1145,7 +1152,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // FIELD OPTIONS
 
-  fieldOptions(fieldFilter = () => true) {
+  fieldOptions(fieldFilter: FieldFilter = field => true) {
     const dimensionFilter = dimension => {
       const field = dimension.field && dimension.field();
       return !field || (field.isDimension() && fieldFilter(field));

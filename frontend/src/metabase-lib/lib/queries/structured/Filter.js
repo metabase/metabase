@@ -218,7 +218,7 @@ export default class Filter extends MBQLClause {
           ? [this[0], dimension.mbql(), ...this.slice(2)]
           : [null, dimension.mbql()],
       );
-      if (filter.operatorName() !== operatorName) {
+      if (operatorName && filter.operatorName() !== operatorName) {
         return filter.setOperator(operatorName);
       } else {
         return filter;

@@ -42,7 +42,7 @@ describe("PivotByAction", () => {
           type: "query",
         },
         display: "line",
-        name: null,
+        name: undefined,
         visualization_settings: {},
       },
     });

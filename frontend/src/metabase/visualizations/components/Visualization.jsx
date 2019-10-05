@@ -256,7 +256,7 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(metadata, card);
+    return metadata && card && new Question(card, metadata);
   }
 
   getClickActions(clicked: ?ClickObject) {

@@ -42,7 +42,7 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
           aggregationOperators={getAggregationOperatorsForSummarize(query)}
           onChangeAggregation={aggregation => {
             onChangeCardAndRun({
-              nextCard: question.summarize(aggregation).card(),
+              nextCard: question.aggregate(aggregation).card(),
             });
             onClose && onClose();
           }}
