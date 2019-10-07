@@ -170,7 +170,3 @@
           (is (= expected-rows
                  (rows-on-july-30))
               (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))
-
-(defn- x []
-  (dev/with-test-drivers #{:oracle} #_#{:oracle :redshift :presto :vertica :snowflake}
-    (result-rows-test)))
