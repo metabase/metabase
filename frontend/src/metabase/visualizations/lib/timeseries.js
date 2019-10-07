@@ -193,7 +193,7 @@ export function minTimeseriesUnit(units) {
 }
 
 function computeTimeseriesDataInvervalIndex(xValues, unit) {
-  if (unit && INTERVAL_INDEX_BY_UNIT[unit] != undefined) {
+  if (unit && INTERVAL_INDEX_BY_UNIT[unit] != null) {
     return INTERVAL_INDEX_BY_UNIT[unit];
   }
   // Always use 'day' when there's just one value.

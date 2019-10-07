@@ -108,7 +108,10 @@
           info))
       infos)
      (throw
-      (ex-info (tru "No matching info found.")
+      (ex-info (tru "No matching info found for join against Table {0} ''{1}'' on Field {2} ''{3}'' via FK {4} ''{5}''"
+                    dest-table-id (or (u/ignore-exceptions (:name (qp.store/table dest-table-id))) "?")
+                    dest-id (or (u/ignore-exceptions (:name (qp.store/field dest-id))) "?")
+                    fk-id (or (u/ignore-exceptions (:name (qp.store/field fk-id))) "?"))
         {:fk-id fk-id, :dest-id dest-id, :dest-table-id dest-table-id})))))
 
 (defn- matching-info-fn

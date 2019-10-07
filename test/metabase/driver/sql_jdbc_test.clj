@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -162,64 +163,53 @@
     {:query  "SELECT * FROM birds;"
      :params []}))
 
-(defn- process-spliced-count-query* [mbql-query]
-  (let [native-query (qp/query->native-with-spliced-params
-                       {:database (data/id)
-                        :type     :query
-                        :query    (assoc mbql-query :aggregation [[:count]])})
+(defn- spliced-count-of [table filter-clause]
+  (let [query        {:database (data/id)
+                      :type     :query
+                      :query    {:source-table (data/id table)
+                                 :aggregation  [[:count]]
+                                 :filter       filter-clause}}
+        native-query (qp/query->native-with-spliced-params query)
         spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
-    (qp.test/format-rows-by [int]
-      (qp.test/rows
-        (qp/process-query
-          {:database (data/id)
-           :type     :native
-           :native   spliced})))))
+    (ffirst
+     (qp.test/format-rows-by [int]
+       (qp.test/rows
+         (qp/process-query
+           {:database (data/id)
+            :type     :native
+            :native   spliced}))))))
 
-(defmacro ^:private process-spliced-count-query [table filter-clause]
-  `(process-spliced-count-query*
-    {:source-table (data/id ~table)
-     :filter       (data/$ids ~table ~filter-clause)}))
-
-;; test splicing a string -- is resulting query correct?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[3]]
-  (process-spliced-count-query :venues [:starts-with $name "Sushi"]))
-
-;; test splicing a string containing single quotes -- is resulting query correct? (The way this is done varies from
-;; driver to driver)
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[1]]
-  (process-spliced-count-query :venues [:= $name "Barney's Beanery"]))
-
-;; test splicing an integer -- is resulting query correct?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[13]]
-  (process-spliced-count-query :venues [:= $price 3]))
-
-;; test splicing a floating-point number -- is resulting query correct?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[13]]
-  (process-spliced-count-query :venues [:between $price 2.9 3.1]))
-
-;; test splicing a boolean -- is resulting query correct?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[2]]
-  (data/dataset places-cam-likes
-    (process-spliced-count-query :places [:= $liked true])))
-
-;; test splicing `nil` -- is resulting query correct?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[0]]
-  (process-spliced-count-query :venues [:is-null $price]))
-
-;; test splicing a `Date` -- is resulting query correct ?
-(datasets/expect-with-drivers @sql-jdbc-drivers
-  [[3]]
-  (process-spliced-count-query :checkins [:= $date "2014-03-05"]))
-
-;; test splicing a `Timestamp` -- is resulting query correct ?
-;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-(datasets/expect-with-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
-  [[2]]
-  (data/dataset test-data-with-time
-    (process-spliced-count-query :users [:= $last_login_time (Time. 9 30 0)])))
+(deftest splice-parameters-test
+  (datasets/test-drivers @sql-jdbc-drivers
+    (data/$ids venues
+      (testing "splicing a string"
+        (is (= 3
+               (spliced-count-of :venues [:starts-with $name "Sushi"])))
+        (testing "containing single quotes -- this is done differently from driver to driver"
+          (is (= 1
+                 (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
+      (testing "splicing an integer"
+        (is (= 13
+               (spliced-count-of :venues [:= $price 3]))))
+      (testing "splicing floating-point numbers"
+        (is (= 13
+               (spliced-count-of :venues [:between $price 2.9 3.1]))))
+      (testing "splicing nil"
+        (is (= 0
+               (spliced-count-of :venues [:is-null $price])))))
+    (data/dataset places-cam-likes
+      (data/$ids places
+        (testing "splicing a boolean"
+          (is (= 2
+                 (spliced-count-of :places [:= $liked true]))))))
+    (data/$ids checkins
+      (testing "splicing a `Date`"
+        (is (= 3
+               (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
+  ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
+  (datasets/test-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
+    (testing "splicing a `Time`"
+      (is (= 2
+             (data/dataset test-data-with-time
+               (data/$ids users
+                 (spliced-count-of :users [:= $last_login_time (Time. 9 30 0)]))))))))

@@ -159,7 +159,7 @@
 ;; ^ the parallel versions aren't neccesarily faster than the sequential versions for all drivers so make sure to do
 ;; some profiling in order to pick the appropriate implementation
 
-;; Default imp
+;; Default impl
 
 (defmethod load-data! :sql-jdbc/test-extensions [driver dbdef tabledef]
   (load-data-chunked! driver dbdef tabledef))

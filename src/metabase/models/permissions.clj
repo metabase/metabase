@@ -84,7 +84,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ui18n/ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
+    (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -623,7 +623,7 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ui18n/ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
+    (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
                                " "
                                (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))

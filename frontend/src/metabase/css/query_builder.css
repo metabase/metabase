@@ -256,29 +256,25 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_results.svg");
+  background-image: url("~assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_understand.svg");
+  background-image: url("~assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/blown_up.svg");
+  background-image: url("~assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/stopwatch.svg");
+  background-image: url("~assets/img/stopwatch.svg");
 }
 
 .QueryError-message {

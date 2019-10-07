@@ -58,6 +58,7 @@
   (throw (UnsupportedOperationException. "Oracle does not have a TIME data type.")))
 
 (defmethod sql.tx/drop-table-if-exists-sql :oracle [_ {:keys [database-name]} {:keys [table-name]}]
+  ;; ⅋ replaced with `;` in the actual executed SQL; `;` itself is automatically removed Missing IN or OUT parameter
   (format "BEGIN
              EXECUTE IMMEDIATE 'DROP TABLE \"%s\".\"%s\" CASCADE CONSTRAINTS'⅋
            EXCEPTION

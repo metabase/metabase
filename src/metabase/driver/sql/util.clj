@@ -75,7 +75,7 @@
 
       :else
       (do
-        (log/error (trs "Don't know how to alias {0}, expected an Identifier." col))
+        (log/error (trs "Don''t know how to alias {0}, expected an Identifier." col))
         [col col]))))
 
 (defn select-clause-deduplicate-aliases
