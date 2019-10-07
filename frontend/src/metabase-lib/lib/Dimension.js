@@ -171,29 +171,6 @@ export default class Dimension {
     return null;
   }
 
-  /**
-   * Returns MBQL for the default breakout
-   *
-   * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
-   * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
-   */
-  defaultBreakout() {
-    const defaultSubDimension = this.defaultDimension();
-    if (defaultSubDimension) {
-      return defaultSubDimension.mbql();
-    } else {
-      return this.mbql();
-    }
-  }
-
-  defaultAggregation() {
-    const aggregations = this.field().aggregations();
-    if (aggregations && aggregations.length > 0) {
-      return [aggregations[0].short, this.mbql()];
-    }
-    return null;
-  }
-
   // Internal method gets a Dimension from a DimensionOption
   _dimensionForOption(option: DimensionOption) {
     // fill in the parent field ref
@@ -289,39 +266,74 @@ export default class Dimension {
     return this.field().name;
   }
 
+  // FILTERS
+
   /**
    * Valid filter operators on this dimension
-   * TODO: rename filterOperator()
    */
-  operatorOptions() {
-    return this.baseDimension()
-      .field()
-      .operatorOptions();
+  filterOperators(): FilterOperator[] {
+    return this.field().filterOperators();
   }
 
   /**
    * The operator with the provided operator name (e.x. `=`, `<`, etc)
-   * TODO: rename filterOperators()
    */
-  operator(op) {
-    return this.field().operator(op);
+  filterOperator(operatorName: string): ?FilterOperator {
+    return this.field().filterOperator(operatorName);
   }
 
   /**
-   * The default operator for this
+   * The default filter operator for this dimension
    */
-  defaultOperator() {
+  defaultFilterOperator(): ?FilterOperator {
     // let the DatePicker choose the default operator, otherwise use the first one
     // TODO: replace with a defaultFilter()- or similar which includes arguments
-    const operators = this.operatorOptions();
-    return this.field().isDate() ? null : operators[0] && operators[0].name;
+    return this.field().isDate() ? null : this.filterOperators()[0];
+  }
+
+  // AGGREGATIONS
+
+  /**
+   * Valid aggregation operators on this dimension
+   */
+  aggregationOperators(): AggregationOperator[] {
+    return this.field().aggregationOperators();
   }
 
   /**
    * Valid filter operators on this dimension
    */
-  aggregations() {
-    return this.field().aggregations() || [];
+  aggregationOperator(operatorName: string): ?AggregationOperator {
+    return this.field().aggregationOperator(operatorName);
+  }
+
+  defaultAggregationOperator(): ?AggregationOperator {
+    return this.aggregationOperators()[0];
+  }
+
+  defaultAggregation() {
+    const aggregation = this.defaultAggregationOperator();
+    if (aggregation) {
+      return [aggregation.short, this.mbql()];
+    }
+    return null;
+  }
+
+  // BREAKOUTS
+
+  /**
+   * Returns MBQL for the default breakout
+   *
+   * Tries to look up a default subdimension (like "Created At: Day" for "Created At" field)
+   * and if it isn't found, uses the plain field id dimension (like "Product ID") as a fallback.
+   */
+  defaultBreakout() {
+    const defaultSubDimension = this.defaultDimension();
+    if (defaultSubDimension) {
+      return defaultSubDimension.mbql();
+    } else {
+      return this.mbql();
+    }
   }
 
   /**
@@ -522,8 +534,8 @@ export class FieldLiteralDimension extends FieldDimension {
       base_type: this._args[1],
       // HACK: need to thread the query through to this fake Field
       query: this._query,
-      operators: [{ name: "=", verboseName: t`Is`, fields: [] }],
-      operators_lookup: {
+      filter_operators: [{ name: "=", verboseName: t`Is`, fields: [] }],
+      filter_operators_lookup: {
         "=": { name: "=", verboseName: t`Is`, fields: [] },
       },
     });

@@ -79,11 +79,11 @@ export default class Table extends Base {
     return this.fields.filter(field => field.isDate());
   }
 
-  aggregations() {
-    return this.aggregation_options || [];
+  aggregationOperators() {
+    return this.aggregation_operators || [];
   }
 
   aggregation(agg) {
-    return _.findWhere(this.aggregations(), { short: agg });
+    return _.findWhere(this.aggregationOperators(), { short: agg });
   }
 }

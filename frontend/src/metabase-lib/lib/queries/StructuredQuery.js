@@ -29,7 +29,7 @@ import type {
 } from "metabase/meta/types/Card";
 import type {
   TableMetadata,
-  AggregationOption,
+  AggregationOperator,
 } from "metabase/meta/types/Metadata";
 
 import Dimension, {
@@ -273,15 +273,15 @@ export default class StructuredQuery extends AtomicQuery {
       // NOTE: shold we check that a
       const dateField = _.findWhere(table.fields, { name: "ga:date" });
       if (dateField) {
-        return this.addFilter([
+        return this.filter([
           "time-interval",
           ["field-id", dateField.id],
           -365,
           "day",
         ])
-          .addAggregation(["metric", "ga:users"])
-          .addAggregation(["metric", "ga:pageviews"])
-          .addBreakout(["datetime-field", ["field-id", dateField.id], "week"]);
+          .aggregate(["metric", "ga:users"])
+          .aggregate(["metric", "ga:pageviews"])
+          .breakout(["datetime-field", ["field-id", dateField.id], "week"]);
       }
     }
     return this;
@@ -587,22 +587,24 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns an array of aggregation options for the currently selected table
    */
-  aggregationOptions(): AggregationOption[] {
-    return this.table() && this.table().aggregations();
+  aggregationOperators(): AggregationOperator[] {
+    return (this.table() && this.table().aggregationOperators()) || [];
   }
 
   /**
    * @returns an array of aggregation options for the currently selected table
    */
-  aggregationOptionsWithoutRows(): AggregationOption[] {
-    return this.aggregationOptions().filter(option => option.short !== "rows");
+  aggregationOperatorsWithoutRows(): AggregationOperator[] {
+    return this.aggregationOperators().filter(
+      option => option.short !== "rows",
+    );
   }
 
   /**
    * @returns the field options for the provided aggregation
    */
-  aggregationFieldOptions(agg: string | AggregationOption): DimensionOptions {
-    const aggregation: AggregationOption =
+  aggregationFieldOptions(agg: string | AggregationOperator): DimensionOptions {
+    const aggregation: AggregationOperator =
       typeof agg === "string" ? this.table().aggregation(agg) : agg;
     if (aggregation) {
       const fieldOptions = this.fieldOptions(field => {

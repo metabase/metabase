@@ -180,7 +180,7 @@ export default class GuiQueryEditor extends React.Component {
               isNew
               query={query}
               onChangeFilter={filter =>
-                query.addFilter(filter).update(setDatasetQuery)
+                query.filter(filter).update(setDatasetQuery)
               }
               onClose={() => this.refs.filterPopover.close()}
             />

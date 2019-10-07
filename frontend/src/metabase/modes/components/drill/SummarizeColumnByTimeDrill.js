@@ -5,8 +5,8 @@ import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
 import {
-  getAggregator,
-  isCompatibleAggregatorForField,
+  getAggregationOperator,
+  isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { capitalize } from "metabase/lib/formatting";
 
@@ -31,8 +31,10 @@ export default ({
     return [];
   }
   return ["sum"]
-    .map(getAggregator)
-    .filter(aggregator => isCompatibleAggregatorForField(aggregator, column))
+    .map(getAggregationOperator)
+    .filter(aggregator =>
+      isCompatibleAggregationOperatorForField(aggregator, column),
+    )
     .map(aggregator => ({
       name: "summarize-by-time",
       section: "distribution",
