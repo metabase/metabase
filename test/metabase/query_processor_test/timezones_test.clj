@@ -1,6 +1,5 @@
 (ns metabase.query-processor-test.timezones-test
-  (:require [clojure.test :refer :all]
-            [metabase
+  (:require [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
