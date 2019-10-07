@@ -19,9 +19,9 @@
        {:report-timezone \"US/Pacific\"}"
   [qp]
   (fn [query]
-    (let [settings (settings-for-current-driver)
-          query    (cond-> query
-                     settings (assoc :settings settings))
-          results  (qp query)]
+    (let [{:keys [report-timezone], :as settings} (settings-for-current-driver)
+          query                                   (cond-> query
+                                                    settings (assoc :settings settings))
+          results                                 (qp query)]
       (cond-> results
-        settings (assoc :settings settings)))))
+        (seq report-timezone) (assoc :report_timezone report-timezone)))))
