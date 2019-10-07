@@ -72,7 +72,7 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1, :arglists '([test [code message] & more] [test code message & more])}
+  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
   [condition & args]
   (let [[code message & more] (if (sequential? (first args))
                                 (concat (first args) (rest args))
