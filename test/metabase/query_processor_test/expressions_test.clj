@@ -27,7 +27,7 @@
          :limit       5
          :order-by    [[:asc $id]]}))))
 
-;; Make sure FLOATING POINT division is done
+;; Make sure FLOATING POINT division is done when dividing by literals
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   [[1 "Red Medicine"           4 10.0646 -165.374 3 1.5] ; 3 / 2 SHOULD BE 1.5, NOT 1 (!)
    [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
@@ -36,6 +36,17 @@
     (qp.test/rows
       (data/run-mbql-query venues
         {:expressions {:my-cool-new-field [:/ $price 2]}
+         :limit       3
+         :order-by    [[:asc $id]]}))))
+
+;; Make sure FLOATING POINT division is done when dividing by expressions/fields
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
+  [[1 "Red Medicine"           4 10.0646 -165.374 3 0.6]
+   [3 "The Apple Pan"         11 34.0406 -118.428 2 0.5]]
+  (qp.test/format-rows-by [int str int 4.0 4.0 int float]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:expressions {:my-cool-new-field [:/ $price [:+ $price 2]]}
          :limit       3
          :order-by    [[:asc $id]]}))))
 

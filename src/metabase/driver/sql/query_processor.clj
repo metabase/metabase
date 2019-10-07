@@ -270,10 +270,12 @@
                (->honeysql driver (if (integer? arg)
                                     (double arg)
                                     arg)))]
-    (apply hsql/call :/ (first args) (for [arg (rest args)]
-                                       (hsql/call :case
-                                         (hsql/call := arg 0) nil
-                                         :else                arg)))))
+    (apply hsql/call :/
+           (hx/cast :decimal (first args))
+           (for [arg (rest args)]
+             (hsql/call :case
+               (hsql/call := arg 0) nil
+               :else                arg)))))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
