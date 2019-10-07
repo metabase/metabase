@@ -20,7 +20,7 @@
                  org.tukaani/xz]]
    ;; TODO - this is deprecated, seems like we'll want to upgrade to `org.apache.hive/hive-jdbc` in the future. Don't
    ;; thing it works with Spark SQL atm however
-   [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
+   [org.apache.hive/hive-jdbc "1.2.1"
     :exclusions
     [#_com.google.guava/guava
      commons-logging

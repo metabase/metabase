@@ -70,7 +70,7 @@ exports.replaceStrings = function replaceStrings(source, regex, replacer) {
         typeof path.value.value === "string" &&
         // don't match strings that are property keys
         !(
-          path.parentPath.value.type && path.parentPath.value.key == path.value
+          path.parentPath.value.type && path.parentPath.value.key === path.value
         ),
     )
     .replaceWith(path => {

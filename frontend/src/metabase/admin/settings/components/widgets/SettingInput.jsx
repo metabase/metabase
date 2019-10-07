@@ -13,7 +13,7 @@ const SettingInput = ({
   type = "text",
 }) => (
   <InputBlurChange
-    className={cx(" AdminInput bordered rounded h3", {
+    className={cx("Form-input", {
       SettingsInput: type !== "password",
       SettingsPassword: type === "password",
       "border-error bg-error-input": errorMessage,

@@ -118,7 +118,7 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
-    ) : modal == "history" ? (
+    ) : modal === "history" ? (
       <Modal onClose={onCloseModal}>
         <QuestionHistoryModal
           questionId={this.props.card.id}

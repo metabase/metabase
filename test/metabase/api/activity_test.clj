@@ -1,6 +1,7 @@
 (ns metabase.api.activity-test
   "Tests for /api/activity endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.api.activity :as activity-api]
             [metabase.models
              [activity :refer [Activity]]
@@ -8,10 +9,13 @@
              [dashboard :refer [Dashboard]]
              [view-log :refer [ViewLog]]]
             [metabase.test.data.users :as test-users]
+            [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; GET /
 

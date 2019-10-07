@@ -147,6 +147,9 @@
 (defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
 (defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
 
-(defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true)
+;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
+;; implementation, and we don't want to stomp over that if it was loaded already
+(when-not (get (methods driver/supports?) [:sparksql :foreign-keys])
+  (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] true))
 
 (defmethod sql.qp/quote-style :sparksql [_] :mysql)
