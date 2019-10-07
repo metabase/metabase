@@ -1,13 +1,14 @@
 (ns metabase.models.permissions-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models
              [collection :as collection :refer [Collection]]
-             [collection-test :as collection-test]
              [database :refer [Database]]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [table :refer [Table]]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -630,7 +631,7 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/revoke-collection-permissions!
       (group/all-users)
       (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
@@ -649,7 +650,7 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/grant-collection-read-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
@@ -669,7 +670,7 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/grant-collection-readwrite-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))

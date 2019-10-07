@@ -25,15 +25,7 @@
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
-(use-fixtures :once (fixtures/initialize :db))
-
-(defn force-create-personal-collections!
-  "Force the creation of the Personal Collections for our various test users. They are eventually going to get
-  automatically created anyway as soon as those Users' permissions get calculated in `user/permissions-set`; better to
-  do it now so the test results will be consistent."
-  []
-  (doseq [username [:rasta :lucky :crowberto :trashbird]]
-    (collection/user->personal-collection (test-users/user->id username))))
+(use-fixtures :once (fixtures/initialize :db :test-users :test-users-personal-collections))
 
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (test-users/user->id :lucky))))
@@ -341,7 +333,6 @@
               (u/get-id (group/metabot))   {:root :none}
               (u/get-id (group/admin))     {:root :write}}}
   (tu/with-non-admin-groups-no-root-collection-perms
-    (force-create-personal-collections!)
     (graph :clear-revisions? true)))
 
 ;; Make sure that if we try to be sneaky and edit a Personal Collection via the graph, an Exception is thrown

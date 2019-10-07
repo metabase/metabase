@@ -478,3 +478,18 @@
   [begin-time :- (s/protocol coerce/ICoerce)
    end-time :- (s/protocol coerce/ICoerce)]
   (- (coerce/to-long end-time) (coerce/to-long begin-time)))
+
+(defn seconds->ms
+  "Convert `seconds` to milliseconds. More readable than doing this math inline."
+  [seconds]
+  (* seconds 1000))
+
+(defn minutes->seconds
+  "Convert `minutes` to seconds. More readable than doing this math inline."
+  [minutes]
+  (* 60 minutes))
+
+(defn minutes->ms
+  "Convert `minutes` to milliseconds. More readable than doing this math inline."
+  [minutes]
+  (-> minutes minutes->seconds seconds->ms))
