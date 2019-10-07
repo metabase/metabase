@@ -19,7 +19,8 @@
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
-                                        "--exclude-profiles" "compare-h2-dbs"]
+                                        ;; see https://github.com/dakrone/lein-bikeshed/issues/41
+                                        "--exclude-profiles" "compare-h2-dbs,dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
