@@ -68,14 +68,26 @@
     (assert (isa? (keyword special-type) :type/*)
       (str "Invalid special type: " special-type))))
 
+(def ^:private ^:const ^Long max-database-type-string-length
+  "Field definitions for DBs that support structural types (eg. Presto -- https://prestodb.github.io/docs/current/language/types.html#structural)
+  can be of arbitrary length. This ensures a sane length congruent with our DB schema (unbounded TEXT
+  type is not ideal as we then have to cast from CLOB on every read)."
+  4096)
+
+(defn- maybe-truncate-database-type
+  [field]
+  (update field :database_type subs 0 max-database-type-string-length))
+
 (defn- pre-insert [field]
   (check-valid-types field)
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
-    (merge defaults field)))
+    (->> field
+         maybe-truncate-database-type
+         (merge defaults))))
 
 (defn- pre-update [field]
-  (u/prog1 field
-    (check-valid-types field)))
+  (check-valid-types field)
+  (maybe-truncate-database-type field))
 
 (defn- pre-delete [{:keys [id]}]
   (db/delete! Field :parent_id id)
