@@ -109,6 +109,12 @@
 (derive :type/CancelationDate :type/Date)
 (derive :type/CancelationDate :type/CancelationTimestamp)
 
+(derive :type/DeletionTimestamp :type/DateTime)
+(derive :type/DeletionTime :type/Date)
+(derive :type/DeletionTime :type/DeletionTimestamp)
+(derive :type/DeletionDate :type/Date)
+(derive :type/DeletionDate :type/DeletionTimestamp)
+
 (derive :type/Birthdate :type/Date)
 
 

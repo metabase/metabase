@@ -156,6 +156,21 @@ export const field_special_types = [
     section: t`Common`,
   },
   {
+    id: TYPE.DeletionTimestamp,
+    name: t`Deletion timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.DeletionTime,
+    name: t`Deletion time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.DeletionDate,
+    name: t`Deletion date`,
+    section: t`Common`,
+  },
+  {
     id: TYPE.Product,
     name: t`Product`,
     section: t`Common`,
