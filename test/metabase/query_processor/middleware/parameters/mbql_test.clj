@@ -141,13 +141,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; for some reason param substitution tests fail on Redshift so just don't run those for now
-(def ^:private params-test-drivers (disj @qp.test/non-timeseries-drivers :redshift))
+(def ^:private params-test-drivers
+  (delay (disj @qp.test/non-timeseries-drivers :redshift)))
 
 ;; check that date ranges work correctly
 (datasets/expect-with-drivers @params-test-drivers
   [29]
   (do
-    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
+    ;; results
     (when (= :snowflake driver/*driver*)
       (driver/notify-database-updated driver/*driver* (data/id)))
     (qp.test/first-row
