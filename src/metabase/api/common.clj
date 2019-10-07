@@ -41,11 +41,20 @@
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
+(defn- check-one [condition code message]
+  (when-not condition
+    (let [[message info] (if (and (map? message)
+                                  (not (ui18n/localized-string? message)))
+                           [(:message message) message]
+                           [message])]
+      (throw (ex-info (str message) (assoc info :status-code code)))))
+  condition)
+
 (defn check
   "Assertion mechanism for use inside API functions.
   Checks that `test` is true, or throws an `ExceptionInfo` with `status-code` and `message`.
 
-  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  `message` can be either a plain string error message, or a map including the key `:message` and any additional
   details, such as an `:error_code`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
@@ -63,18 +72,15 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1}
-  ([tst code-or-code-message-pair & rest-args]
-   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
-                                      [code-or-code-message-pair rest-args]
-                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
-     (when-not tst
-       (throw (if (and (map? message)
-                       (not (ui18n/localized-string? message)))
-                (ui18n/ex-info (:message message) (assoc message :status-code code))
-                (ui18n/ex-info message            {:status-code code}))))
-     (if (empty? rest-args) tst
-         (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
+  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
+  [condition & args]
+  (let [[code message & more] (if (sequential? (first args))
+                                (concat (first args) (rest args))
+                                args)]
+    (check-one condition code message)
+    (if (seq more)
+      (recur (first more) (rest more))
+      condition)))
 
 (defn check-exists?
   "Check that object with ID (or other key/values) exists in the DB, or throw a 404."
@@ -95,7 +101,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -191,7 +197,7 @@
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   []
-  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful

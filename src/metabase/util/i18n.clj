@@ -6,7 +6,8 @@
             [potemkin.types :as p.types]
             [puppetlabs.i18n.core :as i18n :refer [available-locales]]
             [schema.core :as s])
-  (:import java.util.Locale))
+  (:import java.text.MessageFormat
+           java.util.Locale))
 
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
@@ -70,12 +71,26 @@
   "Schema for user and system localized string instances"
   (s/cond-pre UserLocalizedString SystemLocalizedString))
 
+(defn- validate-number-of-args
+  "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
+  [msg args]
+  (assert (string? msg)
+    "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
+  (let [message-format    (MessageFormat. msg)
+        expected-num-args (count (.getFormats message-format))
+        actual-num-args   (count args)]
+    (assert (= expected-num-args actual-num-args)
+      (format (str "(deferred-)trs/tru with format string \"%s\" expects %d args, got %d. "
+                   "Did you forget to escape a single quote?")
+              (.toPattern message-format) expected-num-args actual-num-args))))
+
 (defmacro deferred-tru
   "Similar to `puppetlabs.i18n.core/tru` but creates a `UserLocalizedString` instance so that conversion to the
   correct locale can be delayed until it is needed. The user locale comes from the browser, so conversion to the
   localized string needs to be 'late bound' and only occur when the user's locale is in scope. Calling `str` on the
   results of this invocation will lookup the translated version of the string."
   [msg & args]
+  (validate-number-of-args msg args)
   `(UserLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
 (defmacro deferred-trs
@@ -84,6 +99,7 @@
   overridden/changed by a setting. Calling `str` on the results of this invocation will lookup the translated version
   of the string."
   [msg & args]
+  (validate-number-of-args msg args)
   `(SystemLocalizedString. ~(namespace-munge *ns*) ~msg ~(vec args)))
 
 (def ^String str*
@@ -107,15 +123,13 @@
   [msg & args]
   `(str* (deferred-trs ~msg ~@args)))
 
-(def ^:private localized-string-checker
-  "Compiled checker for `LocalizedString`s which is more efficient when used repeatedly like in `localized-string?`
-  below"
-  (s/checker LocalizedString))
-
+;; TODO - I seriously doubt whether these are still actually needed now that `tru` and `trs` generate forms wrapped in
+;; `str` by default
 (defn localized-string?
-  "Returns `true` if `maybe-a-localized-string` is a system or user localized string instance"
-  [maybe-a-localized-string]
-  (not (localized-string-checker maybe-a-localized-string)))
+  "Returns true if `x` is a system or user localized string instance"
+  [x]
+  (or (instance? UserLocalizedString x)
+      (instance? SystemLocalizedString x)))
 
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"
@@ -124,11 +138,3 @@
                    (if (localized-string? node)
                      (str node)
                      node)) x))
-
-(defn ^:deprecated ex-info
-  "Just like `clojure.core/ex-info` but it is i18n-aware. It will call `str` on `msg` and walk `ex-data` converting any
-  `SystemLocalizedString` and `UserLocalizedString`s to a regular string"
-  ([msg ex-data-map]
-   (clojure.core/ex-info (str msg) (localized-strings->strings ex-data-map)))
-  ([msg ex-data-map cause]
-   (clojure.core/ex-info (str msg) (localized-strings->strings ex-data-map) cause)))

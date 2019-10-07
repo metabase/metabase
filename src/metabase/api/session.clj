@@ -76,7 +76,7 @@
         (when-not (ldap/verify-password user-info password)
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
-          (throw (ui18n/ex-info password-fail-message
+          (throw (ex-info (str password-fail-message)
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
@@ -109,7 +109,7 @@
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
-       (ui18n/ex-info password-fail-message
+       (ex-info (str password-fail-message)
          {:status-code 400
           :errors      {:password password-fail-snippet}}))))
 
@@ -255,10 +255,10 @@
 (defn- google-auth-token-info [^String token]
   (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
     (when-not (= status 200)
-      (throw (ui18n/ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
+      (throw (ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
     (u/prog1 (json/parse-string body keyword)
       (when-not (= (:email_verified <>) "true")
-        (throw (ui18n/ex-info (tru "Email is not verified.") {:status-code 400}))))))
+        (throw (ex-info (tru "Email is not verified.") {:status-code 400}))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
 (defn- email->domain ^String [email]
@@ -279,7 +279,7 @@
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
     ;; to this situation
     (throw
-     (ui18n/ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
+     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
        {:status-code 428}))))
 
 (s/defn ^:private google-auth-create-new-user!

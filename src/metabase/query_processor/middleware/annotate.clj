@@ -192,8 +192,9 @@
 
     ;; we should never reach this if our patterns are written right so this is more to catch code mistakes than
     ;; something the user should expect to see
-    _ (throw (ex-info (tru "Don't know how to get information about Field:" " " &match)
-               {:field &match}))))
+    _
+    (throw (ex-info (tru "Don''t know how to get information about Field: {0}" &match)
+             {:field &match}))))
 
 
 ;;; ---------------------------------------------- Aggregate Field Info ----------------------------------------------

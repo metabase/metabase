@@ -81,7 +81,7 @@
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
   {:pre [(map? database)]}
-  (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ...") driver id))
+  (log/debug (u/format-color 'cyan (trs "Creating new connection pool for {0} database {1} ..." driver id)))
   (let [details-with-tunnel (ssh/include-ssh-tunnel details) ;; If the tunnel is disabled this returned unchanged
         spec                (connection-details->spec driver details-with-tunnel)
         properties          (data-warehouse-connection-pool-properties driver)]
@@ -118,8 +118,6 @@
   [_ database]
   (set-pool! (u/get-id database) nil))
 
-(def ^:private create-pool-lock (Object.))
-
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -132,7 +130,7 @@
      ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
      ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
      ;; one thread will be creating a pool at a given instant.
-     (locking create-pool-lock
+     (locking database-id->connection-pool
        (or
         ;; check if another thread created the pool while we were waiting to acquire the lock
         (get @database-id->connection-pool database-id)
