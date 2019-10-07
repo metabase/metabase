@@ -62,17 +62,24 @@
      :host "127.0.0.1"
      :port 1234}))
 
-;; incorrect password
+;; correct password
 (expect
-  (et/more-of ex
-           com.jcraft.jsch.JSchException ex
-           "Auth fail" (.getMessage ex))
   (start-ssh-tunnel
     {:tunnel-host "127.0.0.1"
      :tunnel-port ssh-mock-server-with-password-port
-     :tunnel-pass (str ssh-password "invalid")
+     :tunnel-pass ssh-password
      :host "127.0.0.1"
      :port 1234}))
+
+;; incorrect password
+(deftest throws-exception-on-incorrect-password
+  (is (thrown? com.jcraft.jsch.JSchException
+               (start-ssh-tunnel
+                 {:tunnel-host "127.0.0.1"
+                  :tunnel-port ssh-mock-server-with-password-port
+                  :tunnel-pass (str ssh-password "invalid")
+                  :host "127.0.0.1"
+                  :port 1234}))))
 
 ;; correct ssh key
 (expect
@@ -84,13 +91,11 @@
      :port 1234}))
 
 ;; incorrect ssh key
-(expect
-  (et/more-of ex
-           com.jcraft.jsch.JSchException ex
-           "Auth fail" (.getMessage ex))
-  (start-ssh-tunnel
-    {:tunnel-host "127.0.0.1"
-     :tunnel-port ssh-mock-server-with-publickey-port
-     :tunnel-private-key-file-name (.getAbsolutePath (io/file (io/resource ssh-key-invalid)))
-     :host "127.0.0.1"
-     :port 1234}))
+(deftest throws-exception-on-incorrect-ssh-key
+  (is (thrown? com.jcraft.jsch.JSchException
+               (start-ssh-tunnel
+                 {:tunnel-host "127.0.0.1"
+                  :tunnel-port ssh-mock-server-with-publickey-port
+                  :tunnel-private-key-file-name (.getAbsolutePath (io/file (io/resource ssh-key-invalid)))
+                  :host "127.0.0.1"
+                  :port 1234}))))
