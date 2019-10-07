@@ -52,7 +52,6 @@
           ssh2 (start-ssh-mock-server-with-publickey)]
       (try (f)
            (finally
-             (prn "did test!")
              (when ssh1 (.stop ssh1))
              (when ssh2 (.stop ssh2)))))))
 
