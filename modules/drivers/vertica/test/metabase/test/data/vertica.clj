@@ -3,16 +3,13 @@
   (:require [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]]
-            [metabase.util :as u]
-            [metabase.util.honeysql-extensions :as hx]))
+             [load-data :as load-data]]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -54,6 +51,9 @@
   [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
 
+(defn- dbspec []
+  (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
+
 (defmethod load-data/load-data! :vertica
   [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
@@ -64,10 +64,7 @@
                 (when-not (pos? retries)
                   (throw e))
                 (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
-                (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
-                                         (tx/format-name driver (u/qualified-name component)))
-                      table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))
-                      sql              (format "TRUNCATE TABLE %s" table-identifier)]
+                (let [sql (format "TRUNCATE TABLE %s" (sql.tx/qualify-and-quote :vertica database-name table-name))]
                   (jdbc/execute! (dbspec) sql))
                 (load-data-with-retries! (dec retries)))))]
     (load-data-with-retries! 5)))
@@ -79,9 +76,6 @@
 
 (defmethod tx/has-questionable-timezone-support? :vertica [_] true)
 
-
-(defn- dbspec []
-  (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
 
 (defmethod tx/before-run :vertica
   [_]
