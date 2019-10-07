@@ -20,5 +20,10 @@ RUN chmod a+rwx /plugins
 # expose our default runtime port
 EXPOSE 3000
 
+# if you have an H2 database that you want to initialize the new Metabase
+# instance with, mount it in the container as a volume that will match the
+# pattern /app/initial*.db:
+# $ docker run ... -v $PWD/metabase.db.mv.db:/app/initial.db.mv.db ...
+
 # run it
 ENTRYPOINT ["/app/run_metabase.sh"]

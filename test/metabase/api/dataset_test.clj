@@ -4,6 +4,7 @@
              [core :as json]
              [generate :as generate]]
             [clojure.data.csv :as csv]
+            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer [expect]]
             [medley.core :as m]
@@ -280,15 +281,25 @@
    ((test-users/user->client :rasta) :post "dataset"
     (data/mbql-query venues {:limit 1}))))
 
-;; Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?
-(expect
-  {:query (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-               "FROM \"PUBLIC\".\"VENUES\" "
-               "LIMIT 1048576")
-   :params nil}
-  ((test-users/user->client :rasta) :post "dataset/native"
-   (data/mbql-query venues
-     {:fields [$id $name]})))
+(deftest query->native-test
+  (testing "Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?"
+    (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
+                         "FROM \"PUBLIC\".\"VENUES\" "
+                         "LIMIT 1048576")
+            :params nil}
+           ((test-users/user->client :rasta) :post "dataset/native"
+            (data/mbql-query venues
+              {:fields [$id $name]}))))
+    (is (= {:query (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
+                        "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp '2015-11-13T00:00:00.000Z'"
+                        " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp '2015-11-14T00:00:00.000Z') "
+                        "LIMIT 1048576")
+            :params nil}
+           ((test-users/user->client :rasta) :post "dataset/native"
+            (data/mbql-query checkins
+              {:fields [$id]
+               :filter [:= $date "2015-11-13"]})))
+        "Make sure parameters are spliced correctly")))
 
 ;; `POST /api/dataset/native` should require that the user have ad-hoc native perms for the DB
 (tu/expect-schema

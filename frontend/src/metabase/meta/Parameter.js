@@ -53,7 +53,7 @@ export const getParametersBySlug = (
 ): { [key: string]: string } => {
   const result = {};
   for (const parameter of parameters) {
-    if (parameterValues[parameter.id] != undefined) {
+    if (parameterValues[parameter.id] != null) {
       result[parameter.slug] = parameterValues[parameter.id];
     }
   }

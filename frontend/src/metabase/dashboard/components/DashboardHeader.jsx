@@ -256,7 +256,7 @@ export default class DashboardHeader extends Component {
             <a
               key="parameters"
               className={cx("text-brand-hover", {
-                "text-brand": this.state.modal == "parameters",
+                "text-brand": this.state.modal === "parameters",
               })}
               title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}

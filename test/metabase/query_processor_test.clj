@@ -36,35 +36,53 @@
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [engine non-timeseries-drivers
-               :when  (set/subset? features (driver.u/features engine))]
-           engine))))
+    (set (for [driver non-timeseries-drivers
+               :let   [driver (tx/the-driver-with-test-extensions driver)]
+               :when  (set/subset? features (driver.u/features driver))]
+           driver))))
 
 (defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
   (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
 
-;; TODO - should be renamed to `expect-with-non-timeseries-drivers`
-(defmacro expect-with-non-timeseries-dbs
+(defmacro ^:deprecated expect-with-non-timeseries-dbs
+  "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers` instead.
+
+    (deftest my-test
+      (datasets/test-drivers qp.test/non-timeseries-drivers
+        (is (= ...))))"
   {:style/indent 0}
   [expected actual]
   `(datasets/expect-with-drivers non-timeseries-drivers
      ~expected
      ~actual))
 
-(defmacro expect-with-non-timeseries-dbs-except
+(defn non-timeseries-drivers-except
+  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  [excluded-drivers]
+  (set/difference non-timeseries-drivers (set excluded-drivers)))
+
+(defmacro ^:deprecated expect-with-non-timeseries-dbs-except
+  "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers-except` instead.
+
+    (deftest my-test
+      (datasets/test-drivers (qp.test/non-timeseries-drivers-except #{:snowflake})
+        (is (= ...))))"
   {:style/indent 1}
-  [excluded-engines expected actual]
-  `(datasets/expect-with-drivers (set/difference non-timeseries-drivers (set ~excluded-engines))
+  [excluded-drivers expected actual]
+  `(datasets/expect-with-drivers (non-timeseries-drivers-except ~excluded-drivers)
      ~expected
      ~actual))
 
 (defmacro ^:deprecated qp-expect-with-all-drivers
   "Wraps `expected` form in the 'wrapped' query results (includes `:status` and `:row_count`.)
 
-  DEPRECATED -- If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
-  `qp.test/rows-and-columns` instead."
+  DEPRECATED — If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
+  `qp.test/rows-and-columns` instead.
+
+  DEPRECATED x2 - You also shouldn't use this because it ultimately uses `expectations`-style `expect` -- see
+  docstring for `expect-with-non-timeseries-dbs for suggested alternative."
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -345,7 +363,7 @@
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :cols vec)
+  (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

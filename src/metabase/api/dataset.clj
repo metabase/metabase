@@ -179,7 +179,7 @@
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
-  (qp/query->native query))
+  (qp/query->native-with-spliced-params query))
 
 
 (api/define-routes)

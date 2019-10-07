@@ -29,7 +29,7 @@ const ConfirmContent = ({
 
     <p className="mb4">{message}</p>
 
-    <div className="ml-auto mb4">
+    <div className="ml-auto">
       <Button
         onClick={() => {
           onCancel();

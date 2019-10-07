@@ -1,7 +1,7 @@
 (defproject metabase/oracle-driver "1.0.0"
   :min-lein-version "2.5.0"
 
-  :include-drivers-dependencies [#"^ojdbc[78]\.jar$"]
+  :include-drivers-dependencies [#"^ojdbc\d+\.jar$"]
 
   :profiles
   {:provided

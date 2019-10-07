@@ -224,7 +224,7 @@ function onRenderVoronoiHover(chart) {
     .data(voronoi(vertices), d => d && d.join(","))
     .enter()
     .append("svg:path")
-    .filter(d => d != undefined)
+    .filter(d => d != null)
     .attr("d", d => "M" + d.join("L") + "Z")
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked

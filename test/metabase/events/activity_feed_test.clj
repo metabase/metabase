@@ -17,9 +17,14 @@
             [toucan.util.test :as tt]))
 
 (defn- do-with-temp-activities [f]
-  (db/delete! Activity)                  ; Not 100% sure this is neccessary anymore
-  (try (f)
-       (finally (db/delete! Activity))))
+  ;; Not 100% sure this is neccessary anymore
+  (db/delete! Activity)
+  (try
+    (let [result (f)]
+      (if (record? result)
+        (into {} result)
+        result))
+    (finally (db/delete! Activity))))
 
 (defmacro with-temp-activities
   "Clear all activies, execute BODY; clear all activies again, then return the results of BODY."

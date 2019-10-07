@@ -218,7 +218,7 @@ export const updateUrl = createThunkAction(
     } else {
       question = new Question(getMetadata(getState()), card);
     }
-    if (dirty == undefined) {
+    if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
@@ -264,7 +264,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    if (replaceState == undefined) {
+    if (replaceState == null) {
       // if the serialized card is identical replace the previous state instead of adding a new one
       // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
       replaceState = isSameCard && isSameMode;
@@ -413,16 +413,16 @@ export const initializeQB = (location, params) => {
 
       // initialize parts of the query based on optional parameters supplied
       if (card.dataset_query.query) {
-        if (options.table != undefined) {
+        if (options.table != null) {
           card.dataset_query.query["source-table"] = parseInt(options.table);
         }
-        if (options.segment != undefined) {
+        if (options.segment != null) {
           card.dataset_query.query.filter = [
             "segment",
             parseInt(options.segment),
           ];
         }
-        if (options.metric != undefined) {
+        if (options.metric != null) {
           // show the summarize sidebar for metrics
           uiControls.isShowingSummarySidebar = true;
           card.dataset_query.query.aggregation = [

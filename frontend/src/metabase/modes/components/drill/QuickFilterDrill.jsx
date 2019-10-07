@@ -37,7 +37,7 @@ export default function QuickFilterDrill({
     !clicked ||
     !clicked.column ||
     clicked.column.id == null ||
-    clicked.value == undefined
+    clicked.value === undefined
   ) {
     return [];
   }
