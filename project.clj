@@ -122,6 +122,7 @@
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5"]                                                 ; utility macros & fns
+   [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
@@ -275,7 +276,7 @@
       ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
       :exclude-linters    [:deprecations]}}]
 
-   ;; run `lein check-reflection-warnings` to check for reflection warnings
+   ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
    [:include-all-drivers
     {:global-vars {*warn-on-reflection* true}}]

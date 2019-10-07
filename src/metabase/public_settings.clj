@@ -202,7 +202,7 @@
                  (throw (Exception. (tru "Could not resolve Setting {0}/{1}" ns-symb setting-symb))))
         f    (var-get varr)]
     (assert (ifn? f)
-      (tru "Invalid Setting: {0)/{1}" ns-symb setting-symb))
+      (tru "Invalid Setting: {0}/{1}" ns-symb setting-symb))
     (f)))
 
 ;; TODO - it seems like it would be a nice performance win to cache this a little bit
