@@ -178,6 +178,9 @@ export default class AggregationPopover extends Component {
     return item.isSelected(A_DEPRECATED.getContent(aggregation));
   }
 
+  isValid = () =>
+    !this.state.error && Boolean(A_DEPRECATED.getName(this.state.aggregation));
+
   renderItemExtra(item, itemIndex) {
     if (item.aggregation && item.aggregation.description) {
       return (
@@ -383,12 +386,12 @@ export default class AggregationPopover extends Component {
                     : aggregation,
                 })
               }
-              placeholder={t`Name (optional)`}
+              placeholder={t`Name (required)`}
             />
             <Button
               className="full"
               primary
-              disabled={this.state.error}
+              disabled={!this.isValid()}
               onClick={() => this.commitAggregation(this.state.aggregation)}
             >
               {t`Done`}
