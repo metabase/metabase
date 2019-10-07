@@ -1,9 +1,8 @@
 (ns metabase.util.ssh-test
   (:require [clojure.java.io :as io]
+            [clojure.test :refer :all]
             [clojure.tools.logging :as log]
-            [expectations :refer :all :as et]
-            [metabase.util.ssh :as sshu :refer :all]
-            [clojure.test :refer :all]))
+            [metabase.util.ssh :as sshu :refer :all]))
 
 (def ^:private ssh-password "supersecret")
 (def ^:private ssh-publickey "ssh/ssh_test.pub")
