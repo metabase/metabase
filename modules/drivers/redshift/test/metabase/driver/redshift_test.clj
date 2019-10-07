@@ -1,5 +1,6 @@
 (ns metabase.driver.redshift-test
   (:require [clojure.test :refer :all]
+            [metabase.plugins.jdbc-proxy :as jdbc-proxy]
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
