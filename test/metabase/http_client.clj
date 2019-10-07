@@ -10,6 +10,7 @@
             [metabase.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
             [metabase.util.date :as du]
+            [clojure.test :as t]
             [schema.core :as s]))
 
 ;;; build-url
@@ -96,15 +97,9 @@
   exception."
   [method-name url body expected-status-code actual-status-code]
   (when expected-status-code
-    (when (not= actual-status-code expected-status-code)
-      (let [message (format "%s %s expected a status code of %d, got %d."
-                            method-name url expected-status-code actual-status-code)
-            body    (try
-                      (json/parse-string body keyword)
-                      (catch Throwable _
-                        body))]
-        (println (u/pprint-to-str 'red body))
-        (throw (ex-info message {:status-code actual-status-code}))))))
+    (t/is (= actual-status-code expected-status-code)
+          (format "%s %s expected a status code of %d, got %d."
+                  method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
   {:get    client/get

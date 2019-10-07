@@ -150,8 +150,7 @@
 
 (deftest result-rows-test
   (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :set-timezone)
-    (println "metabase.driver/*driver*:" metabase.driver/*driver*) ; NOCOMMIT
-    (testing "timezone-aware columns\n"
+    (testing "timezone-aware columns"
       (data/dataset test-data-with-timezones
         (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
                                                         [10 "2014-07-03T19:30:00.000Z"]]
@@ -160,7 +159,7 @@
             (is (= expected-rows
                    (rows-on-july-30))
                 (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone))))))
-    (testing "non-timezone-aware columns\n"
+    (testing "non-timezone-aware columns"
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
                                                       [10 "2014-07-03T19:30:00.000Z"]]
                                         ;; I think the results should be test same for any timezone??????? If the
@@ -171,3 +170,7 @@
           (is (= expected-rows
                  (rows-on-july-30))
               (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))
+
+(defn- x []
+  (dev/with-test-drivers #{:oracle} #_#{:oracle :redshift :presto :vertica :snowflake}
+    (result-rows-test)))

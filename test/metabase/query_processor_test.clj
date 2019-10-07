@@ -36,7 +36,6 @@
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
-  (println "@non-timeseries-drivers:" @non-timeseries-drivers) ; NOCOMMIT
   (let [features (set (cons feature more-features))]
     (set (for [driver @non-timeseries-drivers
                :let   [driver (tx/the-driver-with-test-extensions driver)]

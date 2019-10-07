@@ -3,13 +3,16 @@
   (:require [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
             [metabase.test.data.sql-jdbc
              [execute :as execute]
-             [load-data :as load-data]]))
+             [load-data :as load-data]]
+            [metabase.util :as u]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (sql-jdbc.tx/add-test-extensions! :vertica)
 
@@ -47,11 +50,27 @@
 (defmethod sql.tx/create-db-sql         :vertica [& _] nil)
 (defmethod sql.tx/drop-db-if-exists-sql :vertica [& _] nil)
 
-(defmethod sql.tx/drop-table-if-exists-sql :vertica [& args]
+(defmethod sql.tx/drop-table-if-exists-sql :vertica
+  [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
 
-(defmethod load-data/load-data! :vertica [& args]
-  (apply load-data/load-data-one-at-a-time-parallel! args))
+(defmethod load-data/load-data! :vertica
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
+  (letfn [(load-data-with-retries! [retries]
+            (try
+              (load-data/load-data-one-at-a-time! driver dbdef tabledef)
+              (catch Throwable e
+                (when-not (pos? retries)
+                  (throw e))
+                (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
+                (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
+                                         (tx/format-name driver (u/qualified-name component)))
+                      table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))
+                      sql              (format "TRUNCATE TABLE %s" table-identifier)]
+                  (jdbc/execute! (dbspec) sql))
+                (load-data-with-retries! (dec retries)))))]
+    (load-data-with-retries! 5)))
 
 (defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
 
@@ -64,26 +83,24 @@
 (defn- dbspec []
   (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
 
-(defmethod tx/before-run :vertica [_]
+(defmethod tx/before-run :vertica
+  [_]
   ;; Close all existing sessions connected to our test DB
   (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
   ;; Increase the connection limit; the default is 5 or so which causes tests to fail when too many connections are made
   (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))
 
-(defmethod tx/create-db! :vertica [driver dbdef & options]
-  (letfn [(create-with-retries! [retries]
-            (let [results (try
-                            (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
-                            (catch Throwable e
-                              (if (pos? retries)
-                                ::retry
-                                (throw e))))]
-              (if (not= results ::retry)
-                results
-                (do
-                  (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
-                  (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
-                  (recur (dec retries))))))]
-    ;; try a few times to create the DB. Vertica is very fussy and sometimes you need to try a few times to get it to
-    ;; work correctly.
-    (create-with-retries! 5)))
+(defmethod tx/create-db! :vertica
+  [driver dbdef & options]
+  ;; try a few times to create the DB. Vertica is very fussy and sometimes you need to try a few times to get it to
+  ;; work correctly.
+  (letfn [(create-db-with-retries! [retries]
+            (try
+              (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
+              (catch Throwable e
+                (when-not (pos? retries)
+                  (throw e))
+                (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
+                (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
+                (create-db-with-retries! (dec retries)))))]
+    (create-db-with-retries! 5)))
