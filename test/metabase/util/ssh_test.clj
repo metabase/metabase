@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [expectations :refer :all :as et]
-            [metabase.util.ssh :as sshu :refer :all]))
+            [metabase.util.ssh :as sshu :refer :all]
+            [clojure.test :refer :all]))
 
 (def ^:private ssh-password "supersecret")
 (def ^:private ssh-publickey "ssh/ssh_test.pub")
@@ -12,9 +13,12 @@
 (def ^:private ssh-mock-server-with-publickey-port 12222)
 (def ^:private ssh-mock-servers-atom (atom ()))
 
+;;--------------
+;; mock ssh server fixtures
+;;--------------
+
 (defn start-ssh-mock-server-with-password
   "start a ssh mock server with password auth challenge"
-  {:expectations-options :before-run}
   []
   (let [password-auth (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
                         (authenticate [_ username password session]
@@ -30,7 +34,6 @@
 
 (defn start-ssh-mock-server-with-publickey
   "start a ssh mock server with public key auth challenge"
-  {:expectations-options :before-run}
   []
   (let [keypair-provider (new org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider)
         publickey-file (io/file (io/resource ssh-publickey))
@@ -44,26 +47,22 @@
     (swap! ssh-mock-servers-atom conj sshd)
     (.start sshd)))
 
-(defn shutdown-ssh-mock-servers
-  "shutdown all ssh mock servers"
-  {:expectations-options :after-run}
-  []
-  (doseq [mock-server @ssh-mock-servers-atom]
-    (when-not (nil? mock-server)
-      (.stop mock-server)))
-  (log/debug "ssh mock server(s) stopped"))
+(use-fixtures :once
+  (fn [f]
+    (let [ssh1 (start-ssh-mock-server-with-password)
+          ssh2 (start-ssh-mock-server-with-publickey)]
+      (try (f)
+           (finally
+             (prn "did test!")
+             (when ssh1 (.stop ssh1))
+             (when ssh2 (.stop ssh2)))))))
+
+;;--------------
+;; tests
+;;--------------
 
 ;; correct password
-(expect
-  (start-ssh-tunnel
-    {:tunnel-host "127.0.0.1"
-     :tunnel-port ssh-mock-server-with-password-port
-     :tunnel-pass ssh-password
-     :host "127.0.0.1"
-     :port 1234}))
-
-;; correct password
-(expect
+(deftest connects-with-correct-password
   (start-ssh-tunnel
     {:tunnel-host "127.0.0.1"
      :tunnel-port ssh-mock-server-with-password-port
@@ -82,7 +81,7 @@
                   :port 1234}))))
 
 ;; correct ssh key
-(expect
+(deftest connects-with-correct-ssh-key
   (start-ssh-tunnel
     {:tunnel-host "127.0.0.1"
      :tunnel-port ssh-mock-server-with-publickey-port
