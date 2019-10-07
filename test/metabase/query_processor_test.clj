@@ -365,7 +365,7 @@
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :cols vec)
+  (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

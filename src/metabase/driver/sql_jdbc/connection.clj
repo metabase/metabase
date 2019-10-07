@@ -118,8 +118,6 @@
   [_ database]
   (set-pool! (u/get-id database) nil))
 
-(def ^:private create-pool-lock (Object.))
-
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -132,7 +130,7 @@
      ;; don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed the very
      ;; next instant. This will cause their queries to fail. Thus we should do the usual locking here and make sure only
      ;; one thread will be creating a pool at a given instant.
-     (locking create-pool-lock
+     (locking database-id->connection-pool
        (or
         ;; check if another thread created the pool while we were waiting to acquire the lock
         (get @database-id->connection-pool database-id)

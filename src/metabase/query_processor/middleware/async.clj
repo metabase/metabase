@@ -86,7 +86,7 @@
       (not= port out-chan)
       (do
         (a/close! out-chan)
-        (throw (TimeoutException. (tru "Query timed out after %s" (du/format-milliseconds query-timeout-ms)))))
+        (throw (TimeoutException. (tru "Query timed out after {0}" (du/format-milliseconds query-timeout-ms)))))
 
       :else
       result)))

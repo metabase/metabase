@@ -348,7 +348,7 @@
       (doseq [group-id non-admin-group-ids]
         (perms/revoke-collection-permissions! group-id new-collection))
       ;; 4. move everything not in this Collection to a new Collection
-      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+      (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
