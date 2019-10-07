@@ -64,10 +64,10 @@
 (defmethod add-type-info java.sql.Timestamp [this info & _]
   [:absolute-datetime this (get info :unit :default)])
 
-(defn- maybe-parse-as-time [datetime-str unit report-timezone]
+(defn- maybe-parse-as-time [time-str unit report-timezone]
   (when (mbql.preds/TimeUnit? unit)
-    (du/str->time datetime-str (when report-timezone
-                                 (TimeZone/getTimeZone ^String report-timezone)))))
+    (du/str->time time-str (when report-timezone
+                             (TimeZone/getTimeZone ^String report-timezone)))))
 
 (defmethod add-type-info String
   [this info & {:keys [parse-datetime-strings? report-timezone]
@@ -78,7 +78,10 @@
     ;; should use report timezone by default
     (if-let [time (maybe-parse-as-time this unit report-timezone)]
       [:time time unit]
-      [:absolute-datetime (du/->Timestamp this) unit])
+      (let [timestamp (if report-timezone
+                        (du/->Timestamp this report-timezone)
+                        (du/->Timestamp this))]
+        [:absolute-datetime timestamp unit]))
     [:value this info]))
 
 
