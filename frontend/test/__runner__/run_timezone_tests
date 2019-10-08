@@ -11,9 +11,11 @@ set -eu
 # Europe/London             +00:00           +01:00
 # America/Phoenix           −07:00           −07:00
 # America/Los_Angeles       −08:00           −07:00
+# Asia/Kathmandu            +05:45           +05:45
+# Asia/Hong_Kong            +08:00           +08:00
 
-# DEFAULT_TIMEZONES="Etc/UTC Europe/London America/Los_Angeles America/Phoenix"
-DEFAULT_TIMEZONES="Etc/UTC"
+
+DEFAULT_TIMEZONES="Etc/UTC Europe/London America/Los_Angeles America/Phoenix Asia/Kathmandu Asia/Hong_Kong"
 
 tzs=${TIMEZONES:-$DEFAULT_TIMEZONES}
 
