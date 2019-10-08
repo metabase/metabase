@@ -8,12 +8,12 @@ import AuthScene from "../components/AuthScene";
 import SSOLoginButton from "../components/SSOLoginButton";
 import Button from "metabase/components/Button";
 import CheckBox from "metabase/components/CheckBox";
-import FormField from "metabase/components/form/FormField";
-import FormLabel from "metabase/components/form/FormLabel";
 import FormMessage from "metabase/components/form/FormMessage";
 import LogoIcon from "metabase/components/LogoIcon";
 import Settings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
+
+import Form from "metabase/containers/Form";
 
 import * as authActions from "../auth";
 
@@ -36,29 +36,11 @@ export default class LoginApp extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
-      credentials: {},
-      valid: false,
       rememberMe: true,
     };
   }
 
-  validateForm() {
-    const { credentials } = this.state;
-
-    let valid = true;
-
-    if (!credentials.username || !credentials.password) {
-      valid = false;
-    }
-
-    if (this.state.valid !== valid) {
-      this.setState({ valid });
-    }
-  }
-
   componentDidMount() {
-    this.validateForm();
-
     const { loginGoogle, location } = this.props;
 
     const ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
@@ -89,28 +71,11 @@ export default class LoginApp extends Component {
     attachGoogleAuth();
   }
 
-  componentDidUpdate() {
-    this.validateForm();
-  }
-
-  onChangeUserName(fieldName, fieldValue) {
-    this.onChange(fieldName, fieldValue.trim());
-  }
-
-  onChange(fieldName, fieldValue) {
-    this.setState({
-      credentials: { ...this.state.credentials, [fieldName]: fieldValue },
-    });
-  }
-
-  formSubmitted(e) {
-    e.preventDefault();
-
+  formSubmitted = credentials => {
     const { login, location } = this.props;
-    const { credentials } = this.state;
 
     login(credentials, location.query.redirect);
-  }
+  };
 
   render() {
     const { loginError, location } = this.props;
@@ -125,11 +90,7 @@ export default class LoginApp extends Component {
             <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
           </div>
           <div className="Login-content Grid-cell">
-            <form
-              className="p4 bg-white bordered rounded shadowed"
-              name="form"
-              onSubmit={e => this.formSubmitted(e)}
-            >
+            <div className="p4 bg-white bordered rounded shadowed">
               <h2 className="Login-header mb2">{t`Sign in to Metabase`}</h2>
 
               {Settings.ssoEnabled() && !preferUsernameAndPassword && (
@@ -161,77 +122,43 @@ export default class LoginApp extends Component {
                       loginError && loginError.data.message ? loginError : null
                     }
                   />
-                  <FormField
-                    key="username"
-                    fieldName="username"
-                    formError={loginError}
-                  >
-                    <FormLabel
-                      title={
-                        Settings.ldapEnabled()
-                          ? t`Username or email address`
-                          : t`Email address`
-                      }
-                      fieldName={"username"}
-                      formError={loginError}
-                    />
-                    <input
-                      className="Form-input full"
-                      name="username"
-                      placeholder="youlooknicetoday@email.com"
-                      type={
-                        /*
-                         * if a user has ldap enabled, use a text input to allow for
-                         * ldap username && schemes. if not and they're using built
-                         * in auth, set the input type to email so we get built in
-                         * validation in modern browsers
-                         * */
-                        ldapEnabled ? "text" : "email"
-                      }
-                      onChange={e => this.onChange("username", e.target.value)}
-                      autoFocus
-                    />
-                  </FormField>
+                  <Form
+                    onSubmit={this.formSubmitted}
+                    form={{
+                      fields: [
+                        {
+                          name: "username",
+                          title: Settings.ldapEnabled()
+                            ? t`Username or email address`
+                            : t`Email address`,
+                          placeholder: "youlooknicetoday@email.com",
+                          validate: email => !email && t`Email is required`,
+                          type: ldapEnabled ? "text" : "email",
+                        },
+                        {
+                          name: "password",
+                          title: t`Password`,
+                          type: "password",
+                          placeholder: "Shh...",
+                          validate: password =>
+                            !password && t`Password is required`,
+                        },
+                      ],
+                    }}
+                  />
 
-                  <FormField
-                    key="password"
-                    fieldName="password"
-                    formError={loginError}
-                  >
-                    <FormLabel
-                      title={t`Password`}
-                      fieldName={"password"}
-                      formError={loginError}
+                  <div className="flex align-center">
+                    <CheckBox
+                      name="remember"
+                      checked={this.state.rememberMe}
+                      onChange={() =>
+                        this.setState({ rememberMe: !this.state.rememberMe })
+                      }
                     />
-                    <input
-                      className="Form-input full"
-                      name="password"
-                      placeholder="Shh..."
-                      type="password"
-                      onChange={e => this.onChange("password", e.target.value)}
-                    />
-                  </FormField>
-
-                  <div className="Form-field">
-                    <div className="flex align-center">
-                      <CheckBox
-                        name="remember"
-                        checked={this.state.rememberMe}
-                        onChange={() =>
-                          this.setState({ rememberMe: !this.state.rememberMe })
-                        }
-                      />
-                      <span className="ml1">{t`Remember Me`}</span>
-                    </div>
+                    <span className="ml1">{t`Remember Me`}</span>
                   </div>
 
-                  <div className="Form-actions flex align-center">
-                    <Button
-                      primary={this.state.valid}
-                      disabled={!this.state.valid}
-                    >
-                      {t`Sign in`}
-                    </Button>
+                  {/*
                     <Link
                       to={
                         "/auth/forgot_password" +
@@ -244,10 +171,10 @@ export default class LoginApp extends Component {
                         window.OSX ? window.OSX.resetPassword() : null;
                       }}
                     >{t`I seem to have forgotten my password`}</Link>
-                  </div>
+                    */}
                 </div>
               )}
-            </form>
+            </div>
           </div>
         </div>
         <AuthScene />
