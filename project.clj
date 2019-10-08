@@ -103,9 +103,9 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
-   [me.raynes/fs "1.4.6"]                                   ; FS tools
+   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [methodical "0.9.4-alpha"]
@@ -251,7 +251,7 @@
    :bikeshed
    [:include-all-drivers
     {:plugins
-     [[lein-bikeshed "0.4.1"]]}]
+     [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
    [:include-all-drivers

@@ -7,11 +7,6 @@
   (when-let [report-timezone (driver.u/report-timezone-if-supported driver/*driver*)]
     {:report-timezone report-timezone}))
 
-(defn- add-settings* [query]
-  (if-let [settings (settings-for-current-driver)]
-    (assoc query :settings settings)
-    query))
-
 (defn add-settings
   "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time,
   and to the results of the query. Currently supports a settings object like:
