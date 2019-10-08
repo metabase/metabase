@@ -216,7 +216,7 @@ export const updateUrl = createThunkAction(
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
-      question = new Question(getMetadata(getState()), card);
+      question = new Question(card, getMetadata(getState()));
     }
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
@@ -457,7 +457,7 @@ export const initializeQB = (location, params) => {
       uiControls,
     });
 
-    const question = card && new Question(getMetadata(getState()), card);
+    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -534,7 +534,7 @@ export const loadMetadataForCard = createThunkAction(
       if (!card || !card.dataset_query) {
         return;
       }
-      const query = new Question(getMetadata(getState()), card).query();
+      const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
           const rootTable = query.rootTable();
@@ -886,8 +886,8 @@ export const runQuestionQuery = ({
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (c: Card): Question =>
-      c && new Question(getMetadata(getState()), c);
+    const questionFromCard = (card: Card): Question =>
+      card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)

@@ -6,7 +6,7 @@ import { QuestionResultLoader } from "metabase/containers/QuestionResultLoader";
 
 describe("QuestionResultLoader", () => {
   it("should load a result given a question", () => {
-    const question = new Question(null, {
+    const question = new Question({
       id: 1,
     });
 
