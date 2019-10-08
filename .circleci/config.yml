@@ -423,6 +423,13 @@ jobs:
           command-name: Run frontend integration tests
           command: run test-integration
 
+  fe-tests-timezones:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run frontend timezone tests
+          command: run test-timezones
+
   build-uberjar:
     executor: clojure-and-node
     steps:
