@@ -113,7 +113,7 @@ function getFieldsForEngine(engine, values) {
         placeholder: field.placeholder || field.default,
         validate: value => (field.required && !value ? `required` : null),
         normalize: value =>
-          value == "" || value == null
+          value === "" || value == null
             ? "default" in field
               ? field.default
               : null

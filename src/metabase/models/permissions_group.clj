@@ -9,6 +9,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.models.setting :as setting]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :as ui18n :refer [trs tru]]
             [toucan
@@ -57,7 +58,7 @@
 (defn- check-name-not-already-taken
   [group-name]
   (when (exists-with-name? group-name)
-    (throw (ui18n/ex-info (tru "A group with that name already exists.") {:status-code 400}))))
+    (throw (ex-info (tru "A group with that name already exists.") {:status-code 400}))))
 
 (defn- check-not-magic-group
   "Make sure we're not trying to edit/delete one of the magic groups, or throw an exception."
@@ -67,7 +68,7 @@
                        (admin)
                        (metabot)]]
     (when (= id (:id magic-group))
-      (throw (ui18n/ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
+      (throw (ex-info (tru "You cannot edit or delete the ''{0}'' permissions group!" (:name magic-group))
                {:status-code 400})))))
 
 
@@ -82,6 +83,7 @@
   (db/delete! 'Permissions                 :group_id id)
   (db/delete! 'PermissionsGroupMembership  :group_id id)
   ;; Remove from LDAP mappings
+  (classloader/require 'metabase.integrations.ldap)
   (setting/set-json! :ldap-group-mappings
     (when-let [mappings (setting/get-json :ldap-group-mappings)]
       (zipmap (keys mappings)

@@ -24,8 +24,8 @@ export default class FormMessage extends Component {
 
     const classes = cx("Form-message", "px2", className, {
       "Form-message--visible": !!message,
-      "text-success": formSuccess != undefined,
-      "text-error": formError != undefined,
+      "text-success": formSuccess,
+      "text-error": formError,
     });
 
     return <span className={classes}>{message}</span>;

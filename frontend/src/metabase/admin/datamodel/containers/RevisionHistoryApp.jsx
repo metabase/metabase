@@ -28,7 +28,7 @@ export default class RevisionHistoryApp extends Component {
   }
 
   render() {
-    return this.props.objectType == "metric" ? (
+    return this.props.objectType === "metric" ? (
       <MetricRevisionHistory {...this.props} />
     ) : (
       <SegmentRevisionHistory {...this.props} />

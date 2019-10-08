@@ -1,6 +1,7 @@
 (ns metabase.test.util.timezone
   (:require [clj-time.core :as time]
             [metabase.driver :as driver]
+            [metabase.test.initialize :as initialize]
             [metabase.util.date :as du])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
@@ -19,7 +20,8 @@
 (defn call-with-jvm-tz
   "Invokes the thunk `F` with the JVM timezone set to `DTZ` (String or instance of TimeZone or DateTimeZone), puts the
   various timezone settings back the way it found it when it exits."
-  [dtz f]
+  [dtz thunk]
+  (initialize/initialize-if-needed! :db :plugins)
   (let [dtz          (->datetimezone dtz)
         orig-tz      (TimeZone/getDefault)
         orig-dtz     (time/default-time-zone)
@@ -35,7 +37,7 @@
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
       (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
+        (thunk))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures

@@ -29,6 +29,8 @@ import {
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
 
+import NoResults from "assets/img/no_results.svg";
+
 import { assoc, setIn } from "icepick";
 import _ from "underscore";
 import cx from "classnames";
@@ -512,7 +514,7 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src="app/assets/img/no_results.svg" />
+              <img src={NoResults} />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>

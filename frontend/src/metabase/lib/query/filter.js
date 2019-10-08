@@ -78,7 +78,7 @@ export function isFieldFilter(filter: FilterClause): boolean {
 // TODO: is it safe to assume if the last item is an object then it's options?
 export function hasFilterOptions(filter: Filter): boolean {
   const o = filter[filter.length - 1];
-  return !!o && typeof o == "object" && o.constructor == Object;
+  return !!o && typeof o == "object" && o.constructor === Object;
 }
 
 export function getFilterOptions(filter: Filter): FilterOptions {

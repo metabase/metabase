@@ -55,7 +55,7 @@ ace.require(
       let id = -1;
       if (editor.multiSelect) {
         id = editor.selection.index;
-        if (contextCache.rangeCount != editor.multiSelect.rangeCount) {
+        if (contextCache.rangeCount !== editor.multiSelect.rangeCount) {
           contextCache = { rangeCount: editor.multiSelect.rangeCount };
         }
       }
@@ -95,7 +95,7 @@ ace.require(
           session,
           text,
         ) {
-          if (text == opening) {
+          if (text === opening) {
             initContext(editor);
             const selection = editor.getSelectionRange();
             const selected = session.doc.getTextRange(selection);
@@ -108,12 +108,12 @@ ace.require(
                 selection: [1, 1],
               };
             }
-          } else if (text == closing) {
+          } else if (text === closing) {
             initContext(editor);
             const cursor = editor.getCursorPosition();
             const line = session.doc.getLine(cursor.row);
             const rightChar = line.substring(cursor.column, cursor.column + 1);
-            if (rightChar == closing) {
+            if (rightChar === closing) {
               const matching = session.$findOpeningBracket(closing, {
                 column: cursor.column + 1,
                 row: cursor.row,
@@ -140,14 +140,14 @@ ace.require(
           range,
         ) {
           const selected = session.doc.getTextRange(range);
-          if (!range.isMultiLine() && selected == opening) {
+          if (!range.isMultiLine() && selected === opening) {
             initContext(editor);
             const line = session.doc.getLine(range.start.row);
             const rightChar = line.substring(
               range.start.column + 1,
               range.start.column + 2,
             );
-            if (rightChar == closing) {
+            if (rightChar === closing) {
               range.end.column++;
               return range;
             }
@@ -166,10 +166,10 @@ ace.require(
         session,
         text,
       ) {
-        if (text == '"' || text == "'") {
+        if (text === '"' || text === "'") {
           if (
             this.lineCommentStart &&
-            this.lineCommentStart.indexOf(text) != -1
+            this.lineCommentStart.indexOf(text) !== -1
           ) {
             return;
           }
@@ -180,7 +180,7 @@ ace.require(
           if (
             selected !== "" &&
             selected !== "'" &&
-            selected != '"' &&
+            selected !== '"' &&
             editor.getWrapBehavioursEnabled()
           ) {
             return getWrapped(selection, selected, quote, quote);
@@ -196,7 +196,7 @@ ace.require(
               cursor.column + 1,
             );
             // We're escaped.
-            if (leftChar == "\\" && token && /escape/.test(token.type)) {
+            if (leftChar === "\\" && token && /escape/.test(token.type)) {
               return null;
             }
 
@@ -205,7 +205,7 @@ ace.require(
               !rightToken || /string|escape/.test(rightToken.type);
 
             let pair;
-            if (rightChar == quote) {
+            if (rightChar === quote) {
               pair = stringBefore !== stringAfter;
               if (pair && /string\.end/.test(rightToken.type)) {
                 pair = false;
@@ -246,14 +246,14 @@ ace.require(
         range,
       ) {
         const selected = session.doc.getTextRange(range);
-        if (!range.isMultiLine() && (selected == '"' || selected == "'")) {
+        if (!range.isMultiLine() && (selected === '"' || selected === "'")) {
           initContext(editor);
           const line = session.doc.getLine(range.start.row);
           const rightChar = line.substring(
             range.start.column + 1,
             range.start.column + 2,
           );
-          if (rightChar == selected) {
+          if (rightChar === selected) {
             range.end.column++;
             return range;
           }
@@ -347,7 +347,7 @@ ace.require(
         context.maybeInsertedBrackets > 0 &&
         cursor.row === context.maybeInsertedRow &&
         line.substr(cursor.column) === context.maybeInsertedLineEnd &&
-        line.substr(0, cursor.column) == context.maybeInsertedLineStart
+        line.substr(0, cursor.column) === context.maybeInsertedLineStart
       );
     };
 

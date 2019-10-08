@@ -1,5 +1,7 @@
 (ns metabase.driver.snowflake-test
-  (:require [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [test :refer :all]]
             [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.models.table :refer [Table]]
@@ -8,7 +10,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
-             [datasets :refer [expect-with-driver]]
+             [datasets :as datasets :refer [expect-with-driver]]
              [interface :as tx]
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
@@ -86,12 +88,13 @@
   Exception
   (driver/describe-database :snowflake (update (data/db) :details set/rename-keys {:db :xyz})))
 
-;; Make sure that can-connect? returns false for Snowflake databases that don't exist (#9041)
-(expect-with-driver :snowflake
-  {:normal      true
-   :random-name false}
-  (let [can-connect? (fn [& [additional-details]]
-                       (driver/can-connect? :snowflake (merge (:details (data/db))
-                                                              additional-details)))]
-    {:normal      (can-connect?)
-     :random-name (can-connect? {:db (tu/random-name)})}))
+(deftest can-connect-test
+  (datasets/test-driver :snowflake
+    (let [can-connect? (fn [details]
+                         (driver/can-connect? :snowflake details))]
+      (is (= true
+             (can-connect? (:details (data/db))))
+          "can-connect? should return true for normal Snowflake DB details")
+      (is (= false
+             (can-connect? (assoc (:details (data/db)) :db (tu/random-name))))
+          "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))

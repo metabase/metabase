@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t, jt } from "ttag";
+import { Box } from "grid-styled";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import Toggle from "metabase/components/Toggle";
@@ -68,10 +69,13 @@ export default class PreferencesStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep bg-white rounded full relative SetupStep--active">
+        <Box
+          p={4}
+          className="SetupStep bg-white rounded full relative SetupStep--active"
+        >
           <StepTitle title={stepText} circleText={"3"} />
           <form onSubmit={this.formSubmitted.bind(this)} noValidate>
-            <div className="Form-field Form-offset">
+            <div className="Form-field">
               {t`In order to help us improve Metabase, we'd like to collect certain data about usage through Google Analytics.`}{" "}
               <a
                 className="link"
@@ -80,7 +84,7 @@ export default class PreferencesStep extends Component {
               >{t`Here's a full list of everything we track and why.`}</a>
             </div>
 
-            <div className="Form-field Form-offset mr4">
+            <div className="Form-field mr4">
               <div
                 style={{ borderWidth: "2px" }}
                 className="flex align-center bordered rounded p2"
@@ -95,7 +99,7 @@ export default class PreferencesStep extends Component {
             </div>
 
             {allowTracking ? (
-              <div className="Form-field Form-offset">
+              <div className="Form-field">
                 <ul style={{ listStyle: "disc inside", lineHeight: "200%" }}>
                   <li>{jt`Metabase ${(
                     <span style={{ fontWeight: "bold" }}>{t`never`}</span>
@@ -111,7 +115,7 @@ export default class PreferencesStep extends Component {
               {/* FIXME: <mb-form-message form="usageForm"></mb-form-message>*/}
             </div>
           </form>
-        </section>
+        </Box>
       );
     }
   }
