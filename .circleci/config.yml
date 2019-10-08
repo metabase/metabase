@@ -677,6 +677,9 @@ workflows:
       - fe-tests-integration:
           requires:
             - fe-deps
+      - fe-tests-timezones:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
@@ -723,6 +726,7 @@ workflows:
 
             - fe-tests-e2e
             - fe-tests-integration
+            - fe-tests-timezones
             - fe-tests-karma
             - fe-tests-unit
           filters:
