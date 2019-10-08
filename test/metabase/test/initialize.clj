@@ -24,10 +24,7 @@
      (colorize/blue
       (str "\n"
            (str/join "\n" [border body border])
-           "\n")))
-    #_(println "REASON:")
-    #_(u/pprint-to-str 'blue (u/filtered-stacktrace (Thread/currentThread)))
-    #_"\n"))
+           "\n")))))
 
 (defmacro ^:private define-initialization [task-name & body]
   (let [delay-symb (vary-meta (symbol (format "init-%s-%d" (name task-name) (hash &form)))
@@ -57,5 +54,15 @@
   (classloader/require 'metabase.test.initialize.web-server)
   ((resolve 'metabase.test.initialize.web-server/init!)))
 
-(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (disj (set (keys (methods initialize-if-needed!)))
-                                                                            :many))))
+(define-initialization :test-users
+  (initialize-if-needed! :db)
+  (classloader/require 'metabase.test.initialize.test-users)
+  ((resolve 'metabase.test.initialize.test-users/init!)))
+
+(define-initialization :test-users-personal-collections
+  (initialize-if-needed! :test-users)
+  (classloader/require 'metabase.test.initialize.test-users-personal-collections)
+  ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
+
+(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (disj (set (keys (methods initialize-if-needed!)))
+                                                                                  :many)))))

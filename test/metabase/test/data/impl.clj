@@ -71,20 +71,20 @@
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
             (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
-(def ^:private create-database-timeout
+(def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (* 4 60 1000)) ; 4 minutes
+  (du/minutes->ms 4)) ; 4 minutes
 
-(def ^:private sync-timeout
+(def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (* 5 60 1000)) ; five minutes
+  (du/minutes->ms 5)) ; five minutes
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout
+    (u/with-timeout create-database-timeout-ms
       (tu.tz/with-jvm-tz "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
@@ -93,7 +93,7 @@
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
-      (u/with-timeout sync-timeout
+      (u/with-timeout sync-timeout-ms
         (du/profile (format "Sync %s Database %s" driver database-name)
           (sync/sync-database! db)
           ;; add extra metadata for fields
@@ -108,7 +108,6 @@
       (println e)
       (when config/is-test?
         (System/exit -1)))))
-
 
 (defmethod get-or-create-database! :default [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)

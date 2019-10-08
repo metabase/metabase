@@ -1,23 +1,26 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
              [util :as u]]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
-             [collection-test :as collection-test]
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :refer [User]]
              [user-test :as user-test]]
             [metabase.test
              [data :refer :all]
+             [fixtures :as fixtures]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (def ^:private user-defaults
   {:date_joined      true
@@ -50,7 +53,7 @@
   (tu/with-non-admin-groups-no-root-collection-perms
     ;; Delete all the other random Users we've created so far
     ;; Make sure personal Collections have been created
-    (collection-test/force-create-personal-collections!)
+
     ;; Now do the request
     ((test-users/user->client :rasta) :get 200 "user")))
 
@@ -86,11 +89,9 @@
      :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
-  (do
-    (collection-test/force-create-personal-collections!)
-    (-> ((test-users/user->client :crowberto) :get 200 "user")
-        group-ids->sets
-        tu/boolean-ids-and-timestamps)))
+  (-> ((test-users/user->client :crowberto) :get 200 "user")
+      group-ids->sets
+      tu/boolean-ids-and-timestamps))
 
 ;; Non-admins should *not* be allowed to pass in include_deactivated
 (expect
@@ -134,11 +135,9 @@
      :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
-  (do
-    (collection-test/force-create-personal-collections!)
-    (-> ((test-users/user->client :crowberto) :get 200 "user", :include_deactivated true)
-        group-ids->sets
-        tu/boolean-ids-and-timestamps)))
+  (-> ((test-users/user->client :crowberto) :get 200 "user", :include_deactivated true)
+      group-ids->sets
+      tu/boolean-ids-and-timestamps))
 
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
@@ -151,12 +150,7 @@
     :common_name            "Rasta Toucan"
     :group_ids              [(u/get-id (group/all-users))]
     :personal_collection_id true})
-  (do
-    ;; Make sure personal Collections have been created so this endpoint won't randomly return `false` for
-    ;; personal_collection_id
-    (collection-test/force-create-personal-collections!)
-    ;; now FETCH
-    (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current"))))
+  (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current")))
 
 
 ;; ## GET /api/user/:id
