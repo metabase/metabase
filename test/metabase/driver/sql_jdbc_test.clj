@@ -24,7 +24,7 @@
   (delay
    (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
      (set
-      (for [driver tx.env/test-drivers
+      (for [driver @tx.env/test-drivers
             :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
         (tx/the-driver-with-test-extensions driver))))))
 
