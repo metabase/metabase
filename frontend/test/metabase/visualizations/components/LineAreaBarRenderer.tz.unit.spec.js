@@ -7,6 +7,8 @@ import {
   NumberColumn,
   DateTimeColumn,
   dispatchUIEvent,
+  renderLineAreaBar,
+  getFormattedTooltips,
 } from "../__support__/visualizations";
 
 import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
@@ -42,11 +44,7 @@ describe("LineAreaBarRenderer-bar", () => {
   const getXAxisLabelsText = () =>
     qsa(".axis.x .tick text").map(t => t.textContent);
   const getTooltipDimensionValueText = () =>
-    onHoverChange.mock.calls.map(([{ data }]) =>
-      formatValue(data[0].value, {
-        column: data[0].col,
-      }),
-    );
+    onHoverChange.mock.calls.map(([t]) => getFormattedTooltips(t)[0]);
 
   const getSVGElementMiddle = element => {
     return (
@@ -89,7 +87,6 @@ describe("LineAreaBarRenderer-bar", () => {
     reportTzs.map(reportTz => {
       describe(`report timezone ${reportTz}`, () => {
         const rows = generateRowsInTz(reportTz);
-        console.log(rows.map(row => row[0]).join("\n"));
 
         sharedMonthTests(rows.slice(0, 2), "months in standard time");
         sharedMonthTests(rows.slice(6, 8), "months in daylights saving time");
@@ -103,10 +100,10 @@ describe("LineAreaBarRenderer-bar", () => {
         );
         sharedMonthTests(rows, "all months");
 
-        sharedIntervalTests("hour", "h A - MMMM D, YYYY");
+        sharedIntervalTests("hour", "MMMM D, YYYY, h:mm A");
         sharedIntervalTests("day", "MMMM D, YYYY");
         // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
-        sharedIntervalTests("month", "MMMM YYYY");
+        sharedIntervalTests("month", "MMMM, YYYY");
         sharedIntervalTests("quarter", "[Q]Q - YYYY");
         sharedIntervalTests("year", "YYYY");
 
@@ -136,7 +133,7 @@ describe("LineAreaBarRenderer-bar", () => {
             it("should have tooltips that match source data", () => {
               expect(getTooltipDimensionValueText()).toEqual(
                 rows.map(([timestamp]) =>
-                  moment.tz(timestamp, reportTz).format("MMMM YYYY"),
+                  moment.tz(timestamp, reportTz).format("MMMM, YYYY"),
                 ),
               );
             });
@@ -154,14 +151,16 @@ describe("LineAreaBarRenderer-bar", () => {
               [
                 moment()
                   .tz(reportTz)
-                  .startOf(interval),
+                  .startOf(interval)
+                  .toISOString(),
                 1,
               ],
               [
                 moment()
                   .tz(reportTz)
                   .startOf(interval)
-                  .add(1, interval),
+                  .add(1, interval)
+                  .toISOString(),
                 1,
               ],
             ];
@@ -195,7 +194,7 @@ describe("LineAreaBarRenderer-bar", () => {
 });
 
 const DEFAULT_SETTINGS = {
-  "graph.x_axis.scale": "ordinal",
+  "graph.x_axis.scale": "timeseries",
   "graph.y_axis.scale": "linear",
   "graph.x_axis.axis_enabled": true,
   "graph.y_axis.axis_enabled": true,
@@ -203,46 +202,42 @@ const DEFAULT_SETTINGS = {
 };
 
 function renderTimeseries(element, unit, timezone, rows, props = {}) {
-  lineAreaBarRenderer(element, {
-    chartType: "bar",
-    series: [
-      {
-        card: {},
-        data: {
-          cols: [
-            DateTimeColumn({ name: "CREATED_AT", unit, timezone }),
-            NumberColumn({ name: "count" }),
-          ],
-          rows,
-        },
+  const series = [
+    {
+      card: {
+        display: "bar",
+        visualization_settings: { ...DEFAULT_SETTINGS },
       },
-    ],
-    settings: {
-      ...DEFAULT_SETTINGS,
-      "graph.x_axis.scale": "timeseries",
+      data: {
+        cols: [
+          DateTimeColumn({ name: "CREATED_AT", unit, timezone }),
+          NumberColumn({ name: "count" }),
+        ],
+        rows,
+      },
     },
-    ...props,
-  });
+  ];
+  renderLineAreaBar(element, series, props);
 }
 
 // just hard code these to make sure we don't accidentally generate incorrect month labels
 const MONTHS_IN_ORDER = [
-  "October 2015",
-  "November 2015",
-  "December 2015",
-  "January 2016",
-  "February 2016",
-  "March 2016",
-  "April 2016",
-  "May 2016",
-  "June 2016",
-  "July 2016",
-  "August 2016",
-  "September 2016",
-  "October 2016",
-  "November 2016",
-  "December 2016",
-  "January 2017",
+  "October, 2015",
+  "November, 2015",
+  "December, 2015",
+  "January, 2016",
+  "February, 2016",
+  "March, 2016",
+  "April, 2016",
+  "May, 2016",
+  "June, 2016",
+  "July, 2016",
+  "August, 2016",
+  "September, 2016",
+  "October, 2016",
+  "November, 2016",
+  "December, 2016",
+  "January, 2017",
 ];
 
 function assertSequentialMonths(months) {
@@ -266,7 +261,7 @@ function generateRowsInTz(tz) {
       .tz(tz)
       .startOf("month")
       .add(month, "months")
-      .format(),
+      .toISOString(),
     0,
   ]);
 }

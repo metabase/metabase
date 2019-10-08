@@ -12,7 +12,8 @@ set -eu
 # America/Phoenix           −07:00           −07:00
 # America/Los_Angeles       −08:00           −07:00
 
-DEFAULT_TIMEZONES="Etc/UTC Europe/London America/Los_Angeles America/Phoenix"
+# DEFAULT_TIMEZONES="Etc/UTC Europe/London America/Los_Angeles America/Phoenix"
+DEFAULT_TIMEZONES="Etc/UTC"
 
 tzs=${TIMEZONES:-$DEFAULT_TIMEZONES}
 
