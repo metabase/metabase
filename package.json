@@ -178,7 +178,7 @@
     "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
     "flow": "yarn && flow check",
-    "test": "yarn test-unit && yarn test-integration && yarn test-e2e && yarn test-karma",
+    "test": "yarn test-unit && yarn test-timezones && yarn test-integration && yarn test-e2e && yarn test-karma",
     "test-unit": "yarn && jest --maxWorkers=8 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
     "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",

@@ -11,9 +11,6 @@ import {
   getFormattedTooltips,
 } from "../__support__/visualizations";
 
-import lineAreaBarRenderer from "metabase/visualizations/lib/LineAreaBarRenderer";
-import { formatValue } from "metabase/lib/formatting";
-
 // make WIDTH big enough that ticks aren't skipped
 const WIDTH = 4000;
 const HEIGHT = 1000;
@@ -79,9 +76,9 @@ describe("LineAreaBarRenderer-bar", () => {
   // run_timezone_tests sets "TZ" environment variable to change the timezone
   const clientTz = process.env["TZ"] || "[default]";
   // run_timezone_tests also sets "METABASE_TEST_TIMEZONES" to list of timezones
-  const reportTzs = (
-    process.env["METABASE_TEST_TIMEZONES"] || "America/Los_Angeles"
-  ).split(" ");
+  const reportTzs = (process.env["METABASE_TEST_TIMEZONES"] || "Etc/UTC").split(
+    " ",
+  );
 
   describe(`client timezone ${clientTz}`, () => {
     reportTzs.map(reportTz => {
