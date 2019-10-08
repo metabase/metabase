@@ -105,7 +105,7 @@
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                   ; FS tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [methodical "0.9.4-alpha"]
