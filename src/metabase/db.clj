@@ -361,18 +361,19 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- new-connection-pool
-  "Create a C3P0 connection pool for the given database `spec`. Default c3p0 properties can be found in the
-  c3p0.properties file and are there so users may override them from the system if desired."
-  [spec]
-  (connection-pool/connection-pool-spec spec))
+(def ^:private application-db-connection-pool-properties
+  "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
+  we use separate options for data warehouse DBs. See
+  https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used below."
+  {"testConnectionOnCheckin"  true
+   "idleConnectionTestPeriod" 300})
 
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (new-connection-pool spec)))
+  (db/set-default-db-connection! (connection-pool/connection-pool-spec spec application-db-connection-pool-properties)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -406,7 +407,7 @@
   false)
 
 (s/defn ^:private verify-db-connection
-  "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
+  "Test connection to database with `details` and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
 
