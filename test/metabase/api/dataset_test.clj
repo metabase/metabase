@@ -74,7 +74,8 @@
                 :started_at             true
                 :running_time           true
                 :average_execution_time nil
-                :database_id            (data/id)}))
+                :database_id            (data/id)}
+               (format-response result)))
         (is (= {:hash         true
                 :row_count    1
                 :result_rows  1
@@ -89,7 +90,7 @@
                 :database_id  (data/id)
                 :started_at   true
                 :running_time true}
-               (format-response result)))))))
+               (format-response (most-recent-query-execution))))))))
 
 (deftest failure-test
   (testing "Even if a query fails we still expect a 200 response from the api"
