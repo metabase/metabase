@@ -207,7 +207,7 @@
     :features           (map u/qualified-name (driver.u/features ::test-driver))}))
 
 (defn- all-test-data-databases []
-  (for [driver (conj tx.env/test-drivers :h2)
+  (for [driver (conj @tx.env/test-drivers :h2)
         ;; GA has no test extensions impl and thus data/db doesn't work with it
         ;; Also it doesn't work for Druid either because DB must be flattened
         :when  (not (#{:googleanalytics :druid} driver))]

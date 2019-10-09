@@ -138,7 +138,7 @@
 ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
 ;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
 ;; so we can use it with Mongo
-(datasets/expect-with-drivers (disj qp.test/non-timeseries-drivers :mongo)
+(datasets/expect-with-drivers (disj @qp.test/non-timeseries-drivers :mongo)
   [(qp.test/aggregate-col :count)
    (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
   (qp.test/cols

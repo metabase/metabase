@@ -17,6 +17,7 @@ import { FILTERS } from "metabase/components/ItemTypeFilterBar";
 
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import NoResults from "assets/img/no_results.svg";
 
 const PAGE_PADDING = [1, 2, 4];
 
@@ -39,9 +40,7 @@ export default class SearchApp extends React.Component {
                     <EmptyState
                       title={t`No results`}
                       message={t`Metabase couldn't find any results for your search.`}
-                      illustrationElement={
-                        <img src="app/assets/img/no_results.svg" />
-                      }
+                      illustrationElement={<img src={NoResults} />}
                     />
                   </Card>
                 );

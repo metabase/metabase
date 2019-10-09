@@ -2,7 +2,7 @@
 name: Questions and help
 about: If you think you need help with something related to Metabase
 title: ''
-labels: 'Type:Question'
+labels: "Type:Question, .Needs Triage"
 assignees: ''
 
 ---

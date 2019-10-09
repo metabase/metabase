@@ -112,6 +112,7 @@ export default class GridLayout extends Component {
 
   onResizeStart(i, { size }) {
     this.setState({ resizing: true });
+    this.onResize(i, { size });
   }
 
   onResize(i, { size }) {

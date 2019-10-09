@@ -946,3 +946,30 @@
   (tu/with-temporary-setting-values [slack-token nil]
     (-> ((user->client :rasta) :get 200 "pulse/form_input")
         (get-in [:channels :slack :fields]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         DELETE /api/pulse/:pulse-id/subscription                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(expect
+  nil
+  (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
+                  PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
+                                                           :channel_type  "email"
+                                                           :schedule_type "daily"
+                                                           :details       {:other  "stuff"
+                                                                           :emails ["foo@bar.com"]}}]
+                  PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
+    ((user->client :rasta) :delete 204 (str "pulse/" pulse-id "/subscription/email"))))
+
+;; Users can't delete someone else's pulse subscription
+(expect
+  "Not found."
+  (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
+                  PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
+                                                           :channel_type  "email"
+                                                           :schedule_type "daily"
+                                                           :details       {:other  "stuff"
+                                                                           :emails ["foo@bar.com"]}}]
+                  PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
+    ((user->client :lucky) :delete 404 (str "pulse/" pulse-id "/subscription/email"))))

@@ -42,7 +42,8 @@ export default class DashboardGrid extends Component {
   }
 
   static propTypes = {
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,

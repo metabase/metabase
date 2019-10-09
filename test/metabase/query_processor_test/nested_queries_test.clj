@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.nested-queries-test
   "Tests for handling queries with nested expressions."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -21,7 +22,6 @@
             [metabase.test.data
              [datasets :as datasets]
              [users :refer [user->client]]]
-            [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
 ;; make sure we can do a basic query with MBQL source-query
@@ -194,47 +194,26 @@
               {:aggregation [:count]
                :breakout    [*price]})))))))
 
-;; make sure `card__id`-style queries work with native source queries as well
-(expect
-  (breakout-results :has-source-metadata? false)
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM VENUES"}}}]
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int int]
-        (qp/process-query
-          (query-with-source-card card
-            (data/$ids venues
-              {:aggregation [:count]
-               :breakout    [*price]})))))))
-
-;; Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail
-(expect
-  (breakout-results :has-source-metadata? false)
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM VENUES -- small comment here"}}}]
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int int]
-        (qp/process-query
-          (query-with-source-card card
-            (data/$ids venues
-              {:aggregation [:count]
-               :breakout    [*price]})))))))
-
-;; Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail
-(expect
-  (breakout-results :has-source-metadata? false)
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM VENUES -- small comment here\n"}}}]
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int int]
-        (qp/process-query
-          (query-with-source-card card
-            (data/$ids venues
-              {:aggregation [:count]
-               :breakout    [*price]})))))))
+(deftest card-id-native-source-queries-test
+  (let [run-native-query
+        (fn [sql]
+          (tt/with-temp Card [card {:dataset_query {:database (data/id), :type :native. :native {:query sql}}}]
+            (qp.test/rows-and-cols
+              (qp.test/format-rows-by [int int]
+                (qp/process-query
+                  (query-with-source-card card
+                    (data/$ids venues
+                      {:aggregation [:count]
+                       :breakout    [*price]})))))))]
+    (is (= (breakout-results :has-source-metadata? false)
+           (run-native-query "SELECT * FROM VENUES"))
+        "make sure `card__id`-style queries work with native source queries as well")
+    (is (= (breakout-results :has-source-metadata? false)
+           (run-native-query "SELECT * FROM VENUES -- small comment here"))
+        "Ensure trailing comments are trimmed and don't cause a wrapping SQL query to fail")
+    (is (= (breakout-results :has-source-metadata? false)
+           (run-native-query "SELECT * FROM VENUES -- small comment here\n"))
+        "Ensure trailing comments followed by a newline are trimmed and don't cause a wrapping SQL query to fail")))
 
 
 ;; make sure we can filter by a field literal
@@ -264,47 +243,43 @@
             [:PUBLIC.VENUES.PRICE :PRICE]]
    :from   [:PUBLIC.VENUES]})
 
-;; make sure that dots in field literal identifiers get handled properly so you can't reference fields from other
-;; tables using them
-(expect
-  (honeysql->sql
-   {:select [[:source.ID :ID]
-             [:source.NAME :NAME]
-             [:source.CATEGORY_ID :CATEGORY_ID]
-             [:source.LATITUDE :LATITUDE]
-             [:source.LONGITUDE :LONGITUDE]
-             [:source.PRICE :PRICE]]
-    :from   [[venues-source-honeysql :source]]
-    :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
-    :limit  10})
-  (qp/query->native
-    {:database (data/id)
-     :type     :query
-     :query    {:source-query {:source-table (data/id :venues)}
-                :filter       [:= [:field-literal :BIRD.ID :type/Integer] 1]
-                :limit        10}}))
-
-;; make sure that field-literals work as DateTimeFields
-(expect
-  (honeysql->sql
-   {:select [[:source.ID :ID]
-             [:source.NAME :NAME]
-             [:source.CATEGORY_ID :CATEGORY_ID]
-             [:source.LATITUDE :LATITUDE]
-             [:source.LONGITUDE :LONGITUDE]
-             [:source.PRICE :PRICE]]
-    :from   [[venues-source-honeysql :source]]
-    :where  (let [week (let [format-str (hx/literal "YYYYww")]
-                         #(hsql/call :parsedatetime (hsql/call :formatdatetime % format-str) format-str))]
-              [:=
-               (week (hsql/raw "\"source\".\"BIRD.ID\""))
-               (week #inst "2017-01-01T00:00:00.000000000-00:00")])
-    :limit  10})
-  (qp/query->native
-    (data/mbql-query venues
-      {:source-query {:source-table $$venues}
-       :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
-       :limit        10})))
+(deftest field-literals-test
+  (is (= (honeysql->sql
+          {:select [[:source.ID :ID]
+                    [:source.NAME :NAME]
+                    [:source.CATEGORY_ID :CATEGORY_ID]
+                    [:source.LATITUDE :LATITUDE]
+                    [:source.LONGITUDE :LONGITUDE]
+                    [:source.PRICE :PRICE]]
+           :from   [[venues-source-honeysql :source]]
+           :where  [:= (hsql/raw "\"source\".\"BIRD.ID\"") 1]
+           :limit  10})
+         (qp/query->native
+           {:database (data/id)
+            :type     :query
+            :query    {:source-query {:source-table (data/id :venues)}
+                       :filter       [:= [:field-literal :BIRD.ID :type/Integer] 1]
+                       :limit        10}}))
+      (str "make sure that dots in field literal identifiers get handled properly so you can't reference fields "
+           "from other tables using them"))
+  (is (= (honeysql->sql
+          {:select [[:source.ID :ID]
+                    [:source.NAME :NAME]
+                    [:source.CATEGORY_ID :CATEGORY_ID]
+                    [:source.LATITUDE :LATITUDE]
+                    [:source.LONGITUDE :LONGITUDE]
+                    [:source.PRICE :PRICE]]
+           :from   [[venues-source-honeysql :source]]
+           :where  [:and
+                    [:>= (hsql/raw "\"source\".\"BIRD.ID\"") #inst "2017-01-01T00:00:00.000000000-00:00"]
+                    [:< (hsql/raw "\"source\".\"BIRD.ID\"") #inst "2017-01-08T00:00:00.000000000-00:00"]]
+           :limit  10})
+         (qp/query->native
+           (data/mbql-query venues
+             {:source-query {:source-table $$venues}
+              :filter       [:= !week.*BIRD.ID/DateTime "2017-01-01"]
+              :limit        10})))
+      "make sure that field-literals work as DateTimeFields"))
 
 ;; make sure that aggregation references match up to aggregations from the same level they're from
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation

@@ -23,6 +23,14 @@ export default class Metric extends Base {
     return ["metric", this.id];
   }
 
+  definitionQuery() {
+    return this.table.query().setQuery(this.definition);
+  }
+
+  aggregation() {
+    return this.definitionQuery().aggregations()[0];
+  }
+
   isActive(): boolean {
     return !this.archived;
   }

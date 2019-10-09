@@ -29,14 +29,15 @@
 
 (def non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference tx.env/test-drivers timeseries-drivers))
+  (delay
+    (set/difference @tx.env/test-drivers timeseries-drivers)))
 
 (defn non-timeseries-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [driver non-timeseries-drivers
+    (set (for [driver @non-timeseries-drivers
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (set/subset? features (driver.u/features driver))]
            driver))))
@@ -44,24 +45,24 @@
 (defn non-timeseries-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
+  (set/difference @non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs
   "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers` instead.
 
     (deftest my-test
-      (datasets/test-drivers qp.test/non-timeseries-drivers
+      (datasets/test-drivers @qp.test/non-timeseries-drivers
         (is (= ...))))"
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-drivers non-timeseries-drivers
+  `(datasets/expect-with-drivers @non-timeseries-drivers
      ~expected
      ~actual))
 
 (defn non-timeseries-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
   [excluded-drivers]
-  (set/difference non-timeseries-drivers (set excluded-drivers)))
+  (set/difference @non-timeseries-drivers (set excluded-drivers)))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs-except
   "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers-except` instead.
@@ -363,7 +364,7 @@
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :cols vec)
+  (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols

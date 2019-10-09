@@ -1,33 +1,14 @@
 /* @flow weak */
 
 import moment from "moment";
-import _ from "underscore";
 
-import * as Q_DEPRECATED from "metabase/lib/query"; // legacy query lib
-import { fieldIdsEq } from "metabase/lib/query/util";
-import * as Card from "metabase/meta/Card";
-import * as Query from "metabase/lib/query/query";
-import * as FieldRef from "metabase/lib/query/field_ref";
-import * as Filter from "metabase/lib/query/filter";
-import { startNewCard } from "metabase/lib/card";
 import {
   rangeForValue,
   fieldRefForColumnWithLegacyFallback,
 } from "metabase/lib/dataset";
-import {
-  isDate,
-  isState,
-  isCountry,
-  isCoordinate,
-  isNumber,
-} from "metabase/lib/schema_metadata";
-import Utils from "metabase/lib/utils";
+import { isDate, isNumber } from "metabase/lib/schema_metadata";
 
-import type Table from "metabase-lib/lib/metadata/Table";
-import type { Card as CardObject } from "metabase/meta/types/Card";
 import type {
-  StructuredQuery,
-  FieldFilter,
   Breakout,
   LocalFieldReference,
   ForeignFieldReference,
@@ -37,92 +18,122 @@ import type { Column } from "metabase/meta/types/Dataset";
 import type { DimensionValue } from "metabase/meta/types/Visualization";
 import { parseTimestamp } from "metabase/lib/time";
 
-// TODO: use icepick instead of mutation, make they handle frozen cards
+import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-export const toUnderlyingData = (card: CardObject): ?CardObject => {
-  const newCard = startNewCard("query");
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-  newCard.display = "table";
-  newCard.original_card_id = card.id;
-  return newCard;
-};
+export { drillDownForDimensions } from "./drilldown";
 
-export const toUnderlyingRecords = (card: CardObject): ?CardObject => {
-  if (card.dataset_query.type === "query") {
-    const query: StructuredQuery = Utils.copy(card.dataset_query).query;
-    const newCard = startNewCard(
-      "query",
-      card.dataset_query.database,
-      query["source-table"],
-    );
-    newCard.dataset_query.query.filter = query.filter;
-    return newCard;
+// QUESTION DRILL ACTIONS
+
+export function aggregate(question: Question, aggregation): ?Question {
+  const query = question.query();
+  if (query instanceof StructuredQuery) {
+    return query
+      .aggregate(aggregation)
+      .question()
+      .setDefaultDisplay();
   }
-};
+}
 
-export const getFieldRefFromColumn = (
-  column: Column,
-): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
-  return fieldRefForColumnWithLegacyFallback(
-    column,
-    c => getFieldRefFromColumn_LEGACY(c),
-    "actions::getFieldRefFromColumn",
-  );
-};
-
-const getFieldRefFromColumn_LEGACY = (
-  column: Column,
-): LocalFieldReference | ForeignFieldReference | FieldLiteral => {
-  if (column.expression_name) {
-    return ["expression", column.expression_name];
+export function breakout(question: Question, breakout): ?Question {
+  const query = question.query();
+  if (query instanceof StructuredQuery) {
+    return query
+      .breakout(breakout)
+      .question()
+      .setDefaultDisplay();
   }
-
-  const fieldId = column.id;
-  if (fieldId == null) {
-    return null;
-    // throw new Error(
-    //   "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
-    // );
-  }
-  if (Array.isArray(fieldId)) {
-    // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
-    return fieldId;
-  } else if (column.fk_field_id != null) {
-    return ["fk->", ["field-id", column.fk_field_id], ["field-id", fieldId]];
-  } else {
-    return ["field-id", fieldId];
-  }
-};
-
-const clone = card => {
-  const newCard = startNewCard("query");
-
-  newCard.display = card.display;
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-
-  // The Question lib doesn't always set a viz setting. Placing a check here, but we should probably refactor this
-  // into a separate test + clean up the question lib.
-  if (card.visualization_settings) {
-    newCard.visualization_settings = Utils.copy(card.visualization_settings);
-  }
-
-  return newCard;
-};
+}
 
 // Adds a new filter with the specified operator, column, and value
-export const filter = (card, operator, column, value) => {
-  const newCard = clone(card);
+export function filter(question: Question, operator, column, value): ?Question {
+  const query = question.query();
+  if (query instanceof StructuredQuery) {
+    return query
+      .filter([operator, getFieldRefFromColumn(column), value])
+      .question();
+  }
+}
 
-  // $FlowFixMe:
-  const filter: FieldFilter = [operator, getFieldRefFromColumn(column), value];
-  newCard.dataset_query.query = Query.addFilter(
-    newCard.dataset_query.query,
-    filter,
-  );
-  return newCard;
-};
+export function pivot(
+  question: Question,
+  breakouts: Breakout[] = [],
+  dimensions: DimensionValue[] = [],
+): ?Question {
+  let query = question.query();
+  if (query instanceof StructuredQuery) {
+    for (const dimension of dimensions) {
+      query = drillFilter(query, dimension.value, dimension.column);
+      const dimensionRef = getFieldRefFromColumn(dimension.column);
+      for (let i = 0; i < query.breakouts().length; i++) {
+        const breakout = query.breakouts()[i];
+        if (breakout.dimension().isSameBaseDimension(dimensionRef)) {
+          query = breakout.remove();
+          i--;
+        }
+      }
+    }
+    for (const breakout of breakouts) {
+      query = query.breakout(breakout);
+    }
+    return query.question().setDefaultDisplay();
+  }
+}
 
-export const drillFilter = (card, value, column) => {
+export function distribution(question: Question, column): ?Question {
+  const query = question.query();
+  if (query instanceof StructuredQuery) {
+    const breakout = isDate(column)
+      ? ["datetime-field", getFieldRefFromColumn(column), "month"]
+      : isNumber(column)
+      ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
+      : getFieldRefFromColumn(column);
+    return query
+      .clearAggregations()
+      .clearBreakouts()
+      .clearSort()
+      .clearLimit()
+      .aggregate(["count"])
+      .breakout(breakout)
+      .question()
+      .setDisplay("bar");
+  }
+}
+
+export function toUnderlyingRecords(question: Question): ?Question {
+  const query = question.query();
+  if (query instanceof StructuredQuery) {
+    return query
+      .clearAggregations()
+      .clearBreakouts()
+      .clearSort()
+      .clearLimit()
+      .clearFields()
+      .question()
+      .setDisplay("table");
+  }
+}
+
+export function drillUnderlyingRecords(
+  question: Question,
+  dimensions,
+): ?Question {
+  let query = question.query();
+  if (query instanceof StructuredQuery) {
+    for (const dimension of dimensions) {
+      query = drillFilter(query, dimension.value, dimension.column);
+    }
+    return toUnderlyingRecords(query.question());
+  }
+}
+
+// STRUCTURED QUERY UTILITIES
+
+export function drillFilter(
+  query: StructuredQuery,
+  value,
+  column,
+): StructuredQuery {
   let filter;
   if (isDate(column)) {
     filter = [
@@ -139,140 +150,52 @@ export const drillFilter = (card, value, column) => {
     }
   }
 
-  return addOrUpdateFilter(card, filter);
-};
+  return addOrUpdateFilter(query, filter);
+}
 
-export const addOrUpdateFilter = (card, filter) => {
-  const newCard = clone(card);
+export function addOrUpdateFilter(
+  query: StructuredQuery,
+  newFilter,
+): StructuredQuery {
   // replace existing filter, if it exists
-  const filters = Query.getFilters(newCard.dataset_query.query);
-  for (let index = 0; index < filters.length; index++) {
-    if (
-      Filter.isFieldFilter(filters[index]) &&
-      FieldRef.getFieldTargetId(filters[index][1]) ===
-        FieldRef.getFieldTargetId(filter[1])
-    ) {
-      newCard.dataset_query.query = Query.updateFilter(
-        newCard.dataset_query.query,
-        index,
-        filter,
-      );
-      return newCard;
+  for (const filter of query.filters()) {
+    const dimension = filter.dimension();
+    if (dimension && dimension.isSameBaseDimension(newFilter[1])) {
+      return filter.replace(newFilter);
     }
   }
-
   // otherwise add a new filter
-  newCard.dataset_query.query = Query.addFilter(
-    newCard.dataset_query.query,
-    filter,
-  );
-  return newCard;
-};
+  return query.filter(newFilter);
+}
 
-export const addOrUpdateBreakout = (card, breakout) => {
-  const newCard = clone(card);
-  // replace existing breakout, if it exists
-  const breakouts = Query.getBreakouts(newCard.dataset_query.query);
-  for (let index = 0; index < breakouts.length; index++) {
-    if (
-      fieldIdsEq(
-        FieldRef.getFieldTargetId(breakouts[index]),
-        FieldRef.getFieldTargetId(breakout),
-      )
-    ) {
-      newCard.dataset_query.query = Query.updateBreakout(
-        newCard.dataset_query.query,
-        index,
-        breakout,
-      );
-      return newCard;
-    }
-  }
-
-  // otherwise add a new breakout
-  newCard.dataset_query.query = Query.addBreakout(
-    newCard.dataset_query.query,
-    breakout,
-  );
-  return newCard;
-};
+// min number of points when switching units
+const MIN_INTERVALS = 4;
 
 const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
 const getNextUnit = unit => {
   return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
 };
 
-export { drillDownForDimensions } from "./drilldown";
-
-export const drillUnderlyingRecords = (card, dimensions) => {
-  for (const dimension of dimensions) {
-    card = drillFilter(card, dimension.value, dimension.column);
+export function addOrUpdateBreakout(
+  query: StructuredQuery,
+  newBreakout,
+): StructuredQuery {
+  // replace existing breakout, if it exists
+  for (const breakout of query.breakouts()) {
+    if (breakout.dimension().isSameBaseDimension(newBreakout)) {
+      return breakout.replace(newBreakout);
+    }
   }
-  return toUnderlyingRecords(card);
-};
+  // otherwise add a new breakout
+  return query.breakout(newBreakout);
+}
 
-export const drillRecord = (databaseId, tableId, fieldId, value) => {
-  const newCard = startNewCard("query", databaseId, tableId);
-  newCard.dataset_query.query = Query.addFilter(newCard.dataset_query.query, [
-    "=",
-    ["field-id", fieldId],
-    value,
-  ]);
-  return newCard;
-};
-
-export const plotSegmentField = card => {
-  const newCard = startNewCard("query");
-  newCard.display = "scatter";
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-  return newCard;
-};
-
-export const summarize = (card, aggregation, tableMetadata) => {
-  const newCard = startNewCard("query");
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-  newCard.dataset_query.query = Query.addAggregation(
-    newCard.dataset_query.query,
-    aggregation,
-  );
-  guessVisualization(newCard, tableMetadata);
-  return newCard;
-};
-
-export const breakout = (card, breakout, tableMetadata) => {
-  const newCard = startNewCard("query");
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-  newCard.dataset_query.query = Query.addBreakout(
-    newCard.dataset_query.query,
-    breakout,
-  );
-  guessVisualization(newCard, tableMetadata);
-  return newCard;
-};
-
-export const distribution = (card, column) => {
-  const breakout = isDate(column)
-    ? ["datetime-field", getFieldRefFromColumn(column), "month"]
-    : isNumber(column)
-    ? ["binning-strategy", getFieldRefFromColumn(column), "default"]
-    : getFieldRefFromColumn(column);
-
-  const newCard = startNewCard("query");
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-  newCard.dataset_query.query.aggregation = [["count"]];
-  newCard.dataset_query.query.breakout = [breakout];
-  delete newCard.dataset_query.query["order-by"];
-  delete newCard.dataset_query.query.fields;
-  newCard.display = "bar";
-  return newCard;
-};
-
-// min number of points when switching units
-const MIN_INTERVALS = 4;
-
-export const updateDateTimeFilter = (card, column, start, end): CardObject => {
-  let newCard = clone(card);
-
+export function updateDateTimeFilter(
+  query: StructuredQuery,
+  column,
+  start,
+  end,
+): StructuredQuery {
   const fieldRef = getFieldRefFromColumn(column);
   start = moment(start);
   end = moment(end);
@@ -293,25 +216,25 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
     }
 
     // update the breakout
-    newCard = addOrUpdateBreakout(newCard, ["datetime-field", fieldRef, unit]);
+    query = addOrUpdateBreakout(query, ["datetime-field", fieldRef, unit]);
 
     // round to start of the original unit
     start = start.startOf(column.unit);
     end = end.startOf(column.unit);
 
     if (start.isAfter(end)) {
-      return card;
+      return query;
     }
     if (start.isSame(end, column.unit)) {
       // is the start and end are the same (in whatever the original unit was) then just do an "="
-      return addOrUpdateFilter(newCard, [
+      return addOrUpdateFilter(query, [
         "=",
         ["datetime-field", fieldRef, column.unit],
         start.format(),
       ]);
     } else {
       // otherwise do a between
-      return addOrUpdateFilter(newCard, [
+      return addOrUpdateFilter(query, [
         "between",
         ["datetime-field", fieldRef, column.unit],
         start.format(),
@@ -319,25 +242,25 @@ export const updateDateTimeFilter = (card, column, start, end): CardObject => {
       ]);
     }
   } else {
-    return addOrUpdateFilter(newCard, [
+    return addOrUpdateFilter(query, [
       "between",
       fieldRef,
       start.format(),
       end.format(),
     ]);
   }
-};
+}
 
 export function updateLatLonFilter(
-  card,
+  query: StructuredQuery,
   latitudeColumn,
   longitudeColumn,
   bounds,
-) {
-  return addOrUpdateFilter(card, [
+): StructuredQuery {
+  return addOrUpdateFilter(query, [
     "inside",
-    latitudeColumn.id,
-    longitudeColumn.id,
+    getFieldRefFromColumn(latitudeColumn),
+    getFieldRefFromColumn(longitudeColumn),
     bounds.getNorth(),
     bounds.getWest(),
     bounds.getSouth(),
@@ -345,116 +268,48 @@ export function updateLatLonFilter(
   ]);
 }
 
-export function updateNumericFilter(card, column, start, end) {
+export function updateNumericFilter(
+  query: StructuredQuery,
+  column,
+  start,
+  end,
+): StructuredQuery {
   const fieldRef = getFieldRefFromColumn(column);
-  return addOrUpdateFilter(card, ["between", fieldRef, start, end]);
+  return addOrUpdateFilter(query, ["between", fieldRef, start, end]);
 }
 
-export const pivot = (
-  card: CardObject,
-  tableMetadata: Table,
-  breakouts: Breakout[] = [],
-  dimensions: DimensionValue[] = [],
-): ?CardObject => {
-  if (card.dataset_query.type !== "query") {
-    return null;
-  }
+// COLUMN UTILITIES
 
-  let newCard = startNewCard("query");
-  newCard.dataset_query = Utils.copy(card.dataset_query);
-
-  for (const dimension of dimensions) {
-    newCard = drillFilter(newCard, dimension.value, dimension.column);
-    const breakoutFields = Query.getBreakoutFields(
-      newCard.dataset_query.query,
-      tableMetadata,
-    );
-    for (const [index, field] of breakoutFields.entries()) {
-      if (field && fieldIdsEq(field.id, dimension.column.id)) {
-        newCard.dataset_query.query = Query.removeBreakout(
-          newCard.dataset_query.query,
-          index,
-        );
-      }
-    }
-  }
-
-  for (const breakout of breakouts) {
-    newCard.dataset_query.query = Query.addBreakout(
-      newCard.dataset_query.query,
-      breakout,
-    );
-  }
-
-  guessVisualization(newCard, tableMetadata, card.display);
-
-  return newCard;
-};
-
-// const VISUALIZATIONS_ONE_BREAKOUTS = new Set([
-//     "bar",
-//     "line",
-//     "area",
-//     "row",
-//     "pie",
-//     "map"
-// ]);
-const VISUALIZATIONS_TWO_BREAKOUTS = new Set(["bar", "line", "area"]);
-
-const VISUALIZATIONS_LINE_AREA_BAR = new Set(["bar", "line", "area"]);
-
-// helper to preserve existing display if it's a line/area/bar, otherwise use default
-const getLineAreaBarDisplay = (defaultDisplay, existingDisplay) =>
-  VISUALIZATIONS_LINE_AREA_BAR.has(existingDisplay)
-    ? existingDisplay
-    : defaultDisplay;
-
-// DEPRECATED: use question.setDefaultDisplay()
-export function guessVisualization(
-  card: CardObject,
-  tableMetadata: Table,
-  existingDisplay: ?string = null,
-) {
-  const query = Card.getQuery(card);
-  if (!query) {
-    return;
-  }
-  const aggregations = Query.getAggregations(query);
-  const breakoutFields = Query.getBreakouts(query).map(
-    breakout =>
-      (Q_DEPRECATED.getFieldTarget(breakout, tableMetadata) || {}).field,
+export function getFieldRefFromColumn(
+  column: Column,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral {
+  return fieldRefForColumnWithLegacyFallback(
+    column,
+    c => getFieldRefFromColumn_LEGACY(c),
+    "actions::getFieldRefFromColumn",
   );
-  if (aggregations.length === 0 && breakoutFields.length === 0) {
-    card.display = "table";
-  } else if (aggregations.length === 1 && breakoutFields.length === 0) {
-    card.display = "scalar";
-  } else if (aggregations.length === 1 && breakoutFields.length === 1) {
-    if (isState(breakoutFields[0])) {
-      card.display = "map";
-      card.visualization_settings["map.type"] = "region";
-      card.visualization_settings["map.region"] = "us_states";
-    } else if (isCountry(breakoutFields[0])) {
-      card.display = "map";
-      card.visualization_settings["map.type"] = "region";
-      card.visualization_settings["map.region"] = "world_countries";
-    } else if (isDate(breakoutFields[0])) {
-      card.display = getLineAreaBarDisplay("line", existingDisplay);
-    } else {
-      card.display = getLineAreaBarDisplay("bar", existingDisplay);
-    }
-  } else if (aggregations.length === 1 && breakoutFields.length === 2) {
-    if (!VISUALIZATIONS_TWO_BREAKOUTS.has(card.display)) {
-      if (isDate(breakoutFields[0])) {
-        card.display = getLineAreaBarDisplay("line", existingDisplay);
-      } else if (_.all(breakoutFields, isCoordinate)) {
-        card.display = "map";
-        card.visualization_settings["map.type"] = "grid";
-      } else {
-        card.display = "bar";
-      }
-    }
+}
+
+function getFieldRefFromColumn_LEGACY(
+  column: Column,
+): LocalFieldReference | ForeignFieldReference | FieldLiteral {
+  if (column.expression_name) {
+    return ["expression", column.expression_name];
+  }
+
+  const fieldId = column.id;
+  if (fieldId == null) {
+    return null;
+    // throw new Error(
+    //   "getFieldRefFromColumn expects non-null fieldId or column with non-null id",
+    // );
+  }
+  if (Array.isArray(fieldId)) {
+    // NOTE: sometimes col.id is a field reference (e.x. nested queries), if so just return it
+    return fieldId;
+  } else if (column.fk_field_id != null) {
+    return ["fk->", ["field-id", column.fk_field_id], ["field-id", fieldId]];
   } else {
-    console.warn("Couldn't guess visualization", card);
-    card.display = "table";
+    return ["field-id", fieldId];
   }
 }

@@ -73,7 +73,7 @@ export const OperatorFilter = ({
     return null;
   }
 
-  const operator = dimension.operator(op);
+  const operator = dimension.filterOperator(op);
 
   let formattedValues;
   // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps

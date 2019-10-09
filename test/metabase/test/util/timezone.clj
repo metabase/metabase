@@ -21,7 +21,7 @@
   "Invokes the thunk `F` with the JVM timezone set to `DTZ` (String or instance of TimeZone or DateTimeZone), puts the
   various timezone settings back the way it found it when it exits."
   [dtz thunk]
-  (initialize/initialize-if-needed! :db)
+  (initialize/initialize-if-needed! :db :plugins)
   (let [dtz          (->datetimezone dtz)
         orig-tz      (TimeZone/getDefault)
         orig-dtz     (time/default-time-zone)

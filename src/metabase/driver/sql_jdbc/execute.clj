@@ -277,7 +277,7 @@
 ;;; ------------------------------------------------- execute-query --------------------------------------------------
 
 (defn execute-query
-  "Process and run a native (raw SQL) QUERY."
+  "Process and run a native (raw SQL) `query`."
   [driver {settings :settings, query :native, :as outer-query}]
   (let [query (assoc query
                 :remark   (qputil/query->remark outer-query)

@@ -3,7 +3,6 @@
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
-             [db :as mdb]
              [driver :as driver]
              [sync :as sync]
              [util :as u]]
@@ -15,6 +14,7 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
+            [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
             [toucan.db :as db]))
@@ -71,20 +71,20 @@
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
             (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
-(def ^:private create-database-timeout
+(def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (* 4 60 1000)) ; 4 minutes
+  (du/minutes->ms 4)) ; 4 minutes
 
-(def ^:private sync-timeout
+(def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (* 5 60 1000)) ; five minutes
+  (du/minutes->ms 5)) ; five minutes
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout
+    (u/with-timeout create-database-timeout-ms
       (tu.tz/with-jvm-tz "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
@@ -93,7 +93,7 @@
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
-      (u/with-timeout sync-timeout
+      (u/with-timeout sync-timeout-ms
         (du/profile (format "Sync %s Database %s" driver database-name)
           (sync/sync-database! db)
           ;; add extra metadata for fields
@@ -109,9 +109,8 @@
       (when config/is-test?
         (System/exit -1)))))
 
-
 (defmethod get-or-create-database! :default [driver dbdef]
-  (mdb/setup-db!) ; if not already setup
+  (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)

@@ -72,8 +72,8 @@ export default class CardRenderer extends Component {
     this._deregisterChart();
 
     // reset the DOM:
-    for (const child of parent.children) {
-      parent.removeChild(child);
+    while (parent.firstChild) {
+      parent.removeChild(parent.firstChild);
     }
 
     // create a new container element

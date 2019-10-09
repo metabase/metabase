@@ -10,6 +10,7 @@
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.parameters.native.interface :as i]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
@@ -18,8 +19,7 @@
             [toucan.db :as db])
   (:import java.text.NumberFormat
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter
-            MultipleValues]))
+           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter MultipleValues]))
 
 (def ^:private ParamType
   (s/enum :number
@@ -68,13 +68,17 @@
 
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
+(defn- missing-required-param-exception [param-display-name]
+  (ex-info (tru "You''ll need to pick a value for ''{0}'' before this query can run." param-display-name)
+    {:type qp.error-type/missing-required-parameter}))
+
 (s/defn ^:private default-value-for-field-filter
   "Return the default value for a FieldFilter (`:type` = `:dimension`) param defined by the map `tag`, if one is set."
   [tag :- TagParam]
   (when (and (:required tag) (not (:default tag)))
-    (throw (Exception. (tru "''{0}'' is a required param." (:display-name tag)))))
+    (throw (missing-required-param-exception (:display-name tag))))
   (when-let [default (:default tag)]
-    {:type   (:widget-type tag :dimension)             ; widget-type is the actual type of the default value if set
+    {:type   (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
      :target [:dimension [:template-tag (:name tag)]]
      :value  default}))
 
@@ -91,7 +95,7 @@
      ;; TODO - shouldn't this use the QP Store?
      {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
                    :id (field-filter->field-id field-filter))
-                 (throw (Exception. (tru "Can't find field with ID: {0}"
+                 (throw (Exception. (tru "Can''t find field with ID: {0}"
                                          (field-filter->field-id field-filter)))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything
@@ -123,7 +127,7 @@
   [{:keys [default display-name required]} :- TagParam]
   (or default
       (when required
-        (throw (Exception. (tru "''{0}'' is a required param." display-name))))))
+        (throw (missing-required-param-exception display-name)))))
 
 
 ;;; Parsing Values
