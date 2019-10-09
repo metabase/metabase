@@ -13,9 +13,12 @@
             [metabase.models
              [database :refer [Database]]
              [user :refer [User]]]
-            [metabase.test.data.users :as test-users]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :test-users))
 
 ;; ## POST /api/setup/user
 ;;
@@ -25,7 +28,6 @@
       (try
         ;; make sure the default test users are created before running this test, otherwise we're going to run into
         ;; issues if it attempts to delete this user and it is the only admin test user
-        (test-users/create-users-if-needed!)
         (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
           (let [api-response (http/client :post 200 "setup" {:token (setup/create-token!)
                                                              :prefs {:site_name "Metabase Test"}

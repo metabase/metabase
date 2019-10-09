@@ -114,8 +114,7 @@ export const updateTable = table => {
     table,
     "fields",
     "fields_lookup",
-    "aggregation_options",
-    "breakout_options",
+    "aggregation_operators",
     "metrics",
     "segments",
   );
@@ -165,7 +164,7 @@ export const addFields = fieldMaps => {
 export const UPDATE_FIELD = Fields.actions.update.toString();
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
-  const slimField = _.omit(field, "operators_lookup");
+  const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 

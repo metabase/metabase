@@ -318,21 +318,16 @@
 (defmethod parse-filter :or  [[_ & args]] {$or (mapv parse-filter args)})
 
 
-;; This is somewhat silly but MongoDB doesn't support `not` as a top-level so we have to go in and negate things
-;; ourselves. Ick. Maybe we could pull this logic up into `mbql.u` so other people could use it?
+;; MongoDB doesn't support negating top-level filter clauses. So we can leverage the MBQL lib's `negate-filter-clause`
+;; to negate everything, with the exception of the string filter clauses, which we will convert to a `{not <regex}`
+;; clause (see `->rvalue` for `::not` above). `negate` below wraps the MBQL lib function
 (defmulti ^:private negate first)
 
-(defmethod negate :not [[_ subclause]]    subclause)
+(defmethod negate :default [clause]
+  (mbql.u/negate-filter-clause clause))
+
 (defmethod negate :and [[_ & subclauses]] (apply vector :or  (map negate subclauses)))
 (defmethod negate :or  [[_ & subclauses]] (apply vector :and (map negate subclauses)))
-(defmethod negate :=   [[_ field value]]  [:!= field value])
-(defmethod negate :!=  [[_ field value]]  [:=  field value])
-(defmethod negate :>   [[_ field value]]  [:<= field value])
-(defmethod negate :<   [[_ field value]]  [:>= field value])
-(defmethod negate :>=  [[_ field value]]  [:<  field value])
-(defmethod negate :<=  [[_ field value]]  [:>  field value])
-
-(defmethod negate :between [[_ field min max]] [:or [:< field min] [:> field max]])
 
 (defmethod negate :contains    [[_ field v opts]] [:contains field [::not v] opts])
 (defmethod negate :starts-with [[_ field v opts]] [:starts-with field [::not v] opts])
@@ -428,7 +423,7 @@
 
     :else
     (throw
-     (ex-info (tru "Don't know how to handle aggregation {0}" ag)
+     (ex-info (tru "Don''t know how to handle aggregation {0}" ag)
        {:type :invalid-query, :clause ag}))))
 
 (defn- unwrap-named-ag [[ag-type arg :as ag]]

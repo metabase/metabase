@@ -19,7 +19,8 @@
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
-                                        "--exclude-profiles" "compare-h2-dbs"]
+                                        ;; see https://github.com/dakrone/lein-bikeshed/issues/41
+                                        "--exclude-profiles" "compare-h2-dbs,dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -105,8 +106,8 @@
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                   ; FS tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.3.5"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [methodical "0.9.4-alpha"]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
@@ -122,6 +123,7 @@
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5"]                                                 ; utility macros & fns
+   [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
@@ -275,7 +277,7 @@
       ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
       :exclude-linters    [:deprecations]}}]
 
-   ;; run `lein check-reflection-warnings` to check for reflection warnings
+   ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
    [:include-all-drivers
     {:global-vars {*warn-on-reflection* true}}]

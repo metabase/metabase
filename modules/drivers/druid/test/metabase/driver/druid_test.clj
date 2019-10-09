@@ -1,6 +1,7 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
@@ -141,12 +142,6 @@
   :completed
   (:status (process-native-query native-query-2)))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            EXPRESSION AGGREGATIONS                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-
 (defmacro ^:private druid-query {:style/indent 0} [& body]
   `(tqpt/with-flattened-dbdef
      (qp/process-query (data/mbql-query ~'checkins
@@ -155,15 +150,17 @@
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(qp.test/rows (druid-query ~@body)))
 
-;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
-;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
-;; have counted for the previous week
-(datasets/expect-with-driver :druid
-  [["2015-10-04" 9]]
-  (druid-query-returning-rows
-    {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
-     :aggregation [[:count $id]]
-     :breakout    [[:datetime-field $timestamp :week]]}))
+(deftest start-of-week-test
+  (datasets/test-driver :druid
+    (is (= [["2015-10-04" 9]]
+           (druid-query-returning-rows
+             {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
+              :aggregation [[:count $id]]
+              :breakout    [[:datetime-field $timestamp :week]]}))
+        (str "Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by "
+             "default will use Monday. All of the below events should happen in one week. Using Druid's default "
+             "grouping, 3 of the events would have counted for the previous week."))))
+
 
 ;; sum, *
 (datasets/expect-with-driver :druid

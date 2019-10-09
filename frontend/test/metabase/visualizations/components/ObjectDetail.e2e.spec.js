@@ -29,7 +29,7 @@ describe("ObjectDetail", () => {
         metadata: getMetadata(store.getState()),
       })
         .query()
-        .addFilter(["=", ["field-id", 2], 2])
+        .filter(["=", ["field-id", 2], 2])
         .question()
         .setDisplayName("Object Detail");
 

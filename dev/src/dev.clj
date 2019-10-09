@@ -1,17 +1,15 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require [metabase
+  (:require [clojure.set :as set]
+            [metabase
              [core :as mbc]
              [db :as mdb]
              [handler :as handler]
              [plugins :as pluguns]
-             [server :as server]
-             [util :as u]]
+             [query-processor-test :as qp.test]
+             [server :as server]]
             [metabase.api.common :as api-common]
-            [metabase.models.interface :as mi]
-            [metabase.test.util] ;; extensions
-            [toucan.db :as tdb]
-            [toucan.util.test :as tt]))
+            [metabase.test.data.env :as tx.env]))
 
 (defn init!
   []
@@ -42,29 +40,9 @@
   (doseq [[symb] (ns-interns a-namespace)]
     (ns-unmap a-namespace symb)))
 
-(defn run-tests*
-  [& namespaces]
-  (let [namespaces (map the-ns namespaces)]
-    (doseq [a-namespace namespaces]
-      (ns-unmap-all a-namespace)
-      (require (ns-name a-namespace) :reload))
-    (expectations/run-tests namespaces)))
-
-(defmacro run-tests
-  "Run expectations test in `namespaces`. With no args, runs tests in the current namespace. Clears all interned vars in
-  the namespace, reloads it, and runs tests. `namespaces` may be either actual namespace objects or their symbol
-  names.
-
-  (run-tests)        ; current-namespace
-  (run-tests *ns*)   ; current-namespace
-  (run-tests 'my-ns) ; run tests in my-ns"
-  ([]
-   `(run-tests* '~(ns-name *ns*)))
-  ([& namespaces]
-   `(run-tests* ~@(map #(list 'quote (ns-name (the-ns (eval %)))) namespaces))))
-
 (defmacro require-model
-  "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current session"
+  "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
+  session"
   [model-sym]
   `(require [(symbol (str "metabase.models." (quote ~model-sym))) :as (quote ~model-sym)]))
 
@@ -72,3 +50,26 @@
   [permissions & body]
   `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
+
+(defn do-with-test-drivers [test-drivers thunk]
+  {:pre [((some-fn sequential? set?) test-drivers)]}
+  (with-redefs [tx.env/test-drivers            (atom (set test-drivers))
+                qp.test/non-timeseries-drivers (atom (set/difference
+                                                      (set test-drivers)
+                                                      (var-get #'qp.test/timeseries-drivers)))]
+    (thunk)))
+
+(defmacro with-test-drivers
+  "Temporarily change the drivers that Metabase tests will run against as if you had set the `DRIVERS` env var.
+
+    ;; my-test will run against any non-timeseries driver (i.e., anything except for Druid) that is listed in the
+    ;; `DRIVERS` env var
+    (deftest my-test
+      (datasets/test-drivers @qp.test/non-timeseries-drivers
+        ...))
+
+    ;; Run `my-test` against H2 and Postgres regardless of what's in the `DRIVERS` env var
+    (dev/with-test-drivers #{:h2 :postgres}
+      (my-test))"
+  [test-drivers & body]
+  `(do-with-test-drivers ~test-drivers (fn [] ~@body)))

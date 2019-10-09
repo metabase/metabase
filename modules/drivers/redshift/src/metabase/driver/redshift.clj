@@ -92,7 +92,7 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift [_ {:keys [host port db], :as opts}]
   (merge
-   {:classname                     "com.amazon.redshift.jdbc.Driver" ; must be in classpath
+   {:classname                     "com.amazon.redshift.jdbc.Driver"
     :subprotocol                   "redshift"
     :subname                       (str "//" host ":" port "/" db)
     :ssl                           true

@@ -90,7 +90,6 @@
   [format-template v]
   (hsql/call :trunc v (hx/literal format-template)))
 
-(defmethod sql.qp/date [:oracle :default]        [_ _ v] (some-> v hx/->date))
 (defmethod sql.qp/date [:oracle :minute]         [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
 (defmethod sql.qp/date [:oracle :minute-of-hour] [_ _ v] (hsql/call :extract :minute (hx/->timestamp v)))
@@ -281,4 +280,4 @@
   (.getString resultset i))
 
 (defmethod unprepare/unprepare-value [:oracle Date] [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd hh:mm:ss.SSS ZZ" value)))
+  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" value)))
