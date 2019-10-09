@@ -1,26 +1,51 @@
 import { compile, suggest, parse } from "metabase/lib/expressions/parser";
 import _ from "underscore";
+
 import { TYPE } from "metabase/lib/types";
+import {
+  ORDERS,
+  REVIEWS,
+  makeMetadata,
+} from "__support__/sample_dataset_fixture";
 
-const mockMetadata = {
-  tableMetadata: {
-    fields: [
-      { id: 1, display_name: "A", base_type: TYPE.Float },
-      { id: 2, display_name: "B", base_type: TYPE.Float },
-      { id: 3, display_name: "C", base_type: TYPE.Float },
-      { id: 10, display_name: "Toucan Sam", base_type: TYPE.Float },
-      { id: 11, display_name: "count", base_type: TYPE.Float },
-    ],
-    metrics: [{ id: 1, name: "foo bar" }],
-    aggregation_options: [
-      { short: "count", fields: [] },
-      { short: "sum", fields: [[]] },
-    ],
+const metadata = makeMetadata({
+  databases: {
+    1: {
+      name: "db",
+      tables: [1],
+      features: [
+        "basic-aggregations",
+        "standard-deviation-aggregations",
+        "expression-aggregations",
+        "foreign-keys",
+        "native-parameters",
+        "expressions",
+        "right-join",
+        "left-join",
+        "inner-join",
+        "nested-queries",
+      ],
+    },
   },
-};
+  tables: {
+    1: {
+      db: 1,
+      fields: [1, 2, 3, 10, 11],
+    },
+  },
+  fields: {
+    1: { id: 1, table: 1, display_name: "A", base_type: TYPE.Float },
+    2: { id: 2, table: 1, display_name: "B", base_type: TYPE.Float },
+    3: { id: 3, table: 1, display_name: "C", base_type: TYPE.Float },
+    10: { id: 10, table: 1, display_name: "Toucan Sam", base_type: TYPE.Float },
+    11: { id: 11, table: 1, display_name: "count", base_type: TYPE.Float },
+  },
+});
 
-const expressionOpts = { ...mockMetadata, startRule: "expression" };
-const aggregationOpts = { ...mockMetadata, startRule: "aggregation" };
+const query = metadata.table(1).query();
+
+const expressionOpts = { query, startRule: "expression" };
+const aggregationOpts = { query, startRule: "aggregation" };
 
 describe("lib/expressions/parser", () => {
   describe("compile()", () => {
@@ -157,10 +182,15 @@ describe("lib/expressions/parser", () => {
   describe("suggest()", () => {
     it("should suggest aggregations and metrics after an operator", () => {
       expect(cleanSuggestions(suggest("1 + ", aggregationOpts))).toEqual([
+        { type: "aggregations", text: "Average(" },
         { type: "aggregations", text: "Count " },
+        { type: "aggregations", text: "CumulativeCount " },
+        { type: "aggregations", text: "CumulativeSum(" },
+        { type: "aggregations", text: "Distinct(" },
+        { type: "aggregations", text: "Max(" },
+        { type: "aggregations", text: "Min(" },
+        { type: "aggregations", text: "StandardDeviation(" },
         { type: "aggregations", text: "Sum(" },
-        // NOTE: metrics support currently disabled
-        // { type: 'metrics',     text: '"foo bar"' },
         { type: "other", text: " (" },
       ]);
     });
@@ -179,6 +209,8 @@ describe("lib/expressions/parser", () => {
     it("should suggest partial matches in aggregation", () => {
       expect(cleanSuggestions(suggest("1 + C", aggregationOpts))).toEqual([
         { type: "aggregations", text: "Count " },
+        { type: "aggregations", text: "CumulativeCount " },
+        { type: "aggregations", text: "CumulativeSum(" },
       ]);
     });
     it("should suggest partial matches in expression", () => {
@@ -191,6 +223,52 @@ describe("lib/expressions/parser", () => {
       expect(cleanSuggestions(suggest("average(c", expressionOpts))).toEqual([
         { type: "fields", text: '"count" ' },
         { type: "fields", text: "C " },
+      ]);
+    });
+    it("should suggest foreign fields", () => {
+      expect(
+        cleanSuggestions(
+          suggest("User", { query: ORDERS.query(), startRule: "expression" }),
+        ),
+      ).toEqual([
+        { text: '"User ID" ', type: "fields" },
+        { text: '"User → ID" ', type: "fields" },
+        { text: '"User → Latitude" ', type: "fields" },
+        { text: '"User → Longitude" ', type: "fields" },
+      ]);
+    });
+    it("should suggest joined fields", () => {
+      expect(
+        cleanSuggestions(
+          suggest("Foo", {
+            query: ORDERS.query().join({
+              alias: "Foo",
+              "source-table": REVIEWS.id,
+            }),
+            startRule: "expression",
+          }),
+        ),
+      ).toEqual([
+        { text: '"Foo → ID" ', type: "fields" },
+        { text: '"Foo → Product ID" ', type: "fields" },
+        { text: '"Foo → Rating" ', type: "fields" },
+      ]);
+    });
+    it("should suggest nested query fields", () => {
+      expect(
+        cleanSuggestions(
+          suggest("", {
+            query: ORDERS.query()
+              .aggregate(["count"])
+              .breakout(ORDERS.TOTAL)
+              .nest(),
+            startRule: "expression",
+          }),
+        ),
+      ).toEqual([
+        { text: '"Count" ', type: "fields" },
+        { text: "Total ", type: "fields" },
+        { text: " (", type: "other" },
       ]);
     });
   });

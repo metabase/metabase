@@ -22,6 +22,7 @@
              [test :refer :all]]
             [metabase
              [driver :as driver]
+             [query-processor :as qp]
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -966,33 +967,48 @@
            :filter      [:= [:field-id $timestamp] (str (du/format-date "yyyy-MM-dd" (du/date-trunc :day))
                                                         "T14:16:00.000Z")]})))))
 
+(def ^:private addition-unit-filtering-vals
+  [[3        :day             "2014-03-03"]
+   [135      :day-of-week     1]
+   [36       :day-of-month    1]
+   [9        :day-of-year     214]
+   [11       :week            "2014-03-03"]
+   [#{7 8 9} :week-of-year    2]
+   [48       :month           "2014-03"]
+   [38       :month-of-year   1]
+   [107      :quarter         "2014-01"]
+   [200      :quarter-of-year 1]
+   [498      :year            "2014"]])
+
+(defn- count-of-checkins [unit filter-value]
+  (ffirst
+   (qp.test/format-rows-by [int]
+     (qp.test/rows
+       (data/run-mbql-query checkins
+         {:aggregation [[:count]]
+          :filter      [:= [:datetime-field $date unit] filter-value]})))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
-    (datasets/test-drivers qp.test/non-timeseries-drivers
-      (let [count-with-unit (fn [unit filter-value]
-                              (ffirst
-                               (qp.test/format-rows-by [int]
-                                 (qp.test/rows
-                                   (data/run-mbql-query checkins
-                                     {:aggregation [[:count]]
-                                      :filter      [:= [:datetime-field $date unit] filter-value]})))))]
-        (doseq [[expected-count unit filter-value] [[3        :day             "2014-03-03"]
-                                                    [135      :day-of-week     1]
-                                                    [36       :day-of-month    1]
-                                                    [9        :day-of-year     214]
-                                                    [11       :week            "2014-03-03"]
-                                                    [#{7 8 9} :week-of-year    2]
-                                                    [48       :month           "2014-03"]
-                                                    [38       :month-of-year   1]
-                                                    [107      :quarter         "2014-01"]
-                                                    [200      :quarter-of-year 1]
-                                                    [498      :year            "2014"]]]
-          (testing unit
+    (datasets/test-drivers @qp.test/non-timeseries-drivers
+      (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
+        (testing unit
+          (let [result (count-of-checkins unit filter-value)]
             (if (integer? expected-count)
-              (is (= expected-count
-                     (count-with-unit unit filter-value))
+              (is (= expected-count result)
                   (format "count of rows where (= (%s date) %s) should be %d" (name unit) filter-value expected-count))
-              (is (contains? expected-count (count-with-unit unit filter-value))
+              (is (contains? expected-count result)
                   (format "count of rows where (= (%s date) %s) should be one of: %s"
                           (name unit) filter-value (str/join ", " (sort expected-count)))))))))))
+
+(deftest legacy-default-datetime-bucketing-test
+  (is (= (str "SELECT count(*) AS \"count\" "
+              "FROM \"PUBLIC\".\"CHECKINS\" "
+              "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = CAST(now() AS date)")
+         (:query
+          (qp/query->native
+            (data/mbql-query checkins
+              {:aggregation [[:count]]
+               :filter      [:= $date [:relative-datetime :current]]}))))
+      (str "Datetime fields that aren't wrapped in datetime-field clauses should get default :day bucketing for legacy "
+           "reasons. See #9014")))

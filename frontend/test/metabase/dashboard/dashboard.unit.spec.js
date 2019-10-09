@@ -1,4 +1,7 @@
-import { fetchDataOrError } from "metabase/dashboard/dashboard";
+import {
+  fetchDataOrError,
+  syncParametersAndEmbeddingParams,
+} from "metabase/dashboard/dashboard";
 
 describe("Dashboard", () => {
   describe("fetchDataOrError()", () => {
@@ -28,6 +31,53 @@ describe("Dashboard", () => {
 
       const result = await fetchDataOrError(failedFetch);
       expect(result.error).toEqual(error);
+    });
+  });
+
+  describe("syncParametersAndEmbeddingParams", () => {
+    it("should rename `embedding_parameters` that are renamed in `parameters`", () => {
+      const before = {
+        embedding_params: { id: "required" },
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+      };
+      const after = {
+        parameters: [{ slug: "new_id", id: "unique-param-id" }],
+      };
+
+      const expectation = { new_id: "required" };
+
+      const result = syncParametersAndEmbeddingParams(before, after);
+      expect(result).toEqual(expectation);
+    });
+
+    it("should remove `embedding_parameters` that are removed from `parameters`", () => {
+      const before = {
+        embedding_params: { id: "required" },
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+      };
+      const after = {
+        parameters: [],
+      };
+
+      const expectation = {};
+
+      const result = syncParametersAndEmbeddingParams(before, after);
+      expect(result).toEqual(expectation);
+    });
+
+    it("should not change `embedding_parameters` when `parameters` hasn't changed", () => {
+      const before = {
+        embedding_params: { id: "required" },
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+      };
+      const after = {
+        parameters: [{ slug: "id", id: "unique-param-id" }],
+      };
+
+      const expectation = { id: "required" };
+
+      const result = syncParametersAndEmbeddingParams(before, after);
+      expect(result).toEqual(expectation);
     });
   });
 });

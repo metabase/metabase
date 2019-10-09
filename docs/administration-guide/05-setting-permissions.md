@@ -8,7 +8,7 @@ Metabase uses a group-based approach to set permissions and restrictions on your
 
 A user can be a member of multiple groups, and if one of the groups they’re in has access to a particular database or table, but another group they’re a member of does not, then they **will** have access to that database.
 
-In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved. Collection permissions are not set from the Admin section; set them by clicking on the edit/pencil icon in the top-right of the screen when viewing a collection.
+In addition to setting permissions on your databases and tables, you can also [set access permissions on the collections](06-collections.md) where your dashboards, questions, and pulses are saved. Collection permissions can be set and edited from the collection itself, or the Admin Panel.
 
 ### Groups
 
@@ -55,9 +55,8 @@ At the database level, there are two different kinds of access you can set: data
 
 #### SQL (or native query) access
 
-- **Write (and read) SQL queries:** can write new SQL/native queries using the SQL editor, and can view any SQL-based saved questions. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-- **Read SQL queries**: can view saved SQL-based questions, but can’t edit them or create new ones. This access level requires the group to additionally have at least Limited data access for the database in question.
-- **No SQL query access**: won’t see any SQL-based saved questions in the list of questions or on dashboards.
+- **Write raw queries:** can write new SQL/native queries using the SQL editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+- **No access**: can't write or edit SQL/native queries using the SQL editor. Users with this level of access will still be able to view questions created from SQL/native queries.
 
 If you select `Limit access` for one of your databases, your view will change to show the contents of that database. If the database utilizes namespaces or schemas, you’ll see a list of all the schemas in the database, and the level of data access each group has for them. Similarly, if you select `Limit access` on one of your schemas, you’ll drill down a level and see all the tables within it. From these views, you can navigate back by using the breadcrumb links in the top-left, and you can always drill down into a database or schema using the link under its name in the left column.
 

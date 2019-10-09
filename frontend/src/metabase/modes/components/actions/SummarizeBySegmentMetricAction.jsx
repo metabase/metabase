@@ -11,12 +11,17 @@ import type {
   ClickActionPopoverProps,
 } from "metabase/meta/types/Visualization";
 
-const omittedAggregations = ["rows", "cum-sum", "cum-count", "stddev"];
-const getAggregationOptionsForSummarize = query => {
+const EXCLUDE_AGGREGATIONS = new Set([
+  "rows",
+  "cum-sum",
+  "cum-count",
+  "stddev",
+]);
+
+const getAggregationOperatorsForSummarize = query => {
   return query
-    .table()
-    .aggregations()
-    .filter(aggregation => !omittedAggregations.includes(aggregation.short));
+    .aggregationOperators()
+    .filter(aggregation => !EXCLUDE_AGGREGATIONS.has(aggregation.short));
 };
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
@@ -34,10 +39,10 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
       popover: ({ onChangeCardAndRun, onClose }: ClickActionPopoverProps) => (
         <AggregationPopover
           query={query}
-          availableAggregations={getAggregationOptionsForSummarize(query)}
+          aggregationOperators={getAggregationOperatorsForSummarize(query)}
           onChangeAggregation={aggregation => {
             onChangeCardAndRun({
-              nextCard: question.summarize(aggregation).card(),
+              nextCard: question.aggregate(aggregation).card(),
             });
             onClose && onClose();
           }}

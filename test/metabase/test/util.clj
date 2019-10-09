@@ -265,7 +265,8 @@
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (f)
+      (t/testing (format "Setting %s = %s" (keyword setting-k) value)
+        (f))
       (finally
         (setting/set! setting-k original-value)))))
 
@@ -275,12 +276,13 @@
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
-  [[setting-k value & more] & body]
-  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
-                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
-    (if (seq more)
-      `(with-temporary-setting-values ~more ~body)
-      body)))
+  [[setting-k value & more :as bindings] & body]
+  (if (empty? bindings)
+    `(do ~@body)
+    (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+      (if (seq more)
+        `(with-temporary-setting-values ~more ~body)
+        body))))
 
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
@@ -462,6 +464,7 @@
 
 (defn do-with-temp-scheduler [f]
   (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try

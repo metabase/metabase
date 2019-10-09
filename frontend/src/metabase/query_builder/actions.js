@@ -216,7 +216,7 @@ export const updateUrl = createThunkAction(
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
-      question = new Question(getMetadata(getState()), card);
+      question = new Question(card, getMetadata(getState()));
     }
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
@@ -308,7 +308,7 @@ export const initializeQB = (location, params) => {
 
     // always start the QB by loading up the databases for the application
     try {
-      await dispatch(
+      dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,
@@ -441,6 +441,15 @@ export const initializeQB = (location, params) => {
 
     /**** All actions are dispatched here ****/
 
+    // Fetch alerts for the current question if the question is saved
+    if (card && card.id != null) {
+      dispatch(fetchAlertsForQuestion(card.id));
+    }
+    // Fetch the question metadata (blocking)
+    if (card) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
@@ -448,13 +457,7 @@ export const initializeQB = (location, params) => {
       uiControls,
     });
 
-    // Fetch alerts for the current question if the question is saved
-    card && card.id && dispatch(fetchAlertsForQuestion(card.id));
-
-    // Fetch the question metadata
-    card && dispatch(loadMetadataForCard(card));
-
-    const question = card && new Question(getMetadata(getState()), card);
+    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -531,7 +534,7 @@ export const loadMetadataForCard = createThunkAction(
       if (!card || !card.dataset_query) {
         return;
       }
-      const query = new Question(getMetadata(getState()), card).query();
+      const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
           const rootTable = query.rootTable();
@@ -883,8 +886,8 @@ export const runQuestionQuery = ({
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (c: Card): Question =>
-      c && new Question(getMetadata(getState()), c);
+    const questionFromCard = (card: Card): Question =>
+      card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)

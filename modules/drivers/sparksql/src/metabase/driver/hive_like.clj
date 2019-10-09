@@ -1,27 +1,35 @@
 (ns metabase.driver.hive-like
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.table :refer [Table]]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import [java.sql PreparedStatement Time] java.util.Date))
+  (:import [java.sql PreparedStatement Time]
+           java.util.Date))
 
 (driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
 
-(defmethod sql-jdbc.sync/database-type->base-type :hive-like [_ database-type]
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
+  [driver]
+  ;; The Hive JDBC driver doesn't support `Connection.isValid()`, so we need to supply a test query for c3p0 to use to
+  ;; validate connections upon checkout.
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver)
+   {"preferredTestQuery" "SELECT 1"}))
+
+(defmethod sql-jdbc.sync/database-type->base-type :hive-like
+  [_ database-type]
   (condp re-matches (name database-type)
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
@@ -46,7 +54,8 @@
 
 (defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
 
-(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
+  [_ _ expr]
   (hx/->timestamp (hsql/call :from_unixtime expr)))
 
 (defn- date-format [format-str expr]
@@ -61,6 +70,7 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (hx/->timestamp expr))
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] (hsql/call :minute (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (hx/->timestamp expr)))
@@ -74,12 +84,14 @@
 (defmethod sql.qp/date [:hive-like :quarter-of-year] [_ _ expr] (hsql/call :quarter (hx/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :year]            [_ _ expr] (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year)))
 
-(defmethod sql.qp/date [:hive-like :day-of-week] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :day-of-week]
+  [_ _ expr]
   (hx/->integer (date-format "u"
                              (hx/+ (hx/->timestamp expr)
                                    (hsql/raw "interval '1' day")))))
 
-(defmethod sql.qp/date [:hive-like :week] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :week]
+  [_ _ expr]
   (hsql/call :date_sub
     (hx/+ (hx/->timestamp expr)
           (hsql/raw "interval '1' day"))
@@ -87,30 +99,26 @@
                  (hx/+ (hx/->timestamp expr)
                        (hsql/raw "interval '1' day")))))
 
-(defmethod sql.qp/date [:hive-like :quarter] [_ _ expr]
+(defmethod sql.qp/date [:hive-like :quarter]
+  [_ _ expr]
   (hsql/call :add_months
     (hsql/call :trunc (hx/->timestamp expr) (hx/literal :year))
     (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
                 1)
           3)))
 
-(defmethod driver/date-add :hive-like [_ dt amount unit]
+(defmethod driver/date-add :hive-like
+  [_ dt amount unit]
   (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
 ;; ignore the schema when producing the identifier
 (defn qualified-name-components
-  "Return the pieces that represent a path to FIELD, of the form `[table-name parent-fields-name* field-name]`.
-   This function should be used by databases where schemas do not make much sense."
-  [{field-name :name, table-id :table_id, parent-id :parent_id}]
-  ;; TODO - we are making too many DB calls here!
-  ;; (At least this is only used for SQL parameters, which is why we can't currently use the Store)
-  (conj (vec (if-let [parent (Field parent-id)]
-               (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (db/select-one [Table :name :schema], :id table-id)]
-                 [table-name])))
-        field-name))
+  "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
+  [{field-name :name, table-id :table_id}]
+  [(db/select-one-field :name Table, :id table-id) field-name])
 
-(defmethod sql.qp/field->identifier :hive-like [_ field]
+(defmethod sql.qp/field->identifier :hive-like
+  [_ field]
   (apply hsql/qualify (qualified-name-components field)))
 
 (defn- run-query
@@ -133,11 +141,7 @@
   (run-query query connection))
 
 (defmethod unprepare/unprepare-value [:hive-like Date] [_ value]
-  (hformat/to-sql
-   (hsql/call :from_unixtime
-     (hsql/call :unix_timestamp
-       (hx/literal (du/date->iso-8601 value))
-       (hx/literal "yyyy-MM-dd\\\\'T\\\\'HH:mm:ss.SSS\\\\'Z\\\\'")))))
+  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS" value)))
 
 (prefer-method unprepare/unprepare-value [:sql Time] [:hive-like Date])
 
