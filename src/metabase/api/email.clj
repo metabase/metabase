@@ -33,6 +33,10 @@
           creds-error {:errors {:email-smtp-username "Wrong username or password"
                                 :email-smtp-password "Wrong username or password"}}]
       (condp re-matches message
+        ;; https://www.sparkpost.com/docs/faq/error-messages-smtp/
+        #"^No matching clause: 535 5.7.8 Sorry.*$"
+        {:message "There is some problem with the authentication credentials. API key, user name, etc." }
+
         ;; bad host = "Unknown SMTP host: foobar"
         #"^Unknown SMTP host:.*$"
         conn-error
