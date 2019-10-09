@@ -140,15 +140,10 @@ export function applyChartTimeseriesXAxis(
     }
 
     chart.xAxis().tickFormat(timestamp => {
-      // timestamp is a plain Date object which discards the timezone,
-      // so add it back in so it's formatted correctly
-      const timestampFixed = moment(timestamp)
-        .utcOffset(dataOffset)
-        .format();
       const { column, ...columnSettings } = chart.settings.column(
         dimensionColumn,
       );
-      return formatValue(timestampFixed, {
+      return formatValue(timestamp, {
         ...columnSettings,
         column: { ...column, unit: tickFormatUnit },
         type: "axis",
