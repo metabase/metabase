@@ -79,7 +79,7 @@ export default class FieldPane extends Component {
       }
 
       const defaultBreakout = metadata.fields[field.id].getDefaultBreakout();
-      query = query.addBreakout(defaultBreakout);
+      query = query.breakout(defaultBreakout);
 
       this.props.updateQuestion(query.question());
       this.props.runQuestionQuery();

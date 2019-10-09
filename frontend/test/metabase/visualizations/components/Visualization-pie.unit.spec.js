@@ -41,6 +41,23 @@ describe("pie chart", () => {
     getAllByText("1%");
   });
 
+  it("should not use column formatting in the legend", () => {
+    const cols = [
+      StringColumn({ name: "name" }),
+      NumberColumn({ name: "count" }),
+    ];
+    const column_settings = { '["name","count"]': { scale: 123 } };
+    const series = [
+      {
+        card: { display: "pie", visualization_settings: { column_settings } },
+        data: { rows: [["foo", 1]], cols },
+      },
+    ];
+    const { getAllByText } = render(<Visualization rawSeries={series} />);
+    getAllByText("100%"); // shouldn't multiply legend percent by `scale`
+    getAllByText("123"); // should multiply the count in the center by `scale`
+  });
+
   it("should show a condensed tooltip for squashed slices", () => {
     const rows = [["foo", 0.5], ["bar", 0.49], ["baz", 0.002], ["qux", 0.008]];
     const { container, getAllByText, queryAllByText } = render(

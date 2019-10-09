@@ -120,7 +120,7 @@ if [ ! -z "$JAVA_TIMEZONE" ]; then
 fi
 
 # Initialize the Metabase db from H2 dump, if available
-INITIAL_DB=$(ls /app/initial*.db | head -n 1)
+INITIAL_DB=$(ls /app/initial*.db 2> /dev/null | head -n 1)
 if [ -f "${INITIAL_DB}" ]; then
     echo "Initializing Metabase database from H2 database ${INITIAL_DB}..."
     chmod o+r ${INITIAL_DB}

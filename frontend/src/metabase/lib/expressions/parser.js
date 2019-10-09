@@ -3,12 +3,14 @@ import { Lexer, Parser, getImage } from "chevrotain";
 import _ from "underscore";
 import { t } from "ttag";
 import {
-  formatFieldName,
-  formatExpressionName,
+  // aggregations:
   formatAggregationName,
   getAggregationFromName,
+  // dimensions:
+  getDimensionFromName,
+  getDimensionName,
+  formatDimensionName,
 } from "../expressions";
-import { isNumeric } from "metabase/lib/schema_metadata";
 
 import {
   allTokens,
@@ -24,6 +26,8 @@ import {
   Minus,
   Identifier,
 } from "./tokens";
+
+import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 const ExpressionsLexer = new Lexer(allTokens);
 
@@ -124,21 +128,17 @@ class ExpressionsParser extends Parser {
       return this._unknownMetric(metricName);
     });
 
-    $.RULE("fieldExpression", () => {
-      const fieldName = $.OR([
+    $.RULE("dimensionExpression", () => {
+      const dimensionName = $.OR([
         { ALT: () => $.SUBRULE($.stringLiteral) },
         { ALT: () => $.SUBRULE($.identifier) },
       ]);
 
-      const field = this.getFieldForName(this._toString(fieldName));
-      if (field != null) {
-        return this._fieldReference(fieldName, field.id);
+      const dimension = this.getDimensionForName(this._toString(dimensionName));
+      if (dimension != null) {
+        return this._dimensionReference(dimensionName, dimension);
       }
-      const expression = this.getExpressionForName(this._toString(fieldName));
-      if (expression != null) {
-        return this._expressionReference(fieldName, expression);
-      }
-      return this._unknownField(fieldName);
+      return this._unknownField(dimensionName);
     });
 
     $.RULE("identifier", () => {
@@ -169,10 +169,10 @@ class ExpressionsParser extends Parser {
           // NOTE: DISABLE METRICS
           // {GATE: () => outsideAggregation, ALT: () => $.SUBRULE($.metricExpression) },
 
-          // fields are not allowed outside aggregations
+          // dimensions are not allowed outside aggregations
           {
             GATE: () => !outsideAggregation,
-            ALT: () => $.SUBRULE($.fieldExpression),
+            ALT: () => $.SUBRULE($.dimensionExpression),
           },
 
           {
@@ -180,8 +180,9 @@ class ExpressionsParser extends Parser {
           },
           { ALT: () => $.SUBRULE($.numberLiteral) },
         ],
-        (outsideAggregation ? "aggregation" : "field name") +
-          ", number, or expression",
+        outsideAggregation
+          ? "aggregation, number, or expression"
+          : "field name, number, or expression",
       );
     });
 
@@ -195,24 +196,16 @@ class ExpressionsParser extends Parser {
     Parser.performSelfAnalysis(this);
   }
 
-  getFieldForName(fieldName) {
-    const fields =
-      this._options.tableMetadata && this._options.tableMetadata.fields;
-    return _.findWhere(fields, { display_name: fieldName });
-  }
-
-  getExpressionForName(expressionName) {
-    const customFields = this._options && this._options.customFields;
-    return customFields[expressionName];
+  getDimensionForName(dimensionName) {
+    return getDimensionFromName(dimensionName, this._options.query);
   }
 
   getMetricForName(metricName) {
-    const metrics =
-      this._options.tableMetadata && this._options.tableMetadata.metrics;
-    return _.find(
-      metrics,
-      metric => metric.name.toLowerCase() === metricName.toLowerCase(),
-    );
+    return this._options.query
+      .table()
+      .metrics.find(
+        metric => metric.name.toLowerCase() === metricName.toLowerCase(),
+      );
   }
 }
 
@@ -235,11 +228,8 @@ class ExpressionsParserMBQL extends ExpressionsParser {
   _metricReference(metricName, metricId) {
     return ["metric", metricId];
   }
-  _fieldReference(fieldName, fieldId) {
-    return Array.isArray(fieldId) ? fieldId : ["field-id", fieldId];
-  }
-  _expressionReference(fieldName) {
-    return ["expression", fieldName];
+  _dimensionReference(dimensionName, dimension) {
+    return dimension.mbql();
   }
   _unknownField(fieldName) {
     throw new Error('Unknown field "' + fieldName + '"');
@@ -296,11 +286,8 @@ class ExpressionsParserSyntax extends ExpressionsParser {
   _metricReference(metricName, metricId) {
     return syntax("metric", metricName);
   }
-  _fieldReference(fieldName, fieldId) {
-    return syntax("field", fieldName);
-  }
-  _expressionReference(fieldName) {
-    return syntax("expression-reference", token(fieldName));
+  _dimensionReference(dimensionName, dimension) {
+    return syntax("field", dimensionName);
   }
   _unknownField(fieldName) {
     return syntax("unknown", fieldName);
@@ -378,7 +365,7 @@ export function parse(source, options = {}) {
 const parserInstance = new ExpressionsParser([]);
 export function suggest(
   source,
-  { tableMetadata, customFields, startRule, index = source.length } = {},
+  { query, startRule, index = source.length, expressionName } = {},
 ) {
   const partialSource = source.slice(0, index);
   const lexResult = ExpressionsLexer.tokenize(partialSource);
@@ -456,37 +443,31 @@ export function suggest(
       nextTokenType === StringLiteral
     ) {
       if (!outsideAggregation) {
-        let fields = [];
+        let dimensions = [];
         if (startRule === "aggregation" && currentAggregationToken) {
           const aggregationShort = getAggregationFromName(
             getImage(currentAggregationToken),
           );
-          const aggregationOption = _.findWhere(
-            tableMetadata.aggregation_options,
-            { short: aggregationShort },
-          );
-          fields =
-            (aggregationOption &&
-              aggregationOption.fields &&
-              aggregationOption.fields[0]) ||
-            [];
+          dimensions = query.aggregationFieldOptions(aggregationShort).all();
         } else if (startRule === "expression") {
-          fields = tableMetadata.fields.filter(isNumeric);
+          dimensions = query
+            .dimensionOptions(
+              d =>
+                // numeric
+                d.field().isNumeric() &&
+                // not itself
+                !(
+                  d instanceof ExpressionDimension &&
+                  d.name() === expressionName
+                ),
+            )
+            .all();
         }
         finalSuggestions.push(
-          ...fields.map(field => ({
+          ...dimensions.map(dimension => ({
             type: "fields",
-            name: field.display_name,
-            text: formatFieldName(field) + " ",
-            prefixTrim: /\w+$/,
-            postfixTrim: /^\w+\s*/,
-          })),
-        );
-        finalSuggestions.push(
-          ...Object.keys(customFields || {}).map(expressionName => ({
-            type: "fields",
-            name: expressionName,
-            text: formatExpressionName(expressionName) + " ",
+            name: getDimensionName(dimension),
+            text: formatDimensionName(dimension) + " ",
             prefixTrim: /\w+$/,
             postfixTrim: /^\w+\s*/,
           })),
@@ -501,15 +482,16 @@ export function suggest(
     ) {
       if (outsideAggregation) {
         finalSuggestions.push(
-          ...tableMetadata.aggregation_options
+          ...query
+            .aggregationOperatorsWithoutRows()
             .filter(a => formatAggregationName(a))
-            .map(aggregationOption => {
-              const arity = aggregationOption.fields.length;
+            .map(aggregationOperator => {
+              const arity = aggregationOperator.fields.length;
               return {
                 type: "aggregations",
-                name: formatAggregationName(aggregationOption),
+                name: formatAggregationName(aggregationOperator),
                 text:
-                  formatAggregationName(aggregationOption) +
+                  formatAggregationName(aggregationOperator) +
                   (arity > 0 ? "(" : " "),
                 postfixText: arity > 0 ? ")" : " ",
                 prefixTrim: /\w+$/,
@@ -536,18 +518,19 @@ export function suggest(
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
     const partial = getImage(lastInputToken).toLowerCase();
-    finalSuggestions = _.filter(
-      finalSuggestions,
-      suggestion =>
-        (suggestion.text &&
-          suggestion.text.toLowerCase().startsWith(partial)) ||
-        (suggestion.name && suggestion.name.toLowerCase().startsWith(partial)),
-    );
-
-    const prefixLength = partial.length;
     for (const suggestion of finalSuggestions) {
-      suggestion.prefixLength = prefixLength;
+      suggestion: for (const text of [suggestion.name, suggestion.text]) {
+        let index = 0;
+        for (const part of (text || "").toLowerCase().split(/\b/g)) {
+          if (part.startsWith(partial)) {
+            suggestion.range = [index, index + partial.length];
+            break suggestion;
+          }
+          index += part.length;
+        }
+      }
     }
+    finalSuggestions = finalSuggestions.filter(suggestion => suggestion.range);
   }
   for (const suggestion of finalSuggestions) {
     suggestion.index = index;

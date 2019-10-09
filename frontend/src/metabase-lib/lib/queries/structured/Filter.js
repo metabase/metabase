@@ -40,7 +40,7 @@ export default class Filter extends MBQLClause {
    * Adds itself to the parent query and returns the new StructuredQuery
    */
   add(): StructuredQuery {
-    return this._query.addFilter(this);
+    return this._query.filter(this);
   }
 
   /**
@@ -146,12 +146,12 @@ export default class Filter extends MBQLClause {
 
   operator(): ?FilterOperator {
     const dimension = this.dimension();
-    return dimension ? dimension.operator(this.operatorName()) : null;
+    return dimension ? dimension.filterOperator(this.operatorName()) : null;
   }
 
   setOperator(operatorName: string) {
     const dimension = this.dimension();
-    const operator = dimension && dimension.operator(operatorName);
+    const operator = dimension && dimension.filterOperator(operatorName);
 
     // $FlowFixMe: partial filter
     const filter: FieldFilter = [operatorName, dimension && dimension.mbql()];
@@ -204,13 +204,13 @@ export default class Filter extends MBQLClause {
       dimension &&
       (!this.isFieldFilter() || !dimension.isEqual(this.dimension()))
     ) {
-      // see if the new dimension supports the existing operator
-      const operator = dimension.operator(this.operatorName());
-      const operatorName =
-        (operator && operator.name) ||
+      const operator =
+        // see if the new dimension supports the existing operator
+        dimension.filterOperator(this.operatorName()) ||
         // otherwise use the default operator, if enabled
-        (useDefaultOperator && dimension.defaultOperator()) ||
-        null;
+        (useDefaultOperator && dimension.defaultFilterOperator());
+
+      const operatorName = operator && operator.name;
 
       // $FlowFixMe
       const filter: Filter = this.set(
@@ -218,7 +218,7 @@ export default class Filter extends MBQLClause {
           ? [this[0], dimension.mbql(), ...this.slice(2)]
           : [null, dimension.mbql()],
       );
-      if (filter.operatorName() !== operatorName) {
+      if (operatorName && filter.operatorName() !== operatorName) {
         return filter.setOperator(operatorName);
       } else {
         return filter;
@@ -239,9 +239,9 @@ export default class Filter extends MBQLClause {
     return this.set([...this.slice(0, 2), ...values]);
   }
 
-  operatorOptions(): ?(FilterOperator[]) {
+  filterOperators(): ?(FilterOperator[]) {
     const dimension = this.dimension();
-    return dimension ? dimension.operatorOptions() : null;
+    return dimension ? dimension.filterOperators() : null;
   }
 
   arguments() {

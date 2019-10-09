@@ -428,7 +428,8 @@
 ;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking
 ;; query info)
 (expect
-  "An error occurred while running the query."
+  {:status "failed"
+   :error  "An error occurred while running the query."}
   (tu.log/suppress-output
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash {:enable_embedding true}

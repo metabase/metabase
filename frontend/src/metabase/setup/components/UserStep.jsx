@@ -184,7 +184,7 @@ export default class UserStep extends Component {
               formError={formError}
             >
               <Flex align="center">
-                <Box w={1 / 2}>
+                <Box w={1 / 2} pr={1}>
                   <FormLabel
                     title={t`First name`}
                     fieldName="first_name"
@@ -200,7 +200,7 @@ export default class UserStep extends Component {
                     onChange={this.onFirstNameChange}
                   />
                 </Box>
-                <Box w={1 / 2}>
+                <Box w={1 / 2} pl={1}>
                   <FormLabel
                     title={t`Last name`}
                     fieldName="last_name"

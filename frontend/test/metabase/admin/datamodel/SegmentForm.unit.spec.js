@@ -12,7 +12,7 @@ function renderForm(props) {
   return render(
     <SegmentForm
       store={store}
-      table={{ aggregation_options: [] }}
+      table={{ aggregation_operators: [] }}
       {...props}
     />,
   );

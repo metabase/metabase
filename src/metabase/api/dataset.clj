@@ -15,6 +15,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
+             [error-type :as qp.error-type]
              [util :as qputil]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
@@ -102,7 +103,7 @@
 (defn- as-format-response
   "Return a response containing the `results` of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [rows cols]} :data, :keys [status], :as response}]
+  [export-format {{:keys [rows cols]} :data, :keys [status error], error-type :error_type, :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
@@ -114,8 +115,10 @@
                  "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
                                                (du/date->iso-8601) (:ext export-conf))}}
       ;; failed query, send error message
-      {:status 500
-       :body   (:error response)})))
+      {:status (if (qp.error-type/server-error? error-type)
+                 500
+                 400)
+       :body   error})))
 
 (s/defn as-format-async
   "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a

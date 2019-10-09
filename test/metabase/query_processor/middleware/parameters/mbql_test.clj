@@ -141,13 +141,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; for some reason param substitution tests fail on Redshift so just don't run those for now
-(def ^:private params-test-drivers (disj qp.test/non-timeseries-drivers :redshift))
+(def ^:private params-test-drivers
+  (delay (disj @qp.test/non-timeseries-drivers :redshift)))
 
 ;; check that date ranges work correctly
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [29]
   (do
-    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's results
+    ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
+    ;; results
     (when (= :snowflake driver/*driver*)
       (driver/notify-database-updated driver/*driver* (data/id)))
     (qp.test/first-row
@@ -162,7 +164,7 @@
                            :value  "2015-04-01~2015-05-01"}]}))))))
 
 ;; check that IDs work correctly (passed in as numbers)
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [1]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -176,7 +178,7 @@
                          :value  100}]})))))
 
 ;; check that IDs work correctly (passed in as strings, as the frontend is wont to do; should get converted)
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [1]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -190,7 +192,7 @@
                          :value  "100"}]})))))
 
 ;; check that Categories work correctly (passed in as strings, as the frontend is wont to do; should get converted)
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [[6]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
@@ -203,7 +205,7 @@
                          :value  "4"}]})))))
 
 ;; test that we can inject a basic `WHERE id = 9` type param (`id` type)
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [[9 "Nils Gotam"]]
   (qp.test/format-rows-by [int str]
     (qp.test/rows
@@ -215,7 +217,7 @@
                          :value  9}]})))))
 
 ;; test that we can do the same thing but with a `category` type
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [[6]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
@@ -231,7 +233,7 @@
 ;; Make sure that *multiple* values work. This feature was added in 0.28.0. You are now allowed to pass in an array of
 ;; parameter values instead of a single value, which should stick them together in a single MBQL `:=` clause, which
 ;; ends up generating a SQL `*or*` clause
-(datasets/expect-with-drivers params-test-drivers
+(datasets/expect-with-drivers @params-test-drivers
   [[19]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
@@ -293,7 +295,7 @@
       "make sure that :id type params get converted to numbers when appropriate"))
 
 ;; Make sure we properly handle paramters that have `fk->` forms in `:dimension` targets (#9017)
-(datasets/expect-with-drivers (filter #(driver/supports? % :foreign-keys) params-test-drivers)
+(datasets/expect-with-drivers (filter #(driver/supports? % :foreign-keys) @params-test-drivers)
   [[31 "Bludso's BBQ" 5 33.8894 -118.207 2]
    [32 "Boneyard Bistro" 5 34.1477 -118.428 3]
    [33 "My Brother's Bar-B-Q" 5 34.167 -118.595 2]
