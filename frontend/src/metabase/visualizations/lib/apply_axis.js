@@ -9,7 +9,7 @@ import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
@@ -171,7 +171,8 @@ export function applyChartTimeseriesXAxis(
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  const timezone = "US/Pacific";
+  chart.x(timeseriesScale(tickInterval, timezone).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
