@@ -2,7 +2,6 @@
 
 import d3 from "d3";
 import moment from "moment-timezone";
-import chronological from "chronological";
 import _ from "underscore";
 
 import { isDate } from "metabase/lib/schema_metadata";
@@ -316,8 +315,8 @@ export const timeseriesScale = (
   tz,
   linear = d3.scale.linear(),
 ) => {
-  const m = chronological(moment);
-  const ms = d => (m.isMoment(d) ? d.valueOf() : m.isDate(d) ? d.getTime() : d);
+  const ms = d =>
+    moment.isMoment(d) ? d.valueOf() : moment.isDate(d) ? d.getTime() : d;
 
   const s = x => linear(ms(x));
   s.domain = x => {
@@ -329,20 +328,16 @@ export const timeseriesScale = (
   };
   s.ticks = (...args) => {
     const domain = s.domain();
-    const unit = tickInterval.interval;
+    const { interval: unit, count } = tickInterval;
     const anchor = moment()
       .tz(tz)
       .startOf("s")
       .startOf(unit);
-    const diff = tickInterval.count;
-    const every = anchor.every(diff, unit);
-    const startindex = Math.ceil(every.count(domain[0]));
-    const endindex = Math.floor(every.count(domain[1]));
-    if (startindex > endindex) {
+    const [start, end] = domain.map(d => d.diff(anchor, unit) / count);
+    if (start > end) {
       return [];
     }
-    const ticks = _.range(startindex, endindex + 1).map(every.nth);
-    return ticks;
+    return _.range(start, end).map(n => anchor.clone().add(count * n, unit));
   };
   s.copy = () => {
     return timeseriesScale(tickInterval, tz, linear.copy());
