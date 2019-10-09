@@ -23,13 +23,12 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :refer [expect-with-driver]]
+             [datasets :as datasets :refer [expect-with-driver]]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.test.data.datasets :as datasets])
+            [toucan.util.test :as tt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (defn- format-response [m]
