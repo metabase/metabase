@@ -456,3 +456,16 @@
      :breakout   [$venue_category_name $user_name]
      :order-by   [[:asc [:aggregation 0]] [:asc $checkins.venue_category_name]]
      :limit      5}))
+
+;; Do we generate the correct count clause for HLL fields?
+(datasets/expect-with-driver :druid
+  [["Bar" "Szymon Theutrich" 13]
+   ["Mexican" "Dwight Gresham" 12]
+   ["American" "Spiros Teofil" 10]
+   ["Bar" "Felipinho Asklepios" 10]
+   ["Bar" "Kaneonuskatew Eiran" 10]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "__count_0"}]]
+     :breakout   [$venue_category_name $user_name]
+     :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :limit      5}))
