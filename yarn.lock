@@ -2702,11 +2702,6 @@ chownr@^1.0.1, chownr@~1.0.1:
   resolved "https://registry.yarnpkg.com/chownr/-/chownr-1.0.1.tgz#e2a75042a9551908bebd25b8523d5f9769d79181"
   integrity sha1-4qdQQqlVGQi+vSW4Uj1fl2nXkYE=
 
-chronological@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/chronological/-/chronological-1.4.0.tgz#0fd07dafed4896210bfa4d5e646446b1714751d9"
-  integrity sha512-F9yXBluyLro7YR//ztT+4zh/2TmKn/wJBYwQeIbFNu42qcwy7FjtFiCex9CCAsHUej/r21ZG91+y2v806QWzhA==
-
 ci-info@^1.0.0:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/ci-info/-/ci-info-1.1.2.tgz#03561259db48d0474c8bdc90f5b47b068b6bbfb4"
