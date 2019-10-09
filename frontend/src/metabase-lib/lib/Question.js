@@ -34,10 +34,10 @@ import * as Urls from "metabase/lib/urls";
 import { syncTableColumnsToQuery } from "metabase/lib/dataset";
 import { getParametersWithExtras, isTransientId } from "metabase/meta/Card";
 import {
-  summarize,
-  pivot,
-  filter,
+  aggregate,
   breakout,
+  filter,
+  pivot,
   distribution,
   toUnderlyingRecords,
   drillUnderlyingRecords,
@@ -72,16 +72,16 @@ type QuestionUpdateFn = (q: Question) => ?Promise<void>;
  */
 export default class Question {
   /**
-   * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery))
-   * need metadata for accessing databases, tables and metrics.
-   */
-  _metadata: Metadata;
-
-  /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
    */
   _card: CardObject;
+
+  /**
+   * The Question wrapper requires a metadata object because the queries it contains (like {@link StructuredQuery})
+   * need metadata for accessing databases, tables and metrics.
+   */
+  _metadata: Metadata;
 
   /**
    * Parameter values mean either the current values of dashboard filters or SQL editor template parameters.
@@ -98,21 +98,21 @@ export default class Question {
    * Question constructor
    */
   constructor(
-    metadata: Metadata,
     card: CardObject,
+    metadata: Metadata,
     parameterValues?: ParameterValues,
     update?: ?QuestionUpdateFn,
   ) {
-    this._metadata = metadata;
     this._card = card;
+    this._metadata = metadata;
     this._parameterValues = parameterValues || {};
     this._update = update;
   }
 
   clone() {
     return new Question(
-      this._metadata,
       this._card,
+      this._metadata,
       this._parameterValues,
       this._update,
     );
@@ -159,7 +159,7 @@ export default class Question {
       card = assocIn(card, ["dataset_query", "database"], databaseId);
     }
 
-    return new Question(metadata, card, parameterValues);
+    return new Question(card, metadata, parameterValues);
   }
 
   metadata(): Metadata {
@@ -430,48 +430,38 @@ export default class Question {
    * Although most of these are essentially a way to modify the current query, having them as a part
    * of Question interface instead of Query interface makes it more convenient to also change the current visualization
    */
-  summarize(aggregation) {
-    const tableMetadata = this.tableMetadata();
-    return this.setCard(summarize(this.card(), aggregation, tableMetadata));
+  aggregate(a): Question {
+    return aggregate(this, a) || this;
   }
-  breakout(b) {
-    return this.setCard(breakout(this.card(), b));
+  breakout(b): ?Question {
+    return breakout(this, b) || this;
   }
-  pivot(breakouts = [], dimensions = []) {
-    const tableMetadata = this.tableMetadata();
-    return this.setCard(
-      // $FlowFixMe: tableMetadata could be null
-      pivot(this.card(), tableMetadata, breakouts, dimensions),
-    );
+  filter(operator, column, value): Question {
+    return filter(this, operator, column, value) || this;
   }
-  filter(operator, column, value) {
-    return this.setCard(filter(this.card(), operator, column, value));
+  pivot(breakouts = [], dimensions = []): Question {
+    return pivot(this, breakouts, dimensions) || this;
   }
-  drillUnderlyingRecords(dimensions) {
-    return this.setCard(drillUnderlyingRecords(this.card(), dimensions));
+  drillUnderlyingRecords(dimensions): Question {
+    return drillUnderlyingRecords(this, dimensions) || this;
   }
-  toUnderlyingRecords(): ?Question {
-    const newCard = toUnderlyingRecords(this.card());
-    if (newCard) {
-      return this.setCard(newCard);
-    }
+  toUnderlyingRecords(): Question {
+    return toUnderlyingRecords(this) || this;
   }
   toUnderlyingData(): Question {
     return this.setDisplay("table");
   }
-  distribution(column) {
-    return this.setCard(distribution(this.card(), column));
+  distribution(column): Question {
+    return distribution(this, column) || this;
   }
 
   composeThisQuery(): ?Question {
-    const SAVED_QUESTIONS_FAUX_DATABASE = -1337;
-
     if (this.id()) {
       const card = {
         display: "table",
         dataset_query: {
           type: "query",
-          database: SAVED_QUESTIONS_FAUX_DATABASE,
+          database: this.databaseId(),
           query: {
             "source-table": "card__" + this.id(),
           },
@@ -487,7 +477,7 @@ export default class Question {
       return query
         .reset()
         .setTable(field.table)
-        .addFilter(["=", ["field-id", field.id], value])
+        .filter(["=", ["field-id", field.id], value])
         .question();
     }
   }

@@ -22,7 +22,7 @@ describe("AdHocQuestionLoader", () => {
   });
 
   it("should load a question given a questionHash", async () => {
-    const q = new Question.create({ databaseId: 1, tableId: 2 });
+    const q = Question.create({ databaseId: 1, tableId: 2 });
     const questionHash = q.getUrl().match(/(#.*)/)[1];
 
     const wrapper = mount(

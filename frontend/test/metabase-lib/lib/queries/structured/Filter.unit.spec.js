@@ -21,4 +21,25 @@ describe("Filter", () => {
       );
     });
   });
+  describe("isValid", () => {
+    describe("with a field filter", () => {
+      it("should return true for a field that exists", () => {
+        expect(
+          filterForMBQL(["=", ["field-id", ORDERS.TOTAL.id], 42]).isValid(),
+        ).toBe(true);
+      });
+      it("should return false for a field that doesn't exists", () => {
+        expect(filterForMBQL(["=", ["field-id", 12341234], 42]).isValid()).toBe(
+          false,
+        );
+      });
+    });
+  });
+  describe("operator", () => {
+    it("should return the correct FilterOperator", () => {
+      expect(
+        filterForMBQL(["=", ["field-id", ORDERS.TOTAL.id], 42]).operator().name,
+      ).toBe("=");
+    });
+  });
 });

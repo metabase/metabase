@@ -317,7 +317,7 @@ export default class View extends React.Component {
                     .updateAggregation(aggregationIndex, aggregation)
                     .update(null, { run: true });
                 } else {
-                  query.addAggregation(aggregation).update(null, { run: true });
+                  query.aggregate(aggregation).update(null, { run: true });
                 }
                 this.handleClosePopover();
               }}
@@ -342,7 +342,7 @@ export default class View extends React.Component {
                     .updateBreakout(breakoutIndex, breakout)
                     .update(null, { run: true });
                 } else {
-                  query.addBreakout(breakout).update(null, { run: true });
+                  query.breakout(breakout).update(null, { run: true });
                 }
                 this.handleClosePopover();
               }}

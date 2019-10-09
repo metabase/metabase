@@ -41,4 +41,5 @@ export type DatasetData = {
 export type Dataset = {
   data: DatasetData,
   json_query: DatasetQuery,
+  error?: string,
 };

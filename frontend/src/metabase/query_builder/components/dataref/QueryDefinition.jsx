@@ -6,9 +6,12 @@ import AggregationName from "../AggregationName";
 import Question from "metabase-lib/lib/Question";
 
 const QueryDefinition = ({ className, object, metadata }) => {
-  const query = new Question(metadata, {
-    dataset_query: { type: "query", query: object.definition },
-  }).query();
+  const query = new Question(
+    {
+      dataset_query: { type: "query", query: object.definition },
+    },
+    metadata,
+  ).query();
   const aggregations = query.aggregations();
   const filters = query.filters();
   return (

@@ -29,7 +29,7 @@ import {
   isFK,
   isEntityName,
   getIconForField,
-  getOperators,
+  getFilterOperators,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
@@ -174,21 +174,21 @@ export default class Field extends Base {
     return d && d.field();
   }
 
-  operator(operatorName) {
-    if (this.operators_lookup) {
-      return this.operators_lookup[operatorName];
+  filterOperator(operatorName) {
+    if (this.filter_operators_lookup) {
+      return this.filter_operators_lookup[operatorName];
     } else {
-      return this.operatorOptions().find(o => o.name === operatorName);
+      return this.filterOperators().find(o => o.name === operatorName);
     }
   }
 
-  operatorOptions() {
-    return this.operators || getOperators(this, this.table);
+  filterOperators() {
+    return this.filter_operators || getFilterOperators(this, this.table);
   }
 
-  aggregations() {
+  aggregationOperators() {
     return this.table
-      ? this.table.aggregation_options.filter(
+      ? this.table.aggregation_operators.filter(
           aggregation =>
             aggregation.validFieldsFilters[0] &&
             aggregation.validFieldsFilters[0]([this]).length === 1,

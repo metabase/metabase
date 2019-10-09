@@ -12,6 +12,8 @@ import { assocIn, updateIn } from "icepick";
 import { FieldSchema } from "metabase/schema";
 import { MetabaseApi } from "metabase/services";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import {
   field_visibility_types,
   field_special_types,
@@ -39,6 +41,10 @@ export default createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
+
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).field(entityId),
+  },
 
   // ACTION CREATORS
 

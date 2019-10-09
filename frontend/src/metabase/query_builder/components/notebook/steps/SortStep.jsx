@@ -40,7 +40,7 @@ export default function SortStep({
           onChangeSort={newSort =>
             sort
               ? query.updateSort(index, newSort).update(updateQuery)
-              : query.addSort(newSort).update(updateQuery)
+              : query.sort(newSort).update(updateQuery)
           }
         />
       )}

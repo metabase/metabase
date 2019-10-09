@@ -15,7 +15,7 @@ describe("StructuredQuery nesting", () => {
       expect(
         q
           .nest()
-          .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 42])
+          .filter(["=", ["field-id", ORDERS.TOTAL.id], 42])
           .query(),
       ).toEqual({
         "source-query": { "source-table": ORDERS.id },
@@ -29,7 +29,7 @@ describe("StructuredQuery nesting", () => {
         q
           .nest()
           .sourceQuery()
-          .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 42])
+          .filter(["=", ["field-id", ORDERS.TOTAL.id], 42])
           .parentQuery()
           .query(),
       ).toEqual({
