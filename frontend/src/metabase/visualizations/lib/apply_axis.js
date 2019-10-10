@@ -7,7 +7,6 @@ import moment from "moment";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
