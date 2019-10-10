@@ -10,7 +10,6 @@
              [driver :as driver]
              [util :as u]]
             [metabase.mbql
-             [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
