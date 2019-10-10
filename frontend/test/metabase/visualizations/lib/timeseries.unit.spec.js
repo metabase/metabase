@@ -204,6 +204,18 @@ describe("visualization.lib.timeseries", () => {
       ]);
     });
 
+    it("should create empty ranges if there are no ticks in domain", () => {
+      const scale = timeseriesScale(
+        { interval: "day", count: 1 },
+        "Etc/UTC",
+      ).domain([
+        moment("2019-03-09T01:00:00.000Z"),
+        moment("2019-03-09T22:00:00.000Z"),
+      ]);
+
+      expect(scale.ticks().length).toBe(0);
+    });
+
     it("should create month ranges in timezone", () => {
       const scale = timeseriesScale(
         { interval: "month", count: 1 },
@@ -250,6 +262,56 @@ describe("visualization.lib.timeseries", () => {
         "1950-01-01T00:00:00.000Z",
         "2000-01-01T00:00:00.000Z",
       ]);
+    });
+
+    for (const unit of ["month", "quarter", "year"]) {
+      it(`should produce results with ${unit}s`, () => {
+        const ticks = timeseriesScale({ interval: unit, count: 1 }, "Etc/UTC")
+          .domain([
+            moment("1999-12-31T23:59:59Z"),
+            moment("2001-01-01T00:00:01Z"),
+          ])
+          .ticks();
+
+        // we're just ensuring that it produces some results and that the first
+        // and last are correctly rounded regardless of unit
+        expect(ticks[0].toISOString()).toEqual("2000-01-01T00:00:00.000Z");
+        expect(ticks[ticks.length - 1].toISOString()).toEqual(
+          "2001-01-01T00:00:00.000Z",
+        );
+      });
+    }
+
+    // same as above but with a smaller range so the test runs faster
+    for (const unit of ["minute", "hour", "day"]) {
+      it(`should produce results with ${unit}s`, () => {
+        const ticks = timeseriesScale({ interval: unit, count: 1 }, "Etc/UTC")
+          .domain([
+            moment("1999-12-31T23:59:59Z"),
+            moment("2000-01-02T00:00:01Z"),
+          ])
+          .ticks();
+
+        expect(ticks[0].toISOString()).toEqual("2000-01-01T00:00:00.000Z");
+        expect(ticks[ticks.length - 1].toISOString()).toEqual(
+          "2000-01-02T00:00:00.000Z",
+        );
+      });
+    }
+
+    // weeks are split out because their boundaries don't align with other units
+    it(`should produce results with weeks`, () => {
+      const ticks = timeseriesScale({ interval: "week", count: 1 }, "Etc/UTC")
+        .domain([
+          moment("2000-01-02T12:34:56Z"),
+          moment("2000-02-02T12:34:56Z"),
+        ])
+        .ticks();
+
+      expect(ticks[0].toISOString()).toEqual("2000-01-09T00:00:00.000Z");
+      expect(ticks[ticks.length - 1].toISOString()).toEqual(
+        "2000-01-30T00:00:00.000Z",
+      );
     });
   });
 });
