@@ -44,7 +44,7 @@
   [[0.6]
    [0.5]
    [0.5]]
-  (qp.test/format-rows-by [double]
+  (qp.test/format-rows-by [1.0]
     (qp.test/rows
       (data/run-mbql-query venues
         {:expressions {:big-price         [:+ $price 2]
