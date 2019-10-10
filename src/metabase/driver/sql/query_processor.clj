@@ -259,13 +259,6 @@
 (defmethod ->honeysql [:sql :-] [driver [_ & args]] (apply hsql/call :- (map (partial ->honeysql driver) args)))
 (defmethod ->honeysql [:sql :*] [driver [_ & args]] (apply hsql/call :* (map (partial ->honeysql driver) args)))
 
-(defn- collect-field-types
-  [driver mbql-form]
-  (mbql.u/match mbql-form
-    [:field-id id]                   (:base-type (qp.store/field id))
-    [:field-literal _ base-type & _] base-type
-    [:expression _]                  (recur (->honeysql driver &match))))
-
 ;; for division we want to go ahead and convert any integer args to floats, because something like field / 2 will do
 ;; integer division and give us something like 1.0 where we would rather see something like 1.5
 ;;
@@ -278,9 +271,7 @@
                                                           (double arg)
                                                           arg)))]
     (apply hsql/call :/
-           (if (every? #(isa? % :type/Integer) (collect-field-types driver args))
-             (hx/cast :decimal numerator)
-             numerator)
+           (hx/cast :float numerator)
            (for [denominator denominators]
              (hsql/call :case
                (hsql/call := denominator 0) nil

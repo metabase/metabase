@@ -184,6 +184,18 @@
   (hx/->time time-value))
 
 
+
+;; MySQL automatically casts integer division to float (and it doesn't support CAST TO FLOAT).
+(defmethod sql.qp/->honeysql [:mysql :/]
+  [_ [_ & [numerator & denominators]]]
+  (apply hsql/call :/
+         numerator
+         (for [denominator denominators]
+           (hsql/call :case
+             (hsql/call := denominator 0) nil
+             :else                        denominator))))
+
+
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
 ;; explanation of format specifiers
