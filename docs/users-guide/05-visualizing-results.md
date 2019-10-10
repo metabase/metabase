@@ -5,7 +5,7 @@ While tables are useful for looking up information or finding specific numbers, 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
 - [Number](#numbers)
-- [Trend](#smart-numbers)
+- [Trend](#trends)
 - [Progress bar](#progress-bars)
 - [Gauge](#gauges)
 - [Table](#tables)
