@@ -1,9 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e_tests
 
-import { formatValue } from "metabase/lib/formatting";
-
-import d3 from "d3";
-
 import {
   NumberColumn,
   DateTimeColumn,
@@ -17,12 +13,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import lineAreaBarRenderer, {
   getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
 } from "metabase/visualizations/lib/LineAreaBarRenderer";
-
-const formatTz = offset =>
-  (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
-
-const BROWSER_TZ = formatTz(-new Date().getTimezoneOffset() / 60);
-const ALL_TZS = d3.range(-1, 2).map(formatTz);
 
 describe("LineAreaBarRenderer", () => {
   let element;
