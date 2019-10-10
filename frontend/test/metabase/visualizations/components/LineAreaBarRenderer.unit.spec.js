@@ -71,80 +71,6 @@ describe("LineAreaBarRenderer", () => {
     expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
   });
 
-  ["Z", ...ALL_TZS].forEach(tz =>
-    it(
-      "should display hourly data (in " +
-        tz +
-        " timezone) in X axis and tooltip consistently",
-      () => {
-        const onHoverChange = jest.fn();
-
-        const rows = [
-          ["2016-10-03T20:00:00.000" + tz, 1],
-          ["2016-10-03T21:00:00.000" + tz, 1],
-        ];
-
-        renderTimeseriesLine({
-          rowsOfSeries: [rows],
-          unit: "hour",
-          onHoverChange,
-        });
-
-        dispatchUIEvent(qs(".dot"), "mousemove");
-
-        const expected = rows.map(row =>
-          formatValue(row[0], {
-            column: DateTimeColumn({ unit: "hour" }),
-          }),
-        );
-        expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-          expected[0],
-          "1",
-        ]);
-        expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(
-          expected,
-        );
-      },
-    ),
-  );
-
-  it("should display hourly data (in the browser's timezone) in X axis and tooltip consistently and correctly", () => {
-    const onHoverChange = jest.fn();
-    const tz = BROWSER_TZ;
-    const rows = [
-      ["2016-01-01T01:00:00.000" + tz, 1],
-      ["2016-01-01T02:00:00.000" + tz, 1],
-      ["2016-01-01T03:00:00.000" + tz, 1],
-      ["2016-01-01T04:00:00.000" + tz, 1],
-    ];
-
-    renderTimeseriesLine({
-      rowsOfSeries: [rows],
-      unit: "hour",
-      onHoverChange,
-    });
-
-    dispatchUIEvent(qs(".dot"), "mousemove");
-
-    expect(
-      formatValue(rows[0][0], {
-        column: DateTimeColumn({ unit: "hour" }),
-      }),
-    ).toEqual("January 1, 2016, 1:00 AM");
-
-    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-      "January 1, 2016, 1:00 AM",
-      "1",
-    ]);
-
-    expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-      "January 1, 2016, 1:00 AM",
-      "January 1, 2016, 2:00 AM",
-      "January 1, 2016, 3:00 AM",
-      "January 1, 2016, 4:00 AM",
-    ]);
-  });
-
   it("should display weekly ranges in tooltips and months on x axis", () => {
     const rows = [
       ["2020-01-05T00:00:00.000Z", 1],
@@ -166,7 +92,12 @@ describe("LineAreaBarRenderer", () => {
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
-    const series = [{ data: { cols, rows }, card: { display: chartType } }];
+    const series = [
+      {
+        data: { cols, rows },
+        card: { display: chartType, report_timezone: "Etc/UTC" },
+      },
+    ];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
 
