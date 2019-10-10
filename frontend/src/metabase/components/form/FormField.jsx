@@ -6,6 +6,9 @@ import { getIn } from "icepick";
 
 export default class FormField extends Component {
   static propTypes = {
+    field: PropTypes.object,
+    formField: PropTypes.object,
+
     // redux-form compatible:
     name: PropTypes.string,
     error: PropTypes.any,
@@ -14,6 +17,7 @@ export default class FormField extends Component {
 
     hidden: PropTypes.bool,
     displayName: PropTypes.string,
+
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.node),
       PropTypes.node,
@@ -25,11 +29,26 @@ export default class FormField extends Component {
   };
 
   render() {
-    const { displayName, formError, children, hidden } = this.props;
-    const name = this.props.name || this.props.fieldName;
+    const {
+      formField,
+      displayName = formField &&
+        (formField.title || formField.name.split(".").pop()),
+      hidden = formField && formField.type === "hidden",
+      horizontal = formField && formField.horizontal,
+      children,
+    } = this.props;
 
-    let error = this.props.error || getIn(formError, ["data", "errors", name]);
-    if (this.props.visited === false || this.props.active === true) {
+    let { name, error, visited, active } = {
+      ...{
+        // legacy
+        name: this.props.fieldName,
+        error: getIn(this.props.formError, ["data", "errors", name]),
+      },
+      ...(this.props.field || {}),
+      ...this.props,
+    };
+
+    if (visited === false || active === true) {
       // if the field hasn't been visited or is currently active then don't show the error
       error = null;
     }
@@ -39,15 +58,20 @@ export default class FormField extends Component {
         className={cx("Form-field", {
           "Form--fieldError": !!error,
           hide: hidden,
+          flex: horizontal,
         })}
       >
+        {horizontal ? children : null}
         {displayName && (
-          <label className="Form-label" htmlFor={name}>
+          <label
+            className={cx("Form-label", { ml1: horizontal })}
+            htmlFor={name}
+          >
             {displayName}{" "}
             {error && <span className="text-error">: {error}</span>}
           </label>
         )}
-        {children}
+        {horizontal ? null : children}
       </div>
     );
   }

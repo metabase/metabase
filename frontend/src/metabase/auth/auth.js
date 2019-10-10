@@ -18,35 +18,29 @@ import { SessionApi } from "metabase/services";
 
 // login
 export const LOGIN = "metabase/auth/LOGIN";
-export const login = createThunkAction(LOGIN, function(
-  credentials,
-  redirectUrl,
-) {
-  return async function(dispatch, getState) {
+export const login = createThunkAction(
+  LOGIN,
+  (credentials, redirectUrl) => async (dispatch, getState) => {
     if (
       !MetabaseSettings.ldapEnabled() &&
       !MetabaseUtils.validEmail(credentials.username)
     ) {
-      return {
+      throw {
         data: {
           errors: { email: t`Please enter a valid formatted email address.` },
         },
       };
     }
 
-    try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.create(credentials);
+    // NOTE: this request will return a Set-Cookie header for the session
+    await SessionApi.create(credentials);
 
-      MetabaseAnalytics.trackEvent("Auth", "Login");
-      // TODO: redirect after login (carry user to intended destination)
-      await dispatch(refreshCurrentUser());
-      dispatch(push(redirectUrl || "/"));
-    } catch (error) {
-      return error;
-    }
-  };
-});
+    MetabaseAnalytics.trackEvent("Auth", "Login");
+    // TODO: redirect after login (carry user to intended destination)
+    await dispatch(refreshCurrentUser());
+    dispatch(push(redirectUrl || "/"));
+  },
+);
 
 // login Google
 export const LOGIN_GOOGLE = "metabase/auth/LOGIN_GOOGLE";
@@ -137,7 +131,6 @@ export const passwordReset = createThunkAction(PASSWORD_RESET, function(
 
 const loginError = handleActions(
   {
-    [LOGIN]: { next: (state, { payload }) => (payload ? payload : null) },
     [LOGIN_GOOGLE]: {
       next: (state, { payload }) => (payload ? payload : null),
     },

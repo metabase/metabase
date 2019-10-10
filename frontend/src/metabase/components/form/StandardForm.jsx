@@ -1,84 +1,34 @@
 import React from "react";
 
-import FormField from "metabase/components/form/FormField";
-import FormWidget from "metabase/components/form/FormWidget";
-import FormMessage from "metabase/components/form/FormMessage";
+import CustomForm from "./CustomForm";
 
 import Button from "metabase/components/Button";
 
 import { t } from "ttag";
-import cx from "classnames";
-import { getIn } from "icepick";
 
-const StandardForm = ({
-  fields,
-  submitting,
-  error,
-  dirty,
-  invalid,
-  values,
-  handleSubmit,
-  resetForm,
-
-  submitTitle,
-  formDef: form,
-  className,
-  resetButton = false,
-  newForm = true,
-  onClose = null,
-
-  ...props
-}) => (
-  <form onSubmit={handleSubmit} className={cx(className, { NewForm: newForm })}>
-    <div>
-      {form.fields(values).map(formField => {
-        const nameComponents = formField.name.split(".");
-        const field = getIn(fields, nameComponents);
-
-        return (
-          <FormField
-            key={formField.name}
-            displayName={
-              formField.title || nameComponents[nameComponents.length - 1]
-            }
-            {...field}
-            hidden={formField.type === "hidden"}
-          >
-            <FormWidget field={field} {...formField} />
-          </FormField>
-        );
-      })}
-    </div>
-    <div className="flex">
-      <div className="ml-auto flex align-center">
-        {error && <FormMessage message={error} formError />}
-        {onClose && (
-          <Button
-            type="button"
-            className="mr1"
-            onClick={onClose}
-          >{t`Cancel`}</Button>
-        )}
-        <Button
-          type="submit"
-          primary={!(submitting || invalid)}
-          disabled={submitting || invalid}
-        >
-          {submitTitle || (values.id != null ? t`Update` : t`Create`)}
-        </Button>
-        {resetButton && (
-          <Button
-            type="button"
-            disabled={submitting || !dirty}
-            onClick={resetForm}
-            className="ml1"
-          >
-            {t`Reset`}
-          </Button>
-        )}
-      </div>
-    </div>
-  </form>
+const StandardForm = ({ onClose, submitTitle, ...props }) => (
+  <CustomForm {...props}>
+    {({ values, formFields, Form, FormField, FormMessage, FormSubmit }) => (
+      <Form>
+        <div>
+          {formFields.map(formField => (
+            <FormField key={formField.name} name={formField.name} />
+          ))}
+        </div>
+        <div className="flex">
+          <div className="ml-auto flex align-center">
+            <FormMessage />
+            {onClose && (
+              <Button className="mr1" onClick={onClose}>{t`Cancel`}</Button>
+            )}
+            <FormSubmit>
+              {submitTitle || (values.id != null ? t`Update` : t`Create`)}
+            </FormSubmit>
+          </div>
+        </div>
+      </Form>
+    )}
+  </CustomForm>
 );
 
 export default StandardForm;

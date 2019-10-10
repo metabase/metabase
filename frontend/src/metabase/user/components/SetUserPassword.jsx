@@ -97,11 +97,7 @@ export default class SetUserPassword extends Component {
 
     return (
       <div>
-        <form
-          className="NewForm"
-          onSubmit={this.formSubmitted.bind(this)}
-          noValidate
-        >
+        <form onSubmit={this.formSubmitted.bind(this)} noValidate>
           <FormField fieldName="old_password" formError={formError}>
             <FormLabel
               title={t`Current password`}

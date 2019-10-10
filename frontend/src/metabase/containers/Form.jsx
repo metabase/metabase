@@ -6,7 +6,14 @@ import PropTypes from "prop-types";
 import { reduxForm, getValues } from "redux-form";
 import { getIn } from "icepick";
 
+import CustomForm from "metabase/components/form/CustomForm";
 import StandardForm from "metabase/components/form/StandardForm";
+
+export {
+  CustomFormField as FormField,
+  CustomFormSubmit as FormSubmit,
+  CustomFormMessage as FormMessage,
+} from "metabase/components/form/CustomForm";
 
 type FormFieldName = string;
 type FormFieldTitle = string;
@@ -81,10 +88,6 @@ export default class Form extends React.Component {
     formName: PropTypes.string,
   };
 
-  static defaultProps = {
-    formComponent: StandardForm,
-  };
-
   // dynamically generates a component decorated with reduxForm
   _updateFormComponent(props: Props) {
     if (this.props.form) {
@@ -114,7 +117,8 @@ export default class Form extends React.Component {
         }
       };
       this._FormComponent = reduxForm(formConfig, mapStateToProps)(
-        props.formComponent,
+        props.formComponent ||
+          (this.props.children ? CustomForm : StandardForm),
       );
     }
   }

@@ -7,7 +7,7 @@ export default class SavedQuestionIntroModal extends Component {
   render() {
     return (
       <Modal small isOpen={this.props.isShowingNewbModal}>
-        <div className="Modal-content Modal-content--small NewForm">
+        <div className="Modal-content Modal-content--small">
           <div className="Modal-header">
             <h2 className="pb2 text-dark">{t`It's okay to play around with saved questions`}</h2>
 

@@ -7,7 +7,6 @@ import { t } from "ttag";
 import AuthScene from "../components/AuthScene";
 import SSOLoginButton from "../components/SSOLoginButton";
 import Button from "metabase/components/Button";
-import CheckBox from "metabase/components/CheckBox";
 import FormMessage from "metabase/components/form/FormMessage";
 import LogoIcon from "metabase/components/LogoIcon";
 import Settings from "metabase/lib/settings";
@@ -71,10 +70,15 @@ export default class LoginApp extends Component {
     attachGoogleAuth();
   }
 
-  formSubmitted = credentials => {
+  handleUsernameAndPasswordLogin = async credentials => {
     const { login, location } = this.props;
 
-    login(credentials, location.query.redirect);
+    try {
+      await login(credentials, location.query.redirect);
+    } catch (e) {
+      console.log(e);
+      throw e;
+    }
   };
 
   render() {
@@ -97,7 +101,6 @@ export default class LoginApp extends Component {
                 <div className="py3 relative my4">
                   <div className="relative border-bottom pb4">
                     <SSOLoginButton provider="google" ref="ssoLoginButton" />
-                    {/*<div className="g-signin2 ml1 relative z2" id="g-signin2"></div>*/}
                     <div
                       className="mx1 absolute text-centered left right"
                       style={{ bottom: -8 }}
@@ -116,64 +119,17 @@ export default class LoginApp extends Component {
               )}
 
               {(!Settings.ssoEnabled() || preferUsernameAndPassword) && (
-                <div>
-                  <FormMessage
-                    formError={
-                      loginError && loginError.data.message ? loginError : null
-                    }
-                  />
-                  <Form
-                    onSubmit={this.formSubmitted}
-                    form={{
-                      fields: [
-                        {
-                          name: "username",
-                          title: Settings.ldapEnabled()
-                            ? t`Username or email address`
-                            : t`Email address`,
-                          placeholder: "youlooknicetoday@email.com",
-                          validate: email => !email && t`Email is required`,
-                          type: ldapEnabled ? "text" : "email",
-                        },
-                        {
-                          name: "password",
-                          title: t`Password`,
-                          type: "password",
-                          placeholder: "Shh...",
-                          validate: password =>
-                            !password && t`Password is required`,
-                        },
-                      ],
-                    }}
-                  />
-
-                  <div className="flex align-center">
-                    <CheckBox
-                      name="remember"
-                      checked={this.state.rememberMe}
-                      onChange={() =>
-                        this.setState({ rememberMe: !this.state.rememberMe })
-                      }
-                    />
-                    <span className="ml1">{t`Remember Me`}</span>
-                  </div>
-
-                  {/*
-                    <Link
-                      to={
-                        "/auth/forgot_password" +
-                        (Utils.validEmail(this.state.credentials.username)
-                          ? "?email=" + this.state.credentials.username
-                          : "")
-                      }
-                      className="text-right ml-auto link"
-                      onClick={e => {
-                        window.OSX ? window.OSX.resetPassword() : null;
-                      }}
-                    >{t`I seem to have forgotten my password`}</Link>
-                    */}
-                </div>
+                <UsernameAndPasswordForm
+                  onSubmit={this.handleUsernameAndPasswordLogin}
+                  ldapEnabled={ldapEnabled}
+                />
               )}
+
+              <FormMessage
+                formError={
+                  loginError && loginError.data.message ? loginError : null
+                }
+              />
             </div>
           </div>
         </div>
@@ -182,3 +138,66 @@ export default class LoginApp extends Component {
     );
   }
 }
+
+const UsernameAndPasswordForm = ({ onSubmit, ldapEnabled }) => (
+  <Form
+    form={{
+      fields: [
+        {
+          name: "username",
+          title: Settings.ldapEnabled()
+            ? t`Username or email address`
+            : t`Email address`,
+          placeholder: "youlooknicetoday@email.com",
+          validate: email => !email && t`Email is required`,
+          type: ldapEnabled ? "text" : "email",
+        },
+        {
+          name: "password",
+          title: t`Password`,
+          type: "password",
+          placeholder: "Shh...",
+          validate: password => !password && t`Password is required`,
+        },
+        {
+          name: "remember",
+          title: t`Remember me`,
+          type: "checkbox",
+          initial: true,
+          horizontal: true,
+        },
+      ],
+    }}
+    onSubmit={onSubmit}
+  >
+    {({ values, Form, FormField, FormSubmit, FormMessage }) => (
+      <Form>
+        <FormField name="username" />
+        <FormField name="password" />
+        <FormField name="remember" />
+        <FormMessage />
+        <div className="Form-actions flex align-center">
+          <FormSubmit>{t`Sign in`}</FormSubmit>
+          <ForgotPasswordLink credentials={values} />
+        </div>
+      </Form>
+    )}
+  </Form>
+);
+
+const ForgotPasswordLink = ({ credentials = {} }) => (
+  <Link
+    to={
+      "/auth/forgot_password" +
+      (Utils.validEmail(credentials.username)
+        ? "?email=" + encodeURIComponent(credentials.username)
+        : "")
+    }
+    className="text-right ml-auto link"
+    onClick={e => {
+      window.OSX ? window.OSX.resetPassword() : null;
+    }}
+  >
+    {t`I seem to have forgotten my password`}
+  </Link>
+);
