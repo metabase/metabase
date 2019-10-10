@@ -244,15 +244,19 @@ export const getRawSeries = createSelector(
     // BUT the last executed "dataset_query" (to ensure data matches the query)
     return (
       results &&
-      question.atomicQueries().map((metricQuery, index) => ({
-        card: {
-          ...question.card(),
-          display: display,
-          visualization_settings: settings,
-          dataset_query: lastRunDatasetQuery,
-        },
-        data: results[index] && results[index].data,
-      }))
+      question.atomicQueries().map((metricQuery, index) => {
+        const { data, report_timezone } = results[index] || {};
+        return {
+          card: {
+            ...question.card(),
+            display: display,
+            visualization_settings: settings,
+            dataset_query: lastRunDatasetQuery,
+            report_timezone,
+          },
+          data,
+        };
+      })
     );
   },
 );

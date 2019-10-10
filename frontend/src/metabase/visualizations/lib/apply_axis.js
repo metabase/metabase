@@ -96,10 +96,6 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  const dataOffset =
-    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
@@ -166,8 +162,8 @@ export function applyChartTimeseriesXAxis(
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  const timezone = "US/Pacific";
-  chart.x(timeseriesScale(tickInterval, timezone).domain(xDomain));
+  const { report_timezone = "Etc/UTC" } = firstSeries.card;
+  chart.x(timeseriesScale(tickInterval, report_timezone).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
