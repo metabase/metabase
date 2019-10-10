@@ -1,6 +1,9 @@
+import moment from "moment";
+
 import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
+  timeseriesScale,
 } from "metabase/visualizations/lib/timeseries";
 
 import { TYPE } from "metabase/lib/types";
@@ -143,6 +146,110 @@ describe("visualization.lib.timeseries", () => {
         expect(interval).toBe(expectedInterval);
         expect(count).toBe(expectedCount);
       });
+    });
+  });
+
+  describe("timeseriesScale", () => {
+    it("should create day ranges", () => {
+      const scale = timeseriesScale(
+        { interval: "day", count: 1 },
+        "Etc/UTC",
+      ).domain([
+        moment("2019-03-08T00:00:00.000Z"),
+        moment("2019-03-12T00:00:00.000Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-03-08T00:00:00.000Z",
+        "2019-03-09T00:00:00.000Z",
+        "2019-03-10T00:00:00.000Z",
+        "2019-03-11T00:00:00.000Z",
+        "2019-03-12T00:00:00.000Z",
+      ]);
+    });
+
+    it("should create day ranges in pacific time across dst boundary", () => {
+      const scale = timeseriesScale(
+        { interval: "day", count: 1 },
+        "US/Pacific",
+      ).domain([
+        moment("2019-03-08T00:00:00.000-08"),
+        moment("2019-03-12T00:00:00.000-07"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-03-08T08:00:00.000Z",
+        "2019-03-09T08:00:00.000Z",
+        "2019-03-10T08:00:00.000Z",
+        "2019-03-11T07:00:00.000Z",
+        "2019-03-12T07:00:00.000Z",
+      ]);
+    });
+
+    it("should create day ranges when the domain doesn't line up with unit boundaries", () => {
+      const scale = timeseriesScale(
+        { interval: "day", count: 1 },
+        "Etc/UTC",
+      ).domain([
+        moment("2019-03-07T12:34:56.789Z"),
+        moment("2019-03-12T12:34:56.789Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-03-08T00:00:00.000Z",
+        "2019-03-09T00:00:00.000Z",
+        "2019-03-10T00:00:00.000Z",
+        "2019-03-11T00:00:00.000Z",
+        "2019-03-12T00:00:00.000Z",
+      ]);
+    });
+
+    it("should create month ranges in timezone", () => {
+      const scale = timeseriesScale(
+        { interval: "month", count: 1 },
+        "Asia/Hong_kong",
+      ).domain([
+        moment("2019-03-07T12:34:56.789Z"),
+        moment("2019-04-12T12:34:56.789Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-03-31T16:00:00.000Z",
+      ]);
+    });
+
+    it("should create month ranges spaced by count", () => {
+      const scale = timeseriesScale(
+        { interval: "month", count: 3 },
+        "Etc/UTC",
+      ).domain([
+        moment("2018-11-01T00:00:00.000Z"),
+        moment("2020-02-01T00:00:00.000Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-01-01T00:00:00.000Z",
+        "2019-04-01T00:00:00.000Z",
+        "2019-07-01T00:00:00.000Z",
+        "2019-10-01T00:00:00.000Z",
+        "2020-01-01T00:00:00.000Z",
+      ]);
+    });
+
+    it("should create 50 year ranges", () => {
+      const scale = timeseriesScale(
+        { interval: "year", count: 50 },
+        "Etc/UTC",
+      ).domain([
+        moment("1890-01-01T00:00:00.000Z"),
+        moment("2020-01-01T00:00:00.000Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "1900-01-01T00:00:00.000Z",
+        "1950-01-01T00:00:00.000Z",
+        "2000-01-01T00:00:00.000Z",
+      ]);
     });
   });
 });

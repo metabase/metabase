@@ -327,21 +327,30 @@ export const timeseriesScale = (
     return s;
   };
   s.ticks = (...args) => {
-    const domain = s.domain();
+    const [start, end] = s.domain();
     const { interval: unit, count } = tickInterval;
-    const anchor = moment()
+
+    const ticks = [];
+    let tick = start
+      .clone()
       .tz(tz)
-      .startOf("s")
       .startOf(unit);
-    const [start, end] = domain.map(d => d.diff(anchor, unit) / count);
-    if (start > end) {
-      return [];
+
+    // We want to use "round" ticks for a given unit. If we're creating ticks
+    // every 50 years, but and the start of the domain is in 1981 we move it be
+    // on an even 50-year block. 1981 - (1981 % 50) => 1950;
+    const unitMod = tick.get(unit);
+    tick.set(unit, unitMod - (unitMod % count));
+
+    while (!tick.isAfter(end)) {
+      if (!tick.isBefore(start)) {
+        ticks.push(tick);
+      }
+      tick = tick.clone().add(count, unit);
     }
-    return _.range(start, end).map(n => anchor.clone().add(count * n, unit));
+    return ticks;
   };
-  s.copy = () => {
-    return timeseriesScale(tickInterval, tz, linear.copy());
-  };
+  s.copy = () => timeseriesScale(tickInterval, tz, linear);
   d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp", "invert");
   return s;
 };
