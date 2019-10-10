@@ -2,7 +2,7 @@
   (:require [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qpt]]
+             [query-processor-test :as qp.test]]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
@@ -10,7 +10,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-drivers]]
+             [datasets :as datasets]
              [sql :as sql.tx]]
             [toucan.db :as db]))
 
@@ -34,13 +34,13 @@
 
 ;; Query PG using a report-timezone set to pacific time. Should adjust the query parameter using that report timezone
 ;; and should return the timestamp in pacific time as well
-(expect-with-drivers [:postgres :mysql]
+(datasets/expect-with-drivers [:postgres :mysql]
   default-pacific-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (-> (data/run-mbql-query users
             {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})
-          qpt/rows
+          qp.test/rows
           set))))
 
 (defn- table-identifier [table-key]
@@ -55,10 +55,10 @@
         field-name (db/select-one-field :name Field, :id (apply data/id table-key field-keys))]
     (sql.tx/qualify-and-quote driver/*driver* (:name (data/db)) table-name field-name)))
 
-(def ^:private query-rows-set (comp set qpt/rows qp/process-query))
+(def ^:private query-rows-set (comp set qp.test/rows qp/process-query))
 
 ;; Test that native dates are parsed with the report timezone (when supported)
-(expect-with-drivers [:postgres :mysql]
+(datasets/expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -76,7 +76,7 @@
                      {:type "date/single" :target ["variable" ["template-tag" "date2"]] :value "2014-08-02T06:00:00.000000"}]}))))
 
 ;; This does not currently work for MySQL
-(expect-with-drivers [:postgres :mysql]
+(datasets/expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -93,7 +93,7 @@
         :parameters [{:type "date/range", :target ["dimension" ["template-tag" "ts_range"]], :value "2014-08-02~2014-08-03"}]}))))
 
 ;; Querying using a single date
-(expect-with-drivers [:postgres :mysql]
+(datasets/expect-with-drivers [:postgres :mysql]
   default-pacific-results-for-params
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
@@ -111,31 +111,31 @@
 
 ;; This is the same answer as above but uses timestamp with the timezone included. The report timezone is still
 ;; pacific though, so it should return as pacific regardless of how the filter was specified
-(expect-with-drivers [:postgres :mysql]
+(datasets/expect-with-drivers [:postgres :mysql]
   default-pacific-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (-> (data/run-mbql-query users
             {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})
-          qpt/rows
+          qp.test/rows
           set))))
 
 ;; Checking UTC report timezone filtering and responses
-(expect-with-drivers [:postgres :bigquery :mysql]
+(datasets/expect-with-drivers [:postgres :bigquery :mysql]
   default-utc-results
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "UTC"]
       (-> (data/run-mbql-query users
             {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})
-          qpt/rows
+          qp.test/rows
           set))))
 
 ;; With no report timezone, the JVM timezone is used. For our tests this is UTC so this should be the same as
 ;; specifying UTC for a report timezone
-(expect-with-drivers [:postgres :bigquery :mysql]
+(datasets/expect-with-drivers [:postgres :bigquery :mysql]
   default-utc-results
   (with-tz-db
     (-> (data/run-mbql-query users
           {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})
-        qpt/rows
+        qp.test/rows
         set)))

@@ -52,9 +52,12 @@ export default class PartialQueryBuilder extends Component {
       },
     };
 
-    const query = new Question(metadata, {
-      dataset_query: datasetQuery,
-    }).query();
+    const query = new Question(
+      {
+        dataset_query: datasetQuery,
+      },
+      metadata,
+    ).query();
 
     const previewCard = {
       dataset_query: datasetQuery,

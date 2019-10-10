@@ -24,7 +24,7 @@ export default function BreakoutStep({
           onChangeBreakout={newBreakout =>
             breakout
               ? breakout.replace(newBreakout).update(updateQuery)
-              : query.addBreakout(newBreakout).update(updateQuery)
+              : query.breakout(newBreakout).update(updateQuery)
           }
         />
       )}

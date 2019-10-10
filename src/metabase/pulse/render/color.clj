@@ -23,7 +23,7 @@
     ;; assertion till look for the javascript file at startup and fail if it doesn't find it. This is to avoid a big
     ;; delay in finding out that the system is broken
     (assert (get-classpath-resource js-file-path)
-      (trs "Can't find JS color selector at ''{0}''" js-file-path))
+      (trs "Can''t find JS color selector at ''{0}''" js-file-path))
     (delay
      (with-open [stream (get-classpath-resource js-file-path)]
        (make-js-engine-with-script (slurp stream))))))
@@ -49,7 +49,8 @@
   (let [^Invocable engine @js-engine
         ;; Ideally we'd convert everything to JS data before invoking the function below, but converting rows would be
         ;; expensive. The JS code is written to deal with `rows` in it's native Nashorn format but since `cols` and
-        ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS code
+        ;; `viz-settings` are small, pass those as JSON so that they can be deserialized to pure JS objects once in JS
+        ;; code
         js-fn-args (object-array [rows (json/generate-string cols) (json/generate-string viz-settings)])]
     (.invokeFunction engine "makeCellBackgroundGetter" js-fn-args)))
 

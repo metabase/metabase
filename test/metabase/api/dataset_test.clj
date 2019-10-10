@@ -287,7 +287,7 @@
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "LIMIT 1048576")
             :params nil}
-           ((test-users/user->client :rasta) :post "dataset/native"
+           ((test-users/user->client :rasta) :post 200 "dataset/native"
             (data/mbql-query venues
               {:fields [$id $name]}))))
     (is (= {:query (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
@@ -295,7 +295,7 @@
                         " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp '2015-11-14T00:00:00.000Z') "
                         "LIMIT 1048576")
             :params nil}
-           ((test-users/user->client :rasta) :post "dataset/native"
+           ((test-users/user->client :rasta) :post 200 "dataset/native"
             (data/mbql-query checkins
               {:fields [$id]
                :filter [:= $date "2015-11-13"]})))

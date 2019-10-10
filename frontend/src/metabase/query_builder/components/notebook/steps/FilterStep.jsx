@@ -24,7 +24,7 @@ export default function FilterStep({
           onChangeFilter={newFilter =>
             filter
               ? filter.replace(newFilter).update(updateQuery)
-              : query.addFilter(newFilter).update(updateQuery)
+              : query.filter(newFilter).update(updateQuery)
           }
         />
       )}

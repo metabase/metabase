@@ -8,6 +8,8 @@ import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
+import Question from "metabase-lib/lib/Question";
+
 import {
   computeSplit,
   computeMaxDecimalsForValues,
@@ -364,15 +366,21 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
+      // $FlowFixMe: Question requires Metadata but we don't actually need it in this case
+      const query = new Question(card).query();
       const [start, end] = range;
       if (isDimensionTimeseries(series)) {
         onChangeCardAndRun({
-          nextCard: updateDateTimeFilter(card, column, start, end),
+          nextCard: updateDateTimeFilter(query, column, start, end)
+            .question()
+            .card(),
           previousCard: card,
         });
       } else {
         onChangeCardAndRun({
-          nextCard: updateNumericFilter(card, column, start, end),
+          nextCard: updateNumericFilter(query, column, start, end)
+            .question()
+            .card(),
           previousCard: card,
         });
       }

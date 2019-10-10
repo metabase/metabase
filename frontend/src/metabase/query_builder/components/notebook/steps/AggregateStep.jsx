@@ -24,7 +24,7 @@ export default function AggregateStep({
           onChangeAggregation={newAggregation =>
             aggregation
               ? aggregation.replace(newAggregation).update(updateQuery)
-              : query.addAggregation(newAggregation).update(updateQuery)
+              : query.aggregate(newAggregation).update(updateQuery)
           }
         />
       )}
