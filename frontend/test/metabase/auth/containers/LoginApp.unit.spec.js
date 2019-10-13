@@ -22,7 +22,7 @@ describe("LoginApp", () => {
         const { wrapper } = mountWithStore(
           <LoginApp location={{ query: {} }} />,
         );
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
       });
     });
     describe("with SSO", () => {
@@ -49,7 +49,7 @@ describe("LoginApp", () => {
           <LoginApp location={{ query: { useMBLogin: true } }} />,
         );
 
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
         expect(wrapper.find("SSOLoginButton").length).toBe(0);
       });
     });
