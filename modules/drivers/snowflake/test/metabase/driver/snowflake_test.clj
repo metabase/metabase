@@ -22,7 +22,7 @@
 
 (expect
   ["DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"users\";"
-   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT  ,\"last_login\" TIMESTAMPLTZ"
+   (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"users\" (\"name\" TEXT  ,\"last_login\" TIMESTAMP_LTZ"
         "  ,\"password\" TEXT , \"id\" INTEGER AUTOINCREMENT, PRIMARY KEY (\"id\")) ;")
    "DROP TABLE IF EXISTS \"test-data\".\"PUBLIC\".\"categories\";"
    (str "CREATE TABLE \"test-data\".\"PUBLIC\".\"categories\" (\"name\" TEXT , \"id\" INTEGER AUTOINCREMENT,"
