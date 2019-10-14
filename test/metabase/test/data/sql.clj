@@ -228,7 +228,11 @@
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
-            (quot :constraint (str/join (take-last 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name))))
+            (let [fk-name (format "fk_%s_%s_%s_%s" database-name table-name field-name dest-table-name)
+                  fk-name (if (> (count fk-name) 30)
+                            (str/join (take-last 30 (str fk-name \_ (hash fk-name))))
+                            fk-name)]
+              (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
             (quot :field (pk-field-name driver)))))

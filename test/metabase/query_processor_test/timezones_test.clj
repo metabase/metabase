@@ -1,9 +1,11 @@
 (ns metabase.query-processor-test.timezones-test
   (:require [clojure.test :refer :all]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
@@ -13,6 +15,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [sql :as sql.tx]]
+            [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
 (defmacro ^:private with-tz-db
@@ -49,15 +52,15 @@
 
 (defn- table-identifier [table-key]
   (let [table-name (db/select-one-field :name Table, :id (data/id table-key))]
-    (sql.tx/qualify-and-quote driver/*driver* (:name (data/db)) table-name)))
+    (apply hx/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (data/db)) table-name))))
 
-(defn- users-table-identifier []
-  (table-identifier :users))
-
-(defn- field-identifier [table-key & field-keys]
+(defn- field-identifier [table-key field-key]
   (let [table-name (db/select-one-field :name Table, :id (data/id table-key))
-        field-name (db/select-one-field :name Field, :id (apply data/id table-key field-keys))]
-    (sql.tx/qualify-and-quote driver/*driver* (:name (data/db)) table-name field-name)))
+        field-name (db/select-one-field :name Field, :id (data/id table-key field-key))]
+    (apply hx/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (data/db)) table-name field-name))))
+
+(defn- honeysql->sql [honeysql]
+  (first (sql.qp/format-honeysql driver/*driver* honeysql)))
 
 (def ^:private query-rows-set (comp set qp.test/rows qp/process-query))
 
@@ -69,16 +72,14 @@
       (query-rows-set
        {:database   (data/id)
         :type       :native
-        :native     {:query         (format (str
-                                             "select %s, %s, %s "
-                                             "from %s "
-                                             "where cast(last_login as date) between {{date1}} and {{date2}} "
-                                             "order by %s asc")
-                                            (field-identifier :users :id)
-                                            (field-identifier :users :name)
-                                            (field-identifier :users :last_login)
-                                            (users-table-identifier)
-                                            (field-identifier :users :id))
+        :native     {:query         (honeysql->sql
+                                     {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                      :from     [(table-identifier :users)]
+                                      :where    [:between
+                                                 (hx/cast :date (field-identifier :users :last_login))
+                                                 (hsql/raw "{{date1}}")
+                                                 (hsql/raw "{{date2}}")]
+                                      :order-by [[(field-identifier :users :id) :asc]]})
                      :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date" }
                                      :date2 {:name "date2" :display_name "Date2" :type "date" }}}
         :parameters [{:type "date/single" :target ["variable" ["template-tag" "date1"]] :value "2014-08-02T02:00:00.000000"}
@@ -92,12 +93,11 @@
       (query-rows-set
        {:database   (data/id)
         :type       :native
-        :native     {:query         (format "select %s, %s, %s from %s where {{ts_range}} order by %s asc"
-                                            (field-identifier :users :id)
-                                            (field-identifier :users :name)
-                                            (field-identifier :users :last_login)
-                                            (users-table-identifier)
-                                            (field-identifier :users :id))
+        :native     {:query         (honeysql->sql
+                                     {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                      :from     [(table-identifier :users)]
+                                      :where    (hsql/raw "{{ts_range}}")
+                                      :order-by [[(field-identifier :users :id) :asc]]})
                      :template-tags {:ts_range {:name      "ts_range", :display_name "Timestamp Range", :type "dimension",
                                                 :dimension ["field-id" (data/id :users :last_login)]}}}
         :parameters [{:type "date/range", :target ["dimension" ["template-tag" "ts_range"]], :value "2014-08-02~2014-08-03"}]}))))
@@ -108,15 +108,14 @@
   (with-tz-db
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (query-rows-set
-       {:database (data/id)
-        :type :native
-        :native     {:query         (format "select %s, %s, %s from %s where {{just_a_date}} order by %s asc"
-                                            (field-identifier :users :id)
-                                            (field-identifier :users :name)
-                                            (field-identifier :users :last_login)
-                                            (users-table-identifier)
-                                            (field-identifier :users :id))
-                     :template-tags {:just_a_date {:name "just_a_date", :display_name "Just A Date", :type "dimension",
+       {:database   (data/id)
+        :type       :native
+        :native     {:query         (honeysql->sql
+                                     {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                      :from     [(table-identifier :users)]
+                                      :where    (hsql/raw "{{just_a_date}}")
+                                      :order-by [[(field-identifier :users :id) :asc]]})
+                     :template-tags {:just_a_date {:name      "just_a_date", :display_name "Just A Date", :type "dimension",
                                                    :dimension ["field-id" (data/id :users :last_login)]}}}
         :parameters [{:type "date/single", :target ["dimension" ["template-tag" "just_a_date"]], :value "2014-08-02"}]}))))
 
