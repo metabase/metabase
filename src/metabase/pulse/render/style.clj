@@ -47,6 +47,11 @@
   "~25% gray."
   "#394340")
 
+(def ^:const color-text-medium
+  "Color for medium text."
+  "#74838f"
+  )
+
 (def ^:const color-text-dark
   "Color for dark text."
   "#2E353B")

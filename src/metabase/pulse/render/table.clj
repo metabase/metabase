@@ -17,7 +17,7 @@
    (style/font-style)
    {:font-size :12.5px
     :font-weight     700
-    :color           style/color-gray-4
+    :color           style/color-text-medium
     :border-bottom   (str "1px solid " style/color-header-row-border)
     :padding-top     :20px
     :padding-bottom  :5px}))
