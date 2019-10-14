@@ -1,6 +1,6 @@
 (ns metabase.util.password-test
-  (:require [expectations :refer :all]
-            [metabase.util.password :as pwu :refer :all]))
+  (:require [expectations :refer [expect]]
+            [metabase.util.password :as pwu]))
 
 ;; Password Complexity testing
 
@@ -37,7 +37,7 @@
 (expect true  (#'pwu/password-has-char-counts? {:total 6, :lower 1, :upper 1, :digit 1, :special 1} "^^Wut4nG^^"))
 
 ;; Do some tests with the default (:normal) password requirements
-(expect false (is-complex? "ABC"))
-(expect false (is-complex? "ABCDEF"))
-(expect true  (is-complex? "ABCDE1"))
-(expect true  (is-complex? "123456"))
+(expect false (pwu/is-complex? "ABC"))
+(expect false (pwu/is-complex? "ABCDEF"))
+(expect true  (pwu/is-complex? "ABCDE1"))
+(expect true  (pwu/is-complex? "123456"))

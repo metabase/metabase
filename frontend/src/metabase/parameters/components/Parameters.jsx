@@ -16,6 +16,8 @@ import type {
   ParameterValues,
 } from "metabase/meta/types/Parameter";
 
+import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+
 type Props = {
   className?: string,
 
@@ -26,7 +28,7 @@ type Props = {
   isFullscreen?: boolean,
   isNightMode?: boolean,
   hideParameters?: ?string, // comma separated list of slugs
-  isEditing?: boolean,
+  isEditing?: false | DashboardWithCards,
   isQB?: boolean,
   vertical?: boolean,
   commitImmediately?: boolean,

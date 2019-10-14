@@ -38,7 +38,7 @@ export default class AddToDashSelectQuestionModal extends Component {
       dashId: this.props.dashboard.id,
       cardId: cardId,
     });
-    this.props.onEditingChange(true);
+    this.props.onEditingChange(this.props.dashboard);
     this.props.onClose();
     MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
   };

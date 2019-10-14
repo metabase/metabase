@@ -6,7 +6,7 @@
             [metabase.util :as u]
             [metabase.util
              [files :as files]
-             [i18n :refer [deferred-trs deferred-tru LocalizedString]]
+             [i18n :as i18n :refer [deferred-trs LocalizedString]]
              [schema :as su]
              [yaml :as yaml]]
             [schema
@@ -266,7 +266,8 @@
                           [(if (-> table-type ->entity table-type?)
                              (->entity table-type)
                              (->type table-type))])))
-    LocalizedString #(deferred-tru %)}))
+    LocalizedString (fn [s]
+                      (i18n/->UserLocalizedString (namespace-munge *ns*) s nil))}))
 
 (def ^:private rules-dir "automagic_dashboards/")
 

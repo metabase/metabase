@@ -126,14 +126,14 @@ export default class LoginApp extends Component {
           </div>
           <div className="Login-content Grid-cell">
             <form
-              className="Form-new bg-white bordered rounded shadowed"
+              className="p4 bg-white bordered rounded shadowed"
               name="form"
               onSubmit={e => this.formSubmitted(e)}
             >
-              <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
+              <h2 className="Login-header mb2">{t`Sign in to Metabase`}</h2>
 
               {Settings.ssoEnabled() && !preferUsernameAndPassword && (
-                <div className="mx4 py3 relative my4">
+                <div className="py3 relative my4">
                   <div className="relative border-bottom pb4">
                     <SSOLoginButton provider="google" ref="ssoLoginButton" />
                     {/*<div className="g-signin2 ml1 relative z2" id="g-signin2"></div>*/}
@@ -146,7 +146,7 @@ export default class LoginApp extends Component {
                   </div>
                   <div className="py3">
                     <Link to="/auth/login?useMBLogin=true">
-                      <Button className="EmailSignIn full">
+                      <Button className="EmailSignIn full py2">
                         {t`Sign in with email`}
                       </Button>
                     </Link>
@@ -161,7 +161,6 @@ export default class LoginApp extends Component {
                       loginError && loginError.data.message ? loginError : null
                     }
                   />
-
                   <FormField
                     key="username"
                     fieldName="username"
@@ -177,7 +176,7 @@ export default class LoginApp extends Component {
                       formError={loginError}
                     />
                     <input
-                      className="Form-input Form-offset full py1"
+                      className="Form-input full"
                       name="username"
                       placeholder="youlooknicetoday@email.com"
                       type={
@@ -192,7 +191,6 @@ export default class LoginApp extends Component {
                       onChange={e => this.onChange("username", e.target.value)}
                       autoFocus
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <FormField
@@ -206,31 +204,28 @@ export default class LoginApp extends Component {
                       formError={loginError}
                     />
                     <input
-                      className="Form-input Form-offset full py1"
+                      className="Form-input full"
                       name="password"
                       placeholder="Shh..."
                       type="password"
                       onChange={e => this.onChange("password", e.target.value)}
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <div className="Form-field">
-                    <div className="Form-offset flex align-center">
+                    <div className="flex align-center">
                       <CheckBox
                         name="remember"
                         checked={this.state.rememberMe}
                         onChange={() =>
-                          this.setState({
-                            rememberMe: !this.state.rememberMe,
-                          })
+                          this.setState({ rememberMe: !this.state.rememberMe })
                         }
                       />
                       <span className="ml1">{t`Remember Me`}</span>
                     </div>
                   </div>
 
-                  <div className="Form-actions p4">
+                  <div className="Form-actions flex align-center">
                     <Button
                       primary={this.state.valid}
                       disabled={!this.state.valid}
@@ -244,7 +239,7 @@ export default class LoginApp extends Component {
                           ? "?email=" + this.state.credentials.username
                           : "")
                       }
-                      className="Grid-cell py2 sm-py0 md-text-right text-centered flex-full link"
+                      className="text-right ml-auto link"
                       onClick={e => {
                         window.OSX ? window.OSX.resetPassword() : null;
                       }}

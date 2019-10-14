@@ -150,38 +150,28 @@ export const getIsResultDirty = createSelector(
     getLastRunParameterValues,
     getNextRunParameterValues,
   ],
-  (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) => {
-    return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
-    );
-  },
+  (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) =>
+    !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
+    !Utils.equals(lastParameters, nextParameters),
 );
 
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) => {
-    return metadata && card && new Question(metadata, card, parameterValues);
-  },
+  (metadata, card, parameterValues) =>
+    metadata && card && new Question(card, metadata, parameterValues),
 );
 
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, getLastRunCard, parameterValues) => {
-    return (
-      metadata &&
-      getLastRunCard &&
-      new Question(metadata, getLastRunCard, parameterValues)
-    );
-  },
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
 );
 
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
-  (metadata, card) => {
+  (metadata, card) =>
     // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
-    return metadata && card && new Question(metadata, card);
-  },
+    metadata && card && new Question(card, metadata),
 );
 
 export const getMode = createSelector(
@@ -196,9 +186,8 @@ export const getIsObjectDetail = createSelector(
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    return question && question.isDirtyComparedTo(originalQuestion);
-  },
+  (question, originalQuestion) =>
+    question && question.isDirtyComparedTo(originalQuestion),
 );
 
 export const getQuery = createSelector(

@@ -35,7 +35,7 @@ const question = Question.create({
   metadata,
 })
   .query()
-  .addAggregation(["count"])
+  .aggregate(["count"])
   .question();
 
 describe("Visualization drill-through", () => {

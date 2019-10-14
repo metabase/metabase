@@ -6,6 +6,8 @@ import { SegmentSchema } from "metabase/schema";
 import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 const Segments = createEntity({
   name: "segments",
   nameOne: "segment",
@@ -22,6 +24,10 @@ const Segments = createEntity({
     // NOTE: DELETE not currently implemented
     // $FlowFixMe: no official way to disable builtin actions yet
     delete: null,
+  },
+
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
   },
 
   objectSelectors: {

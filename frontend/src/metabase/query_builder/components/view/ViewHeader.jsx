@@ -109,7 +109,7 @@ export class ViewTitleHeader extends React.Component {
               {description && (
                 <Icon
                   name="info"
-                  className="text-light mx1"
+                  className="text-light mx1 cursor-pointer text-brand-hover"
                   size={18}
                   tooltip={description}
                 />

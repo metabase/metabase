@@ -72,7 +72,6 @@
    (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
      {:bootstrapJS        (load-inline-js "index_bootstrap")
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
-      :webFontConfigJS    (load-inline-js "index_webfontconfig")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
       :uri                (h.util/escape-html uri)

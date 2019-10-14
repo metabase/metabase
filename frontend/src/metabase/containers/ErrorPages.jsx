@@ -9,6 +9,8 @@ import Icon from "metabase/components/Icon";
 import EmptyState from "metabase/components/EmptyState";
 import ErrorDetails from "metabase/components/ErrorDetails";
 
+import NoResults from "assets/img/no_results.svg";
+
 const ErrorPageWrapper = fitViewport(({ fitClassNames, children }) => (
   <Flex
     align="center"
@@ -40,7 +42,7 @@ export const GenericError = ({
 export const NotFound = () => (
   <ErrorPageWrapper>
     <EmptyState
-      illustrationElement={<img src="app/assets/img/no_results.svg" />}
+      illustrationElement={<img src={NoResults} />}
       title={t`We're a little lost...`}
       message={t`The page you asked for couldn't be found.`}
       link={Urls.question()}

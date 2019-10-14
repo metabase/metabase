@@ -1,9 +1,9 @@
 (ns metabase.query-processor-test.order-by-test
   "Tests for the `:order-by` clause."
-  (:require [clojure.math.numeric-tower :as math]
+  (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -77,35 +77,39 @@
          :breakout    [$price]
          :order-by    [[:asc [:aggregation 0]]]}))))
 
+(deftest order-by-average-aggregation-test
+  (datasets/test-drivers qp.test/non-timeseries-drivers
+    (let [{:keys [rows cols]}    (qp.test/rows-and-cols
+                                   (qp.test/format-rows-by [int 1.0]
+                                     (data/run-mbql-query venues
+                                       {:aggregation [[:avg $category_id]]
+                                        :breakout    [$price]
+                                        :order-by    [[:asc [:aggregation 0]]]})))
+          driver-floors-average? (#{:h2 :redshift :sqlserver} driver/*driver*)]
+      (is (= [[3 22.0]
+              [2 (if driver-floors-average? 28.0 28.3)]
+              [1 (if driver-floors-average? 32.0 32.8)]
+              [4 (if driver-floors-average? 53.0 53.5)]]
+             rows))
+      (is (= [(qp.test/breakout-col :venues :price)
+              (qp.test/aggregate-col :avg :venues :category_id)]
+             cols)))))
 
-;;; order-by aggregate ["avg" field-id]
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[3 22]
-          [2 28]
-          [1 32]
-          [4 53]]
-   :cols [(qp.test/breakout-col :venues :price)
-          (qp.test/aggregate-col :avg :venues :category_id)]}
-  (qp.test/rows-and-cols
-    (qp.test/format-rows-by [int int]
-      (data/run-mbql-query venues
-        {:aggregation [[:avg $category_id]]
-         :breakout    [$price]
-         :order-by    [[:asc [:aggregation 0]]]}))))
-
-;;; ### order-by aggregate ["stddev" field-id]
-;; SQRT calculations are always NOT EXACT (normal behavior) so round everything to the nearest int.
-;; Databases might use different versions of SQRT implementations
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :standard-deviation-aggregations)
-  {:rows [[3 (if (= :mysql driver/*driver*) 25 26)]
-          [1 24]
-          [2 21]
-          [4 (if (= :mysql driver/*driver*) 14 15)]]
-   :cols [(qp.test/breakout-col :venues :price)
-          (qp.test/aggregate-col :stddev (qp.test/col :venues :category_id))]}
-  (qp.test/rows-and-cols
-    (qp.test/format-rows-by [int (comp int math/round)]
-      (data/run-mbql-query venues
-        {:aggregation [[:stddev $category_id]]
-         :breakout    [$price]
-         :order-by    [[:desc [:aggregation 0]]]}))))
+(deftest order-by-standard-deviation-aggregation-test
+  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :standard-deviation-aggregations)
+    (let [{:keys [rows cols]} (qp.test/rows-and-cols
+                                (qp.test/format-rows-by [int 0.0]
+                                  (data/run-mbql-query venues
+                                    {:aggregation [[:stddev $category_id]]
+                                     :breakout    [$price]
+                                     :order-by    [[:desc [:aggregation 0]]]})))]
+      ;; standard deviation calculations are always NOT EXACT (normal behavior) so round results to nearest whole
+      ;; number.
+      (is (= [[3 (if (= driver/*driver* :mysql) 25.0 26.0)]
+              [1 24.0]
+              [2 21.0]
+              [4 (if (= driver/*driver* :mysql) 14.0 15.0)]]
+             rows))
+      (is (= [(qp.test/breakout-col :venues :price)
+              (qp.test/aggregate-col :stddev (qp.test/col :venues :category_id))]
+             cols)))))

@@ -95,7 +95,7 @@
                                                 :running_time total-time-ms}))
        nil))))
 
-(defn- with-start-and-finish-logging'
+(defn- with-start-and-finish-logging*
   "Logs start/finish messages using `log-fn`, timing `f`"
   {:style/indent 1}
   [log-fn message f]
@@ -113,12 +113,12 @@
   {:style/indent 1}
   [message f]
   (fn []
-    (with-start-and-finish-logging' #(log/info %) message f)))
+    (with-start-and-finish-logging* #(log/info %) message f)))
 
 (defn with-start-and-finish-debug-logging
   "Similar to `with-start-and-finish-logging except invokes `f` and returns its result and logs at the debug level"
   [message f]
-  (with-start-and-finish-logging' #(log/debug %) message f))
+  (with-start-and-finish-logging* #(log/info %) message f))
 
 (defn- with-db-logging-disabled
   "Disable all QP and DB logging when running BODY. (This should be done for *all* sync-like processes to avoid
@@ -255,12 +255,12 @@
 ;; The `name-for-logging` function is used all over the sync code to make sure we have easy access to consistently
 ;; formatted descriptions of various objects.
 
-(defprotocol ^:private INameForLogging
+(defprotocol ^:private NameForLogging
   (name-for-logging [this]
     "Return an appropriate string for logging an object in sync logging messages.
      Should be something like \"postgres Database 'test-data'\""))
 
-(extend-protocol INameForLogging
+(extend-protocol NameForLogging
   i/DatabaseInstance
   (name-for-logging [{database-name :name, id :id, engine :engine,}]
     (trs "{0} Database {1} ''{2}''" (name engine) (or id "") database-name))

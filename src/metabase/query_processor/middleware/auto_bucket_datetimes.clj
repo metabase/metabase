@@ -43,6 +43,10 @@
   (and (string? x)
        (re-matches #"^\d{4}-\d{2}-\d{2}$" x)))
 
+(defn- auto-bucketable-value? [v]
+  (or (yyyy-MM-dd-date-string? v)
+      (mbql.u/is-clause? :relative-datetime v)))
+
 (defn- should-not-be-autobucketed?
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
   [x]
@@ -51,14 +55,14 @@
    (when (and (mbql.preds/Filter? x)
               (not (mbql.u/is-clause? #{:and :or :not} x)))
      (or
-      ;; *  is not and equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
+      ;; *  is not an equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
       ;;    `NOT NULL`
       (not (mbql.u/is-clause? #{:= :!= :< :> :<= :>= :between} x))
       ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime Fields in the
       ;; *  first place is for legacy reasons, if someone is specifying additional info like hour/minute then we
       ;; *  shouldn't assume they want to bucket by day
       (let [[_ _ & vs] x]
-        (not (every? yyyy-MM-dd-date-string? vs)))))
+        (not (every? auto-bucketable-value? vs)))))
    ;; do not autobucket field-ids that are already wrapped by another Field clause like `datetime-field` or
    ;; `binning-strategy`
    (and (mbql.preds/Field? x)

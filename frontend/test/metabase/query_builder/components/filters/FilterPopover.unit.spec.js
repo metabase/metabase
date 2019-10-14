@@ -24,10 +24,10 @@ const QUERY = Question.create({
   metadata,
 })
   .query()
-  .addAggregation(["count"])
-  .addFilter(["time-interval", ["field-id", ORDERS.CREATED_AT.id], -30, "day"])
-  .addFilter(["=", ["field-id", ORDERS.TOTAL.id], 1234])
-  .addFilter([
+  .aggregate(["count"])
+  .filter(["time-interval", ["field-id", ORDERS.CREATED_AT.id], -30, "day"])
+  .filter(["=", ["field-id", ORDERS.TOTAL.id], 1234])
+  .filter([
     "contains",
     ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
     "asdf",

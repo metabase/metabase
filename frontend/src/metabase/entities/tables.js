@@ -176,6 +176,8 @@ const Tables = createEntity({
   },
 
   selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).table(entityId),
+
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],
