@@ -66,7 +66,7 @@ export default class AggregationPopover extends Component {
     customFields: PropTypes.object,
     datasetQuery: PropTypes.object,
 
-    availableAggregations: PropTypes.array,
+    aggregationOperators: PropTypes.array,
 
     showCustom: PropTypes.bool,
     showMetrics: PropTypes.bool,
@@ -156,11 +156,11 @@ export default class AggregationPopover extends Component {
   }
 
   _getAvailableAggregations() {
-    const { availableAggregations, query, dimension, showRawData } = this.props;
+    const { aggregationOperators, query, dimension, showRawData } = this.props;
     return (
-      availableAggregations ||
-      (dimension && dimension.aggregations()) ||
-      query.table().aggregations()
+      aggregationOperators ||
+      (dimension && dimension.aggregationOperators()) ||
+      query.table().aggregationOperators()
     ).filter(agg => showRawData || agg.short !== "rows");
   }
 
@@ -177,6 +177,9 @@ export default class AggregationPopover extends Component {
     const { aggregation } = this.props;
     return item.isSelected(A_DEPRECATED.getContent(aggregation));
   }
+
+  isValid = () =>
+    !this.state.error && Boolean(A_DEPRECATED.getName(this.state.aggregation));
 
   renderItemExtra(item, itemIndex) {
     if (item.aggregation && item.aggregation.description) {
@@ -222,7 +225,7 @@ export default class AggregationPopover extends Component {
 
     const tableMetadata = this._getTableMetadata();
     const customFields = this._getCustomFields();
-    const availableAggregations = this._getAvailableAggregations();
+    const aggregationOperators = this._getAvailableAggregations();
 
     if (dimension) {
       showCustom = false;
@@ -241,12 +244,12 @@ export default class AggregationPopover extends Component {
         id: A_DEPRECATED.getMetric(aggregation),
       });
     } else if (A_DEPRECATED.getOperator(aggregation)) {
-      selectedAggregation = _.findWhere(availableAggregations, {
+      selectedAggregation = _.findWhere(aggregationOperators, {
         short: A_DEPRECATED.getOperator(aggregation),
       });
     }
 
-    const aggregationItems = availableAggregations.map(aggregation => ({
+    const aggregationItems = aggregationOperators.map(aggregation => ({
       name: dimension
         ? aggregation.name.replace("of ...", "")
         : aggregation.name,
@@ -345,8 +348,6 @@ export default class AggregationPopover extends Component {
               startRule="aggregation"
               expression={aggregation}
               query={query}
-              tableMetadata={tableMetadata}
-              customFields={customFields}
               onChange={parsedExpression =>
                 this.setState({
                   aggregation: A_DEPRECATED.setContent(
@@ -385,12 +386,12 @@ export default class AggregationPopover extends Component {
                     : aggregation,
                 })
               }
-              placeholder={t`Name (optional)`}
+              placeholder={t`Name (required)`}
             />
             <Button
               className="full"
               primary
-              disabled={this.state.error}
+              disabled={!this.isValid()}
               onClick={() => this.commitAggregation(this.state.aggregation)}
             >
               {t`Done`}

@@ -1,12 +1,17 @@
 (ns metabase.models.dependency-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.dependency :as dep :refer [Dependency]]
-            [metabase.test.util :as tu]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (models/defmodel ^:private Mock :mock)
 

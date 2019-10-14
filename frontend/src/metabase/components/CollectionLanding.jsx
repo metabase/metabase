@@ -497,7 +497,7 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) && selectedAction == "copy" && (
+        {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
           <Modal onClose={this.handleCloseModal}>
             <CollectionCopyEntityModal
               entityObject={selectedItems[0]}
@@ -509,7 +509,7 @@ class DefaultLanding extends React.Component {
             />
           </Modal>
         )}
-        {!_.isEmpty(selectedItems) && selectedAction == "move" && (
+        {!_.isEmpty(selectedItems) && selectedAction === "move" && (
           <Modal onClose={this.handleCloseModal}>
             <CollectionMoveModal
               title={

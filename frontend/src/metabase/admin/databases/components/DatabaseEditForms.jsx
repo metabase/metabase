@@ -30,10 +30,10 @@ export default class DatabaseEditForms extends Component {
         <div
           className={cx("Form-field", { "Form--fieldError": errors["engine"] })}
         >
-          <label className="Form-label Form-offset">
+          <label className="Form-label">
             Database type: <span>{errors["engine"]}</span>
           </label>
-          <label className="Select Form-offset mt1">
+          <label className="Select mt1">
             <select
               className="Select"
               defaultValue={database.engine}

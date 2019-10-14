@@ -9,6 +9,7 @@ import {
   withRequestState,
   withCachedDataAndRequestState,
 } from "metabase/lib/redux";
+import createCachedSelector from "re-reselect";
 
 import { addUndo } from "metabase/redux/undo";
 
@@ -458,10 +459,12 @@ export function createEntity(def: EntityDefinition): Entity {
   const getEntityId = (state, props) =>
     (props.params && props.params.entityId) || props.entityId;
 
-  const getObject = createSelector(
+  const getObject = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
-  );
+  )((state, { entityId }) =>
+    typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
+  ); // must stringify objects
 
   // LIST SELECTORS
 
@@ -479,8 +482,13 @@ export function createEntity(def: EntityDefinition): Entity {
   );
 
   const getList = createSelector(
-    [getEntities, getEntityIds],
-    (entities, entityIds) => denormalize(entityIds, [entity.schema], entities),
+    [state => state, getEntityIds],
+    // delegate to getObject
+    (state, entityIds) =>
+      entityIds &&
+      entityIds.map(entityId =>
+        entity.selectors.getObject(state, { entityId }),
+      ),
   );
 
   // REQUEST STATE SELECTORS

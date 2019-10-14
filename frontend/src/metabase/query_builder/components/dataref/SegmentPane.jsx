@@ -67,7 +67,7 @@ export default class SegmentPane extends Component {
         query = query.clearAggregations();
       }
 
-      query = query.addFilter(["segment", this.props.segment.id]);
+      query = query.filter(["segment", this.props.segment.id]);
 
       this.props.updateQuestion(query.question());
       this.props.runQuestionQuery();

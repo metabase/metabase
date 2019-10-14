@@ -52,14 +52,13 @@
   below. The QP binds the driver this way in the `bind-driver` middleware."
   nil)
 
+(declare the-driver)
+
 (defn do-with-driver
   "Impl for `with-driver`."
   [driver f]
-  ;; it's substantially faster not to call `binding` in the first place if it's already bound
-  (if (= *driver* driver)
-    (f)
-    (binding [*driver* driver]
-      (f))))
+  (binding [*driver* (the-driver driver)]
+    (f)))
 
 (defmacro with-driver
   "Bind current driver to `driver` and execute `body`.
@@ -144,9 +143,11 @@
           (when-not (registered? driver)
             (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
-(s/defn the-driver
+(defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
-  throwing an Exception if it fails or is invalid. Returns keyword.
+  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not neccessarily mean the
+  driver is initialized (e.g., its full implementation and deps might not be loaded into memory) -- see also
+  `the-initialized-driver`.
 
   This is useful in several cases:
 
@@ -161,7 +162,8 @@
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
-  [driver :- (s/cond-pre s/Str s/Keyword)]
+  [driver]
+  {:pre [((some-fn keyword? string?) driver)]}
   (classloader/the-classloader)
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed! driver)

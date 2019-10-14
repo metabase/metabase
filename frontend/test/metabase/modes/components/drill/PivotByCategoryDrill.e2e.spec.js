@@ -21,7 +21,7 @@ describe("PivotByCategoryDrill", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
+      .aggregate(["count"])
       .question();
 
     const pivotedQuestion = question.pivot([["field-id", 4]]);

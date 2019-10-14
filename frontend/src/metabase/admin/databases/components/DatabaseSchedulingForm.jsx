@@ -37,7 +37,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
         />
       )}
     </div>
-    <div className="Form-offset ml1">
+    <div className="ml4 pl2">
       <div className={cx({ "text-brand": selected })}>
         <h3>{name}</h3>
       </div>
@@ -116,7 +116,7 @@ export default class DatabaseSchedulingForm extends Component {
       <LoadingAndErrorWrapper loading={!this.props.database} error={null}>
         {() => (
           <form onSubmit={this.onSubmitForm} noValidate>
-            <div className="Form-offset mr4 mt4">
+            <div className="mr4 mt4">
               <div style={{ maxWidth: 600 }} className="border-bottom pb2">
                 <p className="text-paragraph text-measure">
                   {t`To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.`}

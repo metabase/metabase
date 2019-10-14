@@ -1,6 +1,7 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email :as email]
@@ -17,30 +18,31 @@
             [toucan.db :as db]))
 
 ;; ## POST /api/setup/user
-;; Check that we can create a new superuser via setup-token
-(let [email (tu/random-email)]
-  (expect
-    {:uuid? true, :admin-email email}
-    (try
-      ;; make sure the default test users are created before running this test, otherwise we're going to run into
-      ;; issues if it attempts to delete this user and it is the only admin test user
-      (test-users/create-users-if-needed!)
-      (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
-        {:uuid?
-         (tu/is-uuid-string? (:id (http/client :post 200 "setup" {:token (setup/create-token!)
-                                                                  :prefs {:site_name "Metabase Test"}
-                                                                  :user  {:first_name (tu/random-name)
-                                                                          :last_name  (tu/random-name)
-                                                                          :email      email
-                                                                          :password   "anythingUP12!!"}})))
-
-         :admin-email
-         (do
-           ;; reset our setup token
-           (setup/create-token!)
-           (public-settings/admin-email))})
-      (finally
-        (db/delete! User :email email)))))
+;;
+(deftest create-superuser-test
+  (testing "Check that we can create a new superuser via setup-token"
+    (let [email (tu/random-email)]
+      (try
+        ;; make sure the default test users are created before running this test, otherwise we're going to run into
+        ;; issues if it attempts to delete this user and it is the only admin test user
+        (test-users/create-users-if-needed!)
+        (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
+          (let [api-response (http/client :post 200 "setup" {:token (setup/create-token!)
+                                                             :prefs {:site_name "Metabase Test"}
+                                                             :user  {:first_name (tu/random-name)
+                                                                     :last_name  (tu/random-name)
+                                                                     :email      email
+                                                                     :password   "anythingUP12!!"}})]
+            (is (= true
+                   (tu/is-uuid-string? (:id api-response)))
+                "API response should return a Session UUID ")
+            ;; reset our setup token
+            (setup/create-token!)
+            (is (= email
+                   (public-settings/admin-email))
+                "Creating a new admin user should set the `admin-email` Setting")))
+        (finally
+          (db/delete! User :email email))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -79,13 +81,15 @@
   `(do-setup (fn [~(or body-binding '_) ~(or token-binding '_) ~(or db-name-binding '_) ~(or user-email-binding '_)]
                ~@body)))
 
-;; Check that we can Create a Database when we set up MB (#10135)
-(expect
-  {:db-exists? true, :user-exists? true}
-  (setup [body _ db-name user-email]
-    (http/client :post 200 "setup" body)
-    {:db-exists?   (db/exists? Database :name db-name)
-     :user-exists? (db/exists? User :email user-email)}))
+;;
+(deftest create-database-test
+  (testing "Check that we can Create a Database when we set up MB (#10135)"
+    (setup [body _ db-name user-email]
+      (http/client :post 200 "setup" body)
+      (is (= true
+             (db/exists? Database :name db-name)))
+      (is (= true
+             (db/exists? User :email user-email))))))
 
 ;; Test input validations
 (expect
@@ -139,17 +143,16 @@
 ;;; |                                            POST /api/setup/validate                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {:errors {:token "Token does not match the setup token."}}
-  (http/client :post 400 "setup/validate" {}))
-
-(expect
-  {:errors {:token "Token does not match the setup token."}}
-  (http/client :post 400 "setup/validate" {:token "foobar"}))
-
-(expect
-  {:errors {:engine "value must be a valid database engine."}}
-  (http/client :post 400 "setup/validate" {:token (setup/token-value)}))
+(deftest validate-setup-test
+  (testing "POST /api/setup/validate"
+    (is (= {:errors {:token "Token does not match the setup token."}}
+           (http/client :post 400 "setup/validate" {})))
+    (is (= {:errors {:token "Token does not match the setup token."}}
+           (http/client :post 400 "setup/validate" {:token "foobar"})))
+    ;; make sure we have a valid setup token
+    (setup/create-token!)
+    (is (= {:errors {:engine "value must be a valid database engine."}}
+           (http/client :post 400 "setup/validate" {:token (setup/token-value)})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
