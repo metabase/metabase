@@ -178,8 +178,8 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
-  onTargetChange = async ({ id: fk_target_field_id }) => {
-    await this.props.updateField({ fk_target_field_id });
+  onTargetChange = async e => {
+    await this.props.updateField({ fk_target_field_id: e.target.value.id });
 
     MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
   };
@@ -246,6 +246,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             placeholder={t`Select a currency type`}
             searchProp="name"
             searchCaseSensitive={false}
+            searchAutoFocus={false}
           >
             {Object.values(currency).map(c => (
               <Option name={c.name} value={c.code} key={c.code}>
@@ -262,16 +263,24 @@ export class SpecialTypeAndTargetPicker extends Component {
           <Select
             className={cx("TableEditor-field-target", "text-wrap", className)}
             triggerClasses={this.props.triggerClasses}
-            placeholder={t`Select a target`}
-            value={idfields.find(
-              idField => idField.id === field.fk_target_field_id,
-            )}
-            options={idfields}
-            optionNameFn={field =>
-              field.displayName({ includeTable: true, includeSchema })
-            }
+            value={field.target}
             onChange={this.onTargetChange}
-          />
+            placeholder={t`Select a target`}
+            searchAutoFocus={false}
+            searchProp="searchString"
+          >
+            {idfields.map(f => (
+              <Option
+                value={f}
+                searchString={f.displayName({
+                  includeTable: true,
+                  includeSchema,
+                })}
+              >
+                {f.displayName({ includeTable: true, includeSchema })}
+              </Option>
+            ))}
+          </Select>
         )}
       </div>
     );

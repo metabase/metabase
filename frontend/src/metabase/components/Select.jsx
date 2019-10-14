@@ -39,8 +39,10 @@ class BrowserSelect extends Component {
     defaultValue: PropTypes.any,
 
     searchProp: PropTypes.string,
+    searchAutoFocus: PropTypes.bool,
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
+    searchPlaceholder: PropTypes.string,
 
     isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
@@ -62,8 +64,10 @@ class BrowserSelect extends Component {
     height: 320,
     rowHeight: 40,
     multiple: false,
+    searchAutoFocus: true,
     searchCaseInsensitive: true,
     searchFuzzy: true,
+    searchPlaceholder: t`Search`,
   };
 
   isSelected(otherValue) {
@@ -88,6 +92,8 @@ class BrowserSelect extends Component {
       searchProp,
       searchCaseInsensitive,
       searchFuzzy,
+      searchAutoFocus,
+      searchPlaceholder,
       isInitiallyOpen,
       placeholder,
       triggerElement,
@@ -173,7 +179,8 @@ class BrowserSelect extends Component {
               className="AdminSelect m1 flex-full"
               value={inputValue}
               onChange={e => this.setState({ inputValue: e.target.value })}
-              autoFocus
+              autoFocus={searchAutoFocus}
+              placeholder={searchPlaceholder}
             />
           )}
           <List
