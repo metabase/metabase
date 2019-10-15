@@ -33,6 +33,10 @@
   width: 85%;
 }
 
+.Modal.Modal--tall {
+  min-height: 85%;
+}
+
 .Modal--full {
   background-color: white;
   position: fixed;

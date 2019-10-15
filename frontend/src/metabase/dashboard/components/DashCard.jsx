@@ -235,6 +235,7 @@ const DashCardActionButtons = ({
 const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
   <ModalWithTrigger
     wide
+    tall
     triggerElement={
       <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
     }
