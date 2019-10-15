@@ -72,7 +72,6 @@ function fillMissingValuesInData(
       .ticks();
     getKey = m => m.toISOString();
   } else if (isQuantitative(settings) || isHistogram(settings)) {
-    // $fooFixMe
     const count = Math.abs((xDomain[1] - xDomain[0]) / xInterval);
     if (count > MAX_FILL_COUNT) {
       return rows;
@@ -80,11 +79,9 @@ function fillMissingValuesInData(
     let [start, end] = xDomain;
     if (isHistogramBar(props)) {
       // NOTE: intentionally add an end point for bar histograms
-      // $fooFixMe
       end += xInterval * 1.5;
     } else {
       // NOTE: avoid including endpoint due to floating point error
-      // $fooFixMe
       end += xInterval * 0.5;
     }
     xValues = d3.range(start, end, xInterval);
