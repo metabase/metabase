@@ -98,4 +98,42 @@ describe("fillMissingValuesInDatas", () => {
 
     expect(filledData).toEqual([[1, 1], [3, 1]]);
   });
+
+  it("shouldn't fill data when the range is >10k", () => {
+    const [filledData] = fillMissingValuesInDatas(
+      {
+        series: [{}],
+        settings: {
+          "graph.x_axis.scale": "linear",
+          series: () => ({ "line.missing": "zero" }),
+        },
+      },
+      { xValues: [1, 11000], xDomain: [1, 11000], xInterval: 1 },
+      [[[1, 1], [11000, 1]]],
+    );
+
+    expect(filledData).toEqual([[1, 1], [11000, 1]]);
+  });
+
+  it("shouldn't fill data when the range is >10k for timeseries", () => {
+    const t1 = moment("2018-01-01T00:00:00Z");
+    const t2 = moment("2020-01-01T00:00:00Z");
+    const [filledData] = fillMissingValuesInDatas(
+      {
+        series: [{}],
+        settings: {
+          "graph.x_axis.scale": "timeseries",
+          series: () => ({ "line.missing": "zero" }),
+        },
+      },
+      {
+        xValues: [t1, t2],
+        xDomain: [t1, t2],
+        xInterval: { interval: "hour", count: 1 },
+      },
+      [[[t1, 1], [t2, 1]]],
+    );
+
+    expect(filledData).toEqual([[t1, 1], [t2, 1]]);
+  });
 });
