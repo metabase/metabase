@@ -62,7 +62,7 @@ export default class ForgotPasswordApp extends Component {
               {!sentNotification ? (
                 <div>
                   <form
-                    className="ForgotForm bg-white bordered rounded shadowed"
+                    className="ForgotForm bg-white bordered rounded shadowed p4"
                     name="form"
                     noValidate
                   >
