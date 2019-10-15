@@ -136,4 +136,20 @@ describe("fillMissingValuesInDatas", () => {
 
     expect(filledData).toEqual([[t1, 1], [t2, 1]]);
   });
+
+  it("should use interval while filling numeric data", () => {
+    const [filledData] = fillMissingValuesInDatas(
+      {
+        series: [{}],
+        settings: {
+          "graph.x_axis.scale": "linear",
+          series: () => ({ "line.missing": "zero" }),
+        },
+      },
+      { xValues: [10, 30], xDomain: [10, 30], xInterval: 10 },
+      [[[10, 1], [30, 1]]],
+    );
+
+    expect(filledData).toEqual([[10, 1], [20, 0], [30, 1]]);
+  });
 });
