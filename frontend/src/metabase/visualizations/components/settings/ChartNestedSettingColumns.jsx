@@ -37,13 +37,13 @@ export default class ChartNestedSettingColumns extends React.Component {
 class ColumnWidgets extends React.Component {
   componentDidMount() {
     const {
-      setSidebarTitleOverride,
+      setSidebarPropsOverride,
       onChangeEditingObject,
       object,
     } = this.props;
 
-    if (setSidebarTitleOverride) {
-      setSidebarTitleOverride({
+    if (setSidebarPropsOverride) {
+      setSidebarPropsOverride({
         title: displayNameForColumn(object),
         onBack: () => onChangeEditingObject(),
       });
@@ -51,9 +51,9 @@ class ColumnWidgets extends React.Component {
   }
 
   componentWillUnmount() {
-    const { setSidebarTitleOverride } = this.props;
-    if (setSidebarTitleOverride) {
-      setSidebarTitleOverride(undefined);
+    const { setSidebarPropsOverride } = this.props;
+    if (setSidebarPropsOverride) {
+      setSidebarPropsOverride(undefined);
     }
   }
 

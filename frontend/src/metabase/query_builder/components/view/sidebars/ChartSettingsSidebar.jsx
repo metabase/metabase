@@ -6,10 +6,10 @@ import visualizations from "metabase/visualizations";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export default class ChartSettingsSidebar extends React.Component {
-  state = { isSidebarTitleHidden: false };
+  state = { sidebarPropsOverride: undefined };
 
-  setSidebarTitleOverride = sidebarTitleOverride =>
-    this.setState({ sidebarTitleOverride });
+  setSidebarPropsOverride = sidebarPropsOverride =>
+    this.setState({ sidebarPropsOverride });
 
   render() {
     const {
@@ -21,7 +21,7 @@ export default class ChartSettingsSidebar extends React.Component {
       onClose,
       onOpenChartType,
     } = this.props;
-    const { sidebarTitleOverride } = this.state;
+    const { sidebarPropsOverride } = this.state;
     return (
       result && (
         <SidebarContent
@@ -29,7 +29,7 @@ export default class ChartSettingsSidebar extends React.Component {
           title={t`${visualizations.get(question.display()).uiName} options`}
           onDone={onClose}
           onBack={onOpenChartType}
-          titleOverride={sidebarTitleOverride}
+          {...sidebarPropsOverride || {}}
         >
           <ChartSettings
             question={question}
@@ -44,7 +44,7 @@ export default class ChartSettingsSidebar extends React.Component {
             onClose={onClose}
             noPreview
             initial={initialChartSetting}
-            setSidebarTitleOverride={this.setSidebarTitleOverride}
+            setSidebarPropsOverride={this.setSidebarPropsOverride}
           />
         </SidebarContent>
       )

@@ -141,7 +141,7 @@ class ChartSettings extends Component {
       addField,
       noPreview,
       children,
-      setSidebarTitleOverride,
+      setSidebarPropsOverride,
     } = this.props;
     const { currentWidget } = this.state;
 
@@ -214,7 +214,7 @@ class ChartSettings extends Component {
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
-        setSidebarTitleOverride={setSidebarTitleOverride}
+        setSidebarPropsOverride={setSidebarPropsOverride}
       />
     ));
 
