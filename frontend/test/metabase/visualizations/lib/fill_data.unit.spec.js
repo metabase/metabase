@@ -4,8 +4,8 @@ import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 
 describe("fillMissingValuesInDatas", () => {
   it("should fill missing days", () => {
-    const time1 = moment("2018-01-01");
-    const time2 = moment("2018-01-31");
+    const time1 = moment("2018-01-01T00:00:00Z");
+    const time2 = moment("2018-01-31T00:00:00Z");
     const rows = [[time1, 1], [time2, 2]];
     const [filledData] = fillMissingValuesInDatas(
       {
@@ -28,8 +28,8 @@ describe("fillMissingValuesInDatas", () => {
   });
 
   it("should fill missing hours", () => {
-    const time1 = moment("2018-01-01");
-    const time2 = moment("2018-01-05");
+    const time1 = moment("2018-01-01T00:00:00Z");
+    const time2 = moment("2018-01-05T00:00:00Z");
     const rows = [[time1, 1], [time2, 2]];
     const [filledData] = fillMissingValuesInDatas(
       {
