@@ -53,7 +53,7 @@ class ColumnWidgets extends React.Component {
   componentWillUnmount() {
     const { setSidebarPropsOverride } = this.props;
     if (setSidebarPropsOverride) {
-      setSidebarPropsOverride(undefined);
+      setSidebarPropsOverride(null);
     }
   }
 

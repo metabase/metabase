@@ -6,7 +6,7 @@ import visualizations from "metabase/visualizations";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 export default class ChartSettingsSidebar extends React.Component {
-  state = { sidebarPropsOverride: undefined };
+  state = { sidebarPropsOverride: null };
 
   setSidebarPropsOverride = sidebarPropsOverride =>
     this.setState({ sidebarPropsOverride });
@@ -29,7 +29,7 @@ export default class ChartSettingsSidebar extends React.Component {
           title={t`${visualizations.get(question.display()).uiName} options`}
           onDone={onClose}
           onBack={onOpenChartType}
-          {...sidebarPropsOverride || {}}
+          {...sidebarPropsOverride}
         >
           <ChartSettings
             question={question}
