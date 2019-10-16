@@ -78,6 +78,7 @@
       (catch SQLException e
         (parse-date-as-string cal resultset i)))))
 
+;; TODO - what about `TIMESTAMP_WITH_TIMEZONE` ???
 (defmethod read-column [::driver/driver Types/TIMESTAMP]
   [_, ^Calendar cal, ^ResultSet resultset, _, ^Integer i]
   (if-not cal
@@ -113,7 +114,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod read-columns :default [driver, ^Calendar calendar]
+(defmethod read-columns :default
+  [driver, ^Calendar calendar]
   (fn [^ResultSet resultset, ^ResultSetMetaData resultset-metadata, indexes]
     (for [^Integer i, indexes]
       (jdbc/result-set-read-column (read-column driver calendar resultset resultset-metadata i) resultset-metadata i))))
@@ -123,7 +125,8 @@
 ;;; |                                                 Setting Params                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - this should be a multimethod like `read-column`. Perhaps named `set-parameter`
+;; TODO - this should be a multimethod like `read-column`. Perhaps named `set-parameter`. Basically like the existing
+;; one in `clojure.java.jdbc` but for QP only
 (defn- set-parameters-with-timezone
   "Returns a function that will set Date/Timestamp PreparedStatement parameters with the correct timezone"
   [^TimeZone tz]

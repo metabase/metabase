@@ -56,20 +56,29 @@
 (defn- dbspec []
   (sql-jdbc.conn/connection-details->spec :vertica @db-connection-details))
 
+(defn- do-with-retries
+  "Attempt to execute `thunk` up to `num-retries` times. If it throws an Exception, execute `on-fail` and try again if
+  any retries remain."
+  [thunk on-fail num-retries]
+  (if-not (pos? num-retries)
+    (thunk)
+    (try
+      (thunk)
+      (catch Throwable e
+        (on-fail)
+        (do-with-retries thunk on-fail (dec num-retries))))))
+
 (defmethod load-data/load-data! :vertica
   [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  (printf "Attempting to load data for Vertica table %s %s, cross your fingers...\n" database-name table-name)
   ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
-  (letfn [(load-data-with-retries! [retries]
-            (try
-              (load-data/load-data-one-at-a-time-parallel! driver dbdef tabledef)
-              (catch Throwable e
-                (when-not (pos? retries)
-                  (throw e))
-                (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
-                (let [sql (format "TRUNCATE TABLE %s" (sql.tx/qualify-and-quote :vertica database-name table-name))]
-                  (jdbc/execute! (dbspec) sql))
-                (load-data-with-retries! (dec retries)))))]
-    (load-data-with-retries! 5)))
+  (do-with-retries
+   #(load-data/load-data-one-at-a-time! driver dbdef tabledef)
+   (fn []
+     (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
+     (let [sql (format "TRUNCATE TABLE %s" (sql.tx/qualify-and-quote :vertica database-name table-name))]
+       (jdbc/execute! (dbspec) sql)))
+   5))
 
 (defmethod sql.tx/pk-sql-type :vertica [& _] "INTEGER")
 
@@ -84,19 +93,15 @@
   ;; Close all existing sessions connected to our test DB
   (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
   ;; Increase the connection limit; the default is 5 or so which causes tests to fail when too many connections are made
-  (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 10000;" (db-name))))
+  (jdbc/execute! (dbspec) (format "ALTER DATABASE \"%s\" SET MaxClientSessions = 1000;" (db-name))))
 
 (defmethod tx/create-db! :vertica
   [driver dbdef & options]
   ;; try a few times to create the DB. Vertica is very fussy and sometimes you need to try a few times to get it to
   ;; work correctly.
-  (letfn [(create-db-with-retries! [retries]
-            (try
-              (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
-              (catch Throwable e
-                (when-not (pos? retries)
-                  (throw e))
-                (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
-                (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();")
-                (create-db-with-retries! (dec retries)))))]
-    (create-db-with-retries! 5)))
+  (do-with-retries
+   #(apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options)
+   (fn []
+     (println (colorize/red "\n\nVertica failed to create a DB, again. Let's try again...\n\n"))
+     (jdbc/query (dbspec) "SELECT CLOSE_ALL_SESSIONS();"))
+   5))

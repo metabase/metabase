@@ -18,22 +18,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
-(def ^:private default-pacific-results
-  [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]])
-
 (def ^:private timezone-drivers
   (delay (qp.test/non-timeseries-drivers-with-feature :set-timezone)))
-
-(deftest query-parameter-test
-  (datasets/test-drivers @timezone-drivers
-    (data/dataset test-data-with-timezones
-      (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (is (= default-pacific-results
-               (qp.test/rows
-                 (data/run-mbql-query users
-                   {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
-            (str "Query using a report-timezone set to pacific time. Should adjust the query parameter using that "
-                 "report timezone and should return the timestamp in pacific time as well"))))))
 
 (defn- table-identifier [table-key]
   (let [table-name (db/select-one-field :name Table, :id (data/id table-key))]
@@ -55,7 +41,8 @@
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
           (doseq [query [{:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                                       {:select   (mapv (partial field-identifier :users)
+                                                                        [:id :name :last_login])
                                                         :from     [(table-identifier :users)]
                                                         :where    [:between
                                                                    (hx/cast :date (field-identifier :users :last_login))
@@ -71,7 +58,8 @@
                                         :target ["variable" ["template-tag" "date2"]]
                                         :value  "2014-08-02T06:00:00.000000"}]}
                          {:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                                       {:select   (mapv (partial field-identifier :users)
+                                                                        [:id :name :last_login])
                                                         :from     [(table-identifier :users)]
                                                         :where    (hsql/raw "{{ts_range}}")
                                                         :order-by [[(field-identifier :users :id) :asc]]})
@@ -83,7 +71,8 @@
                                         :target ["dimension" ["template-tag" "ts_range"]]
                                         :value  "2014-08-02~2014-08-03"}]}
                          {:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users) [:id :name :last_login])
+                                                       {:select   (mapv (partial field-identifier :users)
+                                                                        [:id :name :last_login])
                                                         :from     [(table-identifier :users)]
                                                         :where    (hsql/raw "{{just_a_date}}")
                                                         :order-by [[(field-identifier :users :id) :asc]]})
@@ -107,13 +96,17 @@
   (datasets/test-drivers @timezone-drivers
     (data/dataset test-data-with-timezones
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (is (= default-pacific-results
-               (qp.test/rows
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+               (qp.test/formatted-rows [int identity identity]
+                 (data/run-mbql-query users
+                   {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
+            (str "If MBQL datetime literal strings do not explicitly specify a timezone, they should be parsed as if "
+                 "in the current reporting timezone (Pacific in this case)"))
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+               (qp.test/formatted-rows [int identity identity]
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
-            ;; TODO - not sure this description below is correct
-            (str "This is the same answer as above but uses timestamp with the timezone included. The report timezone "
-                 "is still pacific though, so it should return as pacific regardless of how the filter was specified"))))))
+            "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))))
 
 (deftest utc-filter-test
   (datasets/test-drivers @timezone-drivers
@@ -128,24 +121,29 @@
             "Checking UTC report timezone filtering and responses")
         (is (= utc-results
                (run-query))
-            (str "With no report timezone, the JVM timezone is used. For our tests this is UTC so this should be the same "
-                 "as specifying UTC for a report timezone"))))))
+            (str "With no report timezone, the JVM timezone is used. For our tests this is UTC so this should be the "
+                 "same as specifying UTC for a report timezone"))))))
 
-(defn- rows-on-july-30 []
-  (qp.test/rows
-    (data/run-mbql-query users
-      {:fields   [$id $last_login]
-       :filter   [:= $last_login "2014-07-03"]
-       :order-by [[:asc $last_login]]})))
-
+;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
   (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :set-timezone)
-    (testing "timezone-aware columns"
-      (data/dataset test-data-with-timezones
-        (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
-                                                        [10 "2014-07-03T19:30:00.000Z"]]
-                                          "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
-          (tu/with-temporary-setting-values [report-timezone timezone]
-            (is (= expected-rows
-                   (rows-on-july-30))
-                (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone))))))))
+    (data/dataset test-data-with-timezones
+      (is (= [[12 "2014-07-03T01:30:00.000Z"]
+              [10 "2014-07-03T19:30:00.000Z"]]
+             (qp.test/formatted-rows [int identity]
+               (data/run-mbql-query users
+                 {:fields   [$id $last_login]
+                  :filter   [:= $id 10 12]
+                  :order-by [[:asc $last_login]]})))
+          "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone")
+      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
+                                                      [10 "2014-07-03T19:30:00.000Z"]]
+                                        "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
+        (tu/with-temporary-setting-values [report-timezone timezone]
+          (is (= expected-rows
+                 (qp.test/formatted-rows [int identity]
+                   (data/run-mbql-query users
+                     {:fields   [$id $last_login]
+                      :filter   [:= $last_login "2014-07-03"]
+                      :order-by [[:asc $last_login]]})))
+              (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))

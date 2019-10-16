@@ -1,31 +1,31 @@
 (ns metabase.test.data.redshift
   (:require [clojure.java.jdbc :as jdbc]
-            [metabase
-             [config :as config]
-             [util :as u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.test.data.sql.ddl :as ddl]))
+            [metabase.test.data.sql.ddl :as ddl]
+            [metabase.util :as u]))
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions
 
 ;; Time, UUID types aren't supported by redshift
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Boolean]    [_ _] "BOOL")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/DateTime]   [_ _] "TIMESTAMP")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Float]      [_ _] "FLOAT8")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Text]       [_ _] "TEXT")
+(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
+                                   :type/Boolean    "BOOL"
+                                   :type/Date       "DATE"
+                                   :type/DateTime   "TIMESTAMP"
+                                   :type/Decimal    "DECIMAL"
+                                   :type/Float      "FLOAT8"
+                                   :type/Integer    "INTEGER"
+                                   :type/Text       "TEXT"}]
+  (defmethod sql.tx/field-base-type->sql-type [:redshift base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with Redshift give them a heads up that Redshift does not support it
-(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Time] [_ _]
+(defmethod sql.tx/field-base-type->sql-type [:redshift :type/Time]
+  [_ _]
   (throw (UnsupportedOperationException. "Redshift does not have a TIME data type.")))
 
 (def ^:private db-connection-details
@@ -35,9 +35,9 @@
           :user     (tx/db-test-env-var-or-throw :redshift :user)
           :password (tx/db-test-env-var-or-throw :redshift :password)}))
 
-(defmethod tx/dbdef->connection-details :redshift [& _]
+(defmethod tx/dbdef->connection-details :redshift
+  [& _]
   @db-connection-details)
-
 
 ;; Redshift is tested remotely, which means we need to support multiple tests happening against the same remote host
 ;; at the same time. Since Redshift doesn't let us create and destroy databases (we must re-use the same database
@@ -52,14 +52,12 @@
 ;; When we test against Redshift we use a session-unique schema so we can run simultaneous tests
 ;; against a single remote host; when running tests tell the sync process to ignore all the other schemas
 (def ^:private excluded-schemas
-  (if-not config/is-test?
-    (constantly nil)
-    (memoize
-     (fn []
-       (set (conj (for [i     (range 240)
-                        :when (not= i session-schema-number)]
-                    (str "schema_" i))
-                  "public"))))))
+  (memoize
+   (fn []
+     (set (conj (for [i     (range 240)
+                      :when (not= i session-schema-number)]
+                  (str "schema_" i))
+                "public")))))
 
 (defmethod sql-jdbc.sync/excluded-schemas :redshift [_]
   (excluded-schemas))
@@ -74,12 +72,13 @@
 
 ;; don't use the Postgres implementation of `drop-db-ddl-statements` because it adds an extra statment to kill all
 ;; open connections to that DB, which doesn't work with Redshift
-(defmethod ddl/drop-db-ddl-statements :redshift [& args]
+(defmethod ddl/drop-db-ddl-statements :redshift
+  [& args]
   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) args))
 
-(defmethod sql.tx/drop-table-if-exists-sql :redshift [& args]
+(defmethod sql.tx/drop-table-if-exists-sql :redshift
+  [& args]
   (apply sql.tx/drop-table-if-exists-cascade-sql args))
-
 
 ;;; Create + destroy the schema used for this test session
 
@@ -90,8 +89,10 @@
     (jdbc/execute! spec sql))
   (println (u/format-color 'blue "[ok]")))
 
-(defmethod tx/before-run :redshift [_]
+(defmethod tx/before-run :redshift
+  [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
 
-(defmethod tx/after-run :redshift [_]
+(defmethod tx/after-run :redshift
+  [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE;" session-schema-name))
