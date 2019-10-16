@@ -1,4 +1,5 @@
 import "__support__/mocks"; // included explicitly whereas with integrated tests it comes with __support__/integrated_tests
+import testAcrossTimezones from "__support__/timezones";
 
 import _ from "underscore";
 import moment from "moment-timezone";
@@ -73,120 +74,109 @@ describe("LineAreaBarRenderer-bar", () => {
     return closest && minDelta <= MAX_DELTA ? closest.textContent : null;
   };
 
-  // run_timezone_tests sets "TZ" environment variable to change the timezone
-  const clientTz = process.env["TZ"] || "[default]";
-  // run_timezone_tests also sets "METABASE_TEST_TIMEZONES" to list of timezones
-  const reportTzs = (process.env["METABASE_TEST_TIMEZONES"] || "Etc/UTC").split(
-    " ",
-  );
+  testAcrossTimezones(reportTz => {
+    const rows = generateRowsInTz(reportTz);
 
-  describe(`client timezone ${clientTz}`, () => {
-    reportTzs.map(reportTz => {
-      describe(`report timezone ${reportTz}`, () => {
-        const rows = generateRowsInTz(reportTz);
+    sharedMonthTests(rows.slice(0, 2), "months in standard time");
+    sharedMonthTests(rows.slice(6, 8), "months in daylights saving time");
+    sharedMonthTests(
+      rows.slice(2, 4),
+      "months starting in standard time, ending in daylights saving time",
+    );
+    sharedMonthTests(
+      rows.slice(10, 12),
+      "months starting in daylights saving time, ending in standard time",
+    );
+    sharedMonthTests(rows, "all months");
 
-        sharedMonthTests(rows.slice(0, 2), "months in standard time");
-        sharedMonthTests(rows.slice(6, 8), "months in daylights saving time");
-        sharedMonthTests(
-          rows.slice(2, 4),
-          "months starting in standard time, ending in daylights saving time",
-        );
-        sharedMonthTests(
-          rows.slice(10, 12),
-          "months starting in daylights saving time, ending in standard time",
-        );
-        sharedMonthTests(rows, "all months");
+    sharedIntervalTests("hour", "MMMM D, YYYY, h:mm A");
+    sharedIntervalTests("day", "MMMM D, YYYY");
+    // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
+    sharedIntervalTests("month", "MMMM, YYYY");
+    sharedIntervalTests("quarter", "[Q]Q - YYYY");
+    sharedIntervalTests("year", "YYYY");
 
-        sharedIntervalTests("hour", "MMMM D, YYYY, h:mm A");
-        sharedIntervalTests("day", "MMMM D, YYYY");
-        // sharedIntervalTests("week", "wo - gggg"); // weeks have differing formats for ticks and tooltips, disable this test for now
-        sharedIntervalTests("month", "MMMM, YYYY");
-        sharedIntervalTests("quarter", "[Q]Q - YYYY");
-        sharedIntervalTests("year", "YYYY");
-
-        function sharedMonthTests(rows, description) {
-          describe(`with ${description}`, () => {
-            beforeAll(() => {
-              setupFixture();
-              onHoverChange = jest.fn();
-              renderTimeseries(element, "month", reportTz, rows, {
-                onHoverChange,
-              });
-              // hover each bar to trigger onHoverChange
-              activateTooltips();
-            });
-            afterAll(teardownFixture);
-
-            it("should have sequential months in labels", () => {
-              // check that the labels are sequential months
-              assertSequentialMonths(getXAxisLabelsText());
-            });
-            it("should have sequential months in tooltips", () => {
-              // check that the resulting tooltips are sequential
-              assertSequentialMonths(getTooltipDimensionValueText());
-              // check that the number of tooltips matches the number of rows
-              expect(getTooltipDimensionValueText().length).toBe(rows.length);
-            });
-            it("should have tooltips that match source data", () => {
-              expect(getTooltipDimensionValueText()).toEqual(
-                rows.map(([timestamp]) =>
-                  moment.tz(timestamp, reportTz).format("MMMM, YYYY"),
-                ),
-              );
-            });
-            it("should have labels that match tooltips", () => {
-              expect(qsa(".bar").map(getClosestLabelText)).toEqual(
-                getTooltipDimensionValueText(),
-              );
-            });
+    function sharedMonthTests(rows, description) {
+      describe(`with ${description}`, () => {
+        beforeAll(() => {
+          setupFixture();
+          onHoverChange = jest.fn();
+          renderTimeseries(element, "month", reportTz, rows, {
+            onHoverChange,
           });
-        }
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+        });
+        afterAll(teardownFixture);
 
-        function sharedIntervalTests(interval, expectedFormat) {
-          describe(`with ${interval}s`, () => {
-            const rows = [
-              [
-                moment()
-                  .tz(reportTz)
-                  .startOf(interval)
-                  .toISOString(),
-                1,
-              ],
-              [
-                moment()
-                  .tz(reportTz)
-                  .startOf(interval)
-                  .add(1, interval)
-                  .toISOString(),
-                1,
-              ],
-            ];
-            beforeAll(() => {
-              setupFixture();
-              onHoverChange = jest.fn();
-              renderTimeseries(element, interval, reportTz, rows, {
-                onHoverChange,
-              });
-              // hover each bar to trigger onHoverChange
-              activateTooltips();
-            });
-            afterAll(teardownFixture);
-            it("should have tooltips that match source data", () => {
-              expect(getTooltipDimensionValueText()).toEqual(
-                rows.map(([timestamp]) =>
-                  moment.tz(timestamp, reportTz).format(expectedFormat),
-                ),
-              );
-            });
-            it("should have labels that match tooltips", () => {
-              expect(qsa(".bar").map(getClosestLabelText)).toEqual(
-                getTooltipDimensionValueText(),
-              );
-            });
-          });
-        }
+        it("should have sequential months in labels", () => {
+          // check that the labels are sequential months
+          assertSequentialMonths(getXAxisLabelsText());
+        });
+        it("should have sequential months in tooltips", () => {
+          // check that the resulting tooltips are sequential
+          assertSequentialMonths(getTooltipDimensionValueText());
+          // check that the number of tooltips matches the number of rows
+          expect(getTooltipDimensionValueText().length).toBe(rows.length);
+        });
+        it("should have tooltips that match source data", () => {
+          expect(getTooltipDimensionValueText()).toEqual(
+            rows.map(([timestamp]) =>
+              moment.tz(timestamp, reportTz).format("MMMM, YYYY"),
+            ),
+          );
+        });
+        it("should have labels that match tooltips", () => {
+          expect(qsa(".bar").map(getClosestLabelText)).toEqual(
+            getTooltipDimensionValueText(),
+          );
+        });
       });
-    });
+    }
+
+    function sharedIntervalTests(interval, expectedFormat) {
+      describe(`with ${interval}s`, () => {
+        const rows = [
+          [
+            moment()
+              .tz(reportTz)
+              .startOf(interval)
+              .toISOString(),
+            1,
+          ],
+          [
+            moment()
+              .tz(reportTz)
+              .startOf(interval)
+              .add(1, interval)
+              .toISOString(),
+            1,
+          ],
+        ];
+        beforeAll(() => {
+          setupFixture();
+          onHoverChange = jest.fn();
+          renderTimeseries(element, interval, reportTz, rows, {
+            onHoverChange,
+          });
+          // hover each bar to trigger onHoverChange
+          activateTooltips();
+        });
+        afterAll(teardownFixture);
+        it("should have tooltips that match source data", () => {
+          expect(getTooltipDimensionValueText()).toEqual(
+            rows.map(([timestamp]) =>
+              moment.tz(timestamp, reportTz).format(expectedFormat),
+            ),
+          );
+        });
+        it("should have labels that match tooltips", () => {
+          expect(qsa(".bar").map(getClosestLabelText)).toEqual(
+            getTooltipDimensionValueText(),
+          );
+        });
+      });
+    }
   });
 });
 
