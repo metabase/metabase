@@ -247,12 +247,16 @@
   "Impl for `data/dataset` macro."
   {:style/indent 1}
   [dataset-definition f]
-  (let [dbdef (tx/get-dataset-definition dataset-definition)]
-    (binding [db/*disable-db-logging* true]
-      (let [db (get-or-create-database! (tx/driver) dbdef)]
-        (assert db)
-        (assert (db/exists? Database :id (u/get-id db)))
-        (do-with-db db f)))))
+  (let [dbdef             (tx/get-dataset-definition dataset-definition)
+        get-db-for-driver (memoize
+                           (fn [driver]
+                             (binding [db/*disable-db-logging* true]
+                               (let [db (get-or-create-database! driver dbdef)]
+                                 (assert db)
+                                 (assert (db/exists? Database :id (u/get-id db)))
+                                 db))))]
+    (binding [*get-db* #(get-db-for-driver (tx/driver))]
+      (f))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

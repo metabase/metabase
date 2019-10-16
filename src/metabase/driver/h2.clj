@@ -29,7 +29,8 @@
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
 
-(defmethod driver/connection-properties :h2 [_]
+(defmethod driver/connection-properties :h2
+  [_]
   [{:name         "db"
     :display-name (tru "Connection String")
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))

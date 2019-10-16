@@ -18,19 +18,20 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
-(def ^:private set-timezone-drivers
+(defn- set-timezone-drivers
   "Drivers that support setting a Session timezone."
-  (delay (qp.test/non-timeseries-drivers-with-feature :set-timezone)))
+  []
+  (qp.test/non-timeseries-drivers-with-feature :set-timezone))
 
-(def ^:private timezone-aware-column-drivers
+(defn- timezone-aware-column-drivers
   "Drivers that have support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
-  ;; TODO - we should add other stuff like BigQuery here
-  (delay (conj @set-timezone-drivers :h2)))
+  []
+  (conj (set-timezone-drivers) :h2 :bigquery))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
   (data/dataset test-data-with-timezones
-    (datasets/test-drivers @timezone-aware-column-drivers
+    (datasets/test-drivers (timezone-aware-column-drivers)
       (is (= [[12 "2014-07-03T01:30:00.000Z"]
               [10 "2014-07-03T19:30:00.000Z"]]
              (qp.test/formatted-rows [int identity]
@@ -39,7 +40,7 @@
                   :filter   [:= $id 10 12]
                   :order-by [[:asc $last_login]]})))
           "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
-    (datasets/test-drivers @set-timezone-drivers
+    (datasets/test-drivers (set-timezone-drivers)
       (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
                                                       [10 "2014-07-03T19:30:00.000Z"]]
                                         "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
@@ -54,7 +55,7 @@
 
 (deftest filter-test
   (data/dataset test-data-with-timezones
-    (datasets/test-drivers @set-timezone-drivers
+    (datasets/test-drivers (set-timezone-drivers)
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
                (qp.test/formatted-rows [int identity identity]
@@ -67,18 +68,19 @@
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
             "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))
+
     (testing "UTC timezone"
       (let [run-query   (fn []
                           (qp.test/formatted-rows [int identity identity]
                             (data/run-mbql-query users
                               {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
             utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]]]
-        (datasets/test-drivers @set-timezone-drivers
+        (datasets/test-drivers (set-timezone-drivers)
           (is (= utc-results
                  (tu/with-temporary-setting-values [report-timezone "UTC"]
                    (run-query)))
               "Checking UTC report timezone filtering and responses"))
-        (datasets/test-drivers @timezone-aware-column-drivers
+        (datasets/test-drivers (timezone-aware-column-drivers)
           (is (= utc-results
                  (run-query))
               (str "With no report timezone, the JVM timezone is used. For our tests this is UTC so this should be the "
@@ -99,7 +101,7 @@
 (deftest native-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
-  (datasets/test-drivers @set-timezone-drivers
+  (datasets/test-drivers (set-timezone-drivers)
     (data/dataset test-data-with-timezones
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
