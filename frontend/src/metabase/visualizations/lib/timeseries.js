@@ -21,7 +21,7 @@ const TIMESERIES_UNITS = new Set([
 // investigate the response from a dataset query and determine if the dimension is a timeseries
 export function dimensionIsTimeseries({ cols, rows }, i = 0) {
   return (
-    dimensionIsExplicitTimeseries({ cols, rows, i }) ||
+    dimensionIsExplicitTimeseries({ cols, rows }, i) ||
     moment(rows[0] && rows[0][i], moment.ISO_8601).isValid()
   );
 }
