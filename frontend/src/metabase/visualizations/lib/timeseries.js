@@ -32,141 +32,31 @@ export function dimensionIsTimeseries({ cols, rows }, i = 0) {
 // Use UTC methods to avoid issues with daylight savings
 // NOTE: smaller modulos within an interval type must be multiples of larger ones (e.x. can't do both 2 days and 7 days i.e. week)
 //
-// Count and time interval for axis.ticks() (see https://github.com/d3/d3-3.x-api-reference/blob/master/SVG-Axes.md#ticks)
-// is specified by rangeFn and count, e.g.
+// Count and time interval for axis.ticks()
 //
-// xAxis.ticks(interval.rangeFn, interval.count) -> xAxis.ticks(d3.time.minutes, 15) // every 15 minutes
-//
-// TODO - I'm not sure what the appropriate thing to put for rangeFn for milliseconds is. This matches the previous
-// behavior, which may have been wrong in the first place. See https://github.com/d3/d3/issues/1529 for a similar issue
 const TIMESERIES_INTERVALS = [
-  { interval: "ms", count: 1, rangeFn: undefined, testFn: d => 0 }, //  (0) millisecond
-  {
-    interval: "second",
-    count: 1,
-    rangeFn: d3.time.seconds,
-    testFn: d => parseTimestamp(d).milliseconds(),
-  }, //  (1) 1 second
-  {
-    interval: "second",
-    count: 5,
-    rangeFn: d3.time.seconds,
-    testFn: d => parseTimestamp(d).seconds() % 5,
-  }, //  (2) 5 seconds
-  {
-    interval: "second",
-    count: 15,
-    rangeFn: d3.time.seconds,
-    testFn: d => parseTimestamp(d).seconds() % 15,
-  }, //  (3) 15 seconds
-  {
-    interval: "second",
-    count: 30,
-    rangeFn: d3.time.seconds,
-    testFn: d => parseTimestamp(d).seconds() % 30,
-  }, //  (4) 30 seconds
-  {
-    interval: "minute",
-    count: 1,
-    rangeFn: d3.time.minutes,
-    testFn: d => parseTimestamp(d).seconds(),
-  }, //  (5) 1 minute
-  {
-    interval: "minute",
-    count: 5,
-    rangeFn: d3.time.minutes,
-    testFn: d => parseTimestamp(d).minutes() % 5,
-  }, //  (6) 5 minutes
-  {
-    interval: "minute",
-    count: 15,
-    rangeFn: d3.time.minutes,
-    testFn: d => parseTimestamp(d).minutes() % 15,
-  }, //  (7) 15 minutes
-  {
-    interval: "minute",
-    count: 30,
-    rangeFn: d3.time.minutes,
-    testFn: d => parseTimestamp(d).minutes() % 30,
-  }, //  (8) 30 minutes
-  {
-    interval: "hour",
-    count: 1,
-    rangeFn: d3.time.hours,
-    testFn: d => parseTimestamp(d).minutes(),
-  }, //  (9) 1 hour
-  {
-    interval: "hour",
-    count: 3,
-    rangeFn: d3.time.hours,
-    testFn: d => parseTimestamp(d).hours() % 3,
-  }, // (10) 3 hours
-  {
-    interval: "hour",
-    count: 6,
-    rangeFn: d3.time.hours,
-    testFn: d => parseTimestamp(d).hours() % 6,
-  }, // (11) 6 hours
-  {
-    interval: "hour",
-    count: 12,
-    rangeFn: d3.time.hours,
-    testFn: d => parseTimestamp(d).hours() % 12,
-  }, // (12) 12 hours
-  {
-    interval: "day",
-    count: 1,
-    rangeFn: d3.time.days,
-    testFn: d => parseTimestamp(d).hours(),
-  }, // (13) 1 day
-  {
-    interval: "week",
-    count: 1,
-    rangeFn: d3.time.weeks,
-    testFn: d => parseTimestamp(d).date() % 7,
-  }, // (14) 7 days / 1 week
-  {
-    interval: "month",
-    count: 1,
-    rangeFn: d3.time.months,
-    testFn: d => parseTimestamp(d).date(),
-  }, // (15) 1 months
-  {
-    interval: "month",
-    count: 3,
-    rangeFn: d3.time.months,
-    testFn: d => parseTimestamp(d).month() % 3,
-  }, // (16) 3 months / 1 quarter
-  {
-    interval: "year",
-    count: 1,
-    rangeFn: d3.time.years,
-    testFn: d => parseTimestamp(d).month(),
-  }, // (17) 1 year
-  {
-    interval: "year",
-    count: 5,
-    rangeFn: d3.time.years,
-    testFn: d => parseTimestamp(d).year() % 5,
-  }, // (18) 5 year
-  {
-    interval: "year",
-    count: 10,
-    rangeFn: d3.time.years,
-    testFn: d => parseTimestamp(d).year() % 10,
-  }, // (19) 10 year
-  {
-    interval: "year",
-    count: 50,
-    rangeFn: d3.time.years,
-    testFn: d => parseTimestamp(d).year() % 50,
-  }, // (20) 50 year
-  {
-    interval: "year",
-    count: 100,
-    rangeFn: d3.time.years,
-    testFn: d => parseTimestamp(d).year() % 100,
-  }, // (21) 100 year
+  { interval: "ms", count: 1, testFn: d => 0 }, //  (0) millisecond
+  { interval: "second", count: 1, testFn: d => d.milliseconds() }, //  (1) 1 second
+  { interval: "second", count: 5, testFn: d => d.seconds() % 5 }, //  (2) 5 seconds
+  { interval: "second", count: 15, testFn: d => d.seconds() % 15 }, //  (3) 15 seconds
+  { interval: "second", count: 30, testFn: d => d.seconds() % 30 }, //  (4) 30 seconds
+  { interval: "minute", count: 1, testFn: d => d.seconds() }, //  (5) 1 minute
+  { interval: "minute", count: 5, testFn: d => d.minutes() % 5 }, //  (6) 5 minutes
+  { interval: "minute", count: 15, testFn: d => d.minutes() % 15 }, //  (7) 15 minutes
+  { interval: "minute", count: 30, testFn: d => d.minutes() % 30 }, //  (8) 30 minutes
+  { interval: "hour", count: 1, testFn: d => d.minutes() }, //  (9) 1 hour
+  { interval: "hour", count: 3, testFn: d => d.hours() % 3 }, // (10) 3 hours
+  { interval: "hour", count: 6, testFn: d => d.hours() % 6 }, // (11) 6 hours
+  { interval: "hour", count: 12, testFn: d => d.hours() % 12 }, // (12) 12 hours
+  { interval: "day", count: 1, testFn: d => d.hours() }, // (13) 1 day
+  { interval: "week", count: 1, testFn: d => d.date() % 7 }, // (14) 7 days / 1 week
+  { interval: "month", count: 1, testFn: d => d.date() }, // (15) 1 months
+  { interval: "month", count: 3, testFn: d => d.month() % 3 }, // (16) 3 months / 1 quarter
+  { interval: "year", count: 1, testFn: d => d.month() }, // (17) 1 year
+  { interval: "year", count: 5, testFn: d => d.year() % 5 }, // (18) 5 year
+  { interval: "year", count: 10, testFn: d => d.year() % 10 }, // (19) 10 year
+  { interval: "year", count: 50, testFn: d => d.year() % 50 }, // (20) 50 year
+  { interval: "year", count: 100, testFn: d => d.year() % 100 }, // (21) 100 year
 ];
 
 // mapping from Metabase "unit" to d3 intervals above
@@ -208,7 +98,7 @@ function computeTimeseriesDataInvervalIndex(xValues, unit) {
     // Only need to check more granular than the current interval
     for (let i = 0; i < TIMESERIES_INTERVALS.length && i < index; i++) {
       const interval = TIMESERIES_INTERVALS[i];
-      const value = interval.testFn(xValue);
+      const value = interval.testFn(parseTimestamp(xValue));
       if (values[i] === undefined) {
         values[i] = value;
       } else if (values[i] !== value) {

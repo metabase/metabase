@@ -152,9 +152,6 @@ export function applyChartTimeseriesXAxis(
       tickInterval,
       chart.width(),
     );
-    chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
-  } else {
-    chart.xAxis().ticks(0);
   }
 
   // pad the domain slightly to prevent clipping
