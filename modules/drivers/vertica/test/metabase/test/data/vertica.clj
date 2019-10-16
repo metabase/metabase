@@ -70,7 +70,6 @@
 
 (defmethod load-data/load-data! :vertica
   [driver {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
-  (printf "Attempting to load data for Vertica table %s %s, cross your fingers...\n" database-name table-name)
   ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
   (do-with-retries
    #(load-data/load-data-one-at-a-time-add-ids! driver dbdef tabledef)

@@ -4,8 +4,8 @@
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.test.initialize :as initialize]
-            [metabase.test.data.sql-jdbc.load-data :as load-data]))
+            [metabase.test.data.sql-jdbc.load-data :as load-data]
+            [metabase.test.initialize :as initialize]))
 
 (driver/register! :sql-jdbc/test-extensions, :abstract? true)
 
