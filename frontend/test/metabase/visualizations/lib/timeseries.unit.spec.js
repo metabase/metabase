@@ -186,6 +186,58 @@ describe("visualization.lib.timeseries", () => {
       ]);
     });
 
+    it("should create hour ranges in pacific time across spring dst boundary", () => {
+      const scale = timeseriesScale(
+        { interval: "hour", count: 1 },
+        "US/Pacific",
+      ).domain([
+        moment("2019-03-10T00:00:00.000-08"),
+        moment("2019-03-10T04:00:00.000-07"),
+      ]);
+
+      expect(scale.ticks().map(t => t.format())).toEqual([
+        "2019-03-10T00:00:00-08:00",
+        "2019-03-10T01:00:00-08:00",
+        "2019-03-10T03:00:00-07:00",
+        "2019-03-10T04:00:00-07:00",
+      ]);
+    });
+
+    it("should create hour ranges in pacific time across fall dst boundary", () => {
+      const scale = timeseriesScale(
+        { interval: "hour", count: 1 },
+        "US/Pacific",
+      ).domain([
+        moment("2019-11-03T00:00:00.000-07"),
+        moment("2019-11-03T04:00:00.000-08"),
+      ]);
+
+      expect(scale.ticks().map(t => t.format())).toEqual([
+        "2019-11-03T00:00:00-07:00",
+        "2019-11-03T01:00:00-07:00",
+        "2019-11-03T01:00:00-08:00",
+        "2019-11-03T02:00:00-08:00",
+        "2019-11-03T03:00:00-08:00",
+        "2019-11-03T04:00:00-08:00",
+      ]);
+    });
+
+    it("should create day ranges that don't align with UTC hours", () => {
+      const scale = timeseriesScale(
+        { interval: "day", count: 1 },
+        "Asia/Kathmandu",
+      ).domain([
+        moment("2019-01-01T18:15:00.000Z"),
+        moment("2019-01-03T18:15:00.000Z"),
+      ]);
+
+      expect(scale.ticks().map(t => t.toISOString())).toEqual([
+        "2019-01-01T18:15:00.000Z",
+        "2019-01-02T18:15:00.000Z",
+        "2019-01-03T18:15:00.000Z",
+      ]);
+    });
+
     it("should create day ranges when the domain doesn't line up with unit boundaries", () => {
       const scale = timeseriesScale(
         { interval: "day", count: 1 },
