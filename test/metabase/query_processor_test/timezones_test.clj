@@ -63,9 +63,10 @@
 
 (deftest utc-filter-test
   (datasets/test-drivers @timezone-drivers
-    (let [run-query   (fn [] (qp.test/rows
-                               (data/run-mbql-query users
-                                 {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
+    (let [run-query   (fn []
+                        (qp.test/formatted-rows [int identity identity]
+                          (data/run-mbql-query users
+                            {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
           utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]]]
       (data/dataset test-data-with-timezones
         (is (= utc-results
