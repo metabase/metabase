@@ -73,7 +73,7 @@
   (printf "Attempting to load data for Vertica table %s %s, cross your fingers...\n" database-name table-name)
   ;; try a few times to load the data, Vertica is very fussy and it doesn't always work the first time
   (do-with-retries
-   #(load-data/load-data-one-at-a-time! driver dbdef tabledef)
+   #(load-data/load-data-one-at-a-time-add-ids! driver dbdef tabledef)
    (fn []
      (println (colorize/red "\n\nVertica failed to load data, let's try again...\n\n"))
      (let [sql (format "TRUNCATE TABLE %s" (sql.tx/qualify-and-quote :vertica database-name table-name))]

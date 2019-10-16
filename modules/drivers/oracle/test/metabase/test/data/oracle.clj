@@ -1,8 +1,7 @@
 (ns metabase.test.data.oracle
   (:require [clojure
              [set :as set]
-             [string :as str]
-             [test :refer :all]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql.format :as hformat]
             [metabase.driver.sql-jdbc
@@ -119,17 +118,6 @@
             ((get-method ddl/insert-rows-honeysql-form :sql/test-extensions) driver table-identifier row))
            #"INSERT INTO"
            "INTO")))))))
-
-(deftest insert-rows-ddl-test
-  (is (= [[(str "INSERT ALL"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
-                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
-                "SELECT * FROM dual")
-           "A"
-           "B"]]
-         (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
-                                                                                            {:col1 "B", :col2 2}]))
-      "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
 
 (defn- dbspec [& _]
   (sql-jdbc.conn/connection-details->spec :oracle @connection-details))

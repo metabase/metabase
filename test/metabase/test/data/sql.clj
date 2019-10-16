@@ -188,14 +188,15 @@
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             (str/join
-             " ,"
+             ", "
              (for [{:keys [field-name base-type field-comment]} field-definitions]
-               (format "%s %s %s"
-                       (quot field-name)
-                       (if (map? base-type)
-                         (:native base-type)
-                         (field-base-type->sql-type driver base-type))
-                       (or (inline-column-comment-sql driver field-comment) ""))))
+               (str (format "%s %s"
+                            (quot field-name)
+                            (if (map? base-type)
+                              (:native base-type)
+                              (field-base-type->sql-type driver base-type)))
+                    (when-let [comment (inline-column-comment-sql driver field-comment)]
+                      (str " " comment)))))
             pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
