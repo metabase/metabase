@@ -1,15 +1,15 @@
 import testAcrossTimezones from "__support__/timezones";
 
-import moment from "moment";
+import moment from "moment-timezone";
 
 import fillMissingValuesInDatas from "metabase/visualizations/lib/fill_data";
 
 testAcrossTimezones(reportTz => {
   describe("fillMissingValuesInDatas", () => {
     it("should fill zeros for timeseries across DST boundary", () => {
-      const time1 = moment("2019-03-01T00:00:00").tz(reportTz, true);
-      const time2 = moment("2019-03-30T00:00:00").tz(reportTz, true);
-      const time3 = moment("2019-03-31T00:00:00").tz(reportTz, true);
+      const time1 = moment.tz("2019-03-01T00:00:00", reportTz);
+      const time2 = moment.tz("2019-03-30T00:00:00", reportTz);
+      const time3 = moment.tz("2019-03-31T00:00:00", reportTz);
       const rows = [[time1, 1], [time2, 2], [time3, 3]];
       const [filledData] = fillMissingValuesInDatas(
         {
