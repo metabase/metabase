@@ -66,7 +66,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod read-column :default
-  [_ _, ^ResultSet resultset, _, ^Integer i]
+  [driver _, ^ResultSet resultset, resultset-metadata, ^Integer i]
   (.getObject resultset i))
 
 (defmethod read-column [::driver/driver Types/DATE]
