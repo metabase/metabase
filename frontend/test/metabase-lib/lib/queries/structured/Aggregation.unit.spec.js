@@ -11,9 +11,7 @@ function aggregationForMBQL(mbql) {
 describe("Aggregation", () => {
   describe("displayName", () => {
     it("should format basic aggregation", () => {
-      expect(aggregationForMBQL(["count"]).displayName()).toEqual(
-        "Count of rows",
-      );
+      expect(aggregationForMBQL(["count"]).displayName()).toEqual("Count");
     });
     it("should format custom aggregation", () => {
       expect(

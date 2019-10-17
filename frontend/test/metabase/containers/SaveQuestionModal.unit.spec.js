@@ -39,7 +39,7 @@ describe("SaveQuestionModal", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
+      .aggregate(["count"])
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
@@ -54,14 +54,14 @@ describe("SaveQuestionModal", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
+      .aggregate(["count"])
       .question();
     // "Save" the question
     originalQuestion.card.id = 5;
 
     const dirtyQuestion = originalQuestion
       .query()
-      .addBreakout(["field-id", ORDERS.TOTAL.id])
+      .breakout(["field-id", ORDERS.TOTAL.id])
       .question();
 
     // Use the count aggregation as an example case (this is equally valid for filters and groupings)
@@ -79,7 +79,7 @@ describe("SaveQuestionModal", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
+      .aggregate(["count"])
       .question();
 
     // set the collection_id of the original question
@@ -90,7 +90,7 @@ describe("SaveQuestionModal", () => {
 
     const dirtyQuestion = originalQuestion
       .query()
-      .addBreakout(["field-id", ORDERS.TOTAL.id])
+      .breakout(["field-id", ORDERS.TOTAL.id])
       .question();
 
     const component = shallow(

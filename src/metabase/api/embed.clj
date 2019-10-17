@@ -67,8 +67,8 @@
 
 (defn- validate-param-sets
   "Validate that sets of params passed as part of the JWT token and by the user (as query params, i.e. as part of the
-  URL) are valid for the OBJECT-EMBEDDING-PARAMS. TOKEN-PARAMS and USER-PARAMS should be sets of all valid param keys
-  specified in the JWT or by the user, respectively."
+  URL) are valid for the `object-embedding-params`. `token-params` and `user-params` should be sets of all valid param
+  keys specified in the JWT or by the user, respectively."
   [object-embedding-params token-params user-params]
   ;; TODO - maybe make this log/debug once embedding is wrapped up
   (log/debug "Validating params for embedded object:\n"
@@ -108,7 +108,7 @@
     param))
 
 (s/defn ^:private remove-locked-and-disabled-params
-  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the `embedding-params`
+  "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
@@ -144,7 +144,7 @@
      :default (:default tag)}))
 
 (defn- add-implicit-card-parameters
-  "Add template tag parameter information to CARD's `:parameters`."
+  "Add template tag parameter information to `card`'s `:parameters`."
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
@@ -197,8 +197,8 @@
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in TOKEN.
-   Additional CONSTRAINTS can be passed to the `public-card` function that fetches the Card."
+  "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
+  `public-card` function that fetches the Card."
   {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
   (let [card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
@@ -330,7 +330,6 @@
   (let [unsigned (eu/unsign token)]
     (check-embedding-enabled-for-dashboard (eu/get-in-unsigned-token-or-throw unsigned [:resource :dashboard]))
     (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
-
 
 
 (defn- card-for-signed-token-async

@@ -24,7 +24,7 @@ export default class Breakout extends MBQLClause {
    * Adds itself to the parent query and returns the new StructuredQuery
    */
   add(): StructuredQuery {
-    return this._query.addBreakout(this);
+    return this._query.breakout(this);
   }
 
   /**
