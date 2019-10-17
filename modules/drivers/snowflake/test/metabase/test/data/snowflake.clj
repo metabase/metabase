@@ -19,15 +19,17 @@
 
 (defmethod tx/sorts-nil-first? :snowflake [_] false)
 
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Boolean]    [_ _] "BOOLEAN")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/DateTime]   [_ _] "TIMESTAMPLTZ")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Float]      [_ _] "FLOAT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Text]       [_ _] "TEXT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Time]       [_ _] "TIME")
+(doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
+                              :type/Boolean        "BOOLEAN"
+                              :type/Date           "DATE"
+                              :type/DateTime       "TIMESTAMP_LTZ"
+                              :type/DateTimeWithTZ "TIMESTAMP_TZ"
+                              :type/Decimal        "DECIMAL"
+                              :type/Float          "FLOAT"
+                              :type/Integer        "INTEGER"
+                              :type/Text           "TEXT"
+                              :type/Time           "TIME"}]
+  (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
 (defmethod tx/dbdef->connection-details :snowflake [_ context {:keys [database-name]}]
   (merge

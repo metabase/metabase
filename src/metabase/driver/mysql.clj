@@ -282,7 +282,8 @@
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
-(defmethod sql-jdbc.conn/connection-details->spec :mysql [_ {ssl? :ssl, :keys [additional-options], :as details}]
+(defmethod sql-jdbc.conn/connection-details->spec :mysql
+  [_ {ssl? :ssl, :keys [additional-options], :as details}]
   ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
   ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
   ;;
@@ -302,11 +303,13 @@
            (sql-jdbc.common/handle-additional-options details))))))
 
 
-(defmethod sql-jdbc.sync/active-tables :mysql [& args]
+(defmethod sql-jdbc.sync/active-tables :mysql
+  [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 
-(defmethod sql-jdbc.sync/excluded-schemas :mysql [_]
+(defmethod sql-jdbc.sync/excluded-schemas :mysql
+  [_]
   #{"INFORMATION_SCHEMA"})
 
 (defmethod sql.qp/quote-style :mysql [_] :mysql)
@@ -317,12 +320,14 @@
 ;;
 ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
 ;;
-(defmethod sql-jdbc.execute/set-timezone-sql :mysql [_]
+(defmethod sql-jdbc.execute/set-timezone-sql :mysql
+  [_]
   "SET @@session.time_zone = %s;")
 
 ;; MariaDB refuses to respect timezones when returning timestamps so we'll just ask it to return them as strings
 ;; instead which at least are always in UTC which means we can handle timezones ourselves
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIME] [_ _, ^ResultSet resultset, _, ^Integer i]
+(defmethod sql-jdbc.execute/read-column [:mysql Types/TIME]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
   (when-let [time-str (.getString resultset i)]
     ;; time str comes back like append 'Z' so we always parse as UTC
     (Time. (.getTime (tcoerce/to-sql-time (str time-str "Z"))))))
@@ -334,8 +339,10 @@
     (some-> (.getString resultset i) (du/->Timestamp (.getTimeZone calendar)))
     (.getObject resultset i)))
 
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP] [_ calendar resultset _ i]
+(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
+  [_ calendar resultset _ i]
   (get-string-datetime calendar resultset i))
 
-(defmethod sql-jdbc.execute/read-column [:mysql Types/DATE] [_ calendar resultset _ i]
+(defmethod sql-jdbc.execute/read-column [:mysql Types/DATE]
+  [_ calendar resultset _ i]
   (get-string-datetime calendar resultset i))

@@ -13,6 +13,7 @@
   TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
   that?"
   (:require [clojure.test :as t]
+            [colorize.core :as colorize]
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
@@ -50,7 +51,7 @@
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing ~driver
+     (t/testing (colorize/cyan ~driver)
        ~@body)))
 
 (defmacro test-drivers
