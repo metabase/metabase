@@ -8,6 +8,7 @@
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -15,7 +16,7 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]])
-  (:import java.sql.Time
+  (:import [java.sql ResultSet Time]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
@@ -256,3 +257,8 @@
   (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
 
 (prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])
+
+;; instead of default `microsoft.sql.DateTimeOffset`
+(defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
+  (.getTimestamp resultset i))

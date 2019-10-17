@@ -13,11 +13,11 @@
   TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
   that?"
   (:require [clojure.test :as t]
+            [colorize.core :as colorize]
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
-             [interface :as tx]]
-            [colorize.core :as colorize]))
+             [interface :as tx]]))
 
 (defn do-when-testing-driver
   "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`

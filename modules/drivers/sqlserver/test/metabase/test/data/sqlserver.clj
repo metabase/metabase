@@ -9,17 +9,18 @@
 
 (sql-jdbc.tx/add-test-extensions! :sqlserver)
 
-(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
-                                   :type/Boolean    "BIT"
-                                   :type/Date       "DATE"
-                                   :type/DateTime   "DATETIME"
-                                   :type/Decimal    "DECIMAL"
-                                   :type/Float      "FLOAT"
-                                   :type/Integer    "INTEGER"
+(doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
+                                   :type/Boolean        "BIT"
+                                   :type/Date           "DATE"
+                                   :type/DateTime       "DATETIME"
+                                   :type/DateTimeWithTZ "DATETIMEOFFSET"
+                                   :type/Decimal        "DECIMAL"
+                                   :type/Float          "FLOAT"
+                                   :type/Integer        "INTEGER"
                                    ;; TEXT is considered deprecated -- see
                                    ;; https://msdn.microsoft.com/en-us/library/ms187993.aspx
-                                   :type/Text       "VARCHAR(254)"
-                                   :type/Time       "TIME"}]
+                                   :type/Text           "VARCHAR(254)"
+                                   :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:sqlserver base-type] [_ _] database-type))
 
 
@@ -34,6 +35,7 @@
 (defmethod sql.tx/drop-db-if-exists-sql :sqlserver
   [_ {:keys [database-name]}]
   ;; Kill all open connections to the DB & drop it
+  (println "database-name:" database-name) ; NOCOMMIT
   (apply format "IF EXISTS (SELECT name FROM master.dbo.sysdatabases WHERE name = N'%s')
                  BEGIN
                      ALTER DATABASE \"%s\" SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -52,13 +54,6 @@
 
 (defn- database-exists? [database-name]
   (seq (jdbc/query (server-spec) (format "SELECT name FROM master.dbo.sysdatabases WHERE name = N'%s'" database-name))))
-
-;; skip recreating the DB if it already exists
-(defmethod tx/create-db! :sqlserver
-  [driver {:keys [database-name], :as db-def} & options]
-  (if (database-exists? database-name)
-    (printf "SQL Server database '%s' already exists.\n" database-name)
-    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
 (defmethod sql.tx/qualified-name-components :sqlserver
   ([_ db-name]                       [db-name])

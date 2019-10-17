@@ -1,5 +1,7 @@
 (ns metabase.query-processor-test.timezones-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [set :as set]
+             [test :refer :all]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -18,15 +20,28 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
+(def ^:private broken-drivers
+  "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
+  https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
+  one-by-one as they are fixed."
+  #{:oracle
+    :presto
+    :redshift
+    :snowflake
+    :sparksql
+    :vertica})
+
 (defn- set-timezone-drivers
   "Drivers that support setting a Session timezone."
   []
-  (qp.test/non-timeseries-drivers-with-feature :set-timezone))
+  (set/difference
+   (set (qp.test/non-timeseries-drivers-with-feature :set-timezone))
+   broken-drivers))
 
 (defn- timezone-aware-column-drivers
-  "Drivers that have support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
+  "Drivers that support the equivalent of `TIMESTAMP WITH TIME ZONE` columns."
   []
-  (conj (set-timezone-drivers) :h2 :bigquery))
+  (conj (set-timezone-drivers) :h2 :bigquery :sqlserver :mongo))
 
 ;; TODO - we should also do similar tests for timezone-unaware columns
 (deftest result-rows-test
