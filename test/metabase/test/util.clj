@@ -8,6 +8,7 @@
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
+            [colorize.core :as colorize]
             [metabase
              [driver :as driver]
              [task :as task]
@@ -266,7 +267,7 @@
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (t/testing (format "Setting %s = %s" (keyword setting-k) value)
+      (t/testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
         (f))
       (finally
         (setting/set! setting-k original-value)))))

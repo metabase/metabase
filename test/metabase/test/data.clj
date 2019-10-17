@@ -35,6 +35,7 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [cheshire.core :as json]
             [clojure.test :as t]
+            [colorize.core :as colorize]
             [medley.core :as m]
             [metabase
              [query-processor :as qp]
@@ -227,9 +228,9 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent 1}
   [dataset & body]
-  `(t/testing ~(if (symbol? dataset)
-                 (format "using %s dataset" dataset)
-                 "using inline dataset")
+  `(t/testing (colorize/magenta ~(if (symbol? dataset)
+                                   (format "using %s dataset" dataset)
+                                   "using inline dataset"))
      (impl/do-with-dataset ~(if (and (symbol? dataset)
                                      (not (get &env dataset)))
                               `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)

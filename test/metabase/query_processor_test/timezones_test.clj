@@ -98,6 +98,59 @@
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
 
+(defn- native-params-queries
+  "Map with different types of native params queries, used in test below. Key is a description of the type of native
+  params in the query."
+  []
+  {"variable w/ single date"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (partial field-identifier :users)
+                                                  [:id :name :last_login])
+                                  :from     [(table-identifier :users)]
+                                  :where    [:between
+                                             (hx/cast :date (field-identifier :users :last_login))
+                                             (hsql/raw "{{date1}}")
+                                             (hsql/raw "{{date2}}")]
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date" }
+                                 :date2 {:name "date2" :display_name "Date2" :type "date" }}}
+    :parameters [{:type   "date/single"
+                  :target ["variable" ["template-tag" "date1"]]
+                  :value  "2014-08-02T02:00:00.000000"}
+                 {:type   "date/single"
+                  :target ["variable" ["template-tag" "date2"]]
+                  :value  "2014-08-02T06:00:00.000000"}]}
+
+   "field filter w/ date range"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (partial field-identifier :users)
+                                                  [:id :name :last_login])
+                                  :from     [(table-identifier :users)]
+                                  :where    (hsql/raw "{{ts_range}}")
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:ts_range {:name         "ts_range"
+                                            :display_name "Timestamp Range"
+                                            :type         "dimension"
+                                            :dimension    [:field-id (data/id :users :last_login)]}}}
+    :parameters [{:type   "date/range"
+                  :target ["dimension" ["template-tag" "ts_range"]]
+                  :value  "2014-08-02~2014-08-03"}]}
+
+   "field filter w/ single date"
+   {:native     {:query         (honeysql->sql
+                                 {:select   (mapv (partial field-identifier :users)
+                                                  [:id :name :last_login])
+                                  :from     [(table-identifier :users)]
+                                  :where    (hsql/raw "{{just_a_date}}")
+                                  :order-by [[(field-identifier :users :id) :asc]]})
+                 :template-tags {:just_a_date {:name         "just_a_date"
+                                               :display_name "Just A Date"
+                                               :type         "dimension",
+                                               :dimension    [:field-id (data/id :users :last_login)]}}}
+    :parameters [{:type   "date/single"
+                  :target ["dimension" ["template-tag" "just_a_date"]]
+                  :value  "2014-08-02"}]}})
+
 (deftest native-params-filter-test
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
@@ -105,54 +158,13 @@
     (data/dataset test-data-with-timezones
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
         (testing "Native dates should be parsed with the report timezone"
-          (doseq [query [{:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users)
-                                                                        [:id :name :last_login])
-                                                        :from     [(table-identifier :users)]
-                                                        :where    [:between
-                                                                   (hx/cast :date (field-identifier :users :last_login))
-                                                                   (hsql/raw "{{date1}}")
-                                                                   (hsql/raw "{{date2}}")]
-                                                        :order-by [[(field-identifier :users :id) :asc]]})
-                                       :template-tags {:date1 {:name "date1" :display_name "Date1" :type "date" }
-                                                       :date2 {:name "date2" :display_name "Date2" :type "date" }}}
-                          :parameters [{:type   "date/single"
-                                        :target ["variable" ["template-tag" "date1"]]
-                                        :value  "2014-08-02T02:00:00.000000"}
-                                       {:type   "date/single"
-                                        :target ["variable" ["template-tag" "date2"]]
-                                        :value  "2014-08-02T06:00:00.000000"}]}
-                         {:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users)
-                                                                        [:id :name :last_login])
-                                                        :from     [(table-identifier :users)]
-                                                        :where    (hsql/raw "{{ts_range}}")
-                                                        :order-by [[(field-identifier :users :id) :asc]]})
-                                       :template-tags {:ts_range {:name         "ts_range"
-                                                                  :display_name "Timestamp Range"
-                                                                  :type         "dimension"
-                                                                  :dimension    [:field-id (data/id :users :last_login)]}}}
-                          :parameters [{:type   "date/range"
-                                        :target ["dimension" ["template-tag" "ts_range"]]
-                                        :value  "2014-08-02~2014-08-03"}]}
-                         {:native     {:query         (honeysql->sql
-                                                       {:select   (mapv (partial field-identifier :users)
-                                                                        [:id :name :last_login])
-                                                        :from     [(table-identifier :users)]
-                                                        :where    (hsql/raw "{{just_a_date}}")
-                                                        :order-by [[(field-identifier :users :id) :asc]]})
-                                       :template-tags {:just_a_date {:name         "just_a_date"
-                                                                     :display_name "Just A Date"
-                                                                     :type         "dimension",
-                                                                     :dimension    [:field-id (data/id :users :last_login)]}}}
-                          :parameters [{:type   "date/single"
-                                        :target ["dimension" ["template-tag" "just_a_date"]]
-                                        :value  "2014-08-02"}]}]]
-            (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00.000-07:00"]
-                    [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]]
-                   (qp.test/formatted-rows [int identity identity]
-                     (qp/process-query
-                       (merge
-                        {:database (data/id)
-                         :type     :native}
-                        query)))))))))))
+          (doseq [[params-description query] (native-params-queries)]
+            (testing (format "Query with %s" params-description)
+              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00.000-07:00"]
+                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]]
+                     (qp.test/formatted-rows [int identity identity]
+                       (qp/process-query
+                         (merge
+                          {:database (data/id)
+                           :type     :native}
+                          query))))))))))))

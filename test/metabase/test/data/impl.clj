@@ -48,7 +48,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as database-definition} db]
@@ -117,7 +116,14 @@
      (locking (driver->create-database-lock driver)
        (or
         (tx/metabase-instance dbdef driver)
-        (create-database! driver dbdef))))))
+        ;; make sure report timezone isn't bound, possibly causing weird things to happen when data is loaded -- this
+        ;; code may run inside of some other block that sets report timezone
+        ;;
+        ;; require/resolve used here to avoid circular refs
+        (require 'metabase.test.util)
+        ((resolve 'metabase.test.util/do-with-temporary-setting-value)
+         :report-timezone nil
+         #(create-database! driver dbdef)))))))
 
 (defn- get-or-create-test-data-db!
   "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."
@@ -126,8 +132,8 @@
 
 (def ^:dynamic *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly what it
-  suggests."
+  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly
+  what it suggests."
   get-or-create-test-data-db!)
 
 (defn do-with-db

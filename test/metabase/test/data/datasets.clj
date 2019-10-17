@@ -16,7 +16,8 @@
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
-             [interface :as tx]]))
+             [interface :as tx]]
+            [colorize.core :as colorize]))
 
 (defn do-when-testing-driver
   "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`
@@ -50,7 +51,7 @@
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing ~driver
+     (t/testing (colorize/cyan ~driver)
        ~@body)))
 
 (defmacro test-drivers
