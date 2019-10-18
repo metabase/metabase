@@ -9,7 +9,7 @@ import {
   isHistogram,
   isHistogramBar,
 } from "./renderer_utils";
-import { timeseriesScale } from "./timeseries";
+import { timeseriesScale, getTimezone } from "./timeseries";
 
 // max number of points to "fill"
 // TODO: base on pixel width of chart?
@@ -66,8 +66,7 @@ function fillMissingValuesInData(
       return rows;
     }
 
-    const { report_timezone = "Etc/UTC" } = singleSeries.card || {};
-    xValues = timeseriesScale(xInterval, report_timezone)
+    xValues = timeseriesScale(xInterval, getTimezone([singleSeries]))
       .domain(xDomain)
       .ticks();
     getKey = m => m.toISOString();
