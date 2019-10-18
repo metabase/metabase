@@ -17,6 +17,10 @@ import Utils from "metabase/lib/utils";
 
 import * as authActions from "../auth";
 
+const GOOGLE_AUTH_ERRORS = {
+  popup_closed_by_user: t`The window was closed before completing Google Authentication`,
+};
+
 const mapStateToProps = (state, props) => {
   return {
     loginError: state.auth && state.auth.loginError,
@@ -39,6 +43,7 @@ export default class LoginApp extends Component {
       credentials: {},
       valid: false,
       rememberMe: true,
+      errorMessage: null,
     };
   }
 
@@ -63,7 +68,7 @@ export default class LoginApp extends Component {
 
     const ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
-    function attachGoogleAuth() {
+    const attachGoogleAuth = () => {
       // if gapi isn't loaded yet then wait 100ms and check again. Keep doing this until we're ready
       if (!window.gapi) {
         window.setTimeout(attachGoogleAuth, 100);
@@ -78,14 +83,23 @@ export default class LoginApp extends Component {
           auth2.attachClickHandler(
             ssoLoginButton,
             {},
-            googleUser => loginGoogle(googleUser, location.query.redirect),
-            error => console.error("There was an error logging in", error),
+            googleUser => {
+              this.setState({ errorMessage: null });
+              loginGoogle(googleUser, location.query.redirect);
+            },
+            error => {
+              this.setState({
+                errorMessage:
+                  GOOGLE_AUTH_ERRORS[error.error] ||
+                  `Google Authentication error occurred: ${error.error}`,
+              });
+            },
           );
         });
       } catch (error) {
         console.error("Error attaching Google Auth handler: ", error);
       }
-    }
+    };
     attachGoogleAuth();
   }
 
@@ -114,6 +128,7 @@ export default class LoginApp extends Component {
 
   render() {
     const { loginError, location } = this.props;
+    const { errorMessage } = this.state;
     const ldapEnabled = Settings.ldapEnabled();
 
     const preferUsernameAndPassword = location.query.useMBLogin;
@@ -246,6 +261,10 @@ export default class LoginApp extends Component {
                     >{t`I seem to have forgotten my password`}</Link>
                   </div>
                 </div>
+              )}
+
+              {errorMessage && (
+                <div className="text-error text-centered">{errorMessage}</div>
               )}
             </form>
           </div>
