@@ -7,10 +7,9 @@
   },
   "testPathIgnorePatterns": [
     "<rootDir>/frontend/test/legacy-karma",
-    "<rootDir>/frontend/test/legacy-selenium",
-    "<rootDir>/frontend/test/.*/.*.tz.e2e.spec.js"
+    "<rootDir>/frontend/test/legacy-selenium"
   ],
-  "testMatch": ["<rootDir>/frontend/test/**/*.e2e.spec.js?(x)"],
+  "testMatch": ["<rootDir>/frontend/test/**/*.tz.e2e.spec.js?(x)"],
   "modulePaths": ["<rootDir>/frontend/test", "<rootDir>/frontend/src"],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",

@@ -120,6 +120,8 @@ const init = async () => {
     TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID: sharedNormalLoginSession.id,
   };
 
+  const jestConfig = process.env["JEST_CONFIG"] || "jest.e2e.conf.json";
+
   const jestProcess = spawn(
     "yarn",
     [
@@ -128,11 +130,11 @@ const init = async () => {
       "--",
       "--maxWorkers=1",
       "--config",
-      "jest.e2e.conf.json",
+      jestConfig,
       ...userArgs,
     ],
     {
-      env,
+      env: { ...env, TZ: process.env["CLIENT_TZ"] },
       stdio: "inherit",
     },
   );

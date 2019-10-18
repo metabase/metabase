@@ -45,6 +45,7 @@ export const BackendResource = createSharedResource("BackendResource", {
       if (server.dbKey !== server.dbFile) {
         await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+      const serverTz = process.env["SERVER_TZ"] || "US/Pacific";
 
       server.process = spawn(
         "java",
@@ -54,7 +55,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-          "-Duser.timezone=US/Pacific",
+          `-Duser.timezone=${serverTz}`,
           `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
           "-jar",
           "target/uberjar/metabase.jar",
