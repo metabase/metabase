@@ -12,7 +12,10 @@ import chalk from "chalk";
 const BackendResource = require("./backend.js").BackendResource;
 
 // Backend that uses a test fixture database
-const serverWithTestDbFixture = BackendResource.get({});
+const dbKey = process.env["MB_DB_FILE"];
+const serverWithTestDbFixture = BackendResource.get(
+  dbKey ? { dbKey: __dirname + dbKey } : {},
+);
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
 const serverWithPlainDb = BackendResource.get({ dbKey: "" });

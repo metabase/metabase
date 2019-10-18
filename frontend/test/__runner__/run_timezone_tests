@@ -46,5 +46,6 @@ echo "Running e2e tests"
 # above, we just try out two pairs of server/client timezones. This ensures that
 # the client is using the server's timezone info.
 e2e_config="jest.tz.e2e.conf.json"
-SERVER_TZ="Asia/Hong_Kong" CLIENT_TZ="US/Pacific" JEST_CONFIG=$e2e_config yarn run test-e2e
-SERVER_TZ="US/Pacific" CLIENT_TZ="Asia/Hong_Kong" JEST_CONFIG=$e2e_config yarn run test-e2e
+db="timezones_test_db_fixture.db"
+MB_DB_FILE=$db SERVER_TZ="Asia/Hong_Kong" CLIENT_TZ="US/Pacific" JEST_CONFIG=$e2e_config yarn run test-e2e
+MB_DB_FILE=$db SERVER_TZ="US/Pacific" CLIENT_TZ="Asia/Hong_Kong" JEST_CONFIG=$e2e_config yarn run test-e2e
