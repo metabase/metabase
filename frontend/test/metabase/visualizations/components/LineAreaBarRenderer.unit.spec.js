@@ -61,6 +61,27 @@ describe("LineAreaBarRenderer", () => {
     expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
   });
 
+  it("should warn if expected timezone doesn't match actual", () => {
+    const data = {
+      cols: [DateTimeColumn(), NumberColumn()],
+      rows: [["2019-01-01", 1]],
+    };
+    const card = {
+      display: "line",
+      visualization_settings: {},
+      expected_timezone: "US/Pacific",
+      actual_timezone: "US/Eastern",
+    };
+    const onRender = jest.fn();
+
+    renderLineAreaBar(element, [{ data, card }], { onRender });
+
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual([
+      "The query for this chart was run in US/Eastern rather than US/Pacific due to database or driver constraints.",
+    ]);
+  });
+
   it("should display weekly ranges in tooltips and months on x axis", () => {
     const rows = [
       ["2020-01-05T00:00:00.000Z", 1],

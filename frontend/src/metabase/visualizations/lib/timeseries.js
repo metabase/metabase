@@ -7,6 +7,8 @@ import _ from "underscore";
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 
+import { unexpectedTimezoneWarning } from "./warnings";
+
 const TIMESERIES_UNITS = new Set([
   "minute",
   "hour",
@@ -244,3 +246,10 @@ export const timeseriesScale = (
   d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp", "invert");
   return s;
 };
+
+export function warnIfTimezonesDiffer(series, warn) {
+  const { actual_timezone, expected_timezone } = series[0].card;
+  if (expected_timezone && expected_timezone !== actual_timezone) {
+    warn(unexpectedTimezoneWarning({ actual_timezone, expected_timezone }));
+  }
+}

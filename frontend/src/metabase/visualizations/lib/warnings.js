@@ -27,3 +27,14 @@ export function unaggregatedDataWarning(col) {
     )}" is an unaggregated field: if it has more than one value at a point on the x-axis, the values will be summed.`,
   };
 }
+
+export const UNEXPECTED_QUERY_TIMEZONE = "UNEXPECTED_QUERY_TIMEZONE";
+export function unexpectedTimezoneWarning({
+  actual_timezone,
+  expected_timezone,
+}) {
+  return {
+    key: UNEXPECTED_QUERY_TIMEZONE,
+    text: t`The query for this chart was run in ${actual_timezone} rather than ${expected_timezone} due to database or driver constraints.`,
+  };
+}

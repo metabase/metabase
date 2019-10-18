@@ -17,7 +17,11 @@ import {
   colorShades,
 } from "./utils";
 
-import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
+import {
+  minTimeseriesUnit,
+  computeTimeseriesDataInverval,
+  warnIfTimezonesDiffer,
+} from "./timeseries";
 
 import { computeNumericDataInverval } from "./numeric";
 
@@ -794,6 +798,7 @@ export default function lineAreaBar(
   };
 
   checkSeriesIsValid(props);
+  warnIfTimezonesDiffer(props.series, warn);
 
   // force histogram to be ordinal axis with zero-filled missing points
   settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
