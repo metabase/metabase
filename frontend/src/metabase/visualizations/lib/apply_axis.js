@@ -158,8 +158,8 @@ export function applyChartTimeseriesXAxis(
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  const { report_timezone = "Etc/UTC" } = firstSeries.card;
-  chart.x(timeseriesScale(tickInterval, report_timezone).domain(xDomain));
+  const { actual_timezone = "Etc/UTC" } = firstSeries.card;
+  chart.x(timeseriesScale(tickInterval, actual_timezone).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>

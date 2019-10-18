@@ -245,14 +245,16 @@ export const getRawSeries = createSelector(
     return (
       results &&
       question.atomicQueries().map((metricQuery, index) => {
-        const { data, report_timezone } = results[index] || {};
+        const { data, expected_timezone, actual_timezone } =
+          results[index] || {};
         return {
           card: {
             ...question.card(),
             display: display,
             visualization_settings: settings,
             dataset_query: lastRunDatasetQuery,
-            report_timezone,
+            expected_timezone,
+            actual_timezone,
           },
           data,
         };
