@@ -18,7 +18,7 @@ import Utils from "metabase/lib/utils";
 import * as authActions from "../auth";
 
 const GOOGLE_AUTH_ERRORS = {
-  popup_closed_by_user: t`The window was closed before completing Google Authentication`,
+  popup_closed_by_user: t`The window was closed before completing Google Authentication.`,
 };
 
 const mapStateToProps = (state, props) => {
@@ -91,7 +91,7 @@ export default class LoginApp extends Component {
               this.setState({
                 errorMessage:
                   GOOGLE_AUTH_ERRORS[error.error] ||
-                  `Google Authentication error occurred: ${error.error}`,
+                  t`There was an issue signing in with Google. Pleast contact an administrator.`,
               });
             },
           );
@@ -147,8 +147,14 @@ export default class LoginApp extends Component {
             >
               <h2 className="Login-header mb2">{t`Sign in to Metabase`}</h2>
 
+              {errorMessage && (
+                <div className="bg-error p1 rounded text-white text-bold mt3">
+                  {errorMessage}
+                </div>
+              )}
+
               {Settings.ssoEnabled() && !preferUsernameAndPassword && (
-                <div className="py3 relative my4">
+                <div className="py3 relative my3">
                   <div className="relative border-bottom pb4">
                     <SSOLoginButton provider="google" ref="ssoLoginButton" />
                     {/*<div className="g-signin2 ml1 relative z2" id="g-signin2"></div>*/}
@@ -261,10 +267,6 @@ export default class LoginApp extends Component {
                     >{t`I seem to have forgotten my password`}</Link>
                   </div>
                 </div>
-              )}
-
-              {errorMessage && (
-                <div className="text-error text-centered">{errorMessage}</div>
               )}
             </form>
           </div>
