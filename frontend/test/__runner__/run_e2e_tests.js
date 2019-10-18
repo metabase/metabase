@@ -121,6 +121,7 @@ const init = async () => {
   };
 
   const jestConfig = process.env["JEST_CONFIG"] || "jest.e2e.conf.json";
+  const clientTZ = process.env["CLIENT_TZ"] || "US/Pacific";
 
   const jestProcess = spawn(
     "yarn",
@@ -134,7 +135,7 @@ const init = async () => {
       ...userArgs,
     ],
     {
-      env: { ...env, TZ: process.env["CLIENT_TZ"] },
+      env: { ...env, TZ: clientTZ },
       stdio: "inherit",
     },
   );
