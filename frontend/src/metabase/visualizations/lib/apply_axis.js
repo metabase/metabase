@@ -8,7 +8,11 @@ import moment from "moment";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
+import {
+  computeTimeseriesTicksInterval,
+  timeseriesScale,
+  getTimezone,
+} from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
@@ -158,8 +162,7 @@ export function applyChartTimeseriesXAxis(
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  const { actual_timezone = "Etc/UTC" } = firstSeries.card;
-  chart.x(timeseriesScale(tickInterval, actual_timezone).domain(xDomain));
+  chart.x(timeseriesScale(tickInterval, getTimezone(series)).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>

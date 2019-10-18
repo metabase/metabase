@@ -253,3 +253,9 @@ export function warnIfTimezonesDiffer(series, warn) {
     warn(unexpectedTimezoneWarning({ actual_timezone, expected_timezone }));
   }
 }
+
+export function getTimezone(series) {
+  // We should always have actual_timezone, but just in case we fallback to UTC
+  const { actual_timezone = "Etc/UTC" } = series[0].card;
+  return actual_timezone;
+}
