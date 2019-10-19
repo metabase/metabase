@@ -36,17 +36,45 @@
         "if the driver doesn't support `:set-timezone`, query should be unchanged, even if `report-timezone` is valid")))
 
 (deftest post-processing-test
-  (let [add-settings (fn []
-                       (driver/with-driver ::timezone-driver
-                         (let [query        {:query? true}
-                               results      {:results? true}
-                               add-settings (add-settings/add-settings (constantly results))]
-                           (add-settings query))))]
-    (is (= {:results?        true
-            :report_timezone "US/Pacific"}
-           (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-             (add-settings)))
-        "`report_timezone` should be returned as part of the query results")
-    (is (= {:results? true}
-           (add-settings))
-        "Don't add `report_timezone` if it is unset")))
+  (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:actual_timezone   "US/Pacific"
+                                                                           :expected_timezone "US/Pacific"}
+                                                             nil          {:actual_timezone   "UTC"
+                                                                           :expected_timezone "UTC"}}
+                                       ::no-timezone-driver {"US/Pacific" {:actual_timezone   "UTC"
+                                                                           :expected_timezone "US/Pacific"}
+                                                             nil          {:actual_timezone   "UTC"
+                                                                           :expected_timezone "UTC"}}}
+          [timezone expected]         timezone->expected]
+    (testing driver
+      (tu/with-temporary-setting-values [report-timezone timezone]
+        (driver/with-driver driver
+          (is (= (assoc expected :results? true)
+                 (let [query        {:query? true}
+                       results      {:results? true}
+                       add-settings (add-settings/add-settings (constantly results))]
+                   (add-settings query)))))))))
+
+(defn- env [_]
+  "SOME_VALUE")
+
+(defprotocol Config
+  (config-1 [_])
+  (config-2 [_])
+  (config-3 [_]))
+
+(defn env-config []
+  (reify Config
+    (config-1 [_] (env :config-1))
+    (config-2 [_] (env :config-2))
+    (config-3 [_] (env :config-3))))
+
+(defn- pretty-print-config-3 [config]
+  (format "config 3 is '%s'" (config-3 config)))
+
+(deftest pretty-print-config-3-test
+  (is (= "config 3 is 'SOME_VALUE'"
+         (pretty-print-config-3
+          (reify Config
+            (config-1 [_] "SOME_VALUE")
+            (config-2 [_] "SOME_VALUE")
+            (config-3 [_] "SOME_VALUE"))))))
