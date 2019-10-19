@@ -53,3 +53,28 @@
                        results      {:results? true}
                        add-settings (add-settings/add-settings (constantly results))]
                    (add-settings query)))))))))
+
+(defn- env [_]
+  "SOME_VALUE")
+
+(defprotocol Config
+  (config-1 [_])
+  (config-2 [_])
+  (config-3 [_]))
+
+(defn env-config []
+  (reify Config
+    (config-1 [_] (env :config-1))
+    (config-2 [_] (env :config-2))
+    (config-3 [_] (env :config-3))))
+
+(defn- pretty-print-config-3 [config]
+  (format "config 3 is '%s'" (config-3 config)))
+
+(deftest pretty-print-config-3-test
+  (is (= "config 3 is 'SOME_VALUE'"
+         (pretty-print-config-3
+          (reify Config
+            (config-1 [_] "SOME_VALUE")
+            (config-2 [_] "SOME_VALUE")
+            (config-3 [_] "SOME_VALUE"))))))

@@ -73,6 +73,8 @@
                 :started_at             true
                 :running_time           true
                 :average_execution_time nil
+                :actual_timezone        "UTC"
+                :expected_timezone      "UTC"
                 :database_id            (data/id)}
                (format-response result)))
         (is (= {:hash         true
