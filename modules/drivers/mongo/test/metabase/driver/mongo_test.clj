@@ -26,7 +26,7 @@
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
-(def ^:private ^:const table-names
+(def ^:private table-names
   "The names of the various test data `Tables`."
   [:categories
    :checkins
@@ -76,16 +76,18 @@
     {\"$project\": {\"_id\": false, \"count\": true}}]")
 
 (datasets/expect-with-driver :mongo
-  {:status    :completed
-   :row_count 1
-   :data      {:rows        [[1]]
-               :cols        [{:name         "count"
-                              :display_name "count"
-                              :base_type    :type/Integer
-                              :source       :native
-                              :field_ref    [:field-literal "count" :type/Integer]}]
-               :native_form {:collection "venues"
-                             :query      native-query}}}
+  {:status            :completed
+   :row_count         1
+   :data              {:rows        [[1]]
+                       :cols        [{:name         "count"
+                                      :display_name "count"
+                                      :base_type    :type/Integer
+                                      :source       :native
+                                      :field_ref    [:field-literal "count" :type/Integer]}]
+                       :native_form {:collection "venues"
+                                     :query      native-query}}
+   :expected_timezone "UTC"
+   :actual_timezone   "UTC"}
   (-> (qp/process-query {:native   {:query      native-query
                                     :collection "venues"}
                          :type     :native
