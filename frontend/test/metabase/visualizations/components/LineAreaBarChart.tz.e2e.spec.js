@@ -8,15 +8,9 @@ import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
 import { mount } from "enzyme";
 
-const expectedByReportingTZ = {
-  "US/Pacific": {
-    ticks: ["March 09, 2019", "March 10, 2019"],
-    yValues: [16, 23],
-  },
-  "Asia/Hong_Kong": {
-    ticks: ["March 09, 2019", "March 10, 2019"],
-    yValues: [24, 24],
-  },
+const expectedValuesByReportingTZ = {
+  "US/Pacific": [16, 23],
+  "Asia/Hong_Kong": [24, 24],
 };
 
 const clientTZ = process.env["TZ"];
@@ -33,17 +27,16 @@ describe("LineAreaBarChart", () => {
     const app = mount(store.connectContainer(<QueryBuilder />));
     await new Promise(r => setTimeout(r, 5000));
 
-    const expected = expectedByReportingTZ[serverTZ];
-    if (!expected) {
-      throw new Error(`Missing expected for server timezone: ${serverTZ}`);
-    }
-
     const qsa = s => Array.from(app.getDOMNode().querySelectorAll(s));
 
     const ticks = qsa(".axis.x .tick text").map(n => n.textContent);
-    expect(ticks).toEqual(expected.ticks);
+    expect(ticks).toEqual(["March 9, 2019", "March 10, 2019"]);
 
+    const expectedValues = expectedValuesByReportingTZ[serverTZ];
+    if (!expectedValues) {
+      throw new Error(`Missing expected for server timezone: ${serverTZ}`);
+    }
     const yValues = qsa(".bar").map(n => n.__data__.y);
-    expect(yValues).toEqual(expected.yValues);
+    expect(yValues).toEqual(expectedValues);
   });
 });
