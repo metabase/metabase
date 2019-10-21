@@ -27,6 +27,7 @@
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
 (def ^:private timeseries-drivers #{:druid :googleanalytics})
 
+;; TODO - we should make this a function instead to facilitate rebinding with macros like `dev/with-test-drivers`
 (def non-timeseries-drivers
   "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
   (delay

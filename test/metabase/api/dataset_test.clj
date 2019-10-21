@@ -73,6 +73,8 @@
                 :started_at             true
                 :running_time           true
                 :average_execution_time nil
+                :actual_timezone        "UTC"
+                :expected_timezone      "UTC"
                 :database_id            (data/id)}
                (format-response result)))
         (is (= {:hash         true
@@ -304,9 +306,10 @@
 
 (deftest report-timezone-test
   (datasets/test-driver :postgres
-    (is (= {:report_timezone "US/Pacific"}
+    (is (= {:expected_timezone "US/Pacific"
+            :actual_timezone   "US/Pacific"}
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
              (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
-               (select-keys results [:report_timezone]))))
-        "report timezone should be returned as part of query results")))
+               (select-keys results [:expected_timezone :actual_timezone]))))
+        "expected (desired) and actual timezone should be returned as part of query results")))

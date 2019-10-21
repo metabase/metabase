@@ -7,7 +7,8 @@
              [handler :as handler]
              [plugins :as pluguns]
              [query-processor-test :as qp.test]
-             [server :as server]]
+             [server :as server]
+             [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.test.data.env :as tx.env]))
 
@@ -71,5 +72,5 @@
     ;; Run `my-test` against H2 and Postgres regardless of what's in the `DRIVERS` env var
     (dev/with-test-drivers #{:h2 :postgres}
       (my-test))"
-  [test-drivers & body]
-  `(do-with-test-drivers ~test-drivers (fn [] ~@body)))
+  [test-driver-or-drivers & body]
+  `(do-with-test-drivers ~(u/one-or-many test-driver-or-drivers) (fn [] ~@body)))

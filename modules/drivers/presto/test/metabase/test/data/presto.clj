@@ -44,15 +44,16 @@
   ;; we need a dummy value for every base-type to make a properly typed SELECT statement
   (if (keyword? field-type)
     (case field-type
-      :type/Boolean    "TRUE"
-      :type/Integer    "1"
-      :type/BigInteger "cast(1 AS bigint)"
-      :type/Float      "1.0"
-      :type/Decimal    "DECIMAL '1.0'"
-      :type/Text       "cast('' AS varchar(255))"
-      :type/Date       "current_timestamp" ; this should probably be a date type, but the test data begs to differ
-      :type/DateTime   "current_timestamp"
-      :type/Time       "cast(current_time as TIME)"
+      :type/Boolean        "TRUE"
+      :type/Integer        "1"
+      :type/BigInteger     "cast(1 AS bigint)"
+      :type/Float          "1.0"
+      :type/Decimal        "DECIMAL '1.0'"
+      :type/Text           "cast('' AS varchar(255))"
+      :type/Date           "current_timestamp" ; this should probably be a date type, but the test data begs to differ
+      :type/DateTime       "current_timestamp"
+      :type/DateTimeWithTZ "current_timestamp"
+      :type/Time           "cast(current_time as TIME)"
       "from_hex('00')") ; this might not be the best default ever
     ;; we were given a native type, map it back to a base-type and try again
     (field-base-type->dummy-value (#'presto/presto-type->base-type field-type))))
