@@ -14,7 +14,7 @@ const BackendResource = require("./backend.js").BackendResource;
 // Backend that uses a test fixture database
 const dbKey = process.env["MB_DB_FILE"];
 const serverWithTestDbFixture = BackendResource.get(
-  dbKey ? { dbKey: __dirname + dbKey } : {},
+  dbKey ? { dbKey: __dirname + "/" + dbKey } : {},
 );
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
