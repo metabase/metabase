@@ -5,6 +5,7 @@ import { t } from "ttag";
 
 import MainPane from "./MainPane";
 import DatabasePane from "./DatabasePane";
+import SchemaPane from "./SchemaPane";
 import TablePane from "./TablePane";
 import FieldPane from "./FieldPane";
 import SegmentPane from "./SegmentPane";
@@ -13,8 +14,9 @@ import MetricPane from "./MetricPane";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 const PANES = {
-  database: DatabasePane,
-  table: TablePane,
+  database: DatabasePane, // displays either schemas or tables in a database
+  schema: SchemaPane, // displays tables in a schema
+  table: TablePane, // displays fields in a table
   field: FieldPane,
   segment: SegmentPane,
   metric: MetricPane,

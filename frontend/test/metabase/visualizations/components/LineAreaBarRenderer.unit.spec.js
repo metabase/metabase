@@ -159,7 +159,10 @@ describe("LineAreaBarRenderer", () => {
 
     // column settings are cached based on name.
     // we need something unique to not conflict with other tests.
-    const dateColumn = DateTimeColumn({ unit: "week", name: "uniqueName123" });
+    const dateColumn = DateTimeColumn({
+      unit: "week",
+      name: Math.random().toString(36),
+    });
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
@@ -178,6 +181,43 @@ describe("LineAreaBarRenderer", () => {
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual(["January, 2020", "February, 2020", "March, 2020"]);
+  });
+
+  it("should use column settings for tick formatting and tooltips", () => {
+    const rows = [["2016-01-01", 1], ["2016-02-01", 2]];
+
+    // column settings are cached based on name.
+    // we need something unique to not conflict with other tests.
+    const columnName = Math.random().toString(36);
+    const dateColumn = DateTimeColumn({ unit: "month", name: columnName });
+
+    const cols = [dateColumn, NumberColumn()];
+    const chartType = "line";
+    const column_settings = {
+      [`["name","${columnName}"]`]: {
+        date_style: "M/D/YYYY",
+        date_separator: "-",
+      },
+    };
+    const card = {
+      display: chartType,
+      visualization_settings: { column_settings },
+    };
+    const series = [{ data: { cols, rows }, card }];
+    const settings = getComputedSettingsForSeries(series);
+    const onHoverChange = jest.fn();
+
+    const props = { chartType, series, settings, onHoverChange };
+    lineAreaBarRenderer(element, props);
+
+    dispatchUIEvent(qs(".dot"), "mousemove");
+
+    const hover = onHoverChange.mock.calls[0][0];
+    const [formattedWeek] = getFormattedTooltips(hover, settings);
+    expect(formattedWeek).toEqual("1-2016");
+
+    const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
+    expect(ticks).toEqual(["1-2016", "2-2016"]);
   });
 
   describe("should render correctly a compound line graph", () => {
