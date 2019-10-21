@@ -220,7 +220,7 @@
     :TEXT                                :type/Text
     :TIME                                :type/Time
     :TIMESTAMP                           :type/DateTime
-    (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTime
+    (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTimeWithTZ
     :TINYBLOB                            :type/*
     :TINYINT                             :type/Integer
     :TINYTEXT                            :type/Text
