@@ -48,11 +48,11 @@
     (testing driver
       (tu/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
-          (is (= (assoc expected :results? true)
+          (is (= expected
                  (let [query        {:query? true}
                        results      {:results? true}
                        add-settings (add-settings/add-settings (constantly results))]
-                   (add-settings query)))))))))
+                   (:data (add-settings query))))))))))
 
 (defn- env [_]
   "SOME_VALUE")

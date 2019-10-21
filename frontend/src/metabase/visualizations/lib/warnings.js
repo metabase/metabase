@@ -38,3 +38,12 @@ export function unexpectedTimezoneWarning({
     text: t`The query for this chart was run in ${actual_timezone} rather than ${expected_timezone} due to database or driver constraints.`,
   };
 }
+
+export const MULTIPLE_TIMEZONES = "MULTIPLE_TIMEZONES";
+export function multipleTimezoneWarning(timezones) {
+  const tzList = timezones.join(", ");
+  return {
+    key: MULTIPLE_TIMEZONES,
+    text: t`This chart contains queries run in multiple timezones: ${tzList}`,
+  };
+}

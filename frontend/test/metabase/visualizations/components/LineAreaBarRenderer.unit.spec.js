@@ -65,13 +65,10 @@ describe("LineAreaBarRenderer", () => {
     const data = {
       cols: [DateTimeColumn(), NumberColumn()],
       rows: [["2019-01-01", 1]],
-    };
-    const card = {
-      display: "line",
-      visualization_settings: {},
       expected_timezone: "US/Pacific",
       actual_timezone: "US/Eastern",
     };
+    const card = { display: "line", visualization_settings: {} };
     const onRender = jest.fn();
 
     renderLineAreaBar(element, [{ data, card }], { onRender });
@@ -79,6 +76,30 @@ describe("LineAreaBarRenderer", () => {
     const [[{ warnings }]] = onRender.mock.calls;
     expect(warnings).toEqual([
       "The query for this chart was run in US/Eastern rather than US/Pacific due to database or driver constraints.",
+    ]);
+  });
+
+  it("should warn if there are multiple timezones", () => {
+    const seriesInTZ = tz => ({
+      data: {
+        cols: [DateTimeColumn(), NumberColumn()],
+        rows: [["2019-01-01", 1]],
+        expected_timezone: tz,
+        actual_timezone: tz,
+      },
+      card: { display: "line", visualization_settings: {} },
+    });
+    const onRender = jest.fn();
+
+    renderLineAreaBar(
+      element,
+      [seriesInTZ("US/Pacific"), seriesInTZ("US/Eastern")],
+      { onRender },
+    );
+
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual([
+      "This chart contains queries run in multiple timezones: US/Pacific, US/Eastern",
     ]);
   });
 

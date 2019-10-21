@@ -59,9 +59,11 @@
     (testing "Just a basic sanity check to make sure Query Processor endpoint is still working correctly."
       (let [result ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                            {:aggregation [[:count]]}))]
-        (is (= {:data                   {:rows        [[1000]]
-                                         :cols        [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                                         :native_form true}
+        (is (= {:data                   {:rows                   [[1000]]
+                                         :cols                   [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :native_form            true
+                                         :actual_timezone        "UTC"
+                                         :expected_timezone      "UTC"}
                 :row_count              1
                 :status                 "completed"
                 :context                "ad-hoc"
@@ -73,8 +75,6 @@
                 :started_at             true
                 :running_time           true
                 :average_execution_time nil
-                :actual_timezone        "UTC"
-                :expected_timezone      "UTC"
                 :database_id            (data/id)}
                (format-response result)))
         (is (= {:hash         true
@@ -311,5 +311,7 @@
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
              (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
-               (select-keys results [:expected_timezone :actual_timezone]))))
+                   (-> results
+                     :data
+                     (select-keys [:expected_timezone :actual_timezone]))))
         "expected (desired) and actual timezone should be returned as part of query results")))

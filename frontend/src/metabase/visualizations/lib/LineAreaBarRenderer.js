@@ -17,11 +17,7 @@ import {
   colorShades,
 } from "./utils";
 
-import {
-  minTimeseriesUnit,
-  computeTimeseriesDataInverval,
-  warnIfTimezonesDiffer,
-} from "./timeseries";
+import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
 
 import { computeNumericDataInverval } from "./numeric";
 
@@ -694,9 +690,9 @@ function addTrendlineChart(
   }
 }
 
-function applyXAxisSettings(parent, series, xAxisProps) {
+function applyXAxisSettings(parent, series, xAxisProps, warn) {
   if (isTimeseries(parent.settings)) {
-    applyChartTimeseriesXAxis(parent, series, xAxisProps);
+    applyChartTimeseriesXAxis(parent, series, xAxisProps, warn);
   } else if (isQuantitative(parent.settings)) {
     applyChartQuantitativeXAxis(parent, series, xAxisProps);
   } else {
@@ -798,7 +794,6 @@ export default function lineAreaBar(
   };
 
   checkSeriesIsValid(props);
-  warnIfTimezonesDiffer(props.series, warn);
 
   // force histogram to be ordinal axis with zero-filled missing points
   settings["graph.x_axis._scale_original"] = settings["graph.x_axis.scale"];
@@ -873,7 +868,7 @@ export default function lineAreaBar(
   );
   parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
 
-  applyXAxisSettings(parent, props.series, xAxisProps);
+  applyXAxisSettings(parent, props.series, xAxisProps, warn);
 
   applyYAxisSettings(parent, yAxisProps);
 

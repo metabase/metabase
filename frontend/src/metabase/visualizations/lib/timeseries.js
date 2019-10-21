@@ -7,7 +7,7 @@ import _ from "underscore";
 import { isDate } from "metabase/lib/schema_metadata";
 import { parseTimestamp } from "metabase/lib/time";
 
-import { unexpectedTimezoneWarning } from "./warnings";
+import { unexpectedTimezoneWarning, multipleTimezoneWarning } from "./warnings";
 
 const TIMESERIES_UNITS = new Set([
   "minute",
@@ -247,15 +247,19 @@ export const timeseriesScale = (
   return s;
 };
 
-export function warnIfTimezonesDiffer(series, warn) {
-  const { actual_timezone, expected_timezone } = series[0].card;
+// We should always have actual_timezone, but just in case we fallback to UTC
+const DEFAULT_TIMEZONE = "Etc/UTC";
+
+export function getTimezone(series, warn) {
+  // Dashboard multiseries cards might have series with different timezones.
+  const timezones = [...new Set(series.map(s => s.data.actual_timezone))];
+  if (timezones.length > 1) {
+    warn(multipleTimezoneWarning(timezones));
+  }
+  // Warn if the query was run in an unexpected timezone.
+  const { actual_timezone, expected_timezone } = series[0].data;
   if (expected_timezone && expected_timezone !== actual_timezone) {
     warn(unexpectedTimezoneWarning({ actual_timezone, expected_timezone }));
   }
-}
-
-export function getTimezone(series) {
-  // We should always have actual_timezone, but just in case we fallback to UTC
-  const [{ card: { actual_timezone = "Etc/UTC" } = {} }] = series;
-  return actual_timezone;
+  return actual_timezone || DEFAULT_TIMEZONE;
 }
