@@ -141,7 +141,7 @@ describe("LineAreaBarRenderer-bar", () => {
             moment()
               .tz(reportTz)
               .startOf(interval)
-              .toISOString(),
+              .toISOString(true),
             1,
           ],
           [
@@ -149,7 +149,7 @@ describe("LineAreaBarRenderer-bar", () => {
               .tz(reportTz)
               .startOf(interval)
               .add(1, interval)
-              .toISOString(),
+              .toISOString(true),
             1,
           ],
         ];
@@ -198,7 +198,7 @@ function renderTimeseries(element, unit, timezone, rows, props = {}) {
       },
       data: {
         cols: [
-          DateTimeColumn({ name: "CREATED_AT", unit, timezone }),
+          DateTimeColumn({ name: "CREATED_AT", unit }),
           NumberColumn({ name: "count" }),
         ],
         rows,
@@ -249,7 +249,7 @@ function generateRowsInTz(tz) {
       .tz(tz)
       .startOf("month")
       .add(month, "months")
-      .toISOString(),
+      .toISOString(true),
     0,
   ]);
 }
