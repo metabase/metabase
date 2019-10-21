@@ -145,7 +145,9 @@ export function applyChartTimeseriesXAxis(
       const timestampFixed = moment(timestamp)
         .utcOffset(dataOffset)
         .format();
-      const { column, columnSettings } = chart.settings.column(dimensionColumn);
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
       return formatValue(timestampFixed, {
         ...columnSettings,
         column: { ...column, unit: tickFormatUnit },
