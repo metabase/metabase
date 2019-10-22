@@ -69,6 +69,7 @@ class CustomForm extends React.Component {
         FormField: CustomFormField,
         FormSubmit: CustomFormSubmit,
         FormMessage: CustomFormMessage,
+        FormFooter: CustomFormFooter,
       });
     } else {
       return <Form formRef={form => (this._formRef = form)}>{children}</Form>;
@@ -145,10 +146,11 @@ export class CustomFormField extends React.Component {
 import ActionButton from "metabase/components/ActionButton";
 
 export const CustomFormSubmit = (
-  { children = t`Submit` },
+  { children = t`Submit`, ...props },
   { values, submitting, invalid, pristine, handleSubmit },
 ) => (
   <ActionButton
+    {...props}
     actionFn={async e => handleSubmit()}
     type="submit"
     primary={!(submitting || invalid || pristine)}
@@ -214,3 +216,10 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
   ) : (
     <StandardSection {...props} />
   );
+
+export const CustomFormFooter = ({ submitText }) => (
+  <div className="flex align-center">
+    <CustomFormMessage />
+    <CustomFormSubmit className="ml-auto">{submitText}</CustomFormSubmit>
+  </div>
+);

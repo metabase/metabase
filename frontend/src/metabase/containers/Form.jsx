@@ -16,6 +16,7 @@ export {
   CustomFormField as FormField,
   CustomFormSubmit as FormSubmit,
   CustomFormMessage as FormMessage,
+  CustomFormFooter as FormFooter,
   CustomFormSection as FormSection,
 } from "metabase/components/form/CustomForm";
 
@@ -272,18 +273,21 @@ function makeFormMethod(
   form: FormObject,
   methodName: string,
   defaultValues: any = {},
+  mergeFn,
 ) {
   const originalMethod = form[methodName];
-  form[methodName] = object => {
+  form[methodName] = (object, ...args) => {
     const values =
-      getValue(originalMethod, object) || getValue(defaultValues, object);
+      getValue(originalMethod, object, ...args) ||
+      getValue(defaultValues, object, ...args);
     for (const field of form.fields(object)) {
       const value = getValue(
         field[methodName],
         object && getValueAtPath(object, field.name),
+        ...args,
       );
       if (value !== undefined) {
-        setValueAtPath(values, field.name, value);
+        setValueAtPath(values, field.name, value, mergeFn);
       }
     }
     return values;
@@ -303,7 +307,9 @@ function makeFormObject(formDef: FormDefinition): FormObject {
     ],
   };
   // for validating the object, or individual values
-  makeFormMethod(form, "validate");
+  makeFormMethod(form, "validate", {}, (a, b) =>
+    [a, b].filter(a => a).join(", "),
+  );
   // for getting the initial values object, or getting individual values
   makeFormMethod(form, "initial");
   // for normalizeing the object before submitting, or normalizeing individual values
@@ -318,11 +324,11 @@ function getObjectPath(path) {
 function getValueAtPath(object, path) {
   return getIn(object, getObjectPath(path));
 }
-function setValueAtPath(object, path, value) {
+function setValueAtPath(object, path, value, mergeFn = (a, b) => b) {
   path = getObjectPath(path);
   for (let i = 0; i < path.length; i++) {
     if (i === path.length - 1) {
-      object[path[i]] = value;
+      object[path[i]] = mergeFn(object[path[i]], value);
     } else {
       object = object[path[i]] = object[path[i]] || {};
     }

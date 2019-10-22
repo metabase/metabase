@@ -1,6 +1,5 @@
 import _ from "underscore";
-import inflection from "inflection";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 const mb_settings = _.clone(window.MetabaseBootstrap);
@@ -9,13 +8,13 @@ const settingListeners = {};
 
 // provides access to Metabase application settings
 const MetabaseSettings = {
-  get: function(propName, defaultValue = null) {
+  get(propName, defaultValue = null) {
     return mb_settings[propName] !== undefined
       ? mb_settings[propName]
       : defaultValue;
   },
 
-  set: function(key, value) {
+  set(key, value) {
     if (mb_settings[key] !== value) {
       mb_settings[key] = value;
       if (settingListeners[key]) {
@@ -26,44 +25,48 @@ const MetabaseSettings = {
     }
   },
 
-  setAll: function(settings) {
+  setAll(settings) {
     for (const key in settings) {
       MetabaseSettings.set(key, settings[key]);
     }
   },
 
   // these are all special accessors which provide a lookup of a property plus some additional help
-  adminEmail: function() {
+  adminEmail() {
     return mb_settings.admin_email;
   },
 
-  isEmailConfigured: function() {
+  isEmailConfigured() {
     return mb_settings.email_configured;
   },
 
-  isTrackingEnabled: function() {
+  isTrackingEnabled() {
     return mb_settings.anon_tracking_enabled || false;
   },
 
-  hasSetupToken: function() {
+  hasSetupToken() {
     return (
       mb_settings.setup_token !== undefined && mb_settings.setup_token !== null
     );
   },
 
-  ssoEnabled: function() {
+  ssoEnabled() {
     return mb_settings.google_auth_client_id != null;
   },
 
-  ldapEnabled: function() {
+  ldapEnabled() {
     return mb_settings.ldap_configured;
   },
 
-  hideEmbedBranding: () => mb_settings.hide_embed_branding,
+  hideEmbedBranding() {
+    return mb_settings.hide_embed_branding;
+  },
 
-  metastoreUrl: () => mb_settings.metastore_url,
+  metastoreUrl() {
+    return mb_settings.metastore_url;
+  },
 
-  docsUrl: (page = "", anchor = "") => {
+  docsUrl(page = "", anchor = "") {
     let { tag } = MetabaseSettings.get("version", {});
     if (!tag) {
       tag = "latest";
@@ -77,7 +80,7 @@ const MetabaseSettings = {
     return `https://metabase.com/docs/${tag}${page}${anchor}`;
   },
 
-  newVersionAvailable: function(settings) {
+  newVersionAvailable(settings) {
     let versionInfo = _.findWhere(settings, { key: "version-info" });
     const currentVersion = MetabaseSettings.get("version").tag;
 
@@ -96,54 +99,92 @@ const MetabaseSettings = {
   },
 
   // returns a map that looks like {total: 6, digit: 1}
-  passwordComplexityRequirements: () => mb_settings.password_complexity,
+  passwordComplexityRequirements() {
+    return this.get("password_complexity", {});
+  },
 
-  // returns a description of password complexity requirements rather than the actual map of requirements
-  passwordComplexityDescription: function(capitalize) {
-    const complexity = this.get("password_complexity");
+  /**
+   * Returns a description of password complexity requirements.
+   * Optionally takes a password and returns a description only including the requirements not met.
+   */
+  passwordComplexityDescription(password = "") {
+    const requirements = this.passwordComplexityRequirements();
 
-    const clauseDescription = function(clause) {
-      switch (clause) {
-        case "lower":
-          return t`lower case letter`;
-        case "upper":
-          return t`upper case letter`;
-        case "digit":
-          return t`number`;
-        case "special":
-          return t`special character`;
+    const descriptions = {};
+    for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
+      if (!clause.test(requirements, password)) {
+        descriptions[name] = clause.description(requirements);
       }
-    };
+    }
 
-    const description =
-      capitalize === false
-        ? t`must be at least ${complexity.total} characters long`
-        : t`Must be at least ${complexity.total} characters long`;
-    const clauses = [];
-
-    ["lower", "upper", "digit", "special"].forEach(function(clause) {
-      if (clause in complexity) {
-        const desc =
-          complexity[clause] > 1
-            ? inflection.pluralize(clauseDescription(clause))
-            : clauseDescription(clause);
-        clauses.push(
-          MetabaseUtils.numberToWord(complexity[clause]) + " " + desc,
-        );
-      }
-    });
-
-    if (clauses.length > 0) {
-      return description + " " + t`and include` + " " + clauses.join(", ");
+    const { total, ...rest } = descriptions;
+    const includes = Object.values(rest).join(t`, `);
+    if (total && includes) {
+      return t`must be ${total} and include ${includes}.`;
+    } else if (total) {
+      return t`must be ${total}.`;
+    } else if (includes) {
+      return t`must include ${includes}.`;
     } else {
-      return description;
+      return null;
     }
   },
 
-  on: function(setting, callback) {
+  on(setting, callback) {
     settingListeners[setting] = settingListeners[setting] || [];
     settingListeners[setting].push(callback);
   },
 };
+
+const n2w = MetabaseUtils.numberToWord;
+
+const PASSWORD_COMPLEXITY_CLAUSES = {
+  total: {
+    test: ({ total = 0 }, password = "") => password.length >= total,
+    description: ({ total = 0 }) =>
+      ngettext(
+        msgid`at least ${n2w(total)} character long`,
+        `at least ${n2w(total)} characters long`,
+        total,
+      ),
+  },
+  lower: {
+    test: makeRegexTest("lower", /[a-z]/g),
+    description: ({ lower = 0 }) =>
+      ngettext(
+        msgid`${n2w(lower)} lower case letter`,
+        `${n2w(lower)} lower case letters`,
+        lower,
+      ),
+  },
+  upper: {
+    test: makeRegexTest("upper", /[A-Z]/g),
+    description: ({ upper = 0 }) =>
+      ngettext(
+        msgid`${n2w(upper)} upper case letter`,
+        `${n2w(upper)} upper case letters`,
+        upper,
+      ),
+  },
+  digit: {
+    test: makeRegexTest("digit", /[0-9]/g),
+    description: ({ digit = 0 }) =>
+      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
+  },
+  special: {
+    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
+    description: ({ special = 0 }) =>
+      ngettext(
+        msgid`${n2w(special)} special character`,
+        `${n2w(special)} special characters`,
+        special,
+      ),
+  },
+};
+
+function makeRegexTest(property, regex) {
+  return (requirements, password = "") =>
+    (password.match(regex) || []).length >= (requirements[property] || 0);
+}
 
 export default MetabaseSettings;

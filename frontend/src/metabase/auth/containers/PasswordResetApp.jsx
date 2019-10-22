@@ -96,9 +96,7 @@ export default class PasswordResetApp extends Component {
 
   render() {
     const { resetError, resetSuccess, newUserJoining } = this.props;
-    const passwordComplexity = MetabaseSettings.passwordComplexityDescription(
-      false,
-    );
+    const passwordComplexity = MetabaseSettings.passwordComplexityDescription();
 
     const requestLink = (
       <Link to="/auth/forgot_password" className="link">
