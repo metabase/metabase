@@ -252,7 +252,9 @@ const DEFAULT_TIMEZONE = "Etc/UTC";
 
 export function getTimezone(series, warn) {
   // Dashboard multiseries cards might have series with different timezones.
-  const timezones = [...new Set(series.map(s => s.data.actual_timezone))];
+  const timezones = Array.from(
+    new Set(series.map(s => s.data.actual_timezone)),
+  );
   if (timezones.length > 1) {
     warn(multipleTimezoneWarning(timezones));
   }

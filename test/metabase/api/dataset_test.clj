@@ -314,4 +314,4 @@
                    (-> results
                      :data
                      (select-keys [:expected_timezone :actual_timezone]))))
-        "expected (desired) and actual timezone should be returned as part of query results")))
+        "expected (desired) and actual timezone should be returned as part of query results"))))
