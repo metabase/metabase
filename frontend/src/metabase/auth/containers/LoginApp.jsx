@@ -140,41 +140,34 @@ export default class LoginApp extends Component {
 }
 
 const UsernameAndPasswordForm = ({ onSubmit, ldapEnabled }) => (
-  <Form
-    form={{
-      fields: [
-        {
-          name: "username",
-          title: Settings.ldapEnabled()
-            ? t`Username or email address`
-            : t`Email address`,
-          placeholder: "youlooknicetoday@email.com",
-          validate: email => !email && t`Email is required`,
-          type: ldapEnabled ? "text" : "email",
-        },
-        {
-          name: "password",
-          title: t`Password`,
-          type: "password",
-          placeholder: "Shh...",
-          validate: password => !password && t`Password is required`,
-        },
-        {
-          name: "remember",
-          title: t`Remember me`,
-          type: "checkbox",
-          initial: true,
-          horizontal: true,
-        },
-      ],
-    }}
-    onSubmit={onSubmit}
-  >
+  <Form onSubmit={onSubmit}>
     {({ values, Form, FormField, FormSubmit, FormMessage }) => (
       <Form>
-        <FormField name="username" />
-        <FormField name="password" />
-        <FormField name="remember" />
+        <FormField
+          name="username"
+          title={
+            Settings.ldapEnabled()
+              ? t`Username or email address`
+              : t`Email address`
+          }
+          placeholder="youlooknicetoday@email.com"
+          validate={email => !email && t`Email is required`}
+          type={ldapEnabled ? "text" : "email"}
+        />
+        <FormField
+          name="password"
+          title={t`Password`}
+          type="password"
+          placeholder="Shh..."
+          validate={password => !password && t`Password is required`}
+        />
+        <FormField
+          name="remember"
+          title={t`Remember me`}
+          type="checkbox"
+          initial={true}
+          horizontal
+        />
         <FormMessage />
         <div className="Form-actions flex align-center">
           <FormSubmit>{t`Sign in`}</FormSubmit>
