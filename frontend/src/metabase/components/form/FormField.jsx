@@ -17,6 +17,7 @@ export default class FormField extends Component {
 
     hidden: PropTypes.bool,
     displayName: PropTypes.string,
+    description: PropTypes.string,
 
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.node),
@@ -33,6 +34,7 @@ export default class FormField extends Component {
       formField,
       displayName = formField &&
         (formField.title || formField.name.split(".").pop()),
+      description = formField && formField.description,
       hidden = formField && formField.type === "hidden",
       horizontal = formField && formField.horizontal,
       children,
@@ -61,7 +63,7 @@ export default class FormField extends Component {
           flex: horizontal,
         })}
       >
-        {horizontal ? children : null}
+        {horizontal && children}
         {displayName && (
           <label
             className={cx("Form-label", { ml1: horizontal })}
@@ -71,7 +73,8 @@ export default class FormField extends Component {
             {error && <span className="text-error">: {error}</span>}
           </label>
         )}
-        {horizontal ? null : children}
+        {!horizontal && description && <div className="mb1">{description}</div>}
+        {!horizontal && children}
       </div>
     );
   }

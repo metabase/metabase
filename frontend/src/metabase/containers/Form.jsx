@@ -3,8 +3,11 @@
 import React from "react";
 import PropTypes from "prop-types";
 
-import { reduxForm, getValues } from "redux-form";
-import { getIn } from "icepick";
+import { connect } from "react-redux";
+import { createSelector } from "reselect";
+import { reduxForm, getValues, initialize } from "redux-form";
+import { getIn, assocIn, dissocIn } from "icepick";
+import _ from "underscore";
 
 import CustomForm from "metabase/components/form/CustomForm";
 import StandardForm from "metabase/components/form/StandardForm";
@@ -13,10 +16,12 @@ export {
   CustomFormField as FormField,
   CustomFormSubmit as FormSubmit,
   CustomFormMessage as FormMessage,
+  CustomFormSection as FormSection,
 } from "metabase/components/form/CustomForm";
 
 type FormFieldName = string;
 type FormFieldTitle = string;
+type FormFieldDescription = string;
 type FormFieldType =
   | "input"
   | "password"
@@ -35,6 +40,7 @@ export type FormFieldDefinition = {
   name: FormFieldName,
   type?: FormFieldType,
   title?: FormFieldTitle,
+  description?: FormFieldDescription,
   initial?: FormValue | (() => FormValue),
   normalize?: (value: FormValue) => FormValue,
   validate?: (value: FormValue) => ?FormError | boolean,
@@ -68,17 +74,78 @@ type Props = {
 };
 
 let FORM_ID = 0;
+const makeMapStateToProps = () => {
+  let formName;
+  return (state, ownProps) => {
+    return {
+      formName:
+        ownProps.formName || (formName = formName || `form_${FORM_ID++}`),
+      values: getValues(state.form[formName]),
+    };
+  };
+};
 
+const ReduxFormComponent = reduxForm()(props => {
+  const FormComponent =
+    props.formComponent || (props.children ? CustomForm : StandardForm);
+  return <FormComponent {...props} />;
+});
+
+@connect(makeMapStateToProps)
 export default class Form extends React.Component {
   props: Props;
 
-  _formName: ?string;
   _FormComponent: any;
 
   constructor(props: Props) {
     super(props);
-    this._formName = this.props.formName || `form_${FORM_ID++}`;
-    this._updateFormComponent(props);
+
+    this.state = {
+      // fields defined via child FormField elements
+      fields: {},
+    };
+
+    // memoized functions
+    const getFormDefinition = createSelector(
+      [
+        (state, props) => props.form,
+        (state, props) => props.validate,
+        (state, props) => props.initial,
+        (state, props) => props.normalize,
+        (state, props) => state.fields,
+      ],
+      (form, validate, initial, normalize, fields) =>
+        // use props.form if provided, otherwise generate from state.fields and props.{validate,initial,normalize}
+        form || {
+          validate,
+          initial,
+          normalize,
+          fields: Object.values(fields),
+        },
+    );
+    const getFormObject = createSelector(
+      [getFormDefinition],
+      formDef => makeFormObject(formDef),
+    );
+    const getInitialValues = createSelector(
+      [getFormObject, (state, props) => props.initialValues || {}],
+      (formObject, initialValues) => ({
+        ...formObject.initial(),
+        ...initialValues,
+      }),
+    );
+    const getFieldNames = createSelector(
+      [getFormObject, getInitialValues, (state, props) => props.values || {}],
+      (formObject, initialValues, values) =>
+        formObject.fieldNames({
+          ...initialValues,
+          ...values,
+        }),
+    );
+    this._getFormObject = () => getFormObject(this.state, this.props);
+    this._getFormDefinition = () => getFormDefinition(this.state, this.props);
+    this._getInitialValues = () => getInitialValues(this.state, this.props);
+    this._getFieldNames = () => getFieldNames(this.state, this.props);
   }
 
   static propTypes = {
@@ -88,64 +155,105 @@ export default class Form extends React.Component {
     formName: PropTypes.string,
   };
 
-  // dynamically generates a component decorated with reduxForm
-  _updateFormComponent(props: Props) {
-    if (this.props.form) {
-      const form = makeForm(this.props.form);
-      const initialValues = {
-        ...form.initial(),
-        ...(this.props.initialValues || {}),
-      };
-      // redux-form config:
-      const formConfig = {
-        form: this._formName,
-        fields: form.fieldNames(initialValues),
-        validate: form.validate,
-        initialValues: initialValues,
-        onSubmit: values => this.handleSubmit(form.normalize(values)),
-      };
-      const mapStateToProps = (state, ownProps) => {
-        const values = getValues(state.form[this._formName]);
-        if (values) {
-          return {
-            ...formConfig,
-            fields: form.fieldNames(values),
-            formDef: form,
-          };
-        } else {
-          return { ...formConfig, formDef: form };
-        }
-      };
-      this._FormComponent = reduxForm(formConfig, mapStateToProps)(
-        props.formComponent ||
-          (this.props.children ? CustomForm : StandardForm),
+  static childContextTypes = {
+    registerFormField: PropTypes.func,
+    unregisterFormField: PropTypes.func,
+    fieldNames: PropTypes.array,
+  };
+
+  componentDidUpdate(prevProps, prevState) {
+    if (!this.props.form) {
+      // HACK: when new fields are added they aren't initialized with their intialValues, so we have to force it here:
+      const newFields = _.difference(
+        Object.keys(this.state.fields),
+        Object.keys(prevState.fields),
       );
+      if (newFields.length > 0) {
+        this.props.dispatch(
+          initialize(
+            this.props.formName,
+            this._getInitialValues(),
+            this._getFieldNames(),
+          ),
+        );
+      }
     }
   }
 
-  handleSubmit = async (object: FormValues) => {
+  _registerFormField = field => {
+    if (!_.isEqual(this.state.fields[field.name], field)) {
+      // console.log("_registerFormField", field.name);
+      this.setState(prevState =>
+        assocIn(prevState, ["fields", field.name], field),
+      );
+    }
+  };
+
+  _unregisterFormField = field => {
+    if (this.state.fields[field.name]) {
+      // console.log("_unregisterFormField", field.name);
+      this.setState(prevState => dissocIn(prevState, ["fields", field.name]));
+    }
+  };
+
+  getChildContext() {
+    return {
+      registerFormField: this._registerFormField,
+      unregisterFormField: this._unregisterFormField,
+    };
+  }
+
+  _validate = (values, props) => {
+    // HACK: clears failed state for global error
+    if (!this._submitting && this._submitFailed) {
+      this._submitFailed = false;
+      props.dispatch(props.stopSubmit(this.props.formName));
+    }
+    const formObject = this._getFormObject();
+    return formObject.validate(values, props);
+  };
+
+  _onSubmit = async values => {
+    const formObject = this._getFormObject();
+    // HACK: clears failed state for global error
+    this._submitting = true;
     try {
-      return await this.props.onSubmit(object);
+      const normalized = formObject.normalize(values);
+      return await this.props.onSubmit(normalized);
     } catch (error) {
-      console.error("Form save failed", error);
-      // redux-form expects { "FIELD NAME": "ERROR STRING" }
+      console.error("Form submission error", error);
+      this._submitFailed = true;
+      // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
       if (error && error.data && error.data.errors) {
         throw error.data.errors;
-      } else {
-        throw { _error: error.data.message || error.data };
+      } else if (error) {
+        throw {
+          _error: error.data.message || error.data,
+        };
       }
+    } finally {
+      setTimeout(() => (this._submitting = false));
     }
   };
 
   render() {
-    const FormComponent = this._FormComponent;
-    if (FormComponent) {
-      // eslint-disable-next-line
-      const { form, onSubmit, ...props } = this.props;
-      return <FormComponent {...props} />;
-    } else {
-      return <div>Missing form definition</div>;
-    }
+    // eslint-disable-next-line
+    const { formName } = this.props;
+    const formObject = this._getFormObject();
+    const initialValues = this._getInitialValues();
+    const fieldNames = this._getFieldNames();
+    return (
+      <ReduxFormComponent
+        {...this.props}
+        formObject={formObject}
+        // redux-form props:
+        form={formName}
+        fields={fieldNames}
+        initialValues={initialValues}
+        validate={this._validate}
+        onSubmit={this._onSubmit}
+      />
+    );
   }
 }
 
@@ -185,7 +293,7 @@ function makeFormMethod(
 function getValue(fnOrValue, ...args): any {
   return typeof fnOrValue === "function" ? fnOrValue(...args) : fnOrValue;
 }
-function makeForm(formDef: FormDefinition): FormObject {
+function makeFormObject(formDef: FormDefinition): FormObject {
   const form = {
     ...formDef,
     fields: values => getValue(formDef.fields, values),
