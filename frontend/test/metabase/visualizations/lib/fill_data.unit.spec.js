@@ -18,7 +18,7 @@ describe("fillMissingValuesInDatas", () => {
       {
         xValues: [time1, time2],
         xDomain: [time1, time2],
-        xInterval: { interval: "day", count: 1 },
+        xInterval: { interval: "day", count: 1, timezone: "Etc/UTC" },
       },
       [rows],
     );
@@ -42,7 +42,7 @@ describe("fillMissingValuesInDatas", () => {
       {
         xValues: [time1, time2],
         xDomain: [time1, time2],
-        xInterval: { interval: "hour", count: 1 },
+        xInterval: { interval: "hour", count: 1, timezone: "Etc/UTC" },
       },
       [rows],
     );
@@ -129,7 +129,7 @@ describe("fillMissingValuesInDatas", () => {
       {
         xValues: [t1, t2],
         xDomain: [t1, t2],
-        xInterval: { interval: "hour", count: 1 },
+        xInterval: { interval: "hour", count: 1, timezone: "Etc/UTC" },
       },
       [[[t1, 1], [t2, 1]]],
     );
