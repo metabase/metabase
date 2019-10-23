@@ -4,8 +4,6 @@ import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
-//import MetabaseSettings from "metabase/lib/settings";
-import MetabaseUtils from "metabase/lib/utils";
 
 import User from "metabase/entities/users";
 

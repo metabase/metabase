@@ -44,7 +44,7 @@ export type FormFieldDefinition = {
   description?: FormFieldDescription,
   initial?: FormValue | (() => FormValue),
   normalize?: (value: FormValue) => FormValue,
-  validate?: (value: FormValue) => ?FormError | boolean,
+  validate?: (value: FormValue, props: FormProps) => ?FormError | boolean,
 };
 
 export type FormDefinition = {
@@ -55,7 +55,7 @@ export type FormDefinition = {
   // $FlowFixMe
   initial?: FormValues | (() => FormValues),
   normalize?: (values: FormValues) => FormValues,
-  validate?: (values: FormValues) => FormErrors,
+  validate?: (values: FormValues, props: FormProps) => FormErrors,
 };
 
 type FormObject = {
@@ -63,7 +63,11 @@ type FormObject = {
   fieldNames: (values: FormValues) => FormFieldName[],
   initial: () => FormValues,
   normalize: (values: FormValues) => FormValues,
-  validate: (values: FormValues) => FormErrors,
+  validate: (values: FormValues, props: FormProps) => FormErrors,
+};
+
+type FormProps = {
+  values?: FormValues,
 };
 
 type Props = {
