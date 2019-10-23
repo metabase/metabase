@@ -2,6 +2,7 @@
 
 import { normalize } from "normalizr";
 import _ from "underscore";
+import { t } from "ttag";
 
 import { createEntity } from "metabase/lib/entities";
 import { fetchData, createThunkAction } from "metabase/lib/redux";
@@ -77,13 +78,13 @@ const Databases = createEntity({
         name: "engine",
         type: "select",
         options: ENGINE_OPTIONS,
-        placeholder: `Select a database`,
+        placeholder: t`Select a database`,
         initial: "postgres",
       },
       {
         name: "name",
-        placeholder: `How would you like to refer to this database?`,
-        validate: value => (!value ? `required` : null),
+        placeholder: t`How would you like to refer to this database?`,
+        validate: value => !value && t`required`,
       },
       ...(getFieldsForEngine(values.engine, values) || []),
     ],
@@ -109,7 +110,7 @@ function getFieldsForEngine(engine, values) {
         title: field["display-name"],
         type: field.type,
         placeholder: field.placeholder || field.default,
-        validate: value => (field.required && !value ? `required` : null),
+        validate: value => (field.required && !value ? t`required` : null),
         normalize: value =>
           value === "" || value == null
             ? "default" in field

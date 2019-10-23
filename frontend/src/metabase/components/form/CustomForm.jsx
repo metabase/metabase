@@ -217,9 +217,9 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
     <StandardSection {...props} />
   );
 
-export const CustomFormFooter = ({ submitText }) => (
+export const CustomFormFooter = ({ submitTitle }) => (
   <div className="flex align-center">
     <CustomFormMessage />
-    <CustomFormSubmit className="ml-auto">{submitText}</CustomFormSubmit>
+    <CustomFormSubmit className="ml-auto">{submitTitle}</CustomFormSubmit>
   </div>
 );

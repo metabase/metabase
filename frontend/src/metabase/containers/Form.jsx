@@ -277,9 +277,11 @@ function makeFormMethod(
 ) {
   const originalMethod = form[methodName];
   form[methodName] = (object, ...args) => {
-    const values =
-      getValue(originalMethod, object, ...args) ||
-      getValue(defaultValues, object, ...args);
+    // make a copy
+    const values = {
+      ...(getValue(originalMethod, object, ...args) ||
+        getValue(defaultValues, object, ...args)),
+    };
     for (const field of form.fields(object)) {
       const value = getValue(
         field[methodName],

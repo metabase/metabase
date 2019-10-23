@@ -6,6 +6,7 @@ import { assocIn } from "icepick";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
+import { capitalize } from "metabase/lib/formatting";
 
 import { createEntity } from "metabase/lib/entities";
 
@@ -28,28 +29,53 @@ function loadMemberships() {
   return require("metabase/admin/people/people").loadMemberships();
 }
 
-const BASE_FORM_FIELDS: FormFieldDefinition[] = [
+const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
   {
     name: "first_name",
     title: t`First name`,
     placeholder: "Johnny",
     validate: name =>
-      (!name && t`First name is required`) ||
-      (name && name.length > 100 && t`Must be 100 characters or less`),
+      (!name && t`required`) ||
+      (name && name.length > 100 && t`must be 100 characters or less`),
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
     validate: name =>
-      (!name && t`Last name is required`) ||
-      (name && name.length > 100 && t`Must be 100 characters or less`),
+      (!name && t`required`) ||
+      (name && name.length > 100 && t`must be 100 characters or less`),
   },
   {
     name: "email",
     title: t`Email`,
     placeholder: "youlooknicetoday@email.com",
-    validate: email => !email && t`Email is required`,
+    validate: email =>
+      (!email && t`required`) ||
+      (!MetabaseUtils.validEmail(email) &&
+        t`not a valid formatted email address`),
+  },
+];
+
+const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
+  {
+    name: "password",
+    title: t`Enter a password`,
+    type: "password",
+    placeholder: t`Shh...`,
+    description: capitalize(MetabaseSettings.passwordComplexityDescription()),
+    validate: password =>
+      (!password && t`required`) ||
+      MetabaseSettings.passwordComplexityDescription(password),
+  },
+  {
+    name: "password_confirm",
+    title: t`Confirm your password`,
+    type: "password",
+    placeholder: t`Shh... but one more time`,
+    validate: (password_confirm, { values: { password } = {} }) =>
+      (!password_confirm && t`required`) ||
+      (password_confirm !== password && t`passwords do not match`),
   },
 ];
 
@@ -149,7 +175,7 @@ const Users = createEntity({
   forms: {
     admin: {
       fields: [
-        ...BASE_FORM_FIELDS,
+        ...DETAILS_FORM_FIELDS,
         {
           name: "group_ids",
           title: "Groups",
@@ -158,29 +184,30 @@ const Users = createEntity({
       ],
     },
     user: {
-      fields: BASE_FORM_FIELDS,
+      fields: [...DETAILS_FORM_FIELDS],
     },
     setup: {
       fields: [
-        ...BASE_FORM_FIELDS,
-        {
-          name: "password",
-          title: t`Enter a password`,
-          type: "password",
-          placeholder: t`Shh...`,
-        },
-        {
-          name: "password2",
-          title: t`Confirm your password`,
-          type: "password",
-          placeholder: t`Shh... but one more time`,
-          validate: (pass2, form) => console.log(pass2, form),
-        },
+        ...DETAILS_FORM_FIELDS,
+        ...PASSWORD_FORM_FIELDS,
         {
           name: "site_name",
           title: t`Your company or team name`,
-          placeholder: t`Department of awesome`,
+          placeholder: t`Department of Awesome`,
+          validate: value => !value && t`required`,
         },
+      ],
+    },
+    password: {
+      fields: [
+        {
+          name: "old_password",
+          type: "password",
+          title: t`Current password`,
+          placeholder: t`Shhh...`,
+          validate: value => !value && t`required`,
+        },
+        ...PASSWORD_FORM_FIELDS,
       ],
     },
   },
