@@ -83,8 +83,8 @@
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
     (warn-on-timezone-conflict driver db report-tz jvm-tz data-tz)
-    (binding [*report-timezone* (or report-tz jvm-tz)
-              *database-timezone*   data-tz]
+    (binding [*report-timezone*   (or report-tz jvm-tz)
+              *database-timezone* data-tz]
       (f))))
 
 (defmacro with-effective-timezone
@@ -183,10 +183,11 @@
 
 (def ^:private ^{:arglists '([timezone-id])} time-formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
-  (memoize (fn [timezone-id]
-             (if timezone-id
-               (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
-               (time/formatters :time)))))
+  (memoize
+   (fn [timezone-id]
+     (if timezone-id
+       (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
+       (time/formatters :time)))))
 
 (defn format-time
   "Returns a string representation of the time found in `t`"

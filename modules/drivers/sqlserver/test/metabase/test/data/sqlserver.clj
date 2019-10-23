@@ -35,7 +35,6 @@
 (defmethod sql.tx/drop-db-if-exists-sql :sqlserver
   [_ {:keys [database-name]}]
   ;; Kill all open connections to the DB & drop it
-  (println "database-name:" database-name) ; NOCOMMIT
   (apply format "IF EXISTS (SELECT name FROM master.dbo.sysdatabases WHERE name = N'%s')
                  BEGIN
                      ALTER DATABASE \"%s\" SET SINGLE_USER WITH ROLLBACK IMMEDIATE;

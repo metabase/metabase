@@ -94,41 +94,41 @@
                    [:absolute-datetime filter-value unit]]))))))))
 
 (deftest timezones-test
-  (let [optimize-with-timezone (fn [inst timezone]
+  (let [optimize-with-timezone (fn [inst]
                                  (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
                                       {:database 1
                                        :type     :query
                                        :query    {:filter [:=
                                                            [:datetime-field [:field-id 1] :day]
-                                                           [:absolute-datetime inst :day]]}
-                                       :settings {:report-timezone timezone}})
+                                                           [:absolute-datetime inst :day]]}})
                                      (get-in [:query :filter])))]
-    (doseq [[timezone {:keys [inst lower upper]}]
+    (doseq [[timezone-id {:keys [inst lower upper]}]
             {"UTC"        {:inst  "2015-11-18T00:00:00.000000000-00:00"
                            :lower "2015-11-18T00:00:00.000000000-00:00"
                            :upper "2015-11-19T00:00:00.000000000-00:00"}
              "US/Pacific" {:inst  "2015-11-18T08:00:00.000000000-00:00"
                            :lower "2015-11-18T08:00:00.000000000-00:00"
                            :upper "2015-11-19T08:00:00.000000000-00:00"}}]
-      (testing (format "%s timezone" timezone)
+      (testing (format "%s timezone" timezone-id)
         (let [inst'  (du/->Timestamp inst "UTC")
               lower' (du/->Timestamp lower "UTC")
               upper' (du/->Timestamp upper "UTC")]
-          (testing "lower-bound and upper-bound util fns"
-            (is (= lower'
-                   (#'optimize-datetime-filters/lower-bound :day inst' timezone))
-                (format "lower bound of day(%s) in the %s timezone should be %s" inst timezone lower))
-            (is (= upper'
-                   (#'optimize-datetime-filters/upper-bound :day inst' timezone))
-                (format "upper bound of day(%s) in the %s timezone should be %s" inst timezone upper)))
-          (testing "optimize-with-datetime"
-            (let [expected [:and
-                            [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower' :default]]
-                            [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper' :default]]]]
-              (is (= expected
-                     (optimize-with-timezone inst' timezone))
-                  (format "= %s in the %s timezone should be optimized to range %s -> %s"
-                          inst timezone lower upper)))))))))
+          (binding [du/*report-timezone* (java.util.TimeZone/getTimeZone ^String timezone-id)]
+            (testing "lower-bound and upper-bound util fns"
+              (is (= lower'
+                     (#'optimize-datetime-filters/lower-bound :day inst'))
+                  (format "lower bound of day(%s) in the %s timezone should be %s" inst timezone-id lower))
+              (is (= upper'
+                     (#'optimize-datetime-filters/upper-bound :day inst'))
+                  (format "upper bound of day(%s) in the %s timezone should be %s" inst timezone-id upper)))
+            (testing "optimize-with-datetime"
+              (let [expected [:and
+                              [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower' :default]]
+                              [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper' :default]]]]
+                (is (= expected
+                       (optimize-with-timezone inst'))
+                    (format "= %s in the %s timezone should be optimized to range %s -> %s"
+                            inst timezone-id lower upper))))))))))
 
 (deftest skip-optimization-test
   (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #inst "2019-01-01" :month]]]

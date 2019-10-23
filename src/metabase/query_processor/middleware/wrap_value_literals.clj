@@ -6,7 +6,9 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [metabase.util.date :as du])
   (:import java.util.TimeZone))
 
@@ -64,23 +66,20 @@
 (defmethod add-type-info java.sql.Timestamp [this info & _]
   [:absolute-datetime this (get info :unit :default)])
 
-(defn- maybe-parse-as-time [time-str unit report-timezone]
+(defn- maybe-parse-as-time [time-str unit]
   (when (mbql.preds/TimeUnit? unit)
-    (du/str->time time-str (when report-timezone
-                             (TimeZone/getTimeZone ^String report-timezone)))))
+    (du/str->time time-str (some-> (qp.timezone/results-timezone-id) TimeZone/getTimeZone))))
 
 (defmethod add-type-info String
-  [this info & {:keys [parse-datetime-strings? report-timezone]
+  [this info & {:keys [parse-datetime-strings?]
                 :or   {parse-datetime-strings? true}}]
   (if-let [unit (when (and (du/date-string? this)
                            parse-datetime-strings?)
                   (:unit info))]
     ;; should use report timezone by default
-    (if-let [time (maybe-parse-as-time this unit report-timezone)]
+    (if-let [time (maybe-parse-as-time this unit)]
       [:time time unit]
-      (let [timestamp (if report-timezone
-                        (du/->Timestamp this report-timezone)
-                        (du/->Timestamp this))]
+      (let [timestamp (du/->Timestamp this (qp.timezone/results-timezone-id))]
         [:absolute-datetime timestamp unit]))
     [:value this info]))
 
@@ -90,29 +89,29 @@
 (def ^:private raw-value? (complement mbql.u/mbql-clause?))
 
 (defn ^:private wrap-value-literals-in-mbql-query
-  [{:keys [source-query], :as inner-query} {:keys [report-timezone], :as options}]
+  [{:keys [source-query], :as inner-query} options]
   (let [inner-query (cond-> inner-query
                       source-query (update :source-query wrap-value-literals-in-mbql-query options))]
     (mbql.u/replace inner-query
       [(clause :guard #{:= :!= :< :> :<= :>=}) field (x :guard raw-value?)]
-      [clause field (add-type-info x (type-info field), :report-timezone report-timezone)]
+      [clause field (add-type-info x (type-info field))]
 
       [:between field (min-val :guard raw-value?) (max-val :guard raw-value?)]
       [:between
        field
-       (add-type-info min-val (type-info field), :report-timezone report-timezone)
-       (add-type-info max-val (type-info field), :report-timezone report-timezone)]
+       (add-type-info min-val (type-info field))
+       (add-type-info max-val (type-info field))]
 
       [(clause :guard #{:starts-with :ends-with :contains}) field (s :guard string?) & more]
       (let [s (add-type-info s (type-info field), :parse-datetime-strings? false)]
         (into [clause field s] more)))))
 
 (defn- wrap-value-literals*
-  [{{:keys [report-timezone]} :settings, query-type :type, :as query}]
+  [{query-type :type, :as query}]
   (if-not (= query-type :query)
     query
     (mbql.s/validate-query
-     (update query :query wrap-value-literals-in-mbql-query {:report-timezone report-timezone}))))
+     (update query :query wrap-value-literals-in-mbql-query nil))))
 
 (defn wrap-value-literals
   "Middleware that wraps ran value literals in `:value` (for integers, strings, etc.) or `:absolute-datetime` (for

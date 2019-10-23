@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [metabase.driver :as driver]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
@@ -8,6 +9,10 @@
              [util :as tu]]
             [metabase.util.date :as du])
   (:import java.util.TimeZone))
+
+(driver/register! ::timezone-driver, :astract? true)
+
+(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
 
 (defn- wrap-value-literals
   {:style/indent 0}
@@ -49,9 +54,11 @@
 (deftest parse-datetime-literal-strings-test
   (let [parse-with-timezone (fn [datetime-str, ^String timezone-id]
                               (binding [du/*report-timezone* (TimeZone/getTimeZone timezone-id)]
+                                (is (= (metabase.query-processor.timezone/results-timezone-id)
+                                       timezone-id)
+                                    "Make sure `results-timezone-id` is returning the bound value")
                                 (second (#'wrap-value-literals/add-type-info datetime-str
-                                                                             {:unit :day}
-                                                                             :report-timezone timezone-id))))]
+                                                                             {:unit :day}))))]
     (doseq [[timezone expected] {"UTC"        #inst "2018-10-01T00:00:00.000000000-00:00"
                                  "US/Pacific" #inst "2018-10-01T07:00:00.000000000-00:00"}]
       (is (= (du/->Timestamp expected "UTC")
