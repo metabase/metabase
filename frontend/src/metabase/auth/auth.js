@@ -91,42 +91,6 @@ export const logout = createThunkAction(LOGOUT, function() {
   };
 });
 
-// passwordReset
-export const PASSWORD_RESET = "metabase/auth/PASSWORD_RESET";
-export const passwordReset = createThunkAction(PASSWORD_RESET, function(
-  token,
-  credentials,
-) {
-  return async function(dispatch, getState) {
-    if (credentials.password !== credentials.password2) {
-      return {
-        success: false,
-        error: { data: { errors: { password2: t`Passwords do not match` } } },
-      };
-    }
-
-    try {
-      // NOTE: this request will return a Set-Cookie header for the session
-      await SessionApi.reset_password({
-        token: token,
-        password: credentials.password,
-      });
-
-      MetabaseAnalytics.trackEvent("Auth", "Password Reset");
-
-      return {
-        success: true,
-        error: null,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error,
-      };
-    }
-  };
-});
-
 // reducers
 
 const loginError = handleActions(
@@ -138,22 +102,6 @@ const loginError = handleActions(
   null,
 );
 
-const resetSuccess = handleActions(
-  {
-    [PASSWORD_RESET]: { next: (state, { payload }) => payload.success },
-  },
-  false,
-);
-
-const resetError = handleActions(
-  {
-    [PASSWORD_RESET]: { next: (state, { payload }) => payload.error },
-  },
-  null,
-);
-
 export default combineReducers({
   loginError,
-  resetError,
-  resetSuccess,
 });

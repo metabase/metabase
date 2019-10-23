@@ -208,6 +208,7 @@ const Users = createEntity({
         ...PASSWORD_FORM_FIELDS,
       ],
     },
+    password_reset: { fields: [...PASSWORD_FORM_FIELDS] },
   },
 });
 
