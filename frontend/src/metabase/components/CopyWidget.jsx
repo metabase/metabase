@@ -6,6 +6,7 @@ import CopyButton from "./CopyButton";
 
 type Props = {
   value: string,
+  style?: Object,
 };
 
 export default class CopyWidget extends Component {
@@ -14,7 +15,7 @@ export default class CopyWidget extends Component {
   render() {
     const {
       value,
-      style: { borderWidth, fontSize, ...style },
+      style: { borderWidth, fontSize, ...style } = {},
     } = this.props;
     return (
       <div className="flex" style={style}>

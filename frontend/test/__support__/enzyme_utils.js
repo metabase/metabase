@@ -155,3 +155,9 @@ export async function fillAndSubmitForm(wrapper, values) {
   await fillFormValues(wrapper, values);
   submitForm(wrapper);
 }
+
+export function findButtonByText(wrapper, text) {
+  return wrapper
+    .find("button")
+    .findWhere(n => n.type() === "button" && n.text() === text);
+}

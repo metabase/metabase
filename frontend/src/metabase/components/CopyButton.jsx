@@ -9,6 +9,7 @@ import CopyToClipboard from "react-copy-to-clipboard";
 
 type Props = {
   className?: string,
+  style?: Object,
   value: string,
 };
 type State = {

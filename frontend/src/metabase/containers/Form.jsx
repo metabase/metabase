@@ -74,6 +74,10 @@ type Props = {
   formComponent?: React$Component<any, any, any>,
 };
 
+type State = {
+  inlineFields: { [name: FormFieldName]: FormFieldDefinition },
+};
+
 let FORM_ID = 0;
 const makeMapStateToProps = () => {
   let formName;
@@ -95,15 +99,22 @@ const ReduxFormComponent = reduxForm()(props => {
 @connect(makeMapStateToProps)
 export default class Form extends React.Component {
   props: Props;
+  state: State;
 
-  _FormComponent: any;
+  _submitting: boolean = false;
+  _submitFailed: boolean = false;
+
+  _getFormDefinition: () => FormDefinition;
+  _getFormObject: () => FormObject;
+  _getInitialValues: () => FormValues;
+  _getFieldNames: () => FormFieldName[];
 
   constructor(props: Props) {
     super(props);
 
     this.state = {
       // fields defined via child FormField elements
-      fields: {},
+      inlineFields: {},
     };
 
     // memoized functions
@@ -113,15 +124,15 @@ export default class Form extends React.Component {
         (state, props) => props.validate,
         (state, props) => props.initial,
         (state, props) => props.normalize,
-        (state, props) => state.fields,
+        (state, props) => state.inlineFields,
       ],
-      (form, validate, initial, normalize, fields) =>
+      (form, validate, initial, normalize, inlineFields) =>
         // use props.form if provided, otherwise generate from state.fields and props.{validate,initial,normalize}
         form || {
           validate,
           initial,
           normalize,
-          fields: Object.values(fields),
+          fields: Object.values(inlineFields),
         },
     );
     const getFormObject = createSelector(
@@ -162,14 +173,15 @@ export default class Form extends React.Component {
     fieldNames: PropTypes.array,
   };
 
-  componentDidUpdate(prevProps, prevState) {
+  componentDidUpdate(prevProps: Props, prevState: State) {
     if (!this.props.form) {
       // HACK: when new fields are added they aren't initialized with their intialValues, so we have to force it here:
       const newFields = _.difference(
-        Object.keys(this.state.fields),
-        Object.keys(prevState.fields),
+        Object.keys(this.state.inlineFields),
+        Object.keys(prevState.inlineFields),
       );
       if (newFields.length > 0) {
+        // $FlowFixMe: dispatch provided by connect
         this.props.dispatch(
           initialize(
             this.props.formName,
@@ -181,19 +193,21 @@ export default class Form extends React.Component {
     }
   }
 
-  _registerFormField = field => {
-    if (!_.isEqual(this.state.fields[field.name], field)) {
+  _registerFormField = (field: FormFieldDefinition) => {
+    if (!_.isEqual(this.state.inlineFields[field.name], field)) {
       // console.log("_registerFormField", field.name);
       this.setState(prevState =>
-        assocIn(prevState, ["fields", field.name], field),
+        assocIn(prevState, ["inlineFields", field.name], field),
       );
     }
   };
 
-  _unregisterFormField = field => {
-    if (this.state.fields[field.name]) {
+  _unregisterFormField = (field: FormFieldDefinition) => {
+    if (this.state.inlineFields[field.name]) {
       // console.log("_unregisterFormField", field.name);
-      this.setState(prevState => dissocIn(prevState, ["fields", field.name]));
+      this.setState(prevState =>
+        dissocIn(prevState, ["inlineFields", field.name]),
+      );
     }
   };
 
@@ -204,7 +218,7 @@ export default class Form extends React.Component {
     };
   }
 
-  _validate = (values, props) => {
+  _validate = (values: FormValues, props: any) => {
     // HACK: clears failed state for global error
     if (!this._submitting && this._submitFailed) {
       this._submitFailed = false;
@@ -214,7 +228,7 @@ export default class Form extends React.Component {
     return formObject.validate(values, props);
   };
 
-  _onSubmit = async values => {
+  _onSubmit = async (values: FormValues) => {
     const formObject = this._getFormObject();
     // HACK: clears failed state for global error
     this._submitting = true;

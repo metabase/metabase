@@ -5,7 +5,12 @@ import {
   BROWSER_HISTORY_PUSH,
   BROWSER_HISTORY_POP,
 } from "__support__/e2e_tests";
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import {
+  click,
+  clickButton,
+  setInputValue,
+  findButtonByText,
+} from "__support__/enzyme_utils";
 import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,
@@ -115,9 +120,7 @@ describe("admin/people", () => {
 
       const editDetailsModal = app.find(ModalContent);
 
-      const saveButton = editDetailsModal
-        .find('div[children="Update"]')
-        .closest(Button);
+      const saveButton = findButtonByText(app, "Update");
 
       setInputValue(
         editDetailsModal.find("input[name='first_name']"),
