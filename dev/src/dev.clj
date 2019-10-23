@@ -41,6 +41,14 @@
   (doseq [[symb] (ns-interns a-namespace)]
     (ns-unmap a-namespace symb)))
 
+(defn ns-unalias-all
+  "Remove all aliases for other namespaces from the current namespace.
+
+    (ns-unalias-all *ns*)"
+  [a-namespace]
+  (doseq [[symb] (ns-aliases a-namespace)]
+    (ns-unalias a-namespace symb)))
+
 (defmacro require-model
   "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
   session"
