@@ -4,12 +4,13 @@
             [metabase.driver.util :as driver.u]
             [metabase.util.date :as du]))
 
-(defn- report-timezone-id
+(defn report-timezone-id
   "Timezone ID for the report timezone, if the current driver supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
   []
   (when (bound? #'du/*report-timezone*)
-    (.getID du/*report-timezone*)))
+    (when du/*report-timezone*
+      (.getID du/*report-timezone*))))
 
 (defn- current-database-timezone-id []
   (when (bound? #'du/*database-timezone*)

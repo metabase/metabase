@@ -10,10 +10,6 @@
             [metabase.util.date :as du])
   (:import java.util.TimeZone))
 
-(driver/register! ::timezone-driver, :astract? true)
-
-(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
-
 (defn- wrap-value-literals
   {:style/indent 0}
   ([query]

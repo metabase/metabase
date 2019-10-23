@@ -4,8 +4,8 @@
             [metabase.util.date :as du]))
 
 (defn- settings-for-current-driver []
-  (when (bound? #'du/*report-timezone*)
-    {:report-timezone (.getID du/*report-timezone*)}))
+  (when-let [timezone-id (qp.timezone/report-timezone-id)]
+    {:report-timezone timezone-id}))
 
 (defn add-settings
   "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time,
@@ -14,10 +14,12 @@
        {:report-timezone \"US/Pacific\"}"
   [qp]
   (fn [query]
-    (let [{:keys [report-timezone], :as settings} (settings-for-current-driver)
-          query                                   (cond-> query
-                                                    settings (assoc :settings settings))
-          results                                 (qp query)]
-      (assoc results
-             :expected_timezone (qp.timezone/requested-timezone-id)
-             :actual_timezone   (qp.timezone/results-timezone-id)))))
+    (let [settings (settings-for-current-driver)
+          query    (cond-> query
+                     settings (assoc :settings settings))
+          results  (qp query)]
+      (merge
+       results
+       {:actual_timezone (qp.timezone/results-timezone-id)}
+       (when-let [requested-timezone-id (qp.timezone/requested-timezone-id)]
+         {:expected_timezone requested-timezone-id})))))
