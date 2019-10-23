@@ -194,7 +194,7 @@ function renderTimeseries(element, unit, timezone, rows, props = {}) {
       card: {
         display: "bar",
         visualization_settings: { ...DEFAULT_SETTINGS },
-        actual_timezone: timezone,
+        results_timezone: timezone,
       },
       data: {
         cols: [
