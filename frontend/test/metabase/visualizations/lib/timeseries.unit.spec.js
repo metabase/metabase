@@ -4,7 +4,11 @@ import {
   dimensionIsTimeseries,
   computeTimeseriesDataInverval,
   timeseriesScale,
+  getTimezone,
 } from "metabase/visualizations/lib/timeseries";
+import { getVisualizationTransformed } from "metabase/visualizations";
+
+import { StringColumn, NumberColumn } from "../__support__/visualizations";
 
 import { TYPE } from "metabase/lib/types";
 
@@ -364,6 +368,27 @@ describe("visualization.lib.timeseries", () => {
       expect(ticks[ticks.length - 1].toISOString()).toEqual(
         "2000-01-30T00:00:00.000Z",
       );
+    });
+  });
+  describe("getTimezone", () => {
+    const series = [
+      {
+        card: { visualization_settings: {}, display: "bar" },
+        data: {
+          actual_timezone: "US/Eastern",
+          cols: [StringColumn({ name: "a" }), NumberColumn({ name: "b" })],
+          rows: [],
+        },
+      },
+    ];
+    it("should extract actual_timezone", () => {
+      const timezone = getTimezone(series);
+      expect(timezone).toBe("US/Eastern");
+    });
+    it("should extract actual_timezone after series is transformed", () => {
+      const { series: transformed } = getVisualizationTransformed(series);
+      const timezone = getTimezone(transformed);
+      expect(timezone).toBe("US/Eastern");
     });
   });
 });

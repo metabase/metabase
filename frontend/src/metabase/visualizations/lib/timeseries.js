@@ -251,6 +251,8 @@ export const timeseriesScale = (
 const DEFAULT_TIMEZONE = "Etc/UTC";
 
 export function getTimezone(series, warn) {
+  series = series._raw || series;
+
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
     new Set(series.map(s => s.data.actual_timezone)),
