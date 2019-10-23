@@ -247,7 +247,7 @@ export const timeseriesScale = (
   return s;
 };
 
-// We should always have actual_timezone, but just in case we fallback to UTC
+// We should always have results_timezone, but just in case we fallback to UTC
 const DEFAULT_TIMEZONE = "Etc/UTC";
 
 export function getTimezone(series, warn) {
@@ -255,15 +255,15 @@ export function getTimezone(series, warn) {
 
   // Dashboard multiseries cards might have series with different timezones.
   const timezones = Array.from(
-    new Set(series.map(s => s.data.actual_timezone)),
+    new Set(series.map(s => s.data.results_timezone)),
   );
   if (timezones.length > 1) {
     warn(multipleTimezoneWarning(timezones));
   }
   // Warn if the query was run in an unexpected timezone.
-  const { actual_timezone, expected_timezone } = series[0].data;
-  if (expected_timezone && expected_timezone !== actual_timezone) {
-    warn(unexpectedTimezoneWarning({ actual_timezone, expected_timezone }));
+  const { results_timezone, requested_timezone } = series[0].data;
+  if (requested_timezone && requested_timezone !== results_timezone) {
+    warn(unexpectedTimezoneWarning({ results_timezone, requested_timezone }));
   }
-  return actual_timezone || DEFAULT_TIMEZONE;
+  return results_timezone || DEFAULT_TIMEZONE;
 }

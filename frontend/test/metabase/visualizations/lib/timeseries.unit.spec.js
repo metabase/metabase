@@ -375,17 +375,17 @@ describe("visualization.lib.timeseries", () => {
       {
         card: { visualization_settings: {}, display: "bar" },
         data: {
-          actual_timezone: "US/Eastern",
+          results_timezone: "US/Eastern",
           cols: [StringColumn({ name: "a" }), NumberColumn({ name: "b" })],
           rows: [],
         },
       },
     ];
-    it("should extract actual_timezone", () => {
+    it("should extract results_timezone", () => {
       const timezone = getTimezone(series);
       expect(timezone).toBe("US/Eastern");
     });
-    it("should extract actual_timezone after series is transformed", () => {
+    it("should extract results_timezone after series is transformed", () => {
       const { series: transformed } = getVisualizationTransformed(series);
       const timezone = getTimezone(transformed);
       expect(timezone).toBe("US/Eastern");

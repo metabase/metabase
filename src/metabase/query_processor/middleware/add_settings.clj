@@ -46,5 +46,5 @@
       (update results
               :data
               assoc
-              :expected_timezone (expected-timezone-id)
-              :actual_timezone   (actual-timezone-id)))))
+              :requested_timezone (expected-timezone-id)
+              :results_timezone   (actual-timezone-id)))))

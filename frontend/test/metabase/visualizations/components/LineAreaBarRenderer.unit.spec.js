@@ -65,8 +65,8 @@ describe("LineAreaBarRenderer", () => {
     const data = {
       cols: [DateTimeColumn(), NumberColumn()],
       rows: [["2019-01-01", 1]],
-      expected_timezone: "US/Pacific",
-      actual_timezone: "US/Eastern",
+      requested_timezone: "US/Pacific",
+      results_timezone: "US/Eastern",
     };
     const card = { display: "line", visualization_settings: {} };
     const onRender = jest.fn();
@@ -84,8 +84,8 @@ describe("LineAreaBarRenderer", () => {
       data: {
         cols: [DateTimeColumn(), NumberColumn()],
         rows: [["2019-01-01", 1]],
-        expected_timezone: tz,
-        actual_timezone: tz,
+        requested_timezone: tz,
+        results_timezone: tz,
       },
       card: { display: "line", visualization_settings: {} },
     });

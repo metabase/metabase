@@ -73,11 +73,11 @@
 
 (defn successful-query-results
   ([]
-   {:data              {:cols              [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                        :rows              [[100]]
-                        :insights          nil
-                        :actual_timezone   "UTC"
-                        :expected_timezone "UTC"
+   {:data              {:cols               [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                        :rows               [[100]]
+                        :insights           nil
+                        :results_timezone   "UTC"
+                        :requested_timezone "UTC"
                       }
     :json_query        {:parameters nil}
     :status            "completed"})

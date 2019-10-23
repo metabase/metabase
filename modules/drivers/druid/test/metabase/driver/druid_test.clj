@@ -122,8 +122,8 @@
                                             :base_type    :type/Integer
                                             :field_ref    [:field-literal "count" :type/Integer]}])
                        :native_form       {:query native-query-1}
-                       :expected_timezone "UTC"
-                       :actual_timezone   "UTC"}}
+                       :requested_timezone "UTC"
+                       :results_timezone   "UTC"}}
 
   (-> (process-native-query native-query-1)
       (m/dissoc-in [:data :insights])))

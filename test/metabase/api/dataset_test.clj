@@ -59,11 +59,11 @@
     (testing "Just a basic sanity check to make sure Query Processor endpoint is still working correctly."
       (let [result ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                            {:aggregation [[:count]]}))]
-        (is (= {:data                   {:rows                   [[1000]]
-                                         :cols                   [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                                         :native_form            true
-                                         :actual_timezone        "UTC"
-                                         :expected_timezone      "UTC"}
+        (is (= {:data                   {:rows                    [[1000]]
+                                         :cols                    [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                                         :native_form             true
+                                         :results_timezone        "UTC"
+                                         :requested_timezone      "UTC"}
                 :row_count              1
                 :status                 "completed"
                 :context                "ad-hoc"
@@ -306,12 +306,12 @@
 
 (deftest report-timezone-test
   (datasets/test-driver :postgres
-    (is (= {:expected_timezone "US/Pacific"
-            :actual_timezone   "US/Pacific"}
+    (is (= {:requested_timezone "US/Pacific"
+            :results_timezone   "US/Pacific"}
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
              (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
                    (-> results
                      :data
-                     (select-keys [:expected_timezone :actual_timezone]))))
+                     (select-keys [:requested_timezone :results_timezone]))))
         "expected (desired) and actual timezone should be returned as part of query results"))))
