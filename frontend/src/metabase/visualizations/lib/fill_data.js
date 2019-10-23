@@ -66,7 +66,7 @@ function fillMissingValuesInData(
       return rows;
     }
 
-    xValues = timeseriesScale(xInterval, getTimezone([singleSeries]))
+    xValues = timeseriesScale(xInterval)
       .domain(xDomain)
       .ticks();
     getKey = m => m.toISOString();
