@@ -118,6 +118,7 @@ export function getFieldType(field) {
     DATE_TIME,
     LOCATION,
     COORDINATE,
+    ENTITY,
     FOREIGN_KEY,
     NUMBER,
     STRING,
@@ -410,6 +411,7 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-null", verboseName: t`Not empty` },
   ],
   [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
+  [ENTITY]: DEFAULT_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
