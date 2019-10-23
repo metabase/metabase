@@ -223,7 +223,7 @@ export const timeseriesScale = (
     const ticks = [];
     let tick = start
       .clone()
-      .tz(tz)
+      .tz(timezone)
       .startOf(interval);
 
     // We want to use "round" ticks for a given interval (unit). If we're
