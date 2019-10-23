@@ -17,7 +17,11 @@ import {
   colorShades,
 } from "./utils";
 
-import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
+import {
+  minTimeseriesUnit,
+  computeTimeseriesDataInverval,
+  getTimezone,
+} from "./timeseries";
 
 import { computeNumericDataInverval } from "./numeric";
 
@@ -690,9 +694,9 @@ function addTrendlineChart(
   }
 }
 
-function applyXAxisSettings(parent, series, xAxisProps, warn) {
+function applyXAxisSettings(parent, series, xAxisProps, timezone) {
   if (isTimeseries(parent.settings)) {
-    applyChartTimeseriesXAxis(parent, series, xAxisProps, warn);
+    applyChartTimeseriesXAxis(parent, series, xAxisProps, timezone);
   } else if (isQuantitative(parent.settings)) {
     applyChartQuantitativeXAxis(parent, series, xAxisProps);
   } else {
@@ -803,6 +807,8 @@ export default function lineAreaBar(
     settings["graph.x_axis.scale"] = "ordinal";
   }
 
+  const timezone = getTimezone(props.series, warn);
+
   let datas = getDatas(props, warn);
   let xAxisProps = getXAxisProps(props, datas);
 
@@ -868,7 +874,7 @@ export default function lineAreaBar(
   );
   parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
 
-  applyXAxisSettings(parent, props.series, xAxisProps, warn);
+  applyXAxisSettings(parent, props.series, xAxisProps, timezone);
 
   applyYAxisSettings(parent, yAxisProps);
 

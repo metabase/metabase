@@ -8,11 +8,7 @@ import moment from "moment";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import {
-  computeTimeseriesTicksInterval,
-  timeseriesScale,
-  getTimezone,
-} from "./timeseries";
+import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
@@ -88,7 +84,7 @@ export function applyChartTimeseriesXAxis(
   chart,
   series,
   { xValues, xDomain, xInterval },
-  warn,
+  timezone,
 ) {
   // find the first nonempty single series
   // $FlowFixMe
@@ -161,8 +157,6 @@ export function applyChartTimeseriesXAxis(
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
-
-  const timezone = getTimezone(series, warn);
 
   // set the x scale
   chart.x(timeseriesScale(tickInterval, timezone).domain(xDomain));
