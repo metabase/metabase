@@ -115,6 +115,9 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
 
+    // extract xInterval timezone for updating tickInterval
+    const { timezone } = tickInterval;
+
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
@@ -130,7 +133,7 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.count !== tickInterval.count
       ) {
         tickFormatUnit = "month";
-        tickInterval = { interval: "month", count: 1 };
+        tickInterval = { interval: "month", count: 1, timezone };
       }
     }
 
@@ -147,11 +150,10 @@ export function applyChartTimeseriesXAxis(
     });
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
-      xDomain,
-      tickInterval,
-      chart.width(),
-    );
+    tickInterval = {
+      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      timezone,
+    };
   }
 
   // pad the domain slightly to prevent clipping
