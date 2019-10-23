@@ -84,7 +84,6 @@ export function applyChartTimeseriesXAxis(
   chart,
   series,
   { xValues, xDomain, xInterval },
-  timezone,
 ) {
   // find the first nonempty single series
   // $FlowFixMe
@@ -159,7 +158,7 @@ export function applyChartTimeseriesXAxis(
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(timeseriesScale(tickInterval, timezone).domain(xDomain));
+  chart.x(timeseriesScale(tickInterval).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>

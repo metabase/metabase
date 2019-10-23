@@ -155,10 +155,11 @@ describe("visualization.lib.timeseries", () => {
 
   describe("timeseriesScale", () => {
     it("should create day ranges", () => {
-      const scale = timeseriesScale(
-        { interval: "day", count: 1 },
-        "Etc/UTC",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "Etc/UTC",
+      }).domain([
         moment("2019-03-08T00:00:00.000Z"),
         moment("2019-03-12T00:00:00.000Z"),
       ]);
@@ -173,10 +174,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create day ranges in pacific time across dst boundary", () => {
-      const scale = timeseriesScale(
-        { interval: "day", count: 1 },
-        "US/Pacific",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "US/Pacific",
+      }).domain([
         moment("2019-03-08T00:00:00.000-08"),
         moment("2019-03-12T00:00:00.000-07"),
       ]);
@@ -191,10 +193,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create hour ranges in pacific time across spring dst boundary", () => {
-      const scale = timeseriesScale(
-        { interval: "hour", count: 1 },
-        "US/Pacific",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "hour",
+        count: 1,
+        timezone: "US/Pacific",
+      }).domain([
         moment("2019-03-10T00:00:00.000-08"),
         moment("2019-03-10T04:00:00.000-07"),
       ]);
@@ -208,10 +211,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create hour ranges in pacific time across fall dst boundary", () => {
-      const scale = timeseriesScale(
-        { interval: "hour", count: 1 },
-        "US/Pacific",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "hour",
+        count: 1,
+        timezone: "US/Pacific",
+      }).domain([
         moment("2019-11-03T00:00:00.000-07"),
         moment("2019-11-03T04:00:00.000-08"),
       ]);
@@ -227,10 +231,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create day ranges that don't align with UTC hours", () => {
-      const scale = timeseriesScale(
-        { interval: "day", count: 1 },
-        "Asia/Kathmandu",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "Asia/Kathmandu",
+      }).domain([
         moment("2019-01-01T18:15:00.000Z"),
         moment("2019-01-03T18:15:00.000Z"),
       ]);
@@ -243,10 +248,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create day ranges when the domain doesn't line up with unit boundaries", () => {
-      const scale = timeseriesScale(
-        { interval: "day", count: 1 },
-        "Etc/UTC",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "Etc/UTC",
+      }).domain([
         moment("2019-03-07T12:34:56.789Z"),
         moment("2019-03-12T12:34:56.789Z"),
       ]);
@@ -261,10 +267,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create empty ranges if there are no ticks in domain", () => {
-      const scale = timeseriesScale(
-        { interval: "day", count: 1 },
-        "Etc/UTC",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "Etc/UTC",
+      }).domain([
         moment("2019-03-09T01:00:00.000Z"),
         moment("2019-03-09T22:00:00.000Z"),
       ]);
@@ -273,10 +280,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create month ranges in timezone", () => {
-      const scale = timeseriesScale(
-        { interval: "month", count: 1 },
-        "Asia/Hong_kong",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "month",
+        count: 1,
+        timezone: "Asia/Hong_kong",
+      }).domain([
         moment("2019-03-07T12:34:56.789Z"),
         moment("2019-04-12T12:34:56.789Z"),
       ]);
@@ -287,10 +295,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create month ranges spaced by count", () => {
-      const scale = timeseriesScale(
-        { interval: "month", count: 3 },
-        "Etc/UTC",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "month",
+        count: 3,
+        timezone: "Etc/UTC",
+      }).domain([
         moment("2018-11-01T00:00:00.000Z"),
         moment("2020-02-01T00:00:00.000Z"),
       ]);
@@ -305,10 +314,11 @@ describe("visualization.lib.timeseries", () => {
     });
 
     it("should create 50 year ranges", () => {
-      const scale = timeseriesScale(
-        { interval: "year", count: 50 },
-        "Etc/UTC",
-      ).domain([
+      const scale = timeseriesScale({
+        interval: "year",
+        count: 50,
+        timezone: "Etc/UTC",
+      }).domain([
         moment("1890-01-01T00:00:00.000Z"),
         moment("2020-01-01T00:00:00.000Z"),
       ]);
@@ -322,7 +332,11 @@ describe("visualization.lib.timeseries", () => {
 
     for (const unit of ["month", "quarter", "year"]) {
       it(`should produce results with ${unit}s`, () => {
-        const ticks = timeseriesScale({ interval: unit, count: 1 }, "Etc/UTC")
+        const ticks = timeseriesScale({
+          interval: unit,
+          count: 1,
+          timezone: "Etc/UTC",
+        })
           .domain([
             moment("1999-12-31T23:59:59Z"),
             moment("2001-01-01T00:00:01Z"),
@@ -341,7 +355,11 @@ describe("visualization.lib.timeseries", () => {
     // same as above but with a smaller range so the test runs faster
     for (const unit of ["minute", "hour", "day"]) {
       it(`should produce results with ${unit}s`, () => {
-        const ticks = timeseriesScale({ interval: unit, count: 1 }, "Etc/UTC")
+        const ticks = timeseriesScale({
+          interval: unit,
+          count: 1,
+          timezone: "Etc/UTC",
+        })
           .domain([
             moment("1999-12-31T23:59:59Z"),
             moment("2000-01-02T00:00:01Z"),
@@ -357,7 +375,11 @@ describe("visualization.lib.timeseries", () => {
 
     // weeks are split out because their boundaries don't align with other units
     it(`should produce results with weeks`, () => {
-      const ticks = timeseriesScale({ interval: "week", count: 1 }, "Etc/UTC")
+      const ticks = timeseriesScale({
+        interval: "week",
+        count: 1,
+        timezone: "Etc/UTC",
+      })
         .domain([
           moment("2000-01-02T12:34:56Z"),
           moment("2000-02-02T12:34:56Z"),

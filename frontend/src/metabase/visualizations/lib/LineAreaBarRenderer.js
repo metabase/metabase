@@ -99,11 +99,16 @@ function checkSeriesIsValid({ series, maxSeries }) {
   }
 }
 
-function getXInterval({ settings, series }, xValues) {
+function getXInterval({ settings, series }, xValues, warn) {
   if (isTimeseries(settings)) {
-    // compute the interval
+    // We need three pieces of information to define a timeseries range:
+    // 1. interval - it's really the "unit": month, day, etc
+    // 2. count - how many intervals per tick?
+    // 3. timezone - what timezone are values in? days vary in length by timezone
     const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-    return computeTimeseriesDataInverval(xValues, unit);
+    const timezone = getTimezone(series, warn);
+    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
+    return { count, interval, timezone };
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     // Get the bin width from binning_info, if available
     // TODO: multiseries?
@@ -118,10 +123,10 @@ function getXInterval({ settings, series }, xValues) {
   }
 }
 
-function getXAxisProps(props, datas) {
+function getXAxisProps(props, datas, warn) {
   const rawXValues = getXValues(props);
   const isHistogram = isHistogramBar(props);
-  const xInterval = getXInterval(props, rawXValues);
+  const xInterval = getXInterval(props, rawXValues, warn);
 
   // For histograms we add a fake x value one xInterval to the right
   // This compensates for the barshifting we do align ticks
@@ -694,9 +699,9 @@ function addTrendlineChart(
   }
 }
 
-function applyXAxisSettings(parent, series, xAxisProps, timezone) {
+function applyXAxisSettings(parent, series, xAxisProps) {
   if (isTimeseries(parent.settings)) {
-    applyChartTimeseriesXAxis(parent, series, xAxisProps, timezone);
+    applyChartTimeseriesXAxis(parent, series, xAxisProps);
   } else if (isQuantitative(parent.settings)) {
     applyChartQuantitativeXAxis(parent, series, xAxisProps);
   } else {
@@ -807,13 +812,11 @@ export default function lineAreaBar(
     settings["graph.x_axis.scale"] = "ordinal";
   }
 
-  const timezone = getTimezone(props.series, warn);
-
   let datas = getDatas(props, warn);
-  let xAxisProps = getXAxisProps(props, datas);
+  let xAxisProps = getXAxisProps(props, datas, warn);
 
   datas = fillMissingValuesInDatas(props, xAxisProps, datas);
-  xAxisProps = getXAxisProps(props, datas);
+  xAxisProps = getXAxisProps(props, datas, warn);
 
   if (isScalarSeries) {
     xAxisProps.xValues = datas.map(data => data[0][0]);
@@ -874,7 +877,7 @@ export default function lineAreaBar(
   );
   parent._rangeBandPadding(hasBar ? BAR_PADDING_RATIO : 1);
 
-  applyXAxisSettings(parent, props.series, xAxisProps, timezone);
+  applyXAxisSettings(parent, props.series, xAxisProps);
 
   applyYAxisSettings(parent, yAxisProps);
 
