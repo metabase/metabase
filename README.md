@@ -9,7 +9,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Gitter chat](https://badges.gitter.im/metabase/metabase.png)](https://gitter.im/metabase/metabase)
 
 # Features
-- 5 minute [setup](https://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
+- 5 minutes [setup](https://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
 - Let anyone on your team [ask questions](https://metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL
 - Rich beautiful [dashboards](https://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with auto refresh and fullscreen
 - SQL Mode for analysts and data pros
