@@ -148,20 +148,11 @@
   (fetch-user username) ; force creation of the user if not already created
   (partial client-fn username))
 
-(s/defn do-with-test-user
-  "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
-  [user-kwd :- TestUserName, f :- (s/pred fn?)]
-  ((mw.session/bind-current-user (fn [_ respond _] (respond (f))))
-   (let [user-id (user->id user-kwd)]
-     {:metabase-user-id user-id
-      :is-superuser?    (db/select-one-field :is_superuser User :id user-id)})
-   identity
-   (fn [e] (throw e))))
-
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
   `user-kwd`."
   {:style/indent 1}
   [user-kwd & body]
   `(t/testing ~(format "with test user %s" user-kwd)
-     (do-with-test-user ~user-kwd (fn [] ~@body))))
+     (mw.session/with-current-user (some-> ~user-kwd user->id)
+       ~@body)))

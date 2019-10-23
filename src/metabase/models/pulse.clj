@@ -142,7 +142,8 @@
 
 ;;; ---------------------------------------- Notification Fetching Helper Fns ----------------------------------------
 
-(s/defn ^:private hydrate-notification :- PulseInstance
+(s/defn hydrate-notification :- PulseInstance
+  "Hydrate a Pulse or Alert with the Fields needed for sending it."
   [notification :- PulseInstance]
   (-> notification
       (hydrate :creator :cards [:channels :recipients])

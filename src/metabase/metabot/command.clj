@@ -175,7 +175,7 @@
      (metabot.slack/async
        (let [attachments (pulse/create-and-upload-slack-attachments!
                           (pulse/create-slack-attachment-data
-                           [(pulse/execute-card card-id, :context :metabot)]))]
+                           [(pulse/execute-card {} card-id, :context :metabot)]))]
          (metabot.slack/post-chat-message! nil attachments)))
      (tru "Ok, just a second...")))
 

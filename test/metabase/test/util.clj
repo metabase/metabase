@@ -601,6 +601,7 @@
 
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (initialize/initialize-if-needed! :db)
   (try
     (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
       (perms/revoke-collection-permissions! group-id collection/root-collection))
