@@ -1,20 +1,18 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { Box, Flex } from "grid-styled";
+import { Box } from "grid-styled";
 import { t } from "ttag";
-import FormField from "metabase/components/form/FormField";
-import FormLabel from "metabase/components/form/FormLabel";
-import FormMessage from "metabase/components/form/FormMessage";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
+//import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
+
+import User from "metabase/entities/users";
 
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
 import _ from "underscore";
-import cx from "classnames";
 
 export default class UserStep extends Component {
   constructor(props, context) {
@@ -147,9 +145,9 @@ export default class UserStep extends Component {
 
   render() {
     const { activeStep, setActiveStep, stepNumber, userDetails } = this.props;
-    const { formError, passwordError, valid } = this.state;
+    const { formError } = this.state;
 
-    const passwordComplexityDesc = MetabaseSettings.passwordComplexityDescription();
+    //const passwordComplexityDesc = MetabaseSettings.passwordComplexityDescription();
     const stepText =
       activeStep <= stepNumber
         ? t`What should we call you?`
@@ -172,138 +170,7 @@ export default class UserStep extends Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle title={stepText} circleText={"1"} />
-          <form
-            name="userForm"
-            onSubmit={this.formSubmitted}
-            noValidate
-            className="mt2"
-          >
-            <FormField
-              className="mb3"
-              fieldName="first_name"
-              formError={formError}
-            >
-              <Flex align="center">
-                <Box w={1 / 2}>
-                  <FormLabel
-                    title={t`First name`}
-                    fieldName="first_name"
-                    formError={formError}
-                  />
-                  <input
-                    className="Form-input full"
-                    name="first_name"
-                    defaultValue={userDetails ? userDetails.first_name : ""}
-                    placeholder="Johnny"
-                    required
-                    autoFocus={true}
-                    onChange={this.onFirstNameChange}
-                  />
-                </Box>
-                <Box w={1 / 2}>
-                  <FormLabel
-                    title={t`Last name`}
-                    fieldName="last_name"
-                    formError={formError}
-                  />
-                  <input
-                    className="Form-input full"
-                    name="last_name"
-                    defaultValue={userDetails ? userDetails.last_name : ""}
-                    placeholder="Appleseed"
-                    required
-                    onChange={this.onLastNameChange}
-                  />
-                </Box>
-              </Flex>
-            </FormField>
-
-            <FormField fieldName="email" formError={formError}>
-              <FormLabel
-                title={t`Email address`}
-                fieldName="email"
-                formError={formError}
-              />
-              <input
-                className="Form-input full"
-                name="email"
-                defaultValue={userDetails ? userDetails.email : ""}
-                placeholder="youlooknicetoday@email.com"
-                required
-                onChange={this.onEmailChange}
-              />
-            </FormField>
-
-            <FormField
-              fieldName="password"
-              formError={formError}
-              error={passwordError !== null}
-            >
-              <FormLabel
-                title={t`Create a password`}
-                fieldName="password"
-                formError={formError}
-                message={passwordError}
-              />
-              <span style={{ fontWeight: "normal" }} className="Form-label">
-                {passwordComplexityDesc}
-              </span>
-              <input
-                className="Form-input full"
-                name="password"
-                type="password"
-                defaultValue={userDetails ? userDetails.password : ""}
-                placeholder={t`Shhh...`}
-                required
-                onChange={this.onPasswordChange}
-                onBlur={this.onPasswordBlur}
-              />
-            </FormField>
-
-            <FormField fieldName="password_confirm" formError={formError}>
-              <FormLabel
-                title={t`Confirm password`}
-                fieldName="password_confirm"
-                formError={formError}
-              />
-              <input
-                className="Form-input full"
-                name="password_confirm"
-                type="password"
-                defaultValue={userDetails ? userDetails.password : ""}
-                placeholder={t`Shhh... but one more time so we get it right`}
-                required
-                onChange={this.onPasswordConfirmChange}
-              />
-            </FormField>
-
-            <FormField fieldName="site_name" formError={formError}>
-              <FormLabel
-                title={t`Your company or team name`}
-                fieldName="site_name"
-                formError={formError}
-              />
-              <input
-                className="Form-input full"
-                name="site_name"
-                type="text"
-                defaultValue={userDetails ? userDetails.site_name : ""}
-                placeholder={t`Department of awesome`}
-                required
-                onChange={this.onSiteNameChange}
-              />
-            </FormField>
-
-            <div className="Form-actions">
-              <button
-                className={cx("Button", { "Button--primary": valid })}
-                disabled={!valid}
-              >
-                {t`Next`}
-              </button>
-              <FormMessage />
-            </div>
-          </form>
+          <User.Form submitTitle={t`Next`} formName="setup" error={formError} />
         </Box>
       );
     }

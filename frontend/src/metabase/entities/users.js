@@ -160,6 +160,29 @@ const Users = createEntity({
     user: {
       fields: BASE_FORM_FIELDS,
     },
+    setup: {
+      fields: [
+        ...BASE_FORM_FIELDS,
+        {
+          name: "password",
+          title: t`Enter a password`,
+          type: "password",
+          placeholder: t`Shh...`,
+        },
+        {
+          name: "password2",
+          title: t`Confirm your password`,
+          type: "password",
+          placeholder: t`Shh... but one more time`,
+          validate: (pass2, form) => console.log(pass2, form),
+        },
+        {
+          name: "site_name",
+          title: t`Your company or team name`,
+          placeholder: t`Department of awesome`,
+        },
+      ],
+    },
   },
 });
 
