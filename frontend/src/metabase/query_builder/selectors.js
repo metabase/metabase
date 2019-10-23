@@ -180,14 +180,8 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults],
-  (mode, results) =>
-    // We've filtered by a PK,
-    mode &&
-    mode.name() === "object" &&
-    // and there's only one result.
-    results &&
-    results[0].data.rows.length === 1,
+  [getMode],
+  mode => mode && mode.name() === "object",
 );
 
 export const getIsDirty = createSelector(
