@@ -6,7 +6,6 @@ import { assocIn } from "icepick";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import { capitalize } from "metabase/lib/formatting";
 
 import { createEntity } from "metabase/lib/entities";
 
@@ -63,7 +62,6 @@ const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
     title: t`Enter a password`,
     type: "password",
     placeholder: t`Shh...`,
-    description: capitalize(MetabaseSettings.passwordComplexityDescription()),
     validate: password =>
       (!password && t`required`) ||
       MetabaseSettings.passwordComplexityDescription(password),

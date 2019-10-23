@@ -136,7 +136,7 @@ const MetabaseSettings = {
   },
 };
 
-const n2w = MetabaseUtils.numberToWord;
+const n2w = n => MetabaseUtils.numberToWord(n);
 
 const PASSWORD_COMPLEXITY_CLAUSES = {
   total: {
