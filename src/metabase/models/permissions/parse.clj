@@ -21,7 +21,7 @@
   collection  = <'/collection/'> #'[^/]*' <'/'> ('read' <'/'>)?")
 
 (def ^:private parser
-  "Function thqat parses permission strings"
+  "Function that parses permission strings"
   (insta/parser grammar))
 
 (defn- collection-id
