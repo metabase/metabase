@@ -1,10 +1,9 @@
 (ns metabase.query-processor.middleware.add-settings
   "Middleware for adding a `:settings` map to a query before it is processed."
-  (:require [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date :as du]))
+  (:require [metabase.query-processor.timezone :as qp.timezone]))
 
 (defn- settings-for-current-driver []
-  (when-let [timezone-id (qp.timezone/report-timezone-id)]
+  (when-let [timezone-id (qp.timezone/report-timezone-id-if-supported)]
     {:report-timezone timezone-id}))
 
 (defn add-settings
@@ -15,9 +14,10 @@
   [qp]
   (fn [query]
     (let [settings (settings-for-current-driver)
-          query    (cond-> query
-                     settings (assoc :settings settings))
-          results  (qp query)]
+          query   (if (seq settings)
+                    (assoc query :settings settings)
+                    (dissoc query :settings))
+          results (qp query)]
       (merge
        results
        {:actual_timezone (qp.timezone/results-timezone-id)}

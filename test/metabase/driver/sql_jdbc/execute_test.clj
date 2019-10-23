@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [expectations :refer [expect]]
             [metabase
+             [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
@@ -241,9 +242,10 @@
 
 (expect
   {:ran-with-timezone? true, :timezone "US/Pacific"}
-  (ran-with-timezone?
-   :h2
-   {:database (data/id)
-    :type     :native
-    :native   {:query "SELECT * FROM VENUES LIMIT 1;"}
-    :settings {:report-timezone "US/Pacific"}}))
+  (with-redefs [driver/supports? (constantly true)]
+    (ran-with-timezone?
+     :h2
+     {:database (data/id)
+      :type     :native
+      :native   {:query "SELECT * FROM VENUES LIMIT 1;"}
+      :settings {:report-timezone "US/Pacific"}})))

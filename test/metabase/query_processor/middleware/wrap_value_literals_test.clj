@@ -2,13 +2,18 @@
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
             [metabase.driver :as driver]
+            [metabase.query-processor
+             [test-util :as qp.test-util]
+             [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
-            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.util.date :as du])
-  (:import java.util.TimeZone))
+            [metabase.util.date :as du]))
+
+(driver/register! ::tz-driver, :abstract? true)
+
+(defmethod driver/supports? [::tz-driver :set-timezone] [_ _] true)
 
 (defn- wrap-value-literals
   {:style/indent 0}
@@ -17,7 +22,7 @@
 
   ([query, ^String timezone-id]
    (qp.test-util/with-everything-store
-     (binding [du/*report-timezone* (TimeZone/getTimeZone timezone-id)]
+     (qp.timezone/with-results-timezone-id timezone-id
        ((wrap-value-literals/wrap-value-literals identity)
         query)))))
 
@@ -49,12 +54,13 @@
 
 (deftest parse-datetime-literal-strings-test
   (let [parse-with-timezone (fn [datetime-str, ^String timezone-id]
-                              (binding [du/*report-timezone* (TimeZone/getTimeZone timezone-id)]
-                                (is (= (metabase.query-processor.timezone/results-timezone-id)
-                                       timezone-id)
-                                    "Make sure `results-timezone-id` is returning the bound value")
-                                (second (#'wrap-value-literals/add-type-info datetime-str
-                                                                             {:unit :day}))))]
+                              (driver/with-driver ::tz-driver
+                                (tu/with-temporary-setting-values [report-timezone timezone-id]
+                                  (is (= (qp.timezone/results-timezone-id)
+                                         timezone-id)
+                                      "Make sure `results-timezone-id` is returning the bound value")
+                                  (second (#'wrap-value-literals/add-type-info datetime-str
+                                                                               {:unit :day})))))]
     (doseq [[timezone expected] {"UTC"        #inst "2018-10-01T00:00:00.000000000-00:00"
                                  "US/Pacific" #inst "2018-10-01T07:00:00.000000000-00:00"}]
       (is (= (du/->Timestamp expected "UTC")
@@ -65,11 +71,11 @@
   (is (= (:query
           (data/mbql-query checkins
             {:filter [:= !month.date [:absolute-datetime (du/->Timestamp "2018-10-01" "UTC") :month]]}))
-         (:query
-          (data/$ids checkins
-            (wrap-value-literals
-              (data/mbql-query checkins
-                {:filter [:= !month.date "2018-10-01"]})))))
+         (-> (data/$ids checkins
+               (data/mbql-query checkins
+                 {:filter [:= !month.date "2018-10-01"]}))
+             wrap-value-literals
+             :query))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?")
 
   (is (= (:query

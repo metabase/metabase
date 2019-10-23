@@ -2,10 +2,18 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [metabase.query-processor :as qp]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]]
             [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.util.date :as du]))
+
+(driver/register! ::timezone-driver, :abstract? true)
+
+(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
 
 (defn- optimize-datetime-filters [filter-clause]
   (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
@@ -49,86 +57,88 @@
     :upper        #inst "2020-01-01"}])
 
 (deftest optimize-datetime-filters-test
-  (doseq [{:keys [unit filter-value lower upper]} test-units-and-values]
-    (let [lower [:absolute-datetime lower :default]
-          upper [:absolute-datetime upper :default]]
-      (testing unit
-        (testing :=
-          (is (= [:and
-                  [:>= [:datetime-field [:field-id 1] :default] lower]
-                  [:< [:datetime-field [:field-id 1] :default] upper]]
-                 (optimize-datetime-filters
-                  [:=
-                   [:datetime-field [:field-id 1] unit]
-                   [:absolute-datetime filter-value unit]]))))
-        (testing :!=
-          (is (= [:or
-                  [:< [:datetime-field [:field-id 1] :default] lower]
-                  [:>= [:datetime-field [:field-id 1] :default] upper]]
-                 (optimize-datetime-filters
-                  [:!=
-                   [:datetime-field [:field-id 1] unit]
-                   [:absolute-datetime filter-value unit]]))))
-        (doseq [filter-type [:< :<=]]
-          (testing filter-type
-            (is (= [filter-type [:datetime-field [:field-id 1] :default] lower]
+  (driver/with-driver ::timezone-driver
+    (doseq [{:keys [unit filter-value lower upper]} test-units-and-values]
+      (let [lower [:absolute-datetime lower :default]
+            upper [:absolute-datetime upper :default]]
+        (testing unit
+          (testing :=
+            (is (= [:and
+                    [:>= [:datetime-field [:field-id 1] :default] lower]
+                    [:< [:datetime-field [:field-id 1] :default] upper]]
                    (optimize-datetime-filters
-                    [filter-type
+                    [:=
                      [:datetime-field [:field-id 1] unit]
-                     [:absolute-datetime filter-value unit]])))))
-        (doseq [filter-type [:> :>=]]
-          (testing filter-type
-            (is (= [filter-type [:datetime-field [:field-id 1] :default] upper]
+                     [:absolute-datetime filter-value unit]]))))
+          (testing :!=
+            (is (= [:or
+                    [:< [:datetime-field [:field-id 1] :default] lower]
+                    [:>= [:datetime-field [:field-id 1] :default] upper]]
                    (optimize-datetime-filters
-                    [filter-type
+                    [:!=
                      [:datetime-field [:field-id 1] unit]
-                     [:absolute-datetime filter-value unit]])))))
-        (testing :betweenn
-          (is (= [:and
-                  [:>= [:datetime-field [:field-id 1] :default] lower]
-                  [:< [:datetime-field [:field-id 1] :default] upper]]
-                 (optimize-datetime-filters
-                  [:between
-                   [:datetime-field [:field-id 1] unit]
-                   [:absolute-datetime filter-value unit]
-                   [:absolute-datetime filter-value unit]]))))))))
+                     [:absolute-datetime filter-value unit]]))))
+          (doseq [filter-type [:< :<=]]
+            (testing filter-type
+              (is (= [filter-type [:datetime-field [:field-id 1] :default] lower]
+                     (optimize-datetime-filters
+                      [filter-type
+                       [:datetime-field [:field-id 1] unit]
+                       [:absolute-datetime filter-value unit]])))))
+          (doseq [filter-type [:> :>=]]
+            (testing filter-type
+              (is (= [filter-type [:datetime-field [:field-id 1] :default] upper]
+                     (optimize-datetime-filters
+                      [filter-type
+                       [:datetime-field [:field-id 1] unit]
+                       [:absolute-datetime filter-value unit]])))))
+          (testing :betweenn
+            (is (= [:and
+                    [:>= [:datetime-field [:field-id 1] :default] lower]
+                    [:< [:datetime-field [:field-id 1] :default] upper]]
+                   (optimize-datetime-filters
+                    [:between
+                     [:datetime-field [:field-id 1] unit]
+                     [:absolute-datetime filter-value unit]
+                     [:absolute-datetime filter-value unit]])))))))))
 
 (deftest timezones-test
-  (let [optimize-with-timezone (fn [inst]
-                                 (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
-                                      {:database 1
-                                       :type     :query
-                                       :query    {:filter [:=
-                                                           [:datetime-field [:field-id 1] :day]
-                                                           [:absolute-datetime inst :day]]}})
-                                     (get-in [:query :filter])))]
-    (doseq [[timezone-id {:keys [inst lower upper]}]
-            {"UTC"        {:inst  "2015-11-18T00:00:00.000000000-00:00"
-                           :lower "2015-11-18T00:00:00.000000000-00:00"
-                           :upper "2015-11-19T00:00:00.000000000-00:00"}
-             "US/Pacific" {:inst  "2015-11-18T08:00:00.000000000-00:00"
-                           :lower "2015-11-18T08:00:00.000000000-00:00"
-                           :upper "2015-11-19T08:00:00.000000000-00:00"}}]
-      (testing (format "%s timezone" timezone-id)
-        (let [inst'  (du/->Timestamp inst "UTC")
-              lower' (du/->Timestamp lower "UTC")
-              upper' (du/->Timestamp upper "UTC")]
-          (binding [du/*report-timezone* (java.util.TimeZone/getTimeZone ^String timezone-id)]
-            (testing "lower-bound and upper-bound util fns"
-              (is (= lower'
-                     (#'optimize-datetime-filters/lower-bound :day inst'))
-                  (format "lower bound of day(%s) in the %s timezone should be %s" inst timezone-id lower))
-              (is (= upper'
-                     (#'optimize-datetime-filters/upper-bound :day inst'))
-                  (format "upper bound of day(%s) in the %s timezone should be %s" inst timezone-id upper)))
-            (testing "optimize-with-datetime"
-              (let [expected [:and
-                              [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower' :default]]
-                              [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper' :default]]]]
-                (is (= expected
-                       (optimize-with-timezone inst'))
-                    (format "= %s in the %s timezone should be optimized to range %s -> %s"
-                            inst timezone-id lower upper))))))))))
+  (driver/with-driver ::timezone-driver
+    (let [optimize-with-timezone (fn [inst]
+                                   (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
+                                        {:database 1
+                                         :type     :query
+                                         :query    {:filter [:=
+                                                             [:datetime-field [:field-id 1] :day]
+                                                             [:absolute-datetime inst :day]]}})
+                                       (get-in [:query :filter])))]
+      (doseq [[timezone-id {:keys [inst lower upper]}]
+              {"UTC"        {:inst  "2015-11-18T00:00:00.000000000-00:00"
+                             :lower "2015-11-18T00:00:00.000000000-00:00"
+                             :upper "2015-11-19T00:00:00.000000000-00:00"}
+               "US/Pacific" {:inst  "2015-11-18T08:00:00.000000000-00:00"
+                             :lower "2015-11-18T08:00:00.000000000-00:00"
+                             :upper "2015-11-19T08:00:00.000000000-00:00"}}]
+        (testing (format "%s timezone" timezone-id)
+          (let [inst'  (du/->Timestamp inst "UTC")
+                lower' (du/->Timestamp lower "UTC")
+                upper' (du/->Timestamp upper "UTC")]
+            (tu/with-temporary-setting-values [report-timezone timezone-id]
+              (testing "lower-bound and upper-bound util fns"
+                (is (= lower'
+                       (#'optimize-datetime-filters/lower-bound :day inst'))
+                    (format "lower bound of day(%s) in the %s timezone should be %s" inst timezone-id lower))
+                (is (= upper'
+                       (#'optimize-datetime-filters/upper-bound :day inst'))
+                    (format "upper bound of day(%s) in the %s timezone should be %s" inst timezone-id upper)))
+              (testing "optimize-with-datetime"
+                (let [expected [:and
+                                [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower' :default]]
+                                [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper' :default]]]]
+                  (is (= expected
+                         (optimize-with-timezone inst'))
+                      (format "= %s in the %s timezone should be optimized to range %s -> %s"
+                              inst timezone-id lower upper)))))))))))
 
 (deftest skip-optimization-test
   (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #inst "2019-01-01" :month]]]

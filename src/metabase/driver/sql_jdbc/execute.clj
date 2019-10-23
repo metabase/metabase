@@ -273,10 +273,10 @@
                                                (some-> report-timezone TimeZone/getTimeZone)
                                                transaction-connection)))
     (catch SQLException e
-      (log/error (tru "Failed to set timezone:") "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+      (log/error (tru "Failed to set timezone ''{0}'' for driver {1}" report-timezone driver) "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
       (run-query-without-timezone driver settings connection query))
     (catch Throwable e
-      (log/error (tru "Failed to set timezone:") "\n" (.getMessage e))
+      (log/error e (tru "Failed to set timezone ''{0}'' for driver {1}" report-timezone driver))
       (run-query-without-timezone driver settings connection query))))
 
 
@@ -291,7 +291,8 @@
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))
-              run-query*    (if (seq report-timezone)
+              run-query*    (if (and (seq report-timezone)
+                                     (driver/supports? driver :set-timezone))
                               run-query-with-timezone
                               run-query-without-timezone)]
           (run-query* driver settings db-connection query))))))

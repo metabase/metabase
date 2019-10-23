@@ -13,6 +13,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.query-processor.middleware.parameters.native.interface :as i]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -20,8 +21,7 @@
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange
-            FieldFilter MultipleValues]))
+           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues]))
 
 (def ^:private ParamSnippetInfo
   {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
@@ -121,8 +121,7 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private relative-date-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [value]
-  ;; TODO - get timezone from query dict
-  (-> (date-params/date-string->range value (.getID du/*report-timezone*))
+  (-> (date-params/date-string->range value (qp.timezone/results-timezone-id))
       i/map->DateRange
       ->replacement-snippet-info))
 

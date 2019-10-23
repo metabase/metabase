@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.format-rows-test
   (:require [clj-time.coerce :as tc]
-            [expectations :refer :all]
+            [clojure.test :refer :all]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
@@ -8,6 +8,10 @@
             [metabase.test
              [data :as data]
              [util :as tu]]))
+
+(driver/register! ::timezone-driver, :abstract? true)
+
+(defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
 
 (def ^:private dbs-exempt-from-format-rows-tests
   "DBs to skip the tests below for. TODO - why are so many databases not running these tests? Most of these should be
@@ -62,27 +66,22 @@
           {:order-by [[:asc $id]]
            :limit    5})))))
 
-
-(expect
-  {:rows [["2011-04-18T10:12:47.232Z"]
-          ["2011-04-18T00:00:00.000Z"]
-          ["2011-04-18T10:12:47.232Z"]]}
-  ((format-rows/format-rows
-    (constantly
-     {:rows
-      [[(tc/to-sql-time 1303121567232)]
-       [(tc/to-sql-date "2011-04-18")]  ; joda-time assumes this is UTC time when parsing it
-       [(tc/to-date 1303121567232)]]}))
-   {:settings {}}))
-
-(expect
-  {:rows [["2011-04-18T19:12:47.232+09:00"]
-          ["2011-04-18T09:00:00.000+09:00"]
-          ["2011-04-18T19:12:47.232+09:00"]]}
-  ((format-rows/format-rows
-    (constantly
-     {:rows
-      [[(tc/to-sql-time 1303121567232)]
-       [(tc/to-sql-date "2011-04-18")]  ; joda-time assumes this is UTC time when parsing it
-       [(tc/to-date 1303121567232)]]}))
-   {:settings {:report-timezone "Asia/Tokyo"}}))
+(deftest results-timezone-test
+  (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
+    (doseq [[timezone-id expected-rows] {nil          [["2011-04-18T10:12:47.232Z"]
+                                                       ["2011-04-18T00:00:00.000Z"]
+                                                       ["2011-04-18T10:12:47.232Z"]]
+                                         "Asia/Tokyo" [["2011-04-18T19:12:47.232+09:00"]
+                                                       ["2011-04-18T09:00:00.000+09:00"]
+                                                       ["2011-04-18T19:12:47.232+09:00"]]}]
+      (tu/with-temporary-setting-values [report-timezone timezone-id]
+        (let [results (driver/with-driver ::timezone-driver
+                        ((format-rows/format-rows
+                          (constantly
+                           {:rows
+                            [[(tc/to-sql-time 1303121567232)]
+                             [(tc/to-sql-date "2011-04-18")] ; joda-time assumes this is UTC time when parsing it
+                             [(tc/to-date 1303121567232)]]}))
+                         {}))]
+          (is (= {:rows expected-rows}
+                 results)))))))

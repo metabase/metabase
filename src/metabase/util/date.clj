@@ -17,15 +17,14 @@
            [org.joda.time DateTime DateTimeZone]
            org.joda.time.format.DateTimeFormatter))
 
-(def ^{:tag     TimeZone
-       :dynamic true
-       :doc     "Timezone to be used when formatting timestamps for display or for the data (pre aggregation)"}
-  *report-timezone*)
+;; TODO - move this stuff to `metabase.query-processor.timestamp` -- it's QP specific and doesn't really belong here
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "Timezone to be used when formatting timestamps for display or
+ for the data (pre aggregation). Deprecated — use `metabase.query-processor.timezone/results-timezone-id` instead."}
+ *report-timezone*)
 
-(def ^{:dynamic true
-       :doc     "The timezone of the database currently being queried."
-       :tag     TimeZone}
-  *database-timezone*)
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "The timezone of the database currently being queried.
+ Deprecated — you shouldn't need to use this directly; use `metabase.query-processor.timezone/results-timezone-id`
+ instead."} *database-timezone*)
 
 (defprotocol ^:private ITimeZoneCoercible
   "Coerce object to `java.util.TimeZone`"
@@ -75,7 +74,8 @@
                                    (.getID jvm-timezone) (.getID database-timezone)))))))))
 
 (defn call-with-effective-timezone
-  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`"
+  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`. Deprecated — use functions
+  in `metabase.query-processor.timezone` instead."
   [db f]
   (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
         report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
@@ -88,7 +88,8 @@
       (f))))
 
 (defmacro with-effective-timezone
-  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`"
+  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`. Deprecated — use
+  functions in `metabase.query-processor.timezone` instead."
   [db & body]
   `(call-with-effective-timezone ~db (fn [] ~@body)))
 

@@ -1,18 +1,22 @@
 (ns metabase.query-processor.timezone
   "Functions for fetching the timezone for the current query."
   (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]
             [metabase.util.date :as du]))
 
-(defn report-timezone-id
+(defn- report-timezone-id
+  ^String []
+  (driver/report-timezone))
+
+(defn report-timezone-id-if-supported
   "Timezone ID for the report timezone, if the current driver supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
-  []
-  (when (bound? #'du/*report-timezone*)
-    (when du/*report-timezone*
-      (.getID du/*report-timezone*))))
+  ^String []
+  (when (driver/supports? driver/*driver* :set-timezone)
+    (report-timezone-id)))
 
 (defn- current-database-timezone-id []
+  ;; TODO - use QP store for this
+  #_(:timezone (qp.store/database))
   (when (bound? #'du/*database-timezone*)
     (some-> du/*database-timezone* .getID)))
 
@@ -26,6 +30,21 @@
   ^String []
   (driver/report-timezone))
 
+(def ^:dynamic ^:private *results-timezone-id-override*
+  nil)
+
+(defn do-with-results-timezone-id
+  "Impl for `with-results-timezone-id` macro."
+  [timezone-id f]
+  (binding [*results-timezone-id-override* timezone-id]
+    (f)))
+
+(defmacro with-results-timezone-id
+  "Temporarily override the results timezone ID used for parsing and serializing datetime strings and other behavior.
+  This is useful primarily for tests."
+  [timezone-id & body]
+  `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
+
 (defn results-timezone-id
   "The timezone that a query is actually ran in -- report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
@@ -34,6 +53,7 @@
   ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
   ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
   ;;       GH issues: #2282, #2035
-  (or (report-timezone-id)
+  (or *results-timezone-id-override*
+      (report-timezone-id-if-supported)
       (current-database-timezone-id)
       (system-timezone-id)))
