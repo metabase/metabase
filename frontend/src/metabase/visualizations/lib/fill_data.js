@@ -28,7 +28,9 @@ function fillMissingValues(rows, xValues, fillValue, getKey = v => v) {
       const row = map.get(key);
       if (row) {
         map.delete(key);
-        return [value, ...row.slice(1)];
+        const newRow = [value, ...row.slice(1)];
+        newRow._origin = row._origin;
+        return newRow;
       } else {
         return [value, ...fillValues];
       }

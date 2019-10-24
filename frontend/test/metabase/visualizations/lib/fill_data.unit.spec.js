@@ -152,4 +152,23 @@ describe("fillMissingValuesInDatas", () => {
 
     expect(filledData).toEqual([[10, 1], [20, 0], [30, 1]]);
   });
+
+  it("should maintain _origin on rows", () => {
+    // the _origin property is used in tooltips, so make sure it's carried over
+    const row = [1, 1];
+    row._origin = [1, 1, 2, 3];
+    const [[{ _origin }]] = fillMissingValuesInDatas(
+      {
+        series: [{}],
+        settings: {
+          "graph.x_axis.scale": "linear",
+          series: () => ({ "line.missing": "zero" }),
+        },
+      },
+      { xValues: [1], xDomain: [1, 1], xInterval: 1 },
+      [[row]],
+    );
+
+    expect(_origin).toEqual([1, 1, 2, 3]);
+  });
 });
