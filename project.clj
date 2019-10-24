@@ -63,7 +63,8 @@
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
-   [clj-time "0.15.1"]                                                ; library for dealing with date/time
+   [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
+   [clj-time "0.15.1"]                                                ; Joda-Time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -120,6 +121,7 @@
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+   [org.threeten/threeten-extra "1.2"]                                ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5"]                                                 ; utility macros & fns
    [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed

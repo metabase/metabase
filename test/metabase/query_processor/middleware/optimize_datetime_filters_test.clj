@@ -9,7 +9,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.util.date :as du]))
+            [metabase.util.date-2 :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -24,37 +24,37 @@
 
 (def ^:private test-units-and-values
   [{:unit         :second
-    :filter-value #inst "2019-09-24T12:19:30.500Z"
-    :lower        #inst "2019-09-24T12:19:30.000Z"
-    :upper        #inst "2019-09-24T12:19:31.000Z"}
+    :filter-value (u.date/parse "2019-09-24T12:19:30.500Z" "UTC")
+    :lower        (u.date/parse "2019-09-24T12:19:30.000Z" "UTC")
+    :upper        (u.date/parse "2019-09-24T12:19:31.000Z" "UTC")}
    {:unit         :minute
-    :filter-value #inst "2019-09-24T12:19:30.000Z"
-    :lower        #inst "2019-09-24T12:19:00.000Z"
-    :upper        #inst "2019-09-24T12:20:00.000Z"}
+    :filter-value (u.date/parse "2019-09-24T12:19:30.000Z" "UTC")
+    :lower        (u.date/parse "2019-09-24T12:19:00.000Z" "UTC")
+    :upper        (u.date/parse "2019-09-24T12:20:00.000Z" "UTC")}
    {:unit         :hour
-    :filter-value #inst "2019-09-24T12:30:00.000Z"
-    :lower        #inst "2019-09-24T12:00:00.000Z"
-    :upper        #inst "2019-09-24T13:00:00.000Z"}
+    :filter-value (u.date/parse "2019-09-24T12:30:00.000Z" "UTC")
+    :lower        (u.date/parse "2019-09-24T12:00:00.000Z" "UTC")
+    :upper        (u.date/parse "2019-09-24T13:00:00.000Z" "UTC")}
    {:unit         :day
-    :filter-value #inst "2019-09-24T12:00:00.000Z"
-    :lower        #inst "2019-09-24"
-    :upper        #inst "2019-09-25"}
+    :filter-value (u.date/parse "2019-09-24T12:00:00.000Z" "UTC")
+    :lower        (u.date/parse "2019-09-24" "UTC")
+    :upper        (u.date/parse "2019-09-25" "UTC")}
    {:unit         :week
-    :filter-value #inst "2019-09-24"
-    :lower        #inst "2019-09-22"
-    :upper        #inst "2019-09-29"}
+    :filter-value (u.date/parse "2019-09-24" "UTC")
+    :lower        (u.date/parse "2019-09-22" "UTC")
+    :upper        (u.date/parse "2019-09-29" "UTC")}
    {:unit         :month
-    :filter-value #inst "2019-09-24"
-    :lower        #inst "2019-09-01"
-    :upper        #inst "2019-10-01"}
+    :filter-value (u.date/parse "2019-09-24" "UTC")
+    :lower        (u.date/parse "2019-09-01" "UTC")
+    :upper        (u.date/parse "2019-10-01" "UTC")}
    {:unit         :quarter
-    :filter-value #inst "2019-09-01"
-    :lower        #inst "2019-07-01"
-    :upper        #inst "2019-10-01"}
+    :filter-value (u.date/parse "2019-09-01" "UTC")
+    :lower        (u.date/parse "2019-07-01" "UTC")
+    :upper        (u.date/parse "2019-10-01" "UTC")}
    {:unit         :year
-    :filter-value #inst "2019-09-24"
-    :lower        #inst "2019-01-01"
-    :upper        #inst "2020-01-01"}])
+    :filter-value (u.date/parse "2019-09-24" "UTC")
+    :lower        (u.date/parse "2019-01-01" "UTC")
+    :upper        (u.date/parse "2020-01-01" "UTC")}])
 
 (deftest optimize-datetime-filters-test
   (driver/with-driver ::timezone-driver
@@ -120,9 +120,9 @@
                              :lower "2015-11-18T08:00:00.000000000-00:00"
                              :upper "2015-11-19T08:00:00.000000000-00:00"}}]
         (testing (format "%s timezone" timezone-id)
-          (let [inst'  (du/->Timestamp inst "UTC")
-                lower' (du/->Timestamp lower "UTC")
-                upper' (du/->Timestamp upper "UTC")]
+          (let [inst'  (u.date/parse inst "UTC")
+                lower' (u.date/parse lower "UTC")
+                upper' (u.date/parse upper "UTC")]
             (tu/with-temporary-setting-values [report-timezone timezone-id]
               (testing "lower-bound and upper-bound util fns"
                 (is (= lower'

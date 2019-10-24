@@ -2,15 +2,14 @@
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
   (:require [metabase.mbql
-             [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [store :as qp.store]
              [timezone :as qp.timezone]]
-            [metabase.util.date :as du])
-  (:import java.util.TimeZone))
+            [metabase.util.date-2 :as u.date])
+  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
@@ -51,36 +50,52 @@
   {:arglists '([x info & {:keys [parse-datetime-strings?]}])}
   (fn [x & _] (class x)))
 
-(defmethod add-type-info nil [_ info & _]
+(defmethod add-type-info nil
+  [_ info & _]
   [:value nil info])
 
-(defmethod add-type-info Object [this info & _]
+(defmethod add-type-info Object
+  [this info & _]
   [:value this info])
 
-(defmethod add-type-info java.util.Date [this info & _]
-  [:absolute-datetime (du/->Timestamp this) (get info :unit :default)])
-
-(defmethod add-type-info java.sql.Time [this info & _]
-  [:time this (get info :unit :default)])
-
-(defmethod add-type-info java.sql.Timestamp [this info & _]
+(defmethod add-type-info Instant
+  [this info & _]
   [:absolute-datetime this (get info :unit :default)])
 
-(defn- maybe-parse-as-time [time-str unit]
-  (when (mbql.preds/TimeUnit? unit)
-    (du/str->time time-str (some-> (qp.timezone/results-timezone-id) TimeZone/getTimeZone))))
+(defmethod add-type-info LocalDate
+  [this info & _]
+  [:absolute-datetime this (get info :unit :default)])
+
+(defmethod add-type-info LocalDateTime
+  [this info & _]
+  [:absolute-datetime this (get info :unit :default)])
+
+(defmethod add-type-info LocalTime
+  [this info & _]
+  [:time this (get info :unit :default)])
+
+(defmethod add-type-info OffsetDateTime
+  [this info & _]
+  [:absolute-datetime this (get info :unit :default)])
+
+(defmethod add-type-info OffsetTime
+  [this info & _]
+  [:time this (get info :unit :default)])
+
+(defmethod add-type-info ZonedDateTime
+  [this info & _]
+  [:absolute-datetime this (get info :unit :default)])
 
 (defmethod add-type-info String
-  [this info & {:keys [parse-datetime-strings?]
-                :or   {parse-datetime-strings? true}}]
-  (if-let [unit (when (and (du/date-string? this)
-                           parse-datetime-strings?)
-                  (:unit info))]
-    ;; should use report timezone by default
-    (if-let [time (maybe-parse-as-time this unit)]
-      [:time time unit]
-      (let [timestamp (du/->Timestamp this (qp.timezone/results-timezone-id))]
-        [:absolute-datetime timestamp unit]))
+  [this {:keys [unit], :as info} & {:keys [parse-datetime-strings?]
+                                    :or   {parse-datetime-strings? true}}]
+  (if-let [temporal-value (when (and unit
+                                     parse-datetime-strings?
+                                     (string? this))
+                            (u.date/parse this (qp.timezone/results-timezone-id)))]
+    (if (u.date/time? temporal-value)
+      [:time temporal-value unit]
+      [:absolute-datetime temporal-value unit])
     [:value this info]))
 
 

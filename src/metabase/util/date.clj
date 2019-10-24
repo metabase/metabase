@@ -1,5 +1,6 @@
-(ns metabase.util.date
-  "Utility functions for working with datetimes of different types, and other related tasks."
+(ns ^:deprecated metabase.util.date
+  "Utility functions for working with datetimes of different types, and other related tasks. Deprecate: use
+  `metabase.util.date` instead."
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]
@@ -495,3 +496,6 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+(doseq [[_ varr] (ns-publics *ns*)]
+  (alter-meta! varr assoc :deprecated true))

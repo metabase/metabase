@@ -2,8 +2,7 @@
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util.date :as du]))
+            [metabase.util.date-2 :as u.date]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
@@ -34,11 +33,11 @@
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
     (= (datetime-field-unit field) unit-1 unit-2)))
 
-(defn- lower-bound [unit inst]
-  (du/date-trunc unit inst (qp.timezone/results-timezone-id)))
+(defn- lower-bound [unit v]
+  (u.date/truncate unit v))
 
-(defn- upper-bound [unit inst]
-  (du/relative-date unit 1 (lower-bound unit inst)))
+(defn- upper-bound [unit v]
+  (u.date/add unit 1 (lower-bound unit v)))
 
 (defn- change-datetime-field-unit-to-default [field]
   (mbql.u/replace field

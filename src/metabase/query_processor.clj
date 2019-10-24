@@ -21,7 +21,6 @@
              [async :as async]
              [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
-             [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -147,7 +146,6 @@
    ;; TODO - `resolve-driver` and `resolve-database` can be combined into a single step, so we don't need to fetch
    ;; DB twice
    #'resolve-driver/resolve-driver
-   #'bind-timezone/bind-effective-timezone
    #'resolve-database/resolve-database
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
