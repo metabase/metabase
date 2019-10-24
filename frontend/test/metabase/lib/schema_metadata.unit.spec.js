@@ -7,6 +7,7 @@ import {
   BOOLEAN,
   LOCATION,
   COORDINATE,
+  PRIMARY_KEY,
   foreignKeyCountsByOriginTable,
 } from "metabase/lib/schema_metadata";
 
@@ -47,6 +48,11 @@ describe("schema_metadata", () => {
       expect(
         getFieldType({ base_type: TYPE.Text, special_type: TYPE.URL }),
       ).toEqual(STRING);
+    });
+    it("should know a pk", () => {
+      expect(
+        getFieldType({ base_type: TYPE.Integer, special_type: TYPE.PK }),
+      ).toEqual(PRIMARY_KEY);
     });
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);
