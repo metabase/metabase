@@ -36,6 +36,8 @@ export type DatasetData = {
   cols: Column[],
   rows: Row[],
   rows_truncated?: number,
+  requested_timezone: string,
+  results_timezone: string,
 };
 
 export type Dataset = {
