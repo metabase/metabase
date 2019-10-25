@@ -124,12 +124,7 @@ describe("LineAreaBarRenderer", () => {
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
-    const series = [
-      {
-        data: { cols, rows },
-        card: { display: chartType, report_timezone: "Etc/UTC" },
-      },
-    ];
+    const series = [{ data: { cols, rows }, card: { display: chartType } }];
     const settings = getComputedSettingsForSeries(series);
     const onHoverChange = jest.fn();
 
